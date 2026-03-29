@@ -36,11 +36,11 @@ struct ToastModifier: ViewModifier {
     let duration: TimeInterval
 
     func body(content: Content) -> some View {
-        content.overlay(alignment: .top) {
+        content.overlay(alignment: .bottom) {
             if isPresented {
                 ToastView(message: message, icon: icon)
-                    .padding(.top, 8)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .padding(.bottom, 24)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                     .onAppear {
                         DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
                             withAnimation { isPresented = false }
@@ -67,5 +67,51 @@ extension View {
                 duration: duration
             )
         )
+    }
+
+    func toast(
+        message: Binding<ToastMessage?>,
+        duration: TimeInterval = 3
+    ) -> some View {
+        modifier(
+            DynamicToastModifier(
+                message: message,
+                duration: duration
+            )
+        )
+    }
+}
+
+// MARK: - Dynamic Toast
+
+struct ToastMessage: Equatable {
+    let text: String
+    let icon: String
+
+    init(_ text: String, icon: String = "checkmark.circle.fill") {
+        self.text = text
+        self.icon = icon
+    }
+}
+
+struct DynamicToastModifier: ViewModifier {
+
+    @Binding var message: ToastMessage?
+    let duration: TimeInterval
+
+    func body(content: Content) -> some View {
+        content.overlay(alignment: .bottom) {
+            if let toast = message {
+                ToastView(message: toast.text, icon: toast.icon)
+                    .padding(.bottom, 24)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+                            withAnimation { message = nil }
+                        }
+                    }
+            }
+        }
+        .animation(.spring(response: 0.3), value: message)
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Factory
 
@@ -77,26 +78,40 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
 
     private func buildAppleCredentialsSection() -> some View {
         Section {
-            TextField(
-                String(localized: "Issuer ID"),
-                text: $viewModel.uiState.issuerID
-            )
-            .textContentType(.none)
-            .autocorrectionDisabled()
-            .textInputAutocapitalization(.never)
+            HStack {
+                TextField(
+                    String(localized: "Issuer ID"),
+                    text: $viewModel.uiState.issuerID
+                )
+                .textContentType(.none)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
 
-            TextField(
-                String(localized: "Private Key ID"),
-                text: $viewModel.uiState.privateKeyID
-            )
-            .textContentType(.none)
-            .autocorrectionDisabled()
-            .textInputAutocapitalization(.never)
+                buildPasteButton { viewModel.uiState.issuerID = $0 }
+            }
+
+            HStack {
+                TextField(
+                    String(localized: "Private Key ID"),
+                    text: $viewModel.uiState.privateKeyID
+                )
+                .textContentType(.none)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+
+                buildPasteButton { viewModel.uiState.privateKeyID = $0 }
+            }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Private Key (.p8)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Text("Private Key (.p8)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    buildPasteButton { viewModel.uiState.privateKey = $0 }
+                }
 
                 TextEditor(text: $viewModel.uiState.privateKey)
                     .font(.system(.body, design: .monospaced))
@@ -109,6 +124,18 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
         } footer: {
             Text("You can generate API keys at appstoreconnect.apple.com under Users and Access > Integrations > App Store Connect API.")
         }
+    }
+
+    private func buildPasteButton(onPaste: @escaping (String) -> Void) -> some View {
+        Button {
+            if let text = UIPasteboard.general.string {
+                onPaste(text)
+            }
+        } label: {
+            Image(systemName: "doc.on.clipboard")
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
     }
 
     private func buildErrorSection(_ error: String) -> some View {

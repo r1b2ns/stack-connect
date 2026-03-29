@@ -34,6 +34,7 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var coordinator: AccountsListCoordinator
+    @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
     var body: some View {
         buildContent()
@@ -45,7 +46,6 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                     Task { await viewModel.loadAccounts() }
                 }
             }
-            .navigationDestinations()
             .task { await viewModel.loadAccounts() }
     }
 
@@ -88,7 +88,7 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
     private func buildAccountRow(_ account: AccountModel) -> some View {
         Button {
             if account.providerType == .apple {
-                coordinator.navigateToAppList(account)
+                homeCoordinator.navigateToAppList(account)
             }
         } label: {
             HStack {
@@ -96,16 +96,10 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                     .foregroundStyle(account.providerType.color)
                     .frame(width: 32)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(account.name)
-                        .font(.body)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.primary)
-
-                    Text(account.createdAt, style: .date)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Text(account.name)
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.primary)
 
                 Spacer()
 
@@ -116,6 +110,7 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                 }
             }
         }
+        .foregroundStyle(.primary)
     }
 
     // MARK: - Toolbar
@@ -127,22 +122,6 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                 coordinator.presentAddAccount()
             } label: {
                 Image(systemName: "plus")
-            }
-        }
-    }
-}
-
-// MARK: - Navigation Destinations
-
-private extension View {
-    @ViewBuilder
-    func navigationDestinations() -> some View {
-        self.navigationDestination(for: AccountsListRoute.self) { route in
-            switch route {
-            case .addAccount:
-                EmptyView()
-            case .appList(let account):
-                AppListViewFactory.build(account: account)
             }
         }
     }
