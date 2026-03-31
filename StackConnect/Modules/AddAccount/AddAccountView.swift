@@ -46,6 +46,10 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                     buildAppleCredentialsSection()
                 }
 
+                if viewModel.uiState.providerType == .firebase {
+                    buildFirebaseCredentialsSection()
+                }
+
                 if let error = viewModel.uiState.validationError {
                     buildErrorSection(error)
                 }
@@ -123,6 +127,32 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
             Text("App Store Connect Credentials")
         } footer: {
             Text("You can generate API keys at appstoreconnect.apple.com under Users and Access > Integrations > App Store Connect API.")
+        }
+    }
+
+    private func buildFirebaseCredentialsSection() -> some View {
+        Section {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Service Account Key (JSON)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    buildPasteButton { viewModel.uiState.firebaseJSON = $0 }
+                }
+
+                TextEditor(text: $viewModel.uiState.firebaseJSON)
+                    .font(.system(.caption, design: .monospaced))
+                    .frame(minHeight: 200)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+            }
+        } header: {
+            Text("Firebase Credentials")
+        } footer: {
+            Text("Paste the full JSON content of your Google Service Account key file. You can generate it at console.cloud.google.com under IAM & Admin > Service Accounts > Keys.")
         }
     }
 

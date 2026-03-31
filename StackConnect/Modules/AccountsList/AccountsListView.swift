@@ -87,8 +87,11 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
 
     private func buildAccountRow(_ account: AccountModel) -> some View {
         Button {
-            if account.providerType == .apple {
+            switch account.providerType {
+            case .apple:
                 homeCoordinator.navigateToAppList(account)
+            case .firebase:
+                homeCoordinator.navigateToFirebaseProjectList(account)
             }
         } label: {
             HStack {
@@ -103,11 +106,9 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
 
                 Spacer()
 
-                if account.providerType == .apple {
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
         }
         .foregroundStyle(.primary)

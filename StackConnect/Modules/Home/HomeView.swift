@@ -68,6 +68,18 @@ private extension View {
                 AccountsListViewFactory.build(providerType: providerType)
             case .appList(let account):
                 AppListViewFactory.build(account: account)
+            case .firebaseProjectList(let account):
+                FirebaseProjectListViewFactory.build(account: account)
+            case .firebaseProjectDetail(let project, let account):
+                FirebaseProjectDetailViewFactory.build(project: project, account: account)
+            case .firebaseAppList(let project, let account):
+                FirebaseAppListViewFactory.build(account: account, project: project)
+            case .remoteConfig(let project, let account):
+                RemoteConfigViewFactory.build(project: project, account: account)
+            case .analyticsDashboard(let project, let account):
+                AnalyticsDashboardViewFactory.build(project: project, account: account)
+            case .messaging(let project, let account):
+                MessagingViewFactory.build(project: project, account: account)
             case .appDetail(let app, let account):
                 AppDetailViewFactory.build(app: app, account: account)
             case .versionList(let appId, let platform, let account):

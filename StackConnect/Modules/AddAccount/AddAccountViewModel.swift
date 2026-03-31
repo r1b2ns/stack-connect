@@ -1,5 +1,6 @@
 import Foundation
 import StackProtocols
+import APIProviderFirebase
 
 // MARK: - Protocol
 
@@ -16,6 +17,7 @@ struct AddAccountUiState {
     var issuerID = ""
     var privateKeyID = ""
     var privateKey = ""
+    var firebaseJSON = ""
     var isValidating = false
     var validationError: String?
     var isSaved = false
@@ -71,7 +73,25 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
                 keychain.setObject(credentials, forKey: "credentials.\(account.id)")
 
             case .firebase:
-                break
+                let json = uiState.firebaseJSON.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !json.isEmpty else {
+                    uiState.validationError = String(localized: "Service Account JSON is required.")
+                    uiState.isValidating = false
+                    return
+                }
+
+                guard let jsonData = json.data(using: .utf8) else {
+                    uiState.validationError = String(localized: "Invalid JSON format.")
+                    uiState.isValidating = false
+                    return
+                }
+
+                let config = try FirebaseConfiguration(serviceAccountJSON: jsonData)
+                let provider = APIProviderFirebase(configuration: config)
+                let _ = try await provider.request(FirebaseAPI.v1beta1.projects.get())
+
+                let credentials = FirebaseCredentials(serviceAccountJSON: json)
+                keychain.setObject(credentials, forKey: "credentials.\(account.id)")
             }
 
             try await storage.save(account, id: account.id)

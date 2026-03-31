@@ -3,6 +3,12 @@ import SwiftUI
 enum HomeRoute: Hashable {
     case accountsList(ProviderType)
     case appList(AccountModel)
+    case firebaseProjectList(AccountModel)
+    case firebaseProjectDetail(project: FirebaseProjectModel, account: AccountModel)
+    case firebaseAppList(project: FirebaseProjectModel, account: AccountModel)
+    case remoteConfig(project: FirebaseProjectModel, account: AccountModel)
+    case analyticsDashboard(project: FirebaseProjectModel, account: AccountModel)
+    case messaging(project: FirebaseProjectModel, account: AccountModel)
     case appDetail(app: AppModel, account: AccountModel)
     case versionList(appId: String, platform: AppPlatform, account: AccountModel)
     case versionDetail(version: AppStoreVersionModel, account: AccountModel)
@@ -37,6 +43,30 @@ final class HomeCoordinator: MainCoordinatorProtocol {
 
     func navigateToAppList(_ account: AccountModel) {
         path.append(HomeRoute.appList(account))
+    }
+
+    func navigateToFirebaseProjectList(_ account: AccountModel) {
+        path.append(HomeRoute.firebaseProjectList(account))
+    }
+
+    func navigateToFirebaseProjectDetail(project: FirebaseProjectModel, account: AccountModel) {
+        path.append(HomeRoute.firebaseProjectDetail(project: project, account: account))
+    }
+
+    func navigateToFirebaseAppList(project: FirebaseProjectModel, account: AccountModel) {
+        path.append(HomeRoute.firebaseAppList(project: project, account: account))
+    }
+
+    func navigateToRemoteConfig(project: FirebaseProjectModel, account: AccountModel) {
+        path.append(HomeRoute.remoteConfig(project: project, account: account))
+    }
+
+    func navigateToAnalyticsDashboard(project: FirebaseProjectModel, account: AccountModel) {
+        path.append(HomeRoute.analyticsDashboard(project: project, account: account))
+    }
+
+    func navigateToMessaging(project: FirebaseProjectModel, account: AccountModel) {
+        path.append(HomeRoute.messaging(project: project, account: account))
     }
 
     func navigateToAppDetail(_ app: AppModel, account: AccountModel) {
