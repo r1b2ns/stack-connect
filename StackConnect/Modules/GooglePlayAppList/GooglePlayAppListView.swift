@@ -61,11 +61,25 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
         if viewModel.uiState.isLoading && viewModel.uiState.apps.isEmpty {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let error = viewModel.uiState.error, viewModel.uiState.apps.isEmpty {
+            ContentUnavailableView {
+                Label(String(localized: "Error"), systemImage: "exclamationmark.triangle")
+            } description: {
+                Text(error)
+            } actions: {
+                Button(String(localized: "Retry")) {
+                    Task { await viewModel.load() }
+                }
+
+                Button(String(localized: "Add Manually")) {
+                    viewModel.uiState.showAddApp = true
+                }
+            }
         } else if viewModel.uiState.apps.isEmpty {
             ContentUnavailableView {
                 Label(String(localized: "No Apps"), systemImage: "apps.iphone")
             } description: {
-                Text("Add Android apps by their package name to manage them here.")
+                Text("No apps found for this account. You can add apps manually by package name.")
             } actions: {
                 Button(String(localized: "Add App")) {
                     viewModel.uiState.showAddApp = true
@@ -81,12 +95,6 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
         List {
             ForEach(viewModel.uiState.apps) { app in
                 buildAppRow(app)
-            }
-            .onDelete { indexSet in
-                let appsToDelete = indexSet.map { viewModel.uiState.apps[$0] }
-                Task {
-                    for app in appsToDelete { await viewModel.removeApp(app) }
-                }
             }
         }
     }
@@ -110,22 +118,10 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
 
-                HStack(spacing: 6) {
-                    if let version = app.latestVersionName {
-                        Text(version)
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-
-                    if let track = app.latestTrack {
-                        Text(track.capitalized)
-                            .font(.caption2)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 1)
-                            .background(trackColor(track).opacity(0.12))
-                            .foregroundStyle(trackColor(track))
-                            .clipShape(Capsule())
-                    }
+                if app.isManuallyAdded {
+                    Text(String(localized: "Added manually"))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
                 }
             }
 
@@ -136,29 +132,13 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
                 .foregroundStyle(.tertiary)
         }
         .contextMenu {
-            Button {
-                Task { await viewModel.refreshApp(app) }
-            } label: {
-                Label(String(localized: "Refresh"), systemImage: "arrow.clockwise")
+            if app.isManuallyAdded {
+                Button(role: .destructive) {
+                    Task { await viewModel.removeApp(app) }
+                } label: {
+                    Label(String(localized: "Remove"), systemImage: "trash")
+                }
             }
-
-            Divider()
-
-            Button(role: .destructive) {
-                Task { await viewModel.removeApp(app) }
-            } label: {
-                Label(String(localized: "Remove"), systemImage: "trash")
-            }
-        }
-    }
-
-    private func trackColor(_ track: String) -> Color {
-        switch track.lowercased() {
-        case "production": return .green
-        case "beta": return .orange
-        case "alpha": return .purple
-        case "internal": return .blue
-        default: return .gray
         }
     }
 

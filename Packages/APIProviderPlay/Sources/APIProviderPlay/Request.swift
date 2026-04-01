@@ -24,19 +24,22 @@ public struct Request<Response> {
     var body: AnyEncodable?
     public var headers: [String: String]?
     public var id: String?
+    public var customBaseURL: URL?
 
     public init(
         path: String,
         method: String,
         query: [(String, String?)]? = nil,
         headers: [String: String]? = nil,
-        id: String? = nil
+        id: String? = nil,
+        customBaseURL: URL? = nil
     ) {
         self.method = method
         self.path = path
         self.query = query
         self.headers = headers
         self.id = id
+        self.customBaseURL = customBaseURL
     }
 
     public init<U: Encodable>(
@@ -45,7 +48,8 @@ public struct Request<Response> {
         query: [(String, String?)]? = nil,
         body: U?,
         headers: [String: String]? = nil,
-        id: String? = nil
+        id: String? = nil,
+        customBaseURL: URL? = nil
     ) {
         self.method = method
         self.path = path
@@ -53,6 +57,7 @@ public struct Request<Response> {
         self.body = body.map(AnyEncodable.init)
         self.headers = headers
         self.id = id
+        self.customBaseURL = customBaseURL
     }
 }
 
@@ -65,7 +70,8 @@ extension Request {
     }
 
     private func makeURL(path: String, query: [(String, String?)]?) throws -> URL {
-        let url = Self.baseURL.appendingPathComponent(path)
+        let base = customBaseURL ?? Self.baseURL
+        let url = base.appendingPathComponent(path)
         guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
             throw URLError(.badURL)
         }

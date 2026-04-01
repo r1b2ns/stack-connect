@@ -47,7 +47,8 @@ public struct PlayConfiguration {
     public init(
         serviceAccountJSON: Data,
         scopes: [String] = [
-            "https://www.googleapis.com/auth/androidpublisher"
+            "https://www.googleapis.com/auth/androidpublisher",
+            "https://www.googleapis.com/auth/playdeveloperreporting"
         ],
         expirationDuration: TimeInterval = 3600
     ) throws {
@@ -62,7 +63,8 @@ public struct PlayConfiguration {
     public init(
         serviceAccount: PlayServiceAccount,
         scopes: [String] = [
-            "https://www.googleapis.com/auth/androidpublisher"
+            "https://www.googleapis.com/auth/androidpublisher",
+            "https://www.googleapis.com/auth/playdeveloperreporting"
         ],
         expirationDuration: TimeInterval = 3600
     ) throws {

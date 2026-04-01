@@ -9,7 +9,6 @@ protocol GooglePlayAppListViewModelProtocol: ObservableObject {
     func load() async
     func addApp(packageName: String) async
     func removeApp(_ app: GooglePlayAppItem) async
-    func refreshApp(_ app: GooglePlayAppItem) async
 }
 
 // MARK: - App Item
@@ -18,20 +17,11 @@ struct GooglePlayAppItem: Codable, Identifiable, Hashable {
     let id: String
     var packageName: String
     var title: String?
-    var defaultLanguage: String?
-    var latestVersionName: String?
-    var latestTrack: String?
-    var addedAt: Date
+    var isManuallyAdded: Bool
 
     var displayName: String {
         title ?? packageName
     }
-}
-
-// MARK: - Stored Apps
-
-struct GooglePlayStoredApps: Codable {
-    var apps: [GooglePlayAppItem]
 }
 
 // MARK: - UiState
@@ -40,6 +30,7 @@ struct GooglePlayAppListUiState {
     var account: AccountModel
     var apps: [GooglePlayAppItem] = []
     var isLoading = false
+    var error: String?
     var showAddApp = false
     var isAdding = false
     var addError: String?
@@ -70,28 +61,61 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
 
     func load() async {
         uiState.isLoading = true
+        uiState.error = nil
+
+        guard let provider = createProvider() else {
+            uiState.error = String(localized: "No credentials found for this account.")
+            uiState.isLoading = false
+            return
+        }
 
         do {
-            if let stored: GooglePlayStoredApps = try await storage.fetch(
-                GooglePlayStoredApps.self,
-                id: storageKey
-            ) {
-                uiState.apps = stored.apps.sorted { $0.displayName < $1.displayName }
-            }
+            // Fetch apps from the Play Developer Reporting API
+            var allApps: [GooglePlayAppItem] = []
+            var pageToken: String?
+
+            repeat {
+                let response = try await provider.request(
+                    PlayAPI.reporting.apps.search(pageSize: 100, pageToken: pageToken)
+                )
+
+                for app in response.apps ?? [] {
+                    guard let packageName = app.packageName else { continue }
+                    allApps.append(GooglePlayAppItem(
+                        id: packageName,
+                        packageName: packageName,
+                        title: app.displayName,
+                        isManuallyAdded: false
+                    ))
+                }
+
+                pageToken = response.nextPageToken
+            } while pageToken != nil
+
+            // Merge with any manually added apps that aren't in the API response
+            let apiPackageNames = Set(allApps.map(\.packageName))
+            let manualApps = uiState.apps.filter { $0.isManuallyAdded && !apiPackageNames.contains($0.packageName) }
+            allApps.append(contentsOf: manualApps)
+
+            uiState.apps = allApps.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+            Log.print.info("[GooglePlayAppList] Loaded \(allApps.count) apps")
         } catch {
-            Log.print.error("[GooglePlayAppList] Failed to load: \(error.localizedDescription)")
+            // If reporting API fails, try loading from local storage
+            Log.print.error("[GooglePlayAppList] Reporting API failed: \(error.localizedDescription)")
+            uiState.error = error.localizedDescription
+            await loadFromStorage()
         }
 
         uiState.isLoading = false
     }
 
-    // MARK: - Add App
+    // MARK: - Add App Manually
 
     func addApp(packageName: String) async {
         let trimmed = packageName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         guard !uiState.apps.contains(where: { $0.packageName == trimmed }) else {
-            uiState.addError = String(localized: "This app is already added.")
+            uiState.addError = String(localized: "This app is already in the list.")
             return
         }
 
@@ -105,68 +129,31 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         }
 
         do {
-            // Validate by creating an edit (proves we have access to this app)
+            // Validate access by creating and immediately deleting an edit
             let edit = try await provider.request(
                 PlayAPI.v3.applications(trimmed).edits.insert()
             )
 
-            guard let editId = edit.id else {
-                uiState.addError = String(localized: "Failed to access this application.")
-                uiState.isAdding = false
-                return
-            }
-
-            // Fetch details & listing
-            var title: String?
-            var defaultLanguage: String?
-            var latestVersionName: String?
-            var latestTrack: String?
-
-            let details = try? await provider.request(
-                PlayAPI.v3.applications(trimmed).edits.details(editId: editId).get()
-            )
-            defaultLanguage = details?.defaultLanguage
-
-            if let lang = defaultLanguage {
-                let listing = try? await provider.request(
-                    PlayAPI.v3.applications(trimmed).edits.listings(editId: editId).get(language: lang)
+            if let editId = edit.id {
+                try? await provider.request(
+                    PlayAPI.v3.applications(trimmed).edits.delete(editId: editId)
                 )
-                title = listing?.title
             }
-
-            let tracks = try? await provider.request(
-                PlayAPI.v3.applications(trimmed).edits.tracks(editId: editId).list()
-            )
-            if let production = tracks?.tracks?.first(where: { $0.track == "production" }) {
-                latestVersionName = production.releases?.first?.name
-                latestTrack = "production"
-            } else if let first = tracks?.tracks?.first {
-                latestVersionName = first.releases?.first?.name
-                latestTrack = first.track
-            }
-
-            // Delete the edit (cleanup)
-            try? await provider.request(
-                PlayAPI.v3.applications(trimmed).edits.delete(editId: editId)
-            )
 
             let item = GooglePlayAppItem(
                 id: trimmed,
                 packageName: trimmed,
-                title: title,
-                defaultLanguage: defaultLanguage,
-                latestVersionName: latestVersionName,
-                latestTrack: latestTrack,
-                addedAt: Date()
+                title: nil,
+                isManuallyAdded: true
             )
 
             uiState.apps.append(item)
-            uiState.apps.sort { $0.displayName < $1.displayName }
-            await saveApps()
+            uiState.apps.sort { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+            await saveToStorage()
 
             uiState.showAddApp = false
             uiState.toastMessage = ToastMessage(String(localized: "App added"), icon: "checkmark.circle.fill")
-            Log.print.info("[GooglePlayAppList] Added: \(trimmed)")
+            Log.print.info("[GooglePlayAppList] Manually added: \(trimmed)")
         } catch {
             uiState.addError = error.localizedDescription
             Log.print.error("[GooglePlayAppList] Add failed: \(error.localizedDescription)")
@@ -179,52 +166,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
 
     func removeApp(_ app: GooglePlayAppItem) async {
         uiState.apps.removeAll { $0.id == app.id }
-        await saveApps()
-    }
-
-    // MARK: - Refresh
-
-    func refreshApp(_ app: GooglePlayAppItem) async {
-        guard let provider = createProvider() else { return }
-
-        do {
-            let edit = try await provider.request(
-                PlayAPI.v3.applications(app.packageName).edits.insert()
-            )
-            guard let editId = edit.id else { return }
-
-            var updated = app
-            let details = try? await provider.request(
-                PlayAPI.v3.applications(app.packageName).edits.details(editId: editId).get()
-            )
-            updated.defaultLanguage = details?.defaultLanguage
-
-            if let lang = updated.defaultLanguage {
-                let listing = try? await provider.request(
-                    PlayAPI.v3.applications(app.packageName).edits.listings(editId: editId).get(language: lang)
-                )
-                updated.title = listing?.title
-            }
-
-            let tracks = try? await provider.request(
-                PlayAPI.v3.applications(app.packageName).edits.tracks(editId: editId).list()
-            )
-            if let production = tracks?.tracks?.first(where: { $0.track == "production" }) {
-                updated.latestVersionName = production.releases?.first?.name
-                updated.latestTrack = "production"
-            }
-
-            try? await provider.request(
-                PlayAPI.v3.applications(app.packageName).edits.delete(editId: editId)
-            )
-
-            if let idx = uiState.apps.firstIndex(where: { $0.id == app.id }) {
-                uiState.apps[idx] = updated
-            }
-            await saveApps()
-        } catch {
-            Log.print.error("[GooglePlayAppList] Refresh failed: \(error.localizedDescription)")
-        }
+        await saveToStorage()
     }
 
     // MARK: - Private
@@ -233,12 +175,25 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         "googleplay-apps.\(uiState.account.id)"
     }
 
-    private func saveApps() async {
+    private func loadFromStorage() async {
         do {
-            let stored = GooglePlayStoredApps(apps: uiState.apps)
-            try await storage.save(stored, id: storageKey)
+            if let stored: [GooglePlayAppItem] = try await storage.fetch(
+                [GooglePlayAppItem].self,
+                id: storageKey
+            ) {
+                uiState.apps = stored.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+            }
         } catch {
-            Log.print.error("[GooglePlayAppList] Save failed: \(error.localizedDescription)")
+            Log.print.error("[GooglePlayAppList] Storage load failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func saveToStorage() async {
+        let manualApps = uiState.apps.filter(\.isManuallyAdded)
+        do {
+            try await storage.save(manualApps, id: storageKey)
+        } catch {
+            Log.print.error("[GooglePlayAppList] Storage save failed: \(error.localizedDescription)")
         }
     }
 

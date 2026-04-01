@@ -9,6 +9,18 @@ import Foundation
 /// ```
 public enum PlayAPI {
     public static let v3 = V3(path: "/androidpublisher/v3")
+    public static let reporting = ReportingV1Beta1(path: "/v1beta1")
+}
+
+// MARK: - Reporting V1Beta1
+
+public struct ReportingV1Beta1 {
+    public let path: String
+
+    /// Access apps via the Play Developer Reporting API.
+    public var apps: ReportingApps {
+        ReportingApps(path: path + "/apps")
+    }
 }
 
 // MARK: - V3
