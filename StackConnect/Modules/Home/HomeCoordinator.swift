@@ -9,6 +9,7 @@ enum HomeRoute: Hashable {
     case remoteConfig(project: FirebaseProjectModel, account: AccountModel)
     case analyticsDashboard(project: FirebaseProjectModel, account: AccountModel)
     case messaging(project: FirebaseProjectModel, account: AccountModel)
+    case googlePlayAppList(AccountModel)
     case appDetail(app: AppModel, account: AccountModel)
     case versionList(appId: String, platform: AppPlatform, account: AccountModel)
     case versionDetail(version: AppStoreVersionModel, account: AccountModel)
@@ -67,6 +68,10 @@ final class HomeCoordinator: MainCoordinatorProtocol {
 
     func navigateToMessaging(project: FirebaseProjectModel, account: AccountModel) {
         path.append(HomeRoute.messaging(project: project, account: account))
+    }
+
+    func navigateToGooglePlayAppList(_ account: AccountModel) {
+        path.append(HomeRoute.googlePlayAppList(account))
     }
 
     func navigateToAppDetail(_ app: AppModel, account: AccountModel) {

@@ -85,6 +85,8 @@ packages:
     path: Packages/StackProtocols
   APIProviderFirebase:
     path: Packages/APIProviderFirebase
+  APIProviderPlay:
+    path: Packages/APIProviderPlay
 
 targets:
   StackConnect:
@@ -142,6 +144,7 @@ targets:
         product: AppStoreConnect-Swift-SDK
       - package: StackProtocols
       - package: APIProviderFirebase
+      - package: APIProviderPlay
 
   StackConnectTests:
     type: bundle.unit-test
