@@ -50,6 +50,10 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                     buildFirebaseCredentialsSection()
                 }
 
+                if viewModel.uiState.providerType == .googlePlay {
+                    buildGooglePlayCredentialsSection()
+                }
+
                 if let error = viewModel.uiState.validationError {
                     buildErrorSection(error)
                 }
@@ -153,6 +157,32 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
             Text("Firebase Credentials")
         } footer: {
             Text("Paste the full JSON content of your Google Service Account key file. You can generate it at console.cloud.google.com under IAM & Admin > Service Accounts > Keys.")
+        }
+    }
+
+    private func buildGooglePlayCredentialsSection() -> some View {
+        Section {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Service Account Key (JSON)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    buildPasteButton { viewModel.uiState.googlePlayJSON = $0 }
+                }
+
+                TextEditor(text: $viewModel.uiState.googlePlayJSON)
+                    .font(.system(.caption, design: .monospaced))
+                    .frame(minHeight: 200)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+            }
+        } header: {
+            Text("Google Play Credentials")
+        } footer: {
+            Text("Paste the full JSON content of your Google Service Account key file. The service account must have access to the Google Play Developer API. Create it at console.cloud.google.com and link it in play.google.com/console under Setup > API access.")
         }
     }
 

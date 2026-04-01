@@ -80,6 +80,8 @@ private extension View {
                 AnalyticsDashboardViewFactory.build(project: project, account: account)
             case .messaging(let project, let account):
                 MessagingViewFactory.build(project: project, account: account)
+            case .googlePlayAppList(let account):
+                GooglePlayAppListViewFactory.build(account: account)
             case .appDetail(let app, let account):
                 AppDetailViewFactory.build(app: app, account: account)
             case .versionList(let appId, let platform, let account):

@@ -92,6 +92,8 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                 homeCoordinator.navigateToAppList(account)
             case .firebase:
                 homeCoordinator.navigateToFirebaseProjectList(account)
+            case .googlePlay:
+                homeCoordinator.navigateToGooglePlayAppList(account)
             }
         } label: {
             HStack {

@@ -76,6 +76,13 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 onSave: { try await viewModel.updateDescription() }
             )
         }
+        .sheet(isPresented: $viewModel.uiState.showWhatsNew) {
+            StackTextView(
+                title: String(localized: "What's New"),
+                text: $viewModel.uiState.editWhatsNew,
+                onSave: { try await viewModel.updateWhatsNew() }
+            )
+        }
         .sheet(isPresented: $viewModel.uiState.showReleaseSheet) {
             VersionReleaseSheet(viewModel: viewModel)
         }
@@ -210,6 +217,11 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
             Button { viewModel.uiState.showDescription = true } label: {
                 buildMenuRow(icon: "doc.text.fill", color: .indigo, title: String(localized: "Description"))
+            }
+            .disabled(!isMetadataEditable)
+
+            Button { viewModel.uiState.showWhatsNew = true } label: {
+                buildMenuRow(icon: "sparkles", color: .orange, title: String(localized: "What's New"))
             }
             .disabled(!isMetadataEditable)
         }

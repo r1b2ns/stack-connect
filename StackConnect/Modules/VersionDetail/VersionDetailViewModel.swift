@@ -10,6 +10,7 @@ protocol VersionDetailViewModelProtocol: ObservableObject {
     func refresh() async
     func updatePromotionalText() async throws
     func updateDescription() async throws
+    func updateWhatsNew() async throws
     func saveGroupedFields() async
     func saveReleaseType() async
     func savePhasedRelease(usePhased: Bool) async
@@ -31,8 +32,10 @@ struct VersionDetailUiState {
     // Text editing sheets
     var showPromotionalText = false
     var showDescription = false
+    var showWhatsNew = false
     var editPromotionalText = ""
     var editDescription = ""
+    var editWhatsNew = ""
 
     // Grouped fields
     var editKeywords = ""
@@ -222,6 +225,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
                 uiState.localization = loc
                 uiState.editPromotionalText = loc.promotionalText ?? ""
                 uiState.editDescription = loc.description ?? ""
+                uiState.editWhatsNew = loc.whatsNew ?? ""
                 uiState.editKeywords = loc.keywords ?? ""
                 uiState.editSupportUrl = loc.supportUrl ?? ""
                 uiState.editMarketingUrl = loc.marketingUrl ?? ""
@@ -269,6 +273,14 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         try await connection.updateLocalization(id: locId, description: uiState.editDescription)
         uiState.localization?.description = uiState.editDescription
         Log.print.info("[VersionDetail] Updated description")
+    }
+
+    func updateWhatsNew() async throws {
+        guard let locId = uiState.localization?.id else { return }
+        let connection = createConnection()!
+        try await connection.updateLocalization(id: locId, whatsNew: uiState.editWhatsNew)
+        uiState.localization?.whatsNew = uiState.editWhatsNew
+        Log.print.info("[VersionDetail] Updated what's new")
     }
 
     func saveGroupedFields() async {

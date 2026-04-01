@@ -1,6 +1,7 @@
 import Foundation
 import StackProtocols
 import APIProviderFirebase
+import APIProviderPlay
 
 // MARK: - Protocol
 
@@ -18,6 +19,7 @@ struct AddAccountUiState {
     var privateKeyID = ""
     var privateKey = ""
     var firebaseJSON = ""
+    var googlePlayJSON = ""
     var isValidating = false
     var validationError: String?
     var isSaved = false
@@ -91,6 +93,26 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
                 let _ = try await provider.request(FirebaseAPI.v1beta1.projects.get())
 
                 let credentials = FirebaseCredentials(serviceAccountJSON: json)
+                keychain.setObject(credentials, forKey: "credentials.\(account.id)")
+
+            case .googlePlay:
+                let json = uiState.googlePlayJSON.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !json.isEmpty else {
+                    uiState.validationError = String(localized: "Service Account JSON is required.")
+                    uiState.isValidating = false
+                    return
+                }
+
+                guard let jsonData = json.data(using: .utf8) else {
+                    uiState.validationError = String(localized: "Invalid JSON format.")
+                    uiState.isValidating = false
+                    return
+                }
+
+                // Validate by parsing the configuration (checks key format)
+                let _ = try PlayConfiguration(serviceAccountJSON: jsonData)
+
+                let credentials = GooglePlayCredentials(serviceAccountJSON: json)
                 keychain.setObject(credentials, forKey: "credentials.\(account.id)")
             }
 
