@@ -40,7 +40,8 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
     func loadAccounts() async {
         uiState.isLoading = true
         do {
-            let allAccounts: [AccountModel] = try await storage.fetchAll(AccountModel.self)
+            var allAccounts: [AccountModel] = try await storage.fetchAll(AccountModel.self)
+            for i in allAccounts.indices { allAccounts[i].fillMissingRules() }
             uiState.accounts = allAccounts.filter { $0.providerType == uiState.providerType }
         } catch {
             Log.print.error("[AccountsList] Failed to load accounts: \(error.localizedDescription)")

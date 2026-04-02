@@ -71,8 +71,8 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                 Text("Are you sure you want to delete \"\(account.name)\"? This action cannot be undone.")
             }
             .sheet(isPresented: $viewModel.uiState.showExportShare) {
-                if let json = viewModel.uiState.exportJSON {
-                    ShareSheetView(activityItems: [json])
+                if let fileURL = viewModel.uiState.exportFileURL {
+                    ShareSheetView(activityItems: [fileURL])
                 }
             }
     }
@@ -136,16 +136,12 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
         accounts: [AccountModel]
     ) -> some View {
         Section {
-            ForEach(accounts) { account in
+            ForEach(accounts, id: \.id) { account in
                 Button {
                     viewModel.uiState.editingName = account.name
                     coordinator.presentEditAccount(account)
                 } label: {
                     HStack {
-                        Image(systemName: icon)
-                            .foregroundStyle(color)
-                            .frame(width: 28)
-
                         Text(account.name)
                             .font(.body)
                             .foregroundStyle(.primary)
@@ -167,7 +163,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                     }
 
                     Button {
-                        viewModel.uiState.exportJSON = viewModel.exportAccountData(account: account)
+                        viewModel.uiState.exportFileURL = viewModel.exportAccountFile(account: account)
                         viewModel.uiState.showExportShare = true
                     } label: {
                         Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
@@ -176,7 +172,11 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                 }
             }
         } header: {
-            Text(title)
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .foregroundStyle(color)
+                Text(title)
+            }
         }
     }
 

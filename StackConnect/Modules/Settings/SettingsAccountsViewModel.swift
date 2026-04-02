@@ -9,6 +9,7 @@ protocol SettingsAccountsViewModelProtocol: ObservableObject {
     func updateAccountName(accountId: String, newName: String) async
     func deleteAccount(_ account: AccountModel) async
     func exportAccountData(account: AccountModel) -> String?
+    func exportAccountFile(account: AccountModel) -> URL?
 }
 
 // MARK: - UiState
@@ -21,7 +22,7 @@ struct SettingsAccountsUiState {
     var editingName = ""
     var accountToDelete: AccountModel?
     var showDeleteConfirmation = false
-    var exportJSON: String?
+    var exportFileURL: URL?
     var showExportShare = false
 }
 
@@ -46,7 +47,13 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
     func loadAccounts() async {
         uiState.isLoading = true
         do {
-            let allAccounts: [AccountModel] = try await storage.fetchAll(AccountModel.self)
+            var allAccounts: [AccountModel] = try await storage.fetchAll(AccountModel.self)
+
+            // Fill missing rules for legacy accounts
+            for i in allAccounts.indices {
+                allAccounts[i].fillMissingRules()
+            }
+
             uiState.appleAccounts = allAccounts
                 .filter { $0.providerType == .apple }
                 .sorted { $0.name < $1.name }
@@ -105,6 +112,17 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             "createdAt": ISO8601DateFormatter().string(from: account.createdAt)
         ]
 
+        // Include rules
+        let rules = account.rules
+        exportDict["rules"] = [
+            "apps": rules.apps.map(\.rawValue),
+            "version": rules.version.map(\.rawValue),
+            "users": rules.users.map(\.rawValue),
+            "review": rules.review.map(\.rawValue),
+            "testFlight": rules.testFlight.map(\.rawValue),
+            "analytics": rules.analytics.map(\.rawValue)
+        ]
+
         // Include credentials based on provider type
         switch account.providerType {
         case .apple:
@@ -135,5 +153,27 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
         }
 
         return json
+    }
+
+    func exportAccountFile(account: AccountModel) -> URL? {
+        guard let json = exportAccountData(account: account) else { return nil }
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let dateString = dateFormatter.string(from: Date())
+
+        let sanitizedName = account.name
+            .replacingOccurrences(of: " ", with: "-")
+            .replacingOccurrences(of: "/", with: "-")
+        let fileName = "\(sanitizedName)-stackconnect-\(dateString).json"
+
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+        do {
+            try json.write(to: tempURL, atomically: true, encoding: .utf8)
+            return tempURL
+        } catch {
+            Log.print.error("[SettingsAccounts] Failed to write export file: \(error.localizedDescription)")
+            return nil
+        }
     }
 }
