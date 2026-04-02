@@ -34,16 +34,20 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
 
     var body: some View {
         NavigationStack(path: $coordinator.path) {
-            buildContent()
-                .navigationTitle("StackConnect")
-                .navigationDestinations()
+            List {
+                buildAccountsSection()
+                buildPendingReviewSection()
+            }
+            .navigationTitle("StackConnect")
+            .navigationDestinations()
+            .task { await viewModel.loadPendingReviewApps() }
         }
     }
 
-    // MARK: - Content
+    // MARK: - Accounts Section
 
-    private func buildContent() -> some View {
-        ScrollView {
+    private func buildAccountsSection() -> some View {
+        Section {
             LazyVGrid(columns: columns, spacing: 16) {
                 ForEach(viewModel.uiState.providers, id: \.self) { provider in
                     ProviderCardView(provider: provider)
@@ -52,8 +56,122 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
                         }
                 }
             }
-            .padding(16)
+            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
         }
+        .listRowBackground(Color.clear)
+    }
+
+    // MARK: - Pending Review Section
+
+    @ViewBuilder
+    private func buildPendingReviewSection() -> some View {
+        if !viewModel.uiState.pendingReviewApps.isEmpty {
+            Section {
+                ForEach(viewModel.uiState.pendingReviewApps) { app in
+                    Button {
+                        coordinator.navigateToAppDetail(app, account: accountForApp(app))
+                    } label: {
+                        buildPendingAppRow(app)
+                    }
+                    .foregroundStyle(.primary)
+                }
+            } header: {
+                HStack {
+                    Image(systemName: "apple.logo")
+                    Text("App Review")
+                    Spacer()
+                    if viewModel.uiState.isLoadingPending {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                    }
+                }
+            }
+        }
+    }
+
+    private func buildPendingAppRow(_ app: AppModel) -> some View {
+        HStack(spacing: 12) {
+            buildAppIcon(url: app.iconUrl.flatMap { URL(string: $0) })
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(app.name)
+                    .font(.body)
+                    .fontWeight(.medium)
+
+                if let state = app.appStoreState {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(statusColor(state.color))
+                            .frame(width: 6, height: 6)
+
+                        Text(state.displayName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        if let version = app.versionString {
+                            Text("(\(version))")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    private func buildAppIcon(url: URL?) -> some View {
+        Group {
+            if let url {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        appIconPlaceholder
+                    }
+                }
+            } else {
+                appIconPlaceholder
+            }
+        }
+        .frame(width: 44, height: 44)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var appIconPlaceholder: some View {
+        RoundedRectangle(cornerRadius: 10)
+            .fill(Color.gray.opacity(0.15))
+            .overlay(
+                Image(systemName: "app.fill")
+                    .foregroundStyle(.gray.opacity(0.4))
+            )
+    }
+
+    private func statusColor(_ color: AppStoreStateColor) -> Color {
+        switch color {
+        case .green:  return .green
+        case .orange: return .orange
+        case .red:    return .red
+        case .gray:   return .gray
+        case .blue:   return .blue
+        case .yellow: return .yellow
+        }
+    }
+
+    private func accountForApp(_ app: AppModel) -> AccountModel {
+        AccountModel(
+            id: app.accountId,
+            name: "",
+            providerType: .apple
+        )
     }
 }
 

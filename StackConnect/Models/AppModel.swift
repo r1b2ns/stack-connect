@@ -12,6 +12,7 @@ struct AppModel: Codable, Identifiable, Hashable {
     var lastModifiedDate: Date?
     var isArchived: Bool
     var isFavorite: Bool
+    var hasReviewPending: Bool
 
     init(
         id: String,
@@ -24,7 +25,8 @@ struct AppModel: Codable, Identifiable, Hashable {
         versionString: String? = nil,
         lastModifiedDate: Date? = nil,
         isArchived: Bool = false,
-        isFavorite: Bool = false
+        isFavorite: Bool = false,
+        hasReviewPending: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -37,6 +39,7 @@ struct AppModel: Codable, Identifiable, Hashable {
         self.lastModifiedDate = lastModifiedDate
         self.isArchived = isArchived
         self.isFavorite = isFavorite
+        self.hasReviewPending = hasReviewPending
     }
 }
 
@@ -86,6 +89,17 @@ enum AppStoreState: String, Codable, Hashable {
         case .waitingForReview:          return String(localized: "Waiting for Review")
         case .replacedWithNewVersion:    return String(localized: "Replaced with New Version")
         case .notApplicable:             return String(localized: "Not Applicable")
+        }
+    }
+
+    /// Whether this state indicates the app has a pending review action (waiting, in review, rejected, etc.)
+    var isReviewPending: Bool {
+        switch self {
+        case .waitingForReview, .inReview, .rejected, .metadataRejected,
+             .invalidBinary, .pendingDeveloperRelease, .pendingAppleRelease:
+            return true
+        default:
+            return false
         }
     }
 

@@ -176,6 +176,9 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             if let s = state.state { uiState.app.appStoreState = AppStoreState(rawValue: s) }
             if let v = state.version { uiState.app.versionString = v }
 
+            // Mark review pending flag based on current state
+            uiState.app.hasReviewPending = uiState.app.appStoreState?.isReviewPending ?? false
+
             uiState.versions = versions
 
             // 3. Persist to SwiftData
