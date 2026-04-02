@@ -6,6 +6,7 @@ final class SettingsAccountsCoordinator: ObservableObject {
     @Published var showImport = false
     @Published var selectedProviderType: ProviderType?
     @Published var editingAccount: AccountModel?
+    @Published var exportingAccount: AccountModel?
 
     func presentAddOptions() {
         showAddOptions = true
@@ -36,5 +37,13 @@ final class SettingsAccountsCoordinator: ObservableObject {
 
     func dismissEditAccount() {
         editingAccount = nil
+    }
+
+    func presentExportAccount(_ account: AccountModel) {
+        exportingAccount = account
+    }
+
+    func dismissExportAccount() {
+        exportingAccount = nil
     }
 }

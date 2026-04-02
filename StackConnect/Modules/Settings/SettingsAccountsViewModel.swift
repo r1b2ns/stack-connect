@@ -10,6 +10,7 @@ protocol SettingsAccountsViewModelProtocol: ObservableObject {
     func deleteAccount(_ account: AccountModel) async
     func exportAccountData(account: AccountModel) -> String?
     func exportAccountFile(account: AccountModel) -> URL?
+    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules) -> URL?
 }
 
 // MARK: - UiState
@@ -163,6 +164,57 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
         let dateString = dateFormatter.string(from: Date())
 
         let sanitizedName = account.name
+            .replacingOccurrences(of: " ", with: "-")
+            .replacingOccurrences(of: "/", with: "-")
+        let fileName = "\(sanitizedName)-stackconnect-\(dateString).json"
+
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+        do {
+            try json.write(to: tempURL, atomically: true, encoding: .utf8)
+            return tempURL
+        } catch {
+            Log.print.error("[SettingsAccounts] Failed to write export file: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules) -> URL? {
+        var exportDict: [String: Any] = [
+            "id": account.id,
+            "name": exportName,
+            "providerType": account.providerType.rawValue,
+            "createdAt": ISO8601DateFormatter().string(from: account.createdAt)
+        ]
+
+        // Include selected rules
+        exportDict["rules"] = [
+            "apps": rules.apps.map(\.rawValue),
+            "version": rules.version.map(\.rawValue),
+            "users": rules.users.map(\.rawValue),
+            "review": rules.review.map(\.rawValue),
+            "testFlight": rules.testFlight.map(\.rawValue),
+            "analytics": rules.analytics.map(\.rawValue)
+        ]
+
+        // Include credentials
+        if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(account.id)") {
+            exportDict["credentials"] = [
+                "issuerID": creds.issuerID,
+                "privateKeyID": creds.privateKeyID,
+                "privateKey": creds.privateKey
+            ]
+        }
+
+        guard let data = try? JSONSerialization.data(withJSONObject: exportDict, options: .prettyPrinted),
+              let json = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        let dateString = dateFormatter.string(from: Date())
+
+        let sanitizedName = exportName
             .replacingOccurrences(of: " ", with: "-")
             .replacingOccurrences(of: "/", with: "-")
         let fileName = "\(sanitizedName)-stackconnect-\(dateString).json"

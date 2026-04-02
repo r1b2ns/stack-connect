@@ -75,6 +75,25 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                     ShareSheetView(activityItems: [fileURL])
                 }
             }
+            .sheet(item: $coordinator.exportingAccount) { account in
+                ExportAccountView(
+                    account: account,
+                    onExport: { name, rules in
+                        let url = viewModel.exportAccountWithRules(account: account, exportName: name, rules: rules)
+                        coordinator.dismissExportAccount()
+                        if let url {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                viewModel.uiState.exportFileURL = url
+                                viewModel.uiState.showExportShare = true
+                            }
+                        }
+                        return url
+                    },
+                    onDismiss: {
+                        coordinator.dismissExportAccount()
+                    }
+                )
+            }
     }
 
     // MARK: - Content
@@ -163,8 +182,12 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                     }
 
                     Button {
-                        viewModel.uiState.exportFileURL = viewModel.exportAccountFile(account: account)
-                        viewModel.uiState.showExportShare = true
+                        if account.providerType == .apple {
+                            coordinator.presentExportAccount(account)
+                        } else {
+                            viewModel.uiState.exportFileURL = viewModel.exportAccountFile(account: account)
+                            viewModel.uiState.showExportShare = true
+                        }
                     } label: {
                         Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
                     }
@@ -315,7 +338,16 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                 }
 
                 Section {
-                    if let json = viewModel.exportAccountData(account: account) {
+                    if account.providerType == .apple {
+                        Button {
+                            coordinator.dismissEditAccount()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                coordinator.presentExportAccount(account)
+                            }
+                        } label: {
+                            Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
+                        }
+                    } else if let json = viewModel.exportAccountData(account: account) {
                         ShareLink(
                             item: json,
                             subject: Text(account.name),
