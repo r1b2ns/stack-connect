@@ -181,17 +181,19 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                         Label(String(localized: "Delete"), systemImage: "trash")
                     }
 
-                    Button {
-                        if account.providerType == .apple {
-                            coordinator.presentExportAccount(account)
-                        } else {
-                            viewModel.uiState.exportFileURL = viewModel.exportAccountFile(account: account)
-                            viewModel.uiState.showExportShare = true
+                    if account.isExportable {
+                        Button {
+                            if account.providerType == .apple {
+                                coordinator.presentExportAccount(account)
+                            } else {
+                                viewModel.uiState.exportFileURL = viewModel.exportAccountFile(account: account)
+                                viewModel.uiState.showExportShare = true
+                            }
+                        } label: {
+                            Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
                         }
-                    } label: {
-                        Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
+                        .tint(.blue)
                     }
-                    .tint(.blue)
                 }
             }
         } header: {
@@ -337,23 +339,25 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                     Text("Name")
                 }
 
-                Section {
-                    if account.providerType == .apple {
-                        Button {
-                            coordinator.dismissEditAccount()
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                coordinator.presentExportAccount(account)
+                if account.isExportable {
+                    Section {
+                        if account.providerType == .apple {
+                            Button {
+                                coordinator.dismissEditAccount()
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    coordinator.presentExportAccount(account)
+                                }
+                            } label: {
+                                Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
                             }
-                        } label: {
-                            Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
-                        }
-                    } else if let json = viewModel.exportAccountData(account: account) {
-                        ShareLink(
-                            item: json,
-                            subject: Text(account.name),
-                            message: Text("")
-                        ) {
-                            Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
+                        } else if let json = viewModel.exportAccountData(account: account) {
+                            ShareLink(
+                                item: json,
+                                subject: Text(account.name),
+                                message: Text("")
+                            ) {
+                                Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
+                            }
                         }
                     }
                 }

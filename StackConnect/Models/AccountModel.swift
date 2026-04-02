@@ -66,6 +66,13 @@ struct AccountRules: Codable, Hashable {
     }
 }
 
+// MARK: - Account Origin
+
+enum AccountOrigin: String, Codable, Hashable {
+    case created
+    case imported
+}
+
 // MARK: - Account Model
 
 struct AccountModel: Codable, Identifiable, Hashable {
@@ -74,19 +81,26 @@ struct AccountModel: Codable, Identifiable, Hashable {
     let providerType: ProviderType
     let createdAt: Date
     var rules: AccountRules
+    var origin: AccountOrigin
 
     init(
         id: String = UUID().uuidString,
         name: String,
         providerType: ProviderType,
         createdAt: Date = .now,
-        rules: AccountRules = .allPermissions
+        rules: AccountRules = .allPermissions,
+        origin: AccountOrigin = .created
     ) {
         self.id = id
         self.name = name
         self.providerType = providerType
         self.createdAt = createdAt
         self.rules = rules
+        self.origin = origin
+    }
+
+    var isExportable: Bool {
+        origin == .created
     }
 
     /// Ensures all rule resources have values. Fills missing ones with all permissions.
@@ -99,7 +113,7 @@ struct AccountModel: Codable, Identifiable, Hashable {
         }
     }
 
-    // Custom decoder to handle existing accounts without rules
+    // Custom decoder to handle existing accounts without rules/origin
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
@@ -107,9 +121,10 @@ struct AccountModel: Codable, Identifiable, Hashable {
         providerType = try container.decode(ProviderType.self, forKey: .providerType)
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         rules = try container.decodeIfPresent(AccountRules.self, forKey: .rules) ?? .allPermissions
+        origin = try container.decodeIfPresent(AccountOrigin.self, forKey: .origin) ?? .created
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, providerType, createdAt, rules
+        case id, name, providerType, createdAt, rules, origin
     }
 }
