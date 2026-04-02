@@ -95,7 +95,7 @@ enum AppStoreState: String, Codable, Hashable {
     /// Whether this state indicates the app has a pending review action (waiting, in review, rejected, etc.)
     var isReviewPending: Bool {
         switch self {
-        case .waitingForReview, .inReview, .rejected, .metadataRejected,
+        case .waitingForReview, .inReview, .readyForReview, .rejected, .metadataRejected,
              .invalidBinary, .pendingDeveloperRelease, .pendingAppleRelease:
             return true
         default:
