@@ -1,6 +1,8 @@
 import SwiftUI
 
 enum HomeRoute: Hashable {
+    case settings
+    case settingsAccounts
     case accountsList(ProviderType)
     case appList(AccountModel)
     case firebaseProjectList(AccountModel)
@@ -37,6 +39,14 @@ enum HomeRoute: Hashable {
 
 final class HomeCoordinator: MainCoordinatorProtocol {
     @Published var path = NavigationPath()
+
+    func navigateToSettings() {
+        path.append(HomeRoute.settings)
+    }
+
+    func navigateToSettingsAccounts() {
+        path.append(HomeRoute.settingsAccounts)
+    }
 
     func navigateToAccountsList(_ providerType: ProviderType) {
         path.append(HomeRoute.accountsList(providerType))

@@ -55,10 +55,36 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
                             coordinator.navigateToAccountsList(provider)
                         }
                 }
+
+                buildSettingsCard()
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
         }
         .listRowBackground(Color.clear)
+    }
+
+    private func buildSettingsCard() -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: 40))
+                .foregroundStyle(.gray)
+
+            Text(String(localized: "Settings"))
+                .font(.headline)
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 140)
+        .background(Color.gray.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+        )
+        .onTapGesture {
+            coordinator.navigateToSettings()
+        }
     }
 
     // MARK: - Pending Review Section
@@ -182,6 +208,10 @@ private extension View {
     func navigationDestinations() -> some View {
         self.navigationDestination(for: HomeRoute.self) { route in
             switch route {
+            case .settings:
+                SettingsViewFactory.build()
+            case .settingsAccounts:
+                SettingsAccountsViewFactory.build()
             case .accountsList(let providerType):
                 AccountsListViewFactory.build(providerType: providerType)
             case .appList(let account):
