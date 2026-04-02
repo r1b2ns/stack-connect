@@ -26,6 +26,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var coordinator: HomeCoordinator
+    @State private var showAssistantSheet = false
 
     private let columns = [
         GridItem(.flexible(), spacing: 16),
@@ -53,6 +54,14 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
                 }
             }
             .padding(16)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            AssistantButton {
+                showAssistantSheet = true
+            }
+        }
+        .sheet(isPresented: $showAssistantSheet) {
+            AssistantSheetView()
         }
     }
 }
