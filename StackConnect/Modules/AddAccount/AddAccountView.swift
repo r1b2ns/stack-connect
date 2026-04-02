@@ -190,6 +190,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
         Button {
             if let text = UIPasteboard.general.string {
                 onPaste(text)
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
             }
         } label: {
             Image(systemName: "doc.on.clipboard")

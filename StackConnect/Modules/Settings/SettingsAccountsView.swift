@@ -319,7 +319,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                         ShareLink(
                             item: json,
                             subject: Text(account.name),
-                            message: Text("StackConnect account export")
+                            message: Text("")
                         ) {
                             Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
                         }
