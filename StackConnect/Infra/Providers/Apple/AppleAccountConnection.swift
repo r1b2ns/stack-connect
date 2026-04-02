@@ -745,15 +745,33 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
 
     // MARK: - Customer Reviews
 
+    struct CustomerReviewsPage {
+        let reviews: [CustomerReviewModel]
+        let hasNextPage: Bool
+        /// Opaque token for fetching the next page. Pass as `pageAfterResponse` to the next call.
+        let rawResponse: Any?
+    }
+
     func fetchCustomerReviews(
         appId: String,
         sort: String = "-createdDate",
         filterRating: [String]? = nil,
         limit: Int = 50
     ) async throws -> [CustomerReviewModel] {
+        let page = try await fetchCustomerReviewsPage(appId: appId, sort: sort, filterRating: filterRating, limit: limit, pageAfterResponse: nil)
+        return page.reviews
+    }
+
+    func fetchCustomerReviewsPage(
+        appId: String,
+        sort: String = "-createdDate",
+        filterRating: [String]? = nil,
+        limit: Int = 50,
+        pageAfterResponse: Any?
+    ) async throws -> CustomerReviewsPage {
         guard let provider else {
             try await validateCredentials()
-            return try await fetchCustomerReviews(appId: appId, sort: sort, filterRating: filterRating, limit: limit)
+            return try await fetchCustomerReviewsPage(appId: appId, sort: sort, filterRating: filterRating, limit: limit, pageAfterResponse: pageAfterResponse)
         }
 
         typealias Params = APIEndpoint.V1.Apps.WithID.CustomerReviews.GetParameters
@@ -773,7 +791,17 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             )
         )
 
-        let response = try await provider.request(endpoint)
+        let response: CustomerReviewsResponse
+        if let previousResponse = pageAfterResponse as? CustomerReviewsResponse {
+            guard let nextPage = try await provider.request(endpoint, pageAfter: previousResponse) else {
+                return CustomerReviewsPage(reviews: [], hasNextPage: false, rawResponse: nil)
+            }
+            response = nextPage
+        } else {
+            response = try await provider.request(endpoint)
+        }
+
+        let hasNext = response.links.next != nil
 
         let responsesById: [String: CustomerReviewResponseV1] = {
             var dict: [String: CustomerReviewResponseV1] = [:]
@@ -783,7 +811,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             return dict
         }()
 
-        return response.data.map { review in
+        let reviews = response.data.map { review in
             let responseRelId = review.relationships?.response?.data?.id
             let reviewResponse = responseRelId.flatMap { responsesById[$0] }
 
@@ -801,6 +829,37 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
                 responseDate: reviewResponse?.attributes?.lastModifiedDate
             )
         }
+
+        return CustomerReviewsPage(reviews: reviews, hasNextPage: hasNext, rawResponse: response)
+    }
+
+    /// Fetches the total count of reviews for each star rating (1-5) using the API's `meta.paging.total`.
+    /// Makes 5 parallel calls with `limit=1` and `filter[rating]=N`.
+    func fetchRatingDistribution(appId: String) async throws -> [Int: Int] {
+        guard let provider else {
+            try await validateCredentials()
+            return try await fetchRatingDistribution(appId: appId)
+        }
+
+        async let c1 = fetchReviewCount(provider: provider, appId: appId, rating: 1)
+        async let c2 = fetchReviewCount(provider: provider, appId: appId, rating: 2)
+        async let c3 = fetchReviewCount(provider: provider, appId: appId, rating: 3)
+        async let c4 = fetchReviewCount(provider: provider, appId: appId, rating: 4)
+        async let c5 = fetchReviewCount(provider: provider, appId: appId, rating: 5)
+
+        let counts = try await [1: c1, 2: c2, 3: c3, 4: c4, 5: c5]
+        return counts
+    }
+
+    private func fetchReviewCount(provider: APIProvider, appId: String, rating: Int) async throws -> Int {
+        let endpoint = APIEndpoint.v1.apps.id(appId).customerReviews.get(
+            parameters: .init(
+                filterRating: [String(rating)],
+                limit: 1
+            )
+        )
+        let response = try await provider.request(endpoint)
+        return response.meta?.paging.total ?? 0
     }
 
     func replyToReview(reviewId: String, responseBody: String) async throws {
@@ -1646,15 +1705,21 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             return try await releaseVersion(versionId: versionId)
         }
 
-        let body = AppStoreVersionUpdateRequest(
+        let body = AppStoreVersionReleaseRequestCreateRequest(
             data: .init(
-                type: .appStoreVersions,
-                id: versionId,
-                attributes: .init(releaseType: .afterApproval)
+                type: .appStoreVersionReleaseRequests,
+                relationships: .init(
+                    appStoreVersion: .init(
+                        data: .init(
+                            type: .appStoreVersions,
+                            id: versionId
+                        )
+                    )
+                )
             )
         )
 
-        let endpoint = APIEndpoint.v1.appStoreVersions.id(versionId).patch(body)
+        let endpoint = APIEndpoint.v1.appStoreVersionReleaseRequests.post(body)
         _ = try await provider.request(endpoint)
         Log.print.info("[Apple] Released version \(versionId)")
     }

@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct FirebaseAppListViewFactory {
     static func build(account: AccountModel, project: FirebaseProjectModel) -> some View {
         FirebaseAppListEntry(account: account, project: project)

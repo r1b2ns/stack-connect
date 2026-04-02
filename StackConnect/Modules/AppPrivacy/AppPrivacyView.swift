@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct AppPrivacyViewFactory {
     static func build(appId: String, account: AccountModel) -> some View {
         AppPrivacyEntryView(appId: appId, account: account)

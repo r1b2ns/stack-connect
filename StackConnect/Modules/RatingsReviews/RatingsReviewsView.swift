@@ -2,9 +2,10 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct RatingsReviewsViewFactory {
-    static func build(appId: String, account: AccountModel) -> some View {
-        RatingsReviewsEntryView(appId: appId, account: account)
+    static func build(appId: String, bundleId: String, account: AccountModel) -> some View {
+        RatingsReviewsEntryView(appId: appId, bundleId: bundleId, account: account)
     }
 }
 
@@ -12,14 +13,16 @@ struct RatingsReviewsViewFactory {
 
 private struct RatingsReviewsEntryView: View {
     let appId: String
+    let bundleId: String
     let account: AccountModel
 
     @StateObject private var viewModel: RatingsReviewsViewModel
 
-    init(appId: String, account: AccountModel) {
+    init(appId: String, bundleId: String, account: AccountModel) {
         self.appId = appId
+        self.bundleId = bundleId
         self.account = account
-        _viewModel = StateObject(wrappedValue: RatingsReviewsViewModel(appId: appId, account: account))
+        _viewModel = StateObject(wrappedValue: RatingsReviewsViewModel(appId: appId, bundleId: bundleId, account: account))
     }
 
     var body: some View {
@@ -93,7 +96,7 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
             buildFilterSection()
 
             Section {
-                ForEach(viewModel.uiState.filteredReviews) { review in
+                ForEach(viewModel.uiState.reviews) { review in
                     Button {
                         homeCoordinator.navigateToReviewDetail(review: review, account: viewModel.uiState.account)
                     } label: {
@@ -117,8 +120,25 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
                         }
                     }
                 }
+
+                // Infinite scroll trigger
+                if viewModel.uiState.hasMorePages {
+                    HStack {
+                        Spacer()
+                        if viewModel.uiState.isLoadingMore {
+                            ProgressView()
+                        } else {
+                            Color.clear.frame(height: 1)
+                        }
+                        Spacer()
+                    }
+                    .listRowBackground(Color.clear)
+                    .onAppear {
+                        Task { await viewModel.loadMore() }
+                    }
+                }
             } header: {
-                Text("Reviews (\(viewModel.uiState.filteredReviews.count))")
+                Text("Reviews (\(viewModel.uiState.reviews.count))")
             }
         }
     }
@@ -132,7 +152,7 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
                     Text(String(format: "%.1f", viewModel.uiState.averageRating))
                         .font(.system(size: 40, weight: .bold, design: .rounded))
                     buildStarRow(rating: Int(viewModel.uiState.averageRating.rounded()))
-                    Text("\(viewModel.uiState.reviews.count) \(String(localized: "ratings"))")
+                    Text(viewModel.uiState.ratingCountLabel)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -143,7 +163,7 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
                         buildDistributionBar(
                             star: star,
                             count: viewModel.uiState.ratingDistribution[star] ?? 0,
-                            total: viewModel.uiState.reviews.count
+                            total: viewModel.uiState.totalRatingCount
                         )
                     }
                 }
@@ -163,23 +183,23 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
                 .font(.system(size: 8))
                 .foregroundStyle(.yellow)
 
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(Color.gray.opacity(0.15))
-                        .frame(height: 6)
+            let fraction = total > 0 ? CGFloat(count) / CGFloat(total) : 0
 
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(Color.yellow)
-                        .frame(width: total > 0 ? geo.size.width * CGFloat(count) / CGFloat(total) : 0, height: 6)
-                }
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.gray.opacity(0.15))
+
+                Capsule()
+                    .fill(Color.yellow)
+                    .frame(maxWidth: .infinity)
+                    .scaleEffect(x: fraction, anchor: .leading)
             }
             .frame(height: 6)
 
-            Text("\(count)")
+            Text(count.formatted())
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-                .frame(width: 28, alignment: .leading)
+                .frame(width: 36, alignment: .leading)
         }
     }
 
@@ -201,7 +221,12 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
                 Text(String(localized: "Filter by Rating"))
                     .font(.subheadline)
                 Spacer()
-                Picker("", selection: $viewModel.uiState.filterRating) {
+                Picker("", selection: Binding(
+                    get: { viewModel.uiState.filterRating },
+                    set: { newValue in
+                        Task { await viewModel.applyFilter(rating: newValue) }
+                    }
+                )) {
                     Text(String(localized: "All")).tag(nil as Int?)
                     ForEach((1...5).reversed(), id: \.self) { star in
                         Label("\(star)", systemImage: "star.fill").tag(star as Int?)

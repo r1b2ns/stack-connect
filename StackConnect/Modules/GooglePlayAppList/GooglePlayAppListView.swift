@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct GooglePlayAppListViewFactory {
     static func build(account: AccountModel) -> some View {
         GooglePlayAppListEntry(account: account)

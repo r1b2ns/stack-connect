@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct AppHistoryViewFactory {
     static func build(appId: String, account: AccountModel) -> some View {
         AppHistoryEntryView(appId: appId, account: account)

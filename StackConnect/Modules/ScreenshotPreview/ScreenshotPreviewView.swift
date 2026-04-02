@@ -31,6 +31,7 @@ enum ScreenshotDeviceType: String, CaseIterable, Identifiable, Hashable {
 
 // MARK: - Factory
 
+@MainActor
 struct ScreenshotPreviewViewFactory {
     static func build(versionId: String, account: AccountModel) -> some View {
         ScreenshotPreviewEntry(versionId: versionId, account: account)

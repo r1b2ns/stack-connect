@@ -9,7 +9,7 @@ import Foundation
 /// let provider = APIProviderFirebase(configuration: config)
 /// let projects = try await provider.request(FirebaseAPI.v1beta1.projects.get())
 /// ```
-public final class APIProviderFirebase {
+public final class APIProviderFirebase: @unchecked Sendable {
 
     // MARK: - Error
 

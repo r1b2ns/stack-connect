@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct TestFlightViewFactory {
     static func build(appId: String, account: AccountModel) -> some View {
         TestFlightEntryView(appId: appId, account: account)

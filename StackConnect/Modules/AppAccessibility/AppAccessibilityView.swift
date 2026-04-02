@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct AppAccessibilityViewFactory {
     static func build(appId: String, account: AccountModel) -> some View {
         AppAccessibilityEntryView(appId: appId, account: account)

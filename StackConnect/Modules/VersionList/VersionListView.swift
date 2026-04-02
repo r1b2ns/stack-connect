@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct VersionListViewFactory {
     static func build(appId: String, platform: AppPlatform, account: AccountModel) -> some View {
         VersionListEntry(appId: appId, platform: platform, account: account)

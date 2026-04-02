@@ -3,6 +3,7 @@ import Charts
 
 // MARK: - Factory
 
+@MainActor
 struct AnalyticsDashboardViewFactory {
     static func build(project: FirebaseProjectModel, account: AccountModel) -> some View {
         AnalyticsDashboardEntry(project: project, account: account)

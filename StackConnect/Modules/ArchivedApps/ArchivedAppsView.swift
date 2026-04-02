@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct ArchivedAppsViewFactory {
     static func build(account: AccountModel) -> some View {
         ArchivedAppsEntry(account: account)

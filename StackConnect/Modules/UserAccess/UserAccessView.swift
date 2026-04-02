@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct UserAccessViewFactory {
     static func build(account: AccountModel) -> some View {
         UserAccessEntryView(account: account)

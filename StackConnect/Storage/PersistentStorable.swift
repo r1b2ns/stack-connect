@@ -5,7 +5,7 @@ enum PersistentStorableError: Error, Equatable {
     case decodingFailed
 }
 
-protocol PersistentStorable {
+protocol PersistentStorable: Sendable {
 
     // MARK: - Create / Update
 
