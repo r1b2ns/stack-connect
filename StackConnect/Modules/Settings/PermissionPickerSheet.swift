@@ -10,23 +10,54 @@ struct PermissionPickerSheet: View {
     @State private var selected: Set<AccountPermission> = []
     @State private var isNone = false
 
+    /// Permissions that are implicitly enabled by higher-level ones and cannot be deselected
+    private var impliedPermissions: Set<AccountPermission> {
+        var implied = Set<AccountPermission>()
+        // add → implies edit + view
+        if selected.contains(.add) {
+            implied.insert(.edit)
+            implied.insert(.view)
+        }
+        // delete → implies edit + view
+        if selected.contains(.delete) {
+            implied.insert(.edit)
+            implied.insert(.view)
+        }
+        // edit → implies view
+        if selected.contains(.edit) {
+            implied.insert(.view)
+        }
+        return implied
+    }
+
+    /// All effectively active permissions (explicit + implied)
+    private var effectivePermissions: Set<AccountPermission> {
+        selected.union(impliedPermissions)
+    }
+
     var body: some View {
         NavigationStack {
             List {
                 ForEach(AccountPermission.allCases, id: \.self) { permission in
+                    let isActive = effectivePermissions.contains(permission)
+                    let isLocked = impliedPermissions.contains(permission)
+
                     Button {
-                        togglePermission(permission)
+                        if !isLocked {
+                            togglePermission(permission)
+                        }
                     } label: {
                         HStack(spacing: 12) {
-                            Image(systemName: selected.contains(permission) ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(selected.contains(permission) ? .accent : .secondary)
+                            Image(systemName: isActive ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(isActive ? (isLocked ? .gray : .accent) : .secondary)
                                 .font(.title3)
 
                             Text(permission.displayName)
                                 .font(.body)
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(isLocked ? .secondary : .primary)
                         }
                     }
+                    .disabled(isLocked)
                 }
 
                 // None option
@@ -50,13 +81,11 @@ struct PermissionPickerSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(String(localized: "OK")) {
                         if isNone {
-                            // Explicitly chose None → empty array (not nil)
                             onDismiss([])
-                        } else if selected.isEmpty {
-                            // Nothing selected at all → nil
+                        } else if selected.isEmpty && impliedPermissions.isEmpty {
                             onDismiss(nil)
                         } else {
-                            onDismiss(Array(selected))
+                            onDismiss(Array(effectivePermissions))
                         }
                     }
                 }
@@ -64,7 +93,6 @@ struct PermissionPickerSheet: View {
         }
         .onAppear {
             if isNil {
-                // Topic is nil → nothing selected, not even None
                 selected = []
                 isNone = false
             } else {
@@ -80,6 +108,8 @@ struct PermissionPickerSheet: View {
         isNone = false
         if selected.contains(permission) {
             selected.remove(permission)
+            // When removing a high-level permission, also remove it from explicit
+            // but implied ones stay if another high-level still requires them
         } else {
             selected.insert(permission)
         }
