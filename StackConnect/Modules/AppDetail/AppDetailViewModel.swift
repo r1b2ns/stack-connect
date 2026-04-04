@@ -13,6 +13,7 @@ protocol AppDetailViewModelProtocol: ObservableObject {
     func releaseVersion(_ version: AppStoreVersionModel) async
     func rejectVersion(_ version: AppStoreVersionModel) async
     func toggleFavorite() async
+    func toggleArchive() async
 }
 
 // MARK: - UiState
@@ -364,6 +365,21 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
         } catch {
             uiState.app.isFavorite.toggle() // revert
             Log.print.error("[AppDetail] Toggle favorite failed: \(error.localizedDescription)")
+        }
+    }
+
+    func toggleArchive() async {
+        uiState.app.isArchived.toggle()
+        do {
+            try await storage.save(uiState.app, id: "\(uiState.account.id).\(uiState.app.id)")
+            let text = uiState.app.isArchived
+                ? String(localized: "Archived")
+                : String(localized: "Unarchived")
+            uiState.toastMessage = ToastMessage(text, icon: uiState.app.isArchived ? "archivebox.fill" : "archivebox")
+            Log.print.info("[AppDetail] Toggled archive for \(self.uiState.app.name): \(self.uiState.app.isArchived)")
+        } catch {
+            uiState.app.isArchived.toggle() // revert
+            Log.print.error("[AppDetail] Toggle archive failed: \(error.localizedDescription)")
         }
     }
 

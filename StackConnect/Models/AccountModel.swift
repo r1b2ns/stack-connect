@@ -103,8 +103,10 @@ struct AccountModel: Codable, Identifiable, Hashable {
         origin == .created
     }
 
-    /// Ensures all rule resources have values. Fills missing ones with all permissions.
+    /// Ensures all rule resources have values for created accounts.
+    /// Imported accounts keep their original permissions (even if empty).
     mutating func fillMissingRules() {
+        guard origin == .created else { return }
         let all = AccountPermission.allCases
         for resource in AccountRuleResource.allCases {
             if self.rules[resource].isEmpty {

@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Factory
 
@@ -27,6 +28,8 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var coordinator: SettingsAccountsCoordinator
+    @State private var importError: String = ""
+    @State private var showImportError = false
 
     var body: some View {
         buildContent()
@@ -69,6 +72,14 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                 }
             } message: { account in
                 Text("Are you sure you want to delete \"\(account.name)\"? This action cannot be undone.")
+            }
+            .alert(
+                String(localized: "Import Error"),
+                isPresented: $showImportError
+            ) {
+                Button(String(localized: "OK"), role: .cancel) {}
+            } message: {
+                Text(importError)
             }
             .sheet(isPresented: $viewModel.uiState.showExportShare) {
                 if let fileURL = viewModel.uiState.exportFileURL {
@@ -165,6 +176,17 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                             .font(.body)
                             .foregroundStyle(.primary)
 
+                        if account.origin == .imported {
+                            Text(String(localized: "imported"))
+                                .font(.caption2)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.yellow)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.yellow.opacity(0.15))
+                                .clipShape(Capsule())
+                        }
+
                         Spacer()
 
                         Image(systemName: "chevron.right")
@@ -181,14 +203,9 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                         Label(String(localized: "Delete"), systemImage: "trash")
                     }
 
-                    if account.isExportable {
+                    if account.isExportable && account.providerType == .apple {
                         Button {
-                            if account.providerType == .apple {
-                                coordinator.presentExportAccount(account)
-                            } else {
-                                viewModel.uiState.exportFileURL = viewModel.exportAccountFile(account: account)
-                                viewModel.uiState.showExportShare = true
-                            }
+                            coordinator.presentExportAccount(account)
                         } label: {
                             Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
                         }
@@ -287,41 +304,25 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
     // MARK: - Import Sheet
 
     private func buildImportSheet() -> some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                Spacer()
-
-                Image(systemName: "doc.badge.arrow.up.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.gray)
-
-                Text(String(localized: "Import a JSON file containing your account credentials."))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-
-                Button {
-                    // TODO: Implement JSON file import
-                } label: {
-                    Label(String(localized: "Import JSON File"), systemImage: "square.and.arrow.down")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .padding(.horizontal, 32)
-
-                Spacer()
-            }
-            .navigationTitle(String(localized: "Import"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+        ImportAccountSheet(
+            onImport: { url, customName in
+                Task {
+                    let error = await viewModel.importAccount(from: url, customName: customName)
+                    if let error {
+                        importError = error
+                        showImportError = true
+                    } else {
                         coordinator.showImport = false
                     }
                 }
+            },
+            onPreviewName: { url in
+                viewModel.previewImportName(from: url)
+            },
+            onCancel: {
+                coordinator.showImport = false
             }
-        }
+        )
     }
 
     // MARK: - Edit Account Sheet
@@ -339,25 +340,15 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                     Text("Name")
                 }
 
-                if account.isExportable {
+                if account.isExportable && account.providerType == .apple {
                     Section {
-                        if account.providerType == .apple {
-                            Button {
-                                coordinator.dismissEditAccount()
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    coordinator.presentExportAccount(account)
-                                }
-                            } label: {
-                                Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
+                        Button {
+                            coordinator.dismissEditAccount()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                coordinator.presentExportAccount(account)
                             }
-                        } else if let json = viewModel.exportAccountData(account: account) {
-                            ShareLink(
-                                item: json,
-                                subject: Text(account.name),
-                                message: Text("")
-                            ) {
-                                Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
-                            }
+                        } label: {
+                            Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
                         }
                     }
                 }
@@ -425,4 +416,87 @@ private struct ShareSheetView: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - Import Account Sheet
+
+private struct ImportAccountSheet: View {
+
+    let onImport: (URL, String?) -> Void
+    let onPreviewName: (URL) -> String?
+    let onCancel: () -> Void
+
+    @State private var showFilePicker = false
+    @State private var showNameAlert = false
+    @State private var customName = ""
+    @State private var selectedURL: URL?
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                Spacer()
+
+                Image(systemName: "doc.badge.arrow.up.fill")
+                    .font(.system(size: 60))
+                    .foregroundStyle(.gray)
+
+                Text(String(localized: "Import a JSON file containing your account credentials."))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+
+                Button {
+                    showFilePicker = true
+                } label: {
+                    Label(String(localized: "Import File"), systemImage: "square.and.arrow.down")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .padding(.horizontal, 32)
+
+                Spacer()
+            }
+            .navigationTitle(String(localized: "Import"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "Cancel")) { onCancel() }
+                }
+            }
+            .fileImporter(
+                isPresented: $showFilePicker,
+                allowedContentTypes: [.json],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    if let url = urls.first {
+                        selectedURL = url
+                        customName = onPreviewName(url) ?? ""
+                        showNameAlert = true
+                    }
+                case .failure(let error):
+                    Log.print.error("[Import] File picker error: \(error.localizedDescription)")
+                }
+            }
+            .alert(
+                String(localized: "Import Account"),
+                isPresented: $showNameAlert
+            ) {
+                TextField(String(localized: "Account Name"), text: $customName)
+                Button(String(localized: "Cancel"), role: .cancel) {
+                    selectedURL = nil
+                }
+                Button(String(localized: "Import")) {
+                    if let url = selectedURL {
+                        onImport(url, customName)
+                    }
+                    selectedURL = nil
+                }
+            } message: {
+                Text(String(localized: "Choose a name for this account."))
+            }
+        }
+    }
 }

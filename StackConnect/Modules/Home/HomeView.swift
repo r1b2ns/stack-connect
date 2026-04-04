@@ -212,6 +212,8 @@ private extension View {
                 SettingsViewFactory.build()
             case .settingsAccounts:
                 SettingsAccountsViewFactory.build()
+            case .accountSettings(let account):
+                AccountSettingsViewFactory.build(account: account)
             case .accountsList(let providerType):
                 AccountsListViewFactory.build(providerType: providerType)
             case .appList(let account):

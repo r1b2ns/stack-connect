@@ -38,7 +38,7 @@ final class HomeViewModel: HomeViewModelProtocol {
         // 1. Load from SwiftData first (instant)
         do {
             let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
-            let pending = allApps.filter(\.hasReviewPending)
+            let pending = allApps.filter { $0.hasReviewPending && !$0.isArchived }
             uiState.pendingReviewApps = pending.sorted { ($0.name) < ($1.name) }
         } catch {
             Log.print.error("[Home] Failed to load pending review apps: \(error.localizedDescription)")

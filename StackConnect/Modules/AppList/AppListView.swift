@@ -30,6 +30,7 @@ private struct AppListEntry: View {
     @StateObject private var coordinator = AppListCoordinator()
     @StateObject private var appListViewModel: AppListViewModel
     @StateObject private var userAccessViewModel: UserAccessViewModel
+    @EnvironmentObject private var homeCoordinator: HomeCoordinator
     @State private var selectedTab: AppListTab = .apps
 
     init(account: AccountModel) {
@@ -59,6 +60,7 @@ private struct AppListEntry: View {
                 .pickerStyle(.segmented)
                 .frame(width: 220)
             }
+
         }
     }
 }
@@ -280,6 +282,11 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
     @ToolbarContentBuilder
     private func buildBottomToolbar() -> some ToolbarContent {
         ToolbarItemGroup(placement: .bottomBar) {
+            Button {
+                homeCoordinator.navigateToAccountSettings(viewModel.uiState.account)
+            } label: {
+                Label(String(localized: "Settings"), systemImage: "gearshape")
+            }
             Spacer()
             Button {
                 homeCoordinator.navigateToArchivedApps(account: viewModel.uiState.account)
