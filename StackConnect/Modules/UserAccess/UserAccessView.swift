@@ -307,11 +307,13 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
 
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            Button {
-                viewModel.uiState.showInviteUser = true
-            } label: {
-                Image(systemName: "plus")
+        if viewModel.uiState.account.canAdd(.users) {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    viewModel.uiState.showInviteUser = true
+                } label: {
+                    Image(systemName: "plus")
+                }
             }
         }
     }

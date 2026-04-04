@@ -183,9 +183,9 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
 
     private func buildImportSheet() -> some View {
         AccountsListImportSheet(
-            onImport: { url, customName in
+            onImport: { url, password, customName in
                 Task {
-                    let error = await viewModel.importAccount(from: url, customName: customName)
+                    let error = await viewModel.importAccount(from: url, password: password, customName: customName)
                     if let error {
                         importError = error
                         showImportError = true
@@ -193,9 +193,6 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                         coordinator.showImport = false
                     }
                 }
-            },
-            onPreviewName: { url in
-                viewModel.previewImportName(from: url)
             },
             onCancel: {
                 coordinator.showImport = false
@@ -221,12 +218,15 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
 
 private struct AccountsListImportSheet: View {
 
-    let onImport: (URL, String?) -> Void
-    let onPreviewName: (URL) -> String?
+    let onImport: (URL, String, String?) -> Void
     let onCancel: () -> Void
 
     @State private var showFilePicker = false
+    @State private var showPasswordAlert = false
     @State private var showNameAlert = false
+    @State private var showDecryptError = false
+    @State private var decryptErrorMessage = ""
+    @State private var password = ""
     @State private var customName = ""
     @State private var selectedURL: URL?
 
@@ -239,7 +239,7 @@ private struct AccountsListImportSheet: View {
                     .font(.system(size: 60))
                     .foregroundStyle(.gray)
 
-                Text(String(localized: "Import a JSON file containing your account credentials."))
+                Text(String(localized: "Import an encrypted .scexport file containing your account credentials."))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -265,19 +265,49 @@ private struct AccountsListImportSheet: View {
             }
             .fileImporter(
                 isPresented: $showFilePicker,
-                allowedContentTypes: [.json],
+                allowedContentTypes: [.data],
                 allowsMultipleSelection: false
             ) { result in
                 switch result {
                 case .success(let urls):
                     if let url = urls.first {
                         selectedURL = url
-                        customName = onPreviewName(url) ?? ""
-                        showNameAlert = true
+                        password = ""
+                        showPasswordAlert = true
                     }
                 case .failure(let error):
                     Log.print.error("[Import] File picker error: \(error.localizedDescription)")
                 }
+            }
+            .alert(
+                String(localized: "Enter Password"),
+                isPresented: $showPasswordAlert
+            ) {
+                SecureField(String(localized: "Password"), text: $password)
+                Button(String(localized: "Cancel"), role: .cancel) {
+                    selectedURL = nil
+                    password = ""
+                }
+                Button(String(localized: "Decrypt")) {
+                    tryDecrypt()
+                }
+            } message: {
+                Text(String(localized: "Enter the password used to encrypt this file."))
+            }
+            .alert(
+                String(localized: "Decryption Failed"),
+                isPresented: $showDecryptError
+            ) {
+                Button(String(localized: "Try Again")) {
+                    password = ""
+                    showPasswordAlert = true
+                }
+                Button(String(localized: "Cancel"), role: .cancel) {
+                    selectedURL = nil
+                    password = ""
+                }
+            } message: {
+                Text(decryptErrorMessage)
             }
             .alert(
                 String(localized: "Import Account"),
@@ -286,16 +316,46 @@ private struct AccountsListImportSheet: View {
                 TextField(String(localized: "Account Name"), text: $customName)
                 Button(String(localized: "Cancel"), role: .cancel) {
                     selectedURL = nil
+                    password = ""
                 }
                 Button(String(localized: "Import")) {
                     if let url = selectedURL {
-                        onImport(url, customName)
+                        onImport(url, password, customName)
                     }
                     selectedURL = nil
+                    password = ""
                 }
             } message: {
                 Text(String(localized: "Choose a name for this account."))
             }
+        }
+    }
+
+    private func tryDecrypt() {
+        guard let url = selectedURL else { return }
+
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+
+        guard let data = try? Data(contentsOf: url) else {
+            decryptErrorMessage = String(localized: "Failed to read file.")
+            showDecryptError = true
+            return
+        }
+
+        do {
+            let json = try AccountCrypto.decrypt(data: data, password: password)
+            if let jsonData = json.data(using: .utf8),
+               let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+               let name = dict["name"] as? String {
+                customName = name
+            } else {
+                customName = ""
+            }
+            showNameAlert = true
+        } catch {
+            decryptErrorMessage = error.localizedDescription
+            showDecryptError = true
         }
     }
 }

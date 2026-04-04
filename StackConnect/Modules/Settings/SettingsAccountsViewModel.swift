@@ -8,11 +8,8 @@ protocol SettingsAccountsViewModelProtocol: ObservableObject {
     func loadAccounts() async
     func updateAccountName(accountId: String, newName: String) async
     func deleteAccount(_ account: AccountModel) async
-    func exportAccountData(account: AccountModel) -> String?
-    func exportAccountFile(account: AccountModel) -> URL?
-    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules) -> URL?
-    func importAccount(from url: URL, customName: String?) async -> String?
-    func previewImportName(from url: URL) -> String?
+    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String) -> URL?
+    func importAccount(from url: URL, password: String, customName: String?) async -> String?
 }
 
 // MARK: - UiState
@@ -121,81 +118,7 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
         }
     }
 
-    func exportAccountData(account: AccountModel) -> String? {
-        var exportDict: [String: Any] = [
-            "id": account.id,
-            "name": account.name,
-            "providerType": account.providerType.rawValue,
-            "createdAt": ISO8601DateFormatter().string(from: account.createdAt)
-        ]
-
-        // Include rules
-        let rules = account.rules
-        exportDict["rules"] = [
-            "apps": rules.apps.map(\.rawValue),
-            "version": rules.version.map(\.rawValue),
-            "users": rules.users.map(\.rawValue),
-            "review": rules.review.map(\.rawValue),
-            "testFlight": rules.testFlight.map(\.rawValue),
-            "analytics": rules.analytics.map(\.rawValue)
-        ]
-
-        // Include credentials based on provider type
-        switch account.providerType {
-        case .apple:
-            if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(account.id)") {
-                exportDict["credentials"] = [
-                    "issuerID": creds.issuerID,
-                    "privateKeyID": creds.privateKeyID,
-                    "privateKey": creds.privateKey
-                ]
-            }
-        case .firebase:
-            if let creds: FirebaseCredentials = keychain.object(forKey: "credentials.\(account.id)") {
-                exportDict["credentials"] = [
-                    "serviceAccountJSON": creds.serviceAccountJSON
-                ]
-            }
-        case .googlePlay:
-            if let creds: GooglePlayCredentials = keychain.object(forKey: "credentials.\(account.id)") {
-                exportDict["credentials"] = [
-                    "serviceAccountJSON": creds.serviceAccountJSON
-                ]
-            }
-        }
-
-        guard let data = try? JSONSerialization.data(withJSONObject: exportDict, options: .prettyPrinted),
-              let json = String(data: data, encoding: .utf8) else {
-            return nil
-        }
-
-        return json
-    }
-
-    func exportAccountFile(account: AccountModel) -> URL? {
-        guard let json = exportAccountData(account: account) else { return nil }
-
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let dateString = dateFormatter.string(from: Date())
-
-        let sanitizedName = account.name
-            .replacingOccurrences(of: " ", with: "-")
-            .replacingOccurrences(of: "/", with: "-")
-        let accountType = account.providerType.rawValue
-        let fileName = "\(sanitizedName)-stackconnect-\(accountType)-\(dateString).json"
-
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
-        do {
-            try json.write(to: tempURL, atomically: true, encoding: .utf8)
-            return tempURL
-        } catch {
-            Log.print.error("[SettingsAccounts] Failed to write export file: \(error.localizedDescription)")
-            return nil
-        }
-    }
-
-    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules) -> URL? {
+    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String) -> URL? {
         var exportDict: [String: Any] = [
             "id": account.id,
             "name": exportName,
@@ -203,7 +126,6 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             "createdAt": ISO8601DateFormatter().string(from: account.createdAt)
         ]
 
-        // Include selected rules
         exportDict["rules"] = [
             "apps": rules.apps.map(\.rawValue),
             "version": rules.version.map(\.rawValue),
@@ -213,7 +135,6 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             "analytics": rules.analytics.map(\.rawValue)
         ]
 
-        // Include credentials
         if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(account.id)") {
             exportDict["credentials"] = [
                 "issuerID": creds.issuerID,
@@ -227,6 +148,12 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             return nil
         }
 
+        // Encrypt the JSON
+        guard let encryptedData = try? AccountCrypto.encrypt(json: json, password: password) else {
+            Log.print.error("[SettingsAccounts] Failed to encrypt export data")
+            return nil
+        }
+
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let dateString = dateFormatter.string(from: Date())
@@ -235,11 +162,11 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             .replacingOccurrences(of: " ", with: "-")
             .replacingOccurrences(of: "/", with: "-")
         let accountType = account.providerType.rawValue
-        let fileName = "\(sanitizedName)-stackconnect-\(accountType)-\(dateString).json"
+        let fileName = "\(sanitizedName)-stackconnect-\(accountType)-\(dateString).scexport"
 
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
         do {
-            try json.write(to: tempURL, atomically: true, encoding: .utf8)
+            try encryptedData.write(to: tempURL)
             return tempURL
         } catch {
             Log.print.error("[SettingsAccounts] Failed to write export file: \(error.localizedDescription)")
@@ -249,19 +176,7 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
 
     // MARK: - Import
 
-    func previewImportName(from url: URL) -> String? {
-        let accessing = url.startAccessingSecurityScopedResource()
-        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-
-        guard let data = try? Data(contentsOf: url),
-              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let name = dict["name"] as? String, !name.isEmpty else {
-            return nil
-        }
-        return name
-    }
-
-    func importAccount(from url: URL, customName: String?) async -> String? {
+    func importAccount(from url: URL, password: String, customName: String?) async -> String? {
         let accessing = url.startAccessingSecurityScopedResource()
         defer { if accessing { url.stopAccessingSecurityScopedResource() } }
 
@@ -273,8 +188,17 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             return String(localized: "Failed to read file.")
         }
 
-        // 2. Parse JSON
-        guard let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        // 2. Decrypt
+        let jsonString: String
+        do {
+            jsonString = try AccountCrypto.decrypt(data: data, password: password)
+        } catch {
+            return error.localizedDescription
+        }
+
+        // 3. Parse JSON
+        guard let jsonData = jsonString.data(using: .utf8),
+              let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
             return String(localized: "Invalid JSON format.")
         }
 
