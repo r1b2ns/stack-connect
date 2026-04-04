@@ -40,6 +40,15 @@ private struct AppListEntry: View {
         _userAccessViewModel = StateObject(wrappedValue: UserAccessViewModel(account: account))
     }
 
+    private var availableTabs: [AppListTab] {
+        AppListTab.allCases.filter { tab in
+            switch tab {
+            case .apps: return true
+            case .usersAndAccess: return account.canView(.users)
+            }
+        }
+    }
+
     var body: some View {
         Group {
             switch selectedTab {
@@ -52,16 +61,17 @@ private struct AppListEntry: View {
         .environmentObject(coordinator)
         .navigationTitle(account.name)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                Picker(String(localized: "Section"), selection: $selectedTab) {
-                    ForEach(AppListTab.allCases, id: \.self) { tab in
-                        Text(tab.displayName).tag(tab)
+            if availableTabs.count > 1 {
+                ToolbarItem(placement: .principal) {
+                    Picker(String(localized: "Section"), selection: $selectedTab) {
+                        ForEach(availableTabs, id: \.self) { tab in
+                            Text(tab.displayName).tag(tab)
+                        }
                     }
+                    .pickerStyle(.segmented)
+                    .frame(width: 220)
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 220)
             }
-
         }
     }
 }

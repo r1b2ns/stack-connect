@@ -96,6 +96,7 @@ struct AppPrivacyView<ViewModel: AppPrivacyViewModelProtocol>: View {
                         buildLocaleRow(loc)
                     }
                     .foregroundStyle(.primary)
+                    .disabled(!viewModel.uiState.account.canEdit(.apps))
                 }
             } header: {
                 Text("Privacy by Locale")

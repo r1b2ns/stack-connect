@@ -14,6 +14,7 @@ struct HomeUiState {
     var providers: [ProviderType] = ProviderType.allCases
     var pendingReviewApps: [AppModel] = []
     var isLoadingPending = false
+    var accountsMap: [String: AccountModel] = [:]
 }
 
 // MARK: - Implementation
@@ -35,6 +36,19 @@ final class HomeViewModel: HomeViewModelProtocol {
     }
 
     func loadPendingReviewApps() async {
+        // 0. Load all accounts into map
+        do {
+            let allAccounts: [AccountModel] = try await storage.fetchAll(AccountModel.self)
+            var map: [String: AccountModel] = [:]
+            for var account in allAccounts {
+                account.fillMissingRules()
+                map[account.id] = account
+            }
+            uiState.accountsMap = map
+        } catch {
+            Log.print.error("[Home] Failed to load accounts: \(error.localizedDescription)")
+        }
+
         // 1. Load from SwiftData first (instant)
         do {
             let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)

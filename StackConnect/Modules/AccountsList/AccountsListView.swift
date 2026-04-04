@@ -159,10 +159,12 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                     Label(String(localized: "Create New"), systemImage: "plus.circle.fill")
                 }
 
-                Button {
-                    coordinator.presentImport()
-                } label: {
-                    Label(String(localized: "Import"), systemImage: "square.and.arrow.down.fill")
+                if viewModel.uiState.providerType == .apple {
+                    Button {
+                        coordinator.presentImport()
+                    } label: {
+                        Label(String(localized: "Import"), systemImage: "square.and.arrow.down.fill")
+                    }
                 }
             }
             .navigationTitle(String(localized: "Add Account"))

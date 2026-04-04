@@ -245,22 +245,26 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
                 Text("Your Reply")
             }
 
-            Section {
-                Button(role: .destructive) {
-                    viewModel.uiState.confirmDeleteResponse = true
-                } label: {
-                    Label(String(localized: "Delete Reply"), systemImage: "trash")
+            if viewModel.uiState.account.canDelete(.review) {
+                Section {
+                    Button(role: .destructive) {
+                        viewModel.uiState.confirmDeleteResponse = true
+                    } label: {
+                        Label(String(localized: "Delete Reply"), systemImage: "trash")
+                    }
                 }
             }
         } else {
-            Section {
-                Button {
-                    viewModel.uiState.showReplySheet = true
-                } label: {
-                    Label(String(localized: "Write a Reply"), systemImage: "arrowshape.turn.up.left.fill")
+            if viewModel.uiState.account.canEdit(.review) {
+                Section {
+                    Button {
+                        viewModel.uiState.showReplySheet = true
+                    } label: {
+                        Label(String(localized: "Write a Reply"), systemImage: "arrowshape.turn.up.left.fill")
+                    }
+                } footer: {
+                    Text("Reply to this review. Your response will be visible on the App Store.")
                 }
-            } footer: {
-                Text("Reply to this review. Your response will be visible on the App Store.")
             }
         }
     }
@@ -307,8 +311,8 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
 
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            if !viewModel.uiState.review.hasResponse {
+        if !viewModel.uiState.review.hasResponse && viewModel.uiState.account.canEdit(.review) {
+            ToolbarItem(placement: .primaryAction) {
                 Button {
                     viewModel.uiState.showReplySheet = true
                 } label: {
