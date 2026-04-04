@@ -10,7 +10,7 @@ import AppStoreConnect_Swift_SDK
 /// Apple takes 24-48 hours to generate the initial reports.
 actor AnalyticsReportService {
 
-    private let provider: APIProvider
+    nonisolated(unsafe) private let provider: APIProvider
     private let appId: String
 
     private var cachedReports: [(id: String, name: String, category: String)]?
