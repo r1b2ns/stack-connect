@@ -3,6 +3,7 @@ import UIKit
 
 // MARK: - Factory
 
+@MainActor
 struct AddAccountViewFactory {
     static func build(providerType: ProviderType, onDismiss: @escaping () -> Void) -> some View {
         AddAccountEntry(providerType: providerType, onDismiss: onDismiss)

@@ -32,7 +32,7 @@ enum HomeRoute: Hashable {
     case appPrivacy(appId: String, account: AccountModel)
     case appAccessibility(appId: String, account: AccountModel)
     case appAnalytics(appId: String, account: AccountModel)
-    case ratingsReviews(appId: String, account: AccountModel)
+    case ratingsReviews(appId: String, bundleId: String, account: AccountModel)
     case reviewDetail(review: CustomerReviewModel, account: AccountModel)
     case testFlight(appId: String, account: AccountModel)
     case betaGroupDetail(group: BetaGroupModel, appId: String, account: AccountModel)
@@ -153,8 +153,8 @@ final class HomeCoordinator: MainCoordinatorProtocol {
         path.append(HomeRoute.appAnalytics(appId: appId, account: account))
     }
 
-    func navigateToRatingsReviews(appId: String, account: AccountModel) {
-        path.append(HomeRoute.ratingsReviews(appId: appId, account: account))
+    func navigateToRatingsReviews(appId: String, bundleId: String, account: AccountModel) {
+        path.append(HomeRoute.ratingsReviews(appId: appId, bundleId: bundleId, account: account))
     }
 
     func navigateToReviewDetail(review: CustomerReviewModel, account: AccountModel) {

@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct AgeRatingViewFactory {
     static func build(ageRating: AgeRatingDeclarationModel, account: AccountModel) -> some View {
         AgeRatingEntry(ageRating: ageRating, account: account)

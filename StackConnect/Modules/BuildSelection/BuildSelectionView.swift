@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct BuildSelectionViewFactory {
     static func build(versionId: String, appId: String, account: AccountModel) -> some View {
         BuildSelectionEntry(versionId: versionId, appId: appId, account: account)

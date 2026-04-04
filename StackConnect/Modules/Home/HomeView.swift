@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct HomeViewFactory {
     static func build() -> some View {
         HomeEntry()
@@ -266,8 +267,8 @@ private extension View {
                 AppAccessibilityViewFactory.build(appId: appId, account: account)
             case .appAnalytics(let appId, let account):
                 AppAnalyticsViewFactory.build(appId: appId, account: account)
-            case .ratingsReviews(let appId, let account):
-                RatingsReviewsViewFactory.build(appId: appId, account: account)
+            case .ratingsReviews(let appId, let bundleId, let account):
+                RatingsReviewsViewFactory.build(appId: appId, bundleId: bundleId, account: account)
             case .reviewDetail(let review, let account):
                 ReviewDetailViewFactory.build(review: review, account: account)
             case .testFlight(let appId, let account):

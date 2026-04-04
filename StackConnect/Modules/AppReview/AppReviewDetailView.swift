@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct AppReviewDetailViewFactory {
     static func build(submission: ReviewSubmissionModel, account: AccountModel) -> some View {
         AppReviewDetailEntry(submission: submission, account: account)

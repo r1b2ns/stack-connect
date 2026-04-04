@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct ScreenshotResolutionViewFactory {
     static func build(device: ScreenshotDeviceType, sets: [ScreenshotSetModel]) -> some View {
         ScreenshotResolutionView(device: device, sets: sets)

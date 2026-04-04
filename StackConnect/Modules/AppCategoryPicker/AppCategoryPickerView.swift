@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct AppCategoryPickerViewFactory {
     static func build(
         appInfoId: String,

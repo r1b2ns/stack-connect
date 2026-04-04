@@ -11,6 +11,7 @@ private let appStoreLocales: [String] = [
 
 // MARK: - Factory
 
+@MainActor
 struct ManageLocalizationsViewFactory {
     static func build(appInfoId: String, primaryLocale: String, account: AccountModel) -> some View {
         ManageLocalizationsEntry(appInfoId: appInfoId, primaryLocale: primaryLocale, account: account)

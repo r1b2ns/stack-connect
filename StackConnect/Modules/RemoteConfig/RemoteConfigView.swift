@@ -3,6 +3,7 @@ import APIProviderFirebase
 
 // MARK: - Factory
 
+@MainActor
 struct RemoteConfigViewFactory {
     static func build(project: FirebaseProjectModel, account: AccountModel) -> some View {
         RemoteConfigEntry(project: project, account: account)

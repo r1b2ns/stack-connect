@@ -3,6 +3,7 @@ import UIKit
 
 // MARK: - Factory
 
+@MainActor
 struct FirebaseProjectDetailViewFactory {
     static func build(project: FirebaseProjectModel, account: AccountModel) -> some View {
         FirebaseProjectDetailEntry(project: project, account: account)

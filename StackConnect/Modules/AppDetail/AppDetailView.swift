@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct AppDetailViewFactory {
     static func build(app: AppModel, account: AccountModel) -> some View {
         AppDetailEntry(app: app, account: account)
@@ -306,6 +307,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             Button {
                 homeCoordinator.navigateToRatingsReviews(
                     appId: viewModel.uiState.app.id,
+                    bundleId: viewModel.uiState.app.bundleId,
                     account: viewModel.uiState.account
                 )
             } label: {

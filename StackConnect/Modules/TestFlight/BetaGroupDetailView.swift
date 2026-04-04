@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct BetaGroupDetailViewFactory {
     static func build(group: BetaGroupModel, appId: String, account: AccountModel) -> some View {
         BetaGroupDetailEntryView(group: group, appId: appId, account: account)

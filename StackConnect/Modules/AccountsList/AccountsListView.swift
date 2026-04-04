@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 // MARK: - Factory
 
+@MainActor
 struct AccountsListViewFactory {
     static func build(providerType: ProviderType) -> some View {
         AccountsListEntry(providerType: providerType)

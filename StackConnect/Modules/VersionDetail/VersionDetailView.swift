@@ -3,6 +3,7 @@ import AppStoreConnect_Swift_SDK
 
 // MARK: - Factory
 
+@MainActor
 struct VersionDetailViewFactory {
     static func build(version: AppStoreVersionModel, account: AccountModel) -> some View {
         VersionDetailEntry(version: version, account: account)

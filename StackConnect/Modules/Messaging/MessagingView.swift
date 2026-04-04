@@ -3,6 +3,7 @@ import APIProviderFirebase
 
 // MARK: - Factory
 
+@MainActor
 struct MessagingViewFactory {
     static func build(project: FirebaseProjectModel, account: AccountModel) -> some View {
         MessagingEntry(project: project, account: account)

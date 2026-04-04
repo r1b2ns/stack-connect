@@ -9,7 +9,7 @@ import Foundation
 /// let provider = APIProviderPlay(configuration: config)
 /// let edit = try await provider.request(PlayAPI.v3.applications("com.example.app").edits.insert())
 /// ```
-public final class APIProviderPlay {
+public final class APIProviderPlay: @unchecked Sendable {
 
     // MARK: - Error
 

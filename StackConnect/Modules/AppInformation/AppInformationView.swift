@@ -3,6 +3,7 @@ import UIKit
 
 // MARK: - Factory
 
+@MainActor
 struct AppInformationViewFactory {
     static func build(app: AppModel, account: AccountModel) -> some View {
         AppInformationEntry(app: app, account: account)

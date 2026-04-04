@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Factory
 
+@MainActor
 struct ScreenshotPageViewFactory {
     static func build(screenshots: [ScreenshotModel]) -> some View {
         ScreenshotPageView(screenshots: screenshots)
