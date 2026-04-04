@@ -104,14 +104,14 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
                     }
                     .foregroundStyle(.primary)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        if !review.hasResponse {
+                        if !review.hasResponse && viewModel.uiState.account.canEdit(.review) {
                             Button {
                                 viewModel.uiState.replyingTo = review
                             } label: {
                                 Label(String(localized: "Reply"), systemImage: "arrowshape.turn.up.left.fill")
                             }
                             .tint(.blue)
-                        } else if let _ = review.responseId {
+                        } else if let _ = review.responseId, viewModel.uiState.account.canDelete(.review) {
                             Button(role: .destructive) {
                                 Task { await viewModel.deleteResponse(for: review) }
                             } label: {

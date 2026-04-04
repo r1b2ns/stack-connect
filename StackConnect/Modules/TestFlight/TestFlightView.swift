@@ -137,7 +137,7 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
                 }
                 .foregroundStyle(.primary)
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    if !group.isInternalGroup {
+                    if !group.isInternalGroup && viewModel.uiState.account.canDelete(.testFlight) {
                         Button(role: .destructive) {
                             viewModel.uiState.confirmDelete = group
                         } label: {
@@ -233,11 +233,13 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
 
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            Button {
-                viewModel.uiState.showCreateGroup = true
-            } label: {
-                Image(systemName: "plus")
+        if viewModel.uiState.account.canAdd(.testFlight) {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    viewModel.uiState.showCreateGroup = true
+                } label: {
+                    Image(systemName: "plus")
+                }
             }
         }
     }

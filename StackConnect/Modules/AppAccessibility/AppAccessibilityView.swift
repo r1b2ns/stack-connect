@@ -135,8 +135,9 @@ struct AppAccessibilityView<ViewModel: AppAccessibilityViewModelProtocol>: View 
                 buildDeclarationRow(declaration)
             }
             .foregroundStyle(.primary)
+            .disabled(!viewModel.uiState.account.canEdit(.apps))
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                if declaration.state == "DRAFT" {
+                if declaration.state == "DRAFT" && viewModel.uiState.account.canDelete(.apps) {
                     Button(role: .destructive) {
                         viewModel.uiState.confirmDelete = declaration
                     } label: {
@@ -219,12 +220,14 @@ struct AppAccessibilityView<ViewModel: AppAccessibilityViewModelProtocol>: View 
 
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            if !viewModel.uiState.availableDeviceFamilies.isEmpty {
-                Button {
-                    viewModel.uiState.showAddDevice = true
-                } label: {
-                    Image(systemName: "plus")
+        if viewModel.uiState.account.canAdd(.apps) {
+            ToolbarItem(placement: .primaryAction) {
+                if !viewModel.uiState.availableDeviceFamilies.isEmpty {
+                    Button {
+                        viewModel.uiState.showAddDevice = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
                 }
             }
         }

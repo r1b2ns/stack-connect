@@ -103,6 +103,26 @@ struct AccountModel: Codable, Identifiable, Hashable {
         origin == .created
     }
 
+    // MARK: - Permission Checks (respects hierarchy: add→edit→view, delete→edit→view)
+
+    func canView(_ resource: AccountRuleResource) -> Bool {
+        let perms = rules[resource]
+        return perms.contains(.view) || perms.contains(.edit) || perms.contains(.delete) || perms.contains(.add)
+    }
+
+    func canEdit(_ resource: AccountRuleResource) -> Bool {
+        let perms = rules[resource]
+        return perms.contains(.edit) || perms.contains(.delete) || perms.contains(.add)
+    }
+
+    func canDelete(_ resource: AccountRuleResource) -> Bool {
+        rules[resource].contains(.delete)
+    }
+
+    func canAdd(_ resource: AccountRuleResource) -> Bool {
+        rules[resource].contains(.add)
+    }
+
     /// Ensures all rule resources have values for created accounts.
     /// Imported accounts keep their original permissions (even if empty).
     mutating func fillMissingRules() {

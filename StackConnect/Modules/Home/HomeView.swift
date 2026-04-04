@@ -194,7 +194,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
     }
 
     private func accountForApp(_ app: AppModel) -> AccountModel {
-        AccountModel(
+        viewModel.uiState.accountsMap[app.accountId] ?? AccountModel(
             id: app.accountId,
             name: "",
             providerType: .apple

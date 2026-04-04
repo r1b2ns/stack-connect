@@ -37,6 +37,11 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
+    @State private var showPermissionDenied = false
+    @State private var permissionDeniedMessage = ""
+
+    private var account: AccountModel { viewModel.uiState.account }
+
     private var isAppEditable: Bool {
         guard let state = viewModel.uiState.app.appStoreState else { return true }
         return [.prepareForSubmission, .rejected, .readyForReview].contains(state)
@@ -96,6 +101,19 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             }
         }
         .toast(message: $viewModel.uiState.toastMessage)
+        .alert(
+            String(localized: "Permission Denied"),
+            isPresented: $showPermissionDenied
+        ) {
+            Button(String(localized: "OK"), role: .cancel) {}
+        } message: {
+            Text(permissionDeniedMessage)
+        }
+    }
+
+    private func denyPermission(_ message: String) {
+        permissionDeniedMessage = message
+        showPermissionDenied = true
     }
 
     // MARK: - Header
@@ -128,8 +146,10 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
 
     @ViewBuilder
     private func buildPlatformSections() -> some View {
-        ForEach(viewModel.uiState.platformSections) { section in
-            buildPlatformSection(section)
+        if account.canView(.version) {
+            ForEach(viewModel.uiState.platformSections) { section in
+                buildPlatformSection(section)
+            }
         }
     }
 
@@ -190,38 +210,48 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
     private func buildSwipeActions(for version: AppStoreVersionModel) -> some View {
         switch version.appStoreState {
         case .prepareForSubmission:
-            Button {
-                viewModel.uiState.confirmAction = .submitForReview(version)
-            } label: {
-                Label(String(localized: "Submit"), systemImage: "paperplane.fill")
+            if account.canEdit(.version) {
+                Button {
+                    viewModel.uiState.confirmAction = .submitForReview(version)
+                } label: {
+                    Label(String(localized: "Submit"), systemImage: "paperplane.fill")
+                }
+                .tint(.blue)
             }
-            .tint(.blue)
 
-            Button(role: .destructive) {
-                viewModel.uiState.confirmAction = .delete(version)
-            } label: {
-                Label(String(localized: "Delete"), systemImage: "trash")
+            if account.canDelete(.version) {
+                Button(role: .destructive) {
+                    viewModel.uiState.confirmAction = .delete(version)
+                } label: {
+                    Label(String(localized: "Delete"), systemImage: "trash")
+                }
             }
 
         case .pendingDeveloperRelease:
-            Button {
-                viewModel.uiState.confirmAction = .release(version)
-            } label: {
-                Label(String(localized: "Release"), systemImage: "arrow.up.circle.fill")
+            if account.canEdit(.version) {
+                Button {
+                    viewModel.uiState.confirmAction = .release(version)
+                } label: {
+                    Label(String(localized: "Release"), systemImage: "arrow.up.circle.fill")
+                }
+                .tint(.green)
             }
-            .tint(.green)
 
-            Button(role: .destructive) {
-                viewModel.uiState.confirmAction = .reject(version)
-            } label: {
-                Label(String(localized: "Reject"), systemImage: "xmark.circle.fill")
+            if account.canDelete(.version) {
+                Button(role: .destructive) {
+                    viewModel.uiState.confirmAction = .reject(version)
+                } label: {
+                    Label(String(localized: "Reject"), systemImage: "xmark.circle.fill")
+                }
             }
 
         case .inReview, .waitingForReview:
-            Button(role: .destructive) {
-                viewModel.uiState.confirmAction = .cancelReview(version)
-            } label: {
-                Label(String(localized: "Cancel"), systemImage: "xmark.circle.fill")
+            if account.canEdit(.version) {
+                Button(role: .destructive) {
+                    viewModel.uiState.confirmAction = .cancelReview(version)
+                } label: {
+                    Label(String(localized: "Cancel"), systemImage: "xmark.circle.fill")
+                }
             }
 
         default:
@@ -249,19 +279,27 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
     private func buildGeneralSection() -> some View {
         Section {
             Button {
+                guard account.canEdit(.apps) else {
+                    denyPermission(String(localized: "You don't have permission to edit app information."))
+                    return
+                }
                 homeCoordinator.navigateToAppInformation(
                     app: viewModel.uiState.app,
-                    account: viewModel.uiState.account
+                    account: account
                 )
             } label: {
                 buildMenuRow(icon: "info.circle.fill", color: .blue, title: String(localized: "App Information"))
             }
             .disabled(!isAppEditable)
             Button {
+                guard account.canEdit(.apps) else {
+                    denyPermission(String(localized: "You don't have permission to access App Review."))
+                    return
+                }
                 homeCoordinator.navigateToAppReview(
                     appId: viewModel.uiState.app.id,
                     appName: viewModel.uiState.app.name,
-                    account: viewModel.uiState.account
+                    account: account
                 )
             } label: {
                 buildMenuRow(
@@ -272,9 +310,13 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                 )
             }
             Button {
+                guard account.canEdit(.apps) else {
+                    denyPermission(String(localized: "You don't have permission to access app history."))
+                    return
+                }
                 homeCoordinator.navigateToAppHistory(
                     appId: viewModel.uiState.app.id,
-                    account: viewModel.uiState.account
+                    account: account
                 )
             } label: {
                 buildMenuRow(icon: "clock.fill", color: .orange, title: String(localized: "History"))
@@ -289,26 +331,38 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
     private func buildAppStoreSection() -> some View {
         Section {
             Button {
+                guard account.canEdit(.apps) else {
+                    denyPermission(String(localized: "You don't have permission to edit app privacy."))
+                    return
+                }
                 homeCoordinator.navigateToAppPrivacy(
                     appId: viewModel.uiState.app.id,
-                    account: viewModel.uiState.account
+                    account: account
                 )
             } label: {
                 buildMenuRow(icon: "hand.raised.fill", color: .blue, title: String(localized: "App Privacy"))
             }
             Button {
+                guard account.canEdit(.apps) else {
+                    denyPermission(String(localized: "You don't have permission to edit app accessibility."))
+                    return
+                }
                 homeCoordinator.navigateToAppAccessibility(
                     appId: viewModel.uiState.app.id,
-                    account: viewModel.uiState.account
+                    account: account
                 )
             } label: {
                 buildMenuRow(icon: "accessibility", color: .purple, title: String(localized: "App Accessibility"))
             }
             Button {
+                guard account.canView(.review) else {
+                    denyPermission(String(localized: "You don't have permission to view ratings and reviews."))
+                    return
+                }
                 homeCoordinator.navigateToRatingsReviews(
                     appId: viewModel.uiState.app.id,
                     bundleId: viewModel.uiState.app.bundleId,
-                    account: viewModel.uiState.account
+                    account: account
                 )
             } label: {
                 buildMenuRow(icon: "star.fill", color: .yellow, title: String(localized: "Ratings and Reviews"))
@@ -323,9 +377,13 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
     private func buildAnalyticsSection() -> some View {
         Section {
             Button {
+                guard account.canView(.analytics) else {
+                    denyPermission(String(localized: "You don't have permission to view analytics."))
+                    return
+                }
                 homeCoordinator.navigateToAppAnalytics(
                     appId: viewModel.uiState.app.id,
-                    account: viewModel.uiState.account
+                    account: account
                 )
             } label: {
                 buildMenuRow(icon: "chart.bar.fill", color: .purple, title: String(localized: "Analytics"))
@@ -338,9 +396,13 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
     private func buildTestFlightSection() -> some View {
         Section {
             Button {
+                guard account.canView(.testFlight) else {
+                    denyPermission(String(localized: "You don't have permission to view TestFlight."))
+                    return
+                }
                 homeCoordinator.navigateToTestFlight(
                     appId: viewModel.uiState.app.id,
-                    account: viewModel.uiState.account
+                    account: account
                 )
             } label: {
                 buildMenuRow(icon: "airplane", color: .cyan, title: String(localized: "TestFlight"))
@@ -446,11 +508,13 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
 
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            Button {
-                viewModel.uiState.showCreatePlatform = true
-            } label: {
-                Image(systemName: "plus")
+        if account.canAdd(.version) {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    viewModel.uiState.showCreatePlatform = true
+                } label: {
+                    Image(systemName: "plus")
+                }
             }
         }
         ToolbarItemGroup(placement: .bottomBar) {

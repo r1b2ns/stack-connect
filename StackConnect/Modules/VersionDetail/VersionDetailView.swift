@@ -39,10 +39,19 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
     @State private var showBuildBlockedAlert = false
+    @State private var showPermissionDenied = false
+    @State private var permissionDeniedMessage = ""
+
+    private var account: AccountModel { viewModel.uiState.account }
 
     private var isMetadataEditable: Bool {
         guard let state = viewModel.uiState.version.appStoreState else { return false }
         return [.prepareForSubmission, .rejected, .waitingForReview, .readyForReview].contains(state)
+    }
+
+    /// Metadata editable by state AND user has version.edit permission
+    private var canEditMetadata: Bool {
+        isMetadataEditable && account.canEdit(.version)
     }
 
     var body: some View {
@@ -69,7 +78,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             StackTextView(
                 title: String(localized: "Promotional Text"),
                 text: $viewModel.uiState.editPromotionalText,
-                readOnly: !isMetadataEditable,
+                readOnly: !canEditMetadata,
                 onSave: { try await viewModel.updatePromotionalText() }
             )
         }
@@ -77,7 +86,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             StackTextView(
                 title: String(localized: "Description"),
                 text: $viewModel.uiState.editDescription,
-                readOnly: !isMetadataEditable,
+                readOnly: !canEditMetadata,
                 onSave: { try await viewModel.updateDescription() }
             )
         }
@@ -85,7 +94,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             StackTextView(
                 title: String(localized: "What's New"),
                 text: $viewModel.uiState.editWhatsNew,
-                readOnly: !isMetadataEditable,
+                readOnly: !canEditMetadata,
                 onSave: { try await viewModel.updateWhatsNew() }
             )
         }
@@ -105,6 +114,14 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             Button(String(localized: "OK"), role: .cancel) {}
         } message: {
             Text(String(localized: "The current version status does not allow changing the build."))
+        }
+        .alert(
+            String(localized: "Permission Denied"),
+            isPresented: $showPermissionDenied
+        ) {
+            Button(String(localized: "OK"), role: .cancel) {}
+        } message: {
+            Text(permissionDeniedMessage)
         }
         .alert(
             viewModel.uiState.confirmAction?.title ?? "",
@@ -175,7 +192,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         Section {
             // Build row
             Button {
-                if isMetadataEditable {
+                if canEditMetadata {
                     homeCoordinator.navigateToBuildSelection(
                         versionId: viewModel.uiState.version.id,
                         appId: viewModel.uiState.version.appId,
@@ -249,27 +266,27 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             TextField(String(localized: "Keywords"), text: $viewModel.uiState.editKeywords)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-                .disabled(!isMetadataEditable)
+                .disabled(!canEditMetadata)
 
             TextField(String(localized: "Support URL"), text: $viewModel.uiState.editSupportUrl)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .keyboardType(.URL)
-                .disabled(!isMetadataEditable)
+                .disabled(!canEditMetadata)
 
             TextField(String(localized: "Marketing URL"), text: $viewModel.uiState.editMarketingUrl)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .keyboardType(.URL)
-                .disabled(!isMetadataEditable)
+                .disabled(!canEditMetadata)
 
             TextField(String(localized: "Version"), text: $viewModel.uiState.editVersion)
                 .textInputAutocapitalization(.never)
                 .keyboardType(.numbersAndPunctuation)
-                .disabled(!isMetadataEditable)
+                .disabled(!canEditMetadata)
 
             TextField(String(localized: "Copyright"), text: $viewModel.uiState.editCopyright)
-                .disabled(!isMetadataEditable)
+                .disabled(!canEditMetadata)
 
             if let error = viewModel.uiState.groupedFieldsError {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -277,7 +294,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                     .font(.caption)
             }
 
-            if isMetadataEditable {
+            if canEditMetadata {
                 Button {
                     Task { await viewModel.saveGroupedFields() }
                 } label: {
@@ -305,6 +322,11 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
     private func buildActionsSection() -> some View {
         Section {
             Button {
+                guard account.canEdit(.version) else {
+                    permissionDeniedMessage = String(localized: "You don't have permission to edit App Review Information.")
+                    showPermissionDenied = true
+                    return
+                }
                 homeCoordinator.navigateToAppReviewInfo(
                     versionId: viewModel.uiState.version.id,
                     account: viewModel.uiState.account
@@ -314,6 +336,11 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             }
 
             Button {
+                guard account.canEdit(.version) else {
+                    permissionDeniedMessage = String(localized: "You don't have permission to edit App Store Version Release.")
+                    showPermissionDenied = true
+                    return
+                }
                 viewModel.uiState.showReleaseSheet = true
             } label: {
                 buildMenuRowWithSubtitle(
@@ -325,6 +352,11 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             }
 
             Button {
+                guard account.canEdit(.version) else {
+                    permissionDeniedMessage = String(localized: "You don't have permission to edit Phased Release.")
+                    showPermissionDenied = true
+                    return
+                }
                 viewModel.uiState.showPhasedReleaseSheet = true
             } label: {
                 buildMenuRowWithSubtitle(
@@ -354,45 +386,53 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
         switch state {
         case .prepareForSubmission:
-            buildActionBar {
-                buildActionButton(
-                    title: String(localized: "Submit for Review"),
-                    icon: "paperplane.fill",
-                    color: .blue
-                ) {
-                    viewModel.uiState.confirmAction = .submitForReview
+            if account.canEdit(.version) {
+                buildActionBar {
+                    buildActionButton(
+                        title: String(localized: "Submit for Review"),
+                        icon: "paperplane.fill",
+                        color: .blue
+                    ) {
+                        viewModel.uiState.confirmAction = .submitForReview
+                    }
                 }
             }
 
         case .pendingDeveloperRelease:
             buildActionBar {
                 HStack(spacing: 12) {
-                    buildActionButton(
-                        title: String(localized: "Reject"),
-                        icon: "xmark.circle.fill",
-                        color: .red
-                    ) {
-                        viewModel.uiState.confirmAction = .reject
+                    if account.canDelete(.version) {
+                        buildActionButton(
+                            title: String(localized: "Reject"),
+                            icon: "xmark.circle.fill",
+                            color: .red
+                        ) {
+                            viewModel.uiState.confirmAction = .reject
+                        }
                     }
 
-                    buildActionButton(
-                        title: String(localized: "Release"),
-                        icon: "arrow.up.circle.fill",
-                        color: .green
-                    ) {
-                        viewModel.uiState.confirmAction = .release
+                    if account.canEdit(.version) {
+                        buildActionButton(
+                            title: String(localized: "Release"),
+                            icon: "arrow.up.circle.fill",
+                            color: .green
+                        ) {
+                            viewModel.uiState.confirmAction = .release
+                        }
                     }
                 }
             }
 
         case .inReview, .waitingForReview:
-            buildActionBar {
-                buildActionButton(
-                    title: String(localized: "Cancel Review"),
-                    icon: "xmark.circle.fill",
-                    color: .red
-                ) {
-                    viewModel.uiState.confirmAction = .cancelReview
+            if account.canEdit(.version) {
+                buildActionBar {
+                    buildActionButton(
+                        title: String(localized: "Cancel Review"),
+                        icon: "xmark.circle.fill",
+                        color: .red
+                    ) {
+                        viewModel.uiState.confirmAction = .cancelReview
+                    }
                 }
             }
 

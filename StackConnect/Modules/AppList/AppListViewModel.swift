@@ -9,6 +9,8 @@ protocol AppListViewModelProtocol: ObservableObject {
     func loadApps() async
     func toggleArchive(app: AppModel) async
     func toggleFavorite(app: AppModel) async
+    func previewImportName(from url: URL) -> String?
+    func importAccount(from url: URL, customName: String?) async -> String?
 }
 
 // MARK: - UiState
@@ -248,5 +250,114 @@ final class AppListViewModel: AppListViewModelProtocol {
         }
 
         return enrichedApps
+    }
+
+    // MARK: - Import
+
+    func previewImportName(from url: URL) -> String? {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+
+        guard let data = try? Data(contentsOf: url),
+              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let name = dict["name"] as? String, !name.isEmpty else {
+            return nil
+        }
+        return name
+    }
+
+    func importAccount(from url: URL, customName: String?) async -> String? {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+
+        let data: Data
+        do { data = try Data(contentsOf: url) }
+        catch { return String(localized: "Failed to read file.") }
+
+        guard let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return String(localized: "Invalid JSON format.")
+        }
+
+        guard let name = dict["name"] as? String, !name.isEmpty else {
+            return String(localized: "Missing or invalid 'name' field.")
+        }
+        guard let providerRaw = dict["providerType"] as? String,
+              let providerType = ProviderType(rawValue: providerRaw) else {
+            return String(localized: "Missing or invalid 'providerType' field.")
+        }
+        guard providerType == uiState.account.providerType else {
+            return String(localized: "This file contains a \(providerType.displayName) account, but this is the \(uiState.account.providerType.displayName) section.")
+        }
+
+        let emptyRules = AccountRules(apps: [], version: [], users: [], review: [], testFlight: [], analytics: [])
+        var rules = emptyRules
+        if let rulesDict = dict["rules"] as? [String: [String]] {
+            rules = AccountRules(
+                apps: rulesDict["apps"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
+                version: rulesDict["version"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
+                users: rulesDict["users"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
+                review: rulesDict["review"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
+                testFlight: rulesDict["testFlight"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
+                analytics: rulesDict["analytics"]?.compactMap { AccountPermission(rawValue: $0) } ?? []
+            )
+        }
+
+        guard let credsDict = dict["credentials"] as? [String: String] else {
+            return String(localized: "Missing or invalid 'credentials' field.")
+        }
+
+        let allAccounts = (try? await storage.fetchAll(AccountModel.self)) ?? []
+        let sameTypeAccounts = allAccounts.filter { $0.providerType == providerType }
+        let accountId = UUID().uuidString
+
+        switch providerType {
+        case .apple:
+            guard let issuerID = credsDict["issuerID"], !issuerID.isEmpty,
+                  let privateKeyID = credsDict["privateKeyID"], !privateKeyID.isEmpty,
+                  let privateKey = credsDict["privateKey"], !privateKey.isEmpty else {
+                return String(localized: "Invalid Apple credentials.")
+            }
+            for existing in sameTypeAccounts {
+                if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(existing.id)"),
+                   creds.privateKey == privateKey {
+                    return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
+                }
+            }
+            keychain.setObject(AppleCredentials(issuerID: issuerID, privateKeyID: privateKeyID, privateKey: privateKey), forKey: "credentials.\(accountId)")
+        case .firebase:
+            guard let json = credsDict["serviceAccountJSON"], !json.isEmpty else {
+                return String(localized: "Invalid Firebase credentials.")
+            }
+            for existing in sameTypeAccounts {
+                if let creds: FirebaseCredentials = keychain.object(forKey: "credentials.\(existing.id)"),
+                   creds.serviceAccountJSON == json {
+                    return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
+                }
+            }
+            keychain.setObject(FirebaseCredentials(serviceAccountJSON: json), forKey: "credentials.\(accountId)")
+        case .googlePlay:
+            guard let json = credsDict["serviceAccountJSON"], !json.isEmpty else {
+                return String(localized: "Invalid Google Play credentials.")
+            }
+            for existing in sameTypeAccounts {
+                if let creds: GooglePlayCredentials = keychain.object(forKey: "credentials.\(existing.id)"),
+                   creds.serviceAccountJSON == json {
+                    return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
+                }
+            }
+            keychain.setObject(GooglePlayCredentials(serviceAccountJSON: json), forKey: "credentials.\(accountId)")
+        }
+
+        let accountName = (customName?.trimmingCharacters(in: .whitespaces).isEmpty == false)
+            ? customName!.trimmingCharacters(in: .whitespaces) : name
+        let account = AccountModel(id: accountId, name: accountName, providerType: providerType, rules: rules, origin: .imported)
+
+        do {
+            try await storage.save(account, id: account.id)
+            Log.print.info("[AppList] Imported account: \(accountName)")
+            return nil
+        } catch {
+            return String(localized: "Failed to save imported account.")
+        }
     }
 }

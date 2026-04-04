@@ -36,6 +36,8 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
+    private var canEditApps: Bool { viewModel.uiState.account.canEdit(.apps) }
+
     var body: some View {
         Group {
             if viewModel.uiState.isLoading {
@@ -141,6 +143,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
             } label: {
                 buildMenuRow(icon: "globe", color: .blue, title: String(localized: "Manage Localizations"))
             }
+            .disabled(!canEditApps)
         } header: {
             Text("App Name & Localizations")
         }
@@ -182,6 +185,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
                     }
                 }
             }
+            .disabled(!canEditApps)
 
             Button {
                 viewModel.uiState.showContentRightsSheet = true
@@ -196,6 +200,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
                     }
                 }
             }
+            .disabled(!canEditApps)
         } header: {
             Text("General Information")
         }
@@ -223,7 +228,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
                     }
                 }
             }
-            .disabled(viewModel.uiState.ageRating == nil)
+            .disabled(viewModel.uiState.ageRating == nil || !canEditApps)
         } header: {
             Text("Age Rating")
         }

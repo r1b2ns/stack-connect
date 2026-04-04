@@ -26,12 +26,29 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
+    @State private var showDeleteAllConfirmation = false
+
     var body: some View {
         List {
             buildGeneralSection()
+            buildDangerSection()
             buildFooterSection()
         }
         .navigationTitle(String(localized: "Settings"))
+        .alert(
+            String(localized: "Delete All Accounts"),
+            isPresented: $showDeleteAllConfirmation
+        ) {
+            Button(String(localized: "Cancel"), role: .cancel) {}
+            Button(String(localized: "Delete All"), role: .destructive) {
+                Task {
+                    await viewModel.deleteAllAccounts()
+                    homeCoordinator.popToRoot()
+                }
+            }
+        } message: {
+            Text(String(localized: "This will permanently delete all accounts, apps, versions, and credentials from the app. This action cannot be undone."))
+        }
     }
 
     // MARK: - Sections
@@ -57,6 +74,21 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
                 }
             }
             .foregroundStyle(.primary)
+        }
+    }
+
+    private func buildDangerSection() -> some View {
+        Section {
+            Button(role: .destructive) {
+                showDeleteAllConfirmation = true
+            } label: {
+                HStack {
+                    Image(systemName: "trash.fill")
+                        .frame(width: 28)
+
+                    Text(String(localized: "Delete All Accounts"))
+                }
+            }
         }
     }
 
