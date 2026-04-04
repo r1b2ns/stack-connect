@@ -44,7 +44,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
 
     private var isAppEditable: Bool {
         guard let state = viewModel.uiState.app.appStoreState else { return true }
-        return [.prepareForSubmission, .rejected, .readyForReview].contains(state)
+        return [.prepareForSubmission, .rejected, .readyForReview, .waitingForReview, .waitingForExportCompliance].contains(state)
     }
 
     var body: some View {
@@ -290,7 +290,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             } label: {
                 buildMenuRow(icon: "info.circle.fill", color: .blue, title: String(localized: "App Information"))
             }
-            .disabled(!isAppEditable)
+
             Button {
                 guard account.canEdit(.apps) else {
                     denyPermission(String(localized: "You don't have permission to access App Review."))
