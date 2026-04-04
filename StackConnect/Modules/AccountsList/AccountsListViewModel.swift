@@ -7,8 +7,7 @@ protocol AccountsListViewModelProtocol: ObservableObject {
     var uiState: AccountsListUiState { get set }
     func loadAccounts() async
     func deleteAccount(at offsets: IndexSet) async
-    func previewImportName(from url: URL) -> String?
-    func importAccount(from url: URL, customName: String?) async -> String?
+    func importAccount(from url: URL, password: String, customName: String?) async -> String?
 }
 
 // MARK: - UiState
@@ -79,19 +78,7 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
 
     // MARK: - Import
 
-    func previewImportName(from url: URL) -> String? {
-        let accessing = url.startAccessingSecurityScopedResource()
-        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-
-        guard let data = try? Data(contentsOf: url),
-              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let name = dict["name"] as? String, !name.isEmpty else {
-            return nil
-        }
-        return name
-    }
-
-    func importAccount(from url: URL, customName: String?) async -> String? {
+    func importAccount(from url: URL, password: String, customName: String?) async -> String? {
         let accessing = url.startAccessingSecurityScopedResource()
         defer { if accessing { url.stopAccessingSecurityScopedResource() } }
 
@@ -102,7 +89,15 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
             return String(localized: "Failed to read file.")
         }
 
-        guard let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        let jsonString: String
+        do {
+            jsonString = try AccountCrypto.decrypt(data: data, password: password)
+        } catch {
+            return error.localizedDescription
+        }
+
+        guard let jsonData = jsonString.data(using: .utf8),
+              let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
             return String(localized: "Invalid JSON format.")
         }
 

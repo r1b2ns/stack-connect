@@ -3,10 +3,12 @@ import SwiftUI
 struct ExportAccountView: View {
 
     let account: AccountModel
-    let onExport: (String, AccountRules) -> URL?
+    let onExport: (String, AccountRules, String) -> URL?
     let onDismiss: () -> Void
 
     @State private var exportName: String = ""
+    @State private var password: String = ""
+    @State private var confirmPassword: String = ""
     /// nil = not configured; [] = explicitly None; [.view, ...] = selected
     @State private var permissions: [AccountRuleResource: [AccountPermission]?] = [:]
     @State private var editingResource: AccountRuleResource?
@@ -28,6 +30,8 @@ struct ExportAccountView: View {
                 ForEach(resources, id: \.self) { resource in
                     buildResourceSection(resource)
                 }
+
+                buildPasswordSection()
             }
             .navigationTitle(String(localized: "Export Account"))
             .navigationBarTitleDisplayMode(.inline)
@@ -41,10 +45,8 @@ struct ExportAccountView: View {
                     currentPermissions: current
                 ) { result in
                     if let selected = result {
-                        // User chose something (permissions or None)
                         permissions[resource] = .some(selected)
                     } else {
-                        // User chose nothing → back to nil
                         permissions[resource] = .some(nil)
                     }
                     editingResource = nil
@@ -54,7 +56,6 @@ struct ExportAccountView: View {
         }
         .onAppear {
             exportName = account.name
-            // All resources start as nil (not configured)
             for resource in resources {
                 permissions[resource] = .some(nil)
             }
@@ -101,6 +102,25 @@ struct ExportAccountView: View {
         }
     }
 
+    private func buildPasswordSection() -> some View {
+        Section {
+            SecureField(String(localized: "Password"), text: $password)
+                .textContentType(.newPassword)
+
+            SecureField(String(localized: "Confirm Password"), text: $confirmPassword)
+                .textContentType(.newPassword)
+        } header: {
+            Text(String(localized: "Encryption"))
+        } footer: {
+            if !password.isEmpty && !confirmPassword.isEmpty && password != confirmPassword {
+                Text(String(localized: "Passwords do not match."))
+                    .foregroundStyle(.red)
+            } else {
+                Text(String(localized: "The exported file will be encrypted. You will need this password to import the account."))
+            }
+        }
+    }
+
     // MARK: - Toolbar
 
     @ToolbarContentBuilder
@@ -134,7 +154,8 @@ struct ExportAccountView: View {
     private var isExportEnabled: Bool {
         let nameValid = !exportName.trimmingCharacters(in: .whitespaces).isEmpty
         let allResourcesConfigured = resources.allSatisfy { !isResourceNil($0) }
-        return nameValid && allResourcesConfigured
+        let passwordValid = !password.isEmpty && password == confirmPassword
+        return nameValid && allResourcesConfigured && passwordValid
     }
 
     private func subtitleForResource(_ resource: AccountRuleResource) -> String {
@@ -158,7 +179,7 @@ struct ExportAccountView: View {
             analytics: permissionsFor(.analytics)
         )
 
-        _ = onExport(exportName, rules)
+        _ = onExport(exportName, rules, password)
     }
 }
 
@@ -167,4 +188,3 @@ struct ExportAccountView: View {
 extension AccountRuleResource: Identifiable {
     var id: String { rawValue }
 }
-

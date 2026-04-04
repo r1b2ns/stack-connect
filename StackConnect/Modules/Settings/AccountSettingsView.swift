@@ -32,7 +32,7 @@ private struct AccountSettingsEntry: View {
 protocol AccountSettingsViewModelProtocol: ObservableObject {
     var uiState: AccountSettingsUiState { get set }
     func save() async
-    func exportAccountWithRules(exportName: String, rules: AccountRules) -> URL?
+    func exportAccountWithRules(exportName: String, rules: AccountRules, password: String) -> URL?
 }
 
 // MARK: - UiState
@@ -89,7 +89,7 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
         }
     }
 
-    func exportAccountWithRules(exportName: String, rules: AccountRules) -> URL? {
+    func exportAccountWithRules(exportName: String, rules: AccountRules, password: String) -> URL? {
         var exportDict: [String: Any] = [
             "id": uiState.account.id,
             "name": exportName,
@@ -119,6 +119,10 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
             return nil
         }
 
+        guard let encryptedData = try? AccountCrypto.encrypt(json: json, password: password) else {
+            return nil
+        }
+
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let dateString = dateFormatter.string(from: Date())
@@ -126,11 +130,11 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
             .replacingOccurrences(of: " ", with: "-")
             .replacingOccurrences(of: "/", with: "-")
         let accountType = uiState.account.providerType.rawValue
-        let fileName = "\(sanitizedName)-stackconnect-\(accountType)-\(dateString).json"
+        let fileName = "\(sanitizedName)-stackconnect-\(accountType)-\(dateString).scexport"
 
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
         do {
-            try json.write(to: tempURL, atomically: true, encoding: .utf8)
+            try encryptedData.write(to: tempURL)
             return tempURL
         } catch {
             return nil
@@ -168,8 +172,8 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
         .sheet(isPresented: $showExport) {
             ExportAccountView(
                 account: viewModel.uiState.account,
-                onExport: { name, rules in
-                    let url = viewModel.exportAccountWithRules(exportName: name, rules: rules)
+                onExport: { name, rules, password in
+                    let url = viewModel.exportAccountWithRules(exportName: name, rules: rules, password: password)
                     showExport = false
                     if let url {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
