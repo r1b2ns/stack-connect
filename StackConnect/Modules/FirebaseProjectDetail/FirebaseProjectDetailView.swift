@@ -58,6 +58,7 @@ struct FirebaseProjectDetailView<ViewModel: FirebaseProjectDetailViewModelProtoc
                     .foregroundStyle(.secondary)
                 Button {
                     UIPasteboard.general.string = viewModel.uiState.project.projectId
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 } label: {
                     Image(systemName: "doc.on.doc")
                         .font(.caption)

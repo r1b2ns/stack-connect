@@ -13,6 +13,7 @@ protocol AppDetailViewModelProtocol: ObservableObject {
     func releaseVersion(_ version: AppStoreVersionModel) async
     func rejectVersion(_ version: AppStoreVersionModel) async
     func toggleFavorite() async
+    func toggleArchive() async
 }
 
 // MARK: - UiState
@@ -136,20 +137,37 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
     }
 
     func refresh() async {
-        uiState.isLoading = true
-
-        // 1. Load cached versions from SwiftData
+        // 1. Load cached versions from SwiftData FIRST (offline-first)
         do {
             let cached: [AppStoreVersionModel] = try await storage.fetchAll(AppStoreVersionModel.self)
             let appVersions = cached.filter { $0.appId == self.uiState.app.id }
             if !appVersions.isEmpty {
                 uiState.versions = appVersions
+                Log.print.info("[AppDetail] Loaded \(appVersions.count) cached versions for \(self.uiState.app.name)")
             }
         } catch {
             Log.print.error("[AppDetail] Failed to load cached versions: \(error.localizedDescription)")
         }
 
-        // 2. Sync from API
+        // 2. Load cached app data (icon, state, etc.)
+        do {
+            if let cachedApp: AppModel = try await storage.fetch(AppModel.self, id: "\(self.uiState.account.id).\(self.uiState.app.id)") {
+                if let icon = cachedApp.iconUrl { uiState.app.iconUrl = icon }
+                if let state = cachedApp.appStoreState { uiState.app.appStoreState = state }
+                if let version = cachedApp.versionString { uiState.app.versionString = version }
+                uiState.app.hasReviewPending = cachedApp.hasReviewPending
+                uiState.app.isFavorite = cachedApp.isFavorite
+            }
+        } catch {
+            Log.print.error("[AppDetail] Failed to load cached app: \(error.localizedDescription)")
+        }
+
+        // 3. Only show loading spinner if we have no cached data
+        if uiState.versions.isEmpty {
+            uiState.isLoading = true
+        }
+
+        // 4. Sync from API
         do {
             guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(self.uiState.account.id)") else {
                 uiState.isLoading = false
@@ -176,12 +194,25 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             if let s = state.state { uiState.app.appStoreState = AppStoreState(rawValue: s) }
             if let v = state.version { uiState.app.versionString = v }
 
+            // Mark review pending flag based on current state
+            uiState.app.hasReviewPending = uiState.app.appStoreState?.isReviewPending ?? false
+
             uiState.versions = versions
 
-            // 3. Persist to SwiftData
-            try await storage.save(uiState.app, id: "\(self.uiState.account.id).\(self.uiState.app.id)")
+            // 5. Persist to SwiftData (separate try blocks to ensure partial saves succeed)
+            do {
+                try await storage.save(uiState.app, id: "\(self.uiState.account.id).\(self.uiState.app.id)")
+                Log.print.info("[AppDetail] Persisted app data for \(self.uiState.app.name)")
+            } catch {
+                Log.print.error("[AppDetail] Failed to persist app: \(error.localizedDescription)")
+            }
+
             for version in versions {
-                try await storage.save(version, id: "version.\(version.id)")
+                do {
+                    try await storage.save(version, id: "version.\(version.id)")
+                } catch {
+                    Log.print.error("[AppDetail] Failed to persist version \(version.id): \(error.localizedDescription)")
+                }
             }
 
             Log.print.info("[AppDetail] Synced \(versions.count) versions for \(self.uiState.app.name)")
@@ -334,6 +365,21 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
         } catch {
             uiState.app.isFavorite.toggle() // revert
             Log.print.error("[AppDetail] Toggle favorite failed: \(error.localizedDescription)")
+        }
+    }
+
+    func toggleArchive() async {
+        uiState.app.isArchived.toggle()
+        do {
+            try await storage.save(uiState.app, id: "\(uiState.account.id).\(uiState.app.id)")
+            let text = uiState.app.isArchived
+                ? String(localized: "Archived")
+                : String(localized: "Unarchived")
+            uiState.toastMessage = ToastMessage(text, icon: uiState.app.isArchived ? "archivebox.fill" : "archivebox")
+            Log.print.info("[AppDetail] Toggled archive for \(self.uiState.app.name): \(self.uiState.app.isArchived)")
+        } catch {
+            uiState.app.isArchived.toggle() // revert
+            Log.print.error("[AppDetail] Toggle archive failed: \(error.localizedDescription)")
         }
     }
 

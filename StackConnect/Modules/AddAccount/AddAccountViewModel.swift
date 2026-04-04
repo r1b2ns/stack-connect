@@ -56,6 +56,13 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
         uiState.validationError = nil
 
         do {
+            // Check for duplicate credentials
+            if let duplicateError = await checkDuplicateCredentials() {
+                uiState.validationError = duplicateError
+                uiState.isValidating = false
+                return
+            }
+
             let account = AccountModel(
                 name: uiState.accountName.trimmingCharacters(in: .whitespaces),
                 providerType: uiState.providerType
@@ -126,5 +133,40 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
         }
 
         uiState.isValidating = false
+    }
+
+    // MARK: - Private
+
+    private func checkDuplicateCredentials() async -> String? {
+        guard let allAccounts = try? await storage.fetchAll(AccountModel.self) else { return nil }
+        let sameTypeAccounts = allAccounts.filter { $0.providerType == uiState.providerType }
+
+        for existing in sameTypeAccounts {
+            switch uiState.providerType {
+            case .apple:
+                if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(existing.id)") {
+                    let newKey = uiState.privateKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if creds.privateKey == newKey {
+                        return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
+                    }
+                }
+            case .firebase:
+                if let creds: FirebaseCredentials = keychain.object(forKey: "credentials.\(existing.id)") {
+                    let newJSON = uiState.firebaseJSON.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if creds.serviceAccountJSON == newJSON {
+                        return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
+                    }
+                }
+            case .googlePlay:
+                if let creds: GooglePlayCredentials = keychain.object(forKey: "credentials.\(existing.id)") {
+                    let newJSON = uiState.googlePlayJSON.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if creds.serviceAccountJSON == newJSON {
+                        return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
+                    }
+                }
+            }
+        }
+
+        return nil
     }
 }
