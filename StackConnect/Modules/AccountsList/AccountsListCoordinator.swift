@@ -2,7 +2,9 @@ import SwiftUI
 
 final class AccountsListCoordinator: MainCoordinatorProtocol {
     @Published var path = NavigationPath()
+    @Published var showAddOptions = false
     @Published var showAddAccount = false
+    @Published var showImport = false
 
     let providerType: ProviderType
 
@@ -10,7 +12,17 @@ final class AccountsListCoordinator: MainCoordinatorProtocol {
         self.providerType = providerType
     }
 
+    func presentAddOptions() {
+        showAddOptions = true
+    }
+
     func presentAddAccount() {
+        showAddOptions = false
         showAddAccount = true
+    }
+
+    func presentImport() {
+        showAddOptions = false
+        showImport = true
     }
 }

@@ -273,6 +273,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
                 .multilineTextAlignment(.trailing)
             Button {
                 UIPasteboard.general.string = value
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
             } label: {
                 Image(systemName: "doc.on.doc")
                     .font(.caption)

@@ -232,6 +232,7 @@ final class AppListViewModel: AppListViewModelProtocol {
                 if let state = e.appStoreState { enriched.appStoreState = state }
                 if let ver = e.versionString { enriched.versionString = ver }
                 if let date = e.lastModifiedDate { enriched.lastModifiedDate = date }
+                enriched.hasReviewPending = enriched.appStoreState?.isReviewPending ?? false
             }
             return enriched
         }

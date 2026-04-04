@@ -37,6 +37,11 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
+    private var isAppEditable: Bool {
+        guard let state = viewModel.uiState.app.appStoreState else { return true }
+        return [.prepareForSubmission, .rejected, .readyForReview].contains(state)
+    }
+
     var body: some View {
         List {
             buildHeaderSection()
@@ -251,6 +256,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             } label: {
                 buildMenuRow(icon: "info.circle.fill", color: .blue, title: String(localized: "App Information"))
             }
+            .disabled(!isAppEditable)
             Button {
                 homeCoordinator.navigateToAppReview(
                     appId: viewModel.uiState.app.id,
@@ -448,12 +454,18 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             }
         }
         ToolbarItemGroup(placement: .bottomBar) {
-            Spacer()
             Button {
                 Task { await viewModel.toggleFavorite() }
             } label: {
                 Image(systemName: viewModel.uiState.app.isFavorite ? "star.fill" : "star")
                     .foregroundStyle(viewModel.uiState.app.isFavorite ? .yellow : .secondary)
+            }
+            Spacer()
+            Button {
+                Task { await viewModel.toggleArchive() }
+            } label: {
+                Image(systemName: viewModel.uiState.app.isArchived ? "archivebox.fill" : "archivebox")
+                    .foregroundStyle(viewModel.uiState.app.isArchived ? .orange : .secondary)
             }
         }
     }

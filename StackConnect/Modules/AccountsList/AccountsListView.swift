@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Factory
 
@@ -37,15 +38,34 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
     @EnvironmentObject private var coordinator: AccountsListCoordinator
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
+    @State private var importError = ""
+    @State private var showImportError = false
+
     var body: some View {
         buildContent()
             .navigationTitle(viewModel.uiState.providerType.displayName)
             .toolbar { buildToolbar() }
+            .sheet(isPresented: $coordinator.showAddOptions) {
+                buildAddOptionsSheet()
+                    .presentationDetents([.medium])
+            }
             .sheet(isPresented: $coordinator.showAddAccount) {
                 AddAccountViewFactory.build(providerType: viewModel.uiState.providerType) {
                     coordinator.showAddAccount = false
                     Task { await viewModel.loadAccounts() }
                 }
+            }
+            .sheet(isPresented: $coordinator.showImport) {
+                buildImportSheet()
+                    .presentationDetents([.medium])
+            }
+            .alert(
+                String(localized: "Import Error"),
+                isPresented: $showImportError
+            ) {
+                Button(String(localized: "OK"), role: .cancel) {}
+            } message: {
+                Text(importError)
             }
             .task { await viewModel.loadAccounts() }
     }
@@ -107,6 +127,17 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                     .fontWeight(.medium)
                     .foregroundStyle(.primary)
 
+                if account.origin == .imported {
+                    Text(String(localized: "imported"))
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.yellow)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.yellow.opacity(0.15))
+                        .clipShape(Capsule())
+                }
+
                 Spacer()
 
                 Image(systemName: "chevron.right")
@@ -117,15 +148,151 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
         .foregroundStyle(.primary)
     }
 
+    // MARK: - Add Options Sheet
+
+    private func buildAddOptionsSheet() -> some View {
+        NavigationStack {
+            List {
+                Button {
+                    coordinator.presentAddAccount()
+                } label: {
+                    Label(String(localized: "Create New"), systemImage: "plus.circle.fill")
+                }
+
+                Button {
+                    coordinator.presentImport()
+                } label: {
+                    Label(String(localized: "Import"), systemImage: "square.and.arrow.down.fill")
+                }
+            }
+            .navigationTitle(String(localized: "Add Account"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "Cancel")) {
+                        coordinator.showAddOptions = false
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Import Sheet
+
+    private func buildImportSheet() -> some View {
+        AccountsListImportSheet(
+            onImport: { url, customName in
+                Task {
+                    let error = await viewModel.importAccount(from: url, customName: customName)
+                    if let error {
+                        importError = error
+                        showImportError = true
+                    } else {
+                        coordinator.showImport = false
+                    }
+                }
+            },
+            onPreviewName: { url in
+                viewModel.previewImportName(from: url)
+            },
+            onCancel: {
+                coordinator.showImport = false
+            }
+        )
+    }
+
     // MARK: - Toolbar
 
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
             Button {
-                coordinator.presentAddAccount()
+                coordinator.presentAddOptions()
             } label: {
                 Image(systemName: "plus")
+            }
+        }
+    }
+}
+
+// MARK: - Import Sheet
+
+private struct AccountsListImportSheet: View {
+
+    let onImport: (URL, String?) -> Void
+    let onPreviewName: (URL) -> String?
+    let onCancel: () -> Void
+
+    @State private var showFilePicker = false
+    @State private var showNameAlert = false
+    @State private var customName = ""
+    @State private var selectedURL: URL?
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                Spacer()
+
+                Image(systemName: "doc.badge.arrow.up.fill")
+                    .font(.system(size: 60))
+                    .foregroundStyle(.gray)
+
+                Text(String(localized: "Import a JSON file containing your account credentials."))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+
+                Button {
+                    showFilePicker = true
+                } label: {
+                    Label(String(localized: "Import File"), systemImage: "square.and.arrow.down")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .padding(.horizontal, 32)
+
+                Spacer()
+            }
+            .navigationTitle(String(localized: "Import"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "Cancel")) { onCancel() }
+                }
+            }
+            .fileImporter(
+                isPresented: $showFilePicker,
+                allowedContentTypes: [.json],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    if let url = urls.first {
+                        selectedURL = url
+                        customName = onPreviewName(url) ?? ""
+                        showNameAlert = true
+                    }
+                case .failure(let error):
+                    Log.print.error("[Import] File picker error: \(error.localizedDescription)")
+                }
+            }
+            .alert(
+                String(localized: "Import Account"),
+                isPresented: $showNameAlert
+            ) {
+                TextField(String(localized: "Account Name"), text: $customName)
+                Button(String(localized: "Cancel"), role: .cancel) {
+                    selectedURL = nil
+                }
+                Button(String(localized: "Import")) {
+                    if let url = selectedURL {
+                        onImport(url, customName)
+                    }
+                    selectedURL = nil
+                }
+            } message: {
+                Text(String(localized: "Choose a name for this account."))
             }
         }
     }

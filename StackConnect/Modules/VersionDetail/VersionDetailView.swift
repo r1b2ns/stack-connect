@@ -38,6 +38,8 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
+    @State private var showBuildBlockedAlert = false
+
     private var isMetadataEditable: Bool {
         guard let state = viewModel.uiState.version.appStoreState else { return false }
         return [.prepareForSubmission, .rejected, .waitingForReview, .readyForReview].contains(state)
@@ -67,6 +69,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             StackTextView(
                 title: String(localized: "Promotional Text"),
                 text: $viewModel.uiState.editPromotionalText,
+                readOnly: !isMetadataEditable,
                 onSave: { try await viewModel.updatePromotionalText() }
             )
         }
@@ -74,6 +77,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             StackTextView(
                 title: String(localized: "Description"),
                 text: $viewModel.uiState.editDescription,
+                readOnly: !isMetadataEditable,
                 onSave: { try await viewModel.updateDescription() }
             )
         }
@@ -81,6 +85,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             StackTextView(
                 title: String(localized: "What's New"),
                 text: $viewModel.uiState.editWhatsNew,
+                readOnly: !isMetadataEditable,
                 onSave: { try await viewModel.updateWhatsNew() }
             )
         }
@@ -92,6 +97,14 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         }
         .safeAreaInset(edge: .bottom) {
             buildBottomBar()
+        }
+        .alert(
+            String(localized: "Build Selection"),
+            isPresented: $showBuildBlockedAlert
+        ) {
+            Button(String(localized: "OK"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "The current version status does not allow changing the build."))
         }
         .alert(
             viewModel.uiState.confirmAction?.title ?? "",
@@ -162,11 +175,15 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         Section {
             // Build row
             Button {
-                homeCoordinator.navigateToBuildSelection(
-                    versionId: viewModel.uiState.version.id,
-                    appId: viewModel.uiState.version.appId,
-                    account: viewModel.uiState.account
-                )
+                if isMetadataEditable {
+                    homeCoordinator.navigateToBuildSelection(
+                        versionId: viewModel.uiState.version.id,
+                        appId: viewModel.uiState.version.appId,
+                        account: viewModel.uiState.account
+                    )
+                } else {
+                    showBuildBlockedAlert = true
+                }
             } label: {
                 HStack(spacing: 12) {
                     buildIconSquare(icon: "hammer.fill", color: .gray)
@@ -214,17 +231,14 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             Button { viewModel.uiState.showPromotionalText = true } label: {
                 buildMenuRow(icon: "text.badge.star", color: .purple, title: String(localized: "Promotional Text"))
             }
-            .disabled(!isMetadataEditable)
 
             Button { viewModel.uiState.showDescription = true } label: {
                 buildMenuRow(icon: "doc.text.fill", color: .indigo, title: String(localized: "Description"))
             }
-            .disabled(!isMetadataEditable)
 
             Button { viewModel.uiState.showWhatsNew = true } label: {
                 buildMenuRow(icon: "sparkles", color: .orange, title: String(localized: "What's New"))
             }
-            .disabled(!isMetadataEditable)
         }
     }
 
@@ -327,6 +341,15 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
     @ViewBuilder
     private func buildBottomBar() -> some View {
+        if viewModel.uiState.isLoading {
+            EmptyView()
+        } else {
+            buildBottomBarContent()
+        }
+    }
+
+    @ViewBuilder
+    private func buildBottomBarContent() -> some View {
         let state = viewModel.uiState.version.appStoreState
 
         switch state {
