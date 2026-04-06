@@ -5,6 +5,7 @@ import SwiftData
 struct StackConnectApp: App {
 
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject private var subscriptionService = SubscriptionService()
     @State private var showWelcome = !UserDefaults.standard.bool(forKey: "hasSeenWelcome")
 
     private let modelContainer: ModelContainer
@@ -21,15 +22,25 @@ struct StackConnectApp: App {
 
     var body: some Scene {
         WindowGroup {
-            HomeViewFactory.build()
-                .modelContainer(modelContainer)
-                .sheet(isPresented: $showWelcome) {
-                    WelcomeView {
-                        UserDefaults.standard.set(true, forKey: "hasSeenWelcome")
-                        showWelcome = false
-                    }
-                    .interactiveDismissDisabled(true)
+            Group {
+                if subscriptionService.isSubscribed {
+                    HomeViewFactory.build()
+                } else {
+                    PaywallView()
                 }
+            }
+            .environmentObject(subscriptionService)
+            .modelContainer(modelContainer)
+            .sheet(isPresented: $showWelcome) {
+                WelcomeView {
+                    UserDefaults.standard.set(true, forKey: "hasSeenWelcome")
+                    showWelcome = false
+                }
+                .interactiveDismissDisabled(true)
+            }
+            .task {
+                await subscriptionService.checkEntitlements()
+            }
         }
     }
 }

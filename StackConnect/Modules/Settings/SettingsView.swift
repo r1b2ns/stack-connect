@@ -25,11 +25,13 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
+    @EnvironmentObject private var subscriptionService: SubscriptionService
 
     @State private var showDeleteAllConfirmation = false
 
     var body: some View {
         List {
+            buildSubscriptionSection()
             buildGeneralSection()
             buildDangerSection()
             buildFooterSection()
@@ -48,6 +50,37 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
             }
         } message: {
             Text(String(localized: "This will permanently delete all accounts, apps, versions, and credentials from the app. This action cannot be undone."))
+        }
+    }
+
+    // MARK: - Subscription Section
+
+    private func buildSubscriptionSection() -> some View {
+        Section {
+            HStack {
+                Image(systemName: "crown.fill")
+                    .foregroundStyle(.orange)
+                    .frame(width: 28)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(String(localized: "Subscription"))
+                        .foregroundStyle(.primary)
+
+                    if let tier = subscriptionService.currentTier {
+                        Text(tier.displayName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                if let tier = subscriptionService.currentTier {
+                    Text(tier.canExport ? String(localized: "Export enabled") : String(localized: "Export disabled"))
+                        .font(.caption)
+                        .foregroundStyle(tier.canExport ? .green : .orange)
+                }
+            }
         }
     }
 

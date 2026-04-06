@@ -147,10 +147,12 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
 struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
+    @EnvironmentObject private var subscriptionService: SubscriptionService
 
     @State private var showExport = false
     @State private var shareItem: ShareableFileURL?
     @State private var showNameEdit = false
+    @State private var showUpgradeAlert = false
 
     private let resources: [AccountRuleResource] = [
         .apps, .version, .review, .testFlight, .analytics, .users
@@ -198,6 +200,14 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
             }
         } message: {
             Text(String(localized: "Enter a new name for this account."))
+        }
+        .alert(
+            String(localized: "Upgrade Required"),
+            isPresented: $showUpgradeAlert
+        ) {
+            Button(String(localized: "OK"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "Exporting accounts is available on Team and Lifetime plans. Upgrade your subscription to unlock this feature."))
         }
     }
 
@@ -281,7 +291,11 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
     private func buildExportSection() -> some View {
         Section {
             Button {
-                showExport = true
+                if subscriptionService.currentTier?.canExport == true {
+                    showExport = true
+                } else {
+                    showUpgradeAlert = true
+                }
             } label: {
                 Label(String(localized: "Export Account"), systemImage: "square.and.arrow.up")
             }
