@@ -70,19 +70,35 @@ enum BillingPeriod: String, CaseIterable {
 @MainActor
 final class SubscriptionService: ObservableObject {
 
+    private static let importedAccessKey = "subscription.hasImportedAccess"
+
     @Published var currentTier: SubscriptionTier?
     @Published var products: [Product] = []
     @Published var isLoading = false
     @Published var purchaseError: String?
+    @Published var hasImportedAccess: Bool
 
+    /// User has access via subscription OR imported account
     var isSubscribed: Bool {
-        currentTier != nil
+        currentTier != nil || hasImportedAccess
     }
 
     private var transactionListener: Task<Void, Never>?
 
     init() {
+        self.hasImportedAccess = UserDefaults.standard.bool(forKey: Self.importedAccessKey)
         transactionListener = listenForTransactions()
+    }
+
+    func grantImportedAccess() {
+        hasImportedAccess = true
+        UserDefaults.standard.set(true, forKey: Self.importedAccessKey)
+        Log.print.info("[Subscription] Granted imported access")
+    }
+
+    func revokeImportedAccess() {
+        hasImportedAccess = false
+        UserDefaults.standard.set(false, forKey: Self.importedAccessKey)
     }
 
     deinit {

@@ -25,19 +25,19 @@ struct StackConnectApp: App {
             Group {
                 if subscriptionService.isSubscribed {
                     HomeViewFactory.build()
+                        .sheet(isPresented: $showWelcome) {
+                            WelcomeView {
+                                UserDefaults.standard.set(true, forKey: "hasSeenWelcome")
+                                showWelcome = false
+                            }
+                            .interactiveDismissDisabled(true)
+                        }
                 } else {
                     PaywallView()
                 }
             }
             .environmentObject(subscriptionService)
             .modelContainer(modelContainer)
-            .sheet(isPresented: $showWelcome) {
-                WelcomeView {
-                    UserDefaults.standard.set(true, forKey: "hasSeenWelcome")
-                    showWelcome = false
-                }
-                .interactiveDismissDisabled(true)
-            }
             .task {
                 await subscriptionService.checkEntitlements()
             }

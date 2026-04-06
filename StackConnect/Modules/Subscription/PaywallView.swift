@@ -1,5 +1,6 @@
 import SwiftUI
 import StoreKit
+import UniformTypeIdentifiers
 
 struct PaywallView: View {
 
@@ -8,6 +9,17 @@ struct PaywallView: View {
     @State private var selectedPlan: SubscriptionTier = .individual
     @State private var billingPeriod: BillingPeriod = .yearly
     @State private var isPurchasing = false
+
+    // Import flow
+    @State private var showImportPicker = false
+    @State private var showImportPasswordAlert = false
+    @State private var showImportError = false
+    @State private var showImportNameAlert = false
+    @State private var importPassword = ""
+    @State private var importCustomName = ""
+    @State private var importErrorMessage = ""
+    @State private var selectedImportURL: URL?
+    @State private var isImporting = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,6 +41,67 @@ struct PaywallView: View {
         }
         .background(Color(.systemGroupedBackground))
         .task { await subscriptionService.loadProducts() }
+        .fileImporter(
+            isPresented: $showImportPicker,
+            allowedContentTypes: [.data],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    selectedImportURL = url
+                    importPassword = ""
+                    showImportPasswordAlert = true
+                }
+            case .failure(let error):
+                Log.print.error("[Paywall] File picker error: \(error.localizedDescription)")
+            }
+        }
+        .alert(
+            String(localized: "Enter Password"),
+            isPresented: $showImportPasswordAlert
+        ) {
+            SecureField(String(localized: "Password"), text: $importPassword)
+            Button(String(localized: "Cancel"), role: .cancel) {
+                selectedImportURL = nil
+                importPassword = ""
+            }
+            Button(String(localized: "Decrypt")) {
+                tryDecryptImport()
+            }
+        } message: {
+            Text(String(localized: "Enter the password used to encrypt this file."))
+        }
+        .alert(
+            String(localized: "Decryption Failed"),
+            isPresented: $showImportError
+        ) {
+            Button(String(localized: "Try Again")) {
+                importPassword = ""
+                showImportPasswordAlert = true
+            }
+            Button(String(localized: "Cancel"), role: .cancel) {
+                selectedImportURL = nil
+                importPassword = ""
+            }
+        } message: {
+            Text(importErrorMessage)
+        }
+        .alert(
+            String(localized: "Import Account"),
+            isPresented: $showImportNameAlert
+        ) {
+            TextField(String(localized: "Account Name"), text: $importCustomName)
+            Button(String(localized: "Cancel"), role: .cancel) {
+                selectedImportURL = nil
+                importPassword = ""
+            }
+            Button(String(localized: "Import")) {
+                Task { await performImport() }
+            }
+        } message: {
+            Text(String(localized: "Choose a name for this account."))
+        }
     }
 
     // MARK: - Header
@@ -217,14 +290,24 @@ struct PaywallView: View {
             .disabled(isPurchasing || subscriptionService.isLoading || selectedProduct == nil)
             .padding(.horizontal, 20)
 
-            Button {
-                Task {
-                    await subscriptionService.restorePurchases()
+            HStack(spacing: 24) {
+                Button {
+                    Task {
+                        await subscriptionService.restorePurchases()
+                    }
+                } label: {
+                    Text(String(localized: "Restore Purchases"))
+                        .font(.subheadline)
+                        .foregroundStyle(.accent)
                 }
-            } label: {
-                Text(String(localized: "Restore Purchases"))
-                    .font(.subheadline)
-                    .foregroundStyle(.accent)
+
+                Button {
+                    showImportPicker = true
+                } label: {
+                    Text(String(localized: "Import Account"))
+                        .font(.subheadline)
+                        .foregroundStyle(.accent)
+                }
             }
 
             if let error = subscriptionService.purchaseError {
@@ -290,5 +373,188 @@ struct PaywallView: View {
         isPurchasing = true
         _ = await subscriptionService.purchase(product)
         isPurchasing = false
+    }
+
+    // MARK: - Import Flow
+
+    private func tryDecryptImport() {
+        guard let url = selectedImportURL else { return }
+
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+
+        guard let data = try? Data(contentsOf: url) else {
+            importErrorMessage = String(localized: "Failed to read file.")
+            showImportError = true
+            return
+        }
+
+        do {
+            let json = try AccountCrypto.decrypt(data: data, password: importPassword)
+            if let jsonData = json.data(using: .utf8),
+               let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+               let name = dict["name"] as? String {
+                importCustomName = name
+            } else {
+                importCustomName = ""
+            }
+            showImportNameAlert = true
+        } catch {
+            importErrorMessage = error.localizedDescription
+            showImportError = true
+        }
+    }
+
+    private func performImport() async {
+        guard let url = selectedImportURL else { return }
+        isImporting = true
+
+        let importer = AccountImporter()
+        let error = await importer.importAccount(
+            from: url,
+            password: importPassword,
+            customName: importCustomName
+        )
+
+        if let error {
+            importErrorMessage = error
+            showImportError = true
+        } else {
+            // Grant access to the app
+            subscriptionService.grantImportedAccess()
+        }
+
+        selectedImportURL = nil
+        importPassword = ""
+        isImporting = false
+    }
+}
+
+// MARK: - Account Importer
+
+@MainActor
+private struct AccountImporter {
+
+    private let storage: PersistentStorable
+    private let keychain: KeyStorable
+
+    init(
+        storage: PersistentStorable? = nil,
+        keychain: KeyStorable = KeychainStorable.shared
+    ) {
+        self.storage = storage ?? SwiftDataStorable.shared
+        self.keychain = keychain
+    }
+
+    /// Imports an encrypted account file. Returns nil on success or error message.
+    func importAccount(from url: URL, password: String, customName: String?) async -> String? {
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch {
+            return String(localized: "Failed to read file.")
+        }
+
+        let jsonString: String
+        do {
+            jsonString = try AccountCrypto.decrypt(data: data, password: password)
+        } catch {
+            return error.localizedDescription
+        }
+
+        guard let jsonData = jsonString.data(using: .utf8),
+              let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
+            return String(localized: "Invalid JSON format.")
+        }
+
+        guard let name = dict["name"] as? String, !name.isEmpty else {
+            return String(localized: "Missing or invalid 'name' field.")
+        }
+        guard let providerRaw = dict["providerType"] as? String,
+              let providerType = ProviderType(rawValue: providerRaw) else {
+            return String(localized: "Missing or invalid 'providerType' field.")
+        }
+
+        let emptyRules = AccountRules(apps: [], version: [], users: [], review: [], testFlight: [], analytics: [])
+        var rules = emptyRules
+        if let rulesDict = dict["rules"] as? [String: [String]] {
+            rules = AccountRules(
+                apps: rulesDict["apps"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
+                version: rulesDict["version"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
+                users: rulesDict["users"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
+                review: rulesDict["review"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
+                testFlight: rulesDict["testFlight"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
+                analytics: rulesDict["analytics"]?.compactMap { AccountPermission(rawValue: $0) } ?? []
+            )
+        }
+
+        guard let credsDict = dict["credentials"] as? [String: String] else {
+            return String(localized: "Missing or invalid 'credentials' field.")
+        }
+
+        // Check duplicates
+        let allAccounts = (try? await storage.fetchAll(AccountModel.self)) ?? []
+        let sameTypeAccounts = allAccounts.filter { $0.providerType == providerType }
+        let accountId = UUID().uuidString
+
+        switch providerType {
+        case .apple:
+            guard let issuerID = credsDict["issuerID"], !issuerID.isEmpty,
+                  let privateKeyID = credsDict["privateKeyID"], !privateKeyID.isEmpty,
+                  let privateKey = credsDict["privateKey"], !privateKey.isEmpty else {
+                return String(localized: "Invalid Apple credentials.")
+            }
+            for existing in sameTypeAccounts {
+                if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(existing.id)"),
+                   creds.privateKey == privateKey {
+                    return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
+                }
+            }
+            keychain.setObject(AppleCredentials(issuerID: issuerID, privateKeyID: privateKeyID, privateKey: privateKey), forKey: "credentials.\(accountId)")
+        case .firebase:
+            guard let json = credsDict["serviceAccountJSON"], !json.isEmpty else {
+                return String(localized: "Invalid Firebase credentials.")
+            }
+            for existing in sameTypeAccounts {
+                if let creds: FirebaseCredentials = keychain.object(forKey: "credentials.\(existing.id)"),
+                   creds.serviceAccountJSON == json {
+                    return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
+                }
+            }
+            keychain.setObject(FirebaseCredentials(serviceAccountJSON: json), forKey: "credentials.\(accountId)")
+        case .googlePlay:
+            guard let json = credsDict["serviceAccountJSON"], !json.isEmpty else {
+                return String(localized: "Invalid Google Play credentials.")
+            }
+            for existing in sameTypeAccounts {
+                if let creds: GooglePlayCredentials = keychain.object(forKey: "credentials.\(existing.id)"),
+                   creds.serviceAccountJSON == json {
+                    return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
+                }
+            }
+            keychain.setObject(GooglePlayCredentials(serviceAccountJSON: json), forKey: "credentials.\(accountId)")
+        }
+
+        let accountName = (customName?.trimmingCharacters(in: .whitespaces).isEmpty == false)
+            ? customName!.trimmingCharacters(in: .whitespaces)
+            : name
+        let account = AccountModel(
+            id: accountId,
+            name: accountName,
+            providerType: providerType,
+            rules: rules,
+            origin: .imported
+        )
+
+        do {
+            try await storage.save(account, id: account.id)
+            Log.print.info("[Paywall] Imported account: \(accountName)")
+            return nil
+        } catch {
+            return String(localized: "Failed to save imported account.")
+        }
     }
 }
