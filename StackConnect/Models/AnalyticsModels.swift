@@ -40,6 +40,37 @@ struct AnalyticsMetric: Identifiable {
     }
 }
 
+struct AnalyticsSeriesDataPoint: Identifiable, Hashable {
+    let id = UUID()
+    var date: Date
+    var value: Double
+    var series: String
+}
+
+struct AnalyticsMultiSeriesMetric: Identifiable {
+    let id: String
+    var title: String
+    var icon: String
+    var dataPoints: [AnalyticsSeriesDataPoint]
+    var isLoading: Bool = false
+    var error: String?
+
+    var seriesNames: [String] {
+        Array(Set(dataPoints.map(\.series))).sorted()
+    }
+
+    func total(for series: String) -> Double {
+        dataPoints.filter { $0.series == series }.reduce(0) { $0 + $1.value }
+    }
+
+    func formattedTotal(for series: String) -> String {
+        let value = total(for: series)
+        if value >= 1_000_000 { return String(format: "%.1fM", value / 1_000_000) }
+        if value >= 1_000 { return String(format: "%.1fK", value / 1_000) }
+        return String(format: "%.0f", value)
+    }
+}
+
 enum AnalyticsDateRange: String, CaseIterable, Identifiable {
     case last7Days = "7d"
     case last30Days = "30d"

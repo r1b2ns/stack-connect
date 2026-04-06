@@ -34,19 +34,42 @@ struct AppAnalyticsView<ViewModel: AppAnalyticsViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
 
+    @State private var shareItem: ShareableURL?
+
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Analytics"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar { buildToolbar() }
             .task { await viewModel.load() }
             .refreshable { await viewModel.load() }
+            .sheet(item: $shareItem) { item in
+                AnalyticsShareSheet(activityItems: [item.url])
+            }
+    }
+
+    // MARK: - Toolbar
+
+    @ToolbarContentBuilder
+    private func buildToolbar() -> some ToolbarContent {
+        if !viewModel.uiState.isLoading && !viewModel.uiState.availableDates.isEmpty {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    if let zip = AnalyticsFileCache.exportAsZip(appId: viewModel.uiState.appId) {
+                        shareItem = ShareableURL(url: zip)
+                    }
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                }
+            }
+        }
     }
 
     // MARK: - Content
 
     @ViewBuilder
     private func buildContent() -> some View {
-        if viewModel.uiState.isLoading && viewModel.uiState.metrics.allSatisfy({ $0.isLoading }) {
+        if viewModel.uiState.isLoading && viewModel.uiState.installsDeletes.isLoading {
             VStack(spacing: 16) {
                 ProgressView()
                 Text(String(localized: "Loading analytics..."))
@@ -61,7 +84,7 @@ struct AppAnalyticsView<ViewModel: AppAnalyticsViewModelProtocol>: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.uiState.isFirstTimeSetup {
             buildFirstTimeSetup()
-        } else if let error = viewModel.uiState.error, viewModel.uiState.metrics.allSatisfy({ $0.dataPoints.isEmpty }) {
+        } else if let error = viewModel.uiState.error, viewModel.uiState.installsDeletes.dataPoints.isEmpty && viewModel.uiState.downloads.dataPoints.isEmpty {
             buildErrorState(error)
         } else {
             buildScrollContent()
@@ -97,7 +120,8 @@ struct AppAnalyticsView<ViewModel: AppAnalyticsViewModelProtocol>: View {
     private func buildScrollContent() -> some View {
         ScrollView {
             VStack(spacing: 16) {
-                buildDateFilter()
+                buildDateRangeTip()
+                buildDateFilterStrip()
                 buildMetricCards()
             }
             .padding(16)
@@ -105,27 +129,100 @@ struct AppAnalyticsView<ViewModel: AppAnalyticsViewModelProtocol>: View {
         .background(Color(.systemGroupedBackground))
     }
 
-    // MARK: - Date Filter
+    // MARK: - Date Range Tip
 
-    private func buildDateFilter() -> some View {
-        Picker(String(localized: "Date Range"), selection: $viewModel.uiState.dateRange) {
-            ForEach(AnalyticsDateRange.allCases) { range in
-                Text(range.displayName).tag(range)
+    @ViewBuilder
+    private func buildDateRangeTip() -> some View {
+        if let minDate = viewModel.uiState.minDate, let maxDate = viewModel.uiState.maxDate {
+            HStack(spacing: 8) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundStyle(.blue)
+                    .font(.subheadline)
+
+                Text(String(localized: "Data available from \(formatDateString(minDate)) to \(formatDateString(maxDate))"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+            }
+            .padding(12)
+            .background(Color.blue.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
+    // MARK: - Date Filter Strip
+
+    private func buildDateFilterStrip() -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                // "All" option
+                buildDateChip(label: String(localized: "All"), isSelected: viewModel.uiState.selectedDate == nil) {
+                    Task { await viewModel.selectDate(nil) }
+                }
+
+                // Individual dates
+                ForEach(viewModel.uiState.availableDates, id: \.self) { date in
+                    buildDateChip(label: formatDateString(date), isSelected: viewModel.uiState.selectedDate == date) {
+                        Task { await viewModel.selectDate(date) }
+                    }
+                }
             }
         }
-        .pickerStyle(.segmented)
-        .onChange(of: viewModel.uiState.dateRange) { _, _ in
-            Task { await viewModel.load() }
+    }
+
+    private func buildDateChip(label: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.subheadline)
+                .fontWeight(isSelected ? .semibold : .regular)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(isSelected ? Color.accentColor.opacity(0.15) : Color(.systemGray6))
+                .foregroundStyle(isSelected ? .accent : .primary)
+                .clipShape(Capsule())
         }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Metric Cards
 
     private func buildMetricCards() -> some View {
         VStack(spacing: 12) {
-            ForEach(viewModel.uiState.metrics) { metric in
-                ChartCardView(metric: metric)
-            }
+            InstallsDeletesChartView(metric: viewModel.uiState.installsDeletes)
+            DownloadsChartView(metric: viewModel.uiState.downloads)
+            ChartCardView(metric: viewModel.uiState.impressions)
+            ChartCardView(metric: viewModel.uiState.pageViews)
         }
     }
+
+    // MARK: - Helpers
+
+    private func formatDateString(_ dateStr: String) -> String {
+        let parser = DateFormatter()
+        parser.dateFormat = "yyyy-MM-dd"
+        guard let date = parser.date(from: dateStr) else { return dateStr }
+        let display = DateFormatter()
+        display.dateFormat = "MMM d"
+        return display.string(from: date)
+    }
+}
+
+// MARK: - Shareable URL
+
+struct ShareableURL: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+// MARK: - Share Sheet
+
+private struct AnalyticsShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

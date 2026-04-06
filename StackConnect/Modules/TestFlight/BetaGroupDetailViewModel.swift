@@ -32,7 +32,10 @@ struct BetaGroupDetailUiState {
     var error: String?
     var inviteError: String?
     var showAddTester = false
+    var isInvitingTesters = false
+    var isRemovingTester = false
     var showAddBuild = false
+    var isAddingBuild = false
     var showEditGroup = false
     var confirmRemoveTester: BetaTesterModel?
 }
@@ -77,8 +80,12 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
     }
 
     func addTester(email: String, firstName: String?, lastName: String?) async {
+        uiState.isInvitingTesters = true
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                uiState.isInvitingTesters = false
+                return
+            }
             try await connection.addTesterToGroup(
                 email: email,
                 firstName: firstName,
@@ -92,10 +99,15 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
             uiState.inviteError = error.localizedDescription
             Log.print.error("[BetaGroupDetail] Add tester failed: \(error.localizedDescription)")
         }
+        uiState.isInvitingTesters = false
     }
 
     func addTeamMembersAsTesters(_ members: [TeamMemberModel]) async {
-        guard let connection = createConnection() else { return }
+        uiState.isInvitingTesters = true
+        guard let connection = createConnection() else {
+            uiState.isInvitingTesters = false
+            return
+        }
         var failed = 0
         for member in members {
             do {
@@ -119,6 +131,7 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
             uiState.inviteError = String(localized: "Failed to invite testers")
         }
         await load()
+        uiState.isInvitingTesters = false
     }
 
     func loadTeamMembers() async {
@@ -137,14 +150,17 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
     }
 
     func loadAvailableBuilds() async {
-        guard uiState.allBuilds.isEmpty else { return }
         uiState.isLoadingBuilds = true
         do {
             guard let connection = createConnection() else {
                 uiState.isLoadingBuilds = false
                 return
             }
-            uiState.allBuilds = try await connection.fetchBuilds(appId: uiState.appId, limit: 50)
+            let all = try await connection.fetchBuilds(appId: uiState.appId, limit: 50)
+            let assignedIds = Set(uiState.builds.map(\.id))
+            uiState.allBuilds = all.filter { build in
+                build.processingState == "VALID" && !assignedIds.contains(build.id)
+            }
         } catch {
             Log.print.error("[BetaGroupDetail] Load builds failed: \(error.localizedDescription)")
         }
@@ -152,8 +168,12 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
     }
 
     func removeTester(_ tester: BetaTesterModel) async {
+        uiState.isRemovingTester = true
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                uiState.isRemovingTester = false
+                return
+            }
             try await connection.removeTesterFromGroup(testerId: tester.id, groupId: uiState.group.id)
             uiState.testers.removeAll { $0.id == tester.id }
             uiState.toastMessage = ToastMessage(String(localized: "Tester removed"), icon: "person.badge.minus")
@@ -161,6 +181,7 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
             uiState.toastMessage = ToastMessage(String(localized: "Failed to remove tester"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[BetaGroupDetail] Remove tester failed: \(error.localizedDescription)")
         }
+        uiState.isRemovingTester = false
     }
 
     func updateGroup(name: String?, isPublicLinkEnabled: Bool?, publicLinkLimit: Int?, isFeedbackEnabled: Bool?) async {
@@ -186,8 +207,12 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
     }
 
     func addBuildToGroup(buildId: String) async {
+        uiState.isAddingBuild = true
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                uiState.isAddingBuild = false
+                return
+            }
             try await connection.addBuildToGroups(buildId: buildId, groupIds: [uiState.group.id])
             uiState.showAddBuild = false
             uiState.toastMessage = ToastMessage(String(localized: "Build added"), icon: "hammer.fill")
@@ -196,6 +221,7 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
             uiState.toastMessage = ToastMessage(String(localized: "Failed to add build"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[BetaGroupDetail] Add build failed: \(error.localizedDescription)")
         }
+        uiState.isAddingBuild = false
     }
 
     private func createConnection() -> AppleAccountConnection? {

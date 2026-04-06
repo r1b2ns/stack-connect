@@ -51,14 +51,17 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
             if viewModel.uiState.group.isInternalGroup {
                 InternalTesterPickerSheet(
                     members: viewModel.uiState.teamMembers,
-                    isLoading: viewModel.uiState.isLoadingTeamMembers
+                    isLoading: viewModel.uiState.isLoadingTeamMembers,
+                    isInviting: viewModel.uiState.isInvitingTesters
                 ) { selected in
                     Task { await viewModel.addTeamMembersAsTesters(selected) }
                 } onCancel: {
                     viewModel.uiState.showAddTester = false
                 }
             } else {
-                AddTesterSheet { email, firstName, lastName in
+                AddTesterSheet(
+                    isInviting: viewModel.uiState.isInvitingTesters
+                ) { email, firstName, lastName in
                     Task { await viewModel.addTester(email: email, firstName: firstName, lastName: lastName) }
                 } onCancel: {
                     viewModel.uiState.showAddTester = false
@@ -68,7 +71,8 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
         .sheet(isPresented: $viewModel.uiState.showAddBuild) {
             AddBuildSheet(
                 builds: viewModel.uiState.allBuilds,
-                isLoading: viewModel.uiState.isLoadingBuilds
+                isLoading: viewModel.uiState.isLoadingBuilds,
+                isAdding: viewModel.uiState.isAddingBuild
             ) { build in
                 Task { await viewModel.addBuildToGroup(buildId: build.id) }
             } onCancel: {
@@ -117,6 +121,16 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
             }
         }
         .toast(message: $viewModel.uiState.toastMessage)
+        .overlay {
+            if viewModel.uiState.isRemovingTester {
+                ZStack {
+                    Color.black.opacity(0.1)
+                    ProgressView()
+                        .scaleEffect(1.2)
+                }
+                .ignoresSafeArea()
+            }
+        }
     }
 
     // MARK: - Group Info
@@ -284,12 +298,10 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                 }
             }
 
-            if !viewModel.uiState.group.isInternalGroup {
-                Button {
-                    viewModel.uiState.showAddBuild = true
-                } label: {
-                    Label(String(localized: "Add Build"), systemImage: "plus.circle.fill")
-                }
+            Button {
+                viewModel.uiState.showAddBuild = true
+            } label: {
+                Label(String(localized: "Add Build"), systemImage: "plus.circle.fill")
             }
         } header: {
             HStack {
@@ -364,6 +376,7 @@ struct AddTesterSheet: View {
     @State private var firstName = ""
     @State private var lastName = ""
 
+    let isInviting: Bool
     let onAdd: (String, String?, String?) -> Void
     let onCancel: () -> Void
 
@@ -391,19 +404,24 @@ struct AddTesterSheet: View {
             }
             .navigationTitle(String(localized: "Add Tester"))
             .navigationBarTitleDisplayMode(.inline)
+            .disabled(isInviting)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: "Cancel")) { onCancel() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "Invite")) {
-                        onAdd(
-                            email.trimmingCharacters(in: .whitespaces),
-                            firstName.isEmpty ? nil : firstName,
-                            lastName.isEmpty ? nil : lastName
-                        )
+                    if isInviting {
+                        ProgressView()
+                    } else {
+                        Button(String(localized: "Invite")) {
+                            onAdd(
+                                email.trimmingCharacters(in: .whitespaces),
+                                firstName.isEmpty ? nil : firstName,
+                                lastName.isEmpty ? nil : lastName
+                            )
+                        }
+                        .disabled(email.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
-                    .disabled(email.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
         }
@@ -489,6 +507,7 @@ struct InternalTesterPickerSheet: View {
 
     let members: [TeamMemberModel]
     let isLoading: Bool
+    var isInviting: Bool = false
     let onInvite: ([TeamMemberModel]) -> Void
     let onCancel: () -> Void
 
@@ -544,16 +563,21 @@ struct InternalTesterPickerSheet: View {
             }
             .navigationTitle(String(localized: "Select Testers"))
             .navigationBarTitleDisplayMode(.inline)
+            .disabled(isInviting)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: "Cancel")) { onCancel() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "Invite")) {
-                        let selectedMembers = members.filter { selected.contains($0.id) }
-                        onInvite(selectedMembers)
+                    if isInviting {
+                        ProgressView()
+                    } else {
+                        Button(String(localized: "Invite")) {
+                            let selectedMembers = members.filter { selected.contains($0.id) }
+                            onInvite(selectedMembers)
+                        }
+                        .disabled(selected.isEmpty)
                     }
-                    .disabled(selected.isEmpty)
                 }
             }
         }
@@ -566,6 +590,7 @@ struct AddBuildSheet: View {
 
     let builds: [BuildModel]
     let isLoading: Bool
+    var isAdding: Bool = false
     let onAdd: (BuildModel) -> Void
     let onCancel: () -> Void
 
@@ -606,6 +631,7 @@ struct AddBuildSheet: View {
                             }
                         }
                     }
+                    .disabled(isAdding)
                 }
             }
             .navigationTitle(String(localized: "Add Build"))
@@ -613,6 +639,16 @@ struct AddBuildSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: "Cancel")) { onCancel() }
+                }
+            }
+            .overlay {
+                if isAdding {
+                    ZStack {
+                        Color.black.opacity(0.1)
+                        ProgressView()
+                            .scaleEffect(1.2)
+                    }
+                    .ignoresSafeArea()
                 }
             }
         }
