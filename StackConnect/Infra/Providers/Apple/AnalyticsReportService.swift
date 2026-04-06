@@ -231,16 +231,18 @@ actor AnalyticsReportService {
     struct InstallsDeletesResult {
         var installs: [AnalyticsDataPoint]
         var deletes: [AnalyticsDataPoint]
-        var firstTimeDownloads: [AnalyticsDataPoint]
+        /// Downloads broken by type: "First-time download", "Manual update", "Redownload", "Restore"
+        var downloadsByType: [String: [AnalyticsDataPoint]]
+        var availableDates: [String]
     }
 
-    /// Fetches installs/deletes/first-time downloads from the Installation & Deletion report CSV.
+    /// Fetches all installs/deletes data from the Installation & Deletion report CSV.
+    /// Returns ALL data without date filtering — filtering is done in the UI.
     func fetchInstallsDeletesData(
-        requestId: String,
-        dateRange: AnalyticsDateRange
+        requestId: String
     ) async throws -> InstallsDeletesResult {
 
-        let reportType = "app_installs_deletes_\(dateRange.rawValue)"
+        let reportType = "app_installs_deletes"
 
         // Check cache
         let tsvContent: String
@@ -248,7 +250,6 @@ actor AnalyticsReportService {
            let cached = AnalyticsFileCache.loadTSV(appId: appId, reportType: reportType) {
             tsvContent = cached
         } else {
-            // Find the Installation and Deletion report
             guard let report = try await findReport(
                 requestId: requestId,
                 category: "APP_USAGE",
@@ -263,13 +264,10 @@ actor AnalyticsReportService {
         }
 
         // Parse CSV
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        let startStr = formatter.string(from: dateRange.startDate)
-        let endStr = formatter.string(from: Date())
-
         let lines = tsvContent.components(separatedBy: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        guard let headerLine = lines.first else { return InstallsDeletesResult(installs: [], deletes: [], firstTimeDownloads: []) }
+        guard let headerLine = lines.first else {
+            return InstallsDeletesResult(installs: [], deletes: [], downloadsByType: [:], availableDates: [])
+        }
 
         let headers = headerLine.components(separatedBy: "\t").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
 
@@ -277,14 +275,15 @@ actor AnalyticsReportService {
               let eventCol = Self.findColumn(in: headers, matching: ["Event", "event"]),
               let countsCol = Self.findColumn(in: headers, matching: ["Counts", "counts", "Count"]) else {
             Log.print.error("[Analytics] Missing required columns. Headers: \(headers)")
-            return InstallsDeletesResult(installs: [], deletes: [], firstTimeDownloads: [])
+            return InstallsDeletesResult(installs: [], deletes: [], downloadsByType: [:], availableDates: [])
         }
 
         let downloadTypeCol = Self.findColumn(in: headers, matching: ["Download Type", "download_type", "DownloadType"])
 
         var installs: [String: Double] = [:]
         var deletes: [String: Double] = [:]
-        var firstTime: [String: Double] = [:]
+        var downloadTypes: [String: [String: Double]] = [:]  // [downloadType: [date: count]]
+        var allDates = Set<String>()
 
         for line in lines.dropFirst() {
             let values = line.components(separatedBy: "\t")
@@ -293,20 +292,18 @@ actor AnalyticsReportService {
                 row[header] = values[i].trimmingCharacters(in: .whitespacesAndNewlines)
             }
 
-            guard let dateStr = row[dateCol],
-                  dateStr >= startStr && dateStr <= endStr,
+            guard let dateStr = row[dateCol], !dateStr.isEmpty,
                   let event = row[eventCol],
                   let countStr = row[countsCol],
                   let count = Double(countStr) else { continue }
 
+            allDates.insert(dateStr)
+
             if event.lowercased().contains("install") {
                 installs[dateStr, default: 0] += count
 
-                // Check if first-time download
-                if let dtCol = downloadTypeCol,
-                   let downloadType = row[dtCol],
-                   downloadType.lowercased().contains("first") {
-                    firstTime[dateStr, default: 0] += count
+                if let dtCol = downloadTypeCol, let downloadType = row[dtCol], !downloadType.isEmpty {
+                    downloadTypes[downloadType, default: [:]][dateStr, default: 0] += count
                 }
             } else if event.lowercased().contains("delete") {
                 deletes[dateStr, default: 0] += count
@@ -323,13 +320,21 @@ actor AnalyticsReportService {
             }.sorted { $0.date < $1.date }
         }
 
+        var downloadsByType: [String: [AnalyticsDataPoint]] = [:]
+        for (type, dateMap) in downloadTypes {
+            downloadsByType[type] = toDataPoints(dateMap)
+        }
+
+        let sortedDates = allDates.sorted()
+
         let result = InstallsDeletesResult(
             installs: toDataPoints(installs),
             deletes: toDataPoints(deletes),
-            firstTimeDownloads: toDataPoints(firstTime)
+            downloadsByType: downloadsByType,
+            availableDates: sortedDates
         )
 
-        Log.print.info("[Analytics] Installs: \(result.installs.count) days, Deletes: \(result.deletes.count) days, First-time: \(result.firstTimeDownloads.count) days")
+        Log.print.info("[Analytics] Installs: \(result.installs.count) days, Deletes: \(result.deletes.count) days, Download types: \(downloadsByType.keys.sorted()), Dates: \(sortedDates.count)")
 
         return result
     }

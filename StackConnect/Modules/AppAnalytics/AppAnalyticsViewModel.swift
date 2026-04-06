@@ -7,6 +7,7 @@ import AppStoreConnect_Swift_SDK
 protocol AppAnalyticsViewModelProtocol: ObservableObject {
     var uiState: AppAnalyticsUiState { get set }
     func load() async
+    func selectDate(_ date: String?) async
 }
 
 // MARK: - Metric Definition
@@ -35,44 +36,29 @@ struct AppAnalyticsUiState {
         dataPoints: [],
         isLoading: true
     )
+    var downloads = AnalyticsMultiSeriesMetric(
+        id: "downloads",
+        title: "Downloads",
+        icon: "arrow.down.circle.fill",
+        dataPoints: [],
+        isLoading: true
+    )
     var isLoading = false
     var error: String?
-    var dateRange: AnalyticsDateRange = .last30Days
     var isFirstTimeSetup = false
 
-    /// Report names discovered from the API (populated by Python enum research):
-    /// - APP_STORE_DISCOVERY_AND_ENGAGEMENT_STANDARD → "App Store Discovery And Engagement Standard"
-    /// - APP_DOWNLOADS_STANDARD → "App Downloads Standard"
-    /// - APP_STORE_INSTALLATION_AND_DELETION_STANDARD → "App Store Installation And Deletion Standard"
-    /// - APP_CRASHES → "App Crashes"
+    // Date filter
+    var availableDates: [String] = []
+    var selectedDate: String? // nil = "All"
+
+    var minDate: String? { availableDates.first }
+    var maxDate: String? { availableDates.last }
+
+    // Full data (unfiltered) — used to re-filter without re-downloading
+    var fullInstallsDeletes: [AnalyticsSeriesDataPoint] = []
+    var fullDownloads: [AnalyticsSeriesDataPoint] = []
+
     static let metricDefinitions: [AnalyticsMetricDef] = [
-        AnalyticsMetricDef(
-            id: "first_downloads",
-            title: "First-Time Downloads",
-            icon: "arrow.down.circle.fill",
-            color: .blue,
-            category: "APP_STORE_ENGAGEMENT",
-            nameHints: ["Downloads", "Discovery", "Engagement"],
-            columnCandidates: [
-                "First-Time Downloads", "First Time Downloads",
-                "first_time_downloads", "first-time_downloads",
-                "Total Downloads", "Downloads"
-            ],
-            isPercentage: false
-        ),
-        AnalyticsMetricDef(
-            id: "redownloads",
-            title: "Redownloads",
-            icon: "arrow.down.circle",
-            color: .cyan,
-            category: "APP_STORE_ENGAGEMENT",
-            nameHints: ["Downloads", "Discovery", "Engagement"],
-            columnCandidates: [
-                "Redownloads", "Re-Downloads", "redownloads",
-                "re_downloads", "Re Downloads"
-            ],
-            isPercentage: false
-        ),
         AnalyticsMetricDef(
             id: "conversion_rate",
             title: "Conversion Rate",
@@ -109,18 +95,6 @@ struct AppAnalyticsUiState {
             columnCandidates: [
                 "Product Page Views", "Total Product Page Views",
                 "product_page_views", "Page Views", "page_views"
-            ],
-            isPercentage: false
-        ),
-        AnalyticsMetricDef(
-            id: "updates",
-            title: "Updates",
-            icon: "arrow.triangle.2.circlepath",
-            color: .indigo,
-            category: "APP_USAGE",
-            nameHints: ["Installation", "Deletion", "Install"],
-            columnCandidates: [
-                "Updates", "updates", "App Updates", "app_updates"
             ],
             isPercentage: false
         ),
@@ -164,21 +138,15 @@ final class AppAnalyticsViewModel: AppAnalyticsViewModelProtocol {
         uiState.error = nil
         uiState.isFirstTimeSetup = false
 
-        // Reset installs/deletes
-        uiState.installsDeletes.dataPoints = []
-        uiState.installsDeletes.isLoading = true
-        uiState.installsDeletes.error = nil
+        // Reset
+        uiState.installsDeletes = AnalyticsMultiSeriesMetric(id: "installs_deletes", title: "Installs & Deletes", icon: "arrow.down.app.fill", dataPoints: [], isLoading: true)
+        uiState.downloads = AnalyticsMultiSeriesMetric(id: "downloads", title: "Downloads", icon: "arrow.down.circle.fill", dataPoints: [], isLoading: true)
+        uiState.selectedDate = nil
 
-        // Initialize metrics in loading state
         uiState.metrics = AppAnalyticsUiState.metricDefinitions.map {
             AnalyticsMetric(
-                id: $0.id,
-                title: $0.title,
-                icon: $0.icon,
-                color: $0.color,
-                dataPoints: [],
-                isLoading: true,
-                isPercentage: $0.isPercentage
+                id: $0.id, title: $0.title, icon: $0.icon, color: $0.color,
+                dataPoints: [], isLoading: true, isPercentage: $0.isPercentage
             )
         }
 
@@ -193,13 +161,9 @@ final class AppAnalyticsViewModel: AppAnalyticsViewModelProtocol {
             let service = AnalyticsReportService(provider: provider, appId: uiState.appId)
             self.service = service
 
-            // Step 1: Ensure report request exists
             let (requestId, isNew) = try await service.ensureReportRequest()
-
-            // Step 2: Fetch available reports
             let reports = try await service.fetchReports(requestId: requestId)
 
-            // If new request or no reports → first-time setup
             if isNew || reports.isEmpty {
                 uiState.isFirstTimeSetup = true
                 let message = String(localized: "Analytics reports are being generated. This usually takes 24-48 hours after the first request. Please check back later.")
@@ -209,35 +173,40 @@ final class AppAnalyticsViewModel: AppAnalyticsViewModelProtocol {
                 return
             }
 
-            // Step 3: Load installs/deletes/first-time from CSV
-            uiState.installsDeletes.isLoading = true
+            // Load installs/deletes/downloads from CSV
             do {
-                let result = try await service.fetchInstallsDeletesData(
-                    requestId: requestId,
-                    dateRange: uiState.dateRange
-                )
-                var combined: [AnalyticsSeriesDataPoint] = []
-                combined += result.installs.map { AnalyticsSeriesDataPoint(date: $0.date, value: $0.value, series: "Install") }
-                combined += result.deletes.map { AnalyticsSeriesDataPoint(date: $0.date, value: $0.value, series: "Delete") }
-                uiState.installsDeletes.dataPoints = combined.sorted { $0.date < $1.date }
-                uiState.installsDeletes.isLoading = false
+                let result = try await service.fetchInstallsDeletesData(requestId: requestId)
 
-                // Populate first-time downloads metric from CSV
-                if let idx = uiState.metrics.firstIndex(where: { $0.id == "first_downloads" }) {
-                    uiState.metrics[idx].dataPoints = result.firstTimeDownloads
-                    uiState.metrics[idx].isLoading = false
+                uiState.availableDates = result.availableDates
+
+                // Build installs & deletes series
+                var installsDeletesSeries: [AnalyticsSeriesDataPoint] = []
+                installsDeletesSeries += result.installs.map { AnalyticsSeriesDataPoint(date: $0.date, value: $0.value, series: "Install") }
+                installsDeletesSeries += result.deletes.map { AnalyticsSeriesDataPoint(date: $0.date, value: $0.value, series: "Delete") }
+                uiState.fullInstallsDeletes = installsDeletesSeries.sorted { $0.date < $1.date }
+
+                // Build downloads series (all download types)
+                var downloadsSeries: [AnalyticsSeriesDataPoint] = []
+                for (type, points) in result.downloadsByType {
+                    downloadsSeries += points.map { AnalyticsSeriesDataPoint(date: $0.date, value: $0.value, series: type) }
                 }
+                uiState.fullDownloads = downloadsSeries.sorted { $0.date < $1.date }
+
+                // Apply filter (All by default)
+                applyDateFilter()
             } catch {
                 uiState.installsDeletes.isLoading = false
                 uiState.installsDeletes.error = error.localizedDescription
+                uiState.downloads.isLoading = false
+                uiState.downloads.error = error.localizedDescription
                 Log.print.error("[Analytics] Installs/Deletes load failed: \(error.localizedDescription)")
             }
 
-            // Step 4: Load remaining metrics concurrently (skip first_downloads — already loaded from CSV)
-            let csvMetricIds: Set<String> = ["first_downloads"]
+            // Load remaining metrics concurrently
+            let dateRange = AnalyticsDateRange.last90Days
             await withTaskGroup(of: (Int, [AnalyticsDataPoint]?, String?).self) { group in
-                for (index, def) in AppAnalyticsUiState.metricDefinitions.enumerated() where !csvMetricIds.contains(def.id) {
-                    group.addTask { [dateRange = uiState.dateRange] in
+                for (index, def) in AppAnalyticsUiState.metricDefinitions.enumerated() {
+                    group.addTask {
                         do {
                             let points = try await service.fetchMetricData(
                                 requestId: requestId,
@@ -255,12 +224,8 @@ final class AppAnalyticsViewModel: AppAnalyticsViewModelProtocol {
 
                 for await (index, points, error) in group {
                     uiState.metrics[index].isLoading = false
-                    if let points {
-                        uiState.metrics[index].dataPoints = points
-                    }
-                    if let error {
-                        uiState.metrics[index].error = error
-                    }
+                    if let points { uiState.metrics[index].dataPoints = points }
+                    if let error { uiState.metrics[index].error = error }
                 }
             }
 
@@ -274,13 +239,47 @@ final class AppAnalyticsViewModel: AppAnalyticsViewModelProtocol {
         uiState.isLoading = false
     }
 
+    func selectDate(_ date: String?) async {
+        uiState.selectedDate = date
+        applyDateFilter()
+    }
+
     // MARK: - Private
+
+    private func applyDateFilter() {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        if let selectedDate = uiState.selectedDate {
+            // Filter to specific date
+            guard let targetDate = formatter.date(from: selectedDate) else { return }
+            let startOfDay = Calendar.current.startOfDay(for: targetDate)
+
+            uiState.installsDeletes.dataPoints = uiState.fullInstallsDeletes.filter {
+                Calendar.current.isDate($0.date, inSameDayAs: startOfDay)
+            }
+            uiState.downloads.dataPoints = uiState.fullDownloads.filter {
+                Calendar.current.isDate($0.date, inSameDayAs: startOfDay)
+            }
+        } else {
+            // All dates
+            uiState.installsDeletes.dataPoints = uiState.fullInstallsDeletes
+            uiState.downloads.dataPoints = uiState.fullDownloads
+        }
+
+        uiState.installsDeletes.isLoading = false
+        uiState.downloads.isLoading = false
+    }
 
     private func markAllMetricsError(_ error: String) {
         for i in uiState.metrics.indices {
             uiState.metrics[i].isLoading = false
             uiState.metrics[i].error = error
         }
+        uiState.installsDeletes.isLoading = false
+        uiState.installsDeletes.error = error
+        uiState.downloads.isLoading = false
+        uiState.downloads.error = error
     }
 
     private func createProvider() -> APIProvider? {

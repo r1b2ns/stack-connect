@@ -97,7 +97,8 @@ struct AppAnalyticsView<ViewModel: AppAnalyticsViewModelProtocol>: View {
     private func buildScrollContent() -> some View {
         ScrollView {
             VStack(spacing: 16) {
-                buildDateFilter()
+                buildDateRangeTip()
+                buildDateFilterStrip()
                 buildMetricCards()
             }
             .padding(16)
@@ -105,18 +106,60 @@ struct AppAnalyticsView<ViewModel: AppAnalyticsViewModelProtocol>: View {
         .background(Color(.systemGroupedBackground))
     }
 
-    // MARK: - Date Filter
+    // MARK: - Date Range Tip
 
-    private func buildDateFilter() -> some View {
-        Picker(String(localized: "Date Range"), selection: $viewModel.uiState.dateRange) {
-            ForEach(AnalyticsDateRange.allCases) { range in
-                Text(range.displayName).tag(range)
+    @ViewBuilder
+    private func buildDateRangeTip() -> some View {
+        if let minDate = viewModel.uiState.minDate, let maxDate = viewModel.uiState.maxDate {
+            HStack(spacing: 8) {
+                Image(systemName: "info.circle.fill")
+                    .foregroundStyle(.blue)
+                    .font(.subheadline)
+
+                Text(String(localized: "Data available from \(formatDateString(minDate)) to \(formatDateString(maxDate))"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+            }
+            .padding(12)
+            .background(Color.blue.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
+    // MARK: - Date Filter Strip
+
+    private func buildDateFilterStrip() -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                // "All" option
+                buildDateChip(label: String(localized: "All"), isSelected: viewModel.uiState.selectedDate == nil) {
+                    Task { await viewModel.selectDate(nil) }
+                }
+
+                // Individual dates
+                ForEach(viewModel.uiState.availableDates, id: \.self) { date in
+                    buildDateChip(label: formatDateString(date), isSelected: viewModel.uiState.selectedDate == date) {
+                        Task { await viewModel.selectDate(date) }
+                    }
+                }
             }
         }
-        .pickerStyle(.segmented)
-        .onChange(of: viewModel.uiState.dateRange) { _, _ in
-            Task { await viewModel.load() }
+    }
+
+    private func buildDateChip(label: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.subheadline)
+                .fontWeight(isSelected ? .semibold : .regular)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(isSelected ? Color.accentColor.opacity(0.15) : Color(.systemGray6))
+                .foregroundStyle(isSelected ? .accent : .primary)
+                .clipShape(Capsule())
         }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Metric Cards
@@ -124,10 +167,22 @@ struct AppAnalyticsView<ViewModel: AppAnalyticsViewModelProtocol>: View {
     private func buildMetricCards() -> some View {
         VStack(spacing: 12) {
             InstallsDeletesChartView(metric: viewModel.uiState.installsDeletes)
+            DownloadsChartView(metric: viewModel.uiState.downloads)
 
             ForEach(viewModel.uiState.metrics) { metric in
                 ChartCardView(metric: metric)
             }
         }
+    }
+
+    // MARK: - Helpers
+
+    private func formatDateString(_ dateStr: String) -> String {
+        let parser = DateFormatter()
+        parser.dateFormat = "yyyy-MM-dd"
+        guard let date = parser.date(from: dateStr) else { return dateStr }
+        let display = DateFormatter()
+        display.dateFormat = "MMM d"
+        return display.string(from: date)
     }
 }
