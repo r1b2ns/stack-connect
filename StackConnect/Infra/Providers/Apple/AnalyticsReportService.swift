@@ -227,12 +227,18 @@ actor AnalyticsReportService {
 
     // MARK: - Installs & Deletes
 
-    /// Fetches installs/deletes data from the cached CSV.
-    /// Returns (installs: [AnalyticsDataPoint], deletes: [AnalyticsDataPoint])
+    /// Result type for the installs/deletes CSV parsing.
+    struct InstallsDeletesResult {
+        var installs: [AnalyticsDataPoint]
+        var deletes: [AnalyticsDataPoint]
+        var firstTimeDownloads: [AnalyticsDataPoint]
+    }
+
+    /// Fetches installs/deletes/first-time downloads from the Installation & Deletion report CSV.
     func fetchInstallsDeletesData(
         requestId: String,
         dateRange: AnalyticsDateRange
-    ) async throws -> (installs: [AnalyticsDataPoint], deletes: [AnalyticsDataPoint]) {
+    ) async throws -> InstallsDeletesResult {
 
         let reportType = "app_installs_deletes_\(dateRange.rawValue)"
 
@@ -256,14 +262,14 @@ actor AnalyticsReportService {
             AnalyticsFileCache.saveTSV(appId: appId, reportType: reportType, content: tsvContent)
         }
 
-        // Parse CSV with Event column filtering
+        // Parse CSV
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         let startStr = formatter.string(from: dateRange.startDate)
         let endStr = formatter.string(from: Date())
 
         let lines = tsvContent.components(separatedBy: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        guard let headerLine = lines.first else { return ([], []) }
+        guard let headerLine = lines.first else { return InstallsDeletesResult(installs: [], deletes: [], firstTimeDownloads: []) }
 
         let headers = headerLine.components(separatedBy: "\t").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
 
@@ -271,11 +277,14 @@ actor AnalyticsReportService {
               let eventCol = Self.findColumn(in: headers, matching: ["Event", "event"]),
               let countsCol = Self.findColumn(in: headers, matching: ["Counts", "counts", "Count"]) else {
             Log.print.error("[Analytics] Missing required columns. Headers: \(headers)")
-            return ([], [])
+            return InstallsDeletesResult(installs: [], deletes: [], firstTimeDownloads: [])
         }
+
+        let downloadTypeCol = Self.findColumn(in: headers, matching: ["Download Type", "download_type", "DownloadType"])
 
         var installs: [String: Double] = [:]
         var deletes: [String: Double] = [:]
+        var firstTime: [String: Double] = [:]
 
         for line in lines.dropFirst() {
             let values = line.components(separatedBy: "\t")
@@ -292,6 +301,13 @@ actor AnalyticsReportService {
 
             if event.lowercased().contains("install") {
                 installs[dateStr, default: 0] += count
+
+                // Check if first-time download
+                if let dtCol = downloadTypeCol,
+                   let downloadType = row[dtCol],
+                   downloadType.lowercased().contains("first") {
+                    firstTime[dateStr, default: 0] += count
+                }
             } else if event.lowercased().contains("delete") {
                 deletes[dateStr, default: 0] += count
             }
@@ -300,19 +316,22 @@ actor AnalyticsReportService {
         let dateParser = DateFormatter()
         dateParser.dateFormat = "yyyy-MM-dd"
 
-        let installPoints = installs.compactMap { dateStr, value -> AnalyticsDataPoint? in
-            guard let date = dateParser.date(from: dateStr) else { return nil }
-            return AnalyticsDataPoint(date: date, value: value)
-        }.sorted { $0.date < $1.date }
+        func toDataPoints(_ dict: [String: Double]) -> [AnalyticsDataPoint] {
+            dict.compactMap { dateStr, value in
+                guard let date = dateParser.date(from: dateStr) else { return nil }
+                return AnalyticsDataPoint(date: date, value: value)
+            }.sorted { $0.date < $1.date }
+        }
 
-        let deletePoints = deletes.compactMap { dateStr, value -> AnalyticsDataPoint? in
-            guard let date = dateParser.date(from: dateStr) else { return nil }
-            return AnalyticsDataPoint(date: date, value: value)
-        }.sorted { $0.date < $1.date }
+        let result = InstallsDeletesResult(
+            installs: toDataPoints(installs),
+            deletes: toDataPoints(deletes),
+            firstTimeDownloads: toDataPoints(firstTime)
+        )
 
-        Log.print.info("[Analytics] Installs: \(installPoints.count) days, Deletes: \(deletePoints.count) days")
+        Log.print.info("[Analytics] Installs: \(result.installs.count) days, Deletes: \(result.deletes.count) days, First-time: \(result.firstTimeDownloads.count) days")
 
-        return (installPoints, deletePoints)
+        return result
     }
 
     // MARK: - Download Full Report

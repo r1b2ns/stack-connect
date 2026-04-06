@@ -209,27 +209,34 @@ final class AppAnalyticsViewModel: AppAnalyticsViewModelProtocol {
                 return
             }
 
-            // Step 3: Load installs/deletes from CSV
+            // Step 3: Load installs/deletes/first-time from CSV
             uiState.installsDeletes.isLoading = true
             do {
-                let (installs, deletes) = try await service.fetchInstallsDeletesData(
+                let result = try await service.fetchInstallsDeletesData(
                     requestId: requestId,
                     dateRange: uiState.dateRange
                 )
                 var combined: [AnalyticsSeriesDataPoint] = []
-                combined += installs.map { AnalyticsSeriesDataPoint(date: $0.date, value: $0.value, series: "Install") }
-                combined += deletes.map { AnalyticsSeriesDataPoint(date: $0.date, value: $0.value, series: "Delete") }
+                combined += result.installs.map { AnalyticsSeriesDataPoint(date: $0.date, value: $0.value, series: "Install") }
+                combined += result.deletes.map { AnalyticsSeriesDataPoint(date: $0.date, value: $0.value, series: "Delete") }
                 uiState.installsDeletes.dataPoints = combined.sorted { $0.date < $1.date }
                 uiState.installsDeletes.isLoading = false
+
+                // Populate first-time downloads metric from CSV
+                if let idx = uiState.metrics.firstIndex(where: { $0.id == "first_downloads" }) {
+                    uiState.metrics[idx].dataPoints = result.firstTimeDownloads
+                    uiState.metrics[idx].isLoading = false
+                }
             } catch {
                 uiState.installsDeletes.isLoading = false
                 uiState.installsDeletes.error = error.localizedDescription
                 Log.print.error("[Analytics] Installs/Deletes load failed: \(error.localizedDescription)")
             }
 
-            // Step 4: Load remaining metrics concurrently
+            // Step 4: Load remaining metrics concurrently (skip first_downloads — already loaded from CSV)
+            let csvMetricIds: Set<String> = ["first_downloads"]
             await withTaskGroup(of: (Int, [AnalyticsDataPoint]?, String?).self) { group in
-                for (index, def) in AppAnalyticsUiState.metricDefinitions.enumerated() {
+                for (index, def) in AppAnalyticsUiState.metricDefinitions.enumerated() where !csvMetricIds.contains(def.id) {
                     group.addTask { [dateRange = uiState.dateRange] in
                         do {
                             let points = try await service.fetchMetricData(
