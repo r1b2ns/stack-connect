@@ -123,6 +123,8 @@ struct AppAnalyticsView<ViewModel: AppAnalyticsViewModelProtocol>: View {
 
     private func buildMetricCards() -> some View {
         VStack(spacing: 12) {
+            InstallsDeletesChartView(metric: viewModel.uiState.installsDeletes)
+
             ForEach(viewModel.uiState.metrics) { metric in
                 ChartCardView(metric: metric)
             }

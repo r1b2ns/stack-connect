@@ -28,6 +28,13 @@ struct AppAnalyticsUiState {
     var appId: String
     var account: AccountModel
     var metrics: [AnalyticsMetric] = []
+    var installsDeletes = AnalyticsMultiSeriesMetric(
+        id: "installs_deletes",
+        title: "Installs & Deletes",
+        icon: "arrow.down.app.fill",
+        dataPoints: [],
+        isLoading: true
+    )
     var isLoading = false
     var error: String?
     var dateRange: AnalyticsDateRange = .last30Days
@@ -157,6 +164,11 @@ final class AppAnalyticsViewModel: AppAnalyticsViewModelProtocol {
         uiState.error = nil
         uiState.isFirstTimeSetup = false
 
+        // Reset installs/deletes
+        uiState.installsDeletes.dataPoints = []
+        uiState.installsDeletes.isLoading = true
+        uiState.installsDeletes.error = nil
+
         // Initialize metrics in loading state
         uiState.metrics = AppAnalyticsUiState.metricDefinitions.map {
             AnalyticsMetric(
@@ -197,7 +209,25 @@ final class AppAnalyticsViewModel: AppAnalyticsViewModelProtocol {
                 return
             }
 
-            // Step 3: Load each metric concurrently
+            // Step 3: Load installs/deletes from CSV
+            uiState.installsDeletes.isLoading = true
+            do {
+                let (installs, deletes) = try await service.fetchInstallsDeletesData(
+                    requestId: requestId,
+                    dateRange: uiState.dateRange
+                )
+                var combined: [AnalyticsSeriesDataPoint] = []
+                combined += installs.map { AnalyticsSeriesDataPoint(date: $0.date, value: $0.value, series: "Install") }
+                combined += deletes.map { AnalyticsSeriesDataPoint(date: $0.date, value: $0.value, series: "Delete") }
+                uiState.installsDeletes.dataPoints = combined.sorted { $0.date < $1.date }
+                uiState.installsDeletes.isLoading = false
+            } catch {
+                uiState.installsDeletes.isLoading = false
+                uiState.installsDeletes.error = error.localizedDescription
+                Log.print.error("[Analytics] Installs/Deletes load failed: \(error.localizedDescription)")
+            }
+
+            // Step 4: Load remaining metrics concurrently
             await withTaskGroup(of: (Int, [AnalyticsDataPoint]?, String?).self) { group in
                 for (index, def) in AppAnalyticsUiState.metricDefinitions.enumerated() {
                     group.addTask { [dateRange = uiState.dateRange] in

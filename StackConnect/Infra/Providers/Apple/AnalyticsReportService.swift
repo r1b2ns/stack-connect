@@ -183,9 +183,9 @@ actor AnalyticsReportService {
         return (headers, rows)
     }
 
-    // MARK: - High-Level: Fetch Metric Data
+    // MARK: - High-Level: Fetch Metric Data (with cache)
 
-    /// Full pipeline: find report → get instances → download segments → aggregate by date.
+    /// Full pipeline: find report → check cache → download segments → aggregate by date.
     func fetchMetricData(
         requestId: String,
         category: String,
@@ -203,79 +203,211 @@ actor AnalyticsReportService {
             throw AnalyticsError.reportNotFound(category: category)
         }
 
-        // Step B: Fetch all instances (no date filter)
-        let allInstances = try await fetchInstances(reportId: report.id)
-        guard !allInstances.isEmpty else {
-            throw AnalyticsError.noInstances
+        let reportType = "\(Self.reportTypeKey(from: report.name))_\(dateRange.rawValue)"
+
+        // Step B: Check cache
+        let tsvContent: String
+        if AnalyticsFileCache.isCacheValid(appId: appId, reportType: reportType),
+           let cached = AnalyticsFileCache.loadTSV(appId: appId, reportType: reportType) {
+            tsvContent = cached
+        } else {
+            // Download from API and cache
+            tsvContent = try await downloadFullReport(report: report)
+            AnalyticsFileCache.clearReport(appId: appId, reportType: reportType)
+            AnalyticsFileCache.saveTSV(appId: appId, reportType: reportType, content: tsvContent)
         }
 
-        // Step C: Filter instances by date range locally
+        // Step C: Parse and aggregate
+        return Self.parseTSVToDataPoints(
+            tsv: tsvContent,
+            dateRange: dateRange,
+            columnCandidates: columnCandidates
+        )
+    }
+
+    // MARK: - Installs & Deletes
+
+    /// Fetches installs/deletes data from the cached CSV.
+    /// Returns (installs: [AnalyticsDataPoint], deletes: [AnalyticsDataPoint])
+    func fetchInstallsDeletesData(
+        requestId: String,
+        dateRange: AnalyticsDateRange
+    ) async throws -> (installs: [AnalyticsDataPoint], deletes: [AnalyticsDataPoint]) {
+
+        let reportType = "app_installs_deletes_\(dateRange.rawValue)"
+
+        // Check cache
+        let tsvContent: String
+        if AnalyticsFileCache.isCacheValid(appId: appId, reportType: reportType),
+           let cached = AnalyticsFileCache.loadTSV(appId: appId, reportType: reportType) {
+            tsvContent = cached
+        } else {
+            // Find the Installation and Deletion report
+            guard let report = try await findReport(
+                requestId: requestId,
+                category: "APP_USAGE",
+                nameHints: ["Installation", "Deletion", "Install"]
+            ) else {
+                throw AnalyticsError.reportNotFound(category: "APP_USAGE (Installation/Deletion)")
+            }
+
+            tsvContent = try await downloadFullReport(report: report)
+            AnalyticsFileCache.clearReport(appId: appId, reportType: reportType)
+            AnalyticsFileCache.saveTSV(appId: appId, reportType: reportType, content: tsvContent)
+        }
+
+        // Parse CSV with Event column filtering
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         let startStr = formatter.string(from: dateRange.startDate)
         let endStr = formatter.string(from: Date())
 
-        let filteredInstances = allInstances.filter { inst in
-            inst.processingDate >= startStr && inst.processingDate <= endStr
-        }.sorted { $0.processingDate < $1.processingDate }
+        let lines = tsvContent.components(separatedBy: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard let headerLine = lines.first else { return ([], []) }
 
-        guard !filteredInstances.isEmpty else {
-            Log.print.info("[Analytics] No instances in date range \(startStr)...\(endStr)")
-            return []
+        let headers = headerLine.components(separatedBy: "\t").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+        guard let dateCol = Self.findColumn(in: headers, matching: ["Date", "date"]),
+              let eventCol = Self.findColumn(in: headers, matching: ["Event", "event"]),
+              let countsCol = Self.findColumn(in: headers, matching: ["Counts", "counts", "Count"]) else {
+            Log.print.error("[Analytics] Missing required columns. Headers: \(headers)")
+            return ([], [])
         }
 
-        Log.print.info("[Analytics] Processing \(filteredInstances.count) instances for '\(report.name)' in \(startStr)...\(endStr)")
+        var installs: [String: Double] = [:]
+        var deletes: [String: Double] = [:]
 
-        // Step D: Download segments and aggregate
+        for line in lines.dropFirst() {
+            let values = line.components(separatedBy: "\t")
+            var row: [String: String] = [:]
+            for (i, header) in headers.enumerated() where i < values.count {
+                row[header] = values[i].trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+
+            guard let dateStr = row[dateCol],
+                  dateStr >= startStr && dateStr <= endStr,
+                  let event = row[eventCol],
+                  let countStr = row[countsCol],
+                  let count = Double(countStr) else { continue }
+
+            if event.lowercased().contains("install") {
+                installs[dateStr, default: 0] += count
+            } else if event.lowercased().contains("delete") {
+                deletes[dateStr, default: 0] += count
+            }
+        }
+
         let dateParser = DateFormatter()
         dateParser.dateFormat = "yyyy-MM-dd"
 
-        var aggregated: [String: Double] = [:]
-        var headersLogged = false
+        let installPoints = installs.compactMap { dateStr, value -> AnalyticsDataPoint? in
+            guard let date = dateParser.date(from: dateStr) else { return nil }
+            return AnalyticsDataPoint(date: date, value: value)
+        }.sorted { $0.date < $1.date }
 
-        for instance in filteredInstances {
+        let deletePoints = deletes.compactMap { dateStr, value -> AnalyticsDataPoint? in
+            guard let date = dateParser.date(from: dateStr) else { return nil }
+            return AnalyticsDataPoint(date: date, value: value)
+        }.sorted { $0.date < $1.date }
+
+        Log.print.info("[Analytics] Installs: \(installPoints.count) days, Deletes: \(deletePoints.count) days")
+
+        return (installPoints, deletePoints)
+    }
+
+    // MARK: - Download Full Report
+
+    /// Downloads all segments for a report and concatenates into a single TSV string.
+    private func downloadFullReport(report: (id: String, name: String, category: String)) async throws -> String {
+        let allInstances = try await fetchInstances(reportId: report.id)
+        guard !allInstances.isEmpty else {
+            throw AnalyticsError.noInstances
+        }
+
+        Log.print.info("[Analytics] Downloading \(allInstances.count) instances for '\(report.name)'")
+
+        var allContent = ""
+        var headersSaved = false
+
+        for instance in allInstances {
             let urls = try await fetchSegments(instanceId: instance.id)
             for url in urls {
                 let (headers, rows) = try await downloadAndParseTSV(url: url)
+                guard !headers.isEmpty else { continue }
 
-                if !headersLogged && !headers.isEmpty {
-                    headersLogged = true
-                    Log.print.info("[Analytics] TSV headers for '\(report.name)': \(headers)")
+                // Save headers only once
+                if !headersSaved {
+                    allContent += headers.joined(separator: "\t") + "\n"
+                    headersSaved = true
                 }
-
-                // Find date column
-                guard let dateCol = Self.findColumn(in: headers, matching: ["Date", "date", "Report Date", "report_date"]) else {
-                    Log.print.error("[Analytics] No date column in headers: \(headers)")
-                    continue
-                }
-
-                // Find value column
-                guard let valueCol = Self.findColumn(in: headers, matching: columnCandidates) else {
-                    Log.print.error("[Analytics] No column matching \(columnCandidates) in headers: \(headers)")
-                    throw AnalyticsError.columnNotFound(
-                        column: columnCandidates.first ?? "?",
-                        available: headers
-                    )
-                }
-
-                Log.print.info("[Analytics] Using dateCol='\(dateCol)' valueCol='\(valueCol)'")
 
                 for row in rows {
-                    if let dateStr = row[dateCol],
-                       let valueStr = row[valueCol],
-                       let value = Double(valueStr) {
-                        aggregated[dateStr, default: 0] += value
-                    }
+                    let line = headers.map { row[$0] ?? "" }.joined(separator: "\t")
+                    allContent += line + "\n"
                 }
             }
         }
 
-        Log.print.info("[Analytics] Aggregated \(aggregated.count) data points for column candidates \(columnCandidates)")
+        Log.print.info("[Analytics] Downloaded full report '\(report.name)' (\(allContent.count) bytes)")
+        return allContent
+    }
+
+    // MARK: - Parse TSV to DataPoints
+
+    private static func parseTSVToDataPoints(
+        tsv: String,
+        dateRange: AnalyticsDateRange,
+        columnCandidates: [String]
+    ) -> [AnalyticsDataPoint] {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let startStr = formatter.string(from: dateRange.startDate)
+        let endStr = formatter.string(from: Date())
+
+        let lines = tsv.components(separatedBy: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard let headerLine = lines.first else { return [] }
+
+        let headers = headerLine.components(separatedBy: "\t").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+        guard let dateCol = findColumn(in: headers, matching: ["Date", "date", "Report Date", "report_date"]) else {
+            return []
+        }
+
+        guard let valueCol = findColumn(in: headers, matching: columnCandidates) else {
+            return []
+        }
+
+        var aggregated: [String: Double] = [:]
+
+        for line in lines.dropFirst() {
+            let values = line.components(separatedBy: "\t")
+            var row: [String: String] = [:]
+            for (i, header) in headers.enumerated() where i < values.count {
+                row[header] = values[i].trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+
+            if let dateStr = row[dateCol],
+               dateStr >= startStr && dateStr <= endStr,
+               let valueStr = row[valueCol],
+               let value = Double(valueStr) {
+                aggregated[dateStr, default: 0] += value
+            }
+        }
+
+        let dateParser = DateFormatter()
+        dateParser.dateFormat = "yyyy-MM-dd"
 
         return aggregated.compactMap { dateStr, value in
             guard let date = dateParser.date(from: dateStr) else { return nil }
             return AnalyticsDataPoint(date: date, value: value)
         }.sorted { $0.date < $1.date }
+    }
+
+    /// Generates a cache key from a report name.
+    private static func reportTypeKey(from name: String) -> String {
+        name.lowercased()
+            .replacingOccurrences(of: " ", with: "_")
+            .replacingOccurrences(of: "-", with: "_")
     }
 
     // MARK: - Helpers
