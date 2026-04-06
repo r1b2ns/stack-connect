@@ -7,7 +7,7 @@ struct PaywallView: View {
     @EnvironmentObject private var subscriptionService: SubscriptionService
 
     @State private var selectedPlan: SubscriptionTier = .individual
-    @State private var billingPeriod: BillingPeriod = .yearly
+    @State private var billingPeriod: BillingPeriod = .monthly
     @State private var isPurchasing = false
 
     // Import flow
@@ -26,10 +26,10 @@ struct PaywallView: View {
             ScrollView {
                 VStack(spacing: 24) {
                     buildHeader()
-                    buildPlanCarousel()
                     if selectedPlan != .lifetime {
                         buildBillingToggle()
                     }
+                    buildPlanCarousel()
                     buildFeaturesList()
                 }
                 .padding(.horizontal, 20)
@@ -108,7 +108,7 @@ struct PaywallView: View {
 
     private func buildHeader() -> some View {
         VStack(spacing: 8) {
-            Image(systemName: "app.connected.to.app.below.fill")
+            Image(systemName: "apps.iphone")
                 .font(.system(size: 50))
                 .foregroundStyle(.accent)
 
@@ -240,8 +240,16 @@ struct PaywallView: View {
         VStack(alignment: .leading, spacing: 10) {
             if selectedPlan == .individual {
                 buildFeatureRow(icon: "xmark.circle.fill", color: .red, text: String(localized: "Export accounts not included"))
+                Text(String(localized: "The Individual plan does not allow sharing accounts within the app."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 26)
             } else {
                 buildFeatureRow(icon: "checkmark.circle.fill", color: .green, text: String(localized: "Export & import accounts included"))
+                Text(String(localized: "Exporting an account is a convenient way to share app access with other users in your team."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 26)
             }
 
             if selectedPlan == .lifetime {
@@ -266,7 +274,7 @@ struct PaywallView: View {
     // MARK: - Footer
 
     private func buildFooter() -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 20) {
             Divider()
 
             Button {

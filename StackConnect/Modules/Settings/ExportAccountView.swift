@@ -20,6 +20,7 @@ struct ExportAccountView: View {
     var body: some View {
         NavigationStack {
             Form {
+                buildInfoSection()
                 buildNameSection()
 
                 Section {
@@ -63,6 +64,27 @@ struct ExportAccountView: View {
     }
 
     // MARK: - Sections
+
+    private func buildInfoSection() -> some View {
+        Section {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "person.2.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.blue)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(String(localized: "Share access with your team"))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+
+                    Text(String(localized: "Exporting an account is a convenient way to distribute app access to other users in your team. Recipients can import the encrypted file with the password you set, and use the account with the permissions you select below."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
 
     private func buildNameSection() -> some View {
         Section {
