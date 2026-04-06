@@ -81,10 +81,8 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
             } message: {
                 Text(importError)
             }
-            .sheet(isPresented: $viewModel.uiState.showExportShare) {
-                if let fileURL = viewModel.uiState.exportFileURL {
-                    ShareSheetView(activityItems: [fileURL])
-                }
+            .sheet(item: $viewModel.uiState.shareItem) { item in
+                ShareSheetView(activityItems: [item.url])
             }
             .sheet(item: $coordinator.exportingAccount) { account in
                 ExportAccountView(
@@ -94,8 +92,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                         coordinator.dismissExportAccount()
                         if let url {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                                viewModel.uiState.exportFileURL = url
-                                viewModel.uiState.showExportShare = true
+                                viewModel.uiState.shareItem = ShareableFileURL(url: url)
                             }
                         }
                         return url

@@ -149,8 +149,7 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
     @ObservedObject var viewModel: ViewModel
 
     @State private var showExport = false
-    @State private var showExportShare = false
-    @State private var exportFileURL: URL?
+    @State private var shareItem: ShareableFileURL?
     @State private var showNameEdit = false
 
     private let resources: [AccountRuleResource] = [
@@ -177,8 +176,7 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
                     showExport = false
                     if let url {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                            exportFileURL = url
-                            showExportShare = true
+                            shareItem = ShareableFileURL(url: url)
                         }
                     }
                     return url
@@ -186,10 +184,8 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
                 onDismiss: { showExport = false }
             )
         }
-        .sheet(isPresented: $showExportShare) {
-            if let url = exportFileURL {
-                ShareSheetWrapper(activityItems: [url])
-            }
+        .sheet(item: $shareItem) { item in
+            ShareSheetWrapper(activityItems: [item.url])
         }
         .alert(
             String(localized: "Edit Name"),
@@ -291,6 +287,13 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
             }
         }
     }
+}
+
+// MARK: - Shareable File URL
+
+struct ShareableFileURL: Identifiable {
+    let id = UUID()
+    let url: URL
 }
 
 // MARK: - Share Sheet Wrapper

@@ -72,6 +72,25 @@ private struct AppListEntry: View {
                     .frame(width: 220)
                 }
             }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                switch selectedTab {
+                case .apps:
+                    Button {
+                        homeCoordinator.navigateToAccountSettings(account)
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                case .usersAndAccess:
+                    if account.canAdd(.users) {
+                        Button {
+                            userAccessViewModel.uiState.showInviteUser = true
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -293,11 +312,6 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
     @ToolbarContentBuilder
     private func buildBottomToolbar() -> some ToolbarContent {
         ToolbarItemGroup(placement: .bottomBar) {
-            Button {
-                homeCoordinator.navigateToAccountSettings(viewModel.uiState.account)
-            } label: {
-                Label(String(localized: "Settings"), systemImage: "gearshape")
-            }
             Spacer()
             Button {
                 homeCoordinator.navigateToArchivedApps(account: viewModel.uiState.account)

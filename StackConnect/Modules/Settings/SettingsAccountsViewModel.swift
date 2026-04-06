@@ -22,8 +22,7 @@ struct SettingsAccountsUiState {
     var editingName = ""
     var accountToDelete: AccountModel?
     var showDeleteConfirmation = false
-    var exportFileURL: URL?
-    var showExportShare = false
+    var shareItem: ShareableFileURL?
 }
 
 // MARK: - Implementation

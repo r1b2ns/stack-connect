@@ -39,7 +39,6 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search by name or email")
             )
-            .toolbar { buildToolbar() }
             .task { await viewModel.load() }
             .refreshable { await viewModel.load() }
             .sheet(isPresented: $viewModel.uiState.showInviteUser) {
@@ -305,18 +304,6 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
 
     // MARK: - Toolbar
 
-    @ToolbarContentBuilder
-    private func buildToolbar() -> some ToolbarContent {
-        if viewModel.uiState.account.canAdd(.users) {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    viewModel.uiState.showInviteUser = true
-                } label: {
-                    Image(systemName: "plus")
-                }
-            }
-        }
-    }
 }
 
 // MARK: - Invite User Sheet
