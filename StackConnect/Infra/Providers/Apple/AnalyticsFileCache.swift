@@ -85,6 +85,73 @@ struct AnalyticsFileCache {
         saveMeta(appId: appId, meta: meta)
     }
 
+    // MARK: - Export
+
+    /// Returns all cached TSV file URLs for an app.
+    static func allCachedFiles(appId: String) -> [URL] {
+        let dir = cacheDirectory(appId: appId)
+        let fm = FileManager.default
+
+        guard fm.fileExists(atPath: dir.path) else { return [] }
+
+        do {
+            return try fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+                .filter { $0.pathExtension == "tsv" }
+                .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        } catch {
+            Log.print.error("[AnalyticsCache] Failed to list files: \(error.localizedDescription)")
+            return []
+        }
+    }
+
+    /// Creates a zip archive of all cached TSV files using the system's built-in zip.
+    /// Returns the zip URL or nil.
+    static func exportAsZip(appId: String) -> URL? {
+        let files = allCachedFiles(appId: appId)
+        guard !files.isEmpty else { return nil }
+
+        let fm = FileManager.default
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let dateStr = formatter.string(from: Date())
+        let zipName = "analytics-\(appId)-\(dateStr).zip"
+        let zipURL = fm.temporaryDirectory.appendingPathComponent(zipName)
+
+        try? fm.removeItem(at: zipURL)
+
+        // Copy files to a temp directory, then zip
+        let tempDir = fm.temporaryDirectory.appendingPathComponent("analytics_export_\(UUID().uuidString)", isDirectory: true)
+        try? fm.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        for file in files {
+            let dest = tempDir.appendingPathComponent(file.lastPathComponent)
+            try? fm.copyItem(at: file, to: dest)
+        }
+
+        // Use NSFileCoordinator to create a zip
+        var error: NSError?
+        let coordinator = NSFileCoordinator()
+        var resultURL: URL?
+
+        coordinator.coordinate(readingItemAt: tempDir, options: .forUploading, error: &error) { zippedURL in
+            let destination = zipURL
+            try? fm.removeItem(at: destination)
+            try? fm.moveItem(at: zippedURL, to: destination)
+            resultURL = destination
+        }
+
+        // Cleanup temp dir
+        try? fm.removeItem(at: tempDir)
+
+        if let error {
+            Log.print.error("[AnalyticsCache] Zip failed: \(error.localizedDescription)")
+            return nil
+        }
+
+        Log.print.info("[AnalyticsCache] Created zip: \(zipURL.lastPathComponent) with \(files.count) files")
+        return resultURL
+    }
+
     // MARK: - Private
 
     private static func cacheDirectory(appId: String) -> URL {

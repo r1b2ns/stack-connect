@@ -225,6 +225,101 @@ actor AnalyticsReportService {
         )
     }
 
+    // MARK: - Discover & Engagement (Product Page Views)
+
+    /// Result type for discover & engagement CSV parsing.
+    struct EngagementResult {
+        var impressions: [AnalyticsDataPoint]
+        var pageViews: [AnalyticsDataPoint]
+        var availableDates: [String]
+    }
+
+    /// Fetches Impressions and Page Views from the Discovery and Engagement report CSV.
+    /// The CSV has an `Event` column with values "Impression" and "Page view",
+    /// and a `Counts` column with the numeric value.
+    func fetchEngagementData(requestId: String) async throws -> EngagementResult {
+
+        let reportType = "discover_and_engagement"
+
+        let tsvContent: String
+        if AnalyticsFileCache.isCacheValid(appId: appId, reportType: reportType),
+           let cached = AnalyticsFileCache.loadTSV(appId: appId, reportType: reportType) {
+            tsvContent = cached
+        } else {
+            guard let report = try await findReport(
+                requestId: requestId,
+                category: "APP_STORE_ENGAGEMENT",
+                nameHints: ["Discovery", "Engagement"]
+            ) else {
+                throw AnalyticsError.reportNotFound(category: "APP_STORE_ENGAGEMENT (Discovery)")
+            }
+
+            tsvContent = try await downloadFullReport(report: report)
+            AnalyticsFileCache.clearReport(appId: appId, reportType: reportType)
+            AnalyticsFileCache.saveTSV(appId: appId, reportType: reportType, content: tsvContent)
+        }
+
+        let lines = tsvContent.components(separatedBy: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard let headerLine = lines.first else {
+            return EngagementResult(impressions: [], pageViews: [], availableDates: [])
+        }
+
+        let headers = headerLine.components(separatedBy: "\t").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+        guard let dateCol = Self.findColumn(in: headers, matching: ["Date", "date"]),
+              let eventCol = Self.findColumn(in: headers, matching: ["Event", "event"]),
+              let countsCol = Self.findColumn(in: headers, matching: ["Counts", "counts", "Count"]) else {
+            Log.print.error("[Analytics] Missing required columns in engagement. Headers: \(headers)")
+            return EngagementResult(impressions: [], pageViews: [], availableDates: [])
+        }
+
+        var impressionsByDate: [String: Double] = [:]
+        var pageViewsByDate: [String: Double] = [:]
+        var allDates = Set<String>()
+
+        for line in lines.dropFirst() {
+            let values = line.components(separatedBy: "\t")
+            var row: [String: String] = [:]
+            for (i, header) in headers.enumerated() where i < values.count {
+                row[header] = values[i].trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+
+            guard let dateStr = row[dateCol], !dateStr.isEmpty,
+                  let event = row[eventCol],
+                  let countStr = row[countsCol],
+                  let count = Double(countStr) else { continue }
+
+            allDates.insert(dateStr)
+
+            let eventLower = event.lowercased()
+            if eventLower.contains("page view") {
+                pageViewsByDate[dateStr, default: 0] += count
+            } else if eventLower.contains("impression") {
+                impressionsByDate[dateStr, default: 0] += count
+            }
+        }
+
+        let dateParser = DateFormatter()
+        dateParser.dateFormat = "yyyy-MM-dd"
+
+        func toDataPoints(_ dict: [String: Double]) -> [AnalyticsDataPoint] {
+            dict.compactMap { dateStr, value in
+                guard let date = dateParser.date(from: dateStr) else { return nil }
+                return AnalyticsDataPoint(date: date, value: value)
+            }.sorted { $0.date < $1.date }
+        }
+
+        let result = EngagementResult(
+            impressions: toDataPoints(impressionsByDate),
+            pageViews: toDataPoints(pageViewsByDate),
+            availableDates: allDates.sorted()
+        )
+
+        Log.print.info("[Analytics] Engagement: \(result.impressions.count) days impressions, \(result.pageViews.count) days page views")
+
+        return result
+    }
+
     // MARK: - Installs & Deletes
 
     /// Result type for the installs/deletes CSV parsing.

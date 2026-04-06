@@ -34,19 +34,42 @@ struct AppAnalyticsView<ViewModel: AppAnalyticsViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
 
+    @State private var shareItem: ShareableURL?
+
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Analytics"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar { buildToolbar() }
             .task { await viewModel.load() }
             .refreshable { await viewModel.load() }
+            .sheet(item: $shareItem) { item in
+                AnalyticsShareSheet(activityItems: [item.url])
+            }
+    }
+
+    // MARK: - Toolbar
+
+    @ToolbarContentBuilder
+    private func buildToolbar() -> some ToolbarContent {
+        if !viewModel.uiState.isLoading && !viewModel.uiState.availableDates.isEmpty {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    if let zip = AnalyticsFileCache.exportAsZip(appId: viewModel.uiState.appId) {
+                        shareItem = ShareableURL(url: zip)
+                    }
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                }
+            }
+        }
     }
 
     // MARK: - Content
 
     @ViewBuilder
     private func buildContent() -> some View {
-        if viewModel.uiState.isLoading && viewModel.uiState.metrics.allSatisfy({ $0.isLoading }) {
+        if viewModel.uiState.isLoading && viewModel.uiState.installsDeletes.isLoading {
             VStack(spacing: 16) {
                 ProgressView()
                 Text(String(localized: "Loading analytics..."))
@@ -61,7 +84,7 @@ struct AppAnalyticsView<ViewModel: AppAnalyticsViewModelProtocol>: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.uiState.isFirstTimeSetup {
             buildFirstTimeSetup()
-        } else if let error = viewModel.uiState.error, viewModel.uiState.metrics.allSatisfy({ $0.dataPoints.isEmpty }) {
+        } else if let error = viewModel.uiState.error, viewModel.uiState.installsDeletes.dataPoints.isEmpty && viewModel.uiState.downloads.dataPoints.isEmpty {
             buildErrorState(error)
         } else {
             buildScrollContent()
@@ -168,10 +191,8 @@ struct AppAnalyticsView<ViewModel: AppAnalyticsViewModelProtocol>: View {
         VStack(spacing: 12) {
             InstallsDeletesChartView(metric: viewModel.uiState.installsDeletes)
             DownloadsChartView(metric: viewModel.uiState.downloads)
-
-            ForEach(viewModel.uiState.metrics) { metric in
-                ChartCardView(metric: metric)
-            }
+            ChartCardView(metric: viewModel.uiState.impressions)
+            ChartCardView(metric: viewModel.uiState.pageViews)
         }
     }
 
@@ -185,4 +206,23 @@ struct AppAnalyticsView<ViewModel: AppAnalyticsViewModelProtocol>: View {
         display.dateFormat = "MMM d"
         return display.string(from: date)
     }
+}
+
+// MARK: - Shareable URL
+
+struct ShareableURL: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+// MARK: - Share Sheet
+
+private struct AnalyticsShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
