@@ -244,8 +244,6 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
                 }
                 .foregroundStyle(.primary)
             }
-
-            buildMenuRow(icon: "person.2.fill", color: .gray, title: String(localized: "Edit User Access"))
         }
     }
 
