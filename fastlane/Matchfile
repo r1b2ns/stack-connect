@@ -1,0 +1,22 @@
+# Matchfile — Certificate and provisioning profile management via fastlane match.
+#
+# Certificates and profiles are stored encrypted in a private GitHub repository.
+# MATCH_GIT_URL and MATCH_PASSWORD must be set in fastlane/.env.
+#
+# ─── First-time setup (run once per environment) ────────────────────────────
+#
+#   bundle exec fastlane match appstore --app_identifier zeroSixteen.stackconnect
+#   bundle exec fastlane match appstore --app_identifier zeroSixteen.stackconnect.dev
+#
+# ─── Rotating certificates (if revoked or expired) ──────────────────────────
+#
+#   fastlane match nuke appstore   # ⚠️ revokes ALL App Store certs for the team
+#   fastlane match appstore        # re-creates and stores fresh ones
+
+# Repository: https://github.com/r1b2ns/ios-stackconnect-certificates
+git_url(ENV["MATCH_GIT_URL"])
+storage_mode("git")
+
+type("appstore")
+
+app_identifier([ENV["BUNDLE_ID"], ENV["BUNDLE_ID_DEV"]])
