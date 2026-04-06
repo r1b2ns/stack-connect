@@ -43,7 +43,9 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
             .task { await viewModel.load() }
             .refreshable { await viewModel.load() }
             .sheet(isPresented: $viewModel.uiState.showCreateGroup) {
-                CreateBetaGroupSheet { name, isInternal in
+                CreateBetaGroupSheet(
+                    isCreating: viewModel.uiState.isCreatingGroup
+                ) { name, isInternal in
                     Task { await viewModel.createGroup(name: name, isInternal: isInternal) }
                 } onCancel: {
                     viewModel.uiState.showCreateGroup = false
@@ -291,6 +293,7 @@ struct CreateBetaGroupSheet: View {
     @State private var name = ""
     @State private var isInternal = false
 
+    let isCreating: Bool
     let onCreate: (String, Bool) -> Void
     let onCancel: () -> Void
 
@@ -315,15 +318,20 @@ struct CreateBetaGroupSheet: View {
             }
             .navigationTitle(String(localized: "New Beta Group"))
             .navigationBarTitleDisplayMode(.inline)
+            .disabled(isCreating)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: "Cancel")) { onCancel() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "Create")) {
-                        onCreate(name.trimmingCharacters(in: .whitespaces), isInternal)
+                    if isCreating {
+                        ProgressView()
+                    } else {
+                        Button(String(localized: "Create")) {
+                            onCreate(name.trimmingCharacters(in: .whitespaces), isInternal)
+                        }
+                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
         }

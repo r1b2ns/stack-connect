@@ -21,6 +21,7 @@ struct TestFlightUiState {
     var error: String?
     var toastMessage: ToastMessage?
     var showCreateGroup = false
+    var isCreatingGroup = false
     var confirmDelete: BetaGroupModel?
 
     var internalGroups: [BetaGroupModel] {
@@ -95,8 +96,12 @@ final class TestFlightViewModel: TestFlightViewModelProtocol {
     }
 
     func createGroup(name: String, isInternal: Bool) async {
+        uiState.isCreatingGroup = true
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                uiState.isCreatingGroup = false
+                return
+            }
             let group = try await connection.createBetaGroup(
                 appId: uiState.appId,
                 name: name,
@@ -109,6 +114,7 @@ final class TestFlightViewModel: TestFlightViewModelProtocol {
             uiState.toastMessage = ToastMessage(String(localized: "Failed to create group"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[TestFlight] Create group failed: \(error.localizedDescription)")
         }
+        uiState.isCreatingGroup = false
     }
 
     func deleteGroup(_ group: BetaGroupModel) async {
