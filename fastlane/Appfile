@@ -1,0 +1,8 @@
+# Appfile — static app identity shared across all lanes.
+# Authentication is handled via App Store Connect API key (set in fastlane/.env),
+# so no Apple ID password is required.
+
+app_identifier "zeroSixteen.stackconnect"
+
+# Developer Portal team (from DEVELOPMENT_TEAM in Release.xcconfig).
+team_id "VVAVW2S9CF"
