@@ -11,7 +11,7 @@ protocol HomeViewModelProtocol: ObservableObject {
 // MARK: - UiState
 
 struct HomeUiState {
-    var providers: [ProviderType] = ProviderType.allCases
+    var providers: [ProviderType] = ProviderType.allCases.filter { $0 != .googlePlay }
     var pendingReviewApps: [AppModel] = []
     var isLoadingPending = false
     var accountsMap: [String: AccountModel] = [:]
