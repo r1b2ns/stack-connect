@@ -1,1 +1,1 @@
-App Store Connect Manager
+Manage your dev accounts

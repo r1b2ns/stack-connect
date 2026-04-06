@@ -1,1 +1,41 @@
-Manage your App Store Connect, Firebase, and Google Play accounts from a single app. View app details, manage versions, submit for review, monitor ratings, and more.
+StackConnect is the all-in-one mobile companion for app developers. Manage your App Store Connect and Firebase accounts from a single, beautiful native iOS app.
+
+KEY FEATURES
+
+App Store Connect
+• Browse all your apps with search, sort, and favorites
+• View and edit version metadata: description, what's new, promotional text, keywords, URLs
+• Manage app versions across all platforms (iOS, macOS, tvOS, visionOS)
+• Submit for review, cancel review, release, and reject versions
+• Edit App Information: bundle ID, SKU, category, content rights, age rating
+• Manage app privacy declarations per locale
+• Manage accessibility declarations per device family
+• Browse customer reviews with infinite scroll, filter by rating
+• Reply to reviews and delete responses directly from the app
+• View app analytics with daily charts: installs, deletes, downloads, impressions, page views
+• Manage TestFlight beta groups and testers
+• Add builds to beta groups, invite team members
+• Manage team members and roles
+• Track app history and review submissions
+
+Firebase
+• Browse Firebase projects and apps
+• Manage Remote Config parameters and conditions
+• View analytics dashboard
+• Send Cloud Messaging campaigns with audience targeting
+
+Multi-Account Management
+• Add multiple accounts per provider
+• Granular permissions per account (apps, versions, users, reviews, TestFlight, analytics)
+• Permissions hierarchy: view, edit, delete, add
+• Offline-first: load instantly from local cache, sync from API in background
+• Cascading deletion: removing an account cleans up all related data
+
+Secure Account Sharing (Team & Lifetime plans)
+• Export accounts as encrypted .scexport files
+• AES-256-GCM encryption with password protection
+• Share access with your team members
+• Recipients import the file with the password and gain instant access
+• Per-resource permission selection during export
+
+Privacy first: all credentials are stored securely in the iOS Keychain. Account data is cached locally with SwiftData. No analytics, no tracking, no third-party servers — just you and Apple/Google's official APIs.
