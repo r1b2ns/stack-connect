@@ -5,14 +5,15 @@
 #
 # ─── First-time setup (run once per environment) ────────────────────────────
 #
-#   fastlane match appstore --app_identifier zeroSixteen.stackconnect
-#   fastlane match appstore --app_identifier zeroSixteen.stackconnect.dev
+#   bundle exec fastlane match appstore --app_identifier zeroSixteen.stackconnect
+#   bundle exec fastlane match appstore --app_identifier zeroSixteen.stackconnect.dev
 #
 # ─── Rotating certificates (if revoked or expired) ──────────────────────────
 #
 #   fastlane match nuke appstore   # ⚠️ revokes ALL App Store certs for the team
 #   fastlane match appstore        # re-creates and stores fresh ones
 
+# Repository: https://github.com/r1b2ns/ios-stackconnect-certificates
 git_url(ENV["MATCH_GIT_URL"])
 storage_mode("git")
 
