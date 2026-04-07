@@ -1,0 +1,26 @@
+WHAT THE APP DOES
+
+StackConnect is a native iOS client for app developers to manage their App Store Connect and Firebase accounts directly from their iPhone or iPad. It allows users to browse apps, manage metadata, versions, localizations, TestFlight groups, reviews, analytics, Remote Config, and Cloud Messaging — all from a single app.
+
+HOW IT WORKS
+
+Users add their developer accounts by providing API credentials (App Store Connect API key or Firebase Service Account JSON). The app uses these credentials to communicate directly with Apple's App Store Connect REST API and Google's Firebase REST APIs on behalf of the user. All data is fetched in real time and cached locally using SwiftData for offline access.
+
+SECURITY & PRIVACY
+
+All private keys and credentials (including .p8 key content and Service Account JSON) are stored exclusively in the iOS Keychain and never leave the device. The app does not have any backend server of its own — it connects only to:
+
+• App Store Connect API (api.appstoreconnect.apple.com)
+• Firebase REST APIs (firebaseremoteconfig.googleapis.com, fcm.googleapis.com, firebase.googleapis.com)
+
+No credentials, usage data, or personal information is ever transmitted to any third-party server or collected by the developer.
+
+HOW TO ACCESS THE APP
+
+StackConnect can be used in two ways:
+
+1. Subscription: The user subscribes directly within the app to unlock full access. All plans (Monthly, Yearly, and Lifetime) are available via in-app purchase on the Paywall screen, which is presented automatically when a restricted feature is accessed.
+
+2. Imported Access: A user who already holds an active subscription can export their account as an encrypted .scexport file (via Settings > Accounts > Export) and share it with another person. The recipient imports the file using the same app (Settings > Accounts > Import), enters the password set by the sender, and gains access to the shared account without needing their own subscription.
+
+To test the app without a subscription, please use the Import flow: we can provide a .scexport file and password upon request. Alternatively, you can use the sandbox environment to complete an in-app purchase on the Paywall screen.
