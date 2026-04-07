@@ -1,4 +1,4 @@
-StackConnect is the all-in-one mobile companion for app developers. Manage your App Store Connect and Firebase accounts from a single, beautiful native iOS app.
+StackConnect is the all-in-one mobile companion for app developers. Manage your App Store Connect and Firebase accounts from a single, beautiful native iOS app — with more integrations coming soon.
 
 KEY FEATURES
 
@@ -37,5 +37,8 @@ Secure Account Sharing (Team & Lifetime plans)
 • Share access with your team members
 • Recipients import the file with the password and gain instant access
 • Per-resource permission selection during export
+
+More Integrations Coming Soon
+• StackConnect is actively growing — beyond App Store Connect and Firebase, more developer platform integrations are on the way. Stay tuned.
 
 Privacy first: all credentials are stored securely in the iOS Keychain. Account data is cached locally with SwiftData. No analytics, no tracking, no third-party servers — just you and Apple/Google's official APIs.

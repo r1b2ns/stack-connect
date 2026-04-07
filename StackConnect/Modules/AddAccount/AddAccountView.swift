@@ -39,6 +39,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var showingP8FilePicker = false
+    @State private var showingJSONFilePicker = false
 
     var body: some View {
         NavigationStack {
@@ -47,10 +48,12 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
 
                 if viewModel.uiState.providerType == .apple {
                     buildAppleCredentialsSection()
+                    buildAppleTutorialSection()
                 }
 
                 if viewModel.uiState.providerType == .firebase {
                     buildFirebaseCredentialsSection()
+                    buildFirebaseTutorialSection()
                 }
 
                 if viewModel.uiState.providerType == .googlePlay {
@@ -78,6 +81,17 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                    url.startAccessingSecurityScopedResource(),
                    let content = try? String(contentsOf: url, encoding: .utf8) {
                     viewModel.uiState.privateKey = content
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+            .fileImporter(
+                isPresented: $showingJSONFilePicker,
+                allowedContentTypes: [.json]
+            ) { result in
+                if case .success(let url) = result,
+                   url.startAccessingSecurityScopedResource(),
+                   let content = try? String(contentsOf: url, encoding: .utf8) {
+                    viewModel.uiState.firebaseJSON = content
                     url.stopAccessingSecurityScopedResource()
                 }
             }
@@ -152,7 +166,51 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
         } header: {
             Text("App Store Connect Credentials")
         } footer: {
-            Text("You can generate API keys at appstoreconnect.apple.com under Users and Access > Integrations > App Store Connect API.")
+            Text("Paste or import the .p8 file content along with its Key ID and Issuer ID.")
+        }
+    }
+
+    private func buildAppleTutorialSection() -> some View {
+        Section {
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: 12) {
+                    buildTutorialStep(
+                        number: 1,
+                        title: String(localized: "Open App Store Connect"),
+                        description: String(localized: "Go to appstoreconnect.apple.com and sign in with your Apple ID.")
+                    )
+                    buildTutorialStep(
+                        number: 2,
+                        title: String(localized: "Users and Access"),
+                        description: String(localized: "In the top navigation, go to Users and Access.")
+                    )
+                    buildTutorialStep(
+                        number: 3,
+                        title: String(localized: "Integrations > App Store Connect API"),
+                        description: String(localized: "Select the Integrations tab, then choose App Store Connect API. Make sure Team Keys is selected.")
+                    )
+                    buildTutorialStep(
+                        number: 4,
+                        title: String(localized: "Generate a new key"),
+                        description: String(localized: "Tap the + button, give the key a name, choose the desired access level, and confirm.")
+                    )
+                    buildTutorialStep(
+                        number: 5,
+                        title: String(localized: "Copy the Issuer ID and Key ID"),
+                        description: String(localized: "The Issuer ID appears at the top of the page. The Key ID is listed next to your newly created key.")
+                    )
+                    buildTutorialStep(
+                        number: 6,
+                        title: String(localized: "Download the .p8 file"),
+                        description: String(localized: "Tap \"Download API Key\" — this is the only time you can download it. Use \"Import .p8 file\" above to load it.")
+                    )
+                }
+                .padding(.vertical, 8)
+            } label: {
+                Label(String(localized: "How to generate the API key"), systemImage: "questionmark.circle")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -174,11 +232,80 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                     .frame(minHeight: 200)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
+
+                Button {
+                    showingJSONFilePicker = true
+                } label: {
+                    Label(String(localized: "Import .json file"), systemImage: "doc.badge.plus")
+                        .font(.subheadline)
+                }
+                .buttonStyle(.borderless)
             }
         } header: {
             Text("Firebase Credentials")
         } footer: {
-            Text("Paste the full JSON content of your Google Service Account key file. You can generate it at console.cloud.google.com under IAM & Admin > Service Accounts > Keys.")
+            Text("Paste or import the full JSON content of your Google Service Account key file.")
+        }
+    }
+
+    private func buildFirebaseTutorialSection() -> some View {
+        Section {
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: 12) {
+                    buildTutorialStep(
+                        number: 1,
+                        title: String(localized: "Open Firebase Console"),
+                        description: String(localized: "Go to console.firebase.google.com and select your project.")
+                    )
+                    buildTutorialStep(
+                        number: 2,
+                        title: String(localized: "Project Settings"),
+                        description: String(localized: "Tap the gear icon next to \"Project Overview\" and select Project settings.")
+                    )
+                    buildTutorialStep(
+                        number: 3,
+                        title: String(localized: "Service Accounts tab"),
+                        description: String(localized: "Navigate to the \"Service accounts\" tab at the top of the page.")
+                    )
+                    buildTutorialStep(
+                        number: 4,
+                        title: String(localized: "Generate new private key"),
+                        description: String(localized: "Scroll down and tap \"Generate new private key\", then confirm.")
+                    )
+                    buildTutorialStep(
+                        number: 5,
+                        title: String(localized: "Import the .json file"),
+                        description: String(localized: "A .json file will be downloaded. Use \"Import .json file\" above to load it.")
+                    )
+                }
+                .padding(.vertical, 8)
+            } label: {
+                Label(String(localized: "How to generate the JSON key"), systemImage: "questionmark.circle")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func buildTutorialStep(number: Int, title: String, description: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text("\(number)")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.white)
+                .frame(width: 20, height: 20)
+                .background(Color.accentColor)
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
