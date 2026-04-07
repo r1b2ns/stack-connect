@@ -26,6 +26,9 @@ struct PaywallView: View {
             ScrollView {
                 VStack(spacing: 24) {
                     buildHeader()
+                    if let loadError = subscriptionService.loadError {
+                        buildLoadErrorView(loadError)
+                    }
                     if selectedPlan != .lifetime {
                         buildBillingToggle()
                     }
@@ -102,6 +105,42 @@ struct PaywallView: View {
         } message: {
             Text(String(localized: "Choose a name for this account."))
         }
+    }
+
+    // MARK: - Load Error
+
+    private func buildLoadErrorView(_ message: String) -> some View {
+        VStack(spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(String(localized: "Could not load plans"))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            Button {
+                Task { await subscriptionService.loadProducts() }
+            } label: {
+                Label(String(localized: "Retry"), systemImage: "arrow.clockwise")
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .foregroundStyle(.white)
+                    .background(.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            .disabled(subscriptionService.isLoading)
+        }
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     // MARK: - Header

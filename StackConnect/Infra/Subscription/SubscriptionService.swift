@@ -76,6 +76,7 @@ final class SubscriptionService: ObservableObject {
     @Published var products: [Product] = []
     @Published var isLoading = false
     @Published var purchaseError: String?
+    @Published var loadError: String?
     @Published var hasImportedAccess: Bool
 
     /// User has access via subscription OR imported account
@@ -109,13 +110,48 @@ final class SubscriptionService: ObservableObject {
 
     func loadProducts() async {
         isLoading = true
-        do {
-            products = try await Product.products(for: SubscriptionProductID.allIDs)
-                .sorted { $0.price < $1.price }
-            Log.print.info("[Subscription] Loaded \(self.products.count) products")
-        } catch {
-            Log.print.error("[Subscription] Failed to load products: \(error.localizedDescription)")
+        loadError = nil
+
+        let requestedIDs = SubscriptionProductID.allIDs
+        let maxAttempts = 3
+        var lastError: Error?
+
+        for attempt in 1...maxAttempts {
+            Log.print.info("[Subscription] Loading products (attempt \(attempt, privacy: .public)/\(maxAttempts, privacy: .public)) — requested: \(requestedIDs.joined(separator: ", "), privacy: .public)")
+
+            do {
+                let fetched = try await Product.products(for: requestedIDs)
+                products = fetched.sorted { $0.price < $1.price }
+
+                let receivedIDs = products.map(\.id)
+                Log.print.info("[Subscription] Received \(self.products.count, privacy: .public) products: \(receivedIDs.joined(separator: ", "), privacy: .public)")
+
+                let missing = Array(Set(requestedIDs).subtracting(receivedIDs)).sorted()
+                if !missing.isEmpty {
+                    Log.print.error("[Subscription] Missing products from App Store Connect: \(missing.joined(separator: ", "), privacy: .public)")
+                }
+
+                if products.isEmpty {
+                    loadError = String(
+                        localized: "Unable to load subscription plans. Please make sure you are connected to the Internet and signed in with a valid App Store account."
+                    )
+                } else {
+                    loadError = nil
+                }
+
+                isLoading = false
+                return
+            } catch {
+                lastError = error
+                Log.print.error("[Subscription] Attempt \(attempt, privacy: .public) failed: \(String(describing: error), privacy: .public)")
+
+                if attempt < maxAttempts {
+                    try? await Task.sleep(nanoseconds: UInt64(attempt) * 1_000_000_000)
+                }
+            }
         }
+
+        loadError = lastError?.localizedDescription ?? String(localized: "Failed to load subscription plans.")
         isLoading = false
     }
 

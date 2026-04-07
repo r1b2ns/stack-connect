@@ -96,6 +96,8 @@ targets:
 
     sources:
       - path: StackConnect
+        excludes:
+          - "**/*.storekit"
 
     info:
       path: StackConnect/Info.plist
