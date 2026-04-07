@@ -70,10 +70,11 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
 
             switch uiState.providerType {
             case .apple:
+                let key = sanitizedPrivateKey(uiState.privateKey)
                 let credentials = AppleCredentials(
                     issuerID: uiState.issuerID.trimmingCharacters(in: .whitespaces),
                     privateKeyID: uiState.privateKeyID.trimmingCharacters(in: .whitespaces),
-                    privateKey: uiState.privateKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                    privateKey: key
                 )
 
                 let connection = AppleAccountConnection(credentials: credentials)
@@ -137,6 +138,14 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
 
     // MARK: - Private
 
+    private func sanitizedPrivateKey(_ key: String) -> String {
+        key
+            .replacingOccurrences(of: "-----BEGIN PRIVATE KEY-----", with: "")
+            .replacingOccurrences(of: "-----END PRIVATE KEY-----", with: "")
+            .replacingOccurrences(of: "\n", with: "")
+            .trimmingCharacters(in: .whitespaces)
+    }
+
     private func checkDuplicateCredentials() async -> String? {
         guard let allAccounts = try? await storage.fetchAll(AccountModel.self) else { return nil }
         let sameTypeAccounts = allAccounts.filter { $0.providerType == uiState.providerType }
@@ -145,7 +154,7 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
             switch uiState.providerType {
             case .apple:
                 if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(existing.id)") {
-                    let newKey = uiState.privateKey.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let newKey = sanitizedPrivateKey(uiState.privateKey)
                     if creds.privateKey == newKey {
                         return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
                     }

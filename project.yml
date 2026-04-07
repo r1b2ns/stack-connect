@@ -124,12 +124,6 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
 
-    entitlements:
-      path: StackConnect/StackConnect.entitlements
-      properties:
-        com.apple.developer.in-app-payments:
-          - merchant.zeroSixteen.stackconnect
-
     configFiles:
       Debug: Configs/Debug.xcconfig
       Release: Configs/Release.xcconfig

@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 // MARK: - Factory
 
@@ -37,6 +38,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
     let onDismiss: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @State private var showingP8FilePicker = false
 
     var body: some View {
         NavigationStack {
@@ -66,6 +68,17 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
             .onChange(of: viewModel.uiState.isSaved) { _, isSaved in
                 if isSaved {
                     onDismiss()
+                }
+            }
+            .fileImporter(
+                isPresented: $showingP8FilePicker,
+                allowedContentTypes: [UTType(filenameExtension: "p8") ?? .data]
+            ) { result in
+                if case .success(let url) = result,
+                   url.startAccessingSecurityScopedResource(),
+                   let content = try? String(contentsOf: url, encoding: .utf8) {
+                    viewModel.uiState.privateKey = content
+                    url.stopAccessingSecurityScopedResource()
                 }
             }
         }
@@ -127,6 +140,14 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                     .frame(minHeight: 120)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
+
+                Button {
+                    showingP8FilePicker = true
+                } label: {
+                    Label(String(localized: "Import .p8 file"), systemImage: "doc.badge.plus")
+                        .font(.subheadline)
+                }
+                .buttonStyle(.borderless)
             }
         } header: {
             Text("App Store Connect Credentials")

@@ -289,16 +289,16 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                     }
                 }
 
-                Button {
-                    coordinator.presentAddAccount(providerType: .googlePlay)
-                } label: {
-                    Label {
-                        Text(ProviderType.googlePlay.displayName)
-                    } icon: {
-                        Image(systemName: ProviderType.googlePlay.iconName)
-                            .foregroundStyle(ProviderType.googlePlay.color)
-                    }
-                }
+//                Button {
+//                    coordinator.presentAddAccount(providerType: .googlePlay)
+//                } label: {
+//                    Label {
+//                        Text(ProviderType.googlePlay.displayName)
+//                    } icon: {
+//                        Image(systemName: ProviderType.googlePlay.iconName)
+//                            .foregroundStyle(ProviderType.googlePlay.color)
+//                    }
+//                }
             }
             .navigationTitle(String(localized: "Select Provider"))
             .navigationBarTitleDisplayMode(.inline)

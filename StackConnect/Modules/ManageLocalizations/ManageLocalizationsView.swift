@@ -209,7 +209,20 @@ struct EditLocalizationSheet<ViewModel: ManageLocalizationsViewModelProtocol>: V
 
                 Section {
                     TextField(String(localized: "App Name"), text: $name)
-                    TextField(String(localized: "Subtitle (optional)"), text: $subtitle)
+
+                    VStack(alignment: .trailing, spacing: 2) {
+                        TextField(String(localized: "Subtitle (optional)"), text: $subtitle)
+                            .onChange(of: subtitle) { _, newValue in
+                                if newValue.count > 30 {
+                                    subtitle = String(newValue.prefix(30))
+                                }
+                            }
+
+                        Text("\(30 - subtitle.count)")
+                            .font(.caption2)
+                            .foregroundStyle(subtitle.count >= 30 ? .red : .secondary)
+                            .monospacedDigit()
+                    }
                 } header: {
                     Text("App Name & Subtitle")
                 } footer: {
