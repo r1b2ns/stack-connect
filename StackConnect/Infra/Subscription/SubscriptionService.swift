@@ -24,19 +24,19 @@ enum SubscriptionTier: String, Codable {
 // MARK: - Product IDs
 
 enum SubscriptionProductID: String, CaseIterable {
-#if DEBUG
-    case individualMonthly = "individualMonthId"
-    case individualYearly  = "individualYearlyId"
-    case teamMonthly       = "teamMonthId"
-    case teamYearly        = "teamYearlyId"
-    case lifetime          = "lifetimeId"
-#else
+//#if DEBUG
+//    case individualMonthly = "individualMonthId"
+//    case individualYearly  = "individualYearlyId"
+//    case teamMonthly       = "teamMonthId"
+//    case teamYearly        = "teamYearlyId"
+//    case lifetime          = "lifetimeId"
+//#else
     case individualMonthly = "prdIndividualMonthId"
     case individualYearly  = "prdIndividualYearlyId"
     case teamMonthly       = "prdTeamMonthId"
     case teamYearly        = "prdTeamYearlyId"
     case lifetime          = "prdLifetimeId"
-#endif
+//#endif
 
     var tier: SubscriptionTier {
         switch self {

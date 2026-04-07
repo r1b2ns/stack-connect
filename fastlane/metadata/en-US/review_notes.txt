@@ -1,3 +1,7 @@
+In the attached files you will find 3 videos showing the app in use and a file named 016-view.scexport which can be used to access the app without the need for a subscription.
+
+PASSWORD TO DECRYPT 016-view.scexport: 123456aA
+
 WHAT THE APP DOES
 
 StackConnect is a native iOS client for app developers to manage their App Store Connect and Firebase accounts directly from their iPhone or iPad. It allows users to browse apps, manage metadata, versions, localizations, TestFlight groups, reviews, analytics, Remote Config, and Cloud Messaging — all from a single app.

@@ -41,6 +41,13 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
     @State private var showingP8FilePicker = false
     @State private var showingJSONFilePicker = false
 
+    private var p8AllowedTypes: [UTType] {
+        var types: [UTType] = []
+        if let p8 = UTType(filenameExtension: "p8") { types.append(p8) }
+        types.append(contentsOf: [.data, .item])
+        return types
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -71,28 +78,6 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
             .onChange(of: viewModel.uiState.isSaved) { _, isSaved in
                 if isSaved {
                     onDismiss()
-                }
-            }
-            .fileImporter(
-                isPresented: $showingP8FilePicker,
-                allowedContentTypes: [UTType(filenameExtension: "p8") ?? .data]
-            ) { result in
-                if case .success(let url) = result,
-                   url.startAccessingSecurityScopedResource(),
-                   let content = try? String(contentsOf: url, encoding: .utf8) {
-                    viewModel.uiState.privateKey = content
-                    url.stopAccessingSecurityScopedResource()
-                }
-            }
-            .fileImporter(
-                isPresented: $showingJSONFilePicker,
-                allowedContentTypes: [.json]
-            ) { result in
-                if case .success(let url) = result,
-                   url.startAccessingSecurityScopedResource(),
-                   let content = try? String(contentsOf: url, encoding: .utf8) {
-                    viewModel.uiState.firebaseJSON = content
-                    url.stopAccessingSecurityScopedResource()
                 }
             }
         }
@@ -162,6 +147,14 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                         .font(.subheadline)
                 }
                 .buttonStyle(.borderless)
+                .fileImporter(
+                    isPresented: $showingP8FilePicker,
+                    allowedContentTypes: p8AllowedTypes
+                ) { result in
+                    handleFileImport(result: result) { content in
+                        viewModel.uiState.privateKey = content
+                    }
+                }
             }
         } header: {
             Text("App Store Connect Credentials")
@@ -240,6 +233,14 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                         .font(.subheadline)
                 }
                 .buttonStyle(.borderless)
+                .fileImporter(
+                    isPresented: $showingJSONFilePicker,
+                    allowedContentTypes: [.json]
+                ) { result in
+                    handleFileImport(result: result) { content in
+                        viewModel.uiState.firebaseJSON = content
+                    }
+                }
             }
         } header: {
             Text("Firebase Credentials")
@@ -332,6 +333,26 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
             Text("Google Play Credentials")
         } footer: {
             Text("Paste the full JSON content of your Google Service Account key file. The service account must have access to the Google Play Developer API. Create it at console.cloud.google.com and link it in play.google.com/console under Setup > API access.")
+        }
+    }
+
+    private func handleFileImport(
+        result: Result<URL, Error>,
+        assign: (String) -> Void
+    ) {
+        guard case .success(let url) = result else {
+            Log.print.error("[AddAccount] File import failed")
+            return
+        }
+        let needsRelease = url.startAccessingSecurityScopedResource()
+        defer {
+            if needsRelease { url.stopAccessingSecurityScopedResource() }
+        }
+        do {
+            let content = try String(contentsOf: url, encoding: .utf8)
+            assign(content)
+        } catch {
+            Log.print.error("[AddAccount] Failed to read imported file: \(error.localizedDescription)")
         }
     }
 
