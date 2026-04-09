@@ -14,21 +14,7 @@
 
   ],
   "products" : [
-    {
-      "displayPrice" : "99.99",
-      "familyShareable" : false,
-      "internalID" : "6761733469",
-      "localizations" : [
-        {
-          "description" : "For teams",
-          "displayName" : "Lifetime",
-          "locale" : "en_US"
-        }
-      ],
-      "productID" : "prdLifetimeId",
-      "referenceName" : "Lifetime",
-      "type" : "NonConsumable"
-    }
+
   ],
   "settings" : {
     "_applicationInternalID" : "6761390987",
@@ -38,7 +24,7 @@
     "_developerTeamID" : "VVAVW2S9CF",
     "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
-    "_lastSynchronizedDate" : 797199497.85646904,
+    "_lastSynchronizedDate" : 797428720.36516905,
     "_locale" : "en_US",
     "_renewalBillingIssuesEnabled" : false,
     "_storefront" : "USA",
@@ -48,127 +34,7 @@
     "_timeRate" : 0
   },
   "subscriptionGroups" : [
-    {
-      "id" : "22017965",
-      "localizations" : [
 
-      ],
-      "name" : "AppSubscription",
-      "subscriptions" : [
-        {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-          "displayPrice" : "3.99",
-          "familyShareable" : false,
-          "groupNumber" : 1,
-          "internalID" : "6761734000",
-          "introductoryOffer" : null,
-          "localizations" : [
-            {
-              "description" : "For individual developers",
-              "displayName" : "Individual monthly",
-              "locale" : "en_US"
-            }
-          ],
-          "productID" : "prdIndividualMonthId",
-          "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Individual Monthly",
-          "subscriptionGroupID" : "22017965",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : [
-
-          ]
-        },
-        {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-          "displayPrice" : "39.99",
-          "familyShareable" : false,
-          "groupNumber" : 2,
-          "internalID" : "6761734091",
-          "introductoryOffer" : null,
-          "localizations" : [
-            {
-              "description" : "For individual developers",
-              "displayName" : "Individual Yearly",
-              "locale" : "en_US"
-            }
-          ],
-          "productID" : "prdIndividualYearlyId",
-          "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Individual Yearly",
-          "subscriptionGroupID" : "22017965",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : [
-
-          ]
-        },
-        {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-          "displayPrice" : "7.99",
-          "familyShareable" : false,
-          "groupNumber" : 3,
-          "internalID" : "6761734123",
-          "introductoryOffer" : null,
-          "localizations" : [
-            {
-              "description" : "For developer’s team",
-              "displayName" : "Team Monthly",
-              "locale" : "en_US"
-            }
-          ],
-          "productID" : "prdTeamMonthId",
-          "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Team Monthly",
-          "subscriptionGroupID" : "22017965",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : [
-
-          ]
-        },
-        {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-          "displayPrice" : "79.99",
-          "familyShareable" : false,
-          "groupNumber" : 4,
-          "internalID" : "6761734346",
-          "introductoryOffer" : null,
-          "localizations" : [
-            {
-              "description" : "For developers team",
-              "displayName" : "Team Yearly",
-              "locale" : "en_US"
-            }
-          ],
-          "productID" : "prdTeamYearlyId",
-          "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Team Yearly",
-          "subscriptionGroupID" : "22017965",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : [
-
-          ]
-        }
-      ]
-    }
   ],
   "version" : {
     "major" : 4,

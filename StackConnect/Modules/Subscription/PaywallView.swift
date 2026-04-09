@@ -6,7 +6,7 @@ struct PaywallView: View {
 
     @EnvironmentObject private var subscriptionService: SubscriptionService
 
-    @State private var selectedPlan: SubscriptionTier = .individual
+    @State private var selectedPlan: SubscriptionTier = .team
     @State private var billingPeriod: BillingPeriod = .monthly
     @State private var isPurchasing = false
 
@@ -164,42 +164,55 @@ struct PaywallView: View {
     // MARK: - Plan Carousel
 
     private func buildPlanCarousel() -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                buildPlanCard(
-                    tier: .individual,
-                    icon: "person.fill",
-                    color: .blue,
-                    features: [
-                        String(localized: "Manage all accounts"),
-                        String(localized: "Offline-first sync"),
-                        String(localized: "App analytics")
-                    ]
-                )
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    buildPlanCard(
+                        tier: .individual,
+                        icon: "person.fill",
+                        color: .blue,
+                        features: [
+                            String(localized: "Manage all accounts"),
+                            String(localized: "Offline-first sync"),
+                            String(localized: "App analytics")
+                        ]
+                    )
+                    .id(SubscriptionTier.individual)
 
-                buildPlanCard(
-                    tier: .team,
-                    icon: "person.3.fill",
-                    color: .purple,
-                    features: [
-                        String(localized: "Everything in Individual"),
-                        String(localized: "Export & share accounts"),
-                        String(localized: "Import team accounts")
-                    ]
-                )
+                    buildPlanCard(
+                        tier: .team,
+                        icon: "person.3.fill",
+                        color: .purple,
+                        features: [
+                            String(localized: "Everything in Individual"),
+                            String(localized: "Share accounts"),
+                            String(localized: "Import team accounts")
+                        ]
+                    )
+                    .id(SubscriptionTier.team)
 
-                buildPlanCard(
-                    tier: .lifetime,
-                    icon: "infinity",
-                    color: .orange,
-                    features: [
-                        String(localized: "Everything in Team"),
-                        String(localized: "One-time payment"),
-                        String(localized: "Lifetime access")
-                    ]
-                )
+                    buildPlanCard(
+                        tier: .lifetime,
+                        icon: "infinity",
+                        color: .orange,
+                        features: [
+                            String(localized: "Everything in Team"),
+                            String(localized: "One-time payment"),
+                            String(localized: "Lifetime access")
+                        ]
+                    )
+                    .id(SubscriptionTier.lifetime)
+                }
+                .padding(.horizontal, 4)
             }
-            .padding(.horizontal, 4)
+            .onAppear {
+                proxy.scrollTo(selectedPlan, anchor: .center)
+            }
+            .onChange(of: selectedPlan) { _, newPlan in
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    proxy.scrollTo(newPlan, anchor: .center)
+                }
+            }
         }
     }
 
@@ -277,15 +290,9 @@ struct PaywallView: View {
 
     private func buildFeaturesList() -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            if selectedPlan == .individual {
-                buildFeatureRow(icon: "xmark.circle.fill", color: .red, text: String(localized: "Export accounts not included"))
-                Text(String(localized: "The Individual plan does not allow sharing accounts within the app."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, 26)
-            } else {
-                buildFeatureRow(icon: "checkmark.circle.fill", color: .green, text: String(localized: "Export & import accounts included"))
-                Text(String(localized: "Exporting an account is a convenient way to share app access with other users in your team."))
+            if selectedPlan != .individual {
+                buildFeatureRow(icon: "checkmark.circle.fill", color: .green, text: String(localized: "Share & import accounts included"))
+                Text(String(localized: "Sharing an account is a convenient way to give your team access to the app."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.leading, 26)
@@ -295,9 +302,6 @@ struct PaywallView: View {
                 buildFeatureRow(icon: "checkmark.circle.fill", color: .green, text: String(localized: "Pay once, use forever"))
             }
         }
-        .padding(16)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private func buildFeatureRow(icon: String, color: Color, text: String) -> some View {
@@ -370,7 +374,7 @@ struct PaywallView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
 
-                Link(String(localized: "Privacy Policy"), destination: URL(string: "https://apple.com/privacy/")!)
+                Link(String(localized: "Privacy Policy"), destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

@@ -7,6 +7,7 @@ final class SettingsAccountsCoordinator: ObservableObject {
     @Published var selectedProviderType: ProviderType?
     @Published var editingAccount: AccountModel?
     @Published var exportingAccount: AccountModel?
+    @Published var exportFeedback: ExportFeedback?
 
     func presentAddOptions() {
         showAddOptions = true
@@ -46,4 +47,22 @@ final class SettingsAccountsCoordinator: ObservableObject {
     func dismissExportAccount() {
         exportingAccount = nil
     }
+
+    func presentExportFeedback(_ feedback: ExportFeedback) {
+        exportFeedback = feedback
+    }
+
+    func dismissExportFeedback() {
+        exportFeedback = nil
+    }
+}
+
+// MARK: - ExportFeedback
+
+struct ExportFeedback: Identifiable {
+    let id = UUID()
+    let type: FeedbackType
+    let image: String
+    let title: String
+    let message: String
 }

@@ -96,6 +96,23 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                                 viewModel.uiState.shareItem = ShareableFileURL(url: url)
                             }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                                coordinator.presentExportFeedback(ExportFeedback(
+                                    type: .success,
+                                    image: "checkmark.seal.fill",
+                                    title: String(localized: "Export Successful"),
+                                    message: String(localized: "The account \"\(name)\" was exported successfully. Share the encrypted file with your team.")
+                                ))
+                            }
+                        } else {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                coordinator.presentExportFeedback(ExportFeedback(
+                                    type: .error,
+                                    image: "xmark.seal.fill",
+                                    title: String(localized: "Export Failed"),
+                                    message: String(localized: "Unable to export the account \"\(name)\". Please check your credentials and try again.")
+                                ))
+                            }
                         }
                         return url
                     },
@@ -103,6 +120,16 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                         coordinator.dismissExportAccount()
                     }
                 )
+            }
+            .sheet(item: $coordinator.exportFeedback) { feedback in
+                FeedbackScreen(
+                    type: feedback.type,
+                    image: feedback.image,
+                    title: feedback.title,
+                    message: feedback.message,
+                    onDismiss: { coordinator.dismissExportFeedback() }
+                )
+                .presentationDetents([.medium])
             }
             .alert(
                 String(localized: "Upgrade Required"),
