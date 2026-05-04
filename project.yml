@@ -115,7 +115,8 @@ targets:
     info:
       path: StackConnect/Info.plist
       properties:
-        CFBundleDevelopmentRegion: "$(DEVELOPMENT_LANGUAGE)"
+        CFBundleDevelopmentRegion: en
+        CFBundleAllowMixedLocalizations: true
         CFBundleExecutable: "$(EXECUTABLE_NAME)"
         CFBundleIdentifier: "$(PRODUCT_BUNDLE_IDENTIFIER)"
         CFBundleName: "$(APP_DISPLAY_NAME)"
@@ -171,7 +172,8 @@ targets:
     info:
       path: StackConnectTests/Info.plist
       properties:
-        CFBundleDevelopmentRegion: "$(DEVELOPMENT_LANGUAGE)"
+        CFBundleDevelopmentRegion: en
+        CFBundleAllowMixedLocalizations: true
         CFBundleExecutable: "$(EXECUTABLE_NAME)"
         CFBundleIdentifier: "$(PRODUCT_BUNDLE_IDENTIFIER_TESTS)"
         CFBundleName: "$(PRODUCT_NAME)"
