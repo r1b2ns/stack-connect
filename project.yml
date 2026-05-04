@@ -111,8 +111,6 @@ targets:
 
     sources:
       - path: StackConnect
-        excludes:
-          - "**/*.storekit"
 
     info:
       path: StackConnect/Info.plist
@@ -203,7 +201,6 @@ schemes:
     run:
       config: Debug
       executable: StackConnect
-      storeKitConfiguration: StackConnect/Infra/Subscription/StackConnectProductsDev.storekit
     test:
       config: Debug
       targets: [StackConnectTests]
@@ -215,7 +212,6 @@ schemes:
     run:
       config: Release
       executable: StackConnect
-      storeKitConfiguration: StackConnect/Infra/Subscription/StackConnectProductsPrd.storekit
 
   StackConnectTests:
     build:

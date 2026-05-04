@@ -28,10 +28,8 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var coordinator: SettingsAccountsCoordinator
-    @EnvironmentObject private var subscriptionService: SubscriptionService
     @State private var importError: String = ""
     @State private var showImportError = false
-    @State private var showUpgradeAlert = false
 
     var body: some View {
         buildContent()
@@ -130,14 +128,6 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                     onDismiss: { coordinator.dismissExportFeedback() }
                 )
                 .presentationDetents([.medium])
-            }
-            .alert(
-                String(localized: "Upgrade Required"),
-                isPresented: $showUpgradeAlert
-            ) {
-                Button(String(localized: "OK"), role: .cancel) {}
-            } message: {
-                Text(String(localized: "Exporting accounts is available on Team and Lifetime plans. Upgrade your subscription to unlock this feature."))
             }
     }
 
@@ -239,11 +229,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
 
                     if account.isExportable && account.providerType == .apple {
                         Button {
-                            if subscriptionService.currentTier?.canExport == true {
-                                coordinator.presentExportAccount(account)
-                            } else {
-                                showUpgradeAlert = true
-                            }
+                            coordinator.presentExportAccount(account)
                         } label: {
                             Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
                         }
@@ -378,13 +364,9 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                 if account.isExportable && account.providerType == .apple {
                     Section {
                         Button {
-                            if subscriptionService.currentTier?.canExport == true {
-                                coordinator.dismissEditAccount()
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    coordinator.presentExportAccount(account)
-                                }
-                            } else {
-                                showUpgradeAlert = true
+                            coordinator.dismissEditAccount()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                coordinator.presentExportAccount(account)
                             }
                         } label: {
                             Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
