@@ -1,0 +1,44 @@
+StackConnect ist der All-in-One-Begleiter für App-Entwickler auf dem iPhone. Verwalte deine App Store Connect- und Firebase-Konten in einer einzigen, wunderschönen nativen iOS-App — weitere Integrationen folgen in Kürze.
+
+HAUPTFUNKTIONEN
+
+App Store Connect
+- Durchsuche all deine Apps mit Suche, Sortierung und Favoriten
+- Versionsmetadaten anzeigen und bearbeiten: Beschreibung, Neuheiten, Werbetext, Keywords, URLs
+- App-Versionen über alle Plattformen verwalten (iOS, macOS, tvOS, visionOS)
+- Zur Prüfung einreichen, Prüfung abbrechen, veröffentlichen und Versionen ablehnen
+- App-Informationen bearbeiten: Bundle-ID, SKU, Kategorie, Inhaltsrechte, Altersfreigabe
+- Datenschutzangaben pro Sprache verwalten
+- Barrierefreiheitsangaben pro Gerätefamilie verwalten
+- Kundenbewertungen mit endlosem Scrollen durchsuchen, nach Bewertung filtern
+- Auf Bewertungen antworten und Antworten direkt in der App löschen
+- App-Analysen mit täglichen Diagrammen anzeigen: Installationen, Löschungen, Downloads, Impressionen, Seitenaufrufe
+- TestFlight-Betagruppen und Tester verwalten
+- Builds zu Betagruppen hinzufügen, Teammitglieder einladen
+- Teammitglieder und Rollen verwalten
+- App-Verlauf und Prüfeinreichungen nachverfolgen
+
+Firebase
+- Firebase-Projekte und -Apps durchsuchen
+- Remote-Config-Parameter und -Bedingungen verwalten
+- Analytics-Dashboard anzeigen
+- Cloud-Messaging-Kampagnen mit Zielgruppenausrichtung senden
+
+Multi-Konto-Verwaltung
+- Mehrere Konten pro Anbieter hinzufügen
+- Detaillierte Berechtigungen pro Konto (Apps, Versionen, Benutzer, Bewertungen, TestFlight, Analytics)
+- Berechtigungshierarchie: Anzeigen, Bearbeiten, Löschen, Hinzufügen
+- Offline-first: Sofort aus dem lokalen Cache laden, im Hintergrund mit der API synchronisieren
+- Kaskadierende Löschung: Beim Entfernen eines Kontos werden alle zugehörigen Daten bereinigt
+
+Sichere Kontofreigabe (Team- & Lifetime-Pläne)
+- Konten als verschlüsselte .scexport-Dateien exportieren
+- AES-256-GCM-Verschlüsselung mit Passwortschutz
+- Zugriff mit deinen Teammitgliedern teilen
+- Empfänger importieren die Datei mit dem Passwort und erhalten sofortigen Zugriff
+- Auswahl einzelner Berechtigungen beim Export
+
+Weitere Integrationen in Kürze
+- StackConnect wächst stetig — über App Store Connect und Firebase hinaus sind weitere Integrationen für Entwicklerplattformen in Planung. Bleib dran.
+
+Datenschutz an erster Stelle: Alle Zugangsdaten werden sicher im iOS-Schlüsselbund gespeichert. Kontodaten werden lokal mit SwiftData zwischengespeichert. Keine Analysen, kein Tracking, keine Drittanbieter-Server — nur du und die offiziellen APIs von Apple/Google.

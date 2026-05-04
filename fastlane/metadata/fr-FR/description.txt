@@ -1,0 +1,44 @@
+StackConnect est le compagnon mobile tout-en-un pour les développeurs d'applications. Gérez vos comptes App Store Connect et Firebase depuis une seule application iOS native et élégante — avec d'autres intégrations à venir.
+
+FONCTIONNALITÉS PRINCIPALES
+
+App Store Connect
+• Parcourez toutes vos apps avec recherche, tri et favoris
+• Consultez et modifiez les métadonnées de version : description, nouveautés, texte promotionnel, mots-clés, URL
+• Gérez les versions sur toutes les plateformes (iOS, macOS, tvOS, visionOS)
+• Soumettez en révision, annulez la révision, publiez et rejetez des versions
+• Modifiez les informations de l'app : identifiant de bundle, SKU, catégorie, droits de contenu, classement d'âge
+• Gérez les déclarations de confidentialité par langue
+• Gérez les déclarations d'accessibilité par famille d'appareils
+• Parcourez les avis clients avec défilement infini et filtrage par note
+• Répondez aux avis et supprimez les réponses directement depuis l'app
+• Consultez les statistiques avec des graphiques quotidiens : installations, suppressions, téléchargements, impressions, pages vues
+• Gérez les groupes bêta TestFlight et les testeurs
+• Ajoutez des builds aux groupes bêta, invitez des membres d'équipe
+• Gérez les membres d'équipe et les rôles
+• Suivez l'historique de l'app et les soumissions de révision
+
+Firebase
+• Parcourez les projets et les apps Firebase
+• Gérez les paramètres et conditions de Remote Config
+• Consultez le tableau de bord analytique
+• Envoyez des campagnes Cloud Messaging avec ciblage d'audience
+
+Gestion multi-comptes
+• Ajoutez plusieurs comptes par fournisseur
+• Permissions granulaires par compte (apps, versions, utilisateurs, avis, TestFlight, analytics)
+• Hiérarchie des permissions : consulter, modifier, supprimer, ajouter
+• Hors-ligne d'abord : chargement instantané depuis le cache local, synchronisation en arrière-plan
+• Suppression en cascade : la suppression d'un compte nettoie toutes les données associées
+
+Partage sécurisé de comptes (forfaits Équipe et À vie)
+• Exportez vos comptes sous forme de fichiers chiffrés .scexport
+• Chiffrement AES-256-GCM avec protection par mot de passe
+• Partagez l'accès avec les membres de votre équipe
+• Les destinataires importent le fichier avec le mot de passe et obtiennent un accès immédiat
+• Sélection des permissions par ressource lors de l'export
+
+D'autres intégrations à venir
+• StackConnect évolue activement — au-delà d'App Store Connect et Firebase, d'autres intégrations de plateformes développeur arrivent bientôt. Restez à l'écoute.
+
+La confidentialité avant tout : toutes les informations d'identification sont stockées de manière sécurisée dans le trousseau iOS. Les données de compte sont mises en cache localement avec SwiftData. Aucune collecte de données, aucun suivi, aucun serveur tiers — juste vous et les API officielles d'Apple et Google.

@@ -1,0 +1,44 @@
+StackConnect é o companheiro mobile completo para desenvolvedores de apps. Gerencie suas contas do App Store Connect e Firebase em um único app iOS nativo e bonito — com mais integrações em breve.
+
+PRINCIPAIS RECURSOS
+
+App Store Connect
+• Navegue por todos os seus apps com busca, ordenação e favoritos
+• Visualize e edite metadados de versão: descrição, novidades, texto promocional, palavras-chave, URLs
+• Gerencie versões de apps em todas as plataformas (iOS, macOS, tvOS, visionOS)
+• Envie para revisão, cancele revisão, publique e rejeite versões
+• Edite informações do app: bundle ID, SKU, categoria, direitos de conteúdo, classificação etária
+• Gerencie declarações de privacidade por localidade
+• Gerencie declarações de acessibilidade por família de dispositivos
+• Navegue pelas avaliações dos clientes com scroll infinito, filtre por estrelas
+• Responda avaliações e exclua respostas diretamente pelo app
+• Visualize análises do app com gráficos diários: instalações, exclusões, downloads, impressões, visualizações de página
+• Gerencie grupos beta e testadores do TestFlight
+• Adicione builds a grupos beta, convide membros da equipe
+• Gerencie membros da equipe e funções
+• Acompanhe o histórico do app e envios para revisão
+
+Firebase
+• Navegue por projetos e apps do Firebase
+• Gerencie parâmetros e condições do Remote Config
+• Visualize o painel de análises
+• Envie campanhas do Cloud Messaging com segmentação de público
+
+Gerenciamento de múltiplas contas
+• Adicione várias contas por provedor
+• Permissões detalhadas por conta (apps, versões, usuários, avaliações, TestFlight, análises)
+• Hierarquia de permissões: visualizar, editar, excluir, adicionar
+• Offline-first: carregue instantaneamente do cache local, sincronize via API em segundo plano
+• Exclusão em cascata: remover uma conta limpa todos os dados relacionados
+
+Compartilhamento seguro de contas (planos Team e Lifetime)
+• Exporte contas como arquivos .scexport criptografados
+• Criptografia AES-256-GCM com proteção por senha
+• Compartilhe acesso com membros da sua equipe
+• Destinatários importam o arquivo com a senha e obtêm acesso imediato
+• Seleção de permissões por recurso durante a exportação
+
+Mais integrações em breve
+• O StackConnect está em constante crescimento — além do App Store Connect e Firebase, mais integrações com plataformas de desenvolvimento estão a caminho. Fique ligado.
+
+Privacidade em primeiro lugar: todas as credenciais são armazenadas com segurança no Keychain do iOS. Os dados da conta são armazenados localmente com SwiftData. Sem analytics, sem rastreamento, sem servidores de terceiros — apenas você e as APIs oficiais da Apple/Google.

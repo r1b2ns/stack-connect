@@ -1,0 +1,44 @@
+StackConnect är den kompletta mobilkompanjonen för apputvecklare. Hantera dina App Store Connect- och Firebase-konton från en enda, snygg nativ iOS-app — med fler integrationer på väg.
+
+HUVUDFUNKTIONER
+
+App Store Connect
+• Bläddra bland alla dina appar med sökning, sortering och favoriter
+• Visa och redigera versionsmetadata: beskrivning, nyheter, kampanjtext, nyckelord, URL:er
+• Hantera appversioner på alla plattformar (iOS, macOS, tvOS, visionOS)
+• Skicka för granskning, avbryt granskning, publicera och avvisa versioner
+• Redigera appinformation: bundle-ID, SKU, kategori, innehållsrättigheter, åldersgräns
+• Hantera appens integritetsdeklarationer per språk
+• Hantera tillgänglighetsdeklarationer per enhetsfamilj
+• Bläddra bland kundrecensioner med oändlig scrollning, filtrera efter betyg
+• Svara på recensioner och ta bort svar direkt i appen
+• Visa appanalys med dagliga diagram: installationer, borttagningar, nedladdningar, visningar, sidvisningar
+• Hantera TestFlight-betagrupper och testare
+• Lägg till byggen i betagrupper, bjud in teammedlemmar
+• Hantera teammedlemmar och roller
+• Följ apphistorik och granskningsinskickningar
+
+Firebase
+• Bläddra bland Firebase-projekt och appar
+• Hantera Remote Config-parametrar och villkor
+• Visa analyspanelen
+• Skicka Cloud Messaging-kampanjer med målgruppsstyrning
+
+Hantering av flera konton
+• Lägg till flera konton per leverantör
+• Detaljerade behörigheter per konto (appar, versioner, användare, recensioner, TestFlight, analys)
+• Behörighetshierarki: visa, redigera, ta bort, lägga till
+• Offline-first: ladda direkt från lokal cache, synka från API i bakgrunden
+• Kaskadradering: att ta bort ett konto rensar alla relaterade data
+
+Säker kontodelning (Team- och Lifetime-planer)
+• Exportera konton som krypterade .scexport-filer
+• AES-256-GCM-kryptering med lösenordsskydd
+• Dela åtkomst med dina teammedlemmar
+• Mottagare importerar filen med lösenordet och får omedelbar åtkomst
+• Val av behörigheter per resurs vid export
+
+Fler integrationer kommer snart
+• StackConnect växer aktivt — utöver App Store Connect och Firebase är fler integrationer med utvecklarplattformar på väg. Håll utkik.
+
+Integritet först: alla autentiseringsuppgifter lagras säkert i iOS Keychain. Kontodata cachas lokalt med SwiftData. Ingen analys, ingen spårning, inga tredjepartsservrar — bara du och Apples/Googles officiella API:er.

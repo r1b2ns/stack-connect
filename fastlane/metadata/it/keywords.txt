@@ -1,0 +1,1 @@
+appstore,connect,firebase,sviluppatore,testflight,analytics,recensioni,gestore,ios,strumenti

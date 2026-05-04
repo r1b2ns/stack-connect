@@ -1,0 +1,11 @@
+Benvenuto in StackConnect! Questa prima versione include:
+
+• Gestione degli account App Store Connect e Firebase
+• Visualizzazione e modifica di versioni, metadati e screenshot
+• Invio, pubblicazione, rifiuto e annullamento delle revisioni
+• Navigazione delle recensioni dei clienti e risposta diretta
+• Gestione dei gruppi beta TestFlight
+• Statistiche con grafici giornalieri
+• Condivisione crittografata degli account per i team (piani Team e Lifetime)
+• Sincronizzazione offline con archiviazione sicura nel Portachiavi
+• Layout a vista divisa ottimizzato per iPad

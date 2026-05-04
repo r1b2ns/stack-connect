@@ -7,6 +7,21 @@ options:
   developmentRegion: en
   createIntermediateGroups: true
   groupSortPosition: none
+  knownRegions:
+    - en
+    - de
+    - es
+    - es-MX
+    - fr
+    - it
+    - ja
+    - ko
+    - nl
+    - pt-BR
+    - pt-PT
+    - ru
+    - sv
+    - zh-Hant
 
 settings:
   base:

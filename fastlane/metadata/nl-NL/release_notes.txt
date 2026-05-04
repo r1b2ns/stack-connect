@@ -1,0 +1,11 @@
+Welkom bij StackConnect! Deze eerste release bevat:
+
+• Beheer App Store Connect- en Firebase-accounts
+• Bekijk en bewerk app-versies, metadata en schermafbeeldingen
+• Dien in, geef vrij, wijs af en annuleer beoordelingen
+• Blader door klantbeoordelingen en reageer direct
+• TestFlight-bètagroepbeheer
+• App-analyse met dagelijkse grafieken
+• Versleuteld accounts delen voor teams (Team- en Lifetime-abonnementen)
+• Offline-first synchronisatie met veilige sleutelhangeropslag
+• Voor iPad geoptimaliseerde gesplitste weergave
