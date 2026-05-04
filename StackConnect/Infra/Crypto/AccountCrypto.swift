@@ -1,3 +1,4 @@
+import CommonCrypto
 import CryptoKit
 import Foundation
 
@@ -7,14 +8,16 @@ enum AccountCryptoError: LocalizedError {
     case unsupportedVersion
     case decryptionFailed
     case invalidPassword
+    case keyDerivationFailed
 
     var errorDescription: String? {
         switch self {
-        case .encryptionFailed:  return String(localized: "Failed to encrypt data.")
-        case .invalidFileFormat: return String(localized: "Invalid file format. This is not a StackConnect export file.")
-        case .unsupportedVersion: return String(localized: "Unsupported file version.")
-        case .decryptionFailed:  return String(localized: "Failed to decrypt file.")
-        case .invalidPassword:   return String(localized: "Invalid password or corrupted file.")
+        case .encryptionFailed:    return String(localized: "Failed to encrypt data.")
+        case .invalidFileFormat:   return String(localized: "Invalid file format. This is not a StackConnect export file.")
+        case .unsupportedVersion:  return String(localized: "Unsupported file version.")
+        case .decryptionFailed:    return String(localized: "Failed to decrypt file.")
+        case .invalidPassword:     return String(localized: "Invalid password or corrupted file.")
+        case .keyDerivationFailed: return String(localized: "Failed to derive encryption key.")
         }
     }
 }
@@ -24,17 +27,23 @@ enum AccountCryptoError: LocalizedError {
 /// File format (.scexport):
 /// ```
 /// [4 bytes]  Magic: "SCEX"
-/// [1 byte]   Version: 0x01
+/// [1 byte]   Version: 0x01 (legacy HKDF, read-only) or 0x02 (PBKDF2-SHA256)
 /// [16 bytes] Random salt
 /// [12 bytes] Nonce
 /// [N bytes]  Ciphertext + GCM tag (16 bytes)
 /// ```
+///
+/// Versions:
+/// - v1 (legacy): key = HKDF(SHA256(appSalt || password), randomSalt). Fast — vulnerable to offline brute-force.
+///   Decryption only — kept for migrating older `.scexport` files.
+/// - v2 (current): key = PBKDF2-SHA256(password, appSalt || randomSalt, 600_000, 32). Slow KDF.
 struct AccountCrypto {
 
     // MARK: - Constants
 
-    /// Fixed app-level salt (32 bytes). Combined with user password to derive encryption key.
-    /// This ensures files are only decryptable by StackConnect.
+    /// Fixed app-level salt (32 bytes). Mixed with the per-file random salt so that decryption
+    /// requires both the user password AND the StackConnect binary. Not a secret — present in
+    /// every shipped IPA — but binds the file format to this app.
     private static let appSalt = Data([
         0x4A, 0xC7, 0x1E, 0x93, 0xD2, 0x58, 0xBF, 0x06,
         0x7D, 0xA4, 0x3B, 0xE1, 0x90, 0xF5, 0x2C, 0x68,
@@ -43,106 +52,83 @@ struct AccountCrypto {
     ])
 
     private static let magic = Data("SCEX".utf8)
-    private static let version: UInt8 = 1
-    private static let info = Data("StackConnect.Export.v1".utf8)
+    private static let currentVersion: UInt8 = 0x02
+    private static let legacyHKDFInfo = Data("StackConnect.Export.v1".utf8)
+    private static let pbkdf2Iterations: UInt32 = 600_000
 
     private static let saltLength = 16
     private static let nonceLength = 12
+    private static let tagLength = 16
+    private static let headerLength = 4 + 1 + 16 + 12 // 33
 
     // MARK: - Public
 
-    /// Encrypts a JSON string with the given password.
-    /// Returns binary data in `.scexport` format.
+    /// Encrypts a JSON string with the given password. Always writes the current format version.
     static func encrypt(json: String, password: String) throws -> Data {
         guard let jsonData = json.data(using: .utf8) else {
             throw AccountCryptoError.encryptionFailed
         }
 
-        // Generate random salt and nonce
-        var randomSalt = Data(count: saltLength)
-        _ = randomSalt.withUnsafeMutableBytes { SecRandomCopyBytes(kSecRandomDefault, saltLength, $0.baseAddress!) }
+        let randomSalt = try randomBytes(count: saltLength)
+        let nonceData = try randomBytes(count: nonceLength)
 
-        let symmetricKey = deriveKey(password: password, salt: randomSalt)
-
-        var nonceData = Data(count: nonceLength)
-        _ = nonceData.withUnsafeMutableBytes { SecRandomCopyBytes(kSecRandomDefault, nonceLength, $0.baseAddress!) }
+        let symmetricKey = try deriveKeyV2(password: password, randomSalt: randomSalt)
         let nonce = try AES.GCM.Nonce(data: nonceData)
-
         let sealedBox = try AES.GCM.seal(jsonData, using: symmetricKey, nonce: nonce)
 
-        // Build file: magic + version + salt + nonce + ciphertext+tag
         var output = Data()
         output.append(magic)
-        output.append(version)
+        output.append(currentVersion)
         output.append(randomSalt)
         output.append(contentsOf: nonce)
         output.append(sealedBox.ciphertext)
         output.append(sealedBox.tag)
-
         return output
     }
 
-    /// Decrypts binary `.scexport` data with the given password.
-    /// Returns the original JSON string.
+    /// Decrypts binary `.scexport` data with the given password. Supports v1 and v2.
     static func decrypt(data: Data, password: String) throws -> String {
-        // Validate minimum size: magic(4) + version(1) + salt(16) + nonce(12) + tag(16) = 49
-        guard data.count >= 49 else {
+        guard data.count >= headerLength + tagLength else {
             throw AccountCryptoError.invalidFileFormat
         }
 
         var offset = 0
 
-        // Validate magic
         let fileMagic = data[offset..<offset + 4]
-        guard fileMagic == magic else {
-            throw AccountCryptoError.invalidFileFormat
-        }
+        guard fileMagic == magic else { throw AccountCryptoError.invalidFileFormat }
         offset += 4
 
-        // Validate version
         let fileVersion = data[offset]
-        guard fileVersion == version else {
-            throw AccountCryptoError.unsupportedVersion
-        }
         offset += 1
 
-        // Read salt
-        let salt = data[offset..<offset + saltLength]
+        let salt = Data(data[offset..<offset + saltLength])
         offset += saltLength
 
-        // Read nonce
         let nonceData = data[offset..<offset + nonceLength]
         offset += nonceLength
 
-        // Read ciphertext + tag
-        let remaining = data[offset...]
-        guard remaining.count >= 16 else {
-            throw AccountCryptoError.invalidFileFormat
+        let ciphertextAndTag = data[offset...]
+        guard ciphertextAndTag.count >= tagLength else { throw AccountCryptoError.invalidFileFormat }
+
+        let symmetricKey: SymmetricKey
+        switch fileVersion {
+        case 0x01: symmetricKey = deriveKeyV1(password: password, randomSalt: salt)
+        case 0x02: symmetricKey = try deriveKeyV2(password: password, randomSalt: salt)
+        default:   throw AccountCryptoError.unsupportedVersion
         }
 
-        let ciphertextAndTag = remaining
-
-        // Derive key
-        let symmetricKey = deriveKey(password: password, salt: Data(salt))
-
-        // Decrypt
         do {
             let nonce = try AES.GCM.Nonce(data: nonceData)
             let sealedBox = try AES.GCM.SealedBox(
                 nonce: nonce,
-                ciphertext: ciphertextAndTag.dropLast(16),
-                tag: ciphertextAndTag.suffix(16)
+                ciphertext: ciphertextAndTag.dropLast(tagLength),
+                tag: ciphertextAndTag.suffix(tagLength)
             )
-
             let decryptedData = try AES.GCM.open(sealedBox, using: symmetricKey)
-
             guard let json = String(data: decryptedData, encoding: .utf8) else {
                 throw AccountCryptoError.decryptionFailed
             }
-
             return json
-        } catch is AccountCryptoError {
-            throw AccountCryptoError.invalidPassword
         } catch {
             throw AccountCryptoError.invalidPassword
         }
@@ -150,24 +136,50 @@ struct AccountCrypto {
 
     // MARK: - Private
 
-    /// Derives a 256-bit symmetric key from password + app salt + random salt using HKDF.
-    private static func deriveKey(password: String, salt: Data) -> SymmetricKey {
-        // Combine app salt + password
+    private static func randomBytes(count: Int) throws -> Data {
+        var data = Data(count: count)
+        let result = data.withUnsafeMutableBytes {
+            SecRandomCopyBytes(kSecRandomDefault, count, $0.baseAddress!)
+        }
+        guard result == errSecSuccess else { throw AccountCryptoError.encryptionFailed }
+        return data
+    }
+
+    /// v2: PBKDF2-SHA256 with 600k iterations. Salt = appSalt || randomSalt.
+    private static func deriveKeyV2(password: String, randomSalt: Data) throws -> SymmetricKey {
+        var combinedSalt = appSalt
+        combinedSalt.append(randomSalt)
+
+        var derived = Data(count: 32)
+        let passwordBytes = Array(password.utf8)
+
+        let status = derived.withUnsafeMutableBytes { derivedBytes -> Int32 in
+            combinedSalt.withUnsafeBytes { saltBytes -> Int32 in
+                CCKeyDerivationPBKDF(
+                    CCPBKDFAlgorithm(kCCPBKDF2),
+                    passwordBytes, passwordBytes.count,
+                    saltBytes.bindMemory(to: UInt8.self).baseAddress, combinedSalt.count,
+                    CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
+                    pbkdf2Iterations,
+                    derivedBytes.bindMemory(to: UInt8.self).baseAddress, 32
+                )
+            }
+        }
+        guard status == kCCSuccess else { throw AccountCryptoError.keyDerivationFailed }
+        return SymmetricKey(data: derived)
+    }
+
+    /// v1 (legacy): SHA256(appSalt || password) → HKDF<SHA256>. Decryption only.
+    private static func deriveKeyV1(password: String, randomSalt: Data) -> SymmetricKey {
         var inputMaterial = appSalt
         inputMaterial.append(Data(password.utf8))
-
-        // Hash to get consistent-length input key material
         let hashedInput = SHA256.hash(data: inputMaterial)
         let inputKey = SymmetricKey(data: hashedInput)
-
-        // Derive final key using HKDF
-        let derivedKey = HKDF<SHA256>.deriveKey(
+        return HKDF<SHA256>.deriveKey(
             inputKeyMaterial: inputKey,
-            salt: salt,
-            info: info,
+            salt: randomSalt,
+            info: legacyHKDFInfo,
             outputByteCount: 32
         )
-
-        return derivedKey
     }
 }
