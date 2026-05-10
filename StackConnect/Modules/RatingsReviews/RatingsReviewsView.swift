@@ -34,7 +34,7 @@ private struct RatingsReviewsEntryView: View {
 
 struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
 
-    @ObservedObject var viewModel: ViewModel
+    @StateObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
     var body: some View {
@@ -42,7 +42,6 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
             .navigationTitle(String(localized: "Ratings & Reviews"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
-            .task { await viewModel.load() }
             .refreshable { await viewModel.load() }
             .sheet(item: $viewModel.uiState.replyingTo) { review in
                 ReplySheet(

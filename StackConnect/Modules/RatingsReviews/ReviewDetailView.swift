@@ -116,7 +116,7 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
 
 struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
 
-    @ObservedObject var viewModel: ViewModel
+    @StateObject var viewModel: ViewModel
 
     var body: some View {
         List {
@@ -125,7 +125,6 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
         }
         .navigationTitle(String(localized: "Review"))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { buildToolbar() }
         .sheet(isPresented: $viewModel.uiState.showReplySheet) {
             buildReplySheet()
         }
@@ -304,21 +303,6 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
                 }
             }
             .disabled(viewModel.uiState.isSending)
-        }
-    }
-
-    // MARK: - Toolbar
-
-    @ToolbarContentBuilder
-    private func buildToolbar() -> some ToolbarContent {
-        if !viewModel.uiState.review.hasResponse && viewModel.uiState.account.canEdit(.review) {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    viewModel.uiState.showReplySheet = true
-                } label: {
-                    Image(systemName: "arrowshape.turn.up.left")
-                }
-            }
         }
     }
 

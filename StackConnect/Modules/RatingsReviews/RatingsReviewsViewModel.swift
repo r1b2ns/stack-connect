@@ -104,6 +104,9 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
     ) {
         self.uiState = RatingsReviewsUiState(appId: appId, bundleId: bundleId, account: account)
         self.keychain = keychain
+        Task {
+            await load()
+        }
     }
 
     func load() async {
