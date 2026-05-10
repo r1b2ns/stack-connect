@@ -1,1 +1,2 @@
 • Correções de erros e melhorias de estabilidade
+• Correções nos fluxos de gestão e respostas a avaliações

@@ -1,1 +1,2 @@
 • Fehlerbehebungen und Stabilitätsverbesserungen
+• Korrekturen in den Verwaltungs- und Antwortflüssen für Rezensionen

@@ -144,18 +144,21 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
 
     // MARK: - Summary Section
 
+    @ViewBuilder
     private func buildSummarySection() -> some View {
-        Section {
-            VStack(spacing: 6) {
-                Text(String(format: "%.1f", viewModel.uiState.averageRating))
-                    .font(.system(size: 48, weight: .bold, design: .rounded))
-                buildStarRow(rating: Int(viewModel.uiState.averageRating.rounded()))
-                Text(viewModel.uiState.ratingCountLabel)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        if let average = viewModel.uiState.storeAverageRating, average > 0 {
+            Section {
+                VStack(spacing: 6) {
+                    Text(String(format: "%.1f", average))
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                    buildStarRow(rating: Int(average.rounded()))
+                    Text(viewModel.uiState.ratingCountLabel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
         }
     }
 

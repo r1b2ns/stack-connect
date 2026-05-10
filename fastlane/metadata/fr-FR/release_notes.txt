@@ -1,1 +1,2 @@
 • Corrections de bogues et améliorations de la stabilité
+• Corrections des flux de gestion et de réponses aux avis
