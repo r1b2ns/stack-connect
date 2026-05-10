@@ -39,9 +39,6 @@ struct RatingsReviewsUiState {
     var storeRatingCount: Int?
     var storefronts: [iTunesStorefrontInfo] = []
 
-    // Rating distribution (from App Store Connect API: meta.paging.total per star)
-    var storeRatingDistribution: [Int: Int]?
-
     // Filters
     var sortOption: ReviewSortOption = .newest
     var filterRating: Int? = nil
@@ -65,31 +62,9 @@ struct RatingsReviewsUiState {
         return "\(count.formatted()) \(String(localized: "ratings"))"
     }
 
-    /// Rating distribution from API (exact counts per star), or fallback from loaded reviews.
-    var ratingDistribution: [Int: Int] {
-        if let store = storeRatingDistribution { return store }
-        var dist: [Int: Int] = [1: 0, 2: 0, 3: 0, 4: 0, 5: 0]
-        for review in reviews {
-            dist[review.rating, default: 0] += 1
-        }
-        return dist
-    }
-
     /// Total ratings across every storefront (matches what is shown on the App Store).
-    /// Falls back to the App Store Connect distribution sum when storefront data isn't available.
     var totalRatingCount: Int {
-        if let storeRatingCount, storeRatingCount > 0 { return storeRatingCount }
-        if let dist = storeRatingDistribution {
-            return dist.values.reduce(0, +)
-        }
-        return ratingDistribution.values.reduce(0, +)
-    }
-
-    /// Sum of the per-star distribution counts (used to scale the distribution bars).
-    /// May differ from `totalRatingCount` because the App Store Connect API only counts
-    /// ratings that include written text, while the App Store total includes rating-only entries.
-    var distributionTotal: Int {
-        ratingDistribution.values.reduce(0, +)
+        storeRatingCount ?? 0
     }
 }
 
@@ -137,12 +112,11 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
         uiState.reviews = []
         lastPageResponse = nil
 
-        // Fetch App Store rating, distribution, and reviews in parallel
+        // Fetch App Store rating and reviews in parallel
         async let ratingTask: () = fetchAppStoreRating()
-        async let distributionTask: () = fetchRatingDistribution()
         async let reviewsTask: () = fetchFirstPage()
 
-        _ = await (ratingTask, distributionTask, reviewsTask)
+        _ = await (ratingTask, reviewsTask)
 
         uiState.isLoading = false
     }
@@ -171,17 +145,6 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
         uiState.storeAverageRating = weightedAverage
         uiState.storeRatingCount = totalCount
         Log.print.info("[RatingsReviews] iTunes aggregate across \(storefronts.count) storefronts: avg \(weightedAverage), count \(totalCount)")
-    }
-
-    private func fetchRatingDistribution() async {
-        do {
-            guard let connection = createConnection() else { return }
-            let dist = try await connection.fetchRatingDistribution(appId: uiState.appId)
-            uiState.storeRatingDistribution = dist
-            Log.print.info("[RatingsReviews] Distribution: \(dist)")
-        } catch {
-            Log.print.error("[RatingsReviews] Distribution fetch failed: \(error.localizedDescription)")
-        }
     }
 
     private func fetchFirstPage() async {

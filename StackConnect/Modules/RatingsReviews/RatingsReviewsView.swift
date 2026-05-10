@@ -147,59 +147,16 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
 
     private func buildSummarySection() -> some View {
         Section {
-            HStack(spacing: 16) {
-                VStack(spacing: 4) {
-                    Text(String(format: "%.1f", viewModel.uiState.averageRating))
-                        .font(.system(size: 40, weight: .bold, design: .rounded))
-                    buildStarRow(rating: Int(viewModel.uiState.averageRating.rounded()))
-                    Text(viewModel.uiState.ratingCountLabel)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(minWidth: 80)
-
-                VStack(spacing: 4) {
-                    ForEach((1...5).reversed(), id: \.self) { star in
-                        buildDistributionBar(
-                            star: star,
-                            count: viewModel.uiState.ratingDistribution[star] ?? 0,
-                            total: viewModel.uiState.distributionTotal
-                        )
-                    }
-                }
+            VStack(spacing: 6) {
+                Text(String(format: "%.1f", viewModel.uiState.averageRating))
+                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                buildStarRow(rating: Int(viewModel.uiState.averageRating.rounded()))
+                Text(viewModel.uiState.ratingCountLabel)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .padding(.vertical, 8)
-        }
-    }
-
-    private func buildDistributionBar(star: Int, count: Int, total: Int) -> some View {
-        HStack(spacing: 6) {
-            Text("\(star)")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .frame(width: 12, alignment: .trailing)
-
-            Image(systemName: "star.fill")
-                .font(.system(size: 8))
-                .foregroundStyle(.yellow)
-
-            let fraction = total > 0 ? CGFloat(count) / CGFloat(total) : 0
-
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Color.gray.opacity(0.15))
-
-                Capsule()
-                    .fill(Color.yellow)
-                    .frame(maxWidth: .infinity)
-                    .scaleEffect(x: fraction, anchor: .leading)
-            }
-            .frame(height: 6)
-
-            Text(count.formatted())
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .frame(width: 36, alignment: .leading)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
         }
     }
 
