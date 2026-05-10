@@ -122,6 +122,7 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
         async let ratingTask: () = fetchAppStoreRating()
         async let distributionTask: () = fetchRatingDistribution()
         async let reviewsTask: () = fetchFirstPage()
+        async let list = try await iTunesLookupAvailableStorefronts(bundleId: uiState.bundleId)
 
         _ = await (ratingTask, distributionTask, reviewsTask)
 
@@ -314,5 +315,74 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
             averageRating: app.averageUserRating,
             ratingCount: app.userRatingCount
         )
+    }
+
+    // MARK: - iTunes Storefront Availability
+
+    /// All App Store storefront codes (ISO 3166-1 alpha-2, lowercase).
+    /// Source: https://en.wikipedia.org/wiki/App_Store_(Apple)#Distribution
+    private static let appStoreStorefronts: [String] = [
+        "ae", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "az",
+        "bb", "be", "bf", "bg", "bh", "bj", "bm", "bn", "bo", "br",
+        "bs", "bt", "bw", "by", "bz", "ca", "cd", "cg", "ch", "ci",
+        "cl", "cm", "cn", "co", "cr", "cv", "cy", "cz", "de", "dk",
+        "dm", "do", "dz", "ec", "ee", "eg", "es", "fi", "fj", "fm",
+        "fr", "ga", "gb", "gd", "gh", "gm", "gr", "gt", "gw", "gy",
+        "hk", "hn", "hr", "hu", "id", "ie", "il", "in", "iq", "is",
+        "it", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw",
+        "ky", "kz", "la", "lb", "lc", "lk", "lr", "lt", "lu", "lv",
+        "ly", "ma", "md", "me", "mg", "mk", "ml", "mm", "mn", "mo",
+        "mr", "ms", "mt", "mu", "mv", "mw", "mx", "my", "mz", "na",
+        "ne", "ng", "ni", "nl", "no", "np", "nz", "om", "pa", "pe",
+        "pg", "ph", "pk", "pl", "pt", "pw", "py", "qa", "ro", "rs",
+        "ru", "rw", "sa", "sb", "sc", "se", "sg", "si", "sk", "sl",
+        "sn", "sr", "st", "sv", "sz", "tc", "td", "th", "tj", "tm",
+        "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
+        "vc", "ve", "vg", "vn", "vu", "ye", "za", "zm", "zw"
+    ]
+
+    struct iTunesStorefrontInfo {
+        let country: String
+        let averageRating: Double?
+        let ratingCount: Int?
+    }
+
+    /// Probes every App Store storefront via iTunes Lookup and returns the ones where the app
+    /// is available. Calls run concurrently with a bounded TaskGroup so the whole sweep
+    /// finishes in a few seconds.
+    private func iTunesLookupAvailableStorefronts(bundleId: String) async -> [iTunesStorefrontInfo] {
+        struct LookupResponse: Decodable {
+            let resultCount: Int?
+            let results: [LookupApp]?
+        }
+        struct LookupApp: Decodable {
+            let averageUserRating: Double?
+            let userRatingCount: Int?
+        }
+
+        return await withTaskGroup(of: iTunesStorefrontInfo?.self) { group in
+            for country in Self.appStoreStorefronts {
+                group.addTask {
+                    let urlString = "https://itunes.apple.com/lookup?bundleId=\(bundleId)&country=\(country)"
+                    guard let url = URL(string: urlString) else { return nil }
+                    guard let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
+                    guard let response = try? JSONDecoder().decode(LookupResponse.self, from: data) else { return nil }
+                    guard let app = response.results?.first else { return nil }
+                    return iTunesStorefrontInfo(
+                        country: country,
+                        averageRating: app.averageUserRating,
+                        ratingCount: app.userRatingCount
+                    )
+                }
+            }
+
+            var results: [iTunesStorefrontInfo] = []
+            for await info in group {
+                if let info { results.append(info) }
+            }
+            return results
+                .filter { ($0.averageRating ?? .zero) > .zero }
+                .sorted { $0.country < $1.country }
+        }
     }
 }
