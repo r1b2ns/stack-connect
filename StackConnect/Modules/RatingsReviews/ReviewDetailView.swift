@@ -33,8 +33,10 @@ private struct ReviewDetailEntryView: View {
 @MainActor
 protocol ReviewDetailViewModelProtocol: ObservableObject {
     var uiState: ReviewDetailUiState { get set }
-    func reply(body: String) async
+    func submitReply(body: String) async
     func deleteResponse() async
+    func startEditingReply()
+    func cancelReplySheet()
 }
 
 // MARK: - UiState
@@ -46,6 +48,7 @@ struct ReviewDetailUiState {
     var toastMessage: ToastMessage?
     var showReplySheet = false
     var replyText = ""
+    var isEditingReply = false
     var confirmDeleteResponse = false
 }
 
@@ -67,7 +70,7 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
         self.keychain = keychain
     }
 
-    func reply(body: String) async {
+    func submitReply(body: String) async {
         uiState.isSending = true
 
         do {
@@ -77,6 +80,13 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
             }
 
             let connection = AppleAccountConnection(credentials: credentials)
+
+            // The App Store Connect API has no PATCH for replies. Editing means deleting
+            // the existing response and creating a new one with the updated text.
+            if uiState.isEditingReply, let existingId = uiState.review.responseId {
+                try await connection.deleteReviewResponse(responseId: existingId)
+            }
+
             try await connection.replyToReview(reviewId: uiState.review.id, responseBody: body)
 
             uiState.review.responseBody = body
@@ -84,12 +94,29 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
             uiState.review.responseDate = Date()
             uiState.showReplySheet = false
             uiState.replyText = ""
-            uiState.toastMessage = ToastMessage(String(localized: "Reply sent"), icon: "paperplane.fill")
+            let wasEditing = uiState.isEditingReply
+            uiState.isEditingReply = false
+            uiState.toastMessage = ToastMessage(
+                wasEditing ? String(localized: "Reply updated") : String(localized: "Reply sent"),
+                icon: "paperplane.fill"
+            )
         } catch {
             uiState.toastMessage = ToastMessage(String(localized: "Failed to send reply"), icon: "exclamationmark.triangle.fill")
         }
 
         uiState.isSending = false
+    }
+
+    func startEditingReply() {
+        uiState.replyText = uiState.review.responseBody ?? ""
+        uiState.isEditingReply = true
+        uiState.showReplySheet = true
+    }
+
+    func cancelReplySheet() {
+        uiState.showReplySheet = false
+        uiState.replyText = ""
+        uiState.isEditingReply = false
     }
 
     func deleteResponse() async {
@@ -116,7 +143,7 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
 
 struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
 
-    @ObservedObject var viewModel: ViewModel
+    @StateObject var viewModel: ViewModel
 
     var body: some View {
         List {
@@ -125,7 +152,6 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
         }
         .navigationTitle(String(localized: "Review"))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { buildToolbar() }
         .sheet(isPresented: $viewModel.uiState.showReplySheet) {
             buildReplySheet()
         }
@@ -210,39 +236,52 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
     private func buildResponseSection() -> some View {
         if let responseBody = viewModel.uiState.review.responseBody, !responseBody.isEmpty {
             Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Label(String(localized: "Developer Response"), systemImage: "arrowshape.turn.up.left.fill")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-
-                        Spacer()
-
-                        if let state = viewModel.uiState.review.responseState {
-                            Text(state == "PUBLISHED" ? String(localized: "Published") : String(localized: "Pending"))
-                                .font(.caption)
+                Button {
+                    if viewModel.uiState.account.canEdit(.review) {
+                        viewModel.startEditingReply()
+                    }
+                } label: {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Label(String(localized: "Developer Response"), systemImage: "arrowshape.turn.up.left.fill")
+                                .font(.subheadline)
                                 .fontWeight(.medium)
-                                .foregroundStyle(state == "PUBLISHED" ? Color.green : Color.orange)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background((state == "PUBLISHED" ? Color.green : Color.orange).opacity(0.12))
-                                .clipShape(Capsule())
+
+                            Spacer()
+
+                            if let state = viewModel.uiState.review.responseState {
+                                Text(state == "PUBLISHED" ? String(localized: "Published") : String(localized: "Pending"))
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundStyle(state == "PUBLISHED" ? Color.green : Color.orange)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background((state == "PUBLISHED" ? Color.green : Color.orange).opacity(0.12))
+                                    .clipShape(Capsule())
+                            }
+                        }
+
+                        Text(responseBody)
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+
+                        if let date = viewModel.uiState.review.responseDate {
+                            Text(formatDate(date))
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
                         }
                     }
-
-                    Text(responseBody)
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-
-                    if let date = viewModel.uiState.review.responseDate {
-                        Text(formatDate(date))
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
+                    .padding(.vertical, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.vertical, 4)
+                .buttonStyle(.plain)
+                .disabled(!viewModel.uiState.account.canEdit(.review))
             } header: {
                 Text("Your Reply")
+            } footer: {
+                if viewModel.uiState.account.canEdit(.review) {
+                    Text("Tap to edit your reply.")
+                }
             }
 
             if viewModel.uiState.account.canDelete(.review) {
@@ -283,42 +322,31 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
                     Text("Your reply will be visible to all users on the App Store.")
                 }
             }
-            .navigationTitle(String(localized: "Reply to Review"))
+            .navigationTitle(viewModel.uiState.isEditingReply
+                ? String(localized: "Edit Reply")
+                : String(localized: "Reply to Review"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: "Cancel")) {
-                        viewModel.uiState.showReplySheet = false
-                        viewModel.uiState.replyText = ""
+                        viewModel.cancelReplySheet()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if viewModel.uiState.isSending {
                         ProgressView()
                     } else {
-                        Button(String(localized: "Send")) {
-                            Task { await viewModel.reply(body: viewModel.uiState.replyText) }
+                        Button(viewModel.uiState.isEditingReply
+                            ? String(localized: "Save")
+                            : String(localized: "Send")
+                        ) {
+                            Task { await viewModel.submitReply(body: viewModel.uiState.replyText) }
                         }
                         .disabled(viewModel.uiState.replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
             }
             .disabled(viewModel.uiState.isSending)
-        }
-    }
-
-    // MARK: - Toolbar
-
-    @ToolbarContentBuilder
-    private func buildToolbar() -> some ToolbarContent {
-        if !viewModel.uiState.review.hasResponse && viewModel.uiState.account.canEdit(.review) {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    viewModel.uiState.showReplySheet = true
-                } label: {
-                    Image(systemName: "arrowshape.turn.up.left")
-                }
-            }
         }
     }
 

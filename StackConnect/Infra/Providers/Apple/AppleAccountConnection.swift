@@ -833,35 +833,6 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         return CustomerReviewsPage(reviews: reviews, hasNextPage: hasNext, rawResponse: response)
     }
 
-    /// Fetches the total count of reviews for each star rating (1-5) using the API's `meta.paging.total`.
-    /// Makes 5 parallel calls with `limit=1` and `filter[rating]=N`.
-    func fetchRatingDistribution(appId: String) async throws -> [Int: Int] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchRatingDistribution(appId: appId)
-        }
-
-        async let c1 = fetchReviewCount(provider: provider, appId: appId, rating: 1)
-        async let c2 = fetchReviewCount(provider: provider, appId: appId, rating: 2)
-        async let c3 = fetchReviewCount(provider: provider, appId: appId, rating: 3)
-        async let c4 = fetchReviewCount(provider: provider, appId: appId, rating: 4)
-        async let c5 = fetchReviewCount(provider: provider, appId: appId, rating: 5)
-
-        let counts = try await [1: c1, 2: c2, 3: c3, 4: c4, 5: c5]
-        return counts
-    }
-
-    private func fetchReviewCount(provider: APIProvider, appId: String, rating: Int) async throws -> Int {
-        let endpoint = APIEndpoint.v1.apps.id(appId).customerReviews.get(
-            parameters: .init(
-                filterRating: [String(rating)],
-                limit: 1
-            )
-        )
-        let response = try await provider.request(endpoint)
-        return response.meta?.paging.total ?? 0
-    }
-
     func replyToReview(reviewId: String, responseBody: String) async throws {
         guard let provider else {
             try await validateCredentials()

@@ -1,1 +1,2 @@
 • Buggfixar och stabilitetsförbättringar
+• Korrigeringar i hantering och svar på recensioner

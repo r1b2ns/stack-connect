@@ -1,1 +1,2 @@
 • Correccion de errores y mejoras de estabilidad
+• Correcciones en los flujos de gestion y respuestas de reseñas

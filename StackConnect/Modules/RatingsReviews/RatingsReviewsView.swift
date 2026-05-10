@@ -34,7 +34,7 @@ private struct RatingsReviewsEntryView: View {
 
 struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
 
-    @ObservedObject var viewModel: ViewModel
+    @StateObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
     var body: some View {
@@ -42,7 +42,6 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
             .navigationTitle(String(localized: "Ratings & Reviews"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
-            .task { await viewModel.load() }
             .refreshable { await viewModel.load() }
             .sheet(item: $viewModel.uiState.replyingTo) { review in
                 ReplySheet(
@@ -145,61 +144,21 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
 
     // MARK: - Summary Section
 
+    @ViewBuilder
     private func buildSummarySection() -> some View {
-        Section {
-            HStack(spacing: 16) {
-                VStack(spacing: 4) {
-                    Text(String(format: "%.1f", viewModel.uiState.averageRating))
-                        .font(.system(size: 40, weight: .bold, design: .rounded))
-                    buildStarRow(rating: Int(viewModel.uiState.averageRating.rounded()))
+        if let average = viewModel.uiState.storeAverageRating, average > 0 {
+            Section {
+                VStack(spacing: 6) {
+                    Text(String(format: "%.1f", average))
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                    buildStarRow(rating: Int(average.rounded()))
                     Text(viewModel.uiState.ratingCountLabel)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                .frame(minWidth: 80)
-
-                VStack(spacing: 4) {
-                    ForEach((1...5).reversed(), id: \.self) { star in
-                        buildDistributionBar(
-                            star: star,
-                            count: viewModel.uiState.ratingDistribution[star] ?? 0,
-                            total: viewModel.uiState.totalRatingCount
-                        )
-                    }
-                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
             }
-            .padding(.vertical, 8)
-        }
-    }
-
-    private func buildDistributionBar(star: Int, count: Int, total: Int) -> some View {
-        HStack(spacing: 6) {
-            Text("\(star)")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .frame(width: 12, alignment: .trailing)
-
-            Image(systemName: "star.fill")
-                .font(.system(size: 8))
-                .foregroundStyle(.yellow)
-
-            let fraction = total > 0 ? CGFloat(count) / CGFloat(total) : 0
-
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Color.gray.opacity(0.15))
-
-                Capsule()
-                    .fill(Color.yellow)
-                    .frame(maxWidth: .infinity)
-                    .scaleEffect(x: fraction, anchor: .leading)
-            }
-            .frame(height: 6)
-
-            Text(count.formatted())
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .frame(width: 36, alignment: .leading)
         }
     }
 
