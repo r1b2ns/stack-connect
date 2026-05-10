@@ -14,10 +14,12 @@ protocol VersionDetailViewModelProtocol: ObservableObject {
     func saveGroupedFields() async
     func saveReleaseType() async
     func savePhasedRelease(usePhased: Bool) async
+    func setPhasedReleasePaused(_ paused: Bool) async
     func submitForReview() async
     func cancelReview() async
     func releaseVersion() async
     func rejectVersion() async
+    func completePhasedRelease() async
 }
 
 // MARK: - UiState
@@ -124,22 +126,25 @@ enum VersionDetailAction: Identifiable {
     case cancelReview
     case release
     case reject
+    case completePhasedRelease
 
     var id: String {
         switch self {
-        case .submitForReview: return "submit"
-        case .cancelReview:    return "cancel"
-        case .release:         return "release"
-        case .reject:          return "reject"
+        case .submitForReview:       return "submit"
+        case .cancelReview:          return "cancel"
+        case .release:               return "release"
+        case .reject:                return "reject"
+        case .completePhasedRelease: return "completePhasedRelease"
         }
     }
 
     var title: String {
         switch self {
-        case .submitForReview: return String(localized: "Submit for Review")
-        case .cancelReview:    return String(localized: "Cancel Review")
-        case .release:         return String(localized: "Release Version")
-        case .reject:          return String(localized: "Reject Version")
+        case .submitForReview:       return String(localized: "Submit for Review")
+        case .cancelReview:          return String(localized: "Cancel Review")
+        case .release:               return String(localized: "Release Version")
+        case .reject:                return String(localized: "Reject Version")
+        case .completePhasedRelease: return String(localized: "Release to All Users")
         }
     }
 
@@ -154,21 +159,24 @@ enum VersionDetailAction: Identifiable {
             return String(localized: "Are you sure you want to release version \(v) to the App Store?")
         case .reject:
             return String(localized: "Are you sure you want to reject version \(v)? This action cannot be undone.")
+        case .completePhasedRelease:
+            return String(localized: "Release version \(v) to all users now? This will end the phased release and make the update available to 100% of users.")
         }
     }
 
     var confirmLabel: String {
         switch self {
-        case .submitForReview: return String(localized: "Submit")
-        case .cancelReview:    return String(localized: "Cancel Review")
-        case .release:         return String(localized: "Release")
-        case .reject:          return String(localized: "Reject")
+        case .submitForReview:       return String(localized: "Submit")
+        case .cancelReview:          return String(localized: "Cancel Review")
+        case .release:               return String(localized: "Release")
+        case .reject:                return String(localized: "Reject")
+        case .completePhasedRelease: return String(localized: "Release to All")
         }
     }
 
     var isDestructive: Bool {
         switch self {
-        case .submitForReview, .release: return false
+        case .submitForReview, .release, .completePhasedRelease: return false
         case .cancelReview, .reject: return true
         }
     }
@@ -409,6 +417,30 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         uiState.isSavingPhasedRelease = false
     }
 
+    func setPhasedReleasePaused(_ paused: Bool) async {
+        guard let phasedId = uiState.phasedRelease?.id else { return }
+
+        uiState.isSavingPhasedRelease = true
+        uiState.phasedReleaseError = nil
+
+        guard let connection = createConnection() else {
+            uiState.isSavingPhasedRelease = false
+            return
+        }
+
+        do {
+            let newState: PhasedReleaseState = paused ? .paused : .active
+            let updated = try await connection.updatePhasedReleaseState(id: phasedId, state: newState)
+            uiState.phasedRelease = updated
+            Log.print.info("[VersionDetail] Phased release paused=\(paused)")
+        } catch {
+            uiState.phasedReleaseError = error.localizedDescription
+            Log.print.error("[VersionDetail] Pause phased release failed: \(error.localizedDescription)")
+        }
+
+        uiState.isSavingPhasedRelease = false
+    }
+
     // MARK: - Version Actions
 
     func submitForReview() async {
@@ -482,6 +514,27 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         } catch {
             uiState.actionError = error.localizedDescription
             Log.print.error("[VersionDetail] Reject failed: \(error.localizedDescription)")
+        }
+
+        uiState.isPerformingAction = false
+    }
+
+    func completePhasedRelease() async {
+        guard let phasedId = uiState.phasedRelease?.id else { return }
+
+        uiState.isPerformingAction = true
+        uiState.actionError = nil
+
+        do {
+            guard let connection = createConnection() else { return }
+            let updated = try await connection.updatePhasedReleaseState(id: phasedId, state: .complete)
+            uiState.phasedRelease = updated
+            uiState.toastMessage = ToastMessage(String(localized: "Released to all users"), icon: "checkmark.circle.fill")
+            Log.print.info("[VersionDetail] Completed phased release")
+            await refresh()
+        } catch {
+            uiState.actionError = error.localizedDescription
+            Log.print.error("[VersionDetail] Complete phased release failed: \(error.localizedDescription)")
         }
 
         uiState.isPerformingAction = false

@@ -1154,6 +1154,33 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         Log.print.info("[Apple] Deleted phased release \(id)")
     }
 
+    @discardableResult
+    func updatePhasedReleaseState(id: String, state: PhasedReleaseState) async throws -> PhasedReleaseModel {
+        guard let provider else {
+            try await validateCredentials()
+            return try await updatePhasedReleaseState(id: id, state: state)
+        }
+
+        let body = AppStoreVersionPhasedReleaseUpdateRequest(
+            data: .init(
+                type: .appStoreVersionPhasedReleases,
+                id: id,
+                attributes: .init(phasedReleaseState: state)
+            )
+        )
+
+        let endpoint = APIEndpoint.v1.appStoreVersionPhasedReleases.id(id).patch(body)
+        let result = try await provider.request(endpoint).data
+        Log.print.info("[Apple] Updated phased release \(id) to state \(state.rawValue)")
+        return PhasedReleaseModel(
+            id: result.id,
+            state: result.attributes?.phasedReleaseState.flatMap { PhasedReleaseStatus(rawValue: $0.rawValue) },
+            startDate: result.attributes?.startDate,
+            totalPauseDuration: result.attributes?.totalPauseDuration,
+            currentDayNumber: result.attributes?.currentDayNumber
+        )
+    }
+
     // MARK: - App Info
 
     func fetchAppInfo(appId: String) async throws -> (AppInfoModel, AgeRatingDeclarationModel?) {

@@ -319,6 +319,12 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
     // MARK: - Actions
 
+    private var canCompletePhasedRelease: Bool {
+        guard viewModel.uiState.version.appStoreState == .readyForSale else { return false }
+        guard let state = viewModel.uiState.phasedRelease?.state else { return false }
+        return state == .active || state == .paused
+    }
+
     private func buildActionsSection() -> some View {
         Section {
             Button {
@@ -436,6 +442,19 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 }
             }
 
+        case .readyForSale:
+            if canCompletePhasedRelease && account.canEdit(.version) {
+                buildActionBar {
+                    buildActionButton(
+                        title: String(localized: "Release to All Users"),
+                        icon: "person.3.fill",
+                        color: .green
+                    ) {
+                        viewModel.uiState.confirmAction = .completePhasedRelease
+                    }
+                }
+            }
+
         default:
             EmptyView()
         }
@@ -474,10 +493,11 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
     private func performConfirmedAction(_ action: VersionDetailAction) async {
         switch action {
-        case .submitForReview: await viewModel.submitForReview()
-        case .cancelReview:    await viewModel.cancelReview()
-        case .release:         await viewModel.releaseVersion()
-        case .reject:          await viewModel.rejectVersion()
+        case .submitForReview:       await viewModel.submitForReview()
+        case .cancelReview:          await viewModel.cancelReview()
+        case .release:               await viewModel.releaseVersion()
+        case .reject:                await viewModel.rejectVersion()
+        case .completePhasedRelease: await viewModel.completePhasedRelease()
         }
     }
 
@@ -636,6 +656,8 @@ struct PhasedReleaseSheet<ViewModel: VersionDetailViewModelProtocol>: View {
         NavigationStack {
             Form {
                 Section {
+                    let isPhasedActive = viewModel.uiState.phasedRelease != nil
+
                     Button {
                         Task { await viewModel.savePhasedRelease(usePhased: false) }
                     } label: {
@@ -646,16 +668,17 @@ struct PhasedReleaseSheet<ViewModel: VersionDetailViewModelProtocol>: View {
 
                             Text("Release update to all users immediately")
                                 .font(.body)
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(isPhasedActive ? .secondary : .primary)
 
                             Spacer()
 
-                            if viewModel.uiState.phasedRelease == nil {
+                            if !isPhasedActive {
                                 Image(systemName: "checkmark")
                                     .foregroundStyle(.secondary)
                             }
                         }
                     }
+                    .disabled(isPhasedActive)
                     .foregroundStyle(.primary)
 
                     Button {
@@ -720,6 +743,28 @@ struct PhasedReleaseSheet<ViewModel: VersionDetailViewModelProtocol>: View {
                         }
                     } header: {
                         Text("Phased Release Status")
+                    }
+
+                    if phased.state == .active || phased.state == .paused {
+                        Section {
+                            Button {
+                                Task { await viewModel.setPhasedReleasePaused(phased.state != .paused) }
+                            } label: {
+                                HStack {
+                                    Image(systemName: phased.state == .paused ? "play.circle.fill" : "pause.circle.fill")
+                                        .foregroundStyle(phased.state == .paused ? .green : .orange)
+                                        .frame(width: 24)
+
+                                    Text(phased.state == .paused
+                                         ? String(localized: "Resume Phased Release")
+                                         : String(localized: "Pause Phased Release"))
+                                        .font(.body)
+                                        .foregroundStyle(.primary)
+
+                                    Spacer()
+                                }
+                            }
+                        }
                     }
                 }
 
