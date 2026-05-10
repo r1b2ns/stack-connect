@@ -29,3 +29,14 @@ Built with SwiftUI for iOS 17+.
 4. Select the **StackConnect Development** scheme and run on a simulator or device.
 
 > Re-run `xcodegen generate --spec project.yml` whenever source files, Swift package dependencies, or build settings change.
+
+## Screenshots
+
+| | | | |
+|:-:|:-:|:-:|:-:|
+| <img src="fastlane/screenshots/en-US/iPhone_6.5_1.png" width="200" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_2.png" width="200" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_3.png" width="200" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_4.png" width="200" /> |
+| <img src="fastlane/screenshots/en-US/iPhone_6.5_5.png" width="200" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_6.png" width="200" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_7.png" width="200" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_8.png" width="200" /> |
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
