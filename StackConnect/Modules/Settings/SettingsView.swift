@@ -31,6 +31,7 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
     var body: some View {
         List {
             buildGeneralSection()
+            buildAboutSection()
             buildDangerSection()
             buildFooterSection()
         }
@@ -64,6 +65,47 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
                         .frame(width: 28)
 
                     Text(String(localized: "Accounts"))
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .foregroundStyle(.primary)
+        }
+    }
+
+    private func buildAboutSection() -> some View {
+        Section {
+            Link(destination: URL(string: "https://github.com/r1b2ns/stack-connect")!) {
+                HStack {
+                    Image(systemName: "chevron.left.forwardslash.chevron.right")
+                        .foregroundStyle(.purple)
+                        .frame(width: 28)
+
+                    Text(String(localized: "GitHub"))
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            Button {
+                homeCoordinator.navigateToLicense()
+            } label: {
+                HStack {
+                    Image(systemName: "doc.text.fill")
+                        .foregroundStyle(.gray)
+                        .frame(width: 28)
+
+                    Text(String(localized: "License"))
                         .foregroundStyle(.primary)
 
                     Spacer()
