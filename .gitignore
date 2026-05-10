@@ -31,7 +31,10 @@ Pods/
 fastlane/.env
 fastlane/report.xml
 fastlane/Preview.html
-fastlane/screenshots
+fastlane/screenshots/*
+!fastlane/screenshots/en-US/
+fastlane/screenshots/en-US/*
+!fastlane/screenshots/en-US/iPhone_6.5_*.png
 fastlane/test_output
 
 # Gemfile
