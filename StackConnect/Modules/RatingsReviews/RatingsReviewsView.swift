@@ -163,7 +163,7 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
                         buildDistributionBar(
                             star: star,
                             count: viewModel.uiState.ratingDistribution[star] ?? 0,
-                            total: viewModel.uiState.totalRatingCount
+                            total: viewModel.uiState.distributionTotal
                         )
                     }
                 }

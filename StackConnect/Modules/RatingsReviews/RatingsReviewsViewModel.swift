@@ -1,5 +1,13 @@
 import Foundation
 
+// MARK: - Models
+
+struct iTunesStorefrontInfo: Equatable {
+    let country: String
+    let averageRating: Double?
+    let ratingCount: Int?
+}
+
 // MARK: - Protocol
 
 @MainActor
@@ -26,11 +34,12 @@ struct RatingsReviewsUiState {
     var toastMessage: ToastMessage?
     var error: String?
 
-    // App Store rating (from iTunes Lookup API)
+    // App Store rating (aggregated from iTunes Lookup across all storefronts)
     var storeAverageRating: Double?
     var storeRatingCount: Int?
+    var storefronts: [iTunesStorefrontInfo] = []
 
-    // Rating distribution (from API: meta.paging.total per star)
+    // Rating distribution (from App Store Connect API: meta.paging.total per star)
     var storeRatingDistribution: [Int: Int]?
 
     // Filters
@@ -66,11 +75,21 @@ struct RatingsReviewsUiState {
         return dist
     }
 
+    /// Total ratings across every storefront (matches what is shown on the App Store).
+    /// Falls back to the App Store Connect distribution sum when storefront data isn't available.
     var totalRatingCount: Int {
+        if let storeRatingCount, storeRatingCount > 0 { return storeRatingCount }
         if let dist = storeRatingDistribution {
             return dist.values.reduce(0, +)
         }
         return ratingDistribution.values.reduce(0, +)
+    }
+
+    /// Sum of the per-star distribution counts (used to scale the distribution bars).
+    /// May differ from `totalRatingCount` because the App Store Connect API only counts
+    /// ratings that include written text, while the App Store total includes rating-only entries.
+    var distributionTotal: Int {
+        ratingDistribution.values.reduce(0, +)
     }
 }
 
@@ -122,22 +141,36 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
         async let ratingTask: () = fetchAppStoreRating()
         async let distributionTask: () = fetchRatingDistribution()
         async let reviewsTask: () = fetchFirstPage()
-        async let list = try await iTunesLookupAvailableStorefronts(bundleId: uiState.bundleId)
 
         _ = await (ratingTask, distributionTask, reviewsTask)
 
         uiState.isLoading = false
     }
 
+    /// Aggregates iTunes Lookup data across every storefront where the app is available.
+    /// `averageRating` is a count-weighted mean and `ratingCount` is the global sum,
+    /// matching what users see on the App Store.
     private func fetchAppStoreRating() async {
-        do {
-            let lookup = try await iTunesLookup(bundleId: uiState.bundleId)
-            uiState.storeAverageRating = lookup.averageRating
-            uiState.storeRatingCount = lookup.ratingCount
-            Log.print.info("[RatingsReviews] iTunes rating: \(lookup.averageRating ?? 0), count: \(lookup.ratingCount ?? 0)")
-        } catch {
-            Log.print.error("[RatingsReviews] iTunes lookup failed: \(error.localizedDescription)")
+        let storefronts = await iTunesLookupAvailableStorefronts(bundleId: uiState.bundleId)
+        uiState.storefronts = storefronts
+
+        let totalCount = storefronts.reduce(0) { $0 + ($1.ratingCount ?? 0) }
+        guard totalCount > 0 else {
+            uiState.storeAverageRating = nil
+            uiState.storeRatingCount = 0
+            Log.print.info("[RatingsReviews] iTunes storefronts: \(storefronts.count) found, no ratings yet")
+            return
         }
+
+        let weightedSum = storefronts.reduce(0.0) { acc, info in
+            guard let avg = info.averageRating, let count = info.ratingCount else { return acc }
+            return acc + avg * Double(count)
+        }
+        let weightedAverage = weightedSum / Double(totalCount)
+
+        uiState.storeAverageRating = weightedAverage
+        uiState.storeRatingCount = totalCount
+        Log.print.info("[RatingsReviews] iTunes aggregate across \(storefronts.count) storefronts: avg \(weightedAverage), count \(totalCount)")
     }
 
     private func fetchRatingDistribution() async {
@@ -340,12 +373,6 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
         "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
         "vc", "ve", "vg", "vn", "vu", "ye", "za", "zm", "zw"
     ]
-
-    struct iTunesStorefrontInfo {
-        let country: String
-        let averageRating: Double?
-        let ratingCount: Int?
-    }
 
     /// Probes every App Store storefront via iTunes Lookup and returns the ones where the app
     /// is available. Calls run concurrently with a bounded TaskGroup so the whole sweep
