@@ -1,2 +1,2 @@
+• Nieuwe besturing voor gefaseerde release: vrijgeven voor iedereen, pauzeren en hervatten
 • Bugfixes en stabiliteitsverbeteringen
-• Verbeteringen in beoordelingsbeheer en antwoordstromen

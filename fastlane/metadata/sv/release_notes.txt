@@ -1,2 +1,2 @@
+• Nya kontroller för stegvis lansering: släpp till alla, pausa och återuppta
 • Buggfixar och stabilitetsförbättringar
-• Korrigeringar i hantering och svar på recensioner

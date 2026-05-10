@@ -1,2 +1,2 @@
+• New phased release controls: release to all users, pause, and resume
 • Bug fixes and stability improvements
-• Fixes in review management and reply flows

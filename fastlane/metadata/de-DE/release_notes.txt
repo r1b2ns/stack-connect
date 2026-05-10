@@ -1,2 +1,2 @@
+• Neue Steuerung der stufenweisen Veröffentlichung: für alle freigeben, pausieren und fortsetzen
 • Fehlerbehebungen und Stabilitätsverbesserungen
-• Korrekturen in den Verwaltungs- und Antwortflüssen für Rezensionen

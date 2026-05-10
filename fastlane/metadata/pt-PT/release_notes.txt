@@ -1,2 +1,2 @@
+• Novos controlos de lançamento faseado: lançar a todos, pausar e retomar
 • Correções de erros e melhorias de estabilidade
-• Correções nos fluxos de gestão e respostas a avaliações

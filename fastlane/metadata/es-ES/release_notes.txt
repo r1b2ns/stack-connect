@@ -1,2 +1,2 @@
+• Nuevos controles de lanzamiento por fases: liberar a todos, pausar y reanudar
 • Corrección de errores y mejoras de estabilidad
-• Correcciones en los flujos de gestión y respuestas de reseñas

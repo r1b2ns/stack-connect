@@ -1,2 +1,2 @@
+• Nuovi controlli del rilascio progressivo: pubblica per tutti, metti in pausa e riprendi
 • Correzioni di bug e miglioramenti della stabilità
-• Correzioni nei flussi di gestione e risposte alle recensioni

@@ -1,2 +1,2 @@
+• Novos controles de liberação faseada: liberar para todos, pausar e retomar
 • Correções de bugs e melhorias de estabilidade
-• Correções nos fluxos de gerenciamento e respostas de reviews

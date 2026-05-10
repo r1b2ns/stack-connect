@@ -1,2 +1,2 @@
+• Nouveaux contrôles de déploiement progressif : publier pour tous, mettre en pause et reprendre
 • Corrections de bogues et améliorations de la stabilité
-• Corrections des flux de gestion et de réponses aux avis
