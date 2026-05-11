@@ -70,6 +70,9 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
         }
         .sheet(isPresented: $viewModel.uiState.showAddBuild) {
             AddBuildSheet(
+                appId: viewModel.uiState.appId,
+                account: viewModel.uiState.account,
+                assignedBuildIds: Set(viewModel.uiState.builds.map(\.id)),
                 builds: viewModel.uiState.allBuilds,
                 isLoading: viewModel.uiState.isLoadingBuilds,
                 isAdding: viewModel.uiState.isAddingBuild
@@ -586,16 +589,33 @@ struct InternalTesterPickerSheet: View {
 
 // MARK: - Add Build Sheet
 
+private struct AddBuildPlatformRoute: Hashable {
+    let platform: String
+}
+
 struct AddBuildSheet: View {
 
+    let appId: String
+    let account: AccountModel
+    let assignedBuildIds: Set<String>
     let builds: [BuildModel]
     let isLoading: Bool
     var isAdding: Bool = false
     let onAdd: (BuildModel) -> Void
     let onCancel: () -> Void
 
+    @State private var path = NavigationPath()
+
+    private var buildsByPlatform: [PlatformBuildGroup] {
+        let sorted = builds.sorted { ($0.uploadedDate ?? .distantPast) > ($1.uploadedDate ?? .distantPast) }
+        let dict = Dictionary(grouping: sorted) { $0.platform ?? "" }
+        return dict
+            .map { PlatformBuildGroup(platform: $0.key, builds: $0.value) }
+            .sorted { BuildPlatform.sortOrder($0.platform) < BuildPlatform.sortOrder($1.platform) }
+    }
+
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 if isLoading {
                     ProgressView()
@@ -607,31 +627,7 @@ struct AddBuildSheet: View {
                         Text("No builds are available to add.")
                     }
                 } else {
-                    List(builds) { build in
-                        Button {
-                            onAdd(build)
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(build.version ?? "–")
-                                        .font(.body)
-                                        .fontWeight(.medium)
-                                        .foregroundStyle(.primary)
-
-                                    if let date = build.uploadedDate {
-                                        Text(formatDate(date))
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-
-                                Spacer()
-
-                                buildStateLabel(build.processingState)
-                            }
-                        }
-                    }
-                    .disabled(isAdding)
+                    buildList
                 }
             }
             .navigationTitle(String(localized: "Add Build"))
@@ -640,6 +636,16 @@ struct AddBuildSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: "Cancel")) { onCancel() }
                 }
+            }
+            .navigationDestination(for: AddBuildPlatformRoute.self) { route in
+                AvailableBuildsForPlatformViewFactory.build(
+                    appId: appId,
+                    platform: route.platform,
+                    account: account,
+                    assignedBuildIds: assignedBuildIds,
+                    isAdding: isAdding,
+                    onSelect: onAdd
+                )
             }
             .overlay {
                 if isAdding {
@@ -651,6 +657,66 @@ struct AddBuildSheet: View {
                     .ignoresSafeArea()
                 }
             }
+        }
+    }
+
+    private var buildList: some View {
+        List {
+            ForEach(buildsByPlatform, id: \.platform) { group in
+                Section {
+                    ForEach(group.builds.prefix(5)) { build in
+                        Button {
+                            onAdd(build)
+                        } label: {
+                            buildRow(build)
+                        }
+                    }
+
+                    if group.builds.count > 5 {
+                        Button {
+                            path.append(AddBuildPlatformRoute(platform: group.platform))
+                        } label: {
+                            HStack {
+                                Text(String(localized: "See More"))
+                                    .font(.body)
+                                    .fontWeight(.medium)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .foregroundStyle(.tint)
+                    }
+                } header: {
+                    Label(
+                        BuildPlatform.label(for: group.platform),
+                        systemImage: BuildPlatform.icon(for: group.platform)
+                    )
+                }
+            }
+        }
+        .disabled(isAdding)
+    }
+
+    private func buildRow(_ build: BuildModel) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(build.version ?? "–")
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.primary)
+
+                if let date = build.uploadedDate {
+                    Text(formatDate(date))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer()
+
+            buildStateLabel(build.processingState)
         }
     }
 

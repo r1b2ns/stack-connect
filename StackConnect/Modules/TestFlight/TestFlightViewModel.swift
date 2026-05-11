@@ -12,6 +12,13 @@ protocol TestFlightViewModelProtocol: ObservableObject {
 
 // MARK: - UiState
 
+struct PlatformBuildGroup: Identifiable {
+    let platform: String
+    let builds: [BuildModel]
+
+    var id: String { platform }
+}
+
 struct TestFlightUiState {
     var appId: String
     var account: AccountModel
@@ -36,6 +43,15 @@ struct TestFlightUiState {
 
     var recentBuilds: [BuildModel] {
         builds.sorted { ($0.uploadedDate ?? .distantPast) > ($1.uploadedDate ?? .distantPast) }
+    }
+
+    /// Builds grouped by platform (most recent first within each group), sorted in
+    /// canonical platform order. Builds with an unknown platform are bucketed under "Other".
+    var buildsByPlatform: [PlatformBuildGroup] {
+        let dict = Dictionary(grouping: recentBuilds) { $0.platform ?? "" }
+        return dict
+            .map { PlatformBuildGroup(platform: $0.key, builds: $0.value) }
+            .sorted { BuildPlatform.sortOrder($0.platform) < BuildPlatform.sortOrder($1.platform) }
     }
 }
 

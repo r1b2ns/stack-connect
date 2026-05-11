@@ -121,7 +121,7 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
                 )
             }
 
-            if !viewModel.uiState.recentBuilds.isEmpty {
+            if !viewModel.uiState.buildsByPlatform.isEmpty {
                 buildBuildsSection()
             }
         }
@@ -190,13 +190,41 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
 
     // MARK: - Builds Section
 
+    @ViewBuilder
     private func buildBuildsSection() -> some View {
+        ForEach(viewModel.uiState.buildsByPlatform, id: \.platform) { group in
+            buildPlatformSection(group)
+        }
+    }
+
+    private func buildPlatformSection(_ group: PlatformBuildGroup) -> some View {
         Section {
-            ForEach(viewModel.uiState.recentBuilds.prefix(10)) { build in
+            ForEach(group.builds.prefix(5)) { build in
                 buildBuildRow(build)
             }
+
+            if group.builds.count > 5 {
+                Button {
+                    homeCoordinator.navigateToPlatformBuildsList(
+                        appId: viewModel.uiState.appId,
+                        platform: group.platform,
+                        account: viewModel.uiState.account
+                    )
+                } label: {
+                    HStack {
+                        Text(String(localized: "See More"))
+                            .font(.body)
+                            .fontWeight(.medium)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .foregroundStyle(.tint)
+            }
         } header: {
-            Label(String(localized: "Recent Builds"), systemImage: "hammer.fill")
+            Label(BuildPlatform.label(for: group.platform), systemImage: BuildPlatform.icon(for: group.platform))
         }
     }
 

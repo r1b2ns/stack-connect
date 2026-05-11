@@ -277,6 +277,8 @@ private extension View {
                 TestFlightViewFactory.build(appId: appId, account: account)
             case .betaGroupDetail(let group, let appId, let account):
                 BetaGroupDetailViewFactory.build(group: group, appId: appId, account: account)
+            case .platformBuildsList(let appId, let platform, let account):
+                PlatformBuildsViewFactory.build(appId: appId, platform: platform, account: account)
             case .appReview(let appId, let appName, let account):
                 AppReviewListViewFactory.build(appId: appId, appName: appName, account: account)
             case .reviewSubmissionDetail(let submission, let account):

@@ -256,21 +256,111 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
                 parameters: .init(
                     filterApp: [appId],
                     sort: [.minusuploadedDate],
-                    limit: limit
+                    limit: limit,
+                    include: [.preReleaseVersion]
                 )
             )
 
         let response = try await provider.request(request)
 
+        var platformByPreReleaseId: [String: String] = [:]
+        for item in response.included ?? [] {
+            if case .prereleaseVersion(let pre) = item,
+               let platform = pre.attributes?.platform?.rawValue {
+                platformByPreReleaseId[pre.id] = platform
+            }
+        }
+
         return response.data.map { build in
-            BuildModel(
+            let preReleaseId = build.relationships?.preReleaseVersion?.data?.id
+            let platform = preReleaseId.flatMap { platformByPreReleaseId[$0] }
+            return BuildModel(
                 id: build.id,
                 version: build.attributes?.version,
                 processingState: build.attributes?.processingState?.rawValue,
                 uploadedDate: build.attributes?.uploadedDate,
-                iconUrl: build.attributes?.iconAssetToken?.toIconUrl()
+                iconUrl: build.attributes?.iconAssetToken?.toIconUrl(),
+                platform: platform
             )
         }
+    }
+
+    struct BuildsPage {
+        let builds: [BuildModel]
+        let hasNextPage: Bool
+        /// Opaque token for fetching the next page. Pass as `pageAfterResponse` to the next call.
+        let rawResponse: Any?
+    }
+
+    func fetchBuildsPage(
+        appId: String,
+        platform: String?,
+        processingStates: [String]? = nil,
+        limit: Int = 25,
+        pageAfterResponse: Any?
+    ) async throws -> BuildsPage {
+        guard let provider else {
+            try await validateCredentials()
+            return try await fetchBuildsPage(appId: appId, platform: platform, processingStates: processingStates, limit: limit, pageAfterResponse: pageAfterResponse)
+        }
+
+        typealias Params = APIEndpoint.V1.Builds.GetParameters
+
+        let platformFilter: [Params.FilterPreReleaseVersionPlatform]? = platform
+            .flatMap { Params.FilterPreReleaseVersionPlatform(rawValue: $0) }
+            .map { [$0] }
+
+        let stateFilter: [Params.FilterProcessingState]? = processingStates.flatMap { raws in
+            let mapped = raws.compactMap { Params.FilterProcessingState(rawValue: $0) }
+            return mapped.isEmpty ? nil : mapped
+        }
+
+        let endpoint = APIEndpoint
+            .v1
+            .builds
+            .get(
+                parameters: .init(
+                    filterProcessingState: stateFilter,
+                    filterPreReleaseVersionPlatform: platformFilter,
+                    filterApp: [appId],
+                    sort: [.minusuploadedDate],
+                    limit: limit,
+                    include: [.preReleaseVersion]
+                )
+            )
+
+        let response: BuildsResponse
+        if let previousResponse = pageAfterResponse as? BuildsResponse {
+            guard let nextPage = try await provider.request(endpoint, pageAfter: previousResponse) else {
+                return BuildsPage(builds: [], hasNextPage: false, rawResponse: nil)
+            }
+            response = nextPage
+        } else {
+            response = try await provider.request(endpoint)
+        }
+
+        var platformByPreReleaseId: [String: String] = [:]
+        for item in response.included ?? [] {
+            if case .prereleaseVersion(let pre) = item,
+               let platform = pre.attributes?.platform?.rawValue {
+                platformByPreReleaseId[pre.id] = platform
+            }
+        }
+
+        let builds = response.data.map { build -> BuildModel in
+            let preReleaseId = build.relationships?.preReleaseVersion?.data?.id
+            let platform = preReleaseId.flatMap { platformByPreReleaseId[$0] }
+            return BuildModel(
+                id: build.id,
+                version: build.attributes?.version,
+                processingState: build.attributes?.processingState?.rawValue,
+                uploadedDate: build.attributes?.uploadedDate,
+                iconUrl: build.attributes?.iconAssetToken?.toIconUrl(),
+                platform: platform
+            )
+        }
+
+        return BuildsPage(builds: builds, hasNextPage: response.links.next != nil, rawResponse: response)
     }
 
     func fetchCurrentBuild(versionId: String) async throws -> BuildModel? {
