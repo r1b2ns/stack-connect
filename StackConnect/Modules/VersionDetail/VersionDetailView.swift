@@ -325,6 +325,11 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         return state == .active || state == .paused
     }
 
+    private var canPausePhasedRelease: Bool {
+        viewModel.uiState.version.appStoreState == .readyForSale
+            && viewModel.uiState.phasedRelease?.state == .active
+    }
+
     private func buildActionsSection() -> some View {
         Section {
             Button {
@@ -445,12 +450,24 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         case .readyForSale:
             if canCompletePhasedRelease && account.canEdit(.version) {
                 buildActionBar {
-                    buildActionButton(
-                        title: String(localized: "Release to All Users"),
-                        icon: "person.3.fill",
-                        color: .green
-                    ) {
-                        viewModel.uiState.confirmAction = .completePhasedRelease
+                    VStack(spacing: 12) {
+                        if canPausePhasedRelease {
+                            buildOutlinedActionButton(
+                                title: String(localized: "Pause"),
+                                icon: "pause.circle.fill",
+                                color: .orange
+                            ) {
+                                Task { await viewModel.setPhasedReleasePaused(true) }
+                            }
+                        }
+
+                        buildActionButton(
+                            title: String(localized: "Release to All Users"),
+                            icon: "person.3.fill",
+                            color: .green
+                        ) {
+                            viewModel.uiState.confirmAction = .completePhasedRelease
+                        }
                     }
                 }
             }
@@ -487,6 +504,25 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             .foregroundStyle(.white)
             .background(color)
             .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func buildOutlinedActionButton(title: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                Text(title)
+                    .fontWeight(.semibold)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .foregroundStyle(color)
+            .background(Color.clear)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(color, lineWidth: 2)
+            )
         }
         .buttonStyle(.plain)
     }
@@ -652,12 +688,14 @@ struct PhasedReleaseSheet<ViewModel: VersionDetailViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
 
+    private var isPhasedActive: Bool {
+        viewModel.uiState.phasedRelease != nil
+    }
+
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    let isPhasedActive = viewModel.uiState.phasedRelease != nil
-
                     Button {
                         Task { await viewModel.savePhasedRelease(usePhased: false) }
                     } label: {
@@ -704,7 +742,7 @@ struct PhasedReleaseSheet<ViewModel: VersionDetailViewModelProtocol>: View {
                     .foregroundStyle(.primary)
                 }
 
-                if let phased = viewModel.uiState.phasedRelease {
+                if isPhasedActive, let phased = viewModel.uiState.phasedRelease {
                     Section {
                         if let state = phased.state {
                             HStack {
