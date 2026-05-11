@@ -841,6 +841,21 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         }
     }
 
+    func removeBuildFromGroup(buildId: String, groupId: String) async throws {
+        guard let provider else {
+            try await validateCredentials()
+            return try await removeBuildFromGroup(buildId: buildId, groupId: groupId)
+        }
+
+        let body = BetaGroupBuildsLinkagesRequest(
+            data: [.init(type: .builds, id: buildId)]
+        )
+
+        let endpoint = APIEndpoint.v1.betaGroups.id(groupId).relationships.builds.delete(body)
+        _ = try await provider.request(endpoint)
+        Log.print.info("[TestFlight] Removed build \(buildId) from group \(groupId)")
+    }
+
     func addBuildToGroups(buildId: String, groupIds: [String]) async throws {
         guard let provider else {
             try await validateCredentials()

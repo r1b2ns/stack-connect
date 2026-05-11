@@ -11,6 +11,7 @@ protocol BetaGroupDetailViewModelProtocol: ObservableObject {
     func removeTester(_ tester: BetaTesterModel) async
     func updateGroup(name: String?, isPublicLinkEnabled: Bool?, publicLinkLimit: Int?, isFeedbackEnabled: Bool?) async
     func addBuildToGroup(buildId: String) async
+    func removeBuildFromGroup(_ build: BuildModel) async
     func loadTeamMembers() async
     func loadAvailableBuilds() async
 }
@@ -36,6 +37,8 @@ struct BetaGroupDetailUiState {
     var isRemovingTester = false
     var showAddBuild = false
     var isAddingBuild = false
+    var isRemovingBuild = false
+    var confirmRemoveBuild: BuildModel?
     var showEditGroup = false
     var confirmRemoveTester: BetaTesterModel?
 
@@ -231,6 +234,23 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
             Log.print.error("[BetaGroupDetail] Add build failed: \(error.localizedDescription)")
         }
         uiState.isAddingBuild = false
+    }
+
+    func removeBuildFromGroup(_ build: BuildModel) async {
+        uiState.isRemovingBuild = true
+        do {
+            guard let connection = createConnection() else {
+                uiState.isRemovingBuild = false
+                return
+            }
+            try await connection.removeBuildFromGroup(buildId: build.id, groupId: uiState.group.id)
+            uiState.builds.removeAll { $0.id == build.id }
+            uiState.toastMessage = ToastMessage(String(localized: "Build removed"), icon: "trash")
+        } catch {
+            uiState.toastMessage = ToastMessage(String(localized: "Failed to remove build"), icon: "exclamationmark.triangle.fill")
+            Log.print.error("[BetaGroupDetail] Remove build failed: \(error.localizedDescription)")
+        }
+        uiState.isRemovingBuild = false
     }
 
     private func createConnection() -> AppleAccountConnection? {

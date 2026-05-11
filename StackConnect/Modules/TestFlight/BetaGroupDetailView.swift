@@ -123,9 +123,27 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                 Text("Remove \(tester.displayName) from this group?")
             }
         }
+        .alert(
+            String(localized: "Remove Build"),
+            isPresented: Binding(
+                get: { viewModel.uiState.confirmRemoveBuild != nil },
+                set: { if !$0 { viewModel.uiState.confirmRemoveBuild = nil } }
+            )
+        ) {
+            Button(String(localized: "Remove"), role: .destructive) {
+                if let build = viewModel.uiState.confirmRemoveBuild {
+                    Task { await viewModel.removeBuildFromGroup(build) }
+                }
+            }
+            Button(String(localized: "Cancel"), role: .cancel) {}
+        } message: {
+            if let build = viewModel.uiState.confirmRemoveBuild {
+                Text("Remove build \(build.version ?? "–") from this group?")
+            }
+        }
         .toast(message: $viewModel.uiState.toastMessage)
         .overlay {
-            if viewModel.uiState.isRemovingTester {
+            if viewModel.uiState.isRemovingTester || viewModel.uiState.isRemovingBuild {
                 ZStack {
                     Color.black.opacity(0.1)
                     ProgressView()
@@ -294,6 +312,15 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                 Section {
                     ForEach(group.builds) { build in
                         buildBuildRow(build)
+                            .swipeActions(edge: .trailing) {
+                                if viewModel.uiState.account.canDelete(.testFlight) {
+                                    Button(role: .destructive) {
+                                        viewModel.uiState.confirmRemoveBuild = build
+                                    } label: {
+                                        Label(String(localized: "Remove"), systemImage: "trash")
+                                    }
+                                }
+                            }
                     }
                 } header: {
                     HStack {
