@@ -38,6 +38,15 @@ struct BetaGroupDetailUiState {
     var isAddingBuild = false
     var showEditGroup = false
     var confirmRemoveTester: BetaTesterModel?
+
+    /// Builds assigned to this group, grouped by platform in canonical order.
+    var buildsByPlatform: [PlatformBuildGroup] {
+        let sorted = builds.sorted { ($0.uploadedDate ?? .distantPast) > ($1.uploadedDate ?? .distantPast) }
+        let dict = Dictionary(grouping: sorted) { $0.platform ?? "" }
+        return dict
+            .map { PlatformBuildGroup(platform: $0.key, builds: $0.value) }
+            .sorted { BuildPlatform.sortOrder($0.platform) < BuildPlatform.sortOrder($1.platform) }
+    }
 }
 
 // MARK: - Implementation

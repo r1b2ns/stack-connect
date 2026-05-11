@@ -271,49 +271,85 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
 
     // MARK: - Builds
 
+    @ViewBuilder
     private func buildBuildsSection() -> some View {
-        Section {
-            if viewModel.uiState.isLoading && viewModel.uiState.builds.isEmpty {
+        if viewModel.uiState.isLoading && viewModel.uiState.builds.isEmpty {
+            Section {
                 HStack { Spacer(); ProgressView(); Spacer() }
-            } else if viewModel.uiState.builds.isEmpty {
+            } header: {
+                buildsHeader
+            }
+        } else if viewModel.uiState.builds.isEmpty {
+            Section {
                 Text(String(localized: "No builds assigned to this group"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-            } else {
-                ForEach(viewModel.uiState.builds) { build in
+
+                buildAddBuildButton()
+            } header: {
+                buildsHeader
+            }
+        } else {
+            ForEach(viewModel.uiState.buildsByPlatform, id: \.platform) { group in
+                Section {
+                    ForEach(group.builds) { build in
+                        buildBuildRow(build)
+                    }
+                } header: {
                     HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(build.version ?? "–")
-                                .font(.body)
-                                .fontWeight(.medium)
-
-                            if let date = build.uploadedDate {
-                                Text(formatDate(date))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
+                        Label(
+                            BuildPlatform.label(for: group.platform),
+                            systemImage: BuildPlatform.icon(for: group.platform)
+                        )
                         Spacer()
-
-                        buildStateLabel(build.processingState)
+                        Text("\(group.builds.count)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
 
-            Button {
-                viewModel.uiState.showAddBuild = true
-            } label: {
-                Label(String(localized: "Add Build"), systemImage: "plus.circle.fill")
+            Section {
+                buildAddBuildButton()
             }
-        } header: {
-            HStack {
-                Text("Builds")
-                Spacer()
-                Text("\(viewModel.uiState.builds.count)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        }
+    }
+
+    private var buildsHeader: some View {
+        HStack {
+            Text("Builds")
+            Spacer()
+            Text("\(viewModel.uiState.builds.count)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func buildBuildRow(_ build: BuildModel) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(build.version ?? "–")
+                    .font(.body)
+                    .fontWeight(.medium)
+
+                if let date = build.uploadedDate {
+                    Text(formatDate(date))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
+
+            Spacer()
+
+            buildStateLabel(build.processingState)
+        }
+    }
+
+    private func buildAddBuildButton() -> some View {
+        Button {
+            viewModel.uiState.showAddBuild = true
+        } label: {
+            Label(String(localized: "Add Build"), systemImage: "plus.circle.fill")
         }
     }
 

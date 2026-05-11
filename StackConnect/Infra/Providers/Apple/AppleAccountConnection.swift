@@ -805,15 +805,38 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             return try await fetchBuildsForGroup(groupId: groupId)
         }
 
-        let endpoint = APIEndpoint.v1.betaGroups.id(groupId).builds.get(limit: 50)
+        let endpoint = APIEndpoint
+            .v1
+            .builds
+            .get(
+                parameters: .init(
+                    filterBetaGroups: [groupId],
+                    sort: [.minusuploadedDate],
+                    limit: 200,
+                    include: [.preReleaseVersion]
+                )
+            )
+
         let response = try await provider.request(endpoint)
 
+        var platformByPreReleaseId: [String: String] = [:]
+        for item in response.included ?? [] {
+            if case .prereleaseVersion(let pre) = item,
+               let platform = pre.attributes?.platform?.rawValue {
+                platformByPreReleaseId[pre.id] = platform
+            }
+        }
+
         return response.data.map { build in
-            BuildModel(
+            let preReleaseId = build.relationships?.preReleaseVersion?.data?.id
+            let platform = preReleaseId.flatMap { platformByPreReleaseId[$0] }
+            return BuildModel(
                 id: build.id,
                 version: build.attributes?.version,
                 processingState: build.attributes?.processingState?.rawValue,
-                uploadedDate: build.attributes?.uploadedDate
+                uploadedDate: build.attributes?.uploadedDate,
+                iconUrl: build.attributes?.iconAssetToken?.toIconUrl(),
+                platform: platform
             )
         }
     }
