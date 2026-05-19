@@ -35,6 +35,7 @@ private struct BetaGroupDetailEntryView: View {
 struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
+    @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
     var body: some View {
         List {
@@ -90,6 +91,24 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                 viewModel.uiState.showEditGroup = false
             }
         }
+        .sheet(isPresented: $viewModel.uiState.showSubmitSheet) {
+            if let build = viewModel.uiState.submitSheetBuild {
+                SubmitBuildForReviewSheet(
+                    build: build,
+                    whatsNew: $viewModel.uiState.submitSheetWhatsNew,
+                    errorMessage: $viewModel.uiState.submitError,
+                    locale: viewModel.uiState.submitSheetLocale,
+                    isLoading: viewModel.uiState.isLoadingSubmitSheet,
+                    isSubmitting: viewModel.uiState.isSubmittingForReview
+                ) { text in
+                    Task { await viewModel.confirmSubmitForReview(whatsNew: text) }
+                } onCancel: {
+                    viewModel.uiState.showSubmitSheet = false
+                    viewModel.uiState.submitSheetBuild = nil
+                    viewModel.uiState.submitError = nil
+                }
+            }
+        }
         .alert(
             String(localized: "Error"),
             isPresented: Binding(
@@ -138,12 +157,47 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
             Button(String(localized: "Cancel"), role: .cancel) {}
         } message: {
             if let build = viewModel.uiState.confirmRemoveBuild {
-                Text("Remove build \(build.version ?? "–") from this group?")
+                Text("Remove build \(build.displayVersion) from this group?")
+            }
+        }
+        .alert(
+            String(localized: "Expire Build"),
+            isPresented: Binding(
+                get: { viewModel.uiState.confirmExpireBuild != nil },
+                set: { if !$0 { viewModel.uiState.confirmExpireBuild = nil } }
+            )
+        ) {
+            Button(String(localized: "Expire"), role: .destructive) {
+                if let build = viewModel.uiState.confirmExpireBuild {
+                    Task { await viewModel.expireBuild(build) }
+                }
+            }
+            Button(String(localized: "Cancel"), role: .cancel) {}
+        } message: {
+            if let build = viewModel.uiState.confirmExpireBuild {
+                Text("Expire build \(build.displayVersion)? Testers will no longer be able to install it. This cannot be undone via the API.")
+            }
+        }
+        .alert(
+            String(localized: "Expire Failed"),
+            isPresented: Binding(
+                get: { viewModel.uiState.expireError != nil },
+                set: { if !$0 { viewModel.uiState.expireError = nil } }
+            )
+        ) {
+            Button(String(localized: "OK"), role: .cancel) {}
+        } message: {
+            if let message = viewModel.uiState.expireError {
+                Text(message)
             }
         }
         .toast(message: $viewModel.uiState.toastMessage)
         .overlay {
-            if viewModel.uiState.isRemovingTester || viewModel.uiState.isRemovingBuild {
+            if viewModel.uiState.isRemovingTester
+                || viewModel.uiState.isRemovingBuild
+                || viewModel.uiState.isResendingInvite
+                || viewModel.uiState.isSubmittingForReview
+                || viewModel.uiState.isExpiringBuild {
                 ZStack {
                     Color.black.opacity(0.1)
                     ProgressView()
@@ -234,6 +288,15 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                             } label: {
                                 Label(String(localized: "Remove"), systemImage: "person.badge.minus")
                             }
+
+                            if !viewModel.uiState.group.isInternalGroup && tester.state == "INVITED" {
+                                Button {
+                                    Task { await viewModel.resendInvite(tester) }
+                                } label: {
+                                    Label(String(localized: "Resend"), systemImage: "paperplane.fill")
+                                }
+                                .tint(.blue)
+                            }
                         }
                 }
             }
@@ -311,16 +374,45 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
             ForEach(viewModel.uiState.buildsByPlatform, id: \.platform) { group in
                 Section {
                     ForEach(group.builds) { build in
-                        buildBuildRow(build)
-                            .swipeActions(edge: .trailing) {
-                                if viewModel.uiState.account.canDelete(.testFlight) {
-                                    Button(role: .destructive) {
-                                        viewModel.uiState.confirmRemoveBuild = build
-                                    } label: {
-                                        Label(String(localized: "Remove"), systemImage: "trash")
-                                    }
+                        Button {
+                            homeCoordinator.navigateToBuildDetail(
+                                build: build,
+                                appId: viewModel.uiState.appId,
+                                account: viewModel.uiState.account
+                            )
+                        } label: {
+                            buildBuildRow(build)
+                        }
+                        .foregroundStyle(.primary)
+                        .swipeActions(edge: .trailing) {
+                            if viewModel.uiState.account.canDelete(.testFlight) {
+                                Button(role: .destructive) {
+                                    viewModel.uiState.confirmRemoveBuild = build
+                                } label: {
+                                    Label(String(localized: "Remove"), systemImage: "trash")
                                 }
                             }
+
+                            if !build.isExpired && viewModel.uiState.account.canDelete(.testFlight) {
+                                Button {
+                                    viewModel.uiState.confirmExpireBuild = build
+                                } label: {
+                                    Label(String(localized: "Expire"), systemImage: "clock.badge.xmark")
+                                }
+                                .tint(.orange)
+                            }
+
+                            if !viewModel.uiState.group.isInternalGroup
+                                && build.canSubmitForBetaReview
+                                && viewModel.uiState.account.canEdit(.testFlight) {
+                                Button {
+                                    Task { await viewModel.startSubmitForReview(build) }
+                                } label: {
+                                    Label(String(localized: "Submit"), systemImage: "paperplane.fill")
+                                }
+                                .tint(.blue)
+                            }
+                        }
                     }
                 } header: {
                     HStack {
@@ -355,7 +447,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
     private func buildBuildRow(_ build: BuildModel) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(build.version ?? "–")
+                Text(build.displayVersion)
                     .font(.body)
                     .fontWeight(.medium)
 
@@ -368,8 +460,65 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
 
             Spacer()
 
+            buildBadge(for: build)
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    @ViewBuilder
+    private func buildBadge(for build: BuildModel) -> some View {
+        if build.isExpired {
+            buildExpiredLabel()
+        } else if build.processingState != "VALID", build.processingState != nil {
+            buildStateLabel(build.processingState)
+        } else if let external = build.externalBuildState, external != "NOT_APPLICABLE" {
+            buildExternalStateLabel(external)
+        } else {
             buildStateLabel(build.processingState)
         }
+    }
+
+    private func buildExpiredLabel() -> some View {
+        Text(String(localized: "Expired"))
+            .font(.caption)
+            .fontWeight(.medium)
+            .foregroundStyle(.gray)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Color.gray.opacity(0.12))
+            .clipShape(Capsule())
+    }
+
+    private func buildExternalStateLabel(_ state: String) -> some View {
+        let (text, color): (String, Color) = {
+            switch state {
+            case "READY_FOR_BETA_SUBMISSION":   return (String(localized: "Ready to Submit"), .orange)
+            case "WAITING_FOR_BETA_REVIEW":     return (String(localized: "Waiting Review"), .orange)
+            case "IN_BETA_REVIEW":              return (String(localized: "In Review"), .blue)
+            case "BETA_REJECTED":               return (String(localized: "Rejected"), .red)
+            case "BETA_APPROVED":               return (String(localized: "Approved"), .green)
+            case "READY_FOR_BETA_TESTING":     return (String(localized: "Ready for Testing"), .green)
+            case "IN_BETA_TESTING":             return (String(localized: "Testing"), .green)
+            case "MISSING_EXPORT_COMPLIANCE":   return (String(localized: "Export Compliance"), .red)
+            case "IN_EXPORT_COMPLIANCE_REVIEW": return (String(localized: "Compliance Review"), .blue)
+            case "EXPIRED":                     return (String(localized: "Expired"), .gray)
+            case "PROCESSING":                  return (String(localized: "Processing"), .orange)
+            case "PROCESSING_EXCEPTION":        return (String(localized: "Failed"), .red)
+            default:                            return (state, .gray)
+            }
+        }()
+
+        return Text(text)
+            .font(.caption)
+            .fontWeight(.medium)
+            .foregroundStyle(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(color.opacity(0.12))
+            .clipShape(Capsule())
     }
 
     private func buildAddBuildButton() -> some View {
@@ -488,6 +637,91 @@ struct AddTesterSheet: View {
                         }
                         .disabled(email.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Submit Build For Review Sheet
+
+struct SubmitBuildForReviewSheet: View {
+
+    let build: BuildModel
+    @Binding var whatsNew: String
+    @Binding var errorMessage: String?
+    let locale: String
+    let isLoading: Bool
+    let isSubmitting: Bool
+    let onSubmit: (String) -> Void
+    let onCancel: () -> Void
+
+    private var trimmedWhatsNew: String {
+        whatsNew.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack {
+                        Text("Build")
+                        Spacer()
+                        Text(build.displayVersion).foregroundStyle(.secondary)
+                    }
+                    HStack {
+                        Text("Locale")
+                        Spacer()
+                        Text(locale).foregroundStyle(.secondary)
+                    }
+                }
+
+                Section {
+                    TextEditor(text: $whatsNew)
+                        .frame(minHeight: 140)
+                } header: {
+                    Text("What to Test (required)")
+                } footer: {
+                    Text("Apple requires testers to know what to test. This text is saved to the build and sent with the review submission.")
+                }
+            }
+            .navigationTitle(String(localized: "Submit for Review"))
+            .navigationBarTitleDisplayMode(.inline)
+            .disabled(isLoading || isSubmitting)
+            .overlay {
+                if isLoading {
+                    ZStack {
+                        Color.black.opacity(0.05).ignoresSafeArea()
+                        ProgressView()
+                    }
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "Cancel")) { onCancel() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if isSubmitting {
+                        ProgressView()
+                    } else {
+                        Button(String(localized: "Submit")) {
+                            onSubmit(trimmedWhatsNew)
+                        }
+                        .disabled(trimmedWhatsNew.isEmpty)
+                    }
+                }
+            }
+            .alert(
+                String(localized: "Submit Failed"),
+                isPresented: Binding(
+                    get: { errorMessage != nil },
+                    set: { if !$0 { errorMessage = nil } }
+                )
+            ) {
+                Button(String(localized: "OK"), role: .cancel) {}
+            } message: {
+                if let message = errorMessage {
+                    Text(message)
                 }
             }
         }
@@ -765,7 +999,7 @@ struct AddBuildSheet: View {
     private func buildRow(_ build: BuildModel) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(build.version ?? "–")
+                Text(build.displayVersion)
                     .font(.body)
                     .fontWeight(.medium)
                     .foregroundStyle(.primary)

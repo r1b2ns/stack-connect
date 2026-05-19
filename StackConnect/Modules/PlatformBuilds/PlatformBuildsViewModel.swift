@@ -7,6 +7,7 @@ protocol PlatformBuildsViewModelProtocol: ObservableObject {
     var uiState: PlatformBuildsUiState { get set }
     func load() async
     func loadMore() async
+    func expireBuild(_ build: BuildModel) async
 }
 
 // MARK: - UiState
@@ -20,6 +21,10 @@ struct PlatformBuildsUiState {
     var isLoadingMore = false
     var hasMorePages = false
     var error: String?
+    var confirmExpireBuild: BuildModel?
+    var isExpiringBuild = false
+    var expireError: String?
+    var toastMessage: ToastMessage?
 }
 
 // MARK: - Implementation
@@ -101,6 +106,26 @@ final class PlatformBuildsViewModel: PlatformBuildsViewModelProtocol {
         }
 
         uiState.isLoadingMore = false
+    }
+
+    func expireBuild(_ build: BuildModel) async {
+        uiState.isExpiringBuild = true
+        uiState.expireError = nil
+        do {
+            guard let connection = createConnection() else {
+                uiState.isExpiringBuild = false
+                return
+            }
+            try await connection.expireBuild(buildId: build.id)
+            if let idx = uiState.builds.firstIndex(where: { $0.id == build.id }) {
+                uiState.builds[idx].isExpired = true
+            }
+            uiState.toastMessage = ToastMessage(String(localized: "Build expired"), icon: "clock.badge.xmark")
+        } catch {
+            uiState.expireError = error.localizedDescription
+            Log.print.error("[PlatformBuilds] Expire failed: \(error.localizedDescription)")
+        }
+        uiState.isExpiringBuild = false
     }
 
     private func createConnection() -> AppleAccountConnection? {

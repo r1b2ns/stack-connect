@@ -45,10 +45,47 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
             .sheet(isPresented: $viewModel.uiState.showCreateGroup) {
                 CreateBetaGroupSheet(
                     isCreating: viewModel.uiState.isCreatingGroup
-                ) { name, isInternal in
-                    Task { await viewModel.createGroup(name: name, isInternal: isInternal) }
+                ) { name, isInternal, hasAccessToAllBuilds in
+                    Task {
+                        await viewModel.createGroup(
+                            name: name,
+                            isInternal: isInternal,
+                            hasAccessToAllBuilds: hasAccessToAllBuilds
+                        )
+                    }
                 } onCancel: {
                     viewModel.uiState.showCreateGroup = false
+                }
+            }
+            .alert(
+                String(localized: "Expire Build"),
+                isPresented: Binding(
+                    get: { viewModel.uiState.confirmExpireBuild != nil },
+                    set: { if !$0 { viewModel.uiState.confirmExpireBuild = nil } }
+                )
+            ) {
+                Button(String(localized: "Expire"), role: .destructive) {
+                    if let build = viewModel.uiState.confirmExpireBuild {
+                        Task { await viewModel.expireBuild(build) }
+                    }
+                }
+                Button(String(localized: "Cancel"), role: .cancel) {}
+            } message: {
+                if let build = viewModel.uiState.confirmExpireBuild {
+                    Text("Expire build \(build.displayVersion)? Testers will no longer be able to install it. This cannot be undone via the API.")
+                }
+            }
+            .alert(
+                String(localized: "Expire Failed"),
+                isPresented: Binding(
+                    get: { viewModel.uiState.expireError != nil },
+                    set: { if !$0 { viewModel.uiState.expireError = nil } }
+                )
+            ) {
+                Button(String(localized: "OK"), role: .cancel) {}
+            } message: {
+                if let message = viewModel.uiState.expireError {
+                    Text(message)
                 }
             }
             .alert(
@@ -70,6 +107,16 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
                 }
             }
             .toast(message: $viewModel.uiState.toastMessage)
+            .overlay {
+                if viewModel.uiState.isExpiringBuild {
+                    ZStack {
+                        Color.black.opacity(0.1)
+                        ProgressView()
+                            .scaleEffect(1.2)
+                    }
+                    .ignoresSafeArea()
+                }
+            }
     }
 
     // MARK: - Content
@@ -139,7 +186,7 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
                 }
                 .foregroundStyle(.primary)
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    if !group.isInternalGroup && viewModel.uiState.account.canDelete(.testFlight) {
+                    if viewModel.uiState.account.canDelete(.testFlight) {
                         Button(role: .destructive) {
                             viewModel.uiState.confirmDelete = group
                         } label: {
@@ -200,7 +247,26 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
     private func buildPlatformSection(_ group: PlatformBuildGroup) -> some View {
         Section {
             ForEach(group.builds.prefix(5)) { build in
-                buildBuildRow(build)
+                Button {
+                    homeCoordinator.navigateToBuildDetail(
+                        build: build,
+                        appId: viewModel.uiState.appId,
+                        account: viewModel.uiState.account
+                    )
+                } label: {
+                    buildBuildRow(build)
+                }
+                .foregroundStyle(.primary)
+                .swipeActions(edge: .trailing) {
+                    if !build.isExpired && viewModel.uiState.account.canDelete(.testFlight) {
+                        Button {
+                            viewModel.uiState.confirmExpireBuild = build
+                        } label: {
+                            Label(String(localized: "Expire"), systemImage: "clock.badge.xmark")
+                        }
+                        .tint(.orange)
+                    }
+                }
             }
 
             if group.builds.count > 5 {
@@ -229,15 +295,21 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
     }
 
     private func buildBuildRow(_ build: BuildModel) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: buildStateIcon(build.processingState))
+        let icon = build.isExpired ? "clock.badge.xmark" : buildStateIcon(build.processingState)
+        let label = build.isExpired ? String(localized: "Expired") : buildStateLabel(build.processingState)
+        let color: Color = build.isExpired ? .gray : buildStateColor(build.processingState)
+
+        return HStack(spacing: 12) {
+            Image(systemName: icon)
                 .font(.body)
-                .foregroundStyle(buildStateColor(build.processingState))
+                .foregroundStyle(color)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(build.version ?? "–")
+                Text(build.displayVersion)
                     .font(.body)
                     .fontWeight(.medium)
+                    .truncationMode(.middle)
+                    .lineLimit(1)
 
                 if let date = build.uploadedDate {
                     Text(formatDate(date))
@@ -248,14 +320,18 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
 
             Spacer()
 
-            Text(buildStateLabel(build.processingState))
+            Text(label)
                 .font(.caption)
                 .fontWeight(.medium)
-                .foregroundStyle(buildStateColor(build.processingState))
+                .foregroundStyle(color)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
-                .background(buildStateColor(build.processingState).opacity(0.12))
+                .background(color.opacity(0.12))
                 .clipShape(Capsule())
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
     }
 
@@ -320,9 +396,10 @@ struct CreateBetaGroupSheet: View {
 
     @State private var name = ""
     @State private var isInternal = false
+    @State private var hasAccessToAllBuilds = false
 
     let isCreating: Bool
-    let onCreate: (String, Bool) -> Void
+    let onCreate: (String, Bool, Bool) -> Void
     let onCancel: () -> Void
 
     var body: some View {
@@ -343,6 +420,14 @@ struct CreateBetaGroupSheet: View {
                          : "External testers are invited via email or public link. Up to 10,000 testers. Requires Beta App Review."
                     )
                 }
+
+                if isInternal {
+                    Section {
+                        Toggle(String(localized: "Enable automatic distribution"), isOn: $hasAccessToAllBuilds)
+                    } footer: {
+                        Text("Automatically distribute new builds for this app to testers in this group. This setting can only be changed in App Store Connect (web) after the group is created.")
+                    }
+                }
             }
             .navigationTitle(String(localized: "New Beta Group"))
             .navigationBarTitleDisplayMode(.inline)
@@ -356,7 +441,11 @@ struct CreateBetaGroupSheet: View {
                         ProgressView()
                     } else {
                         Button(String(localized: "Create")) {
-                            onCreate(name.trimmingCharacters(in: .whitespaces), isInternal)
+                            onCreate(
+                                name.trimmingCharacters(in: .whitespaces),
+                                isInternal,
+                                isInternal ? hasAccessToAllBuilds : false
+                            )
                         }
                         .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
