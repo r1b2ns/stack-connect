@@ -9,6 +9,7 @@ protocol BetaGroupDetailViewModelProtocol: ObservableObject {
     func addTester(email: String, firstName: String?, lastName: String?) async
     func addTeamMembersAsTesters(_ members: [TeamMemberModel]) async
     func removeTester(_ tester: BetaTesterModel) async
+    func resendInvite(_ tester: BetaTesterModel) async
     func updateGroup(name: String?, isPublicLinkEnabled: Bool?, publicLinkLimit: Int?, isFeedbackEnabled: Bool?) async
     func addBuildToGroup(buildId: String) async
     func removeBuildFromGroup(_ build: BuildModel) async
@@ -35,6 +36,7 @@ struct BetaGroupDetailUiState {
     var showAddTester = false
     var isInvitingTesters = false
     var isRemovingTester = false
+    var isResendingInvite = false
     var showAddBuild = false
     var isAddingBuild = false
     var isRemovingBuild = false
@@ -194,6 +196,22 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
             Log.print.error("[BetaGroupDetail] Remove tester failed: \(error.localizedDescription)")
         }
         uiState.isRemovingTester = false
+    }
+
+    func resendInvite(_ tester: BetaTesterModel) async {
+        uiState.isResendingInvite = true
+        do {
+            guard let connection = createConnection() else {
+                uiState.isResendingInvite = false
+                return
+            }
+            try await connection.resendInvite(testerId: tester.id, appId: uiState.appId)
+            uiState.toastMessage = ToastMessage(String(localized: "Invite resent"), icon: "envelope.fill")
+        } catch {
+            uiState.toastMessage = ToastMessage(String(localized: "Failed to resend invite"), icon: "exclamationmark.triangle.fill")
+            Log.print.error("[BetaGroupDetail] Resend invite failed: \(error.localizedDescription)")
+        }
+        uiState.isResendingInvite = false
     }
 
     func updateGroup(name: String?, isPublicLinkEnabled: Bool?, publicLinkLimit: Int?, isFeedbackEnabled: Bool?) async {

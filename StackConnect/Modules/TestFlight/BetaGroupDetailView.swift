@@ -143,7 +143,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
         }
         .toast(message: $viewModel.uiState.toastMessage)
         .overlay {
-            if viewModel.uiState.isRemovingTester || viewModel.uiState.isRemovingBuild {
+            if viewModel.uiState.isRemovingTester || viewModel.uiState.isRemovingBuild || viewModel.uiState.isResendingInvite {
                 ZStack {
                     Color.black.opacity(0.1)
                     ProgressView()
@@ -233,6 +233,15 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                                 viewModel.uiState.confirmRemoveTester = tester
                             } label: {
                                 Label(String(localized: "Remove"), systemImage: "person.badge.minus")
+                            }
+
+                            if !viewModel.uiState.group.isInternalGroup && tester.state == "INVITED" {
+                                Button {
+                                    Task { await viewModel.resendInvite(tester) }
+                                } label: {
+                                    Label(String(localized: "Resend"), systemImage: "paperplane.fill")
+                                }
+                                .tint(.blue)
                             }
                         }
                 }

@@ -657,6 +657,27 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         Log.print.info("[TestFlight] Removed tester \(testerId) from group \(groupId)")
     }
 
+    func resendInvite(testerId: String, appId: String) async throws {
+        guard let provider else {
+            try await validateCredentials()
+            return try await resendInvite(testerId: testerId, appId: appId)
+        }
+
+        let body = BetaTesterInvitationCreateRequest(
+            data: .init(
+                type: .betaTesterInvitations,
+                relationships: .init(
+                    betaTester: .init(data: .init(type: .betaTesters, id: testerId)),
+                    app: .init(data: .init(type: .apps, id: appId))
+                )
+            )
+        )
+
+        let endpoint = APIEndpoint.v1.betaTesterInvitations.post(body)
+        _ = try await provider.request(endpoint)
+        Log.print.info("[TestFlight] Resent invite to tester \(testerId)")
+    }
+
     // MARK: - Team Members
 
     func fetchTeamMembers() async throws -> [TeamMemberModel] {
