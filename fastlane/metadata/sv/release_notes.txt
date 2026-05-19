@@ -1,2 +1,5 @@
-• Nya kontroller för stegvis lansering: släpp till alla, pausa och återuppta
+• TestFlight: skicka inbjudningar igen, skicka in för betagranskning, visa builddetaljer och låt builds förfalla
+• Betagrupper: ta bort builds och visa dem grupperade per plattform
+• Bläddra bland TestFlight-builds grupperade per plattform med paginering
+• Kontroller för stegvis lansering: släpp till alla, pausa och återuppta
 • Buggfixar och stabilitetsförbättringar

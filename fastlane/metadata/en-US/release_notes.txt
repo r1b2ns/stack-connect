@@ -1,2 +1,5 @@
-• New phased release controls: release to all users, pause, and resume
+• TestFlight: resend invitations, submit for beta review, view build details, and expire builds
+• Beta groups: remove builds and view them grouped by platform
+• Browse TestFlight builds grouped by platform with paginated navigation
+• Phased release controls: release to all users, pause, and resume
 • Bug fixes and stability improvements

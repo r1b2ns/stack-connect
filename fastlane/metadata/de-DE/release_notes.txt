@@ -1,2 +1,5 @@
-• Neue Steuerung der stufenweisen Veröffentlichung: für alle freigeben, pausieren und fortsetzen
+• TestFlight: Einladungen erneut senden, zur Beta-Prüfung einreichen, Build-Details anzeigen und Builds ablaufen lassen
+• Beta-Gruppen: Builds entfernen und nach Plattform gruppiert anzeigen
+• TestFlight-Builds nach Plattform gruppiert mit Paginierung durchsuchen
+• Steuerung der stufenweisen Veröffentlichung: für alle freigeben, pausieren und fortsetzen
 • Fehlerbehebungen und Stabilitätsverbesserungen

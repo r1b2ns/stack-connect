@@ -1,2 +1,5 @@
-• Nouveaux contrôles de déploiement progressif : publier pour tous, mettre en pause et reprendre
+• TestFlight : renvoyer les invitations, soumettre à l'examen bêta, voir les détails du build et faire expirer les builds
+• Groupes bêta : supprimer des builds et les afficher regroupés par plateforme
+• Parcourez les builds TestFlight regroupés par plateforme avec pagination
+• Contrôles de déploiement progressif : publier pour tous, mettre en pause et reprendre
 • Corrections de bogues et améliorations de la stabilité

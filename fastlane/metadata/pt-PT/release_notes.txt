@@ -1,2 +1,5 @@
-• Novos controlos de lançamento faseado: lançar a todos, pausar e retomar
+• TestFlight: reenviar convites, submeter para revisão beta, ver detalhes do build e expirar builds
+• Grupos beta: remover builds e visualizá-los agrupados por plataforma
+• Navegue pelos builds do TestFlight agrupados por plataforma com paginação
+• Controlos de lançamento faseado: lançar a todos, pausar e retomar
 • Correções de erros e melhorias de estabilidade

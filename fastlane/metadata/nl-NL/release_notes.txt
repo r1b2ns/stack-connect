@@ -1,2 +1,5 @@
-• Nieuwe besturing voor gefaseerde release: vrijgeven voor iedereen, pauzeren en hervatten
+• TestFlight: uitnodigingen opnieuw versturen, indienen voor bètareview, builddetails bekijken en builds laten verlopen
+• Bètagroepen: builds verwijderen en gegroepeerd per platform bekijken
+• Blader door TestFlight-builds gegroepeerd per platform met paginering
+• Besturing voor gefaseerde release: vrijgeven voor iedereen, pauzeren en hervatten
 • Bugfixes en stabiliteitsverbeteringen

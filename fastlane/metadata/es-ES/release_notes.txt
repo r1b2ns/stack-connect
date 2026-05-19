@@ -1,2 +1,5 @@
-• Nuevos controles de lanzamiento por fases: liberar a todos, pausar y reanudar
+• TestFlight: reenviar invitaciones, enviar a revisión beta, ver detalles del build y caducar builds
+• Grupos beta: eliminar builds y verlos agrupados por plataforma
+• Explora los builds de TestFlight agrupados por plataforma con paginación
+• Controles de lanzamiento por fases: liberar a todos, pausar y reanudar
 • Corrección de errores y mejoras de estabilidad

@@ -1,2 +1,5 @@
-• Nuovi controlli del rilascio progressivo: pubblica per tutti, metti in pausa e riprendi
+• TestFlight: invio nuovamente degli inviti, invio alla revisione beta, dettagli del build e scadenza dei build
+• Gruppi beta: rimuovi i build e visualizzali raggruppati per piattaforma
+• Sfoglia i build di TestFlight raggruppati per piattaforma con paginazione
+• Controlli del rilascio progressivo: pubblica per tutti, metti in pausa e riprendi
 • Correzioni di bug e miglioramenti della stabilità

@@ -1,2 +1,5 @@
-• Novos controles de liberação faseada: liberar para todos, pausar e retomar
+• TestFlight: reenviar convites, enviar para revisão beta, ver detalhes do build e expirar builds
+• Grupos beta: remover builds e visualizá-los agrupados por plataforma
+• Navegue pelos builds do TestFlight agrupados por plataforma com paginação
+• Controles de liberação faseada: liberar para todos, pausar e retomar
 • Correções de bugs e melhorias de estabilidade
