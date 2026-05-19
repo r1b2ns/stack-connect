@@ -8,6 +8,7 @@ protocol TestFlightViewModelProtocol: ObservableObject {
     func load() async
     func createGroup(name: String, isInternal: Bool, hasAccessToAllBuilds: Bool) async
     func deleteGroup(_ group: BetaGroupModel) async
+    func expireBuild(_ build: BuildModel) async
 }
 
 // MARK: - UiState
@@ -30,6 +31,9 @@ struct TestFlightUiState {
     var showCreateGroup = false
     var isCreatingGroup = false
     var confirmDelete: BetaGroupModel?
+    var confirmExpireBuild: BuildModel?
+    var isExpiringBuild = false
+    var expireError: String?
 
     var internalGroups: [BetaGroupModel] {
         groups.filter { $0.isInternalGroup }
@@ -144,6 +148,26 @@ final class TestFlightViewModel: TestFlightViewModelProtocol {
             uiState.toastMessage = ToastMessage(String(localized: "Failed to delete group"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[TestFlight] Delete group failed: \(error.localizedDescription)")
         }
+    }
+
+    func expireBuild(_ build: BuildModel) async {
+        uiState.isExpiringBuild = true
+        uiState.expireError = nil
+        do {
+            guard let connection = createConnection() else {
+                uiState.isExpiringBuild = false
+                return
+            }
+            try await connection.expireBuild(buildId: build.id)
+            if let idx = uiState.builds.firstIndex(where: { $0.id == build.id }) {
+                uiState.builds[idx].isExpired = true
+            }
+            uiState.toastMessage = ToastMessage(String(localized: "Build expired"), icon: "clock.badge.xmark")
+        } catch {
+            uiState.expireError = error.localizedDescription
+            Log.print.error("[TestFlight] Expire build failed: \(error.localizedDescription)")
+        }
+        uiState.isExpiringBuild = false
     }
 
     private func createConnection() -> AppleAccountConnection? {

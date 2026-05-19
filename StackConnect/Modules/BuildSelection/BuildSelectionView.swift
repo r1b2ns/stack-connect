@@ -83,6 +83,7 @@ struct BuildSelectionView<ViewModel: BuildSelectionViewModelProtocol>: View {
                     .font(.body)
                     .fontWeight(.medium)
                     .foregroundStyle(.primary)
+                    .truncationMode(.middle)
 
                 if let date = build.uploadedDate {
                     Text(date, style: .date)

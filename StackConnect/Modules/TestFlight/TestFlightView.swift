@@ -58,6 +58,37 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
                 }
             }
             .alert(
+                String(localized: "Expire Build"),
+                isPresented: Binding(
+                    get: { viewModel.uiState.confirmExpireBuild != nil },
+                    set: { if !$0 { viewModel.uiState.confirmExpireBuild = nil } }
+                )
+            ) {
+                Button(String(localized: "Expire"), role: .destructive) {
+                    if let build = viewModel.uiState.confirmExpireBuild {
+                        Task { await viewModel.expireBuild(build) }
+                    }
+                }
+                Button(String(localized: "Cancel"), role: .cancel) {}
+            } message: {
+                if let build = viewModel.uiState.confirmExpireBuild {
+                    Text("Expire build \(build.displayVersion)? Testers will no longer be able to install it. This cannot be undone via the API.")
+                }
+            }
+            .alert(
+                String(localized: "Expire Failed"),
+                isPresented: Binding(
+                    get: { viewModel.uiState.expireError != nil },
+                    set: { if !$0 { viewModel.uiState.expireError = nil } }
+                )
+            ) {
+                Button(String(localized: "OK"), role: .cancel) {}
+            } message: {
+                if let message = viewModel.uiState.expireError {
+                    Text(message)
+                }
+            }
+            .alert(
                 String(localized: "Delete Group"),
                 isPresented: Binding(
                     get: { viewModel.uiState.confirmDelete != nil },
@@ -76,6 +107,16 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
                 }
             }
             .toast(message: $viewModel.uiState.toastMessage)
+            .overlay {
+                if viewModel.uiState.isExpiringBuild {
+                    ZStack {
+                        Color.black.opacity(0.1)
+                        ProgressView()
+                            .scaleEffect(1.2)
+                    }
+                    .ignoresSafeArea()
+                }
+            }
     }
 
     // MARK: - Content
@@ -206,7 +247,26 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
     private func buildPlatformSection(_ group: PlatformBuildGroup) -> some View {
         Section {
             ForEach(group.builds.prefix(5)) { build in
-                buildBuildRow(build)
+                Button {
+                    homeCoordinator.navigateToBuildDetail(
+                        build: build,
+                        appId: viewModel.uiState.appId,
+                        account: viewModel.uiState.account
+                    )
+                } label: {
+                    buildBuildRow(build)
+                }
+                .foregroundStyle(.primary)
+                .swipeActions(edge: .trailing) {
+                    if !build.isExpired && viewModel.uiState.account.canDelete(.testFlight) {
+                        Button {
+                            viewModel.uiState.confirmExpireBuild = build
+                        } label: {
+                            Label(String(localized: "Expire"), systemImage: "clock.badge.xmark")
+                        }
+                        .tint(.orange)
+                    }
+                }
             }
 
             if group.builds.count > 5 {
@@ -235,15 +295,21 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
     }
 
     private func buildBuildRow(_ build: BuildModel) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: buildStateIcon(build.processingState))
+        let icon = build.isExpired ? "clock.badge.xmark" : buildStateIcon(build.processingState)
+        let label = build.isExpired ? String(localized: "Expired") : buildStateLabel(build.processingState)
+        let color: Color = build.isExpired ? .gray : buildStateColor(build.processingState)
+
+        return HStack(spacing: 12) {
+            Image(systemName: icon)
                 .font(.body)
-                .foregroundStyle(buildStateColor(build.processingState))
+                .foregroundStyle(color)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(build.displayVersion)
                     .font(.body)
                     .fontWeight(.medium)
+                    .truncationMode(.middle)
+                    .lineLimit(1)
 
                 if let date = build.uploadedDate {
                     Text(formatDate(date))
@@ -254,14 +320,18 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
 
             Spacer()
 
-            Text(buildStateLabel(build.processingState))
+            Text(label)
                 .font(.caption)
                 .fontWeight(.medium)
-                .foregroundStyle(buildStateColor(build.processingState))
+                .foregroundStyle(color)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
-                .background(buildStateColor(build.processingState).opacity(0.12))
+                .background(color.opacity(0.12))
                 .clipShape(Capsule())
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
     }
 

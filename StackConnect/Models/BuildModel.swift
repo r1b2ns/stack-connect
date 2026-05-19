@@ -11,6 +11,15 @@ struct BuildModel: Codable, Identifiable, Hashable {
     var externalBuildState: String?
     var betaReviewState: String?
     var submittedDate: Date?
+    var expirationDate: Date?
+    var isExpired: Bool
+    var minOsVersion: String?
+    var computedMinMacOsVersion: String?
+    var computedMinVisionOsVersion: String?
+    var buildAudienceType: String?
+    var usesNonExemptEncryption: Bool?
+    var internalBuildState: String?
+    var autoNotifyEnabled: Bool?
 
     init(
         id: String,
@@ -22,7 +31,16 @@ struct BuildModel: Codable, Identifiable, Hashable {
         platform: String? = nil,
         externalBuildState: String? = nil,
         betaReviewState: String? = nil,
-        submittedDate: Date? = nil
+        submittedDate: Date? = nil,
+        expirationDate: Date? = nil,
+        isExpired: Bool = false,
+        minOsVersion: String? = nil,
+        computedMinMacOsVersion: String? = nil,
+        computedMinVisionOsVersion: String? = nil,
+        buildAudienceType: String? = nil,
+        usesNonExemptEncryption: Bool? = nil,
+        internalBuildState: String? = nil,
+        autoNotifyEnabled: Bool? = nil
     ) {
         self.id = id
         self.version = version
@@ -34,6 +52,15 @@ struct BuildModel: Codable, Identifiable, Hashable {
         self.externalBuildState = externalBuildState
         self.betaReviewState = betaReviewState
         self.submittedDate = submittedDate
+        self.expirationDate = expirationDate
+        self.isExpired = isExpired
+        self.minOsVersion = minOsVersion
+        self.computedMinMacOsVersion = computedMinMacOsVersion
+        self.computedMinVisionOsVersion = computedMinVisionOsVersion
+        self.buildAudienceType = buildAudienceType
+        self.usesNonExemptEncryption = usesNonExemptEncryption
+        self.internalBuildState = internalBuildState
+        self.autoNotifyEnabled = autoNotifyEnabled
     }
 
     /// "3.0.0(1232)" when both marketing and build numbers are known, otherwise whichever is present.
@@ -61,4 +88,10 @@ struct BetaBuildLocalizationModel: Codable, Identifiable, Hashable {
     let id: String
     var locale: String
     var whatsNew: String?
+}
+
+struct BuildDetailData {
+    var build: BuildModel
+    var betaGroups: [BetaGroupModel]
+    var localizations: [BetaBuildLocalizationModel]
 }

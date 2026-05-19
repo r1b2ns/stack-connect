@@ -368,9 +368,124 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
                 platform: platform,
                 externalBuildState: detail?.attributes?.externalBuildState?.rawValue,
                 betaReviewState: submission?.attributes?.betaReviewState?.rawValue,
-                submittedDate: submission?.attributes?.submittedDate
+                submittedDate: submission?.attributes?.submittedDate,
+                expirationDate: build.attributes?.expirationDate,
+                isExpired: build.attributes?.isExpired ?? false,
+                minOsVersion: build.attributes?.minOsVersion,
+                computedMinMacOsVersion: build.attributes?.computedMinMacOsVersion,
+                computedMinVisionOsVersion: build.attributes?.computedMinVisionOsVersion,
+                buildAudienceType: build.attributes?.buildAudienceType?.rawValue,
+                usesNonExemptEncryption: build.attributes?.usesNonExemptEncryption,
+                internalBuildState: detail?.attributes?.internalBuildState?.rawValue,
+                autoNotifyEnabled: detail?.attributes?.isAutoNotifyEnabled
             )
         }
+    }
+
+    func fetchBuildDetail(buildId: String) async throws -> BuildDetailData {
+        guard let provider else {
+            try await validateCredentials()
+            return try await fetchBuildDetail(buildId: buildId)
+        }
+
+        let endpoint = APIEndpoint.v1.builds.id(buildId).get(
+            parameters: .init(
+                include: [.preReleaseVersion, .buildBetaDetail, .betaAppReviewSubmission, .betaGroups, .betaBuildLocalizations],
+                limitBetaBuildLocalizations: 50,
+                limitBetaGroups: 50
+            )
+        )
+        let response = try await provider.request(endpoint)
+        let b = response.data
+
+        var marketingVersion: String?
+        var platform: String?
+        var detail: BuildBetaDetail?
+        var submission: BetaAppReviewSubmission?
+        var groups: [BetaGroupModel] = []
+        var localizations: [BetaBuildLocalizationModel] = []
+
+        for item in response.included ?? [] {
+            switch item {
+            case .prereleaseVersion(let pre):
+                marketingVersion = pre.attributes?.version
+                platform = pre.attributes?.platform?.rawValue
+            case .buildBetaDetail(let d):
+                detail = d
+            case .betaAppReviewSubmission(let s):
+                submission = s
+            case .betaGroup(let g):
+                groups.append(
+                    BetaGroupModel(
+                        id: g.id,
+                        name: g.attributes?.name ?? "",
+                        isInternalGroup: g.attributes?.isInternalGroup ?? false,
+                        createdDate: g.attributes?.createdDate,
+                        hasAccessToAllBuilds: g.attributes?.hasAccessToAllBuilds ?? false,
+                        isPublicLinkEnabled: g.attributes?.isPublicLinkEnabled ?? false,
+                        publicLink: g.attributes?.publicLink,
+                        publicLinkId: g.attributes?.publicLinkID,
+                        publicLinkLimit: g.attributes?.publicLinkLimit,
+                        isPublicLinkLimitEnabled: g.attributes?.isPublicLinkLimitEnabled ?? false,
+                        isFeedbackEnabled: g.attributes?.isFeedbackEnabled ?? false,
+                        testerCount: nil,
+                        buildCount: nil
+                    )
+                )
+            case .betaBuildLocalization(let l):
+                localizations.append(
+                    BetaBuildLocalizationModel(
+                        id: l.id,
+                        locale: l.attributes?.locale ?? "",
+                        whatsNew: l.attributes?.whatsNew
+                    )
+                )
+            default:
+                break
+            }
+        }
+
+        let build = BuildModel(
+            id: b.id,
+            version: b.attributes?.version,
+            marketingVersion: marketingVersion,
+            processingState: b.attributes?.processingState?.rawValue,
+            uploadedDate: b.attributes?.uploadedDate,
+            iconUrl: b.attributes?.iconAssetToken?.toIconUrl(),
+            platform: platform,
+            externalBuildState: detail?.attributes?.externalBuildState?.rawValue,
+            betaReviewState: submission?.attributes?.betaReviewState?.rawValue,
+            submittedDate: submission?.attributes?.submittedDate,
+            expirationDate: b.attributes?.expirationDate,
+            isExpired: b.attributes?.isExpired ?? false,
+            minOsVersion: b.attributes?.minOsVersion,
+            computedMinMacOsVersion: b.attributes?.computedMinMacOsVersion,
+            computedMinVisionOsVersion: b.attributes?.computedMinVisionOsVersion,
+            buildAudienceType: b.attributes?.buildAudienceType?.rawValue,
+            usesNonExemptEncryption: b.attributes?.usesNonExemptEncryption,
+            internalBuildState: detail?.attributes?.internalBuildState?.rawValue,
+            autoNotifyEnabled: detail?.attributes?.isAutoNotifyEnabled
+        )
+
+        return BuildDetailData(build: build, betaGroups: groups, localizations: localizations)
+    }
+
+    func expireBuild(buildId: String) async throws {
+        guard let provider else {
+            try await validateCredentials()
+            return try await expireBuild(buildId: buildId)
+        }
+
+        let body = BuildUpdateRequest(
+            data: .init(
+                type: .builds,
+                id: buildId,
+                attributes: .init(isExpired: true)
+            )
+        )
+        let endpoint = APIEndpoint.v1.builds.id(buildId).patch(body)
+        _ = try await provider.request(endpoint)
+        Log.print.info("[Apple] Expired build \(buildId)")
     }
 
     func fetchCurrentBuild(versionId: String) async throws -> BuildModel? {

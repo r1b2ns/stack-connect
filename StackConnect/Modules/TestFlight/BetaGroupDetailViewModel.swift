@@ -13,6 +13,7 @@ protocol BetaGroupDetailViewModelProtocol: ObservableObject {
     func updateGroup(name: String?, isPublicLinkEnabled: Bool?, publicLinkLimit: Int?, isFeedbackEnabled: Bool?) async
     func addBuildToGroup(buildId: String) async
     func removeBuildFromGroup(_ build: BuildModel) async
+    func expireBuild(_ build: BuildModel) async
     func startSubmitForReview(_ build: BuildModel) async
     func confirmSubmitForReview(whatsNew: String) async
     func loadTeamMembers() async
@@ -43,6 +44,9 @@ struct BetaGroupDetailUiState {
     var isAddingBuild = false
     var isRemovingBuild = false
     var confirmRemoveBuild: BuildModel?
+    var confirmExpireBuild: BuildModel?
+    var isExpiringBuild = false
+    var expireError: String?
     var showEditGroup = false
     var confirmRemoveTester: BetaTesterModel?
     var showSubmitSheet = false
@@ -52,6 +56,7 @@ struct BetaGroupDetailUiState {
     var submitSheetLocalizationId: String?
     var isLoadingSubmitSheet = false
     var isSubmittingForReview = false
+    var submitError: String?
 
     /// Builds assigned to this group, grouped by platform in canonical order.
     var buildsByPlatform: [PlatformBuildGroup] {
@@ -293,6 +298,7 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
     func confirmSubmitForReview(whatsNew: String) async {
         guard let build = uiState.submitSheetBuild else { return }
         uiState.isSubmittingForReview = true
+        uiState.submitError = nil
         do {
             guard let connection = createConnection() else {
                 uiState.isSubmittingForReview = false
@@ -315,10 +321,30 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
             uiState.toastMessage = ToastMessage(String(localized: "Submitted for review"), icon: "paperplane.fill")
             await load()
         } catch {
-            uiState.toastMessage = ToastMessage(String(localized: "Failed to submit for review"), icon: "exclamationmark.triangle.fill")
+            uiState.submitError = error.localizedDescription
             Log.print.error("[BetaGroupDetail] Submit for review failed: \(error.localizedDescription)")
         }
         uiState.isSubmittingForReview = false
+    }
+
+    func expireBuild(_ build: BuildModel) async {
+        uiState.isExpiringBuild = true
+        uiState.expireError = nil
+        do {
+            guard let connection = createConnection() else {
+                uiState.isExpiringBuild = false
+                return
+            }
+            try await connection.expireBuild(buildId: build.id)
+            if let idx = uiState.builds.firstIndex(where: { $0.id == build.id }) {
+                uiState.builds[idx].isExpired = true
+            }
+            uiState.toastMessage = ToastMessage(String(localized: "Build expired"), icon: "clock.badge.xmark")
+        } catch {
+            uiState.expireError = error.localizedDescription
+            Log.print.error("[BetaGroupDetail] Expire failed: \(error.localizedDescription)")
+        }
+        uiState.isExpiringBuild = false
     }
 
     func removeBuildFromGroup(_ build: BuildModel) async {
