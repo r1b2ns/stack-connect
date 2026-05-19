@@ -154,7 +154,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
             Button(String(localized: "Cancel"), role: .cancel) {}
         } message: {
             if let build = viewModel.uiState.confirmRemoveBuild {
-                Text("Remove build \(build.version ?? "–") from this group?")
+                Text("Remove build \(build.displayVersion) from this group?")
             }
         }
         .toast(message: $viewModel.uiState.toastMessage)
@@ -394,7 +394,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
     private func buildBuildRow(_ build: BuildModel) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(build.version ?? "–")
+                Text(build.displayVersion)
                     .font(.body)
                     .fontWeight(.medium)
 
@@ -596,7 +596,7 @@ struct SubmitBuildForReviewSheet: View {
                     HStack {
                         Text("Build")
                         Spacer()
-                        Text(build.version ?? "–").foregroundStyle(.secondary)
+                        Text(build.displayVersion).foregroundStyle(.secondary)
                     }
                     HStack {
                         Text("Locale")
@@ -915,7 +915,7 @@ struct AddBuildSheet: View {
     private func buildRow(_ build: BuildModel) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(build.version ?? "–")
+                Text(build.displayVersion)
                     .font(.body)
                     .fontWeight(.medium)
                     .foregroundStyle(.primary)

@@ -79,7 +79,7 @@ struct BuildSelectionView<ViewModel: BuildSelectionViewModelProtocol>: View {
     private func buildRow(_ build: BuildModel) -> some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(build.version ?? "–")
+                Text(build.displayVersion)
                     .font(.body)
                     .fontWeight(.medium)
                     .foregroundStyle(.primary)

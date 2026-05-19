@@ -3,6 +3,7 @@ import Foundation
 struct BuildModel: Codable, Identifiable, Hashable {
     let id: String
     var version: String?
+    var marketingVersion: String?
     var processingState: String?
     var uploadedDate: Date?
     var iconUrl: String?
@@ -14,6 +15,7 @@ struct BuildModel: Codable, Identifiable, Hashable {
     init(
         id: String,
         version: String? = nil,
+        marketingVersion: String? = nil,
         processingState: String? = nil,
         uploadedDate: Date? = nil,
         iconUrl: String? = nil,
@@ -24,6 +26,7 @@ struct BuildModel: Codable, Identifiable, Hashable {
     ) {
         self.id = id
         self.version = version
+        self.marketingVersion = marketingVersion
         self.processingState = processingState
         self.uploadedDate = uploadedDate
         self.iconUrl = iconUrl
@@ -31,6 +34,16 @@ struct BuildModel: Codable, Identifiable, Hashable {
         self.externalBuildState = externalBuildState
         self.betaReviewState = betaReviewState
         self.submittedDate = submittedDate
+    }
+
+    /// "3.0.0(1232)" when both marketing and build numbers are known, otherwise whichever is present.
+    var displayVersion: String {
+        switch (marketingVersion, version) {
+        case let (marketing?, build?): return "\(marketing)(\(build))"
+        case let (marketing?, nil):    return marketing
+        case let (nil, build?):        return build
+        default:                       return "–"
+        }
     }
 
     /// True when the build can be submitted to Apple for external beta review.

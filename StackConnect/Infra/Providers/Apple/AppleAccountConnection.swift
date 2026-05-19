@@ -325,6 +325,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
 
     private func mapBuilds(_ response: BuildsResponse) -> [BuildModel] {
         var platformByPreReleaseId: [String: String] = [:]
+        var marketingVersionByPreReleaseId: [String: String] = [:]
         var detailById: [String: BuildBetaDetail] = [:]
         var submissionById: [String: BetaAppReviewSubmission] = [:]
 
@@ -333,6 +334,9 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             case .prereleaseVersion(let pre):
                 if let platform = pre.attributes?.platform?.rawValue {
                     platformByPreReleaseId[pre.id] = platform
+                }
+                if let version = pre.attributes?.version {
+                    marketingVersionByPreReleaseId[pre.id] = version
                 }
             case .buildBetaDetail(let detail):
                 detailById[detail.id] = detail
@@ -346,6 +350,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         return response.data.map { build in
             let preReleaseId = build.relationships?.preReleaseVersion?.data?.id
             let platform = preReleaseId.flatMap { platformByPreReleaseId[$0] }
+            let marketingVersion = preReleaseId.flatMap { marketingVersionByPreReleaseId[$0] }
 
             let detailId = build.relationships?.buildBetaDetail?.data?.id
             let detail = detailId.flatMap { detailById[$0] }
@@ -356,6 +361,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             return BuildModel(
                 id: build.id,
                 version: build.attributes?.version,
+                marketingVersion: marketingVersion,
                 processingState: build.attributes?.processingState?.rawValue,
                 uploadedDate: build.attributes?.uploadedDate,
                 iconUrl: build.attributes?.iconAssetToken?.toIconUrl(),

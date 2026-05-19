@@ -109,7 +109,7 @@ struct PlatformBuildsView<ViewModel: PlatformBuildsViewModelProtocol>: View {
                 .foregroundStyle(buildStateColor(build.processingState))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(build.version ?? "–")
+                Text(build.displayVersion)
                     .font(.body)
                     .fontWeight(.medium)
 
