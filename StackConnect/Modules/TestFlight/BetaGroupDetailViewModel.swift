@@ -13,6 +13,8 @@ protocol BetaGroupDetailViewModelProtocol: ObservableObject {
     func updateGroup(name: String?, isPublicLinkEnabled: Bool?, publicLinkLimit: Int?, isFeedbackEnabled: Bool?) async
     func addBuildToGroup(buildId: String) async
     func removeBuildFromGroup(_ build: BuildModel) async
+    func startSubmitForReview(_ build: BuildModel) async
+    func confirmSubmitForReview(whatsNew: String) async
     func loadTeamMembers() async
     func loadAvailableBuilds() async
 }
@@ -43,6 +45,13 @@ struct BetaGroupDetailUiState {
     var confirmRemoveBuild: BuildModel?
     var showEditGroup = false
     var confirmRemoveTester: BetaTesterModel?
+    var showSubmitSheet = false
+    var submitSheetBuild: BuildModel?
+    var submitSheetWhatsNew = ""
+    var submitSheetLocale = "en-US"
+    var submitSheetLocalizationId: String?
+    var isLoadingSubmitSheet = false
+    var isSubmittingForReview = false
 
     /// Builds assigned to this group, grouped by platform in canonical order.
     var buildsByPlatform: [PlatformBuildGroup] {
@@ -252,6 +261,64 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
             Log.print.error("[BetaGroupDetail] Add build failed: \(error.localizedDescription)")
         }
         uiState.isAddingBuild = false
+    }
+
+    func startSubmitForReview(_ build: BuildModel) async {
+        uiState.submitSheetBuild = build
+        uiState.submitSheetWhatsNew = ""
+        uiState.submitSheetLocalizationId = nil
+        uiState.submitSheetLocale = "en-US"
+        uiState.isLoadingSubmitSheet = true
+        uiState.showSubmitSheet = true
+
+        guard let connection = createConnection() else {
+            uiState.isLoadingSubmitSheet = false
+            return
+        }
+
+        do {
+            let localizations = try await connection.fetchBetaBuildLocalizations(buildId: build.id)
+            let preferred = localizations.first(where: { $0.locale == "en-US" }) ?? localizations.first
+            if let preferred {
+                uiState.submitSheetLocalizationId = preferred.id
+                uiState.submitSheetLocale = preferred.locale
+                uiState.submitSheetWhatsNew = preferred.whatsNew ?? ""
+            }
+        } catch {
+            Log.print.error("[BetaGroupDetail] Load beta localizations failed: \(error.localizedDescription)")
+        }
+        uiState.isLoadingSubmitSheet = false
+    }
+
+    func confirmSubmitForReview(whatsNew: String) async {
+        guard let build = uiState.submitSheetBuild else { return }
+        uiState.isSubmittingForReview = true
+        do {
+            guard let connection = createConnection() else {
+                uiState.isSubmittingForReview = false
+                return
+            }
+
+            if let id = uiState.submitSheetLocalizationId {
+                try await connection.updateBetaBuildLocalization(id: id, whatsNew: whatsNew)
+            } else {
+                try await connection.createBetaBuildLocalization(
+                    buildId: build.id,
+                    locale: uiState.submitSheetLocale,
+                    whatsNew: whatsNew
+                )
+            }
+            try await connection.submitBuildForBetaReview(buildId: build.id)
+
+            uiState.showSubmitSheet = false
+            uiState.submitSheetBuild = nil
+            uiState.toastMessage = ToastMessage(String(localized: "Submitted for review"), icon: "paperplane.fill")
+            await load()
+        } catch {
+            uiState.toastMessage = ToastMessage(String(localized: "Failed to submit for review"), icon: "exclamationmark.triangle.fill")
+            Log.print.error("[BetaGroupDetail] Submit for review failed: \(error.localizedDescription)")
+        }
+        uiState.isSubmittingForReview = false
     }
 
     func removeBuildFromGroup(_ build: BuildModel) async {
