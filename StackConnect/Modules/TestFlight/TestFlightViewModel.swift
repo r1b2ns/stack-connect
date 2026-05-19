@@ -6,7 +6,7 @@ import Foundation
 protocol TestFlightViewModelProtocol: ObservableObject {
     var uiState: TestFlightUiState { get set }
     func load() async
-    func createGroup(name: String, isInternal: Bool) async
+    func createGroup(name: String, isInternal: Bool, hasAccessToAllBuilds: Bool) async
     func deleteGroup(_ group: BetaGroupModel) async
 }
 
@@ -111,7 +111,7 @@ final class TestFlightViewModel: TestFlightViewModelProtocol {
         }
     }
 
-    func createGroup(name: String, isInternal: Bool) async {
+    func createGroup(name: String, isInternal: Bool, hasAccessToAllBuilds: Bool) async {
         uiState.isCreatingGroup = true
         do {
             guard let connection = createConnection() else {
@@ -121,7 +121,8 @@ final class TestFlightViewModel: TestFlightViewModelProtocol {
             let group = try await connection.createBetaGroup(
                 appId: uiState.appId,
                 name: name,
-                isInternal: isInternal
+                isInternal: isInternal,
+                hasAccessToAllBuilds: hasAccessToAllBuilds
             )
             uiState.groups.append(group)
             uiState.showCreateGroup = false

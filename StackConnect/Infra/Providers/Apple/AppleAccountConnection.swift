@@ -519,10 +519,22 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         }
     }
 
-    func createBetaGroup(appId: String, name: String, isInternal: Bool, isPublicLinkEnabled: Bool = false) async throws -> BetaGroupModel {
+    func createBetaGroup(
+        appId: String,
+        name: String,
+        isInternal: Bool,
+        isPublicLinkEnabled: Bool = false,
+        hasAccessToAllBuilds: Bool = false
+    ) async throws -> BetaGroupModel {
         guard let provider else {
             try await validateCredentials()
-            return try await createBetaGroup(appId: appId, name: name, isInternal: isInternal, isPublicLinkEnabled: isPublicLinkEnabled)
+            return try await createBetaGroup(
+                appId: appId,
+                name: name,
+                isInternal: isInternal,
+                isPublicLinkEnabled: isPublicLinkEnabled,
+                hasAccessToAllBuilds: hasAccessToAllBuilds
+            )
         }
 
         let body = BetaGroupCreateRequest(
@@ -531,6 +543,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
                 attributes: .init(
                     name: name,
                     isInternalGroup: isInternal,
+                    hasAccessToAllBuilds: hasAccessToAllBuilds,
                     isPublicLinkEnabled: isPublicLinkEnabled,
                     isFeedbackEnabled: true
                 ),

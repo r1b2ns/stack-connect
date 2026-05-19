@@ -45,8 +45,14 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
             .sheet(isPresented: $viewModel.uiState.showCreateGroup) {
                 CreateBetaGroupSheet(
                     isCreating: viewModel.uiState.isCreatingGroup
-                ) { name, isInternal in
-                    Task { await viewModel.createGroup(name: name, isInternal: isInternal) }
+                ) { name, isInternal, hasAccessToAllBuilds in
+                    Task {
+                        await viewModel.createGroup(
+                            name: name,
+                            isInternal: isInternal,
+                            hasAccessToAllBuilds: hasAccessToAllBuilds
+                        )
+                    }
                 } onCancel: {
                     viewModel.uiState.showCreateGroup = false
                 }
@@ -320,9 +326,10 @@ struct CreateBetaGroupSheet: View {
 
     @State private var name = ""
     @State private var isInternal = false
+    @State private var hasAccessToAllBuilds = false
 
     let isCreating: Bool
-    let onCreate: (String, Bool) -> Void
+    let onCreate: (String, Bool, Bool) -> Void
     let onCancel: () -> Void
 
     var body: some View {
@@ -343,6 +350,14 @@ struct CreateBetaGroupSheet: View {
                          : "External testers are invited via email or public link. Up to 10,000 testers. Requires Beta App Review."
                     )
                 }
+
+                if isInternal {
+                    Section {
+                        Toggle(String(localized: "Enable automatic distribution"), isOn: $hasAccessToAllBuilds)
+                    } footer: {
+                        Text("Automatically distribute new builds for this app to testers in this group. This setting can only be changed in App Store Connect (web) after the group is created.")
+                    }
+                }
             }
             .navigationTitle(String(localized: "New Beta Group"))
             .navigationBarTitleDisplayMode(.inline)
@@ -356,7 +371,11 @@ struct CreateBetaGroupSheet: View {
                         ProgressView()
                     } else {
                         Button(String(localized: "Create")) {
-                            onCreate(name.trimmingCharacters(in: .whitespaces), isInternal)
+                            onCreate(
+                                name.trimmingCharacters(in: .whitespaces),
+                                isInternal,
+                                isInternal ? hasAccessToAllBuilds : false
+                            )
                         }
                         .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
