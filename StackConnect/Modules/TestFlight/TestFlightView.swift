@@ -145,7 +145,7 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
                 }
                 .foregroundStyle(.primary)
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    if !group.isInternalGroup && viewModel.uiState.account.canDelete(.testFlight) {
+                    if viewModel.uiState.account.canDelete(.testFlight) {
                         Button(role: .destructive) {
                             viewModel.uiState.confirmDelete = group
                         } label: {
