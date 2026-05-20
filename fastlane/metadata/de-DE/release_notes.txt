@@ -1,5 +1,3 @@
-• TestFlight: Einladungen erneut senden, zur Beta-Prüfung einreichen, Build-Details anzeigen und Builds ablaufen lassen
-• Beta-Gruppen: Builds entfernen und nach Plattform gruppiert anzeigen
-• TestFlight-Builds nach Plattform gruppiert mit Paginierung durchsuchen
-• Steuerung der stufenweisen Veröffentlichung: für alle freigeben, pausieren und fortsetzen
+• TestFlight: Testinformationen für öffentliche Gruppen bearbeiten – inklusive Beta-Beschreibung, Feedback-E-Mail, Kontaktdaten und Anmeldeinformationen
+• Hinweis in der Build-Liste, sobald ein Build zur Beta-Prüfung eingereicht werden kann
 • Fehlerbehebungen und Stabilitätsverbesserungen

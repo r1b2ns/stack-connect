@@ -1,5 +1,3 @@
-• TestFlight: resend invitations, submit for beta review, view build details, and expire builds
-• Beta groups: remove builds and view them grouped by platform
-• Browse TestFlight builds grouped by platform with paginated navigation
-• Phased release controls: release to all users, pause, and resume
+• TestFlight: edit Test Information for public groups, including beta description, feedback email, contact details and sign-in info
+• Visual hint in the build list when a build is ready to submit for beta review
 • Bug fixes and stability improvements

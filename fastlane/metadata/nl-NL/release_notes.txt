@@ -1,5 +1,3 @@
-• TestFlight: uitnodigingen opnieuw versturen, indienen voor bètareview, builddetails bekijken en builds laten verlopen
-• Bètagroepen: builds verwijderen en gegroepeerd per platform bekijken
-• Blader door TestFlight-builds gegroepeerd per platform met paginering
-• Besturing voor gefaseerde release: vrijgeven voor iedereen, pauzeren en hervatten
+• TestFlight: bewerk de Testinformatie van openbare groepen, inclusief bètabeschrijving, feedback-e-mail, contactgegevens en aanmeldgegevens
+• Visuele hint in de buildlijst wanneer een build klaar is om in te dienen voor bètareview
 • Bugfixes en stabiliteitsverbeteringen

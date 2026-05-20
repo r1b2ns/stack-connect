@@ -1,5 +1,3 @@
-• TestFlight: reenviar invitaciones, enviar a revision beta, ver detalles del build y caducar builds
-• Grupos beta: eliminar builds y verlos agrupados por plataforma
-• Explora los builds de TestFlight agrupados por plataforma con paginacion
-• Controles de lanzamiento por fases: liberar a todos, pausar y reanudar
+• TestFlight: edita la Informacion de Prueba de los grupos publicos, incluyendo descripcion beta, correo de comentarios, contacto e informacion de inicio de sesion
+• Aviso visual en la lista de builds cuando un build esta listo para enviar a revision beta
 • Correccion de errores y mejoras de estabilidad

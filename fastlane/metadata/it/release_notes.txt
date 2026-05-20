@@ -1,5 +1,3 @@
-• TestFlight: invio nuovamente degli inviti, invio alla revisione beta, dettagli del build e scadenza dei build
-• Gruppi beta: rimuovi i build e visualizzali raggruppati per piattaforma
-• Sfoglia i build di TestFlight raggruppati per piattaforma con paginazione
-• Controlli del rilascio progressivo: pubblica per tutti, metti in pausa e riprendi
+• TestFlight: modifica le Informazioni di test dei gruppi pubblici – descrizione beta, e-mail per il feedback, contatti e dati di accesso
+• Suggerimento nell'elenco dei build quando un build è pronto per essere inviato alla revisione beta
 • Correzioni di bug e miglioramenti della stabilità

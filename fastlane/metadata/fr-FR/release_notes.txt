@@ -1,5 +1,3 @@
-• TestFlight : renvoyer les invitations, soumettre à l'examen bêta, voir les détails du build et faire expirer les builds
-• Groupes bêta : supprimer des builds et les afficher regroupés par plateforme
-• Parcourez les builds TestFlight regroupés par plateforme avec pagination
-• Contrôles de déploiement progressif : publier pour tous, mettre en pause et reprendre
+• TestFlight : modifiez les informations de test des groupes publics (description bêta, e-mail de retour, coordonnées et identifiants de connexion)
+• Indication visuelle dans la liste des builds lorsqu'un build est prêt à être soumis à l'examen bêta
 • Corrections de bogues et améliorations de la stabilité
