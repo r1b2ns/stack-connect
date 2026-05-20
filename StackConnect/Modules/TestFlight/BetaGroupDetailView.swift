@@ -470,6 +470,10 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                } footer: {
+                    if shouldShowSubmitFooter(for: group) {
+                        Text("Swipe left on a build to submit it for beta review.")
+                    }
                 }
             }
 
@@ -477,6 +481,13 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                 buildAddBuildButton()
             }
         }
+    }
+
+    private func shouldShowSubmitFooter(for group: PlatformBuildGroup) -> Bool {
+        guard !viewModel.uiState.group.isInternalGroup,
+              viewModel.uiState.account.canEdit(.testFlight)
+        else { return false }
+        return group.builds.contains(where: { $0.canSubmitForBetaReview })
     }
 
     private var buildsHeader: some View {
