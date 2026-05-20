@@ -22,6 +22,7 @@ enum HomeRoute: Hashable {
     case screenshotResolution(device: ScreenshotDeviceType, sets: [ScreenshotSetModel])
     case screenshotPage(screenshots: [ScreenshotModel])
     case appReviewInfo(versionId: String, account: AccountModel)
+    case betaAppReviewInfo(appId: String, account: AccountModel)
     case appInformation(app: AppModel, account: AccountModel)
     case ageRating(ageRating: AgeRatingDeclarationModel, account: AccountModel)
     case manageLocalizations(appInfoId: String, primaryLocale: String, account: AccountModel)
@@ -126,6 +127,10 @@ final class HomeCoordinator: MainCoordinatorProtocol {
 
     func navigateToAppReviewInfo(versionId: String, account: AccountModel) {
         path.append(HomeRoute.appReviewInfo(versionId: versionId, account: account))
+    }
+
+    func navigateToBetaAppReviewInfo(appId: String, account: AccountModel) {
+        path.append(HomeRoute.betaAppReviewInfo(appId: appId, account: account))
     }
 
     func navigateToAppInformation(app: AppModel, account: AccountModel) {

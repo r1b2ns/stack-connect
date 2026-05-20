@@ -251,6 +251,8 @@ private extension View {
                 ScreenshotPageViewFactory.build(screenshots: screenshots)
             case .appReviewInfo(let versionId, let account):
                 AppReviewInfoViewFactory.build(versionId: versionId, account: account)
+            case .betaAppReviewInfo(let appId, let account):
+                BetaAppReviewInfoViewFactory.build(appId: appId, account: account)
             case .appInformation(let app, let account):
                 AppInformationViewFactory.build(app: app, account: account)
             case .ageRating(let ageRating, let account):

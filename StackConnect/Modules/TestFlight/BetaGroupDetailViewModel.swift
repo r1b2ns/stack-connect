@@ -6,6 +6,8 @@ import Foundation
 protocol BetaGroupDetailViewModelProtocol: ObservableObject {
     var uiState: BetaGroupDetailUiState { get set }
     func load() async
+    func loadTestInformation() async
+    func requestAddBuild()
     func addTester(email: String, firstName: String?, lastName: String?) async
     func addTeamMembersAsTesters(_ members: [TeamMemberModel]) async
     func removeTester(_ tester: BetaTesterModel) async
@@ -58,6 +60,18 @@ struct BetaGroupDetailUiState {
     var isSubmittingForReview = false
     var submitError: String?
 
+    // Test Information (Beta App Review Detail + Beta App Localization)
+    var betaReviewDetail: BetaAppReviewDetailModel?
+    var betaAppLocalization: BetaAppLocalizationModel?
+    var showTestInformationRequiredAlert = false
+
+    var isTestInformationComplete: Bool {
+        BetaAppReviewInfoCompleteness.isComplete(
+            detail: betaReviewDetail,
+            localization: betaAppLocalization
+        )
+    }
+
     /// Builds assigned to this group, grouped by platform in canonical order.
     var buildsByPlatform: [PlatformBuildGroup] {
         let sorted = builds.sorted { ($0.uploadedDate ?? .distantPast) > ($1.uploadedDate ?? .distantPast) }
@@ -105,6 +119,33 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
         }
 
         uiState.isLoading = false
+
+        if !uiState.group.isInternalGroup {
+            await loadTestInformation()
+        }
+    }
+
+    func loadTestInformation() async {
+        guard !uiState.group.isInternalGroup else { return }
+        guard let connection = createConnection() else { return }
+
+        do {
+            async let detail = connection.fetchBetaAppReviewDetail(appId: uiState.appId)
+            async let localizations = connection.fetchBetaAppLocalizations(appId: uiState.appId)
+            uiState.betaReviewDetail = try await detail
+            let locs = try await localizations
+            uiState.betaAppLocalization = locs.first(where: { $0.locale == "en-US" }) ?? locs.first
+        } catch {
+            Log.print.error("[BetaGroupDetail] Load test info failed: \(error.localizedDescription)")
+        }
+    }
+
+    func requestAddBuild() {
+        if !uiState.group.isInternalGroup && !uiState.isTestInformationComplete {
+            uiState.showTestInformationRequiredAlert = true
+        } else {
+            uiState.showAddBuild = true
+        }
     }
 
     func addTester(email: String, firstName: String?, lastName: String?) async {

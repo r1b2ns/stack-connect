@@ -40,6 +40,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
     var body: some View {
         List {
             buildGroupInfoSection()
+            buildTestInformationSection()
             buildTestersSection()
             buildBuildsSection()
         }
@@ -47,6 +48,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { buildToolbar() }
         .task { await viewModel.load() }
+        .onAppear { Task { await viewModel.loadTestInformation() } }
         .refreshable { await viewModel.load() }
         .sheet(isPresented: $viewModel.uiState.showAddTester) {
             if viewModel.uiState.group.isInternalGroup {
@@ -191,6 +193,20 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                 Text(message)
             }
         }
+        .alert(
+            String(localized: "Test Information Required"),
+            isPresented: $viewModel.uiState.showTestInformationRequiredAlert
+        ) {
+            Button(String(localized: "Edit Test Information")) {
+                homeCoordinator.navigateToBetaAppReviewInfo(
+                    appId: viewModel.uiState.appId,
+                    account: viewModel.uiState.account
+                )
+            }
+            Button(String(localized: "Cancel"), role: .cancel) {}
+        } message: {
+            Text("You must complete the Test Information before adding a build to a public group.")
+        }
         .toast(message: $viewModel.uiState.toastMessage)
         .overlay {
             if viewModel.uiState.isRemovingTester
@@ -266,6 +282,35 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
             }
         } header: {
             Text("Group Info")
+        }
+    }
+
+    // MARK: - Test Information
+
+    @ViewBuilder
+    private func buildTestInformationSection() -> some View {
+        if !viewModel.uiState.group.isInternalGroup {
+            Section {
+                Button {
+                    homeCoordinator.navigateToBetaAppReviewInfo(
+                        appId: viewModel.uiState.appId,
+                        account: viewModel.uiState.account
+                    )
+                } label: {
+                    HStack {
+                        Label(String(localized: "Test Information"), systemImage: "doc.text")
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        if !viewModel.uiState.isTestInformationComplete {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                        }
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
         }
     }
 
@@ -523,7 +568,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
 
     private func buildAddBuildButton() -> some View {
         Button {
-            viewModel.uiState.showAddBuild = true
+            viewModel.requestAddBuild()
         } label: {
             Label(String(localized: "Add Build"), systemImage: "plus.circle.fill")
         }

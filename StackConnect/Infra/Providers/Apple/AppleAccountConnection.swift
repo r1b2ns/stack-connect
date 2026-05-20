@@ -1388,6 +1388,157 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         Log.print.info("[Apple] Updated review detail \(model.id)")
     }
 
+    // MARK: - Beta App Review Detail (TestFlight Test Information)
+
+    func fetchBetaAppReviewDetail(appId: String) async throws -> BetaAppReviewDetailModel? {
+        guard let provider else {
+            try await validateCredentials()
+            return try await fetchBetaAppReviewDetail(appId: appId)
+        }
+
+        do {
+            let endpoint = APIEndpoint
+                .v1
+                .apps
+                .id(appId)
+                .betaAppReviewDetail
+                .get()
+
+            let result = try await provider.request(endpoint).data
+            return BetaAppReviewDetailModel(
+                id: result.id,
+                contactFirstName: result.attributes?.contactFirstName,
+                contactLastName: result.attributes?.contactLastName,
+                contactEmail: result.attributes?.contactEmail,
+                contactPhone: result.attributes?.contactPhone,
+                demoAccountName: result.attributes?.demoAccountName,
+                demoAccountPassword: result.attributes?.demoAccountPassword,
+                isDemoAccountRequired: result.attributes?.isDemoAccountRequired,
+                notes: result.attributes?.notes
+            )
+        } catch {
+            Log.print.info("[Apple] No beta review detail for app \(appId)")
+            return nil
+        }
+    }
+
+    func updateBetaAppReviewDetail(model: BetaAppReviewDetailModel) async throws {
+        guard let provider else {
+            try await validateCredentials()
+            return try await updateBetaAppReviewDetail(model: model)
+        }
+
+        let body = BetaAppReviewDetailUpdateRequest(
+            data: .init(
+                type: .betaAppReviewDetails,
+                id: model.id,
+                attributes: .init(
+                    contactFirstName: model.contactFirstName,
+                    contactLastName: model.contactLastName,
+                    contactPhone: model.contactPhone,
+                    contactEmail: model.contactEmail,
+                    demoAccountName: model.demoAccountName,
+                    demoAccountPassword: model.demoAccountPassword,
+                    isDemoAccountRequired: model.isDemoAccountRequired,
+                    notes: model.notes
+                )
+            )
+        )
+
+        let endpoint = APIEndpoint.v1.betaAppReviewDetails.id(model.id).patch(body)
+        _ = try await provider.request(endpoint)
+        Log.print.info("[Apple] Updated beta review detail \(model.id)")
+    }
+
+    // MARK: - Beta App Localizations (TestFlight description / feedback email)
+
+    func fetchBetaAppLocalizations(appId: String) async throws -> [BetaAppLocalizationModel] {
+        guard let provider else {
+            try await validateCredentials()
+            return try await fetchBetaAppLocalizations(appId: appId)
+        }
+
+        let endpoint = APIEndpoint
+            .v1
+            .apps
+            .id(appId)
+            .betaAppLocalizations
+            .get()
+
+        let response = try await provider.request(endpoint)
+        return response.data.map { entry in
+            BetaAppLocalizationModel(
+                id: entry.id,
+                locale: entry.attributes?.locale ?? "",
+                feedbackEmail: entry.attributes?.feedbackEmail,
+                description: entry.attributes?.description
+            )
+        }
+    }
+
+    func updateBetaAppLocalization(id: String, feedbackEmail: String?, description: String?) async throws {
+        guard let provider else {
+            try await validateCredentials()
+            return try await updateBetaAppLocalization(id: id, feedbackEmail: feedbackEmail, description: description)
+        }
+
+        let body = BetaAppLocalizationUpdateRequest(
+            data: .init(
+                type: .betaAppLocalizations,
+                id: id,
+                attributes: .init(
+                    feedbackEmail: feedbackEmail,
+                    description: description
+                )
+            )
+        )
+
+        let endpoint = APIEndpoint.v1.betaAppLocalizations.id(id).patch(body)
+        _ = try await provider.request(endpoint)
+        Log.print.info("[Apple] Updated beta app localization \(id)")
+    }
+
+    func createBetaAppLocalization(
+        appId: String,
+        locale: String,
+        feedbackEmail: String?,
+        description: String?
+    ) async throws -> BetaAppLocalizationModel {
+        guard let provider else {
+            try await validateCredentials()
+            return try await createBetaAppLocalization(
+                appId: appId,
+                locale: locale,
+                feedbackEmail: feedbackEmail,
+                description: description
+            )
+        }
+
+        let body = BetaAppLocalizationCreateRequest(
+            data: .init(
+                type: .betaAppLocalizations,
+                attributes: .init(
+                    feedbackEmail: feedbackEmail,
+                    description: description,
+                    locale: locale
+                ),
+                relationships: .init(
+                    app: .init(data: .init(type: .apps, id: appId))
+                )
+            )
+        )
+
+        let endpoint = APIEndpoint.v1.betaAppLocalizations.post(body)
+        let response = try await provider.request(endpoint)
+        Log.print.info("[Apple] Created beta app localization \(response.data.id)")
+        return BetaAppLocalizationModel(
+            id: response.data.id,
+            locale: response.data.attributes?.locale ?? locale,
+            feedbackEmail: response.data.attributes?.feedbackEmail,
+            description: response.data.attributes?.description
+        )
+    }
+
     // MARK: - Screenshot Sets
 
     func fetchScreenshotSets(localizationId: String) async throws -> [ScreenshotSetModel] {
