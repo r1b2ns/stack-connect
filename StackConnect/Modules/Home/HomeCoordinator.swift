@@ -18,7 +18,7 @@ enum HomeRoute: Hashable {
     case versionList(appId: String, platform: AppPlatform, account: AccountModel)
     case versionDetail(version: AppStoreVersionModel, account: AccountModel)
     case buildSelection(versionId: String, appId: String, account: AccountModel)
-    case screenshotPreview(versionId: String, account: AccountModel)
+    case screenshotPreview(versionId: String, localizationId: String?, account: AccountModel)
     case screenshotResolution(device: ScreenshotDeviceType, sets: [ScreenshotSetModel])
     case screenshotPage(screenshots: [ScreenshotModel])
     case appReviewInfo(versionId: String, account: AccountModel)
@@ -113,8 +113,8 @@ final class HomeCoordinator: MainCoordinatorProtocol {
         path.append(HomeRoute.buildSelection(versionId: versionId, appId: appId, account: account))
     }
 
-    func navigateToScreenshotPreview(versionId: String, account: AccountModel) {
-        path.append(HomeRoute.screenshotPreview(versionId: versionId, account: account))
+    func navigateToScreenshotPreview(versionId: String, account: AccountModel, localizationId: String? = nil) {
+        path.append(HomeRoute.screenshotPreview(versionId: versionId, localizationId: localizationId, account: account))
     }
 
     func navigateToScreenshotResolution(device: ScreenshotDeviceType, sets: [ScreenshotSetModel]) {

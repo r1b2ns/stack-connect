@@ -33,8 +33,8 @@ enum ScreenshotDeviceType: String, CaseIterable, Identifiable, Hashable {
 
 @MainActor
 struct ScreenshotPreviewViewFactory {
-    static func build(versionId: String, account: AccountModel) -> some View {
-        ScreenshotPreviewEntry(versionId: versionId, account: account)
+    static func build(versionId: String, account: AccountModel, localizationId: String? = nil) -> some View {
+        ScreenshotPreviewEntry(versionId: versionId, account: account, localizationId: localizationId)
     }
 }
 
@@ -43,13 +43,19 @@ struct ScreenshotPreviewViewFactory {
 private struct ScreenshotPreviewEntry: View {
     let versionId: String
     let account: AccountModel
+    let localizationId: String?
 
     @StateObject private var viewModel: ScreenshotPreviewViewModel
 
-    init(versionId: String, account: AccountModel) {
+    init(versionId: String, account: AccountModel, localizationId: String?) {
         self.versionId = versionId
         self.account = account
-        _viewModel = StateObject(wrappedValue: ScreenshotPreviewViewModel(versionId: versionId, account: account))
+        self.localizationId = localizationId
+        _viewModel = StateObject(wrappedValue: ScreenshotPreviewViewModel(
+            versionId: versionId,
+            account: account,
+            localizationId: localizationId
+        ))
     }
 
     var body: some View {
@@ -67,11 +73,18 @@ final class ScreenshotPreviewViewModel: ObservableObject {
 
     private let versionId: String
     private let account: AccountModel
+    private let localizationId: String?
     private let keychain: KeyStorable
 
-    init(versionId: String, account: AccountModel, keychain: KeyStorable = KeychainStorable.shared) {
+    init(
+        versionId: String,
+        account: AccountModel,
+        localizationId: String? = nil,
+        keychain: KeyStorable = KeychainStorable.shared
+    ) {
         self.versionId = versionId
         self.account = account
+        self.localizationId = localizationId
         self.keychain = keychain
     }
 
@@ -86,10 +99,16 @@ final class ScreenshotPreviewViewModel: ObservableObject {
         let connection = AppleAccountConnection(credentials: credentials)
 
         do {
-            let localizations = try await connection.fetchLocalizations(versionId: versionId)
-            guard let locId = localizations.first?.id else {
-                isLoading = false
-                return
+            let locId: String
+            if let localizationId {
+                locId = localizationId
+            } else {
+                let localizations = try await connection.fetchLocalizations(versionId: versionId)
+                guard let first = localizations.first?.id else {
+                    isLoading = false
+                    return
+                }
+                locId = first
             }
 
             self.screenshotSets = try await connection.fetchScreenshotSets(localizationId: locId)

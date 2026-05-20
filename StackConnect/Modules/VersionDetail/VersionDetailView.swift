@@ -98,6 +98,18 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 onSave: { try await viewModel.updateWhatsNew() }
             )
         }
+        .sheet(isPresented: localizationPickerBinding) {
+            if let field = viewModel.uiState.localizationPickerField {
+                LocalizationPickerSheet(
+                    field: field,
+                    localizations: viewModel.uiState.localizations
+                ) { localization in
+                    handleLocalizationPick(localization, for: field)
+                } onCancel: {
+                    viewModel.uiState.localizationPickerField = nil
+                }
+            }
+        }
         .sheet(isPresented: $viewModel.uiState.showReleaseSheet) {
             VersionReleaseSheet(viewModel: viewModel)
         }
@@ -231,12 +243,46 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
             // Preview and Screenshots
             Button {
-                homeCoordinator.navigateToScreenshotPreview(
-                    versionId: viewModel.uiState.version.id,
-                    account: viewModel.uiState.account
-                )
+                handlePreviewTap()
             } label: {
                 buildMenuRow(icon: "photo.on.rectangle.angled", color: .blue, title: String(localized: "Preview and Screenshots"))
+            }
+        }
+    }
+
+    private func handlePreviewTap() {
+        if viewModel.uiState.localizations.count > 1 {
+            viewModel.uiState.localizationPickerField = .previewAndScreenshots
+        } else {
+            let localizationId = viewModel.uiState.localizations.first?.id
+                ?? viewModel.uiState.localization?.id
+            homeCoordinator.navigateToScreenshotPreview(
+                versionId: viewModel.uiState.version.id,
+                account: viewModel.uiState.account,
+                localizationId: localizationId
+            )
+        }
+    }
+
+    private var localizationPickerBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.uiState.localizationPickerField != nil },
+            set: { if !$0 { viewModel.uiState.localizationPickerField = nil } }
+        )
+    }
+
+    private func handleLocalizationPick(_ localization: AppStoreLocalizationModel, for field: VersionDetailLocalizableField) {
+        viewModel.uiState.localizationPickerField = nil
+        Task {
+            try? await Task.sleep(for: .milliseconds(350))
+            if field == .previewAndScreenshots {
+                homeCoordinator.navigateToScreenshotPreview(
+                    versionId: viewModel.uiState.version.id,
+                    account: viewModel.uiState.account,
+                    localizationId: localization.id
+                )
+            } else {
+                viewModel.selectLocalization(localization, for: field)
             }
         }
     }
@@ -245,15 +291,15 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
     private func buildTextContentSection() -> some View {
         Section {
-            Button { viewModel.uiState.showPromotionalText = true } label: {
+            Button { viewModel.requestField(.promotionalText) } label: {
                 buildMenuRow(icon: "text.badge.star", color: .purple, title: String(localized: "Promotional Text"))
             }
 
-            Button { viewModel.uiState.showDescription = true } label: {
+            Button { viewModel.requestField(.description) } label: {
                 buildMenuRow(icon: "doc.text.fill", color: .indigo, title: String(localized: "Description"))
             }
 
-            Button { viewModel.uiState.showWhatsNew = true } label: {
+            Button { viewModel.requestField(.whatsNew) } label: {
                 buildMenuRow(icon: "sparkles", color: .orange, title: String(localized: "What's New"))
             }
         }
@@ -842,5 +888,60 @@ struct PhasedReleaseSheet<ViewModel: VersionDetailViewModelProtocol>: View {
         case 6: return 50
         default: return 100
         }
+    }
+}
+
+// MARK: - Localization Picker Sheet
+
+struct LocalizationPickerSheet: View {
+
+    let field: VersionDetailLocalizableField
+    let localizations: [AppStoreLocalizationModel]
+    let onSelect: (AppStoreLocalizationModel) -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(localizations) { localization in
+                    Button {
+                        onSelect(localization)
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(localeName(localization.locale))
+                                    .font(.body)
+                                    .foregroundStyle(.primary)
+
+                                if let code = localization.locale {
+                                    Text(code)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .foregroundStyle(.primary)
+                }
+            }
+            .navigationTitle(field.title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "Cancel")) { onCancel() }
+                }
+            }
+        }
+    }
+
+    private func localeName(_ code: String?) -> String {
+        guard let code else { return "–" }
+        return Locale.current.localizedString(forIdentifier: code) ?? code
     }
 }

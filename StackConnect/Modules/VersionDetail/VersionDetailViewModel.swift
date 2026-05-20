@@ -20,6 +20,8 @@ protocol VersionDetailViewModelProtocol: ObservableObject {
     func releaseVersion() async
     func rejectVersion() async
     func completePhasedRelease() async
+    func requestField(_ field: VersionDetailLocalizableField)
+    func selectLocalization(_ localization: AppStoreLocalizationModel, for field: VersionDetailLocalizableField)
 }
 
 // MARK: - UiState
@@ -29,6 +31,9 @@ struct VersionDetailUiState {
     var account: AccountModel
     var isLoading = false
     var localization: AppStoreLocalizationModel?
+    var localizations: [AppStoreLocalizationModel] = []
+    var editingLocalization: AppStoreLocalizationModel?
+    var localizationPickerField: VersionDetailLocalizableField?
     var currentBuild: BuildModel?
 
     // Text editing sheets
@@ -93,6 +98,24 @@ struct VersionDetailUiState {
             return String(localized: "Phased release over 7-day period")
         case .none:
             return String(localized: "Phased release over 7-day period")
+        }
+    }
+}
+
+enum VersionDetailLocalizableField: String, Identifiable, Hashable {
+    case previewAndScreenshots
+    case promotionalText
+    case description
+    case whatsNew
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .previewAndScreenshots: return String(localized: "Preview and Screenshots")
+        case .promotionalText:       return String(localized: "Promotional Text")
+        case .description:           return String(localized: "Description")
+        case .whatsNew:              return String(localized: "What's New")
         }
     }
 }
@@ -229,8 +252,10 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
 
         do {
             let localizations = try await localizationsTask
+            uiState.localizations = localizations
             if let loc = localizations.first {
                 uiState.localization = loc
+                uiState.editingLocalization = loc
                 uiState.editPromotionalText = loc.promotionalText ?? ""
                 uiState.editDescription = loc.description ?? ""
                 uiState.editWhatsNew = loc.whatsNew ?? ""
@@ -268,27 +293,76 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
     }
 
     func updatePromotionalText() async throws {
-        guard let locId = uiState.localization?.id else { return }
+        guard let locId = uiState.editingLocalization?.id else { return }
         let connection = createConnection()!
         try await connection.updateLocalization(id: locId, promotionalText: uiState.editPromotionalText)
-        uiState.localization?.promotionalText = uiState.editPromotionalText
+        applyLocalizationEdit(id: locId) { $0.promotionalText = self.uiState.editPromotionalText }
         Log.print.info("[VersionDetail] Updated promotional text")
     }
 
     func updateDescription() async throws {
-        guard let locId = uiState.localization?.id else { return }
+        guard let locId = uiState.editingLocalization?.id else { return }
         let connection = createConnection()!
         try await connection.updateLocalization(id: locId, description: uiState.editDescription)
-        uiState.localization?.description = uiState.editDescription
+        applyLocalizationEdit(id: locId) { $0.description = self.uiState.editDescription }
         Log.print.info("[VersionDetail] Updated description")
     }
 
     func updateWhatsNew() async throws {
-        guard let locId = uiState.localization?.id else { return }
+        guard let locId = uiState.editingLocalization?.id else { return }
         let connection = createConnection()!
         try await connection.updateLocalization(id: locId, whatsNew: uiState.editWhatsNew)
-        uiState.localization?.whatsNew = uiState.editWhatsNew
+        applyLocalizationEdit(id: locId) { $0.whatsNew = self.uiState.editWhatsNew }
         Log.print.info("[VersionDetail] Updated what's new")
+    }
+
+    private func applyLocalizationEdit(id: String, _ mutate: (inout AppStoreLocalizationModel) -> Void) {
+        if var editing = uiState.editingLocalization, editing.id == id {
+            mutate(&editing)
+            uiState.editingLocalization = editing
+        }
+        if var primary = uiState.localization, primary.id == id {
+            mutate(&primary)
+            uiState.localization = primary
+        }
+        if let index = uiState.localizations.firstIndex(where: { $0.id == id }) {
+            var loc = uiState.localizations[index]
+            mutate(&loc)
+            uiState.localizations[index] = loc
+        }
+    }
+
+    // MARK: - Localizable Field Picker
+
+    func requestField(_ field: VersionDetailLocalizableField) {
+        if uiState.localizations.count > 1 {
+            uiState.localizationPickerField = field
+        } else if let loc = uiState.localizations.first ?? uiState.localization {
+            applySelection(loc, for: field)
+        }
+    }
+
+    func selectLocalization(_ localization: AppStoreLocalizationModel, for field: VersionDetailLocalizableField) {
+        uiState.localizationPickerField = nil
+        applySelection(localization, for: field)
+    }
+
+    private func applySelection(_ localization: AppStoreLocalizationModel, for field: VersionDetailLocalizableField) {
+        uiState.editingLocalization = localization
+
+        switch field {
+        case .promotionalText:
+            uiState.editPromotionalText = localization.promotionalText ?? ""
+            uiState.showPromotionalText = true
+        case .description:
+            uiState.editDescription = localization.description ?? ""
+            uiState.showDescription = true
+        case .whatsNew:
+            uiState.editWhatsNew = localization.whatsNew ?? ""
+            uiState.showWhatsNew = true
+        case .previewAndScreenshots:
+            break
+        }
     }
 
     func saveGroupedFields() async {
