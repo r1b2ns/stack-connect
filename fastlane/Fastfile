@@ -73,7 +73,10 @@ platform :ios do
 
   desc "Build and upload a new Development beta to TestFlight.\n\n    Usage:\n      bundle exec fastlane beta_dev"
   lane :beta_dev do
-    increment_build_number(xcodeproj: PROJECT)
+    increment_build_number(
+      xcodeproj:    PROJECT,
+      build_number: Time.now.to_i.to_s
+    )
 
     match(type: "appstore", app_identifier: [BUNDLE_ID_DEV], readonly: false)
 
@@ -102,7 +105,10 @@ platform :ios do
 
   desc "Build and upload a new beta to TestFlight.\n\n    Usage:\n      bundle exec fastlane beta"
   lane :beta do
-    increment_build_number(xcodeproj: PROJECT)
+    increment_build_number(
+      xcodeproj:    PROJECT,
+      build_number: Time.now.to_i.to_s
+    )
 
     match(type: "appstore", app_identifier: [BUNDLE_ID], readonly: false)
 
@@ -167,7 +173,10 @@ platform :ios do
 
   desc "Build and submit a new version to the App Store.\n\n    Usage:\n      bundle exec fastlane release"
   lane :release do
-    increment_build_number(xcodeproj: PROJECT)
+    increment_build_number(
+      xcodeproj:    PROJECT,
+      build_number: Time.now.to_i.to_s
+    )
 
     match(type: "appstore", app_identifier: [BUNDLE_ID], readonly: false)
 
