@@ -31,13 +31,6 @@ Gestion multi-comptes
 • Hors-ligne d'abord : chargement instantané depuis le cache local, synchronisation en arrière-plan
 • Suppression en cascade : la suppression d'un compte nettoie toutes les données associées
 
-Partage sécurisé de comptes (forfaits Équipe et À vie)
-• Exportez vos comptes sous forme de fichiers chiffrés .scexport
-• Chiffrement AES-256-GCM avec protection par mot de passe
-• Partagez l'accès avec les membres de votre équipe
-• Les destinataires importent le fichier avec le mot de passe et obtiennent un accès immédiat
-• Sélection des permissions par ressource lors de l'export
-
 D'autres intégrations à venir
 • StackConnect évolue activement — au-delà d'App Store Connect et Firebase, d'autres intégrations de plateformes développeur arrivent bientôt. Restez à l'écoute.
 

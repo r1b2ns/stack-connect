@@ -1,4 +1,4 @@
-In the attached files you will find 3 videos showing the app in use and a file named 016-view.scexport which can be used to access the app without the need for a subscription.
+In the attached files you will find 3 videos showing the app in use and a file named 016-view.scexport which can be used to access the app for review purposes.
 
 PASSWORD TO DECRYPT 016-view.scexport: 123456aA
 
@@ -21,10 +21,6 @@ No credentials, usage data, or personal information is ever transmitted to any t
 
 HOW TO ACCESS THE APP
 
-StackConnect can be used in two ways:
+To access the app for review, please use the Import flow: a user can export their account as an encrypted .scexport file (via Settings > Accounts > Export) and share it with another person. The recipient imports the file using the same app (Settings > Accounts > Import), enters the password set by the sender, and gains access to the shared account.
 
-1. Subscription: The user subscribes directly within the app to unlock full access. All plans (Monthly, Yearly, and Lifetime) are available via in-app purchase on the Paywall screen, which is presented automatically when a restricted feature is accessed.
-
-2. Imported Access: A user who already holds an active subscription can export their account as an encrypted .scexport file (via Settings > Accounts > Export) and share it with another person. The recipient imports the file using the same app (Settings > Accounts > Import), enters the password set by the sender, and gains access to the shared account without needing their own subscription.
-
-To test the app without a subscription, please use the Import flow: we can provide a .scexport file and password upon request. Alternatively, you can use the sandbox environment to complete an in-app purchase on the Paywall screen.
+We have provided the 016-view.scexport file and password above for testing.

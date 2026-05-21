@@ -31,13 +31,6 @@ Hantering av flera konton
 • Offline-first: ladda direkt från lokal cache, synka från API i bakgrunden
 • Kaskadradering: att ta bort ett konto rensar alla relaterade data
 
-Säker kontodelning (Team- och Lifetime-planer)
-• Exportera konton som krypterade .scexport-filer
-• AES-256-GCM-kryptering med lösenordsskydd
-• Dela åtkomst med dina teammedlemmar
-• Mottagare importerar filen med lösenordet och får omedelbar åtkomst
-• Val av behörigheter per resurs vid export
-
 Fler integrationer kommer snart
 • StackConnect växer aktivt — utöver App Store Connect och Firebase är fler integrationer med utvecklarplattformar på väg. Håll utkik.
 

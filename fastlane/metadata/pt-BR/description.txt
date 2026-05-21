@@ -31,13 +31,6 @@ Gerenciamento de múltiplas contas
 • Offline-first: carregue instantaneamente do cache local, sincronize via API em segundo plano
 • Exclusão em cascata: remover uma conta limpa todos os dados relacionados
 
-Compartilhamento seguro de contas (planos Team e Lifetime)
-• Exporte contas como arquivos .scexport criptografados
-• Criptografia AES-256-GCM com proteção por senha
-• Compartilhe acesso com membros da sua equipe
-• Destinatários importam o arquivo com a senha e obtêm acesso imediato
-• Seleção de permissões por recurso durante a exportação
-
 Mais integrações em breve
 • O StackConnect está em constante crescimento — além do App Store Connect e Firebase, mais integrações com plataformas de desenvolvimento estão a caminho. Fique ligado.
 

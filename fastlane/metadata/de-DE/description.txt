@@ -31,13 +31,6 @@ Multi-Konto-Verwaltung
 - Offline-first: Sofort aus dem lokalen Cache laden, im Hintergrund mit der API synchronisieren
 - Kaskadierende Löschung: Beim Entfernen eines Kontos werden alle zugehörigen Daten bereinigt
 
-Sichere Kontofreigabe (Team- & Lifetime-Pläne)
-- Konten als verschlüsselte .scexport-Dateien exportieren
-- AES-256-GCM-Verschlüsselung mit Passwortschutz
-- Zugriff mit deinen Teammitgliedern teilen
-- Empfänger importieren die Datei mit dem Passwort und erhalten sofortigen Zugriff
-- Auswahl einzelner Berechtigungen beim Export
-
 Weitere Integrationen in Kürze
 - StackConnect wächst stetig — über App Store Connect und Firebase hinaus sind weitere Integrationen für Entwicklerplattformen in Planung. Bleib dran.
 

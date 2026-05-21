@@ -31,13 +31,6 @@ Meerdere accounts beheren
 • Offline-first: laad direct vanuit lokale cache, synchroniseer op de achtergrond via API
 • Doorlopende verwijdering: het verwijderen van een account ruimt alle gerelateerde gegevens op
 
-Veilig accounts delen (Team- en Lifetime-abonnementen)
-• Exporteer accounts als versleutelde .scexport-bestanden
-• AES-256-GCM-versleuteling met wachtwoordbeveiliging
-• Deel toegang met je teamleden
-• Ontvangers importeren het bestand met het wachtwoord en krijgen direct toegang
-• Selectie van machtigingen per resource bij exporteren
-
 Meer integraties binnenkort
 • StackConnect groeit actief — naast App Store Connect en Firebase zijn er meer integraties met ontwikkelaarsplatformen op komst. Blijf op de hoogte.
 

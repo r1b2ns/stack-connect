@@ -31,13 +31,6 @@ Multi-Account Management
 • Offline-first: load instantly from local cache, sync from API in background
 • Cascading deletion: removing an account cleans up all related data
 
-Secure Account Sharing (Team & Lifetime plans)
-• Export accounts as encrypted .scexport files
-• AES-256-GCM encryption with password protection
-• Share access with your team members
-• Recipients import the file with the password and gain instant access
-• Per-resource permission selection during export
-
 More Integrations Coming Soon
 • StackConnect is actively growing — beyond App Store Connect and Firebase, more developer platform integrations are on the way. Stay tuned.
 
