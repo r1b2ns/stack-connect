@@ -1,3 +1,6 @@
-• TestFlight: bewerk de Testinformatie van openbare groepen, inclusief bètabeschrijving, feedback-e-mail, contactgegevens en aanmeldgegevens
-• Visuele hint in de buildlijst wanneer een build klaar is om in te dienen voor bètareview
+• TestFlight: aparte Testers-scherm met zoeken en CSV-import (met voorbeeld en vegen om te verwijderen)
+• App Review en TestFlight Testinformatie: wachtwoord tonen/verbergen en gebruikersnaam kopiëren
+• Reviews: deel een review via het systeem-deelmenu
+• Apps-lijst: hint die de veegacties uitlegt
+• Fix: Annuleer-knoppen in sheets werken nu op Mac
 • Bugfixes en stabiliteitsverbeteringen

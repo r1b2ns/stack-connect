@@ -1,3 +1,6 @@
-• TestFlight : modifiez les informations de test des groupes publics (description bêta, e-mail de retour, coordonnées et identifiants de connexion)
-• Indication visuelle dans la liste des builds lorsqu'un build est prêt à être soumis à l'examen bêta
+• TestFlight : écran dédié des Testeurs avec recherche et import CSV (prévisualisation et balayage pour supprimer)
+• App Review et Informations de test TestFlight : afficher/masquer le mot de passe et copier l'identifiant
+• Reviews : partagez un avis via le menu de partage du système
+• Liste des apps : astuce expliquant les actions de balayage
+• Correction : les boutons Annuler des feuilles modales fonctionnent désormais sur Mac
 • Corrections de bogues et améliorations de la stabilité

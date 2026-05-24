@@ -1,3 +1,6 @@
-• TestFlight: redigera Testinformation för offentliga grupper, inklusive betabeskrivning, e-post för feedback, kontaktuppgifter och inloggningsuppgifter
-• Visuell ledtråd i buildlistan när en build är redo att skickas in för betagranskning
+• TestFlight: dedikerad Testers-skärm med sökning och CSV-import (med förhandsvisning och svep för att ta bort)
+• App Review och TestFlight Testinformation: visa/dölj lösenord och kopiera användarnamn
+• Reviews: dela en recension via systemets delningsmeny
+• Apps-lista: tips som förklarar svepningsåtgärderna
+• Korrigering: Avbryt-knappar i sheets fungerar nu på Mac
 • Buggfixar och stabilitetsförbättringar

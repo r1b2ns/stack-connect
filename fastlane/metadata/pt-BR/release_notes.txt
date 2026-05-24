@@ -1,3 +1,6 @@
-• TestFlight: edite as Test Information de grupos públicos, incluindo descrição beta, e-mail de feedback, contato e dados de login
-• Dica visual na lista de builds quando um build está pronto para envio à revisão beta
+• TestFlight: tela dedicada de Testers com busca e importação por CSV (com preview e swipe para remover)
+• App Review e Test Information do TestFlight: mostrar/ocultar senha e copiar nome de usuário
+• Reviews: compartilhe uma avaliação pelo share sheet do sistema
+• Lista de apps: dica explicando as ações de swipe
+• Correção: botões Cancel em sheets agora funcionam no Mac
 • Correções de bugs e melhorias de estabilidade
