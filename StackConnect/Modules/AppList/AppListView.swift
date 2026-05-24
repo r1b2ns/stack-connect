@@ -1,4 +1,21 @@
 import SwiftUI
+import TipKit
+
+// MARK: - Tips
+
+struct AppListSwipeActionsTip: Tip {
+    var title: Text {
+        Text("Quick actions")
+    }
+
+    var message: Text? {
+        Text("Swipe left on any app to archive it or mark it as favorite.")
+    }
+
+    var image: Image? {
+        Image(systemName: "hand.draw.fill")
+    }
+}
 
 // MARK: - Factory
 
@@ -103,6 +120,8 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
     @EnvironmentObject private var coordinator: AppListCoordinator
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
+    private let swipeActionsTip = AppListSwipeActionsTip()
+
     var body: some View {
         buildContent()
             .searchable(
@@ -156,6 +175,11 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
 
     private func buildList() -> some View {
         List {
+            TipView(swipeActionsTip)
+                .listRowBackground(Color.white)
+                .padding(.zero)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+
             if !viewModel.uiState.favoriteApps.isEmpty {
                 Section {
                     ForEach(viewModel.uiState.favoriteApps) { app in

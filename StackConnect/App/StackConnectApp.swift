@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import TipKit
 
 @main
 struct StackConnectApp: App {
@@ -17,6 +18,11 @@ struct StackConnectApp: App {
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }
+
+        try? Tips.configure([
+            .displayFrequency(.immediate),
+            .datastoreLocation(.applicationDefault)
+        ])
     }
 
     var body: some Scene {
