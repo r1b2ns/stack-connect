@@ -1,5 +1,5 @@
 // Version
-MARKETING_VERSION = 1.1.1
+MARKETING_VERSION = 1.2.0
 
 // Bundle identity & signing
 APP_DISPLAY_NAME = StackConnect
