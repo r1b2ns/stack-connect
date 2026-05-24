@@ -63,12 +63,18 @@ struct BetaGroupTestersView<ViewModel: BetaGroupTestersViewModelProtocol>: View 
                     }
                 } else {
                     AddTesterSheet(
-                        isInviting: viewModel.uiState.isInvitingTesters
-                    ) { email, firstName, lastName in
-                        Task { await viewModel.addTester(email: email, firstName: firstName, lastName: lastName) }
-                    } onCancel: {
-                        viewModel.uiState.showAddTester = false
-                    }
+                        existingTesters: viewModel.uiState.testers,
+                        isInviting: viewModel.uiState.isInvitingTesters,
+                        onAdd: { email, firstName, lastName in
+                            Task { await viewModel.addTester(email: email, firstName: firstName, lastName: lastName) }
+                        },
+                        onImportCSV: { rows in
+                            Task { await viewModel.importCSVTesters(rows) }
+                        },
+                        onCancel: {
+                            viewModel.uiState.showAddTester = false
+                        }
+                    )
                 }
             }
             .alert(

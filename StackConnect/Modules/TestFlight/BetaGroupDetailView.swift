@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - Factory
 
@@ -512,10 +513,20 @@ struct AddTesterSheet: View {
     @State private var email = ""
     @State private var firstName = ""
     @State private var lastName = ""
+    @State private var isPresentingFilePicker = false
+    @State private var csvRows: [CSVTesterRow] = []
+    @State private var showCSVPreview = false
+    @State private var csvError: String?
 
+    let existingTesters: [BetaTesterModel]
     let isInviting: Bool
     let onAdd: (String, String?, String?) -> Void
+    let onImportCSV: ([CSVTesterRow]) -> Void
     let onCancel: () -> Void
+
+    private var existingEmails: Set<String> {
+        Set(existingTesters.compactMap { $0.email?.lowercased() })
+    }
 
     var body: some View {
         NavigationStack {
@@ -537,6 +548,16 @@ struct AddTesterSheet: View {
                         .textContentType(.familyName)
                 } header: {
                     Text("Name (optional)")
+                }
+
+                Section {
+                    Button {
+                        isPresentingFilePicker = true
+                    } label: {
+                        Label(String(localized: "Import CSV"), systemImage: "square.and.arrow.down")
+                    }
+                } footer: {
+                    Text("CSV columns expected in order: name, lastName, email.")
                 }
             }
             .navigationTitle(String(localized: "Add Tester"))
@@ -561,6 +582,60 @@ struct AddTesterSheet: View {
                     }
                 }
             }
+            .fileImporter(
+                isPresented: $isPresentingFilePicker,
+                allowedContentTypes: [.commaSeparatedText],
+                allowsMultipleSelection: false
+            ) { result in
+                handleCSVPick(result)
+            }
+            .navigationDestination(isPresented: $showCSVPreview) {
+                CSVTesterImportView(
+                    rows: csvRows,
+                    existingEmails: existingEmails,
+                    isInviting: isInviting,
+                    onContinue: { toImport in
+                        onImportCSV(toImport)
+                    },
+                    onCancel: {
+                        showCSVPreview = false
+                    }
+                )
+            }
+            .alert(
+                String(localized: "Import Failed"),
+                isPresented: Binding(
+                    get: { csvError != nil },
+                    set: { if !$0 { csvError = nil } }
+                )
+            ) {
+                Button(String(localized: "OK"), role: .cancel) { csvError = nil }
+            } message: {
+                if let message = csvError { Text(message) }
+            }
+        }
+    }
+
+    private func handleCSVPick(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            let accessing = url.startAccessingSecurityScopedResource()
+            defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+            do {
+                let data = try Data(contentsOf: url)
+                let text = String(data: data, encoding: .utf8)
+                    ?? String(data: data, encoding: .isoLatin1)
+                    ?? ""
+                csvRows = CSVTesterParser.parse(text)
+                showCSVPreview = true
+            } catch {
+                csvError = error.localizedDescription
+                Log.print.error("[AddTesterSheet] Failed to read CSV: \(error.localizedDescription)")
+            }
+        case .failure(let error):
+            csvError = error.localizedDescription
+            Log.print.error("[AddTesterSheet] File picker failed: \(error.localizedDescription)")
         }
     }
 }

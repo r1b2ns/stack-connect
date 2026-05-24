@@ -8,6 +8,7 @@ protocol BetaGroupTestersViewModelProtocol: ObservableObject {
     func load() async
     func addTester(email: String, firstName: String?, lastName: String?) async
     func addTeamMembersAsTesters(_ members: [TeamMemberModel]) async
+    func importCSVTesters(_ rows: [CSVTesterRow]) async
     func removeTester(_ tester: BetaTesterModel) async
     func resendInvite(_ tester: BetaTesterModel) async
     func loadTeamMembers() async
@@ -99,6 +100,53 @@ final class BetaGroupTestersViewModel: BetaGroupTestersViewModelProtocol {
             uiState.inviteError = error.localizedDescription
             Log.print.error("[BetaGroupTesters] Add tester failed: \(error.localizedDescription)")
         }
+        uiState.isInvitingTesters = false
+    }
+
+    /// Sequentially invite testers parsed from a CSV, throttling each call by 1 second.
+    /// The list is expected to already exclude testers that are part of this group.
+    func importCSVTesters(_ rows: [CSVTesterRow]) async {
+        guard !rows.isEmpty else {
+            uiState.showAddTester = false
+            return
+        }
+
+        uiState.isInvitingTesters = true
+        guard let connection = createConnection() else {
+            uiState.isInvitingTesters = false
+            return
+        }
+
+        var failed = 0
+        for (index, row) in rows.enumerated() {
+            do {
+                try await connection.addTesterToGroup(
+                    email: row.email,
+                    firstName: row.firstName.isEmpty ? nil : row.firstName,
+                    lastName: row.lastName.isEmpty ? nil : row.lastName,
+                    groupId: uiState.group.id
+                )
+            } catch {
+                failed += 1
+                Log.print.error("[BetaGroupTesters] Import CSV failed for \(row.email): \(error.localizedDescription)")
+            }
+
+            // Throttle subsequent requests; no need to wait after the last one.
+            if index < rows.count - 1 {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+        }
+
+        uiState.showAddTester = false
+        let succeeded = rows.count - failed
+        if failed == 0 {
+            uiState.toastMessage = ToastMessage(String(localized: "Imported \(succeeded) tester(s)"), icon: "envelope.fill")
+        } else if succeeded > 0 {
+            uiState.toastMessage = ToastMessage(String(localized: "Imported \(succeeded), \(failed) failed"), icon: "exclamationmark.triangle.fill")
+        } else {
+            uiState.inviteError = String(localized: "Failed to import testers")
+        }
+        await load()
         uiState.isInvitingTesters = false
     }
 
