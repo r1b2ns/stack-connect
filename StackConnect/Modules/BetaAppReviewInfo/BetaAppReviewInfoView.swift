@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Factory
 
@@ -34,6 +35,7 @@ struct BetaAppReviewInfoView<ViewModel: BetaAppReviewInfoViewModelProtocol>: Vie
 
     @ObservedObject var viewModel: ViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var isPasswordVisible = false
 
     var body: some View {
         buildContent()
@@ -179,17 +181,54 @@ struct BetaAppReviewInfoView<ViewModel: BetaAppReviewInfoViewModelProtocol>: Vie
             )
 
             if viewModel.uiState.isDemoAccountRequired {
-                TextField(String(localized: "User Name"), text: $viewModel.uiState.demoAccountName)
-                    .textContentType(.username)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
+                HStack {
+                    TextField(String(localized: "User Name"), text: $viewModel.uiState.demoAccountName)
+                        .textContentType(.username)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    copyButton(value: viewModel.uiState.demoAccountName)
+                }
 
-                SecureField(String(localized: "Password"), text: $viewModel.uiState.demoAccountPassword)
-                    .textContentType(.password)
+                HStack {
+                    Group {
+                        if isPasswordVisible {
+                            TextField(String(localized: "Password"), text: $viewModel.uiState.demoAccountPassword)
+                                .textContentType(.password)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                        } else {
+                            SecureField(String(localized: "Password"), text: $viewModel.uiState.demoAccountPassword)
+                                .textContentType(.password)
+                        }
+                    }
+                    passwordVisibilityButton()
+                }
             }
         } header: {
             Text("Sign-In Information")
         }
+    }
+
+    private func copyButton(value: String) -> some View {
+        Button {
+            UIPasteboard.general.string = value
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        } label: {
+            Image(systemName: "doc.on.doc")
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .disabled(value.isEmpty)
+    }
+
+    private func passwordVisibilityButton() -> some View {
+        Button {
+            isPasswordVisible.toggle()
+        } label: {
+            Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Toolbar
