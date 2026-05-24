@@ -4,8 +4,8 @@ import SwiftUI
 
 @MainActor
 struct ReviewDetailViewFactory {
-    static func build(review: CustomerReviewModel, account: AccountModel) -> some View {
-        ReviewDetailEntryView(review: review, account: account)
+    static func build(review: CustomerReviewModel, appName: String, account: AccountModel) -> some View {
+        ReviewDetailEntryView(review: review, appName: appName, account: account)
     }
 }
 
@@ -13,14 +13,16 @@ struct ReviewDetailViewFactory {
 
 private struct ReviewDetailEntryView: View {
     let review: CustomerReviewModel
+    let appName: String
     let account: AccountModel
 
     @StateObject private var viewModel: ReviewDetailViewModel
 
-    init(review: CustomerReviewModel, account: AccountModel) {
+    init(review: CustomerReviewModel, appName: String, account: AccountModel) {
         self.review = review
+        self.appName = appName
         self.account = account
-        _viewModel = StateObject(wrappedValue: ReviewDetailViewModel(review: review, account: account))
+        _viewModel = StateObject(wrappedValue: ReviewDetailViewModel(review: review, appName: appName, account: account))
     }
 
     var body: some View {
@@ -43,6 +45,7 @@ protocol ReviewDetailViewModelProtocol: ObservableObject {
 
 struct ReviewDetailUiState {
     var review: CustomerReviewModel
+    var appName: String
     var account: AccountModel
     var isSending = false
     var toastMessage: ToastMessage?
@@ -50,6 +53,49 @@ struct ReviewDetailUiState {
     var replyText = ""
     var isEditingReply = false
     var confirmDeleteResponse = false
+
+    /// Plain-text payload for the system share sheet.
+    var shareText: String {
+        let stars = String(repeating: "★", count: review.rating) + String(repeating: "☆", count: max(0, 5 - review.rating))
+        let date = review.createdDate.map(ReviewShareTextFormatter.format(date:)) ?? "–"
+        let territory = review.territory.map { Locale.current.localizedString(forRegionCode: $0) ?? $0 } ?? "–"
+        let user = review.reviewerNickname ?? "–"
+        let title = review.title ?? "–"
+        let description = review.body ?? "–"
+        let separator = String(repeating: "-", count: 30)
+
+        var text = """
+        
+        App: \(appName)
+        User: \(user)
+        date: \(date)
+        stars: \(stars) (\(review.rating)/5)
+        Country: \(territory)
+        \(separator)
+        Title: 
+        \(title)
+        
+        Description: 
+        \(description)
+        """
+
+        if let response = review.responseBody, !response.isEmpty {
+            text += "\n\(separator)\n\nAnswer: \(response)"
+        }
+
+        return text
+    }
+}
+
+// MARK: - Date Formatter
+
+enum ReviewShareTextFormatter {
+    static func format(date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
 }
 
 // MARK: - ViewModel
@@ -63,10 +109,11 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
 
     init(
         review: CustomerReviewModel,
+        appName: String,
         account: AccountModel,
         keychain: KeyStorable = KeychainStorable.shared
     ) {
-        self.uiState = ReviewDetailUiState(review: review, account: account)
+        self.uiState = ReviewDetailUiState(review: review, appName: appName, account: account)
         self.keychain = keychain
     }
 
@@ -153,6 +200,17 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
         }
         .navigationTitle(String(localized: "Review"))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                ShareLink(
+                    item: viewModel.uiState.shareText,
+                    subject: Text("Review – \(viewModel.uiState.appName)"),
+                    message: Text(viewModel.uiState.appName)
+                ) {
+                    Image(systemName: "square.and.arrow.up")
+                }
+            }
+        }
         .sheet(isPresented: $viewModel.uiState.showReplySheet) {
             buildReplySheet()
         }

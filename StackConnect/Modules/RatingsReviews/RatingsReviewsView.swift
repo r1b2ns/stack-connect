@@ -4,8 +4,8 @@ import SwiftUI
 
 @MainActor
 struct RatingsReviewsViewFactory {
-    static func build(appId: String, bundleId: String, account: AccountModel) -> some View {
-        RatingsReviewsEntryView(appId: appId, bundleId: bundleId, account: account)
+    static func build(appId: String, bundleId: String, appName: String, account: AccountModel) -> some View {
+        RatingsReviewsEntryView(appId: appId, bundleId: bundleId, appName: appName, account: account)
     }
 }
 
@@ -14,19 +14,21 @@ struct RatingsReviewsViewFactory {
 private struct RatingsReviewsEntryView: View {
     let appId: String
     let bundleId: String
+    let appName: String
     let account: AccountModel
 
     @StateObject private var viewModel: RatingsReviewsViewModel
 
-    init(appId: String, bundleId: String, account: AccountModel) {
+    init(appId: String, bundleId: String, appName: String, account: AccountModel) {
         self.appId = appId
         self.bundleId = bundleId
+        self.appName = appName
         self.account = account
         _viewModel = StateObject(wrappedValue: RatingsReviewsViewModel(appId: appId, bundleId: bundleId, account: account))
     }
 
     var body: some View {
-        RatingsReviewsView(viewModel: viewModel)
+        RatingsReviewsView(viewModel: viewModel, appName: appName)
     }
 }
 
@@ -35,6 +37,7 @@ private struct RatingsReviewsEntryView: View {
 struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
 
     @StateObject var viewModel: ViewModel
+    let appName: String
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
     var body: some View {
@@ -97,7 +100,7 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
             Section {
                 ForEach(viewModel.uiState.reviews) { review in
                     Button {
-                        homeCoordinator.navigateToReviewDetail(review: review, account: viewModel.uiState.account)
+                        homeCoordinator.navigateToReviewDetail(review: review, appName: appName, account: viewModel.uiState.account)
                     } label: {
                         buildReviewRow(review)
                     }

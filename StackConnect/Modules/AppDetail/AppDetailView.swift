@@ -362,6 +362,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                 homeCoordinator.navigateToRatingsReviews(
                     appId: viewModel.uiState.app.id,
                     bundleId: viewModel.uiState.app.bundleId,
+                    appName: viewModel.uiState.app.name,
                     account: account
                 )
             } label: {
