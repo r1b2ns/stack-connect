@@ -28,6 +28,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var coordinator: SettingsAccountsCoordinator
+    @Environment(\.dismiss) private var dismiss
     @State private var importError: String = ""
     @State private var showImportError = false
 
@@ -36,11 +37,11 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
             .navigationTitle(String(localized: "Accounts"))
             .toolbar { buildToolbar() }
             .sheet(isPresented: $coordinator.showAddOptions) {
-                buildAddOptionsSheet()
+                AddOptionsSheetContent()
                     .presentationDetents([.medium])
             }
             .sheet(isPresented: $coordinator.showProviderPicker) {
-                buildProviderPickerSheet()
+                ProviderPickerSheetContent()
                     .presentationDetents([.medium])
             }
             .sheet(item: $coordinator.selectedProviderType) { providerType in
@@ -54,8 +55,26 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                     .presentationDetents([.medium])
             }
             .sheet(item: $coordinator.editingAccount) { account in
-                buildEditAccountSheet(account)
-                    .presentationDetents([.medium])
+                EditAccountSheetContent(
+                    account: account,
+                    editingName: $viewModel.uiState.editingName,
+                    onSave: {
+                        Task {
+                            await viewModel.updateAccountName(
+                                accountId: account.id,
+                                newName: viewModel.uiState.editingName
+                            )
+                            coordinator.dismissEditAccount()
+                        }
+                    },
+                    onExportRequested: {
+                        coordinator.dismissEditAccount()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            coordinator.presentExportAccount(account)
+                        }
+                    }
+                )
+                .presentationDetents([.medium])
             }
             .task { await viewModel.loadAccounts() }
             .alert(
@@ -246,85 +265,6 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
         }
     }
 
-    // MARK: - Add Options Sheet
-
-    private func buildAddOptionsSheet() -> some View {
-        NavigationStack {
-            List {
-                Button {
-                    coordinator.presentProviderPicker()
-                } label: {
-                    Label(String(localized: "Create New"), systemImage: "plus.circle.fill")
-                }
-
-                Button {
-                    coordinator.presentImport()
-                } label: {
-                    Label(String(localized: "Import"), systemImage: "square.and.arrow.down.fill")
-                }
-            }
-            .navigationTitle(String(localized: "Add Account"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
-                        coordinator.showAddOptions = false
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Provider Picker Sheet
-
-    private func buildProviderPickerSheet() -> some View {
-        NavigationStack {
-            List {
-                Button {
-                    coordinator.presentAddAccount(providerType: .apple)
-                } label: {
-                    Label {
-                        Text(ProviderType.apple.displayName)
-                    } icon: {
-                        Image(systemName: ProviderType.apple.iconName)
-                            .foregroundStyle(ProviderType.apple.color)
-                    }
-                }
-
-                Button {
-                    coordinator.presentAddAccount(providerType: .firebase)
-                } label: {
-                    Label {
-                        Text(ProviderType.firebase.displayName)
-                    } icon: {
-                        Image(systemName: ProviderType.firebase.iconName)
-                            .foregroundStyle(ProviderType.firebase.color)
-                    }
-                }
-
-//                Button {
-//                    coordinator.presentAddAccount(providerType: .googlePlay)
-//                } label: {
-//                    Label {
-//                        Text(ProviderType.googlePlay.displayName)
-//                    } icon: {
-//                        Image(systemName: ProviderType.googlePlay.iconName)
-//                            .foregroundStyle(ProviderType.googlePlay.color)
-//                    }
-//                }
-            }
-            .navigationTitle(String(localized: "Select Provider"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
-                        coordinator.showProviderPicker = false
-                    }
-                }
-            }
-        }
-    }
-
     // MARK: - Import Sheet
 
     private func buildImportSheet() -> some View {
@@ -344,59 +284,6 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                 coordinator.showImport = false
             }
         )
-    }
-
-    // MARK: - Edit Account Sheet
-
-    private func buildEditAccountSheet(_ account: AccountModel) -> some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField(
-                        String(localized: "Account Name"),
-                        text: $viewModel.uiState.editingName
-                    )
-                    .textContentType(.name)
-                } header: {
-                    Text("Name")
-                }
-
-                if account.isExportable && account.providerType == .apple {
-                    Section {
-                        Button {
-                            coordinator.dismissEditAccount()
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                coordinator.presentExportAccount(account)
-                            }
-                        } label: {
-                            Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
-                        }
-                    }
-                }
-            }
-            .navigationTitle(account.name)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
-                        coordinator.dismissEditAccount()
-                    }
-                }
-
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "Save")) {
-                        Task {
-                            await viewModel.updateAccountName(
-                                accountId: account.id,
-                                newName: viewModel.uiState.editingName
-                            )
-                            coordinator.dismissEditAccount()
-                        }
-                    }
-                    .disabled(viewModel.uiState.editingName.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-        }
     }
 
     // MARK: - Toolbar
@@ -446,6 +333,7 @@ private struct ImportAccountSheet: View {
     let onImport: (URL, String, String?) -> Void
     let onCancel: () -> Void
 
+    @Environment(\.dismiss) private var dismiss
     @State private var showFilePicker = false
     @State private var showPasswordAlert = false
     @State private var showNameAlert = false
@@ -486,7 +374,10 @@ private struct ImportAccountSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                        onCancel()
+                    }
                 }
             }
             .fileImporter(
@@ -589,6 +480,141 @@ private struct ImportAccountSheet: View {
         } catch {
             decryptErrorMessage = error.localizedDescription
             showDecryptError = true
+        }
+    }
+}
+
+// MARK: - Add Options Sheet
+
+private struct AddOptionsSheetContent: View {
+
+    @EnvironmentObject private var coordinator: SettingsAccountsCoordinator
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Button {
+                    coordinator.presentProviderPicker()
+                } label: {
+                    Label(String(localized: "Create New"), systemImage: "plus.circle.fill")
+                }
+
+                Button {
+                    coordinator.presentImport()
+                } label: {
+                    Label(String(localized: "Import"), systemImage: "square.and.arrow.down.fill")
+                }
+            }
+            .navigationTitle(String(localized: "Add Account"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                        coordinator.showAddOptions = false
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Provider Picker Sheet
+
+private struct ProviderPickerSheetContent: View {
+
+    @EnvironmentObject private var coordinator: SettingsAccountsCoordinator
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Button {
+                    coordinator.presentAddAccount(providerType: .apple)
+                } label: {
+                    Label {
+                        Text(ProviderType.apple.displayName)
+                    } icon: {
+                        Image(systemName: ProviderType.apple.iconName)
+                            .foregroundStyle(ProviderType.apple.color)
+                    }
+                }
+
+                Button {
+                    coordinator.presentAddAccount(providerType: .firebase)
+                } label: {
+                    Label {
+                        Text(ProviderType.firebase.displayName)
+                    } icon: {
+                        Image(systemName: ProviderType.firebase.iconName)
+                            .foregroundStyle(ProviderType.firebase.color)
+                    }
+                }
+            }
+            .navigationTitle(String(localized: "Select Provider"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                        coordinator.showProviderPicker = false
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Edit Account Sheet
+
+private struct EditAccountSheetContent: View {
+
+    let account: AccountModel
+    @Binding var editingName: String
+    let onSave: () -> Void
+    let onExportRequested: () -> Void
+
+    @EnvironmentObject private var coordinator: SettingsAccountsCoordinator
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField(String(localized: "Account Name"), text: $editingName)
+                        .textContentType(.name)
+                } header: {
+                    Text("Name")
+                }
+
+                if account.isExportable && account.providerType == .apple {
+                    Section {
+                        Button {
+                            onExportRequested()
+                        } label: {
+                            Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
+                        }
+                    }
+                }
+            }
+            .navigationTitle(account.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                        coordinator.dismissEditAccount()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(String(localized: "Save")) {
+                        onSave()
+                    }
+                    .disabled(editingName.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
         }
     }
 }

@@ -230,6 +230,7 @@ struct FirebaseAppDetailSheet: View {
     let onDelete: () -> Void
     let onDismiss: () -> Void
 
+    @Environment(\.dismiss) private var dismiss
     @State private var nickname: String = ""
     @State private var isEditingNickname = false
 
@@ -245,7 +246,10 @@ struct FirebaseAppDetailSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Done")) { onDismiss() }
+                    Button(String(localized: "Done")) {
+                        dismiss()
+                        onDismiss()
+                    }
                 }
             }
             .onAppear {
@@ -381,6 +385,7 @@ struct CreateFirebaseAppSheet: View {
     let onCreate: (FirebaseAppPlatform, String, String, String) -> Void
     let onCancel: () -> Void
 
+    @Environment(\.dismiss) private var dismiss
     @State private var step = 1
     @State private var selectedPlatform: FirebaseAppPlatform = .ios
     @State private var identifier = ""
@@ -412,7 +417,10 @@ struct CreateFirebaseAppSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                        onCancel()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if step == 1 {

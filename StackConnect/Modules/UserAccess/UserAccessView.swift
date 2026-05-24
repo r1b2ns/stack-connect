@@ -310,6 +310,7 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
 
 struct InviteUserSheet: View {
 
+    @Environment(\.dismiss) private var dismiss
     @State private var email = ""
     @State private var firstName = ""
     @State private var lastName = ""
@@ -373,7 +374,10 @@ struct InviteUserSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                        onCancel()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(String(localized: "Send Invite")) {

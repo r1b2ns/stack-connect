@@ -89,6 +89,8 @@ struct CSVTesterImportView: View {
     let onContinue: ([CSVTesterRow]) -> Void
     let onCancel: () -> Void
 
+    @Environment(\.dismiss) private var dismiss
+
     private func isDuplicate(_ row: CSVTesterRow) -> Bool {
         existingEmails.contains(row.email.lowercased())
     }
@@ -181,7 +183,10 @@ struct CSVTesterImportView: View {
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
-            Button(String(localized: "Cancel")) { onCancel() }
+            Button(String(localized: "Cancel")) {
+                dismiss()
+                onCancel()
+            }
         }
         ToolbarItem(placement: .confirmationAction) {
             if isInviting {

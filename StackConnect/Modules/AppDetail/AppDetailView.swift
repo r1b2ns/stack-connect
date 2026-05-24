@@ -540,6 +540,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
 struct CreatePlatformSheet<ViewModel: AppDetailViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
@@ -587,6 +588,7 @@ struct CreatePlatformSheet<ViewModel: AppDetailViewModelProtocol>: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: "Cancel")) {
+                        dismiss()
                         viewModel.uiState.showCreatePlatform = false
                     }
                 }

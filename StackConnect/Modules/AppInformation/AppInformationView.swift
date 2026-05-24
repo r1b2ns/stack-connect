@@ -336,6 +336,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
 struct ContentRightsSheet<ViewModel: AppInformationViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
+    @Environment(\.dismiss) private var dismiss
 
     private let options: [(String, String, String)] = [
         ("DOES_NOT_USE_THIRD_PARTY_CONTENT",
@@ -379,6 +380,7 @@ struct ContentRightsSheet<ViewModel: AppInformationViewModelProtocol>: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: "Cancel")) {
+                        dismiss()
                         viewModel.uiState.showContentRightsSheet = false
                     }
                 }

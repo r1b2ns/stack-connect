@@ -6,6 +6,7 @@ struct ExportAccountView: View {
     let onExport: (String, AccountRules, String) -> URL?
     let onDismiss: () -> Void
 
+    @Environment(\.dismiss) private var dismiss
     @State private var exportName: String = ""
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
@@ -149,6 +150,7 @@ struct ExportAccountView: View {
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
             Button(String(localized: "Cancel")) {
+                dismiss()
                 onDismiss()
             }
         }

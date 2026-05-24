@@ -292,6 +292,8 @@ struct ReplySheet: View {
     let onSend: (String) -> Void
     let onCancel: () -> Void
 
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         NavigationStack {
             Form {
@@ -331,7 +333,10 @@ struct ReplySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                        onCancel()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isSending {

@@ -144,6 +144,7 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
 struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
 
     @StateObject var viewModel: ViewModel
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         List {
@@ -329,6 +330,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: "Cancel")) {
+                        dismiss()
                         viewModel.cancelReplySheet()
                     }
                 }

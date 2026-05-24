@@ -383,6 +383,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
             Button(String(localized: "Cancel")) {
+                dismiss()
                 onDismiss()
             }
         }

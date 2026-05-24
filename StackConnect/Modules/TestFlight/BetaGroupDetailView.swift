@@ -510,6 +510,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
 
 struct AddTesterSheet: View {
 
+    @Environment(\.dismiss) private var dismiss
     @State private var email = ""
     @State private var firstName = ""
     @State private var lastName = ""
@@ -565,7 +566,10 @@ struct AddTesterSheet: View {
             .disabled(isInviting)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                        onCancel()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isInviting {
@@ -644,6 +648,7 @@ struct AddTesterSheet: View {
 
 struct SubmitBuildForReviewSheet: View {
 
+    @Environment(\.dismiss) private var dismiss
     let build: BuildModel
     @Binding var whatsNew: String
     @Binding var errorMessage: String?
@@ -695,7 +700,10 @@ struct SubmitBuildForReviewSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                        onCancel()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isSubmitting {
@@ -729,6 +737,7 @@ struct SubmitBuildForReviewSheet: View {
 
 struct EditBetaGroupSheet: View {
 
+    @Environment(\.dismiss) private var dismiss
     @State var name: String
     @State var isPublicLinkEnabled: Bool
     @State var publicLinkLimit: String
@@ -780,7 +789,10 @@ struct EditBetaGroupSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                        onCancel()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(String(localized: "Save")) {
@@ -808,6 +820,7 @@ struct InternalTesterPickerSheet: View {
     let onInvite: ([TeamMemberModel]) -> Void
     let onCancel: () -> Void
 
+    @Environment(\.dismiss) private var dismiss
     @State private var selected: Set<String> = []
 
     var body: some View {
@@ -863,7 +876,10 @@ struct InternalTesterPickerSheet: View {
             .disabled(isInviting)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                        onCancel()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isInviting {
@@ -898,6 +914,7 @@ struct AddBuildSheet: View {
     let onAdd: (BuildModel) -> Void
     let onCancel: () -> Void
 
+    @Environment(\.dismiss) private var dismiss
     @State private var path = NavigationPath()
 
     private var buildsByPlatform: [PlatformBuildGroup] {
@@ -928,7 +945,10 @@ struct AddBuildSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                        onCancel()
+                    }
                 }
             }
             .navigationDestination(for: AddBuildPlatformRoute.self) { route in

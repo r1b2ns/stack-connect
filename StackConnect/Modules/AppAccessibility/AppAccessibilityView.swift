@@ -251,6 +251,7 @@ struct AppAccessibilityView<ViewModel: AppAccessibilityViewModelProtocol>: View 
 
 struct EditAccessibilitySheet: View {
 
+    @Environment(\.dismiss) private var dismiss
     @State var declaration: AccessibilityDeclarationModel
     let isSaving: Bool
     let onSave: (AccessibilityDeclarationModel) -> Void
@@ -352,6 +353,7 @@ struct EditAccessibilitySheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: "Cancel")) {
+                        dismiss()
                         onCancel()
                     }
                 }
@@ -386,6 +388,7 @@ struct EditAccessibilitySheet: View {
 
 struct AddDeviceFamilySheet: View {
 
+    @Environment(\.dismiss) private var dismiss
     let available: [String]
     let isSaving: Bool
     let onCreate: (String) -> Void
@@ -439,6 +442,7 @@ struct AddDeviceFamilySheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: "Cancel")) {
+                        dismiss()
                         onCancel()
                     }
                 }

@@ -183,6 +183,7 @@ struct EditLocalizationSheet<ViewModel: ManageLocalizationsViewModelProtocol>: V
     @ObservedObject var viewModel: ViewModel
     let localization: AppInfoLocalizationModel
 
+    @Environment(\.dismiss) private var dismiss
     @State private var name: String
     @State private var subtitle: String
 
@@ -234,6 +235,7 @@ struct EditLocalizationSheet<ViewModel: ManageLocalizationsViewModelProtocol>: V
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: "Cancel")) {
+                        dismiss()
                         viewModel.uiState.showEditSheet = false
                         viewModel.uiState.editingLocalization = nil
                     }
@@ -273,6 +275,8 @@ struct EditLocalizationSheet<ViewModel: ManageLocalizationsViewModelProtocol>: V
 struct AddLocalizationSheet<ViewModel: ManageLocalizationsViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
+
+    @Environment(\.dismiss) private var dismiss
 
     private var availableLocales: [String] {
         let existing = Set(viewModel.uiState.localizations.map(\.locale))
@@ -316,6 +320,7 @@ struct AddLocalizationSheet<ViewModel: ManageLocalizationsViewModelProtocol>: Vi
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(String(localized: "Cancel")) {
+                        dismiss()
                         viewModel.uiState.showAddSheet = false
                         viewModel.uiState.error = nil
                         viewModel.uiState.newLocale = ""

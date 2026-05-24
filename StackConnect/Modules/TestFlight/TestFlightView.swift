@@ -394,6 +394,7 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
 
 struct CreateBetaGroupSheet: View {
 
+    @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @State private var isInternal = false
     @State private var hasAccessToAllBuilds = false
@@ -434,7 +435,10 @@ struct CreateBetaGroupSheet: View {
             .disabled(isCreating)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                        onCancel()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isCreating {

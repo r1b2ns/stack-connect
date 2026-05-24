@@ -657,6 +657,7 @@ struct RemoteConfigCreateParameterSheet: View {
     let onCreate: (String, RemoteConfigParameter) -> Void
     let onCancel: () -> Void
 
+    @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @State private var description = ""
     @State private var valueType: RemoteConfigParameter.ValueType = .string
@@ -704,7 +705,10 @@ struct RemoteConfigCreateParameterSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                        onCancel()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(String(localized: "Create")) { createAndClose() }
@@ -771,6 +775,7 @@ struct RemoteConfigAddConditionSheet: View {
     let onSave: (RemoteConfigCondition) -> Void
     let onCancel: () -> Void
 
+    @Environment(\.dismiss) private var dismiss
     @State private var name: String
     @State private var expression: String
     @State private var tagColor: RemoteConfigCondition.TagColor
@@ -837,7 +842,10 @@ struct RemoteConfigAddConditionSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                        onCancel()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(editingCondition == nil ? String(localized: "Add") : String(localized: "Save")) {
