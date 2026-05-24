@@ -204,7 +204,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
             ToolbarItem(placement: .primaryAction) {
                 ShareLink(
                     item: viewModel.uiState.shareText,
-                    subject: Text("Review – \(viewModel.uiState.appName)"),
+                    subject: Text("Review – \(viewModel.uiState.appName)\n"),
                     message: Text(viewModel.uiState.appName)
                 ) {
                     Image(systemName: "square.and.arrow.up")
