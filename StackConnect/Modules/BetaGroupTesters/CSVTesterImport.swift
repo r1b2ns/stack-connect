@@ -83,13 +83,27 @@ enum CSVTesterParser {
 
 struct CSVTesterImportView: View {
 
-    let rows: [CSVTesterRow]
     let existingEmails: Set<String>
     let isInviting: Bool
     let onContinue: ([CSVTesterRow]) -> Void
     let onCancel: () -> Void
 
+    @State private var rows: [CSVTesterRow]
     @Environment(\.dismiss) private var dismiss
+
+    init(
+        rows: [CSVTesterRow],
+        existingEmails: Set<String>,
+        isInviting: Bool,
+        onContinue: @escaping ([CSVTesterRow]) -> Void,
+        onCancel: @escaping () -> Void
+    ) {
+        self.existingEmails = existingEmails
+        self.isInviting = isInviting
+        self.onContinue = onContinue
+        self.onCancel = onCancel
+        _rows = State(initialValue: rows)
+    }
 
     private func isDuplicate(_ row: CSVTesterRow) -> Bool {
         existingEmails.contains(row.email.lowercased())
@@ -134,6 +148,16 @@ struct CSVTesterImportView: View {
                 ForEach(rows) { row in
                     buildRow(row)
                         .opacity(isDuplicate(row) ? 0.3 : 1.0)
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                rows.removeAll { $0.id == row.id }
+                            } label: {
+                                Label(String(localized: "Remove"), systemImage: "trash")
+                            }
+                        }
+                }
+                .onDelete { offsets in
+                    rows.remove(atOffsets: offsets)
                 }
             } header: {
                 HStack {
@@ -145,7 +169,9 @@ struct CSVTesterImportView: View {
                 }
             } footer: {
                 if importableRows.count < rows.count {
-                    Text("Rows highlighted in gray are already in this group and will be skipped.")
+                    Text("Rows highlighted in gray are already in this group and will be skipped. Swipe left on any row to remove it from the import.")
+                } else {
+                    Text("Swipe left on any row to remove it from the import.")
                 }
             }
         }
