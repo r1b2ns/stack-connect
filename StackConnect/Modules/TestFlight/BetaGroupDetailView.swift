@@ -41,36 +41,14 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
         List {
             buildGroupInfoSection()
             buildTestInformationSection()
-            buildTestersSection()
+            buildTestersNavigationSection()
             buildBuildsSection()
         }
         .navigationTitle(viewModel.uiState.group.name)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { buildToolbar() }
         .task { await viewModel.load() }
         .onAppear { Task { await viewModel.loadTestInformation() } }
         .refreshable { await viewModel.load() }
-        .sheet(isPresented: $viewModel.uiState.showAddTester) {
-            if viewModel.uiState.group.isInternalGroup {
-                InternalTesterPickerSheet(
-                    members: viewModel.uiState.teamMembers,
-                    isLoading: viewModel.uiState.isLoadingTeamMembers,
-                    isInviting: viewModel.uiState.isInvitingTesters
-                ) { selected in
-                    Task { await viewModel.addTeamMembersAsTesters(selected) }
-                } onCancel: {
-                    viewModel.uiState.showAddTester = false
-                }
-            } else {
-                AddTesterSheet(
-                    isInviting: viewModel.uiState.isInvitingTesters
-                ) { email, firstName, lastName in
-                    Task { await viewModel.addTester(email: email, firstName: firstName, lastName: lastName) }
-                } onCancel: {
-                    viewModel.uiState.showAddTester = false
-                }
-            }
-        }
         .sheet(isPresented: $viewModel.uiState.showAddBuild) {
             AddBuildSheet(
                 appId: viewModel.uiState.appId,
@@ -109,39 +87,6 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                     viewModel.uiState.submitSheetBuild = nil
                     viewModel.uiState.submitError = nil
                 }
-            }
-        }
-        .alert(
-            String(localized: "Error"),
-            isPresented: Binding(
-                get: { viewModel.uiState.inviteError != nil },
-                set: { if !$0 { viewModel.uiState.inviteError = nil } }
-            )
-        ) {
-            Button(String(localized: "OK"), role: .cancel) {
-                viewModel.uiState.inviteError = nil
-            }
-        } message: {
-            if let error = viewModel.uiState.inviteError {
-                Text(error)
-            }
-        }
-        .alert(
-            String(localized: "Remove Tester"),
-            isPresented: Binding(
-                get: { viewModel.uiState.confirmRemoveTester != nil },
-                set: { if !$0 { viewModel.uiState.confirmRemoveTester = nil } }
-            )
-        ) {
-            Button(String(localized: "Remove"), role: .destructive) {
-                if let tester = viewModel.uiState.confirmRemoveTester {
-                    Task { await viewModel.removeTester(tester) }
-                }
-            }
-            Button(String(localized: "Cancel"), role: .cancel) {}
-        } message: {
-            if let tester = viewModel.uiState.confirmRemoveTester {
-                Text("Remove \(tester.displayName) from this group?")
             }
         }
         .alert(
@@ -209,9 +154,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
         }
         .toast(message: $viewModel.uiState.toastMessage)
         .overlay {
-            if viewModel.uiState.isRemovingTester
-                || viewModel.uiState.isRemovingBuild
-                || viewModel.uiState.isResendingInvite
+            if viewModel.uiState.isRemovingBuild
                 || viewModel.uiState.isSubmittingForReview
                 || viewModel.uiState.isExpiringBuild {
                 ZStack {
@@ -316,82 +259,29 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
 
     // MARK: - Testers
 
-    private func buildTestersSection() -> some View {
+    private func buildTestersNavigationSection() -> some View {
         Section {
-            if viewModel.uiState.isLoading && viewModel.uiState.testers.isEmpty {
-                HStack { Spacer(); ProgressView(); Spacer() }
-            } else if viewModel.uiState.testers.isEmpty {
-                Text(String(localized: "No testers in this group"))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(viewModel.uiState.testers) { tester in
-                    buildTesterRow(tester)
-                        .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) {
-                                viewModel.uiState.confirmRemoveTester = tester
-                            } label: {
-                                Label(String(localized: "Remove"), systemImage: "person.badge.minus")
-                            }
-
-                            if !viewModel.uiState.group.isInternalGroup && tester.state == "INVITED" {
-                                Button {
-                                    Task { await viewModel.resendInvite(tester) }
-                                } label: {
-                                    Label(String(localized: "Resend"), systemImage: "paperplane.fill")
-                                }
-                                .tint(.blue)
-                            }
-                        }
-                }
-            }
-
             Button {
-                if viewModel.uiState.group.isInternalGroup {
-                    Task { await viewModel.loadTeamMembers() }
-                }
-                viewModel.uiState.showAddTester = true
+                homeCoordinator.navigateToBetaGroupTesters(
+                    group: viewModel.uiState.group,
+                    appId: viewModel.uiState.appId,
+                    account: viewModel.uiState.account
+                )
             } label: {
-                Label(String(localized: "Add Tester"), systemImage: "plus.circle.fill")
-            }
-        } header: {
-            HStack {
-                Text("Testers")
-                Spacer()
-                Text("\(viewModel.uiState.testers.count)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private func buildTesterRow(_ tester: BetaTesterModel) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: tester.stateIcon)
-                .foregroundStyle(stateColor(tester.stateColor))
-                .font(.title3)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(tester.displayName)
-                    .font(.body)
-
-                if let email = tester.email, tester.firstName != nil {
-                    Text(email)
+                HStack {
+                    Label(String(localized: "Testers"), systemImage: "person.2.fill")
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    if let count = viewModel.uiState.group.testerCount {
+                        Text("\(count)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Image(systemName: "chevron.right")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.tertiary)
                 }
             }
-
-            Spacer()
-
-            Text(tester.stateDisplayName)
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundStyle(stateColor(tester.stateColor))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(stateColor(tester.stateColor).opacity(0.12))
-                .clipShape(Capsule())
         }
     }
 
@@ -606,36 +496,12 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
             .clipShape(Capsule())
     }
 
-    // MARK: - Toolbar
-
-    @ToolbarContentBuilder
-    private func buildToolbar() -> some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            Button {
-                viewModel.uiState.showAddTester = true
-            } label: {
-                Image(systemName: "person.badge.plus")
-            }
-        }
-    }
-
     // MARK: - Helpers
 
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         return formatter.string(from: date)
-    }
-
-    private func stateColor(_ color: AppStoreStateColor) -> Color {
-        switch color {
-        case .green:  return .green
-        case .orange: return .orange
-        case .red:    return .red
-        case .gray:   return .gray
-        case .blue:   return .blue
-        case .yellow: return .yellow
-        }
     }
 }
 

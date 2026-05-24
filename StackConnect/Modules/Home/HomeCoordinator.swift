@@ -38,6 +38,7 @@ enum HomeRoute: Hashable {
     case reviewDetail(review: CustomerReviewModel, account: AccountModel)
     case testFlight(appId: String, account: AccountModel)
     case betaGroupDetail(group: BetaGroupModel, appId: String, account: AccountModel)
+    case betaGroupTesters(group: BetaGroupModel, appId: String, account: AccountModel)
     case platformBuildsList(appId: String, platform: String, account: AccountModel)
     case buildDetail(build: BuildModel, appId: String, account: AccountModel)
 }
@@ -179,6 +180,10 @@ final class HomeCoordinator: MainCoordinatorProtocol {
 
     func navigateToBetaGroupDetail(group: BetaGroupModel, appId: String, account: AccountModel) {
         path.append(HomeRoute.betaGroupDetail(group: group, appId: appId, account: account))
+    }
+
+    func navigateToBetaGroupTesters(group: BetaGroupModel, appId: String, account: AccountModel) {
+        path.append(HomeRoute.betaGroupTesters(group: group, appId: appId, account: account))
     }
 
     func navigateToPlatformBuildsList(appId: String, platform: String, account: AccountModel) {
