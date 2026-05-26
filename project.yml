@@ -139,6 +139,11 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+        UIBackgroundModes:
+          - fetch
+          - processing
+        BGTaskSchedulerPermittedIdentifiers:
+          - zeroSixteen.stackconnect.refresh
 
     configFiles:
       Debug: Configs/Debug.xcconfig

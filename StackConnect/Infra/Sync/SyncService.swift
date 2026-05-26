@@ -9,6 +9,15 @@ struct SyncState: Equatable {
     var lastError: String?
 }
 
+// MARK: - Mode
+
+enum SyncMode: Sendable {
+    /// Apps, enrichment, reviews, phased. Used at foreground launch + pull-to-refresh.
+    case full
+    /// Apps + enrichment + phased only — skips reviews to fit in BG refresh budgets.
+    case lightweight
+}
+
 // MARK: - Service
 
 /// Orchestrates background sync of accounts and their apps.
@@ -43,13 +52,13 @@ final class SyncService: ObservableObject {
     /// Fire-and-forget. Safe to call repeatedly — already-running syncs are coalesced
     /// (subsequent callers receive the same in-flight Task and can await it if needed).
     @discardableResult
-    func syncAll() -> Task<Void, Never> {
+    func syncAll(mode: SyncMode = .full) -> Task<Void, Never> {
         if let rootTask {
             Log.print.info("[Sync] syncAll coalesced into in-flight sync")
             return rootTask
         }
         let task = Task { [weak self] in
-            await self?.performSyncAll()
+            await self?.performSyncAll(mode: mode)
             self?.rootTask = nil
         }
         rootTask = task
@@ -58,7 +67,7 @@ final class SyncService: ObservableObject {
 
     // MARK: - Private (MainActor)
 
-    private func performSyncAll() async {
+    private func performSyncAll(mode: SyncMode) async {
         state.isSyncing = true
         state.lastError = nil
 
@@ -87,7 +96,7 @@ final class SyncService: ObservableObject {
             return (account, connection)
         }
 
-        Log.print.info("[Sync] Starting parallel sync for \(accounts.count) Apple account(s)")
+        Log.print.info("[Sync] Starting \(mode == .lightweight ? "lightweight " : "")parallel sync for \(accounts.count) Apple account(s)")
         let storage = self.storage
 
         await withTaskGroup(of: Void.self) { group in
@@ -97,7 +106,8 @@ final class SyncService: ObservableObject {
                     await SyncService.runAccountSync(
                         account: account,
                         connection: connection,
-                        storage: storage
+                        storage: storage,
+                        mode: mode
                     )
                     await self?.markInProgress(account.id, started: false)
                 }
@@ -123,7 +133,8 @@ final class SyncService: ObservableObject {
     private nonisolated static func runAccountSync(
         account: AccountModel,
         connection: (any AppleAccountSyncing)?,
-        storage: PersistentStorable
+        storage: PersistentStorable,
+        mode: SyncMode
     ) async {
         guard let connection else {
             Log.print.error("[Sync] No credentials for \(account.name)")
@@ -171,19 +182,24 @@ final class SyncService: ObservableObject {
             }
 
             let activeApps = finalApps.filter { !$0.isArchived }
-            async let reviewsTask = syncReviews(
-                for: activeApps,
-                connection: connection,
-                storage: storage
-            )
-            async let phasedTask = syncPhased(
+            let phasedSaved = await syncPhased(
                 for: activeApps,
                 versionIdByAppId: versionIdByAppId,
                 connection: connection,
                 storage: storage
             )
-            let reviewsSaved = await reviewsTask
-            let phasedSaved = await phasedTask
+
+            let reviewsSaved: Int
+            switch mode {
+            case .full:
+                reviewsSaved = await syncReviews(
+                    for: activeApps,
+                    connection: connection,
+                    storage: storage
+                )
+            case .lightweight:
+                reviewsSaved = 0
+            }
 
             await saveMetadata(
                 storage: storage,
@@ -191,7 +207,8 @@ final class SyncService: ObservableObject {
                 appsSynced: finalApps.count,
                 error: nil
             )
-            Log.print.info("[Sync] \(account.name): \(finalApps.count) apps, \(reviewsSaved) reviews, \(phasedSaved) phased")
+            let modeLabel = mode == .lightweight ? "lightweight" : "full"
+            Log.print.info("[Sync] \(account.name): \(finalApps.count) apps, \(reviewsSaved) reviews, \(phasedSaved) phased (\(modeLabel))")
         } catch {
             await saveMetadata(
                 storage: storage,
