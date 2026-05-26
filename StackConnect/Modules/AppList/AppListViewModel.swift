@@ -119,6 +119,13 @@ final class AppListViewModel: AppListViewModelProtocol {
                     isArchived: cached?.isArchived ?? false,
                     isFavorite: cached?.isFavorite ?? false
                 )
+            }.sorted { a, b in
+                switch (a.lastModifiedDate, b.lastModifiedDate) {
+                case let (dateA?, dateB?): return dateA > dateB
+                case (_?, nil):            return true
+                case (nil, _?):            return false
+                case (nil, nil):           return a.name < b.name
+                }
             }
 
             // 3. Enrich only non-archived apps (expensive API calls)
