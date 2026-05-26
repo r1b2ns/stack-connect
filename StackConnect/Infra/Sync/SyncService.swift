@@ -35,16 +35,20 @@ final class SyncService: ObservableObject {
         self.keychain = keychain
     }
 
-    /// Fire-and-forget. Safe to call repeatedly — already-running syncs are coalesced.
-    func syncAll() {
-        guard rootTask == nil else {
-            Log.print.info("[Sync] syncAll skipped — already running")
-            return
+    /// Fire-and-forget. Safe to call repeatedly — already-running syncs are coalesced
+    /// (subsequent callers receive the same in-flight Task and can await it if needed).
+    @discardableResult
+    func syncAll() -> Task<Void, Never> {
+        if let rootTask {
+            Log.print.info("[Sync] syncAll coalesced into in-flight sync")
+            return rootTask
         }
-        rootTask = Task { [weak self] in
+        let task = Task { [weak self] in
             await self?.performSyncAll()
             self?.rootTask = nil
         }
+        rootTask = task
+        return task
     }
 
     // MARK: - Private (MainActor)

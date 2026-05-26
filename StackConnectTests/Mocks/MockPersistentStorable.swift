@@ -4,6 +4,7 @@ import Foundation
 actor MockPersistentStorable: PersistentStorable {
 
     private var store: [String: [String: Data]] = [:]
+    private(set) var fetchAllCallCount: [String: Int] = [:]
 
     func save<T: Codable>(_ item: T, id: String) throws {
         let typeName = String(describing: T.self)
@@ -24,6 +25,7 @@ actor MockPersistentStorable: PersistentStorable {
 
     func fetchAll<T: Codable>(_ type: T.Type) throws -> [T] {
         let typeName = String(describing: T.self)
+        fetchAllCallCount[typeName, default: 0] += 1
         guard let entries = store[typeName] else { return [] }
         return entries.values.compactMap { data in
             try? JSONDecoder().decode(T.self, from: data)
