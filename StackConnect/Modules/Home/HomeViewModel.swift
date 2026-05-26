@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 // MARK: - Protocol
@@ -6,6 +7,7 @@ import Foundation
 protocol HomeViewModelProtocol: ObservableObject {
     var uiState: HomeUiState { get set }
     func loadPendingReviewApps() async
+    func triggerSync()
 }
 
 // MARK: - UiState
@@ -15,6 +17,7 @@ struct HomeUiState {
     var pendingReviewApps: [AppModel] = []
     var isLoadingPending = false
     var accountsMap: [String: AccountModel] = [:]
+    var syncState = SyncState()
 }
 
 // MARK: - Implementation
@@ -26,13 +29,28 @@ final class HomeViewModel: HomeViewModelProtocol {
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
+    private let syncService: SyncService
+    private var cancellables = Set<AnyCancellable>()
 
     init(
         storage: PersistentStorable? = nil,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        syncService: SyncService = .shared
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
+        self.syncService = syncService
+
+        syncService.$state
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] state in
+                self?.uiState.syncState = state
+            }
+            .store(in: &cancellables)
+    }
+
+    func triggerSync() {
+        syncService.syncAll()
     }
 
     func loadPendingReviewApps() async {

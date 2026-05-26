@@ -36,13 +36,45 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
     var body: some View {
         NavigationStack(path: $coordinator.path) {
             List {
+                buildSyncBanner()
                 buildAccountsSection()
                 buildPendingReviewSection()
             }
             .navigationTitle("StackConnect")
             .navigationDestinations()
-            .task { await viewModel.loadPendingReviewApps() }
+            .task {
+                viewModel.triggerSync()
+                await viewModel.loadPendingReviewApps()
+            }
         }
+    }
+
+    // MARK: - Sync Banner
+
+    @ViewBuilder
+    private func buildSyncBanner() -> some View {
+        if viewModel.uiState.syncState.isSyncing {
+            HStack(spacing: 10) {
+                ProgressView()
+                    .scaleEffect(0.75)
+
+                Text(syncBannerText)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+            }
+            .padding(.vertical, 4)
+            .listRowSeparator(.hidden)
+        }
+    }
+
+    private var syncBannerText: String {
+        let count = viewModel.uiState.syncState.accountsInProgress.count
+        if count > 0 {
+            return String(localized: "Syncing \(count) account(s)…")
+        }
+        return String(localized: "Syncing…")
     }
 
     // MARK: - Accounts Section
