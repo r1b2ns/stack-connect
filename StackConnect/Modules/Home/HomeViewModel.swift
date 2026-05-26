@@ -6,18 +6,27 @@ import Foundation
 @MainActor
 protocol HomeViewModelProtocol: ObservableObject {
     var uiState: HomeUiState { get set }
-    func loadPendingReviewApps() async
+    func loadDashboard() async
     func triggerSync()
+    func refresh() async
 }
 
 // MARK: - UiState
 
 struct HomeUiState {
     var providers: [ProviderType] = ProviderType.allCases.filter { $0 != .googlePlay }
-    var pendingReviewApps: [AppModel] = []
-    var isLoadingPending = false
     var accountsMap: [String: AccountModel] = [:]
+    var inReviewApps: [AppModel] = []
+    var awaitingReleaseApps: [AppModel] = []
+    var recentReviews: [HomeRecentReview] = []
+    var isLoading = false
     var syncState = SyncState()
+}
+
+struct HomeRecentReview: Identifiable, Hashable {
+    let review: CustomerReviewModel
+    let app: AppModel
+    var id: String { review.id }
 }
 
 // MARK: - Implementation
@@ -43,8 +52,13 @@ final class HomeViewModel: HomeViewModelProtocol {
 
         syncService.$state
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] state in
-                self?.uiState.syncState = state
+            .sink { [weak self] newState in
+                guard let self else { return }
+                let previousTimestamp = self.uiState.syncState.lastSyncedAt
+                self.uiState.syncState = newState
+                if newState.lastSyncedAt != previousTimestamp {
+                    Task { await self.loadDashboard() }
+                }
             }
             .store(in: &cancellables)
     }
@@ -53,12 +67,40 @@ final class HomeViewModel: HomeViewModelProtocol {
         syncService.syncAll()
     }
 
-    func loadPendingReviewApps() async {
-        // 0. Load all accounts into map
+    func refresh() async {
+        await syncService.syncAll().value
+        await loadDashboard()
+    }
+
+    func loadDashboard() async {
+        uiState.isLoading = true
+        defer { uiState.isLoading = false }
+
+        await loadAccountsMap()
+
+        let allApps: [AppModel]
         do {
-            let allAccounts: [AccountModel] = try await storage.fetchAll(AccountModel.self)
+            allApps = try await storage.fetchAll(AppModel.self)
+        } catch {
+            Log.print.error("[Home] Failed to load apps: \(error.localizedDescription)")
+            return
+        }
+
+        let active = allApps.filter { !$0.isArchived }
+        let (inReview, awaitingRelease) = Self.categorize(active)
+
+        uiState.inReviewApps = inReview.sorted(by: Self.sortByRecency)
+        uiState.awaitingReleaseApps = awaitingRelease.sorted(by: Self.sortByRecency)
+        uiState.recentReviews = []
+    }
+
+    // MARK: - Private
+
+    private func loadAccountsMap() async {
+        do {
+            let accounts: [AccountModel] = try await storage.fetchAll(AccountModel.self)
             var map: [String: AccountModel] = [:]
-            for var account in allAccounts {
+            for var account in accounts {
                 account.fillMissingRules()
                 map[account.id] = account
             }
@@ -66,56 +108,33 @@ final class HomeViewModel: HomeViewModelProtocol {
         } catch {
             Log.print.error("[Home] Failed to load accounts: \(error.localizedDescription)")
         }
+    }
 
-        // 1. Load from SwiftData first (instant)
-        do {
-            let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
-            let pending = allApps.filter { $0.hasReviewPending && !$0.isArchived }
-            uiState.pendingReviewApps = pending.sorted { ($0.name) < ($1.name) }
-        } catch {
-            Log.print.error("[Home] Failed to load pending review apps: \(error.localizedDescription)")
-        }
-
-        guard !uiState.pendingReviewApps.isEmpty else { return }
-
-        // 2. Refresh status from API for each pending app
-        uiState.isLoadingPending = true
-
-        var updatedApps: [AppModel] = []
-
-        for app in uiState.pendingReviewApps {
-            guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(app.accountId)") else {
-                updatedApps.append(app)
-                continue
-            }
-
-            let connection = AppleAccountConnection(credentials: credentials)
-            let state = await connection.fetchAppStoreVersion(appId: app.id)
-
-            var updated = app
-            if let s = state.state {
-                updated.appStoreState = AppStoreState(rawValue: s)
-            }
-            if let v = state.version {
-                updated.versionString = v
-            }
-            updated.hasReviewPending = updated.appStoreState?.isReviewPending ?? false
-
-            // Persist updated status
-            do {
-                try await storage.save(updated, id: "\(app.accountId).\(app.id)")
-            } catch {
-                Log.print.error("[Home] Failed to save updated status for \(app.name): \(error.localizedDescription)")
-            }
-
-            if updated.hasReviewPending {
-                updatedApps.append(updated)
+    private static func categorize(_ apps: [AppModel]) -> (inReview: [AppModel], awaitingRelease: [AppModel]) {
+        var inReview: [AppModel] = []
+        var awaiting: [AppModel] = []
+        for app in apps {
+            guard let state = app.appStoreState else { continue }
+            switch state {
+            case .waitingForReview, .inReview, .readyForReview,
+                 .pendingAppleRelease, .processingForAppStore,
+                 .rejected, .metadataRejected, .invalidBinary:
+                inReview.append(app)
+            case .pendingDeveloperRelease:
+                awaiting.append(app)
+            default:
+                break
             }
         }
+        return (inReview, awaiting)
+    }
 
-        uiState.pendingReviewApps = updatedApps.sorted { $0.name < $1.name }
-        uiState.isLoadingPending = false
-
-        Log.print.info("[Home] Refreshed \(updatedApps.count) pending review apps")
+    private static func sortByRecency(_ a: AppModel, _ b: AppModel) -> Bool {
+        switch (a.lastModifiedDate, b.lastModifiedDate) {
+        case let (dateA?, dateB?): return dateA > dateB
+        case (_?, nil):            return true
+        case (nil, _?):            return false
+        case (nil, nil):           return a.name < b.name
+        }
     }
 }

@@ -37,14 +37,17 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
         NavigationStack(path: $coordinator.path) {
             List {
                 buildSyncBanner()
+                buildInReviewSection()
+                buildAwaitingReleaseSection()
+                buildRecentReviewsSection()
                 buildAccountsSection()
-                buildPendingReviewSection()
             }
             .navigationTitle("StackConnect")
             .navigationDestinations()
+            .refreshable { await viewModel.refresh() }
             .task {
                 viewModel.triggerSync()
-                await viewModel.loadPendingReviewApps()
+                await viewModel.loadDashboard()
             }
         }
     }
@@ -120,35 +123,91 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
         }
     }
 
-    // MARK: - Pending Review Section
+    // MARK: - Dashboard Sections
 
     @ViewBuilder
-    private func buildPendingReviewSection() -> some View {
-        if !viewModel.uiState.pendingReviewApps.isEmpty {
+    private func buildInReviewSection() -> some View {
+        if !viewModel.uiState.inReviewApps.isEmpty {
             Section {
-                ForEach(viewModel.uiState.pendingReviewApps) { app in
+                ForEach(viewModel.uiState.inReviewApps) { app in
                     Button {
                         coordinator.navigateToAppDetail(app, account: accountForApp(app))
                     } label: {
-                        buildPendingAppRow(app)
+                        buildAppRow(app)
                     }
                     .foregroundStyle(.primary)
                 }
             } header: {
-                HStack {
-                    Image(systemName: "apple.logo")
-                    Text("App Review")
-                    Spacer()
-                    if viewModel.uiState.isLoadingPending {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                    }
-                }
+                buildSectionHeader(
+                    icon: "magnifyingglass.circle.fill",
+                    title: String(localized: "In Review"),
+                    count: viewModel.uiState.inReviewApps.count
+                )
             }
         }
     }
 
-    private func buildPendingAppRow(_ app: AppModel) -> some View {
+    @ViewBuilder
+    private func buildAwaitingReleaseSection() -> some View {
+        if !viewModel.uiState.awaitingReleaseApps.isEmpty {
+            Section {
+                ForEach(viewModel.uiState.awaitingReleaseApps) { app in
+                    Button {
+                        coordinator.navigateToAppDetail(app, account: accountForApp(app))
+                    } label: {
+                        buildAppRow(app)
+                    }
+                    .foregroundStyle(.primary)
+                }
+            } header: {
+                buildSectionHeader(
+                    icon: "paperplane.circle.fill",
+                    title: String(localized: "Awaiting Release"),
+                    count: viewModel.uiState.awaitingReleaseApps.count
+                )
+            }
+        }
+    }
+
+    private func buildRecentReviewsSection() -> some View {
+        Section {
+            if viewModel.uiState.recentReviews.isEmpty {
+                HStack {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .foregroundStyle(.tertiary)
+                    Text(String(localized: "Reviews will appear after the next sync"))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(.vertical, 4)
+            } else {
+                ForEach(viewModel.uiState.recentReviews) { _ in
+                    EmptyView()
+                }
+            }
+        } header: {
+            buildSectionHeader(
+                icon: "star.bubble.fill",
+                title: String(localized: "Recent Reviews"),
+                count: viewModel.uiState.recentReviews.count
+            )
+        }
+    }
+
+    private func buildSectionHeader(icon: String, title: String, count: Int) -> some View {
+        HStack {
+            Image(systemName: icon)
+            Text(title)
+            if count > 0 {
+                Text("(\(count))")
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+    }
+
+    private func buildAppRow(_ app: AppModel) -> some View {
         HStack(spacing: 12) {
             buildAppIcon(url: app.iconUrl.flatMap { URL(string: $0) })
 
