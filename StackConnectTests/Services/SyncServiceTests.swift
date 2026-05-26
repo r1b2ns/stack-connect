@@ -1,4 +1,5 @@
 import XCTest
+import StackProtocols
 @testable import StackConnect
 
 @MainActor
@@ -7,12 +8,20 @@ final class SyncServiceTests: XCTestCase {
     private var sut: SyncService!
     private var mockStorage: MockPersistentStorable!
     private var mockKeychain: MockKeyStorable!
+    private var connections: [String: MockAppleAccountSyncing] = [:]
 
     override func setUp() async throws {
         try await super.setUp()
         mockStorage = MockPersistentStorable()
         mockKeychain = MockKeyStorable()
-        sut = SyncService(storage: mockStorage, keychain: mockKeychain)
+        connections = [:]
+        sut = SyncService(
+            storage: mockStorage,
+            keychain: mockKeychain,
+            appleConnectionFactory: { [weak self] credentials in
+                self?.connections[credentials.issuerID] ?? MockAppleAccountSyncing()
+            }
+        )
     }
 
     override func tearDown() async throws {
@@ -117,5 +126,156 @@ final class SyncServiceTests: XCTestCase {
 
         XCTAssertTrue(sut.state.accountsInProgress.isEmpty)
         XCTAssertFalse(sut.state.isSyncing)
+    }
+
+    // MARK: - Happy path (with mock connection)
+
+    func testSyncPersistsAppsWithEnrichmentForSingleAccount() async throws {
+        let account = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(account, id: account.id)
+        setCredentials(issuerID: "issuer-1", for: account)
+
+        let connection = MockAppleAccountSyncing()
+        connection.apps = [
+            StackProtocols.AppInfo(id: "app-1", name: "App One", bundleId: "com.one", platform: nil),
+            StackProtocols.AppInfo(id: "app-2", name: "App Two", bundleId: "com.two", platform: nil)
+        ]
+        connection.iconUrls = ["app-1": "https://icons/1.png", "app-2": "https://icons/2.png"]
+        connection.versions = [
+            "app-1": [makeVersion(id: "v1", appId: "app-1", state: .waitingForReview, versionString: "1.0.0")],
+            "app-2": [makeVersion(id: "v2", appId: "app-2", state: .readyForSale, versionString: "2.0.0")]
+        ]
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        let saved1: AppModel? = try await mockStorage.fetch(AppModel.self, id: "\(account.id).app-1")
+        let saved2: AppModel? = try await mockStorage.fetch(AppModel.self, id: "\(account.id).app-2")
+
+        XCTAssertEqual(saved1?.name, "App One")
+        XCTAssertEqual(saved1?.iconUrl, "https://icons/1.png")
+        XCTAssertEqual(saved1?.appStoreState, .waitingForReview)
+        XCTAssertEqual(saved1?.versionString, "1.0.0")
+        XCTAssertTrue(saved1?.hasReviewPending ?? false)
+
+        XCTAssertEqual(saved2?.appStoreState, .readyForSale)
+        XCTAssertEqual(saved2?.versionString, "2.0.0")
+        XCTAssertFalse(saved2?.hasReviewPending ?? true)
+
+        let metadata: SyncMetadata? = try await mockStorage.fetch(
+            SyncMetadata.self, id: "sync.account.\(account.id)"
+        )
+        XCTAssertEqual(metadata?.appsSynced, 2)
+        XCTAssertNil(metadata?.lastError)
+    }
+
+    func testSyncRunsAccountsInParallelAndKeepsTheirDataIsolated() async throws {
+        let accountA = AccountModel(name: "A", providerType: .apple)
+        let accountB = AccountModel(name: "B", providerType: .apple)
+        try await mockStorage.save(accountA, id: accountA.id)
+        try await mockStorage.save(accountB, id: accountB.id)
+        setCredentials(issuerID: "issuer-A", for: accountA)
+        setCredentials(issuerID: "issuer-B", for: accountB)
+
+        let connA = MockAppleAccountSyncing()
+        connA.apps = [StackProtocols.AppInfo(id: "a1", name: "A1", bundleId: "com.a1", platform: nil)]
+        connections["issuer-A"] = connA
+
+        let connB = MockAppleAccountSyncing()
+        connB.apps = [
+            StackProtocols.AppInfo(id: "b1", name: "B1", bundleId: "com.b1", platform: nil),
+            StackProtocols.AppInfo(id: "b2", name: "B2", bundleId: "com.b2", platform: nil)
+        ]
+        connections["issuer-B"] = connB
+
+        await sut.syncAll().value
+
+        let metadataA: SyncMetadata? = try await mockStorage.fetch(
+            SyncMetadata.self, id: "sync.account.\(accountA.id)"
+        )
+        let metadataB: SyncMetadata? = try await mockStorage.fetch(
+            SyncMetadata.self, id: "sync.account.\(accountB.id)"
+        )
+        XCTAssertEqual(metadataA?.appsSynced, 1)
+        XCTAssertEqual(metadataB?.appsSynced, 2)
+
+        XCTAssertEqual(connA.fetchedAppListCount, 1)
+        XCTAssertEqual(connB.fetchedAppListCount, 1)
+    }
+
+    func testArchivedAppsAreNotEnriched() async throws {
+        let account = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(account, id: account.id)
+        setCredentials(issuerID: "issuer-1", for: account)
+
+        // Pre-cache one of the apps as archived.
+        let archivedApp = AppModel(
+            id: "archived-app",
+            name: "Archived",
+            bundleId: "com.archived",
+            accountId: account.id,
+            isArchived: true
+        )
+        try await mockStorage.save(archivedApp, id: "\(account.id).archived-app")
+
+        let connection = MockAppleAccountSyncing()
+        connection.apps = [
+            StackProtocols.AppInfo(id: "archived-app", name: "Archived", bundleId: "com.archived", platform: nil),
+            StackProtocols.AppInfo(id: "active-app", name: "Active", bundleId: "com.active", platform: nil)
+        ]
+        connection.versions = [
+            "active-app": [makeVersion(id: "va", appId: "active-app", state: .readyForSale, versionString: "1.0")]
+        ]
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        XCTAssertFalse(connection.fetchedVersionsForAppIds.contains("archived-app"),
+                       "Archived apps must not trigger version enrichment")
+        XCTAssertTrue(connection.fetchedVersionsForAppIds.contains("active-app"))
+    }
+
+    func testSyncWithNoAppsRecordsZeroAppsSynced() async throws {
+        let account = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(account, id: account.id)
+        setCredentials(issuerID: "issuer-1", for: account)
+
+        let connection = MockAppleAccountSyncing()
+        connection.apps = []
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        let metadata: SyncMetadata? = try await mockStorage.fetch(
+            SyncMetadata.self, id: "sync.account.\(account.id)"
+        )
+        XCTAssertEqual(metadata?.appsSynced, 0)
+        XCTAssertNil(metadata?.lastError)
+    }
+
+    // MARK: - Helpers
+
+    private func setCredentials(issuerID: String, for account: AccountModel) {
+        let creds = AppleCredentials(
+            issuerID: issuerID,
+            privateKeyID: "key-\(issuerID)",
+            privateKey: "pk"
+        )
+        mockKeychain.setObject(creds, forKey: "credentials.\(account.id)")
+    }
+
+    private func makeVersion(
+        id: String,
+        appId: String,
+        state: AppStoreState,
+        versionString: String
+    ) -> AppStoreVersionModel {
+        AppStoreVersionModel(
+            id: id,
+            platform: nil,
+            appStoreState: state,
+            versionString: versionString,
+            appId: appId
+        )
     }
 }

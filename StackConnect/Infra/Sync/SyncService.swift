@@ -19,20 +19,25 @@ struct SyncState: Equatable {
 @MainActor
 final class SyncService: ObservableObject {
 
+    typealias AppleConnectionFactory = (AppleCredentials) -> any AppleAccountSyncing
+
     static let shared = SyncService()
 
     @Published private(set) var state = SyncState()
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
+    private let appleConnectionFactory: AppleConnectionFactory
     private var rootTask: Task<Void, Never>?
 
     init(
         storage: PersistentStorable? = nil,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        appleConnectionFactory: AppleConnectionFactory? = nil
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
+        self.appleConnectionFactory = appleConnectionFactory ?? { AppleAccountConnection(credentials: $0) }
     }
 
     /// Fire-and-forget. Safe to call repeatedly — already-running syncs are coalesced
@@ -74,23 +79,24 @@ final class SyncService: ObservableObject {
             return
         }
 
-        // Snapshot credentials on MainActor — KeyStorable isn't Sendable, but
-        // AppleCredentials is a Codable value type so it's safe to ship across tasks.
-        let prepared: [(AccountModel, AppleCredentials?)] = accounts.map { account in
+        // Build the per-account connections on MainActor (Keychain isn't Sendable).
+        // The connections themselves are Sendable so they're safe to ship to detached work.
+        let prepared: [(AccountModel, (any AppleAccountSyncing)?)] = accounts.map { account in
             let creds: AppleCredentials? = keychain.object(forKey: "credentials.\(account.id)")
-            return (account, creds)
+            let connection = creds.map(appleConnectionFactory)
+            return (account, connection)
         }
 
         Log.print.info("[Sync] Starting parallel sync for \(accounts.count) Apple account(s)")
         let storage = self.storage
 
         await withTaskGroup(of: Void.self) { group in
-            for (account, credentials) in prepared {
+            for (account, connection) in prepared {
                 group.addTask { [weak self] in
                     await self?.markInProgress(account.id, started: true)
                     await SyncService.runAccountSync(
                         account: account,
-                        credentials: credentials,
+                        connection: connection,
                         storage: storage
                     )
                     await self?.markInProgress(account.id, started: false)
@@ -116,16 +122,14 @@ final class SyncService: ObservableObject {
 
     private nonisolated static func runAccountSync(
         account: AccountModel,
-        credentials: AppleCredentials?,
+        connection: (any AppleAccountSyncing)?,
         storage: PersistentStorable
     ) async {
-        guard let credentials else {
+        guard let connection else {
             Log.print.error("[Sync] No credentials for \(account.name)")
             await saveMetadata(storage: storage, accountId: account.id, appsSynced: 0, error: "Missing credentials")
             return
         }
-
-        let connection = AppleAccountConnection(credentials: credentials)
 
         do {
             let remoteApps = try await connection.fetchApps()
@@ -151,7 +155,10 @@ final class SyncService: ObservableObject {
                 )
             }
 
-            let enriched = await enrichApps(baseApps.filter { !$0.isArchived }, connection: connection)
+            let (enriched, versionIdByAppId) = await enrichApps(
+                baseApps.filter { !$0.isArchived },
+                connection: connection
+            )
             let enrichedMap = Dictionary(uniqueKeysWithValues: enriched.map { ($0.id, $0) })
             let finalApps = baseApps.map { enrichedMap[$0.id] ?? $0 }
 
@@ -163,13 +170,28 @@ final class SyncService: ObservableObject {
                 }
             }
 
+            let activeApps = finalApps.filter { !$0.isArchived }
+            async let reviewsTask = syncReviews(
+                for: activeApps,
+                connection: connection,
+                storage: storage
+            )
+            async let phasedTask = syncPhased(
+                for: activeApps,
+                versionIdByAppId: versionIdByAppId,
+                connection: connection,
+                storage: storage
+            )
+            let reviewsSaved = await reviewsTask
+            let phasedSaved = await phasedTask
+
             await saveMetadata(
                 storage: storage,
                 accountId: account.id,
                 appsSynced: finalApps.count,
                 error: nil
             )
-            Log.print.info("[Sync] \(account.name): \(finalApps.count) apps synced")
+            Log.print.info("[Sync] \(account.name): \(finalApps.count) apps, \(reviewsSaved) reviews, \(phasedSaved) phased")
         } catch {
             await saveMetadata(
                 storage: storage,
@@ -187,12 +209,13 @@ final class SyncService: ObservableObject {
         let appStoreState: AppStoreState?
         let versionString: String?
         let lastModifiedDate: Date?
+        let currentVersionId: String?
     }
 
     private nonisolated static func enrichApps(
         _ apps: [AppModel],
-        connection: AppleAccountConnection
-    ) async -> [AppModel] {
+        connection: any AppleAccountSyncing
+    ) async -> (enriched: [AppModel], versionIdByAppId: [String: String]) {
         let enrichments = await withTaskGroup(of: AppEnrichment.self) { group in
             for app in apps {
                 let appId = app.id
@@ -207,7 +230,8 @@ final class SyncService: ObservableObject {
                         iconUrl: icon,
                         appStoreState: latest?.appStoreState,
                         versionString: latest?.versionString,
-                        lastModifiedDate: latest?.createdDate
+                        lastModifiedDate: latest?.createdDate,
+                        currentVersionId: latest?.id
                     )
                 }
             }
@@ -217,7 +241,7 @@ final class SyncService: ObservableObject {
         }
 
         let map = Dictionary(uniqueKeysWithValues: enrichments.map { ($0.appId, $0) })
-        return apps.map { app in
+        let enrichedApps = apps.map { app -> AppModel in
             var updated = app
             if let e = map[app.id] {
                 if let url = e.iconUrl { updated.iconUrl = url }
@@ -228,6 +252,110 @@ final class SyncService: ObservableObject {
             }
             return updated
         }
+        let versionIds = Dictionary(uniqueKeysWithValues:
+            enrichments.compactMap { e -> (String, String)? in
+                guard let id = e.currentVersionId else { return nil }
+                return (e.appId, id)
+            }
+        )
+        return (enrichedApps, versionIds)
+    }
+
+    private nonisolated static func syncReviews(
+        for apps: [AppModel],
+        connection: any AppleAccountSyncing,
+        storage: PersistentStorable
+    ) async -> Int {
+        let maxConcurrent = 5
+        let reviewsPerApp = 10
+        guard !apps.isEmpty else { return 0 }
+
+        var totalSaved = 0
+        var index = 0
+
+        await withTaskGroup(of: Int.self) { group in
+            func enqueueNext() {
+                guard index < apps.count else { return }
+                let app = apps[index]
+                index += 1
+                group.addTask {
+                    await fetchAndPersistReviews(
+                        for: app,
+                        limit: reviewsPerApp,
+                        connection: connection,
+                        storage: storage
+                    )
+                }
+            }
+
+            for _ in 0..<min(maxConcurrent, apps.count) { enqueueNext() }
+            while let saved = await group.next() {
+                totalSaved += saved
+                enqueueNext()
+            }
+        }
+
+        return totalSaved
+    }
+
+    private nonisolated static func fetchAndPersistReviews(
+        for app: AppModel,
+        limit: Int,
+        connection: any AppleAccountSyncing,
+        storage: PersistentStorable
+    ) async -> Int {
+        do {
+            let reviews = try await connection.fetchRecentReviews(appId: app.id, limit: limit)
+            var saved = 0
+            for var review in reviews {
+                review.appId = app.id
+                do {
+                    try await storage.save(review, id: "review.\(app.id).\(review.id)")
+                    saved += 1
+                } catch {
+                    Log.print.error("[Sync] Save review failed for \(app.name): \(error.localizedDescription)")
+                }
+            }
+            return saved
+        } catch {
+            Log.print.error("[Sync] Fetch reviews failed for \(app.name): \(error.localizedDescription)")
+            return 0
+        }
+    }
+
+    private nonisolated static func syncPhased(
+        for apps: [AppModel],
+        versionIdByAppId: [String: String],
+        connection: any AppleAccountSyncing,
+        storage: PersistentStorable
+    ) async -> Int {
+        let candidates = apps.filter { app in
+            guard let state = app.appStoreState else { return false }
+            return state == .pendingDeveloperRelease || state == .readyForSale
+        }
+        guard !candidates.isEmpty else { return 0 }
+
+        var saved = 0
+        await withTaskGroup(of: Bool.self) { group in
+            for app in candidates {
+                guard let versionId = versionIdByAppId[app.id] else { continue }
+                group.addTask {
+                    do {
+                        if let phased = try await connection.fetchPhasedRelease(versionId: versionId) {
+                            try await storage.save(phased, id: "phased.\(app.id)")
+                            return true
+                        }
+                    } catch {
+                        Log.print.error("[Sync] Phased release failed for \(app.name): \(error.localizedDescription)")
+                    }
+                    return false
+                }
+            }
+            while let result = await group.next() {
+                if result { saved += 1 }
+            }
+        }
+        return saved
     }
 
     private nonisolated static func saveMetadata(

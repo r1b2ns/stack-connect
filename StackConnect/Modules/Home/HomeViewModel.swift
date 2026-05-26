@@ -18,6 +18,7 @@ struct HomeUiState {
     var accountsMap: [String: AccountModel] = [:]
     var inReviewApps: [AppModel] = []
     var awaitingReleaseApps: [AppModel] = []
+    var phasedByAppId: [String: PhasedReleaseModel] = [:]
     var recentReviews: [HomeRecentReview] = []
     var isLoading = false
     var syncState = SyncState()
@@ -86,12 +87,14 @@ final class HomeViewModel: HomeViewModelProtocol {
             return
         }
 
+        let phasedByAppId = await loadPhasedReleases(for: allApps)
         let active = allApps.filter { !$0.isArchived }
-        let (inReview, awaitingRelease) = Self.categorize(active)
+        let (inReview, awaitingRelease) = Self.categorize(active, phasedByAppId: phasedByAppId)
 
+        uiState.phasedByAppId = phasedByAppId
         uiState.inReviewApps = inReview.sorted(by: Self.sortByRecency)
         uiState.awaitingReleaseApps = awaitingRelease.sorted(by: Self.sortByRecency)
-        uiState.recentReviews = []
+        uiState.recentReviews = await loadRecentReviews(apps: allApps)
     }
 
     // MARK: - Private
@@ -110,7 +113,10 @@ final class HomeViewModel: HomeViewModelProtocol {
         }
     }
 
-    private static func categorize(_ apps: [AppModel]) -> (inReview: [AppModel], awaitingRelease: [AppModel]) {
+    private static func categorize(
+        _ apps: [AppModel],
+        phasedByAppId: [String: PhasedReleaseModel]
+    ) -> (inReview: [AppModel], awaitingRelease: [AppModel]) {
         var inReview: [AppModel] = []
         var awaiting: [AppModel] = []
         for app in apps {
@@ -122,11 +128,47 @@ final class HomeViewModel: HomeViewModelProtocol {
                 inReview.append(app)
             case .pendingDeveloperRelease:
                 awaiting.append(app)
+            case .readyForSale:
+                // Include in "Awaiting Release" only while phased rollout is in flight.
+                if let phased = phasedByAppId[app.id],
+                   phased.state == .active || phased.state == .paused {
+                    awaiting.append(app)
+                }
             default:
                 break
             }
         }
         return (inReview, awaiting)
+    }
+
+    private func loadPhasedReleases(for apps: [AppModel]) async -> [String: PhasedReleaseModel] {
+        var result: [String: PhasedReleaseModel] = [:]
+        for app in apps {
+            if let phased: PhasedReleaseModel = try? await storage.fetch(PhasedReleaseModel.self, id: "phased.\(app.id)") {
+                result[app.id] = phased
+            }
+        }
+        return result
+    }
+
+    private func loadRecentReviews(apps: [AppModel]) async -> [HomeRecentReview] {
+        let appById = Dictionary(uniqueKeysWithValues: apps.map { ($0.id, $0) })
+        do {
+            let allReviews: [CustomerReviewModel] = try await storage.fetchAll(CustomerReviewModel.self)
+            return allReviews
+                .compactMap { review -> HomeRecentReview? in
+                    guard let appId = review.appId, let app = appById[appId] else { return nil }
+                    return HomeRecentReview(review: review, app: app)
+                }
+                .sorted { (a, b) in
+                    (a.review.createdDate ?? .distantPast) > (b.review.createdDate ?? .distantPast)
+                }
+                .prefix(10)
+                .map { $0 }
+        } catch {
+            Log.print.error("[Home] Failed to load reviews: \(error.localizedDescription)")
+            return []
+        }
     }
 
     private static func sortByRecency(_ a: AppModel, _ b: AppModel) -> Bool {

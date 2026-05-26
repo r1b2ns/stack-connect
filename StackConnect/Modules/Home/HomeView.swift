@@ -155,7 +155,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
                     Button {
                         coordinator.navigateToAppDetail(app, account: accountForApp(app))
                     } label: {
-                        buildAppRow(app)
+                        buildAwaitingReleaseRow(app)
                     }
                     .foregroundStyle(.primary)
                 }
@@ -165,6 +165,36 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
                     title: String(localized: "Awaiting Release"),
                     count: viewModel.uiState.awaitingReleaseApps.count
                 )
+            }
+        }
+    }
+
+    private func buildAwaitingReleaseRow(_ app: AppModel) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            buildAppRow(app)
+            if let phased = viewModel.uiState.phasedByAppId[app.id],
+               phased.state == .active || phased.state == .paused,
+               let day = phased.currentDayNumber {
+                buildPhasedProgress(day: day, total: 7, paused: phased.state == .paused)
+                    .padding(.leading, 56)
+            }
+        }
+    }
+
+    private func buildPhasedProgress(day: Int, total: Int, paused: Bool) -> some View {
+        let progress = Double(min(day, total)) / Double(total)
+        return VStack(alignment: .leading, spacing: 4) {
+            ProgressView(value: progress)
+                .tint(paused ? .orange : .blue)
+            HStack(spacing: 6) {
+                if paused {
+                    Image(systemName: "pause.circle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                }
+                Text(String(localized: "Day \(day) of \(total)"))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -182,8 +212,17 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
                 }
                 .padding(.vertical, 4)
             } else {
-                ForEach(viewModel.uiState.recentReviews) { _ in
-                    EmptyView()
+                ForEach(viewModel.uiState.recentReviews) { item in
+                    Button {
+                        coordinator.navigateToReviewDetail(
+                            review: item.review,
+                            appName: item.app.name,
+                            account: accountForApp(item.app)
+                        )
+                    } label: {
+                        buildReviewRow(item)
+                    }
+                    .foregroundStyle(.primary)
                 }
             }
         } header: {
@@ -192,6 +231,46 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
                 title: String(localized: "Recent Reviews"),
                 count: viewModel.uiState.recentReviews.count
             )
+        }
+    }
+
+    private func buildReviewRow(_ item: HomeRecentReview) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                buildStars(rating: item.review.rating)
+                Text(item.app.name)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if let date = item.review.createdDate {
+                    Text(date, style: .relative)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            if let title = item.review.title, !title.isEmpty {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+            }
+            if let body = item.review.body, !body.isEmpty {
+                Text(body)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func buildStars(rating: Int) -> some View {
+        HStack(spacing: 1) {
+            ForEach(0..<5, id: \.self) { index in
+                Image(systemName: index < rating ? "star.fill" : "star")
+                    .font(.caption2)
+                    .foregroundStyle(.yellow)
+            }
         }
     }
 
