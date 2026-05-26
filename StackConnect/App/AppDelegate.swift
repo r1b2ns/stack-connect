@@ -1,5 +1,6 @@
 import BackgroundTasks
 import UIKit
+import UserNotifications
 #if DEBUG
 import netfox
 #endif
@@ -19,6 +20,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         #if DEBUG
         NFX.sharedInstance().start()
         Log.print.info("[App] netfox started")
+        UNUserNotificationCenter.current().delegate = self
         #endif
 
         registerBackgroundRefresh()
@@ -50,14 +52,14 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         request.earliestBeginDate = Date(timeIntervalSinceNow: Self.refreshEarliestInterval)
         do {
             try BGTaskScheduler.shared.submit(request)
-            Log.print.info("[BGTask] Refresh scheduled")
+            Log.print.notice("[BGTask] Refresh scheduled")
         } catch {
             Log.print.error("[BGTask] Failed to schedule refresh: \(error.localizedDescription)")
         }
     }
 
     private static func handle(refreshTask: BGAppRefreshTask) {
-        Log.print.info("[BGTask] Refresh launched")
+        Log.print.notice("[BGTask] Refresh launched")
 
         // Reschedule before doing work so we don't lose the cadence if anything throws.
         Task { @MainActor in
@@ -76,8 +78,23 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         Task {
             await work.value
             let success = !work.isCancelled
-            Log.print.info("[BGTask] Refresh finished (success=\(success))")
+            Log.print.notice("[BGTask] Refresh finished (success=\(success))")
             refreshTask.setTaskCompleted(success: success)
         }
     }
 }
+
+#if DEBUG
+extension AppDelegate: UNUserNotificationCenterDelegate {
+
+    // Show the debug "sync started" notification as a banner AND persist it in Notification Center
+    // even when the app is in foreground (`.list` is what keeps it visible after dismissing the banner).
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .list])
+    }
+}
+#endif

@@ -1,4 +1,7 @@
 import Foundation
+#if DEBUG
+import UserNotifications
+#endif
 
 // MARK: - State
 
@@ -96,7 +99,10 @@ final class SyncService: ObservableObject {
             return (account, connection)
         }
 
-        Log.print.info("[Sync] Starting \(mode == .lightweight ? "lightweight " : "")parallel sync for \(accounts.count) Apple account(s)")
+        Log.print.notice("[Sync] Starting \(mode == .lightweight ? "lightweight " : "")parallel sync for \(accounts.count) Apple account(s)")
+        #if DEBUG
+        await postDebugSyncStartedNotification(mode: mode, accountCount: accounts.count)
+        #endif
         let storage = self.storage
 
         await withTaskGroup(of: Void.self) { group in
@@ -117,8 +123,39 @@ final class SyncService: ObservableObject {
 
         state.lastSyncedAt = .now
         state.isSyncing = false
-        Log.print.info("[Sync] syncAll completed")
+        Log.print.notice("[Sync] syncAll completed")
     }
+
+    #if DEBUG
+    private func postDebugSyncStartedNotification(mode: SyncMode, accountCount: Int) async {
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        let allowed: Bool
+        switch settings.authorizationStatus {
+        case .notDetermined:
+            allowed = (try? await center.requestAuthorization(options: [.alert, .sound])) == true
+        case .denied:
+            allowed = false
+        case .authorized, .provisional, .ephemeral:
+            allowed = true
+        @unknown default:
+            allowed = false
+        }
+        guard allowed else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = mode == .lightweight ? "Background sync started" : "Sync started"
+        content.body = "Syncing \(accountCount) account\(accountCount == 1 ? "" : "s")"
+        content.sound = nil
+
+        let request = UNNotificationRequest(
+            identifier: "sync.started.\(UUID().uuidString)",
+            content: content,
+            trigger: nil
+        )
+        try? await center.add(request)
+    }
+    #endif
 
     private func markInProgress(_ accountId: String, started: Bool) {
         if started {
@@ -208,7 +245,7 @@ final class SyncService: ObservableObject {
                 error: nil
             )
             let modeLabel = mode == .lightweight ? "lightweight" : "full"
-            Log.print.info("[Sync] \(account.name): \(finalApps.count) apps, \(reviewsSaved) reviews, \(phasedSaved) phased (\(modeLabel))")
+            Log.print.notice("[Sync] \(account.name): \(finalApps.count) apps, \(reviewsSaved) reviews, \(phasedSaved) phased (\(modeLabel))")
         } catch {
             await saveMetadata(
                 storage: storage,
