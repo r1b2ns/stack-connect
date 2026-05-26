@@ -44,12 +44,17 @@ final class VersionListViewModel: VersionListViewModelProtocol {
     }
 
     func loadVersions() async {
+        let versionsLimit = 200
         uiState.isLoading = true
 
         // 1. Load cached
         do {
             let cached: [AppStoreVersionModel] = try await storage.fetchAll(AppStoreVersionModel.self)
-            let filtered = cached.filter { $0.appId == self.uiState.appId && $0.platform == self.uiState.platform }
+            let filtered = cached.filter {
+                $0.appId == self.uiState.appId && $0.platform == self.uiState.platform
+            }.sorted(by: {
+                $0.versionString ?? "" > $1.versionString ?? ""
+            })
             if !filtered.isEmpty {
                 uiState.versions = filtered
                 uiState.isLoading = false
@@ -70,14 +75,17 @@ final class VersionListViewModel: VersionListViewModelProtocol {
             }
 
             let connection = AppleAccountConnection(credentials: credentials)
-            let allVersions = try await connection.fetchAppStoreVersions(appId: uiState.appId, limit: 200)
+            let allVersions = try await connection.fetchAppStoreVersions(appId: uiState.appId, limit: versionsLimit)
             let platformVersions = allVersions.filter { $0.platform == self.uiState.platform }
 
             uiState.versions = platformVersions
 
-            for version in platformVersions {
-                try await storage.save(version, id: "version.\(version.id)")
-            }
+            // Persist in a detached Task so a view dismissal mid-loop (which cancels
+            // `.task`) doesn't truncate the writes. Reconciliation runs at the end.
+            persistSync(
+                versions: platformVersions,
+                hitCap: allVersions.count >= versionsLimit
+            )
 
             Log.print.info("[VersionList] Synced \(platformVersions.count) \(self.uiState.platform.displayName) versions")
 
@@ -88,5 +96,57 @@ final class VersionListViewModel: VersionListViewModelProtocol {
 
         uiState.isLoading = false
         uiState.isSyncing = false
+    }
+
+    // MARK: - Private
+
+    private func persistSync(versions: [AppStoreVersionModel], hitCap: Bool) {
+        let storage = self.storage
+        let appId = uiState.appId
+        let platform = uiState.platform
+
+        Task.detached(priority: .utility) {
+            for version in versions {
+                do {
+                    try await storage.save(version, id: "version.\(version.id)")
+                } catch {
+                    Log.print.error("[VersionList] Failed to persist version \(version.id): \(error.localizedDescription)")
+                }
+            }
+
+            if !hitCap {
+                await Self.pruneStaleVersions(
+                    storage: storage,
+                    appId: appId,
+                    platform: platform,
+                    returned: versions
+                )
+            }
+        }
+    }
+
+    private static func pruneStaleVersions(
+        storage: PersistentStorable,
+        appId: String,
+        platform: AppPlatform,
+        returned: [AppStoreVersionModel]
+    ) async {
+        let returnedIds = Set(returned.map { $0.id })
+        do {
+            let allCached: [AppStoreVersionModel] = try await storage.fetchAll(AppStoreVersionModel.self)
+            let stale = allCached.filter {
+                $0.appId == appId
+                    && $0.platform == platform
+                    && !returnedIds.contains($0.id)
+            }
+            for version in stale {
+                try? await storage.delete(AppStoreVersionModel.self, id: "version.\(version.id)")
+            }
+            if !stale.isEmpty {
+                Log.print.info("[VersionList] Pruned \(stale.count) stale cached \(platform.displayName) versions")
+            }
+        } catch {
+            Log.print.error("[VersionList] Reconciliation failed: \(error.localizedDescription)")
+        }
     }
 }

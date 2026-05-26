@@ -137,10 +137,17 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
     }
 
     func refresh() async {
+        let versionsLimit = 20
+
         // 1. Load cached versions from SwiftData FIRST (offline-first)
         do {
             let cached: [AppStoreVersionModel] = try await storage.fetchAll(AppStoreVersionModel.self)
-            let appVersions = cached.filter { $0.appId == self.uiState.app.id }
+            let appVersions = cached.filter {
+                $0.appId == self.uiState.app.id
+            }.sorted(by: {
+                $0.versionString ?? "" > $1.versionString ?? ""
+            })
+
             if !appVersions.isEmpty {
                 uiState.versions = appVersions
                 Log.print.info("[AppDetail] Loaded \(appVersions.count) cached versions for \(self.uiState.app.name)")
@@ -177,7 +184,7 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             let connection = AppleAccountConnection(credentials: credentials)
 
             // Fetch versions + icon/state + review submissions in parallel
-            async let versionsResult = connection.fetchAppStoreVersions(appId: self.uiState.app.id, limit: 20)
+            async let versionsResult = connection.fetchAppStoreVersions(appId: self.uiState.app.id, limit: versionsLimit)
             async let iconResult = connection.fetchIconUrl(appId: self.uiState.app.id)
             async let stateResult = connection.fetchAppStoreVersion(appId: self.uiState.app.id)
             async let submissionsResult = connection.fetchReviewSubmissions(appId: self.uiState.app.id)
@@ -199,23 +206,9 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
 
             uiState.versions = versions
 
-            // 5. Persist to SwiftData (separate try blocks to ensure partial saves succeed)
-            do {
-                try await storage.save(uiState.app, id: "\(self.uiState.account.id).\(self.uiState.app.id)")
-                Log.print.info("[AppDetail] Persisted app data for \(self.uiState.app.name)")
-            } catch {
-                Log.print.error("[AppDetail] Failed to persist app: \(error.localizedDescription)")
-            }
-
-            for version in versions {
-                do {
-                    try await storage.save(version, id: "version.\(version.id)")
-                } catch {
-                    Log.print.error("[AppDetail] Failed to persist version \(version.id): \(error.localizedDescription)")
-                }
-            }
-
-            Log.print.info("[AppDetail] Synced \(versions.count) versions for \(self.uiState.app.name)")
+            // 5. Persist to SwiftData in a detached Task so a view dismissal mid-loop
+            // (which cancels `.task`) doesn't truncate the writes.
+            persistSync(app: uiState.app, versions: versions, limit: versionsLimit)
 
         } catch {
             uiState.syncError = error.localizedDescription
@@ -384,6 +377,61 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
     }
 
     // MARK: - Private
+
+    private func persistSync(app: AppModel, versions: [AppStoreVersionModel], limit: Int) {
+        let storage = self.storage
+        let accountId = uiState.account.id
+        let appName = app.name
+        let appKey = "\(accountId).\(app.id)"
+        let appId = app.id
+
+        Task.detached(priority: .utility) {
+            do {
+                try await storage.save(app, id: appKey)
+                Log.print.info("[AppDetail] Persisted app data for \(appName)")
+            } catch {
+                Log.print.error("[AppDetail] Failed to persist app: \(error.localizedDescription)")
+            }
+
+            for version in versions {
+                do {
+                    try await storage.save(version, id: "version.\(version.id)")
+                } catch {
+                    Log.print.error("[AppDetail] Failed to persist version \(version.id): \(error.localizedDescription)")
+                }
+            }
+
+            // Reconcile: drop cached versions that no longer exist remotely.
+            // Only safe when the API didn't hit the cap — otherwise older versions
+            // we didn't fetch would be wrongly deleted.
+            if versions.count < limit {
+                await Self.pruneStaleVersions(storage: storage, appId: appId, appName: appName, returned: versions)
+            }
+
+            Log.print.info("[AppDetail] Synced \(versions.count) versions for \(appName)")
+        }
+    }
+
+    private static func pruneStaleVersions(
+        storage: PersistentStorable,
+        appId: String,
+        appName: String,
+        returned: [AppStoreVersionModel]
+    ) async {
+        let returnedIds = Set(returned.map { $0.id })
+        do {
+            let allCached: [AppStoreVersionModel] = try await storage.fetchAll(AppStoreVersionModel.self)
+            let stale = allCached.filter { $0.appId == appId && !returnedIds.contains($0.id) }
+            for version in stale {
+                try? await storage.delete(AppStoreVersionModel.self, id: "version.\(version.id)")
+            }
+            if !stale.isEmpty {
+                Log.print.info("[AppDetail] Pruned \(stale.count) stale cached versions for \(appName)")
+            }
+        } catch {
+            Log.print.error("[AppDetail] Reconciliation failed: \(error.localizedDescription)")
+        }
+    }
 
     private func createConnection() -> AppleAccountConnection? {
         guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else {
