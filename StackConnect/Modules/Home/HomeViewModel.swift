@@ -20,6 +20,7 @@ struct HomeUiState {
     var awaitingReleaseApps: [AppModel] = []
     var phasedByAppId: [String: PhasedReleaseModel] = [:]
     var recentReviews: [HomeRecentReview] = []
+    var widgets: [any HomeWidget] = []
     var isLoading = false
     var syncState = SyncState()
 }
@@ -39,17 +40,24 @@ final class HomeViewModel: HomeViewModelProtocol {
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
+    private let preferences: KeyStorable
     private let syncService: SyncService
     private var cancellables = Set<AnyCancellable>()
+
+    private static let widgetsStorageKey = "home.widget.configurations"
 
     init(
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
+        preferences: KeyStorable = UserDefaultsStorable(),
         syncService: SyncService = .shared
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
+        self.preferences = preferences
         self.syncService = syncService
+
+        loadWidgetConfigurations()
 
         syncService.$state
             .receive(on: DispatchQueue.main)
@@ -89,12 +97,30 @@ final class HomeViewModel: HomeViewModelProtocol {
 
         let phasedByAppId = await loadPhasedReleases(for: allApps)
         let active = allApps.filter { !$0.isArchived }
-        let (inReview, awaitingRelease) = Self.categorize(active, phasedByAppId: phasedByAppId)
+        let (inReview, awaitingRelease) = AppStatusCategorizer.categorize(active, phasedByAppId: phasedByAppId)
 
         uiState.phasedByAppId = phasedByAppId
         uiState.inReviewApps = inReview.sorted(by: Self.sortByRecency)
         uiState.awaitingReleaseApps = awaitingRelease.sorted(by: Self.sortByRecency)
         uiState.recentReviews = await loadRecentReviews(apps: allApps)
+
+        await reloadWidgets()
+    }
+
+    // MARK: - Widgets
+
+    private func loadWidgetConfigurations() {
+        let configurations: [HomeWidgetConfiguration] = preferences.object(forKey: Self.widgetsStorageKey)
+            ?? HomeWidgetRegistry.defaultConfigurations
+        uiState.widgets = configurations.map { config in
+            HomeWidgetRegistry.make(for: config, storage: storage)
+        }
+    }
+
+    private func reloadWidgets() async {
+        for widget in uiState.widgets {
+            await widget.load()
+        }
     }
 
     // MARK: - Private
@@ -111,34 +137,6 @@ final class HomeViewModel: HomeViewModelProtocol {
         } catch {
             Log.print.error("[Home] Failed to load accounts: \(error.localizedDescription)")
         }
-    }
-
-    private static func categorize(
-        _ apps: [AppModel],
-        phasedByAppId: [String: PhasedReleaseModel]
-    ) -> (inReview: [AppModel], awaitingRelease: [AppModel]) {
-        var inReview: [AppModel] = []
-        var awaiting: [AppModel] = []
-        for app in apps {
-            guard let state = app.appStoreState else { continue }
-            switch state {
-            case .waitingForReview, .inReview, .readyForReview,
-                 .pendingAppleRelease, .processingForAppStore,
-                 .rejected, .metadataRejected, .invalidBinary:
-                inReview.append(app)
-            case .pendingDeveloperRelease:
-                awaiting.append(app)
-            case .readyForSale:
-                // Include in "Awaiting Release" only while phased rollout is in flight.
-                if let phased = phasedByAppId[app.id],
-                   phased.state == .active || phased.state == .paused {
-                    awaiting.append(app)
-                }
-            default:
-                break
-            }
-        }
-        return (inReview, awaiting)
     }
 
     private func loadPhasedReleases(for apps: [AppModel]) async -> [String: PhasedReleaseModel] {

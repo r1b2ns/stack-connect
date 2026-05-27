@@ -37,6 +37,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
         NavigationStack(path: $coordinator.path) {
             List {
                 buildSyncBanner()
+                buildWidgetsSection()
                 buildInReviewSection()
                 buildAwaitingReleaseSection()
                 buildRecentReviewsSection()
@@ -78,6 +79,22 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
             return String(localized: "Syncing \(count) account(s)…")
         }
         return String(localized: "Syncing…")
+    }
+
+    // MARK: - Widgets Section
+
+    @ViewBuilder
+    private func buildWidgetsSection() -> some View {
+        if !viewModel.uiState.widgets.isEmpty {
+            Section {
+                ForEach(viewModel.uiState.widgets, id: \.id) { widget in
+                    HomeWidgetContainerView(widget: widget)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                        .listRowSeparator(.hidden)
+                }
+            }
+            .listRowBackground(Color.clear)
+        }
     }
 
     // MARK: - Accounts Section
