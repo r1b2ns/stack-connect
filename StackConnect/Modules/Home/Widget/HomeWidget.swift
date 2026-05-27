@@ -2,8 +2,38 @@ import SwiftUI
 
 // MARK: - Kind
 
-enum HomeWidgetKind: String, Codable, CaseIterable, Hashable {
+enum HomeWidgetKind: String, Codable, CaseIterable, Hashable, Identifiable {
     case appStoreReviewCount
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .appStoreReviewCount:
+            return String(localized: "App Store Activity")
+        }
+    }
+
+    var summary: String {
+        switch self {
+        case .appStoreReviewCount:
+            return String(localized: "Apps currently in review or rolling out")
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .appStoreReviewCount:
+            return "app.badge.fill"
+        }
+    }
+
+    var tintColor: Color {
+        switch self {
+        case .appStoreReviewCount:
+            return .blue
+        }
+    }
 }
 
 // MARK: - Size
@@ -30,7 +60,7 @@ struct HomeWidgetConfiguration: Identifiable, Codable, Hashable {
 // MARK: - Protocol
 
 @MainActor
-protocol HomeWidget: AnyObject, Identifiable {
+protocol HomeWidget: AnyObject {
     static var kind: HomeWidgetKind { get }
     var configuration: HomeWidgetConfiguration { get }
     var isLoading: Bool { get }

@@ -9,6 +9,10 @@ protocol HomeViewModelProtocol: ObservableObject {
     func loadDashboard() async
     func triggerSync()
     func refresh() async
+    func addWidget(_ kind: HomeWidgetKind)
+    func removeWidget(id: UUID)
+    func moveWidgets(from source: IndexSet, to destination: Int)
+    func availableWidgetKinds() -> [HomeWidgetKind]
 }
 
 // MARK: - UiState
@@ -109,12 +113,41 @@ final class HomeViewModel: HomeViewModelProtocol {
 
     // MARK: - Widgets
 
+    func addWidget(_ kind: HomeWidgetKind) {
+        guard !uiState.widgets.contains(where: { $0.kind == kind }) else { return }
+        let config = HomeWidgetConfiguration(kind: kind)
+        let widget = HomeWidgetRegistry.make(for: config, storage: storage)
+        uiState.widgets.append(widget)
+        saveWidgetConfigurations()
+        Task { await widget.load() }
+    }
+
+    func removeWidget(id: UUID) {
+        uiState.widgets.removeAll { $0.id == id }
+        saveWidgetConfigurations()
+    }
+
+    func moveWidgets(from source: IndexSet, to destination: Int) {
+        uiState.widgets.move(fromOffsets: source, toOffset: destination)
+        saveWidgetConfigurations()
+    }
+
+    func availableWidgetKinds() -> [HomeWidgetKind] {
+        let active = Set(uiState.widgets.map { $0.kind })
+        return HomeWidgetKind.allCases.filter { !active.contains($0) }
+    }
+
     private func loadWidgetConfigurations() {
         let configurations: [HomeWidgetConfiguration] = preferences.object(forKey: Self.widgetsStorageKey)
             ?? HomeWidgetRegistry.defaultConfigurations
         uiState.widgets = configurations.map { config in
             HomeWidgetRegistry.make(for: config, storage: storage)
         }
+    }
+
+    private func saveWidgetConfigurations() {
+        let configurations = uiState.widgets.map { $0.configuration }
+        preferences.setObject(configurations, forKey: Self.widgetsStorageKey)
     }
 
     private func reloadWidgets() async {

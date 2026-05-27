@@ -27,6 +27,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var coordinator: HomeCoordinator
+    @State private var isCustomizingWidgets = false
 
     private let columns = [
         GridItem(.flexible(), spacing: 16),
@@ -45,11 +46,29 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
             }
             .navigationTitle("StackConnect")
             .navigationDestinations()
+            .toolbar { buildToolbar() }
             .refreshable { await viewModel.refresh() }
             .task {
                 viewModel.triggerSync()
                 await viewModel.loadDashboard()
             }
+            .sheet(isPresented: $isCustomizingWidgets) {
+                CustomizeWidgetsView(viewModel: viewModel)
+            }
+        }
+    }
+
+    // MARK: - Toolbar
+
+    @ToolbarContentBuilder
+    private func buildToolbar() -> some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                isCustomizingWidgets = true
+            } label: {
+                Image(systemName: "square.grid.2x2")
+            }
+            .accessibilityLabel(String(localized: "Customize Widgets"))
         }
     }
 
