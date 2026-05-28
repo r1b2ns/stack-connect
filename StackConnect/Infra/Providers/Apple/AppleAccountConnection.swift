@@ -2706,6 +2706,96 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         return models
     }
 
+    struct CreatedProfile {
+        let profile: ProvisioningProfileModel
+        let content: String?
+    }
+
+    func createProfile(
+        name: String,
+        profileTypeRaw: String,
+        bundleIdId: String,
+        certificateIds: [String],
+        deviceIds: [String]
+    ) async throws -> CreatedProfile {
+        guard let provider else {
+            try await validateCredentials()
+            return try await createProfile(
+                name: name,
+                profileTypeRaw: profileTypeRaw,
+                bundleIdId: bundleIdId,
+                certificateIds: certificateIds,
+                deviceIds: deviceIds
+            )
+        }
+
+        guard let typeEnum = ProfileCreateRequest.Data.Attributes.ProfileType(rawValue: profileTypeRaw) else {
+            throw NSError(domain: "Profiles", code: 400, userInfo: [NSLocalizedDescriptionKey: "Unsupported profile type: \(profileTypeRaw)"])
+        }
+
+        let devicesRel: ProfileCreateRequest.Data.Relationships.Devices? = deviceIds.isEmpty
+            ? nil
+            : .init(data: deviceIds.map { .init(type: .devices, id: $0) })
+
+        let body = ProfileCreateRequest(
+            data: .init(
+                type: .profiles,
+                attributes: .init(name: name, profileType: typeEnum),
+                relationships: .init(
+                    bundleID: .init(data: .init(type: .bundleIDs, id: bundleIdId)),
+                    devices: devicesRel,
+                    certificates: .init(data: certificateIds.map { .init(type: .certificates, id: $0) })
+                )
+            )
+        )
+
+        let endpoint = APIEndpoint.v1.profiles.post(body)
+        let response = try await provider.request(endpoint)
+        let profile = response.data
+
+        let model = ProvisioningProfileModel(
+            id: profile.id,
+            name: profile.attributes?.name ?? name,
+            profileType: profile.attributes?.profileType?.rawValue ?? profileTypeRaw,
+            profileState: profile.attributes?.profileState?.rawValue ?? "ACTIVE",
+            platform: profile.attributes?.platform?.rawValue,
+            uuid: profile.attributes?.uuid,
+            bundleId: nil,
+            createdDate: profile.attributes?.createdDate,
+            expirationDate: profile.attributes?.expirationDate
+        )
+
+        Log.print.info("[Apple] Created profile \(model.id) (\(profileTypeRaw))")
+        return CreatedProfile(profile: model, content: profile.attributes?.profileContent)
+    }
+
+    func deleteProfile(id: String) async throws {
+        guard let provider else {
+            try await validateCredentials()
+            return try await deleteProfile(id: id)
+        }
+
+        let endpoint = APIEndpoint.v1.profiles.id(id).delete
+        _ = try await provider.request(endpoint)
+        Log.print.info("[Apple] Deleted profile \(id)")
+    }
+
+    func fetchProfileContent(id: String) async throws -> String? {
+        guard let provider else {
+            try await validateCredentials()
+            return try await fetchProfileContent(id: id)
+        }
+
+        let endpoint = APIEndpoint
+            .v1
+            .profiles
+            .id(id)
+            .get(parameters: .init(fieldsProfiles: [.profileContent, .name, .profileType, .platform, .profileState, .uuid, .createdDate, .expirationDate]))
+
+        let response = try await provider.request(endpoint)
+        return response.data.attributes?.profileContent
+    }
+
     // MARK: - Private
 
     static func formatCategoryId(_ id: String) -> String {

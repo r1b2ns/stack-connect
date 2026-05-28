@@ -51,6 +51,30 @@ enum AppleAPIErrorTranslator {
             return String(localized: "Game Center is required for this Bundle ID and cannot be removed.")
         }
 
+        // Profile-creation mismatch: selected certs/devices don't match the profile type.
+        if lower.contains("no current certificates") && lower.contains("compatible with") {
+            let profileType = extractTrailingProfileType(from: detail)
+            if let profileType {
+                return String(localized: "None of the selected certificates are compatible with \(profileType) profiles. Pick a development certificate for development profiles, or a distribution certificate otherwise — and make sure the platform matches (iOS certs for iOS/tvOS/Mac Catalyst, Mac certs for macOS).")
+            }
+            return String(localized: "None of the selected certificates are compatible with this profile type. Pick a development certificate for development profiles, or a distribution certificate otherwise.")
+        }
+        if lower.contains("no current devices") && lower.contains("compatible with") {
+            return String(localized: "None of the selected devices are compatible with this profile type. Make sure they match the profile's platform (iOS devices for iOS profiles, Mac devices for macOS).")
+        }
+        if lower.contains("must have at least one device") {
+            return String(localized: "Development and Ad Hoc profiles must include at least one device.")
+        }
+        if lower.contains("must have at least one certificate") {
+            return String(localized: "Profiles must include at least one certificate.")
+        }
+        if lower.contains("bundle id") && lower.contains("does not match") {
+            return String(localized: "The selected Bundle ID's platform does not match the profile type you chose.")
+        }
+        if lower.contains("name") && lower.contains("already") && lower.contains("exists") {
+            return String(localized: "A profile with this name already exists. Pick a different name.")
+        }
+
         switch code {
         case "FORBIDDEN_ERROR":
             return String(localized: "Apple refused this change for security reasons. The operation may only be available on developer.apple.com.")
@@ -110,5 +134,42 @@ enum AppleAPIErrorTranslator {
             return nil
         }
         return String(detail[range])
+    }
+
+    /// Pulls a raw profile type identifier (e.g. `IOS_APP_DEVELOPMENT`) from a sentence and
+    /// returns a friendlier display name.
+    private static func extractTrailingProfileType(from detail: String) -> String? {
+        let pattern = #"compatible with ([A-Z_]+) profiles"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: detail, range: NSRange(detail.startIndex..., in: detail)),
+              let range = Range(match.range(at: 1), in: detail) else {
+            return nil
+        }
+        let raw = String(detail[range])
+        return prettifyProfileType(raw)
+    }
+
+    private static func prettifyProfileType(_ raw: String) -> String {
+        switch raw {
+        case "IOS_APP_DEVELOPMENT":          return "iOS App Development"
+        case "IOS_APP_STORE":                return "iOS App Store"
+        case "IOS_APP_ADHOC":                return "iOS Ad Hoc"
+        case "IOS_APP_INHOUSE":              return "iOS In-House"
+        case "MAC_APP_DEVELOPMENT":          return "Mac Development"
+        case "MAC_APP_STORE":                return "Mac App Store"
+        case "MAC_APP_DIRECT":               return "Mac Direct"
+        case "TVOS_APP_DEVELOPMENT":         return "tvOS App Development"
+        case "TVOS_APP_STORE":               return "tvOS App Store"
+        case "TVOS_APP_ADHOC":               return "tvOS Ad Hoc"
+        case "TVOS_APP_INHOUSE":             return "tvOS In-House"
+        case "MAC_CATALYST_APP_DEVELOPMENT": return "Mac Catalyst Development"
+        case "MAC_CATALYST_APP_STORE":       return "Mac Catalyst App Store"
+        case "MAC_CATALYST_APP_DIRECT":      return "Mac Catalyst Direct"
+        default:
+            return raw
+                .split(separator: "_")
+                .map { $0.capitalized }
+                .joined(separator: " ")
+        }
     }
 }

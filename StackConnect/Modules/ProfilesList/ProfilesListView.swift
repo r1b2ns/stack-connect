@@ -30,6 +30,7 @@ private struct ProfilesListEntry: View {
 struct ProfilesListView<ViewModel: ProfilesListViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
+    @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
     var body: some View {
         buildContent()
@@ -40,8 +41,28 @@ struct ProfilesListView<ViewModel: ProfilesListViewModelProtocol>: View {
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search profiles")
             )
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        homeCoordinator.navigateToCreateProfile(viewModel.uiState.account)
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel(String(localized: "New Profile"))
+                }
+            }
             .task { await viewModel.load() }
             .refreshable { await viewModel.load() }
+            .onReceive(NotificationCenter.default.publisher(for: .profileCreated)) { notification in
+                if let profile = notification.object as? ProvisioningProfileModel {
+                    viewModel.insertProfile(profile)
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .profileDeleted)) { notification in
+                if let id = notification.object as? String {
+                    viewModel.removeProfile(id: id)
+                }
+            }
     }
 
     // MARK: - Content
@@ -83,7 +104,15 @@ struct ProfilesListView<ViewModel: ProfilesListViewModelProtocol>: View {
             ForEach(viewModel.uiState.groupedByType, id: \.type) { group in
                 Section {
                     ForEach(group.items) { profile in
-                        buildRow(profile)
+                        Button {
+                            homeCoordinator.navigateToProfileDetail(
+                                profile: profile,
+                                account: viewModel.uiState.account
+                            )
+                        } label: {
+                            buildRow(profile)
+                        }
+                        .foregroundStyle(.primary)
                     }
                 } header: {
                     Text(group.type)
@@ -131,6 +160,10 @@ struct ProfilesListView<ViewModel: ProfilesListViewModelProtocol>: View {
             }
 
             Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 2)
     }
