@@ -221,6 +221,8 @@ private extension View {
                 AccountManagementViewFactory.build(account: account)
             case .certificatesList(let account):
                 CertificatesListViewFactory.build(account: account)
+            case .createCertificate(let account):
+                CreateCertificateViewFactory.build(account: account)
             case .certificateDetail(let certificate, let account):
                 CertificateDetailViewFactory.build(account: account, certificate: certificate)
             case .profilesList(let account):

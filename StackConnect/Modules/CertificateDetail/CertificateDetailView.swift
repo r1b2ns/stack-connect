@@ -71,18 +71,17 @@ struct CertificateDetailView<ViewModel: CertificateDetailViewModelProtocol>: Vie
         .sheet(item: $shareItem) { item in
             ShareSheet(activityItems: [item.url])
         }
-        .confirmationDialog(
+        .alert(
             String(localized: "Revoke this certificate?"),
-            isPresented: $showRevokeConfirmation,
-            titleVisibility: .visible
+            isPresented: $showRevokeConfirmation
         ) {
+            Button(String(localized: "Cancel"), role: .cancel) {}
             Button(String(localized: "Revoke"), role: .destructive) {
                 Task {
                     let success = await viewModel.revoke()
                     if success { dismiss() }
                 }
             }
-            Button(String(localized: "Cancel"), role: .cancel) {}
         } message: {
             Text(String(localized: "This action cannot be undone."))
         }

@@ -7,6 +7,7 @@ enum HomeRoute: Hashable {
     case accountSettings(AccountModel)
     case accountManagement(AccountModel)
     case certificatesList(AccountModel)
+    case createCertificate(AccountModel)
     case certificateDetail(certificate: CertificateModel, account: AccountModel)
     case profilesList(AccountModel)
     case accountsList(ProviderType)
@@ -76,6 +77,10 @@ final class HomeCoordinator: MainCoordinatorProtocol {
 
     func navigateToCertificateDetail(certificate: CertificateModel, account: AccountModel) {
         path.append(HomeRoute.certificateDetail(certificate: certificate, account: account))
+    }
+
+    func navigateToCreateCertificate(_ account: AccountModel) {
+        path.append(HomeRoute.createCertificate(account))
     }
 
     func navigateToProfilesList(_ account: AccountModel) {

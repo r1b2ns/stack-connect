@@ -41,11 +41,26 @@ struct CertificatesListView<ViewModel: CertificatesListViewModelProtocol>: View 
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search certificates")
             )
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        homeCoordinator.navigateToCreateCertificate(viewModel.uiState.account)
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel(String(localized: "New Certificate"))
+                }
+            }
             .task { await viewModel.load() }
             .refreshable { await viewModel.load() }
             .onReceive(NotificationCenter.default.publisher(for: .certificateRevoked)) { notification in
                 if let id = notification.object as? String {
                     viewModel.removeCertificate(id: id)
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .certificateCreated)) { notification in
+                if let cert = notification.object as? CertificateModel {
+                    viewModel.insertCertificate(cert)
                 }
             }
     }

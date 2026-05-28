@@ -2317,6 +2317,73 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         return response.data.attributes?.certificateContent
     }
 
+    struct CreatedCertificate {
+        let certificate: CertificateModel
+        let content: String?
+    }
+
+    func createCertificate(
+        csrContent: String,
+        certificateTypeRaw: String,
+        passTypeId: String? = nil,
+        merchantId: String? = nil
+    ) async throws -> CreatedCertificate {
+        guard let provider else {
+            try await validateCredentials()
+            return try await createCertificate(
+                csrContent: csrContent,
+                certificateTypeRaw: certificateTypeRaw,
+                passTypeId: passTypeId,
+                merchantId: merchantId
+            )
+        }
+
+        guard let typeEnum = CertificateType(rawValue: certificateTypeRaw) else {
+            throw NSError(
+                domain: "Certificates",
+                code: 400,
+                userInfo: [NSLocalizedDescriptionKey: "Unsupported certificate type: \(certificateTypeRaw)"]
+            )
+        }
+
+        var relationships: CertificateCreateRequest.Data.Relationships?
+        if let passTypeId, !passTypeId.isEmpty {
+            relationships = .init(
+                passTypeID: .init(data: .init(type: .passTypeIDs, id: passTypeId))
+            )
+        } else if let merchantId, !merchantId.isEmpty {
+            relationships = .init(
+                merchantID: .init(data: .init(type: .merchantIDs, id: merchantId))
+            )
+        }
+
+        let body = CertificateCreateRequest(
+            data: .init(
+                type: .certificates,
+                attributes: .init(csrContent: csrContent, certificateType: typeEnum),
+                relationships: relationships
+            )
+        )
+
+        let endpoint = APIEndpoint.v1.certificates.post(body)
+        let response = try await provider.request(endpoint)
+        let cert = response.data
+
+        let model = CertificateModel(
+            id: cert.id,
+            displayName: cert.attributes?.displayName ?? cert.attributes?.name ?? "",
+            name: cert.attributes?.name ?? "",
+            certificateType: cert.attributes?.certificateType?.rawValue ?? certificateTypeRaw,
+            platform: cert.attributes?.platform?.rawValue,
+            serialNumber: cert.attributes?.serialNumber,
+            expirationDate: cert.attributes?.expirationDate,
+            isActivated: cert.attributes?.isActivated ?? false
+        )
+
+        Log.print.info("[Apple] Created certificate \(model.id) (\(certificateTypeRaw))")
+        return CreatedCertificate(certificate: model, content: cert.attributes?.certificateContent)
+    }
+
     func revokeCertificate(id: String) async throws {
         guard let provider else {
             try await validateCredentials()
