@@ -94,9 +94,9 @@ private struct AppListEntry: View {
                 switch selectedTab {
                 case .apps:
                     Button {
-                        homeCoordinator.navigateToAccountSettings(account)
+                        homeCoordinator.navigateToAccountManagement(account)
                     } label: {
-                        Image(systemName: "square.and.arrow.up")
+                        Image(systemName: "gearshape")
                     }
                 case .usersAndAccess:
                     if account.canAdd(.users) {

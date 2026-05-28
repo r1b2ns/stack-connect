@@ -423,6 +423,12 @@ private extension View {
                 LicenseViewFactory.build()
             case .accountSettings(let account):
                 AccountSettingsViewFactory.build(account: account)
+            case .accountManagement(let account):
+                AccountManagementViewFactory.build(account: account)
+            case .certificatesList(let account):
+                CertificatesListViewFactory.build(account: account)
+            case .profilesList(let account):
+                ProfilesListViewFactory.build(account: account)
             case .accountsList(let providerType):
                 AccountsListViewFactory.build(providerType: providerType)
             case .appList(let account):
