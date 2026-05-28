@@ -87,7 +87,7 @@ struct IdentifiersListView<ViewModel: IdentifiersListViewModelProtocol>: View {
             ContentUnavailableView.search(text: viewModel.uiState.searchQuery)
         } else {
             ContentUnavailableView {
-                Label(String(localized: "No Identifiers"), systemImage: "qrcode")
+                Label(String(localized: "No Identifiers"), systemImage: "ipod.and.applewatch")
             } description: {
                 if let error = viewModel.uiState.errorMessage {
                     Text(error)
@@ -116,7 +116,7 @@ struct IdentifiersListView<ViewModel: IdentifiersListViewModelProtocol>: View {
 
     private func buildRow(_ bundle: BundleIdentifierModel) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: "qrcode")
+            Image(systemName: "ipod.and.applewatch")
                 .font(.title3)
                 .foregroundStyle(.blue)
                 .frame(width: 28)

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Factory
 
@@ -45,20 +46,23 @@ struct IdentifierDetailView<ViewModel: IdentifierDetailViewModelProtocol>: View 
         !editedName.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    /// Show errors from rename / delete / disableCapability actions as a prominent alert.
+    /// While the AddCapability sheet is open, its own inline section handles errors.
+    private var errorAlertBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.uiState.errorMessage != nil && !showAddCapability },
+            set: { newValue in
+                if !newValue { viewModel.uiState.errorMessage = nil }
+            }
+        )
+    }
+
     var body: some View {
         List {
             buildNameSection()
             buildDetailsSection()
             buildCapabilitiesSection()
             buildDangerZoneSection()
-
-            if let error = viewModel.uiState.errorMessage {
-                Section {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                }
-            }
         }
         .navigationTitle(bundle.identifier)
         .navigationBarTitleDisplayMode(.inline)
@@ -79,6 +83,14 @@ struct IdentifierDetailView<ViewModel: IdentifierDetailViewModelProtocol>: View 
             }
         } message: {
             Text(String(localized: "This action cannot be undone."))
+        }
+        .alert(
+            String(localized: "Apple rejected this change"),
+            isPresented: errorAlertBinding
+        ) {
+            Button(String(localized: "OK"), role: .cancel) {}
+        } message: {
+            Text(viewModel.uiState.errorMessage ?? "")
         }
         .sheet(isPresented: $showAddCapability) {
             AddCapabilitySheet(viewModel: viewModel)
@@ -117,12 +129,12 @@ struct IdentifierDetailView<ViewModel: IdentifierDetailViewModelProtocol>: View 
 
     private func buildDetailsSection() -> some View {
         Section {
-            buildRow(label: String(localized: "Bundle ID"), value: bundle.identifier)
-            buildRow(label: String(localized: "Platform"), value: bundle.platformDisplayName)
+            buildCopyableRow(label: String(localized: "Bundle ID"), value: bundle.identifier)
+            buildCopyableRow(label: String(localized: "Platform"), value: bundle.platformDisplayName, copyValue: bundle.platform)
             if let seedId = bundle.seedId {
-                buildRow(label: String(localized: "Seed ID"), value: seedId)
+                buildCopyableRow(label: String(localized: "Seed ID"), value: seedId)
             }
-            buildRow(label: String(localized: "ID"), value: bundle.id)
+            buildCopyableRow(label: String(localized: "ID"), value: bundle.id)
         } header: {
             Text(String(localized: "Details"))
         }
@@ -201,6 +213,28 @@ struct IdentifierDetailView<ViewModel: IdentifierDetailViewModelProtocol>: View 
         }
         .font(.subheadline)
     }
+
+    /// Same row as `buildRow` but with a copy button on the right.
+    /// `copyValue` lets the copied text differ from the display text (e.g. copy the raw platform code instead of the localized label).
+    private func buildCopyableRow(label: String, value: String, copyValue: String? = nil) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(label).foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .multilineTextAlignment(.trailing)
+                .textSelection(.enabled)
+            Button {
+                UIPasteboard.general.string = copyValue ?? value
+            } label: {
+                Image(systemName: "doc.on.doc")
+                    .font(.footnote)
+                    .foregroundStyle(.blue)
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(String(localized: "Copy \(label)"))
+        }
+        .font(.subheadline)
+    }
 }
 
 // MARK: - Add capability sheet
@@ -224,12 +258,7 @@ private struct AddCapabilitySheet<ViewModel: IdentifierDetailViewModelProtocol>:
             List {
                 ForEach(availableEntries) { entry in
                     Button {
-                        Task {
-                            await viewModel.enableCapability(typeRaw: entry.raw)
-                            if viewModel.uiState.errorMessage == nil {
-                                dismiss()
-                            }
-                        }
+                        Task { await viewModel.enableCapability(typeRaw: entry.raw) }
                     } label: {
                         HStack {
                             Text(entry.displayName)
@@ -243,11 +272,20 @@ private struct AddCapabilitySheet<ViewModel: IdentifierDetailViewModelProtocol>:
                             }
                         }
                     }
+                    .disabled(viewModel.uiState.pendingCapabilityType != nil)
                 }
 
                 if availableEntries.isEmpty {
                     Text(String(localized: "All available capabilities are already enabled."))
                         .foregroundStyle(.secondary)
+                }
+
+                if let error = viewModel.uiState.errorMessage {
+                    Section {
+                        Text(error)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
                 }
             }
             .navigationTitle(String(localized: "Add Capability"))

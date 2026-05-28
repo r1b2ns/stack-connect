@@ -74,7 +74,7 @@ final class IdentifierDetailViewModel: IdentifierDetailViewModelProtocol {
         do {
             uiState.capabilities = try await connection.fetchBundleIdCapabilities(bundleId: uiState.bundleId.id)
         } catch {
-            uiState.errorMessage = error.localizedDescription
+            uiState.errorMessage = AppleAPIErrorTranslator.friendlyMessage(for: error)
             Log.print.error("[IdentifierDetail] Load capabilities failed: \(error.localizedDescription)")
         }
 
@@ -102,7 +102,7 @@ final class IdentifierDetailViewModel: IdentifierDetailViewModelProtocol {
             uiState.isRenaming = false
             return true
         } catch {
-            uiState.errorMessage = error.localizedDescription
+            uiState.errorMessage = AppleAPIErrorTranslator.friendlyMessage(for: error)
             Log.print.error("[IdentifierDetail] Rename failed: \(error.localizedDescription)")
             uiState.isRenaming = false
             return false
@@ -121,7 +121,7 @@ final class IdentifierDetailViewModel: IdentifierDetailViewModelProtocol {
             uiState.isDeleting = false
             return true
         } catch {
-            uiState.errorMessage = error.localizedDescription
+            uiState.errorMessage = AppleAPIErrorTranslator.friendlyMessage(for: error)
             Log.print.error("[IdentifierDetail] Delete failed: \(error.localizedDescription)")
             uiState.isDeleting = false
             return false
@@ -141,7 +141,7 @@ final class IdentifierDetailViewModel: IdentifierDetailViewModelProtocol {
             )
             uiState.capabilities.append(cap)
         } catch {
-            uiState.errorMessage = error.localizedDescription
+            uiState.errorMessage = AppleAPIErrorTranslator.friendlyMessage(for: error)
             Log.print.error("[IdentifierDetail] Enable capability failed: \(error.localizedDescription)")
         }
 
@@ -159,7 +159,7 @@ final class IdentifierDetailViewModel: IdentifierDetailViewModelProtocol {
             try await connection.disableCapability(capabilityId: id)
             uiState.capabilities.removeAll { $0.id == id }
         } catch {
-            uiState.errorMessage = error.localizedDescription
+            uiState.errorMessage = AppleAPIErrorTranslator.friendlyMessage(for: error)
             Log.print.error("[IdentifierDetail] Disable capability failed: \(error.localizedDescription)")
         }
 

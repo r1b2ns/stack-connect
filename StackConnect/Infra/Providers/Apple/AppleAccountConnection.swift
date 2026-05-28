@@ -2488,25 +2488,39 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         Log.print.info("[Apple] Deleted bundle identifier \(id)")
     }
 
+    // Permissive response: the SDK's CapabilityType enum doesn't know newer values
+    // (e.g. FONT_INSTALLATION, CARPLAY_CHARGING) so the strict decoder throws. We
+    // decode the bare attributes we care about as plain strings.
+    private struct CapabilitiesRawResponse: Decodable {
+        let data: [Item]
+        struct Item: Decodable {
+            let id: String
+            let attributes: Attributes?
+            struct Attributes: Decodable {
+                let capabilityType: String?
+            }
+        }
+    }
+
     func fetchBundleIdCapabilities(bundleId: String) async throws -> [BundleIdentifierCapabilityModel] {
         guard let provider else {
             try await validateCredentials()
             return try await fetchBundleIdCapabilities(bundleId: bundleId)
         }
 
-        let endpoint = APIEndpoint
-            .v1
-            .bundleIDs
-            .id(bundleId)
-            .bundleIDCapabilities
-            .get(limit: 200)
+        // The /bundleIds/{id}/bundleIdCapabilities relationship rejects the `limit` query
+        // ("PARAMETER_ERROR.ILLEGAL: This relationship does not support this parameter."),
+        // even though the SDK exposes it. Call without parameters and let the API page itself.
+        let endpoint = Request<CapabilitiesRawResponse>(
+            path: "/v1/bundleIds/\(bundleId)/bundleIdCapabilities",
+            method: "GET",
+            id: "stackconnect_bundleIdCapabilities_relationship"
+        )
 
         let response = try await provider.request(endpoint)
-        let models = response.data.map { cap in
-            BundleIdentifierCapabilityModel(
-                id: cap.id,
-                capabilityType: cap.attributes?.capabilityType?.rawValue ?? ""
-            )
+        let models = response.data.compactMap { cap -> BundleIdentifierCapabilityModel? in
+            guard let typeRaw = cap.attributes?.capabilityType, !typeRaw.isEmpty else { return nil }
+            return BundleIdentifierCapabilityModel(id: cap.id, capabilityType: typeRaw)
         }
         Log.print.info("[Apple] Fetched \(models.count) capabilities for \(bundleId)")
         return models

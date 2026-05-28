@@ -38,7 +38,36 @@ struct BundleIdentifierCapabilityModel: Identifiable, Hashable, Codable {
         case "SYSTEM_EXTENSION_INSTALL":        return "System Extension"
         case "USER_MANAGEMENT":                 return "User Management"
         case "APPLE_ID_AUTH":                   return "Sign in with Apple"
-        default:                                return capabilityType
+        case "FONT_INSTALLATION":               return "Font Installation"
+        case "CARPLAY_CHARGING":                return "CarPlay (Charging)"
+        case "CARPLAY_AUDIO":                   return "CarPlay (Audio)"
+        case "CARPLAY_COMMUNICATION":           return "CarPlay (Communication)"
+        case "CARPLAY_QUICK_ORDERING":          return "CarPlay (Quick Ordering)"
+        case "CARPLAY_DRIVING_TASK":            return "CarPlay (Driving Task)"
+        case "CARPLAY_PARKING":                 return "CarPlay (Parking)"
+        case "CARPLAY_PLAYABLE_CONTENT":        return "CarPlay (Playable Content)"
+        case "FAMILY_CONTROLS":                 return "Family Controls"
+        case "DRIVERKIT":                       return "DriverKit"
+        case "FILE_PROVIDER_TESTING_MODE":      return "File Provider Testing Mode"
+        case "GROUP_ACTIVITIES":                return "Group Activities"
+        case "SHARED_WITH_YOU":                 return "Shared with You"
+        case "EXTENDED_VIRTUAL_ADDRESSING":     return "Extended Virtual Addressing"
+        case "INCREASED_MEMORY_LIMIT":          return "Increased Memory Limit"
+        case "WEATHERKIT":                      return "WeatherKit"
+        case "MUSICKIT":                        return "MusicKit"
+        case "SHALLOW_DEPTH_AND_PRESSURE":      return "Shallow Depth and Pressure"
+        case "JOURNALING_SUGGESTIONS":          return "Journaling Suggestions"
+        case "MATTER":                          return "Matter"
+        case "MEDIA_DEVICE_DISCOVERY":          return "Media Device Discovery"
+        case "ON_DEMAND_INSTALL_CAPABLE":       return "On Demand Resources / App Clips"
+        case "BACKGROUND_ASSETS":               return "Background Assets"
+        case "MANAGED_APP_INSTALLATION":        return "Managed App Installation"
+        default:
+            // Fallback: turn `SOME_NEW_CAPABILITY_TYPE` into `Some New Capability Type`.
+            return capabilityType
+                .split(separator: "_")
+                .map { $0.capitalized }
+                .joined(separator: " ")
         }
     }
 }

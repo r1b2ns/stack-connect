@@ -51,7 +51,7 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
                 }
 
                 buildRow(
-                    icon: "qrcode",
+                    icon: "ipod.and.applewatch",
                     title: String(localized: "Identifiers"),
                     subtitle: String(localized: "Bundle IDs and their capabilities")
                 ) {
