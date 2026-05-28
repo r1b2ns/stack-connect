@@ -6,6 +6,7 @@ import Foundation
 protocol CertificatesListViewModelProtocol: ObservableObject {
     var uiState: CertificatesListUiState { get set }
     func load() async
+    func removeCertificate(id: String)
 }
 
 // MARK: - UiState
@@ -50,6 +51,10 @@ final class CertificatesListViewModel: CertificatesListViewModelProtocol {
     ) {
         self.uiState = CertificatesListUiState(account: account)
         self.keychain = keychain
+    }
+
+    func removeCertificate(id: String) {
+        uiState.certificates.removeAll { $0.id == id }
     }
 
     func load() async {

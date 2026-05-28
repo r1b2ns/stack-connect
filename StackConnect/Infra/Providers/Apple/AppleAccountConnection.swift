@@ -2290,6 +2290,44 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         return models
     }
 
+    func fetchCertificateContent(id: String) async throws -> String? {
+        guard let provider else {
+            try await validateCredentials()
+            return try await fetchCertificateContent(id: id)
+        }
+
+        let endpoint = APIEndpoint
+            .v1
+            .certificates
+            .id(id)
+            .get(parameters: .init(
+                fieldsCertificates: [
+                    .certificateContent,
+                    .displayName,
+                    .name,
+                    .certificateType,
+                    .platform,
+                    .serialNumber,
+                    .expirationDate,
+                    .activated
+                ]
+            ))
+
+        let response = try await provider.request(endpoint)
+        return response.data.attributes?.certificateContent
+    }
+
+    func revokeCertificate(id: String) async throws {
+        guard let provider else {
+            try await validateCredentials()
+            return try await revokeCertificate(id: id)
+        }
+
+        let endpoint = APIEndpoint.v1.certificates.id(id).delete
+        _ = try await provider.request(endpoint)
+        Log.print.info("[Apple] Revoked certificate \(id)")
+    }
+
     // MARK: - Provisioning Profiles
 
     func fetchProfiles() async throws -> [ProvisioningProfileModel] {

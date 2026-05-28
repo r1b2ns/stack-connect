@@ -30,6 +30,7 @@ private struct CertificatesListEntry: View {
 struct CertificatesListView<ViewModel: CertificatesListViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
+    @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
     var body: some View {
         buildContent()
@@ -42,6 +43,11 @@ struct CertificatesListView<ViewModel: CertificatesListViewModelProtocol>: View 
             )
             .task { await viewModel.load() }
             .refreshable { await viewModel.load() }
+            .onReceive(NotificationCenter.default.publisher(for: .certificateRevoked)) { notification in
+                if let id = notification.object as? String {
+                    viewModel.removeCertificate(id: id)
+                }
+            }
     }
 
     // MARK: - Content
@@ -83,7 +89,15 @@ struct CertificatesListView<ViewModel: CertificatesListViewModelProtocol>: View 
             ForEach(viewModel.uiState.groupedByType, id: \.type) { group in
                 Section {
                     ForEach(group.items) { cert in
-                        buildRow(cert)
+                        Button {
+                            homeCoordinator.navigateToCertificateDetail(
+                                certificate: cert,
+                                account: viewModel.uiState.account
+                            )
+                        } label: {
+                            buildRow(cert)
+                        }
+                        .foregroundStyle(.primary)
                     }
                 } header: {
                     Text(group.type)
@@ -130,6 +144,10 @@ struct CertificatesListView<ViewModel: CertificatesListViewModelProtocol>: View 
             }
 
             Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 2)
     }
