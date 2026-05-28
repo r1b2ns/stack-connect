@@ -44,12 +44,21 @@ struct DevicesListView<ViewModel: DevicesListViewModelProtocol>: View {
             )
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showCreate = true
+                    Menu {
+                        Button {
+                            showCreate = true
+                        } label: {
+                            Label(String(localized: "Register Device"), systemImage: "plus")
+                        }
+                        Button {
+                            homeCoordinator.navigateToImportDevices(viewModel.uiState.account)
+                        } label: {
+                            Label(String(localized: "Import from File"), systemImage: "square.and.arrow.down")
+                        }
                     } label: {
                         Image(systemName: "plus")
                     }
-                    .accessibilityLabel(String(localized: "Register Device"))
+                    .accessibilityLabel(String(localized: "Add Devices"))
                 }
             }
             .task { await viewModel.load() }

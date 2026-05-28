@@ -14,6 +14,7 @@ enum HomeRoute: Hashable {
     case identifierDetail(bundleId: BundleIdentifierModel, account: AccountModel)
     case devicesList(AccountModel)
     case deviceDetail(device: DeviceModel, account: AccountModel)
+    case importDevices(AccountModel)
     case accountsList(ProviderType)
     case appList(AccountModel)
     case firebaseProjectList(AccountModel)
@@ -105,6 +106,10 @@ final class HomeCoordinator: MainCoordinatorProtocol {
 
     func navigateToDeviceDetail(device: DeviceModel, account: AccountModel) {
         path.append(HomeRoute.deviceDetail(device: device, account: account))
+    }
+
+    func navigateToImportDevices(_ account: AccountModel) {
+        path.append(HomeRoute.importDevices(account))
     }
 
     func navigateToAccountsList(_ providerType: ProviderType) {

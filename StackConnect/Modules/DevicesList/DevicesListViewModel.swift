@@ -29,9 +29,10 @@ struct DevicesListUiState {
     var searchQuery = ""
 
     var filtered: [DeviceModel] {
+        let enabled = devices.filter { $0.isEnabled }
         let query = searchQuery.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !query.isEmpty else { return devices }
-        return devices.filter {
+        guard !query.isEmpty else { return enabled }
+        return enabled.filter {
             $0.name.lowercased().contains(query) ||
             ($0.udid?.lowercased().contains(query) ?? false) ||
             ($0.model?.lowercased().contains(query) ?? false)

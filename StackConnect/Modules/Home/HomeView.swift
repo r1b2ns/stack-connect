@@ -235,6 +235,8 @@ private extension View {
                 DevicesListViewFactory.build(account: account)
             case .deviceDetail(let device, let account):
                 DeviceDetailViewFactory.build(account: account, device: device)
+            case .importDevices(let account):
+                ImportDevicesViewFactory.build(account: account)
             case .accountsList(let providerType):
                 AccountsListViewFactory.build(providerType: providerType)
             case .appList(let account):
