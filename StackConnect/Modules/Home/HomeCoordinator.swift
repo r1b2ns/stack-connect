@@ -5,6 +5,9 @@ enum HomeRoute: Hashable {
     case settingsAccounts
     case license
     case accountSettings(AccountModel)
+    case accountManagement(AccountModel)
+    case certificatesList(AccountModel)
+    case profilesList(AccountModel)
     case accountsList(ProviderType)
     case appList(AccountModel)
     case firebaseProjectList(AccountModel)
@@ -60,6 +63,18 @@ final class HomeCoordinator: MainCoordinatorProtocol {
 
     func navigateToAccountSettings(_ account: AccountModel) {
         path.append(HomeRoute.accountSettings(account))
+    }
+
+    func navigateToAccountManagement(_ account: AccountModel) {
+        path.append(HomeRoute.accountManagement(account))
+    }
+
+    func navigateToCertificatesList(_ account: AccountModel) {
+        path.append(HomeRoute.certificatesList(account))
+    }
+
+    func navigateToProfilesList(_ account: AccountModel) {
+        path.append(HomeRoute.profilesList(account))
     }
 
     func navigateToAccountsList(_ providerType: ProviderType) {

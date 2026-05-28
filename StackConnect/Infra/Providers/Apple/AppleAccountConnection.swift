@@ -2258,6 +2258,85 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         Log.print.info("[Apple] Disconnected")
     }
 
+    // MARK: - Certificates
+
+    func fetchCertificates() async throws -> [CertificateModel] {
+        guard let provider else {
+            try await validateCredentials()
+            return try await fetchCertificates()
+        }
+
+        let endpoint = APIEndpoint
+            .v1
+            .certificates
+            .get(parameters: .init(sort: [.displayName], limit: 200))
+
+        let response = try await provider.request(endpoint)
+
+        let models = response.data.map { cert in
+            CertificateModel(
+                id: cert.id,
+                displayName: cert.attributes?.displayName ?? cert.attributes?.name ?? "",
+                name: cert.attributes?.name ?? "",
+                certificateType: cert.attributes?.certificateType?.rawValue ?? "",
+                platform: cert.attributes?.platform?.rawValue,
+                serialNumber: cert.attributes?.serialNumber,
+                expirationDate: cert.attributes?.expirationDate,
+                isActivated: cert.attributes?.isActivated ?? false
+            )
+        }
+
+        Log.print.info("[Apple] Fetched \(models.count) certificates")
+        return models
+    }
+
+    // MARK: - Provisioning Profiles
+
+    func fetchProfiles() async throws -> [ProvisioningProfileModel] {
+        guard let provider else {
+            try await validateCredentials()
+            return try await fetchProfiles()
+        }
+
+        let endpoint = APIEndpoint
+            .v1
+            .profiles
+            .get(parameters: .init(
+                sort: [.name],
+                limit: 200,
+                include: [.bundleID]
+            ))
+
+        let response = try await provider.request(endpoint)
+
+        var bundleIdentifierById: [String: String] = [:]
+        for item in response.included ?? [] {
+            if case .bundleID(let bundle) = item {
+                bundleIdentifierById[bundle.id] = bundle.attributes?.identifier
+            }
+        }
+
+        let models = response.data.map { profile -> ProvisioningProfileModel in
+            let bundleRelId = profile.relationships?.bundleID?.data?.id
+            let bundleIdentifier = bundleRelId.flatMap { bundleIdentifierById[$0] }
+
+            return ProvisioningProfileModel(
+                id: profile.id,
+                name: profile.attributes?.name ?? "",
+                profileType: profile.attributes?.profileType?.rawValue ?? "",
+                profileState: profile.attributes?.profileState?.rawValue ?? "",
+                platform: profile.attributes?.platform?.rawValue,
+                uuid: profile.attributes?.uuid,
+                bundleId: bundleIdentifier,
+                createdDate: profile.attributes?.createdDate,
+                expirationDate: profile.attributes?.expirationDate
+            )
+        }
+
+        Log.print.info("[Apple] Fetched \(models.count) provisioning profiles")
+        return models
+    }
+
     // MARK: - Private
 
     static func formatCategoryId(_ id: String) -> String {
