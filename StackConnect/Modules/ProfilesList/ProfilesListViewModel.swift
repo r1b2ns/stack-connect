@@ -6,6 +6,8 @@ import Foundation
 protocol ProfilesListViewModelProtocol: ObservableObject {
     var uiState: ProfilesListUiState { get set }
     func load() async
+    func insertProfile(_ profile: ProvisioningProfileModel)
+    func removeProfile(id: String)
 }
 
 // MARK: - UiState
@@ -50,6 +52,18 @@ final class ProfilesListViewModel: ProfilesListViewModelProtocol {
     ) {
         self.uiState = ProfilesListUiState(account: account)
         self.keychain = keychain
+    }
+
+    func removeProfile(id: String) {
+        uiState.profiles.removeAll { $0.id == id }
+    }
+
+    func insertProfile(_ profile: ProvisioningProfileModel) {
+        if let idx = uiState.profiles.firstIndex(where: { $0.id == profile.id }) {
+            uiState.profiles[idx] = profile
+        } else {
+            uiState.profiles.insert(profile, at: 0)
+        }
     }
 
     func load() async {

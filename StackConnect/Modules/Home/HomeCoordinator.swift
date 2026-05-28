@@ -7,7 +7,16 @@ enum HomeRoute: Hashable {
     case accountSettings(AccountModel)
     case accountManagement(AccountModel)
     case certificatesList(AccountModel)
+    case createCertificate(AccountModel)
+    case certificateDetail(certificate: CertificateModel, account: AccountModel)
     case profilesList(AccountModel)
+    case createProfile(AccountModel)
+    case profileDetail(profile: ProvisioningProfileModel, account: AccountModel)
+    case identifiersList(AccountModel)
+    case identifierDetail(bundleId: BundleIdentifierModel, account: AccountModel)
+    case devicesList(AccountModel)
+    case deviceDetail(device: DeviceModel, account: AccountModel)
+    case importDevices(AccountModel)
     case accountsList(ProviderType)
     case appList(AccountModel)
     case firebaseProjectList(AccountModel)
@@ -73,8 +82,44 @@ final class HomeCoordinator: MainCoordinatorProtocol {
         path.append(HomeRoute.certificatesList(account))
     }
 
+    func navigateToCertificateDetail(certificate: CertificateModel, account: AccountModel) {
+        path.append(HomeRoute.certificateDetail(certificate: certificate, account: account))
+    }
+
+    func navigateToCreateCertificate(_ account: AccountModel) {
+        path.append(HomeRoute.createCertificate(account))
+    }
+
     func navigateToProfilesList(_ account: AccountModel) {
         path.append(HomeRoute.profilesList(account))
+    }
+
+    func navigateToCreateProfile(_ account: AccountModel) {
+        path.append(HomeRoute.createProfile(account))
+    }
+
+    func navigateToProfileDetail(profile: ProvisioningProfileModel, account: AccountModel) {
+        path.append(HomeRoute.profileDetail(profile: profile, account: account))
+    }
+
+    func navigateToIdentifiersList(_ account: AccountModel) {
+        path.append(HomeRoute.identifiersList(account))
+    }
+
+    func navigateToIdentifierDetail(bundleId: BundleIdentifierModel, account: AccountModel) {
+        path.append(HomeRoute.identifierDetail(bundleId: bundleId, account: account))
+    }
+
+    func navigateToDevicesList(_ account: AccountModel) {
+        path.append(HomeRoute.devicesList(account))
+    }
+
+    func navigateToDeviceDetail(device: DeviceModel, account: AccountModel) {
+        path.append(HomeRoute.deviceDetail(device: device, account: account))
+    }
+
+    func navigateToImportDevices(_ account: AccountModel) {
+        path.append(HomeRoute.importDevices(account))
     }
 
     func navigateToAccountsList(_ providerType: ProviderType) {
