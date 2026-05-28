@@ -78,7 +78,7 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
             }
         } else if viewModel.uiState.apps.isEmpty {
             ContentUnavailableView {
-                Label(String(localized: "No Apps"), systemImage: "apps.iphone")
+                Label(String(localized: "No Apps"), systemImage: "ipod.and.applewatch")
             } description: {
                 Text("No apps found for this account. You can add apps manually by package name.")
             } actions: {
