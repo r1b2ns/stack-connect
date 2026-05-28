@@ -30,6 +30,7 @@ private struct CertificatesListEntry: View {
 struct CertificatesListView<ViewModel: CertificatesListViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
+    @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
     var body: some View {
         buildContent()
@@ -40,8 +41,28 @@ struct CertificatesListView<ViewModel: CertificatesListViewModelProtocol>: View 
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search certificates")
             )
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        homeCoordinator.navigateToCreateCertificate(viewModel.uiState.account)
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel(String(localized: "New Certificate"))
+                }
+            }
             .task { await viewModel.load() }
             .refreshable { await viewModel.load() }
+            .onReceive(NotificationCenter.default.publisher(for: .certificateRevoked)) { notification in
+                if let id = notification.object as? String {
+                    viewModel.removeCertificate(id: id)
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .certificateCreated)) { notification in
+                if let cert = notification.object as? CertificateModel {
+                    viewModel.insertCertificate(cert)
+                }
+            }
     }
 
     // MARK: - Content
@@ -83,7 +104,15 @@ struct CertificatesListView<ViewModel: CertificatesListViewModelProtocol>: View 
             ForEach(viewModel.uiState.groupedByType, id: \.type) { group in
                 Section {
                     ForEach(group.items) { cert in
-                        buildRow(cert)
+                        Button {
+                            homeCoordinator.navigateToCertificateDetail(
+                                certificate: cert,
+                                account: viewModel.uiState.account
+                            )
+                        } label: {
+                            buildRow(cert)
+                        }
+                        .foregroundStyle(.primary)
                     }
                 } header: {
                     Text(group.type)
@@ -130,6 +159,10 @@ struct CertificatesListView<ViewModel: CertificatesListViewModelProtocol>: View 
             }
 
             Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 2)
     }

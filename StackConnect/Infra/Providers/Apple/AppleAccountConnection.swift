@@ -2290,6 +2290,375 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         return models
     }
 
+    func fetchCertificateContent(id: String) async throws -> String? {
+        guard let provider else {
+            try await validateCredentials()
+            return try await fetchCertificateContent(id: id)
+        }
+
+        let endpoint = APIEndpoint
+            .v1
+            .certificates
+            .id(id)
+            .get(parameters: .init(
+                fieldsCertificates: [
+                    .certificateContent,
+                    .displayName,
+                    .name,
+                    .certificateType,
+                    .platform,
+                    .serialNumber,
+                    .expirationDate,
+                    .activated
+                ]
+            ))
+
+        let response = try await provider.request(endpoint)
+        return response.data.attributes?.certificateContent
+    }
+
+    struct CreatedCertificate {
+        let certificate: CertificateModel
+        let content: String?
+    }
+
+    func createCertificate(
+        csrContent: String,
+        certificateTypeRaw: String,
+        passTypeId: String? = nil,
+        merchantId: String? = nil
+    ) async throws -> CreatedCertificate {
+        guard let provider else {
+            try await validateCredentials()
+            return try await createCertificate(
+                csrContent: csrContent,
+                certificateTypeRaw: certificateTypeRaw,
+                passTypeId: passTypeId,
+                merchantId: merchantId
+            )
+        }
+
+        guard let typeEnum = CertificateType(rawValue: certificateTypeRaw) else {
+            throw NSError(
+                domain: "Certificates",
+                code: 400,
+                userInfo: [NSLocalizedDescriptionKey: "Unsupported certificate type: \(certificateTypeRaw)"]
+            )
+        }
+
+        var relationships: CertificateCreateRequest.Data.Relationships?
+        if let passTypeId, !passTypeId.isEmpty {
+            relationships = .init(
+                passTypeID: .init(data: .init(type: .passTypeIDs, id: passTypeId))
+            )
+        } else if let merchantId, !merchantId.isEmpty {
+            relationships = .init(
+                merchantID: .init(data: .init(type: .merchantIDs, id: merchantId))
+            )
+        }
+
+        let body = CertificateCreateRequest(
+            data: .init(
+                type: .certificates,
+                attributes: .init(csrContent: csrContent, certificateType: typeEnum),
+                relationships: relationships
+            )
+        )
+
+        let endpoint = APIEndpoint.v1.certificates.post(body)
+        let response = try await provider.request(endpoint)
+        let cert = response.data
+
+        let model = CertificateModel(
+            id: cert.id,
+            displayName: cert.attributes?.displayName ?? cert.attributes?.name ?? "",
+            name: cert.attributes?.name ?? "",
+            certificateType: cert.attributes?.certificateType?.rawValue ?? certificateTypeRaw,
+            platform: cert.attributes?.platform?.rawValue,
+            serialNumber: cert.attributes?.serialNumber,
+            expirationDate: cert.attributes?.expirationDate,
+            isActivated: cert.attributes?.isActivated ?? false
+        )
+
+        Log.print.info("[Apple] Created certificate \(model.id) (\(certificateTypeRaw))")
+        return CreatedCertificate(certificate: model, content: cert.attributes?.certificateContent)
+    }
+
+    func revokeCertificate(id: String) async throws {
+        guard let provider else {
+            try await validateCredentials()
+            return try await revokeCertificate(id: id)
+        }
+
+        let endpoint = APIEndpoint.v1.certificates.id(id).delete
+        _ = try await provider.request(endpoint)
+        Log.print.info("[Apple] Revoked certificate \(id)")
+    }
+
+    // MARK: - Bundle Identifiers
+
+    func fetchBundleIds() async throws -> [BundleIdentifierModel] {
+        guard let provider else {
+            try await validateCredentials()
+            return try await fetchBundleIds()
+        }
+
+        let endpoint = APIEndpoint
+            .v1
+            .bundleIDs
+            .get(parameters: .init(sort: [.name], limit: 200))
+
+        let response = try await provider.request(endpoint)
+
+        let models = response.data.map { bundle in
+            BundleIdentifierModel(
+                id: bundle.id,
+                identifier: bundle.attributes?.identifier ?? "",
+                name: bundle.attributes?.name ?? "",
+                platform: bundle.attributes?.platform?.rawValue ?? "",
+                seedId: bundle.attributes?.seedID
+            )
+        }
+        Log.print.info("[Apple] Fetched \(models.count) bundle identifiers")
+        return models
+    }
+
+    func createBundleId(
+        identifier: String,
+        name: String,
+        platformRaw: String
+    ) async throws -> BundleIdentifierModel {
+        guard let provider else {
+            try await validateCredentials()
+            return try await createBundleId(identifier: identifier, name: name, platformRaw: platformRaw)
+        }
+
+        guard let platform = BundleIDPlatform(rawValue: platformRaw) else {
+            throw NSError(domain: "BundleId", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid platform: \(platformRaw)"])
+        }
+
+        let body = BundleIDCreateRequest(
+            data: .init(
+                type: .bundleIDs,
+                attributes: .init(name: name, platform: platform, identifier: identifier)
+            )
+        )
+
+        let endpoint = APIEndpoint.v1.bundleIDs.post(body)
+        let response = try await provider.request(endpoint)
+        let bundle = response.data
+
+        Log.print.info("[Apple] Created bundle identifier \(identifier)")
+        return BundleIdentifierModel(
+            id: bundle.id,
+            identifier: bundle.attributes?.identifier ?? identifier,
+            name: bundle.attributes?.name ?? name,
+            platform: bundle.attributes?.platform?.rawValue ?? platformRaw,
+            seedId: bundle.attributes?.seedID
+        )
+    }
+
+    func updateBundleId(id: String, name: String) async throws {
+        guard let provider else {
+            try await validateCredentials()
+            return try await updateBundleId(id: id, name: name)
+        }
+
+        let body = BundleIDUpdateRequest(
+            data: .init(
+                type: .bundleIDs,
+                id: id,
+                attributes: .init(name: name)
+            )
+        )
+
+        let endpoint = APIEndpoint.v1.bundleIDs.id(id).patch(body)
+        _ = try await provider.request(endpoint)
+        Log.print.info("[Apple] Renamed bundle identifier \(id)")
+    }
+
+    func deleteBundleId(id: String) async throws {
+        guard let provider else {
+            try await validateCredentials()
+            return try await deleteBundleId(id: id)
+        }
+
+        let endpoint = APIEndpoint.v1.bundleIDs.id(id).delete
+        _ = try await provider.request(endpoint)
+        Log.print.info("[Apple] Deleted bundle identifier \(id)")
+    }
+
+    // Permissive response: the SDK's CapabilityType enum doesn't know newer values
+    // (e.g. FONT_INSTALLATION, CARPLAY_CHARGING) so the strict decoder throws. We
+    // decode the bare attributes we care about as plain strings.
+    private struct CapabilitiesRawResponse: Decodable {
+        let data: [Item]
+        struct Item: Decodable {
+            let id: String
+            let attributes: Attributes?
+            struct Attributes: Decodable {
+                let capabilityType: String?
+            }
+        }
+    }
+
+    func fetchBundleIdCapabilities(bundleId: String) async throws -> [BundleIdentifierCapabilityModel] {
+        guard let provider else {
+            try await validateCredentials()
+            return try await fetchBundleIdCapabilities(bundleId: bundleId)
+        }
+
+        // The /bundleIds/{id}/bundleIdCapabilities relationship rejects the `limit` query
+        // ("PARAMETER_ERROR.ILLEGAL: This relationship does not support this parameter."),
+        // even though the SDK exposes it. Call without parameters and let the API page itself.
+        let endpoint = Request<CapabilitiesRawResponse>(
+            path: "/v1/bundleIds/\(bundleId)/bundleIdCapabilities",
+            method: "GET",
+            id: "stackconnect_bundleIdCapabilities_relationship"
+        )
+
+        let response = try await provider.request(endpoint)
+        let models = response.data.compactMap { cap -> BundleIdentifierCapabilityModel? in
+            guard let typeRaw = cap.attributes?.capabilityType, !typeRaw.isEmpty else { return nil }
+            return BundleIdentifierCapabilityModel(id: cap.id, capabilityType: typeRaw)
+        }
+        Log.print.info("[Apple] Fetched \(models.count) capabilities for \(bundleId)")
+        return models
+    }
+
+    func enableCapability(bundleId: String, capabilityTypeRaw: String) async throws -> BundleIdentifierCapabilityModel {
+        guard let provider else {
+            try await validateCredentials()
+            return try await enableCapability(bundleId: bundleId, capabilityTypeRaw: capabilityTypeRaw)
+        }
+
+        guard let type = CapabilityType(rawValue: capabilityTypeRaw) else {
+            throw NSError(domain: "Capability", code: 400, userInfo: [NSLocalizedDescriptionKey: "Unsupported capability: \(capabilityTypeRaw)"])
+        }
+
+        let body = BundleIDCapabilityCreateRequest(
+            data: .init(
+                type: .bundleIDCapabilities,
+                attributes: .init(capabilityType: type),
+                relationships: .init(
+                    bundleID: .init(data: .init(type: .bundleIDs, id: bundleId))
+                )
+            )
+        )
+
+        let endpoint = APIEndpoint.v1.bundleIDCapabilities.post(body)
+        let response = try await provider.request(endpoint)
+        let cap = response.data
+
+        Log.print.info("[Apple] Enabled capability \(capabilityTypeRaw) on \(bundleId)")
+        return BundleIdentifierCapabilityModel(
+            id: cap.id,
+            capabilityType: cap.attributes?.capabilityType?.rawValue ?? capabilityTypeRaw
+        )
+    }
+
+    func disableCapability(capabilityId: String) async throws {
+        guard let provider else {
+            try await validateCredentials()
+            return try await disableCapability(capabilityId: capabilityId)
+        }
+
+        let endpoint = APIEndpoint.v1.bundleIDCapabilities.id(capabilityId).delete
+        _ = try await provider.request(endpoint)
+        Log.print.info("[Apple] Disabled capability \(capabilityId)")
+    }
+
+    // MARK: - Devices
+
+    func fetchDevices() async throws -> [DeviceModel] {
+        guard let provider else {
+            try await validateCredentials()
+            return try await fetchDevices()
+        }
+
+        let endpoint = APIEndpoint
+            .v1
+            .devices
+            .get(parameters: .init(sort: [.name], limit: 200))
+
+        let response = try await provider.request(endpoint)
+        let models = response.data.map { device in
+            DeviceModel(
+                id: device.id,
+                name: device.attributes?.name ?? "",
+                udid: device.attributes?.udid,
+                platform: device.attributes?.platform?.rawValue,
+                deviceClass: device.attributes?.deviceClass?.rawValue,
+                model: device.attributes?.model,
+                status: device.attributes?.status?.rawValue ?? "ENABLED",
+                addedDate: device.attributes?.addedDate
+            )
+        }
+        Log.print.info("[Apple] Fetched \(models.count) devices")
+        return models
+    }
+
+    func createDevice(
+        name: String,
+        platformRaw: String,
+        udid: String
+    ) async throws -> DeviceModel {
+        guard let provider else {
+            try await validateCredentials()
+            return try await createDevice(name: name, platformRaw: platformRaw, udid: udid)
+        }
+
+        guard let platform = BundleIDPlatform(rawValue: platformRaw) else {
+            throw NSError(domain: "Device", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid platform: \(platformRaw)"])
+        }
+
+        let body = DeviceCreateRequest(
+            data: .init(
+                type: .devices,
+                attributes: .init(name: name, platform: platform, udid: udid)
+            )
+        )
+
+        let endpoint = APIEndpoint.v1.devices.post(body)
+        let response = try await provider.request(endpoint)
+        let device = response.data
+
+        Log.print.info("[Apple] Registered device \(udid) (\(name))")
+        return DeviceModel(
+            id: device.id,
+            name: device.attributes?.name ?? name,
+            udid: device.attributes?.udid ?? udid,
+            platform: device.attributes?.platform?.rawValue ?? platformRaw,
+            deviceClass: device.attributes?.deviceClass?.rawValue,
+            model: device.attributes?.model,
+            status: device.attributes?.status?.rawValue ?? "ENABLED",
+            addedDate: device.attributes?.addedDate
+        )
+    }
+
+    func updateDevice(id: String, name: String?, status: String?) async throws {
+        guard let provider else {
+            try await validateCredentials()
+            return try await updateDevice(id: id, name: name, status: status)
+        }
+
+        let statusEnum: DeviceUpdateRequest.Data.Attributes.Status? = status.flatMap {
+            DeviceUpdateRequest.Data.Attributes.Status(rawValue: $0)
+        }
+
+        let body = DeviceUpdateRequest(
+            data: .init(
+                type: .devices,
+                id: id,
+                attributes: .init(name: name, status: statusEnum)
+            )
+        )
+
+        let endpoint = APIEndpoint.v1.devices.id(id).patch(body)
+        _ = try await provider.request(endpoint)
+        Log.print.info("[Apple] Updated device \(id)")
+    }
+
     // MARK: - Provisioning Profiles
 
     func fetchProfiles() async throws -> [ProvisioningProfileModel] {
@@ -2335,6 +2704,96 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
 
         Log.print.info("[Apple] Fetched \(models.count) provisioning profiles")
         return models
+    }
+
+    struct CreatedProfile {
+        let profile: ProvisioningProfileModel
+        let content: String?
+    }
+
+    func createProfile(
+        name: String,
+        profileTypeRaw: String,
+        bundleIdId: String,
+        certificateIds: [String],
+        deviceIds: [String]
+    ) async throws -> CreatedProfile {
+        guard let provider else {
+            try await validateCredentials()
+            return try await createProfile(
+                name: name,
+                profileTypeRaw: profileTypeRaw,
+                bundleIdId: bundleIdId,
+                certificateIds: certificateIds,
+                deviceIds: deviceIds
+            )
+        }
+
+        guard let typeEnum = ProfileCreateRequest.Data.Attributes.ProfileType(rawValue: profileTypeRaw) else {
+            throw NSError(domain: "Profiles", code: 400, userInfo: [NSLocalizedDescriptionKey: "Unsupported profile type: \(profileTypeRaw)"])
+        }
+
+        let devicesRel: ProfileCreateRequest.Data.Relationships.Devices? = deviceIds.isEmpty
+            ? nil
+            : .init(data: deviceIds.map { .init(type: .devices, id: $0) })
+
+        let body = ProfileCreateRequest(
+            data: .init(
+                type: .profiles,
+                attributes: .init(name: name, profileType: typeEnum),
+                relationships: .init(
+                    bundleID: .init(data: .init(type: .bundleIDs, id: bundleIdId)),
+                    devices: devicesRel,
+                    certificates: .init(data: certificateIds.map { .init(type: .certificates, id: $0) })
+                )
+            )
+        )
+
+        let endpoint = APIEndpoint.v1.profiles.post(body)
+        let response = try await provider.request(endpoint)
+        let profile = response.data
+
+        let model = ProvisioningProfileModel(
+            id: profile.id,
+            name: profile.attributes?.name ?? name,
+            profileType: profile.attributes?.profileType?.rawValue ?? profileTypeRaw,
+            profileState: profile.attributes?.profileState?.rawValue ?? "ACTIVE",
+            platform: profile.attributes?.platform?.rawValue,
+            uuid: profile.attributes?.uuid,
+            bundleId: nil,
+            createdDate: profile.attributes?.createdDate,
+            expirationDate: profile.attributes?.expirationDate
+        )
+
+        Log.print.info("[Apple] Created profile \(model.id) (\(profileTypeRaw))")
+        return CreatedProfile(profile: model, content: profile.attributes?.profileContent)
+    }
+
+    func deleteProfile(id: String) async throws {
+        guard let provider else {
+            try await validateCredentials()
+            return try await deleteProfile(id: id)
+        }
+
+        let endpoint = APIEndpoint.v1.profiles.id(id).delete
+        _ = try await provider.request(endpoint)
+        Log.print.info("[Apple] Deleted profile \(id)")
+    }
+
+    func fetchProfileContent(id: String) async throws -> String? {
+        guard let provider else {
+            try await validateCredentials()
+            return try await fetchProfileContent(id: id)
+        }
+
+        let endpoint = APIEndpoint
+            .v1
+            .profiles
+            .id(id)
+            .get(parameters: .init(fieldsProfiles: [.profileContent, .name, .profileType, .platform, .profileState, .uuid, .createdDate, .expirationDate]))
+
+        let response = try await provider.request(endpoint)
+        return response.data.attributes?.profileContent
     }
 
     // MARK: - Private

@@ -6,6 +6,8 @@ import Foundation
 protocol CertificatesListViewModelProtocol: ObservableObject {
     var uiState: CertificatesListUiState { get set }
     func load() async
+    func removeCertificate(id: String)
+    func insertCertificate(_ certificate: CertificateModel)
 }
 
 // MARK: - UiState
@@ -50,6 +52,18 @@ final class CertificatesListViewModel: CertificatesListViewModelProtocol {
     ) {
         self.uiState = CertificatesListUiState(account: account)
         self.keychain = keychain
+    }
+
+    func removeCertificate(id: String) {
+        uiState.certificates.removeAll { $0.id == id }
+    }
+
+    func insertCertificate(_ certificate: CertificateModel) {
+        if let idx = uiState.certificates.firstIndex(where: { $0.id == certificate.id }) {
+            uiState.certificates[idx] = certificate
+        } else {
+            uiState.certificates.insert(certificate, at: 0)
+        }
     }
 
     func load() async {
