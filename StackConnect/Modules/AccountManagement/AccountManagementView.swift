@@ -51,6 +51,22 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
                 }
 
                 buildRow(
+                    icon: "qrcode",
+                    title: String(localized: "Identifiers"),
+                    subtitle: String(localized: "Bundle IDs and their capabilities")
+                ) {
+                    homeCoordinator.navigateToIdentifiersList(viewModel.uiState.account)
+                }
+
+                buildRow(
+                    icon: "iphone.gen3",
+                    title: String(localized: "Devices"),
+                    subtitle: String(localized: "Registered devices for testing")
+                ) {
+                    homeCoordinator.navigateToDevicesList(viewModel.uiState.account)
+                }
+
+                buildRow(
                     icon: "doc.badge.gearshape",
                     title: String(localized: "Profiles"),
                     subtitle: String(localized: "Provisioning profiles for this account")

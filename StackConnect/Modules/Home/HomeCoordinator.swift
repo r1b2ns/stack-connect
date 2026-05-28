@@ -10,6 +10,10 @@ enum HomeRoute: Hashable {
     case createCertificate(AccountModel)
     case certificateDetail(certificate: CertificateModel, account: AccountModel)
     case profilesList(AccountModel)
+    case identifiersList(AccountModel)
+    case identifierDetail(bundleId: BundleIdentifierModel, account: AccountModel)
+    case devicesList(AccountModel)
+    case deviceDetail(device: DeviceModel, account: AccountModel)
     case accountsList(ProviderType)
     case appList(AccountModel)
     case firebaseProjectList(AccountModel)
@@ -85,6 +89,22 @@ final class HomeCoordinator: MainCoordinatorProtocol {
 
     func navigateToProfilesList(_ account: AccountModel) {
         path.append(HomeRoute.profilesList(account))
+    }
+
+    func navigateToIdentifiersList(_ account: AccountModel) {
+        path.append(HomeRoute.identifiersList(account))
+    }
+
+    func navigateToIdentifierDetail(bundleId: BundleIdentifierModel, account: AccountModel) {
+        path.append(HomeRoute.identifierDetail(bundleId: bundleId, account: account))
+    }
+
+    func navigateToDevicesList(_ account: AccountModel) {
+        path.append(HomeRoute.devicesList(account))
+    }
+
+    func navigateToDeviceDetail(device: DeviceModel, account: AccountModel) {
+        path.append(HomeRoute.deviceDetail(device: device, account: account))
     }
 
     func navigateToAccountsList(_ providerType: ProviderType) {
