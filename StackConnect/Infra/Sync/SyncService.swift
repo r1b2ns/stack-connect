@@ -1,4 +1,5 @@
 import Foundation
+import WidgetKit
 #if DEBUG
 import UIKit
 import UserNotifications
@@ -89,6 +90,7 @@ final class SyncService: ObservableObject {
         guard !accounts.isEmpty else {
             state.isSyncing = false
             state.lastSyncedAt = .now
+            WidgetCenter.shared.reloadAllTimelines()
             return
         }
 
@@ -124,7 +126,17 @@ final class SyncService: ObservableObject {
 
         state.lastSyncedAt = .now
         state.isSyncing = false
+        await preloadWidgetIcons()
+        WidgetCenter.shared.reloadAllTimelines()
         Log.print.notice("[Sync] syncAll completed")
+    }
+
+    /// Caches app icons into the shared App Group container so the widget can
+    /// render real icons instead of placeholders.
+    private func preloadWidgetIcons() async {
+        guard let apps: [AppModel] = try? await storage.fetchAll(AppModel.self) else { return }
+        let iconURLs = apps.compactMap { $0.iconUrl }
+        await WidgetIconCache.preload(iconURLs: iconURLs)
     }
 
     #if DEBUG

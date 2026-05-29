@@ -2,19 +2,19 @@ import Foundation
 import SwiftData
 
 @Model
-final class PersistedItem {
+public final class PersistedItem {
 
     // MARK: - Stored Properties
 
-    var typeName: String
-    var identifier: String
-    var payload: Data
-    var createdAt: Date
-    var updatedAt: Date
+    public var typeName: String
+    public var identifier: String
+    public var payload: Data
+    public var createdAt: Date
+    public var updatedAt: Date
 
     // MARK: - Init
 
-    init(
+    public init(
         typeName: String,
         identifier: String,
         payload: Data,

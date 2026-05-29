@@ -96,6 +96,8 @@ packages:
   netfox:
     url: https://github.com/rubensmachion/netfox
     branch: develop
+  StackCore:
+    path: Packages/StackCore
   StackProtocols:
     path: Packages/StackProtocols
   APIProviderFirebase:
@@ -152,6 +154,7 @@ targets:
     settings:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_ENTITLEMENTS: StackConnect/StackConnect.entitlements
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_NAME: "$(TARGET_NAME)"
@@ -163,9 +166,44 @@ targets:
         product: netfox
       - package: appstoreconnect-swift-sdk
         product: AppStoreConnect-Swift-SDK
+      - package: StackCore
       - package: StackProtocols
       - package: APIProviderFirebase
       - package: APIProviderPlay
+      - target: StackConnectWidgetExtension
+        embed: true
+
+  StackConnectWidgetExtension:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+
+    sources:
+      - path: StackConnectWidget
+
+    info:
+      path: StackConnectWidget/Info.plist
+      properties:
+        CFBundleDisplayName: StackConnect
+        CFBundleName: "$(PRODUCT_NAME)"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+    settings:
+      base:
+        CODE_SIGN_ENTITLEMENTS: StackConnectWidget/StackConnectWidget.entitlements
+        CODE_SIGN_STYLE: Automatic
+        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "1.0"
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: zeroSixteen.stackconnect.widget
+        PRODUCT_NAME: "$(TARGET_NAME)"
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+
+    dependencies:
+      - package: StackCore
 
   StackConnectTests:
     type: bundle.unit-test
@@ -198,6 +236,7 @@ targets:
 
     dependencies:
       - target: StackConnect
+      - package: StackCore
 
 schemes:
   StackConnect Development:

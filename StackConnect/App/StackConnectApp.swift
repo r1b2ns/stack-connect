@@ -12,9 +12,12 @@ struct StackConnectApp: App {
 
     init() {
         do {
-            let container = try ModelContainer(for: PersistedItem.self)
+            let configuration = ModelConfiguration(
+                groupContainer: .identifier(AppGroup.identifier)
+            )
+            let container = try ModelContainer(for: PersistedItem.self, configurations: configuration)
             self.modelContainer = container
-            SwiftDataStorable.shared = SwiftDataStorable(modelContainer: container)
+            SwiftDataStorable.shared = SwiftDataStorable.make(modelContainer: container)
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }

@@ -18,6 +18,23 @@ private struct HomeEntry: View {
     var body: some View {
         HomeView(viewModel: viewModel)
             .environmentObject(coordinator)
+            .onOpenURL { url in
+                handleDeepLink(url)
+            }
+    }
+
+    /// Routes widget deep links (scheme `stackconnect`) into the Home navigation stack.
+    private func handleDeepLink(_ url: URL) {
+        guard url.scheme == "stackconnect" else { return }
+        switch url.host {
+        case "reviews":
+            coordinator.path = NavigationPath()
+            coordinator.navigateToAllReviews()
+        case "home":
+            coordinator.path = NavigationPath()
+        default:
+            break
+        }
     }
 }
 
