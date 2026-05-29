@@ -291,17 +291,56 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
     private func buildTextContentSection() -> some View {
         Section {
-            Button { viewModel.requestField(.promotionalText) } label: {
-                buildMenuRow(icon: "text.badge.star", color: .purple, title: String(localized: "Promotional Text"))
-            }
+            buildTextContentRow(
+                icon: "text.badge.star",
+                color: .purple,
+                title: String(localized: "Promotional Text"),
+                copyText: viewModel.uiState.editPromotionalText
+            ) { viewModel.requestField(.promotionalText) }
 
-            Button { viewModel.requestField(.description) } label: {
-                buildMenuRow(icon: "doc.text.fill", color: .indigo, title: String(localized: "Description"))
-            }
+            buildTextContentRow(
+                icon: "doc.text.fill",
+                color: .indigo,
+                title: String(localized: "Description"),
+                copyText: viewModel.uiState.editDescription
+            ) { viewModel.requestField(.description) }
 
-            Button { viewModel.requestField(.whatsNew) } label: {
-                buildMenuRow(icon: "sparkles", color: .orange, title: String(localized: "What's New"))
+            buildTextContentRow(
+                icon: "sparkles",
+                color: .orange,
+                title: String(localized: "What's New"),
+                copyText: viewModel.uiState.editWhatsNew
+            ) { viewModel.requestField(.whatsNew) }
+        }
+    }
+
+    /// A menu row that opens the text editor on tap and exposes an independent
+    /// copy button for the stored metadata text.
+    private func buildTextContentRow(
+        icon: String,
+        color: Color,
+        title: String,
+        copyText: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 12) {
+            Button(action: action) {
+                HStack(spacing: 12) {
+                    buildIconSquare(icon: icon, color: color)
+                    Text(title)
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.borderless)
+
+            CopyButton(text: copyText)
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
     }
 
@@ -309,30 +348,45 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
     private func buildMetadataSection() -> some View {
         Section {
-            TextField(String(localized: "Keywords"), text: $viewModel.uiState.editKeywords)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .disabled(!canEditMetadata)
+            HStack {
+                TextField(String(localized: "Keywords"), text: $viewModel.uiState.editKeywords)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .disabled(!canEditMetadata)
+                CopyButton(text: viewModel.uiState.editKeywords)
+            }
 
-            TextField(String(localized: "Support URL"), text: $viewModel.uiState.editSupportUrl)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-                .disabled(!canEditMetadata)
+            HStack {
+                TextField(String(localized: "Support URL"), text: $viewModel.uiState.editSupportUrl)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .disabled(!canEditMetadata)
+                CopyButton(text: viewModel.uiState.editSupportUrl)
+            }
 
-            TextField(String(localized: "Marketing URL"), text: $viewModel.uiState.editMarketingUrl)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-                .disabled(!canEditMetadata)
+            HStack {
+                TextField(String(localized: "Marketing URL"), text: $viewModel.uiState.editMarketingUrl)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .disabled(!canEditMetadata)
+                CopyButton(text: viewModel.uiState.editMarketingUrl)
+            }
 
-            TextField(String(localized: "Version"), text: $viewModel.uiState.editVersion)
-                .textInputAutocapitalization(.never)
-                .keyboardType(.numbersAndPunctuation)
-                .disabled(!canEditMetadata)
+            HStack {
+                TextField(String(localized: "Version"), text: $viewModel.uiState.editVersion)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.numbersAndPunctuation)
+                    .disabled(!canEditMetadata)
+                CopyButton(text: viewModel.uiState.editVersion)
+            }
 
-            TextField(String(localized: "Copyright"), text: $viewModel.uiState.editCopyright)
-                .disabled(!canEditMetadata)
+            HStack {
+                TextField(String(localized: "Copyright"), text: $viewModel.uiState.editCopyright)
+                    .disabled(!canEditMetadata)
+                CopyButton(text: viewModel.uiState.editCopyright)
+            }
 
             if let error = viewModel.uiState.groupedFieldsError {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
