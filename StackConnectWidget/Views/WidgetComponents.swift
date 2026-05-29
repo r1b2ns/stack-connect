@@ -118,6 +118,24 @@ struct WidgetAppRow: View {
     }
 }
 
+// MARK: - Overflow Row
+
+struct WidgetMoreRow: View {
+    let remaining: Int
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Text(String(localized: "+\(remaining) more"))
+                .font(.caption2)
+                .fontWeight(.semibold)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 8, weight: .semibold))
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(.blue)
+    }
+}
+
 // MARK: - Phased Progress
 
 struct WidgetPhasedProgress: View {

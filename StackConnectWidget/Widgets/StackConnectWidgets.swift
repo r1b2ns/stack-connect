@@ -48,6 +48,10 @@ private struct InReviewWidgetView: View {
                 ForEach(apps) { app in
                     WidgetAppRow(app: app)
                 }
+                let remaining = entry.snapshot.inReview.count - apps.count
+                if remaining > 0 {
+                    WidgetMoreRow(remaining: remaining)
+                }
                 Spacer(minLength: 0)
             }
         }
@@ -100,6 +104,10 @@ private struct AwaitingReleaseWidgetView: View {
                                 .padding(.leading, 38)
                         }
                     }
+                }
+                let remaining = entry.snapshot.awaitingRelease.count - apps.count
+                if remaining > 0 {
+                    WidgetMoreRow(remaining: remaining)
                 }
                 Spacer(minLength: 0)
             }

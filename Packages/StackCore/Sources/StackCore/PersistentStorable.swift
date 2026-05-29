@@ -16,31 +16,16 @@ public protocol PersistentStorable: Sendable {
     func fetch<T: Codable>(_ type: T.Type, id: String) async throws -> T?
     func fetchAll<T: Codable>(_ type: T.Type) async throws -> [T]
 
-    /// Fetches all items previously stored under an explicit `typeName`, decoding
-    /// them into `T`. Useful when the reading module (e.g. a widget extension)
-    /// wants to decode into a focused DTO that differs from the type name the
-    /// writer used.
-    func fetchAll<T: Codable>(_ type: T.Type, typeName: String) async throws -> [T]
-
-    /// Fetches a single item stored under an explicit `typeName` and `id`,
-    /// decoding into `T`. Mirror of `fetch(_:id:)` for cross-module DTO reads.
-    func fetch<T: Codable>(_ type: T.Type, id: String, typeName: String) async throws -> T?
-
     // MARK: - Delete
 
     func delete<T: Codable>(_ type: T.Type, id: String) async throws
     func deleteAll<T: Codable>(_ type: T.Type) async throws
 }
 
-public extension PersistentStorable {
-
-    /// Default implementation derives the stored type name from `T`.
-    func fetchAll<T: Codable>(_ type: T.Type, typeName: String) async throws -> [T] {
-        try await fetchAll(type)
-    }
-
-    /// Default implementation derives the stored type name from `T`.
-    func fetch<T: Codable>(_ type: T.Type, id: String, typeName: String) async throws -> T? {
-        try await fetch(type, id: id)
-    }
-}
+// NOTE: The explicit-`typeName` reads (used by the widget extension to decode
+// the app's payloads into focused DTOs) are intentionally NOT protocol
+// requirements. They live as concrete methods on `SwiftDataStorable`. Declaring
+// them on the protocol with a default implementation caused calls on the
+// concrete type to mis-dispatch to the default (which derives the type name from
+// `T`), silently returning nothing — e.g. the widget failing to read phased
+// releases. Keeping them concrete-only makes dispatch unambiguous.
