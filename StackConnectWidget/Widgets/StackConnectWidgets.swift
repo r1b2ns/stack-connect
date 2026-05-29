@@ -11,6 +11,16 @@ private func rowLimit(for family: WidgetFamily) -> Int {
     }
 }
 
+/// Review rows are taller (app name + stars + date, title and body), so fewer
+/// fit per family than the compact app rows.
+private func reviewRowLimit(for family: WidgetFamily) -> Int {
+    switch family {
+    case .systemMedium: return 2
+    case .systemLarge:  return 4
+    default:            return 4
+    }
+}
+
 // MARK: - In Review
 
 struct InReviewWidget: Widget {
@@ -138,7 +148,7 @@ private struct RecentReviewsWidgetView: View {
     let entry: WidgetEntry
 
     var body: some View {
-        let reviews = Array(entry.snapshot.recentReviews.prefix(rowLimit(for: family)))
+        let reviews = Array(entry.snapshot.recentReviews.prefix(reviewRowLimit(for: family)))
         VStack(alignment: .leading, spacing: 8) {
             WidgetSectionHeader(
                 icon: "star.bubble.fill",
