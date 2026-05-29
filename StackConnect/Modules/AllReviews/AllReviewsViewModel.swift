@@ -11,10 +11,19 @@ protocol AllReviewsViewModelProtocol: ObservableObject {
 
 // MARK: - UiState
 
+struct AllReviewsAppGroup: Identifiable, Hashable {
+    let app: AppModel
+    let account: AccountModel
+    let reviews: [CustomerReviewModel]
+
+    var id: String { app.id }
+}
+
 struct AllReviewsUiState {
-    var items: [HomeRecentReview] = []
-    var accountsMap: [String: AccountModel] = [:]
+    var groups: [AllReviewsAppGroup] = []
     var isLoading = false
+
+    var isEmpty: Bool { groups.isEmpty }
 }
 
 // MARK: - Implementation
@@ -55,20 +64,31 @@ final class AllReviewsViewModel: AllReviewsViewModelProtocol {
             let apps: [AppModel] = try await storage.fetchAll(AppModel.self)
             let appById = Dictionary(uniqueKeysWithValues: apps.map { ($0.id, $0) })
             let reviews: [CustomerReviewModel] = try await storage.fetchAll(CustomerReviewModel.self)
+            let accountsMap = await HomeWidgetDataLoader.loadAccounts(storage: storage)
 
-            uiState.items = reviews
-                .compactMap { review -> HomeRecentReview? in
-                    guard let appId = review.appId, let app = appById[appId] else { return nil }
-                    return HomeRecentReview(review: review, app: app)
+            let reviewsByApp = Dictionary(grouping: reviews) { $0.appId }
+
+            uiState.groups = reviewsByApp
+                .compactMap { appId, appReviews -> AllReviewsAppGroup? in
+                    guard let appId, let app = appById[appId] else { return nil }
+                    let sorted = appReviews.sorted { (a, b) in
+                        (a.createdDate ?? .distantPast) > (b.createdDate ?? .distantPast)
+                    }
+                    return AllReviewsAppGroup(
+                        app: app,
+                        account: HomeWidgetDataLoader.account(for: app, in: accountsMap),
+                        reviews: sorted
+                    )
                 }
                 .sorted { (a, b) in
-                    (a.review.createdDate ?? .distantPast) > (b.review.createdDate ?? .distantPast)
+                    let aDate = a.reviews.first?.createdDate ?? .distantPast
+                    let bDate = b.reviews.first?.createdDate ?? .distantPast
+                    if aDate != bDate { return aDate > bDate }
+                    return a.app.name.localizedCaseInsensitiveCompare(b.app.name) == .orderedAscending
                 }
-
-            uiState.accountsMap = await HomeWidgetDataLoader.loadAccounts(storage: storage)
         } catch {
             Log.print.error("[AllReviews] Failed to load reviews: \(error.localizedDescription)")
-            uiState.items = []
+            uiState.groups = []
         }
     }
 }

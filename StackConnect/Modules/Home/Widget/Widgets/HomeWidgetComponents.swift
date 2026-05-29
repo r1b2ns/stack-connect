@@ -209,20 +209,23 @@ struct HomePhasedProgressView: View {
 
 struct HomeReviewRowView: View {
     let item: HomeRecentReview
+    var showsApp: Bool = true
 
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
-                    HomeAppIconView(
-                        url: item.app.iconUrl.flatMap { URL(string: $0) },
-                        size: 24
-                    )
-                    Text(item.app.name)
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    if showsApp {
+                        HomeAppIconView(
+                            url: item.app.iconUrl.flatMap { URL(string: $0) },
+                            size: 24
+                        )
+                        Text(item.app.name)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
 
                     HomeStarsView(rating: item.review.rating)
 
