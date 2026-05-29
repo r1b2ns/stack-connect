@@ -108,26 +108,38 @@ final class SyncService: ObservableObject {
         #endif
         let storage = self.storage
 
-        await withTaskGroup(of: Void.self) { group in
+        let changes = await withTaskGroup(of: SyncChange.self) { group -> SyncChange in
             for (account, connection) in prepared {
                 group.addTask { [weak self] in
                     await self?.markInProgress(account.id, started: true)
-                    await SyncService.runAccountSync(
+                    let change = await SyncService.runAccountSync(
                         account: account,
                         connection: connection,
                         storage: storage,
                         mode: mode
                     )
                     await self?.markInProgress(account.id, started: false)
+                    return change
                 }
             }
-            await group.waitForAll()
+            var aggregate = SyncChange()
+            for await change in group { aggregate = aggregate + change }
+            return aggregate
         }
 
         state.lastSyncedAt = .now
         state.isSyncing = false
         await preloadWidgetIcons()
         WidgetCenter.shared.reloadAllTimelines()
+
+        // "Fake push": surface status changes and new reviews as local
+        // notifications, but only for background (lightweight) syncs — in the
+        // foreground the user already sees these updates on screen.
+        if mode == .lightweight {
+            await LocalNotificationService.scheduleStatusChanges(changes.statusChanges)
+            await LocalNotificationService.scheduleNewReviews(changes.newReviews)
+        }
+
         Log.print.notice("[Sync] syncAll completed")
     }
 
@@ -189,11 +201,11 @@ final class SyncService: ObservableObject {
         connection: (any AppleAccountSyncing)?,
         storage: PersistentStorable,
         mode: SyncMode
-    ) async {
+    ) async -> SyncChange {
         guard let connection else {
             Log.print.error("[Sync] No credentials for \(account.name)")
             await saveMetadata(storage: storage, accountId: account.id, appsSynced: 0, error: "Missing credentials")
-            return
+            return SyncChange()
         }
 
         do {
@@ -227,11 +239,31 @@ final class SyncService: ObservableObject {
             let enrichedMap = Dictionary(uniqueKeysWithValues: enriched.map { ($0.id, $0) })
             let finalApps = baseApps.map { enrichedMap[$0.id] ?? $0 }
 
+            var change = SyncChange()
+
             for app in finalApps {
                 do {
                     try await storage.save(app, id: "\(account.id).\(app.id)")
                 } catch {
                     Log.print.error("[Sync] Save failed for \(app.name): \(error.localizedDescription)")
+                }
+            }
+
+            // Detect status transitions vs. the previously cached state. Only
+            // apps that had a prior status and genuinely changed count — new apps
+            // (and the first sync) are intentionally skipped.
+            for app in finalApps where !app.isArchived {
+                if let previous = cachedMap[app.id]?.appStoreState,
+                   let current = app.appStoreState,
+                   previous != current {
+                    change.statusChanges.append(
+                        SyncChange.StatusChange(
+                            accountId: account.id,
+                            appId: app.id,
+                            appName: app.name,
+                            newState: current
+                        )
+                    )
                 }
             }
 
@@ -246,12 +278,13 @@ final class SyncService: ObservableObject {
             // Reviews are synced in both modes so the widget's Recent Reviews
             // stays fresh; lightweight (background) fetches fewer per app to stay
             // within the background budget.
-            let reviewsSaved = await syncReviews(
+            let reviewResult = await syncReviews(
                 for: activeApps,
                 limit: mode == .lightweight ? 3 : 10,
                 connection: connection,
                 storage: storage
             )
+            change.newReviews = reviewResult.new
 
             await saveMetadata(
                 storage: storage,
@@ -260,7 +293,8 @@ final class SyncService: ObservableObject {
                 error: nil
             )
             let modeLabel = mode == .lightweight ? "lightweight" : "full"
-            Log.print.notice("[Sync] \(account.name): \(finalApps.count) apps, \(reviewsSaved) reviews, \(phasedSaved) phased (\(modeLabel))")
+            Log.print.notice("[Sync] \(account.name): \(finalApps.count) apps, \(reviewResult.saved) reviews, \(phasedSaved) phased (\(modeLabel))")
+            return change
         } catch {
             await saveMetadata(
                 storage: storage,
@@ -269,6 +303,7 @@ final class SyncService: ObservableObject {
                 error: error.localizedDescription
             )
             Log.print.error("[Sync] \(account.name) failed: \(error.localizedDescription)")
+            return SyncChange()
         }
     }
 
@@ -335,14 +370,15 @@ final class SyncService: ObservableObject {
         limit reviewsPerApp: Int,
         connection: any AppleAccountSyncing,
         storage: PersistentStorable
-    ) async -> Int {
+    ) async -> (saved: Int, new: [SyncChange.NewReview]) {
         let maxConcurrent = 5
-        guard !apps.isEmpty else { return 0 }
+        guard !apps.isEmpty else { return (0, []) }
 
         var totalSaved = 0
+        var allNew: [SyncChange.NewReview] = []
         var index = 0
 
-        await withTaskGroup(of: Int.self) { group in
+        await withTaskGroup(of: (Int, [SyncChange.NewReview]).self) { group in
             func enqueueNext() {
                 guard index < apps.count else { return }
                 let app = apps[index]
@@ -358,13 +394,14 @@ final class SyncService: ObservableObject {
             }
 
             for _ in 0..<min(maxConcurrent, apps.count) { enqueueNext() }
-            while let saved = await group.next() {
-                totalSaved += saved
+            while let result = await group.next() {
+                totalSaved += result.0
+                allNew.append(contentsOf: result.1)
                 enqueueNext()
             }
         }
 
-        return totalSaved
+        return (totalSaved, allNew)
     }
 
     private nonisolated static func fetchAndPersistReviews(
@@ -372,23 +409,37 @@ final class SyncService: ObservableObject {
         limit: Int,
         connection: any AppleAccountSyncing,
         storage: PersistentStorable
-    ) async -> Int {
+    ) async -> (saved: Int, new: [SyncChange.NewReview]) {
         do {
             let reviews = try await connection.fetchRecentReviews(appId: app.id, limit: limit)
             var saved = 0
+            var newReviews: [SyncChange.NewReview] = []
             for var review in reviews {
                 review.appId = app.id
+                let storageId = "review.\(app.id).\(review.id)"
+                // A review is "new" if it wasn't already persisted before this sync.
+                let alreadyStored = ((try? await storage.fetch(CustomerReviewModel.self, id: storageId)) ?? nil) != nil
                 do {
-                    try await storage.save(review, id: "review.\(app.id).\(review.id)")
+                    try await storage.save(review, id: storageId)
                     saved += 1
+                    if !alreadyStored {
+                        newReviews.append(
+                            SyncChange.NewReview(
+                                accountId: app.accountId,
+                                appId: app.id,
+                                appName: app.name,
+                                reviewId: review.id
+                            )
+                        )
+                    }
                 } catch {
                     Log.print.error("[Sync] Save review failed for \(app.name): \(error.localizedDescription)")
                 }
             }
-            return saved
+            return (saved, newReviews)
         } catch {
             Log.print.error("[Sync] Fetch reviews failed for \(app.name): \(error.localizedDescription)")
-            return 0
+            return (0, [])
         }
     }
 

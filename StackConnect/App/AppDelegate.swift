@@ -20,8 +20,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         #if DEBUG
         NFX.sharedInstance().start()
         Log.print.info("[App] netfox started")
-        UNUserNotificationCenter.current().delegate = self
         #endif
+
+        UNUserNotificationCenter.current().delegate = self
+        // Ask for notification permission on first launch so background sync can
+        // surface status changes and new reviews as local "fake push" alerts.
+        Task { await LocalNotificationService.requestAuthorizationIfNeeded() }
 
         registerBackgroundRefresh()
         scheduleBackgroundRefresh()
@@ -84,17 +88,28 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
 }
 
-#if DEBUG
 extension AppDelegate: UNUserNotificationCenterDelegate {
 
-    // Show the debug "sync started" notification as a banner AND persist it in Notification Center
-    // even when the app is in foreground (`.list` is what keeps it visible after dismissing the banner).
+    // Present notifications as a banner AND keep them in Notification Center
+    // (`.list`) even when the app is in the foreground.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        completionHandler([.banner, .list])
+        completionHandler([.banner, .list, .sound])
+    }
+
+    // Route a notification tap into the app via its deep link payload.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        if let raw = response.notification.request.content.userInfo["deeplink"] as? String,
+           let url = URL(string: raw) {
+            Task { @MainActor in DeepLinkRouter.shared.open(url) }
+        }
+        completionHandler()
     }
 }
-#endif

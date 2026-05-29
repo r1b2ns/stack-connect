@@ -21,20 +21,48 @@ private struct HomeEntry: View {
             .onOpenURL { url in
                 handleDeepLink(url)
             }
+            .onReceive(DeepLinkRouter.shared.$pending.compactMap { $0 }) { url in
+                handleDeepLink(url)
+                DeepLinkRouter.shared.pending = nil
+            }
     }
 
-    /// Routes widget deep links (scheme `stackconnect`) into the Home navigation stack.
+    /// Routes deep links (scheme `stackconnect`) from widgets and local
+    /// notifications into the Home navigation stack.
     private func handleDeepLink(_ url: URL) {
-        guard url.scheme == "stackconnect" else { return }
-        switch url.host {
-        case "reviews":
+        guard let link = DeepLink(url: url) else { return }
+        switch link {
+        case .home:
+            coordinator.path = NavigationPath()
+        case .reviews:
             coordinator.path = NavigationPath()
             coordinator.navigateToAllReviews()
-        case "home":
-            coordinator.path = NavigationPath()
-        default:
-            break
+        case let .app(accountId, appId):
+            Task { await openAppDetail(accountId: accountId, appId: appId) }
+        case let .review(accountId, appId, reviewId):
+            Task { await openReviewDetail(accountId: accountId, appId: appId, reviewId: reviewId) }
         }
+    }
+
+    @MainActor
+    private func openAppDetail(accountId: String, appId: String) async {
+        guard let storage = SwiftDataStorable.shared,
+              var account: AccountModel = try? await storage.fetch(AccountModel.self, id: accountId),
+              let app: AppModel = try? await storage.fetch(AppModel.self, id: "\(accountId).\(appId)") else { return }
+        account.fillMissingRules()
+        coordinator.path = NavigationPath()
+        coordinator.navigateToAppDetail(app, account: account)
+    }
+
+    @MainActor
+    private func openReviewDetail(accountId: String, appId: String, reviewId: String) async {
+        guard let storage = SwiftDataStorable.shared,
+              var account: AccountModel = try? await storage.fetch(AccountModel.self, id: accountId),
+              let app: AppModel = try? await storage.fetch(AppModel.self, id: "\(accountId).\(appId)"),
+              let review: CustomerReviewModel = try? await storage.fetch(CustomerReviewModel.self, id: "review.\(appId).\(reviewId)") else { return }
+        account.fillMissingRules()
+        coordinator.path = NavigationPath()
+        coordinator.navigateToReviewDetail(review: review, appName: app.name, account: account)
     }
 }
 
