@@ -46,7 +46,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
     private var isMetadataEditable: Bool {
         guard let state = viewModel.uiState.version.appStoreState else { return false }
-        return [.prepareForSubmission, .rejected, .waitingForReview, .readyForReview].contains(state)
+        return [.prepareForSubmission, .rejected, .waitingForReview, .readyForReview, .invalidBinary].contains(state)
     }
 
     /// Metadata editable by state AND user has version.edit permission
@@ -291,56 +291,17 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
     private func buildTextContentSection() -> some View {
         Section {
-            buildTextContentRow(
-                icon: "text.badge.star",
-                color: .purple,
-                title: String(localized: "Promotional Text"),
-                copyText: viewModel.uiState.editPromotionalText
-            ) { viewModel.requestField(.promotionalText) }
-
-            buildTextContentRow(
-                icon: "doc.text.fill",
-                color: .indigo,
-                title: String(localized: "Description"),
-                copyText: viewModel.uiState.editDescription
-            ) { viewModel.requestField(.description) }
-
-            buildTextContentRow(
-                icon: "sparkles",
-                color: .orange,
-                title: String(localized: "What's New"),
-                copyText: viewModel.uiState.editWhatsNew
-            ) { viewModel.requestField(.whatsNew) }
-        }
-    }
-
-    /// A menu row that opens the text editor on tap and exposes an independent
-    /// copy button for the stored metadata text.
-    private func buildTextContentRow(
-        icon: String,
-        color: Color,
-        title: String,
-        copyText: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        HStack(spacing: 12) {
-            Button(action: action) {
-                HStack(spacing: 12) {
-                    buildIconSquare(icon: icon, color: color)
-                    Text(title)
-                        .font(.body)
-                        .foregroundStyle(.primary)
-                    Spacer(minLength: 0)
-                }
-                .contentShape(Rectangle())
+            Button { viewModel.requestField(.promotionalText) } label: {
+                buildMenuRow(icon: "text.badge.star", color: .purple, title: String(localized: "Promotional Text"))
             }
-            .buttonStyle(.borderless)
 
-            CopyButton(text: copyText)
+            Button { viewModel.requestField(.description) } label: {
+                buildMenuRow(icon: "doc.text.fill", color: .indigo, title: String(localized: "Description"))
+            }
 
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            Button { viewModel.requestField(.whatsNew) } label: {
+                buildMenuRow(icon: "sparkles", color: .orange, title: String(localized: "What's New"))
+            }
         }
     }
 
