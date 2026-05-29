@@ -52,6 +52,26 @@ enum HomeWidgetDataLoader {
     static func account(for app: AppModel, in map: [String: AccountModel]) -> AccountModel {
         map[app.accountId] ?? AccountModel(id: app.accountId, name: "", providerType: .apple)
     }
+
+    /// Groups apps by their platform in a canonical order, keeping unknown-platform
+    /// apps in a trailing `nil` group. Order within each group is preserved.
+    static func groupByPlatform(_ apps: [AppModel]) -> [(platform: AppPlatform?, apps: [AppModel])] {
+        let order: [AppPlatform] = [.ios, .macOs, .tvOs, .visionOs]
+        var groups: [AppPlatform?: [AppModel]] = [:]
+        for app in apps {
+            let platform = app.platform.flatMap { AppPlatform(rawValue: $0) }
+            groups[platform, default: []].append(app)
+        }
+
+        var result: [(AppPlatform?, [AppModel])] = []
+        for platform in order where !(groups[platform] ?? []).isEmpty {
+            result.append((platform, groups[platform] ?? []))
+        }
+        if let unknown = groups[nil], !unknown.isEmpty {
+            result.append((nil, unknown))
+        }
+        return result
+    }
 }
 
 // MARK: - Header
@@ -103,15 +123,29 @@ struct HomeWidgetEmptyRow: View {
 
 struct HomeAppRowView: View {
     let app: AppModel
+    var showsPlatform: Bool = false
+
+    private var platform: AppPlatform? {
+        app.platform.flatMap { AppPlatform(rawValue: $0) }
+    }
 
     var body: some View {
         HStack(spacing: 12) {
             HomeAppIconView(url: app.iconUrl.flatMap { URL(string: $0) })
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(app.name)
-                    .font(.body)
-                    .fontWeight(.medium)
+                HStack(spacing: 6) {
+                    Text(app.name)
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+
+                    if showsPlatform, let platform {
+                        Image(systemName: platform.icon)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
 
                 if let state = app.appStoreState {
                     HStack(spacing: 4) {

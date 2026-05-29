@@ -21,6 +21,26 @@ private func reviewRowLimit(for family: WidgetFamily) -> Int {
     }
 }
 
+/// Groups apps by platform in canonical order (unknown platform last), keeping
+/// each group's order intact.
+private func groupByPlatform(_ apps: [WidgetApp]) -> [(platform: String?, apps: [WidgetApp])] {
+    var groups: [String?: [WidgetApp]] = [:]
+    var seen: [String?] = []
+    for app in apps {
+        if groups[app.platform] == nil {
+            groups[app.platform] = []
+            seen.append(app.platform)
+        }
+        groups[app.platform]?.append(app)
+    }
+    func rank(_ platform: String?) -> Int {
+        platform.flatMap { WidgetPlatform.order.firstIndex(of: $0) } ?? Int.max
+    }
+    return seen
+        .sorted { rank($0) < rank($1) }
+        .map { ($0, groups[$0] ?? []) }
+}
+
 // MARK: - In Review
 
 struct InReviewWidget: Widget {
@@ -55,8 +75,26 @@ private struct InReviewWidgetView: View {
                 WidgetEmptyRow(icon: "checkmark.circle", text: String(localized: "No apps in review"))
                 Spacer(minLength: 0)
             } else {
-                ForEach(apps) { app in
-                    WidgetAppRow(app: app)
+                let groups = groupByPlatform(apps)
+                let showsHeaders = groups.count > 1
+                ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
+                    if showsHeaders,
+                       let name = WidgetPlatform.displayName(for: group.platform),
+                       group.platform != nil {
+                        HStack(spacing: 4) {
+                            if let icon = WidgetPlatform.icon(for: group.platform) {
+                                Image(systemName: icon)
+                            }
+                            Text(name)
+                        }
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                    }
+
+                    ForEach(group.apps) { app in
+                        WidgetAppRow(app: app, showsPlatform: true)
+                    }
                 }
                 let remaining = entry.snapshot.inReview.count - apps.count
                 if remaining > 0 {

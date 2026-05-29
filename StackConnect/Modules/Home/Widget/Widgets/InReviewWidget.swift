@@ -26,8 +26,7 @@ final class InReviewWidget: HomeWidget, ObservableObject {
         do {
             let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
             let active = allApps.filter { !$0.isArchived }
-            let phasedByAppId = await HomeWidgetDataLoader.loadPhasedReleases(for: active, storage: storage)
-            let (inReview, _) = AppStatusCategorizer.categorize(active, phasedByAppId: phasedByAppId)
+            let inReview = AppStatusCategorizer.inReviewEntries(active)
             apps = inReview.sorted(by: HomeWidgetDataLoader.sortByRecency)
             accountsMap = await HomeWidgetDataLoader.loadAccounts(storage: storage)
         } catch {
@@ -63,17 +62,32 @@ private struct InReviewWidgetView: View {
                     text: String(localized: "No apps in review")
                 )
             } else {
-                ForEach(widget.apps) { app in
-                    Button {
-                        coordinator.navigateToAppDetail(
-                            app,
-                            account: HomeWidgetDataLoader.account(for: app, in: widget.accountsMap)
-                        )
-                    } label: {
-                        HomeAppRowView(app: app)
+                let groups = HomeWidgetDataLoader.groupByPlatform(widget.apps)
+                let showsHeaders = groups.count > 1
+                ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
+                    if showsHeaders, let platform = group.platform {
+                        HStack(spacing: 6) {
+                            Image(systemName: platform.icon)
+                            Text(platform.displayName)
+                        }
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 4)
                     }
-                    .buttonStyle(.borderless)
-                    .foregroundStyle(.primary)
+
+                    ForEach(group.apps) { app in
+                        Button {
+                            coordinator.navigateToAppDetail(
+                                app,
+                                account: HomeWidgetDataLoader.account(for: app, in: widget.accountsMap)
+                            )
+                        } label: {
+                            HomeAppRowView(app: app, showsPlatform: true)
+                        }
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(.primary)
+                    }
                 }
             }
         }

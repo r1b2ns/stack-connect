@@ -92,10 +92,23 @@ enum WidgetDataLoader {
         var inReview: [WidgetApp] = []
         var awaiting: [WidgetApp] = []
         for app in apps {
-            let state = app.appStoreState
-            if WidgetAppStatus.isInReview(state) {
+            // In Review is expanded per platform: an app with an iOS version in
+            // review and a tvOS version with an invalid binary yields two rows.
+            if let platformVersions = app.platformVersions, !platformVersions.isEmpty {
+                for version in platformVersions where WidgetAppStatus.isInReview(version.appStoreState) {
+                    var entry = app
+                    entry.appStoreState = version.appStoreState
+                    entry.platform = version.platform
+                    entry.versionString = version.versionString
+                    inReview.append(entry)
+                }
+            } else if WidgetAppStatus.isInReview(app.appStoreState) {
                 inReview.append(app)
-            } else if state == "PENDING_DEVELOPER_RELEASE" {
+            }
+
+            // Awaiting Release stays on the app's primary (most-recent) state.
+            let state = app.appStoreState
+            if state == "PENDING_DEVELOPER_RELEASE" {
                 awaiting.append(app)
             } else if state == "READY_FOR_SALE",
                       let phased = phasedByAppId[app.id],

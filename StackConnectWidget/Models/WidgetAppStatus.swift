@@ -63,3 +63,33 @@ enum WidgetAppStatus {
         }
     }
 }
+
+// MARK: - Platform (raw-string mapping)
+//
+// Mirrors the app's `AppPlatform` icon/displayName without importing the app
+// module. `order` is used to group In Review apps by platform.
+
+enum WidgetPlatform {
+
+    static let order = ["IOS", "MAC_OS", "TV_OS", "VISION_OS"]
+
+    static func icon(for raw: String?) -> String? {
+        switch raw {
+        case "IOS":       return "iphone"
+        case "MAC_OS":    return "macbook"
+        case "TV_OS":     return "appletv"
+        case "VISION_OS": return "visionpro"
+        default:          return nil
+        }
+    }
+
+    static func displayName(for raw: String?) -> String? {
+        switch raw {
+        case "IOS":       return "iOS"
+        case "MAC_OS":    return "macOS"
+        case "TV_OS":     return "tvOS"
+        case "VISION_OS": return "visionOS"
+        default:          return raw
+        }
+    }
+}

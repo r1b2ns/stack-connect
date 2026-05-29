@@ -15,14 +15,22 @@ struct WidgetApp: Codable, Identifiable, Hashable {
     var versionString: String?
     var lastModifiedDate: Date?
     var isArchived: Bool?
+    var platform: String?
+    var platformVersions: [WidgetPlatformVersion]?
 
     /// Cached icon bytes from the shared App Group container. Not part of the
     /// persisted JSON — populated by `WidgetDataLoader` after decoding.
     var iconData: Data?
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, iconUrl, appStoreState, versionString, lastModifiedDate, isArchived
+        case id, name, iconUrl, appStoreState, versionString, lastModifiedDate, isArchived, platform, platformVersions
     }
+}
+
+struct WidgetPlatformVersion: Codable, Hashable {
+    let platform: String
+    var appStoreState: String?
+    var versionString: String?
 }
 
 struct WidgetReview: Codable, Identifiable, Hashable {

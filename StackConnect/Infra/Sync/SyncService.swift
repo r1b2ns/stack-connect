@@ -314,6 +314,8 @@ final class SyncService: ObservableObject {
         let versionString: String?
         let lastModifiedDate: Date?
         let currentVersionId: String?
+        let platform: AppPlatform?
+        let platformVersions: [AppPlatformVersion]
     }
 
     private nonisolated static func enrichApps(
@@ -326,8 +328,26 @@ final class SyncService: ObservableObject {
                 let needsIcon = app.iconUrl == nil
                 group.addTask {
                     async let iconUrl: String? = needsIcon ? connection.fetchIconUrl(appId: appId) : nil
-                    let versions = (try? await connection.fetchAppStoreVersions(appId: appId, limit: 1)) ?? []
-                    let latest = versions.first
+                    let versions = (try? await connection.fetchAppStoreVersions(appId: appId, limit: 20)) ?? []
+                    // Most recent first, so the overall "latest" and the per-platform
+                    // latest both come out correctly.
+                    let sorted = versions.sorted { ($0.createdDate ?? .distantPast) > ($1.createdDate ?? .distantPast) }
+                    let latest = sorted.first
+
+                    var platformVersions: [AppPlatformVersion] = []
+                    var seenPlatforms = Set<String>()
+                    for version in sorted {
+                        guard let platform = version.platform?.rawValue, !seenPlatforms.contains(platform) else { continue }
+                        seenPlatforms.insert(platform)
+                        platformVersions.append(
+                            AppPlatformVersion(
+                                platform: platform,
+                                appStoreState: version.appStoreState,
+                                versionString: version.versionString
+                            )
+                        )
+                    }
+
                     let icon = await iconUrl
                     return AppEnrichment(
                         appId: appId,
@@ -335,7 +355,9 @@ final class SyncService: ObservableObject {
                         appStoreState: latest?.appStoreState,
                         versionString: latest?.versionString,
                         lastModifiedDate: latest?.createdDate,
-                        currentVersionId: latest?.id
+                        currentVersionId: latest?.id,
+                        platform: latest?.platform,
+                        platformVersions: platformVersions
                     )
                 }
             }
@@ -352,6 +374,8 @@ final class SyncService: ObservableObject {
                 if let state = e.appStoreState { updated.appStoreState = state }
                 if let ver = e.versionString { updated.versionString = ver }
                 if let date = e.lastModifiedDate { updated.lastModifiedDate = date }
+                if let platform = e.platform { updated.platform = platform.rawValue }
+                if !e.platformVersions.isEmpty { updated.platformVersions = e.platformVersions }
                 updated.hasReviewPending = updated.appStoreState?.isReviewPending ?? false
             }
             return updated

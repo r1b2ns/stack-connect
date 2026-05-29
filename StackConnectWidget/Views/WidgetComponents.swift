@@ -81,16 +81,25 @@ struct WidgetAppIcon: View {
 
 struct WidgetAppRow: View {
     let app: WidgetApp
+    var showsPlatform: Bool = false
 
     var body: some View {
         HStack(spacing: 10) {
             WidgetAppIcon(data: app.iconData, size: 28)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(app.name)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    Text(app.name)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+
+                    if showsPlatform, let icon = WidgetPlatform.icon(for: app.platform) {
+                        Image(systemName: icon)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
 
                 if let state = app.appStoreState {
                     HStack(spacing: 4) {
