@@ -235,7 +235,7 @@ final class SyncServiceTests: XCTestCase {
         XCTAssertTrue(connection.fetchedVersionsForAppIds.contains("active-app"))
     }
 
-    func testLightweightModeSkipsReviewsButStillEnrichesApps() async throws {
+    func testLightweightModeSyncsReviewsAndEnrichesApps() async throws {
         let account = AccountModel(name: "Apple", providerType: .apple)
         try await mockStorage.save(account, id: account.id)
         setCredentials(issuerID: "issuer-1", for: account)
@@ -261,13 +261,13 @@ final class SyncServiceTests: XCTestCase {
 
         XCTAssertTrue(connection.fetchedVersionsForAppIds.contains("app-1"),
                       "Lightweight mode must still enrich apps")
-        XCTAssertTrue(connection.fetchedReviewsForAppIds.isEmpty,
-                      "Lightweight mode must skip review fetches")
+        XCTAssertTrue(connection.fetchedReviewsForAppIds.contains("app-1"),
+                      "Lightweight mode must also re-sync reviews to keep the widget fresh")
 
         let cachedReview: CustomerReviewModel? = try await mockStorage.fetch(
             CustomerReviewModel.self, id: "review.app-1.r1"
         )
-        XCTAssertNil(cachedReview, "No reviews should be persisted in lightweight mode")
+        XCTAssertNotNil(cachedReview, "Reviews should be persisted in lightweight mode")
     }
 
     func testSyncWithNoAppsRecordsZeroAppsSynced() async throws {

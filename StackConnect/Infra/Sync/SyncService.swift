@@ -243,17 +243,15 @@ final class SyncService: ObservableObject {
                 storage: storage
             )
 
-            let reviewsSaved: Int
-            switch mode {
-            case .full:
-                reviewsSaved = await syncReviews(
-                    for: activeApps,
-                    connection: connection,
-                    storage: storage
-                )
-            case .lightweight:
-                reviewsSaved = 0
-            }
+            // Reviews are synced in both modes so the widget's Recent Reviews
+            // stays fresh; lightweight (background) fetches fewer per app to stay
+            // within the background budget.
+            let reviewsSaved = await syncReviews(
+                for: activeApps,
+                limit: mode == .lightweight ? 3 : 10,
+                connection: connection,
+                storage: storage
+            )
 
             await saveMetadata(
                 storage: storage,
@@ -334,11 +332,11 @@ final class SyncService: ObservableObject {
 
     private nonisolated static func syncReviews(
         for apps: [AppModel],
+        limit reviewsPerApp: Int,
         connection: any AppleAccountSyncing,
         storage: PersistentStorable
     ) async -> Int {
         let maxConcurrent = 5
-        let reviewsPerApp = 10
         guard !apps.isEmpty else { return 0 }
 
         var totalSaved = 0
