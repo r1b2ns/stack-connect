@@ -1,5 +1,6 @@
 import Foundation
 #if DEBUG
+import UIKit
 import UserNotifications
 #endif
 
@@ -128,6 +129,10 @@ final class SyncService: ObservableObject {
 
     #if DEBUG
     private func postDebugSyncStartedNotification(mode: SyncMode, accountCount: Int) async {
+        // Only surface the "sync started" notification when the app is in the
+        // background — a banner while the user is actively using the app is noise.
+        guard UIApplication.shared.applicationState == .background else { return }
+
         let center = UNUserNotificationCenter.current()
         let settings = await center.notificationSettings()
         let allowed: Bool

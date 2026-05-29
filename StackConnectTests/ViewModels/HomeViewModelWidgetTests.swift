@@ -29,14 +29,14 @@ final class HomeViewModelWidgetTests: XCTestCase {
 
     // MARK: - Defaults
 
-    func testDefaultsToRegistryWhenNoStoredConfiguration() {
+    func testDefaultsToNoWidgetsOnFreshInstall() {
         XCTAssertEqual(sut.uiState.widgets.count, HomeWidgetRegistry.defaultConfigurations.count)
-        XCTAssertEqual(sut.uiState.widgets.first?.kind, .appStoreReviewCount)
+        XCTAssertTrue(sut.uiState.widgets.isEmpty)
     }
 
     func testLoadsConfigurationsFromPreferences() {
         let stored = [
-            HomeWidgetConfiguration(kind: .appStoreReviewCount, size: .compact)
+            HomeWidgetConfiguration(kind: .recentReviews, size: .compact)
         ]
         preferences.setObject(stored, forKey: "home.widget.configurations")
 
@@ -53,17 +53,30 @@ final class HomeViewModelWidgetTests: XCTestCase {
 
     // MARK: - Add
 
+    func testAddWidgetAppendsAndPersists() {
+        sut.addWidget(.recentReviews)
+
+        XCTAssertEqual(sut.uiState.widgets.count, 1)
+        XCTAssertEqual(sut.uiState.widgets.first?.kind, .recentReviews)
+        let stored: [HomeWidgetConfiguration]? = preferences.object(forKey: "home.widget.configurations")
+        XCTAssertEqual(stored?.first?.kind, .recentReviews)
+    }
+
     func testAddWidgetDoesNotDuplicateExistingKind() {
-        let initialCount = sut.uiState.widgets.count
-        sut.addWidget(.appStoreReviewCount)
-        XCTAssertEqual(sut.uiState.widgets.count, initialCount)
+        sut.addWidget(.recentReviews)
+        let countAfterFirstAdd = sut.uiState.widgets.count
+
+        sut.addWidget(.recentReviews)
+
+        XCTAssertEqual(sut.uiState.widgets.count, countAfterFirstAdd)
     }
 
     // MARK: - Remove
 
     func testRemoveWidgetTakesIdAndPersists() {
+        sut.addWidget(.inReview)
         guard let widget = sut.uiState.widgets.first else {
-            return XCTFail("Expected default widget")
+            return XCTFail("Expected an added widget")
         }
         let id = widget.id
 
@@ -77,13 +90,14 @@ final class HomeViewModelWidgetTests: XCTestCase {
     // MARK: - Move
 
     func testMoveWidgetsReordersAndPersists() {
-        sut.removeWidget(id: sut.uiState.widgets[0].id)
-        sut.addWidget(.appStoreReviewCount)
-        // With only one available kind today, just exercise the call path.
-        sut.moveWidgets(from: IndexSet(integer: 0), to: 0)
+        sut.addWidget(.recentReviews)
+        sut.addWidget(.inReview)
 
+        sut.moveWidgets(from: IndexSet(integer: 1), to: 0)
+
+        XCTAssertEqual(sut.uiState.widgets.first?.kind, .inReview)
         let stored: [HomeWidgetConfiguration]? = preferences.object(forKey: "home.widget.configurations")
-        XCTAssertEqual(stored?.first?.kind, .appStoreReviewCount)
+        XCTAssertEqual(stored?.first?.kind, .inReview)
     }
 
     // MARK: - Available

@@ -3,35 +3,53 @@ import SwiftUI
 // MARK: - Kind
 
 enum HomeWidgetKind: String, Codable, CaseIterable, Hashable, Identifiable {
-    case appStoreReviewCount
+    case inReview
+    case awaitingRelease
+    case recentReviews
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .appStoreReviewCount:
-            return String(localized: "App Store Activity")
+        case .inReview:
+            return String(localized: "In Review")
+        case .awaitingRelease:
+            return String(localized: "Awaiting Release")
+        case .recentReviews:
+            return String(localized: "Recent Reviews")
         }
     }
 
     var summary: String {
         switch self {
-        case .appStoreReviewCount:
-            return String(localized: "Apps currently in review or rolling out")
+        case .inReview:
+            return String(localized: "Apps waiting on App Review")
+        case .awaitingRelease:
+            return String(localized: "Approved apps ready to release")
+        case .recentReviews:
+            return String(localized: "Latest customer reviews across your apps")
         }
     }
 
     var systemImage: String {
         switch self {
-        case .appStoreReviewCount:
-            return "app.badge.fill"
+        case .inReview:
+            return "magnifyingglass.circle.fill"
+        case .awaitingRelease:
+            return "paperplane.circle.fill"
+        case .recentReviews:
+            return "star.bubble.fill"
         }
     }
 
     var tintColor: Color {
         switch self {
-        case .appStoreReviewCount:
+        case .inReview:
+            return .orange
+        case .awaitingRelease:
             return .blue
+        case .recentReviews:
+            return .yellow
         }
     }
 }

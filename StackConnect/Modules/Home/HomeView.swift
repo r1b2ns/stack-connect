@@ -38,11 +38,8 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
         NavigationStack(path: $coordinator.path) {
             List {
                 buildSyncBanner()
-                buildWidgetsSection()
-                buildInReviewSection()
-                buildAwaitingReleaseSection()
-                buildRecentReviewsSection()
                 buildAccountsSection()
+                buildWidgetsSection()
             }
             .navigationTitle("StackConnect")
             .navigationDestinations()
@@ -104,7 +101,14 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
 
     @ViewBuilder
     private func buildWidgetsSection() -> some View {
-        if !viewModel.uiState.widgets.isEmpty {
+        if viewModel.uiState.widgets.isEmpty {
+            Section {
+                buildWidgetsEmptyState()
+                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                    .listRowSeparator(.hidden)
+            }
+            .listRowBackground(Color.clear)
+        } else {
             Section {
                 ForEach(viewModel.uiState.widgets, id: \.id) { widget in
                     HomeWidgetContainerView(widget: widget)
@@ -114,6 +118,37 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
             }
             .listRowBackground(Color.clear)
         }
+    }
+
+    private func buildWidgetsEmptyState() -> some View {
+        Button {
+            isCustomizingWidgets = true
+        } label: {
+            VStack(spacing: 10) {
+                Image(systemName: "square.grid.2x2")
+                    .font(.system(size: 32))
+                    .foregroundStyle(.secondary)
+                Text(String(localized: "No widgets yet"))
+                    .font(.headline)
+                Text(String(localized: "Add widgets to keep an eye on your apps right from here."))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Text(String(localized: "Add Widgets"))
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.blue)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(24)
+            .background(Color.gray.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Accounts Section
@@ -159,253 +194,6 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
         }
     }
 
-    // MARK: - Dashboard Sections
-
-    @ViewBuilder
-    private func buildInReviewSection() -> some View {
-        if !viewModel.uiState.inReviewApps.isEmpty {
-            Section {
-                ForEach(viewModel.uiState.inReviewApps) { app in
-                    Button {
-                        coordinator.navigateToAppDetail(app, account: accountForApp(app))
-                    } label: {
-                        buildAppRow(app)
-                    }
-                    .foregroundStyle(.primary)
-                }
-            } header: {
-                buildSectionHeader(
-                    icon: "magnifyingglass.circle.fill",
-                    title: String(localized: "In Review"),
-                    count: viewModel.uiState.inReviewApps.count
-                )
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func buildAwaitingReleaseSection() -> some View {
-        if !viewModel.uiState.awaitingReleaseApps.isEmpty {
-            Section {
-                ForEach(viewModel.uiState.awaitingReleaseApps) { app in
-                    Button {
-                        coordinator.navigateToAppDetail(app, account: accountForApp(app))
-                    } label: {
-                        buildAwaitingReleaseRow(app)
-                    }
-                    .foregroundStyle(.primary)
-                }
-            } header: {
-                buildSectionHeader(
-                    icon: "paperplane.circle.fill",
-                    title: String(localized: "Awaiting Release"),
-                    count: viewModel.uiState.awaitingReleaseApps.count
-                )
-            }
-        }
-    }
-
-    private func buildAwaitingReleaseRow(_ app: AppModel) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            buildAppRow(app)
-            if let phased = viewModel.uiState.phasedByAppId[app.id],
-               phased.state == .active || phased.state == .paused,
-               let day = phased.currentDayNumber {
-                buildPhasedProgress(day: day, total: 7, paused: phased.state == .paused)
-                    .padding(.leading, 56)
-            }
-        }
-    }
-
-    private func buildPhasedProgress(day: Int, total: Int, paused: Bool) -> some View {
-        let progress = Double(min(day, total)) / Double(total)
-        return VStack(alignment: .leading, spacing: 4) {
-            ProgressView(value: progress)
-                .tint(paused ? .orange : .blue)
-            HStack(spacing: 6) {
-                if paused {
-                    Image(systemName: "pause.circle.fill")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                }
-                Text(String(localized: "Day \(day) of \(total)"))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private func buildRecentReviewsSection() -> some View {
-        Section {
-            if viewModel.uiState.recentReviews.isEmpty {
-                HStack {
-                    Image(systemName: "clock.arrow.circlepath")
-                        .foregroundStyle(.tertiary)
-                    Text(String(localized: "Reviews will appear after the next sync"))
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                .padding(.vertical, 4)
-            } else {
-                ForEach(viewModel.uiState.recentReviews) { item in
-                    Button {
-                        coordinator.navigateToReviewDetail(
-                            review: item.review,
-                            appName: item.app.name,
-                            account: accountForApp(item.app)
-                        )
-                    } label: {
-                        buildReviewRow(item)
-                    }
-                    .foregroundStyle(.primary)
-                }
-            }
-        } header: {
-            buildSectionHeader(
-                icon: "star.bubble.fill",
-                title: String(localized: "Recent Reviews"),
-                count: viewModel.uiState.recentReviews.count
-            )
-        }
-    }
-
-    private func buildReviewRow(_ item: HomeRecentReview) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                buildStars(rating: item.review.rating)
-                Text(item.app.name)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                if let date = item.review.createdDate {
-                    Text(date, style: .relative)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            if let title = item.review.title, !title.isEmpty {
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .lineLimit(1)
-            }
-            if let body = item.review.body, !body.isEmpty {
-                Text(body)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-        }
-        .padding(.vertical, 2)
-    }
-
-    private func buildStars(rating: Int) -> some View {
-        HStack(spacing: 1) {
-            ForEach(0..<5, id: \.self) { index in
-                Image(systemName: index < rating ? "star.fill" : "star")
-                    .font(.caption2)
-                    .foregroundStyle(.yellow)
-            }
-        }
-    }
-
-    private func buildSectionHeader(icon: String, title: String, count: Int) -> some View {
-        HStack {
-            Image(systemName: icon)
-            Text(title)
-            if count > 0 {
-                Text("(\(count))")
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-        }
-    }
-
-    private func buildAppRow(_ app: AppModel) -> some View {
-        HStack(spacing: 12) {
-            buildAppIcon(url: app.iconUrl.flatMap { URL(string: $0) })
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(app.name)
-                    .font(.body)
-                    .fontWeight(.medium)
-
-                if let state = app.appStoreState {
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(statusColor(state.color))
-                            .frame(width: 6, height: 6)
-
-                        Text(state.displayName)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        if let version = app.versionString {
-                            Text("(\(version))")
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-                }
-            }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-    }
-
-    private func buildAppIcon(url: URL?) -> some View {
-        Group {
-            if let url {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    default:
-                        appIconPlaceholder
-                    }
-                }
-            } else {
-                appIconPlaceholder
-            }
-        }
-        .frame(width: 44, height: 44)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-    }
-
-    private var appIconPlaceholder: some View {
-        RoundedRectangle(cornerRadius: 10)
-            .fill(Color.gray.opacity(0.15))
-            .overlay(
-                Image(systemName: "app.fill")
-                    .foregroundStyle(.gray.opacity(0.4))
-            )
-    }
-
-    private func statusColor(_ color: AppStoreStateColor) -> Color {
-        switch color {
-        case .green:  return .green
-        case .orange: return .orange
-        case .red:    return .red
-        case .gray:   return .gray
-        case .blue:   return .blue
-        case .yellow: return .yellow
-        }
-    }
-
-    private func accountForApp(_ app: AppModel) -> AccountModel {
-        viewModel.uiState.accountsMap[app.accountId] ?? AccountModel(
-            id: app.accountId,
-            name: "",
-            providerType: .apple
-        )
-    }
 }
 
 // MARK: - Navigation Destinations
@@ -505,6 +293,8 @@ private extension View {
                 RatingsReviewsViewFactory.build(appId: appId, bundleId: bundleId, appName: appName, account: account)
             case .reviewDetail(let review, let appName, let account):
                 ReviewDetailViewFactory.build(review: review, appName: appName, account: account)
+            case .allReviews:
+                AllReviewsViewFactory.build()
             case .testFlight(let appId, let account):
                 TestFlightViewFactory.build(appId: appId, account: account)
             case .betaGroupDetail(let group, let appId, let account):
