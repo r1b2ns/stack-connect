@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 // MARK: - Protocol
@@ -5,16 +6,22 @@ import Foundation
 @MainActor
 protocol HomeViewModelProtocol: ObservableObject {
     var uiState: HomeUiState { get set }
-    func loadPendingReviewApps() async
+    func loadDashboard() async
+    func triggerSync()
+    func refresh() async
+    func addWidget(_ kind: HomeWidgetKind)
+    func removeWidget(id: UUID)
+    func moveWidgets(from source: IndexSet, to destination: Int)
+    func availableWidgetKinds() -> [HomeWidgetKind]
 }
 
 // MARK: - UiState
 
 struct HomeUiState {
     var providers: [ProviderType] = ProviderType.allCases.filter { $0 != .googlePlay }
-    var pendingReviewApps: [AppModel] = []
-    var isLoadingPending = false
-    var accountsMap: [String: AccountModel] = [:]
+    var widgets: [any HomeWidget] = []
+    var isLoading = false
+    var syncState = SyncState()
 }
 
 // MARK: - Implementation
@@ -26,78 +33,96 @@ final class HomeViewModel: HomeViewModelProtocol {
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
+    private let preferences: KeyStorable
+    private let syncService: SyncService
+    private var cancellables = Set<AnyCancellable>()
+
+    private static let widgetsStorageKey = "home.widget.configurations"
 
     init(
         storage: PersistentStorable? = nil,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        preferences: KeyStorable = UserDefaultsStorable(),
+        syncService: SyncService = .shared
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
+        self.preferences = preferences
+        self.syncService = syncService
+
+        loadWidgetConfigurations()
+
+        syncService.$state
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] newState in
+                guard let self else { return }
+                let previousTimestamp = self.uiState.syncState.lastSyncedAt
+                self.uiState.syncState = newState
+                if newState.lastSyncedAt != previousTimestamp {
+                    Task { await self.loadDashboard() }
+                }
+            }
+            .store(in: &cancellables)
     }
 
-    func loadPendingReviewApps() async {
-        // 0. Load all accounts into map
-        do {
-            let allAccounts: [AccountModel] = try await storage.fetchAll(AccountModel.self)
-            var map: [String: AccountModel] = [:]
-            for var account in allAccounts {
-                account.fillMissingRules()
-                map[account.id] = account
-            }
-            uiState.accountsMap = map
-        } catch {
-            Log.print.error("[Home] Failed to load accounts: \(error.localizedDescription)")
+    func triggerSync() {
+        syncService.syncAll()
+    }
+
+    func refresh() async {
+        await syncService.syncAll().value
+        await loadDashboard()
+    }
+
+    func loadDashboard() async {
+        uiState.isLoading = true
+        defer { uiState.isLoading = false }
+
+        await reloadWidgets()
+    }
+
+    // MARK: - Widgets
+
+    func addWidget(_ kind: HomeWidgetKind) {
+        guard !uiState.widgets.contains(where: { $0.kind == kind }) else { return }
+        let config = HomeWidgetConfiguration(kind: kind)
+        let widget = HomeWidgetRegistry.make(for: config, storage: storage)
+        uiState.widgets.append(widget)
+        saveWidgetConfigurations()
+        Task { await widget.load() }
+    }
+
+    func removeWidget(id: UUID) {
+        uiState.widgets.removeAll { $0.id == id }
+        saveWidgetConfigurations()
+    }
+
+    func moveWidgets(from source: IndexSet, to destination: Int) {
+        uiState.widgets.move(fromOffsets: source, toOffset: destination)
+        saveWidgetConfigurations()
+    }
+
+    func availableWidgetKinds() -> [HomeWidgetKind] {
+        let active = Set(uiState.widgets.map { $0.kind })
+        return HomeWidgetKind.allCases.filter { !active.contains($0) }
+    }
+
+    private func loadWidgetConfigurations() {
+        let configurations: [HomeWidgetConfiguration] = preferences.object(forKey: Self.widgetsStorageKey)
+            ?? HomeWidgetRegistry.defaultConfigurations
+        uiState.widgets = configurations.map { config in
+            HomeWidgetRegistry.make(for: config, storage: storage)
         }
+    }
 
-        // 1. Load from SwiftData first (instant)
-        do {
-            let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
-            let pending = allApps.filter { $0.hasReviewPending && !$0.isArchived }
-            uiState.pendingReviewApps = pending.sorted { ($0.name) < ($1.name) }
-        } catch {
-            Log.print.error("[Home] Failed to load pending review apps: \(error.localizedDescription)")
+    private func saveWidgetConfigurations() {
+        let configurations = uiState.widgets.map { $0.configuration }
+        preferences.setObject(configurations, forKey: Self.widgetsStorageKey)
+    }
+
+    private func reloadWidgets() async {
+        for widget in uiState.widgets {
+            await widget.load()
         }
-
-        guard !uiState.pendingReviewApps.isEmpty else { return }
-
-        // 2. Refresh status from API for each pending app
-        uiState.isLoadingPending = true
-
-        var updatedApps: [AppModel] = []
-
-        for app in uiState.pendingReviewApps {
-            guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(app.accountId)") else {
-                updatedApps.append(app)
-                continue
-            }
-
-            let connection = AppleAccountConnection(credentials: credentials)
-            let state = await connection.fetchAppStoreVersion(appId: app.id)
-
-            var updated = app
-            if let s = state.state {
-                updated.appStoreState = AppStoreState(rawValue: s)
-            }
-            if let v = state.version {
-                updated.versionString = v
-            }
-            updated.hasReviewPending = updated.appStoreState?.isReviewPending ?? false
-
-            // Persist updated status
-            do {
-                try await storage.save(updated, id: "\(app.accountId).\(app.id)")
-            } catch {
-                Log.print.error("[Home] Failed to save updated status for \(app.name): \(error.localizedDescription)")
-            }
-
-            if updated.hasReviewPending {
-                updatedApps.append(updated)
-            }
-        }
-
-        uiState.pendingReviewApps = updatedApps.sorted { $0.name < $1.name }
-        uiState.isLoadingPending = false
-
-        Log.print.info("[Home] Refreshed \(updatedApps.count) pending review apps")
     }
 }

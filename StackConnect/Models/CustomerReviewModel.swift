@@ -12,6 +12,9 @@ struct CustomerReviewModel: Codable, Identifiable, Hashable {
     var responseBody: String?
     var responseState: String?
     var responseDate: Date?
+    /// Set by SyncService when caching reviews so the Home dashboard can group by app.
+    /// Not populated by the API mapping itself.
+    var appId: String?
 
     var hasResponse: Bool {
         responseBody != nil && !responseBody!.isEmpty

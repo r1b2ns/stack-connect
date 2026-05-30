@@ -4,7 +4,7 @@ struct AppModel: Codable, Identifiable, Hashable {
     let id: String
     let name: String
     let bundleId: String
-    let platform: String?
+    var platform: String?
     let accountId: String
     var iconUrl: String?
     var appStoreState: AppStoreState?
@@ -13,6 +13,10 @@ struct AppModel: Codable, Identifiable, Hashable {
     var isArchived: Bool
     var isFavorite: Bool
     var hasReviewPending: Bool
+    /// Latest version state per platform (an App Store app can ship iOS, tvOS,
+    /// macOS, etc. under one record). `appStoreState`/`platform` above hold the
+    /// most-recent version overall; this captures each platform individually.
+    var platformVersions: [AppPlatformVersion]?
 
     init(
         id: String,
@@ -26,7 +30,8 @@ struct AppModel: Codable, Identifiable, Hashable {
         lastModifiedDate: Date? = nil,
         isArchived: Bool = false,
         isFavorite: Bool = false,
-        hasReviewPending: Bool = false
+        hasReviewPending: Bool = false,
+        platformVersions: [AppPlatformVersion]? = nil
     ) {
         self.id = id
         self.name = name
@@ -40,7 +45,16 @@ struct AppModel: Codable, Identifiable, Hashable {
         self.isArchived = isArchived
         self.isFavorite = isFavorite
         self.hasReviewPending = hasReviewPending
+        self.platformVersions = platformVersions
     }
+}
+
+// MARK: - Per-platform version
+
+struct AppPlatformVersion: Codable, Hashable {
+    let platform: String
+    var appStoreState: AppStoreState?
+    var versionString: String?
 }
 
 // MARK: - AppStoreState
@@ -97,6 +111,18 @@ enum AppStoreState: String, Codable, Hashable {
         switch self {
         case .waitingForReview, .inReview, .readyForReview, .rejected, .metadataRejected,
              .invalidBinary, .pendingDeveloperRelease, .pendingAppleRelease:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Whether this state belongs in the "In Review" widget bucket.
+    var isInReviewBucket: Bool {
+        switch self {
+        case .waitingForReview, .inReview, .readyForReview,
+             .pendingAppleRelease, .processingForAppStore,
+             .rejected, .metadataRejected, .invalidBinary:
             return true
         default:
             return false

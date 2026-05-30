@@ -46,7 +46,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
     private var isMetadataEditable: Bool {
         guard let state = viewModel.uiState.version.appStoreState else { return false }
-        return [.prepareForSubmission, .rejected, .waitingForReview, .readyForReview].contains(state)
+        return [.prepareForSubmission, .rejected, .waitingForReview, .readyForReview, .invalidBinary].contains(state)
     }
 
     /// Metadata editable by state AND user has version.edit permission
@@ -309,30 +309,45 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
     private func buildMetadataSection() -> some View {
         Section {
-            TextField(String(localized: "Keywords"), text: $viewModel.uiState.editKeywords)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .disabled(!canEditMetadata)
+            HStack {
+                TextField(String(localized: "Keywords"), text: $viewModel.uiState.editKeywords)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .disabled(!canEditMetadata)
+                CopyButton(text: viewModel.uiState.editKeywords)
+            }
 
-            TextField(String(localized: "Support URL"), text: $viewModel.uiState.editSupportUrl)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-                .disabled(!canEditMetadata)
+            HStack {
+                TextField(String(localized: "Support URL"), text: $viewModel.uiState.editSupportUrl)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .disabled(!canEditMetadata)
+                CopyButton(text: viewModel.uiState.editSupportUrl)
+            }
 
-            TextField(String(localized: "Marketing URL"), text: $viewModel.uiState.editMarketingUrl)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-                .disabled(!canEditMetadata)
+            HStack {
+                TextField(String(localized: "Marketing URL"), text: $viewModel.uiState.editMarketingUrl)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .disabled(!canEditMetadata)
+                CopyButton(text: viewModel.uiState.editMarketingUrl)
+            }
 
-            TextField(String(localized: "Version"), text: $viewModel.uiState.editVersion)
-                .textInputAutocapitalization(.never)
-                .keyboardType(.numbersAndPunctuation)
-                .disabled(!canEditMetadata)
+            HStack {
+                TextField(String(localized: "Version"), text: $viewModel.uiState.editVersion)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.numbersAndPunctuation)
+                    .disabled(!canEditMetadata)
+                CopyButton(text: viewModel.uiState.editVersion)
+            }
 
-            TextField(String(localized: "Copyright"), text: $viewModel.uiState.editCopyright)
-                .disabled(!canEditMetadata)
+            HStack {
+                TextField(String(localized: "Copyright"), text: $viewModel.uiState.editCopyright)
+                    .disabled(!canEditMetadata)
+                CopyButton(text: viewModel.uiState.editCopyright)
+            }
 
             if let error = viewModel.uiState.groupedFieldsError {
                 Label(error, systemImage: "exclamationmark.triangle.fill")

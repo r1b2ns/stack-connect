@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 // MARK: - Device Type
 
@@ -71,6 +72,18 @@ final class ScreenshotPreviewViewModel: ObservableObject {
     @Published var screenshotSets: [ScreenshotSetModel] = []
     @Published var isLoading = false
 
+    // Bulk download / zip state
+    @Published var isPreparingDownload = false
+    @Published var isZipping = false
+    @Published var downloadedCount = 0
+    @Published var totalCount = 0
+    @Published var zipURL: URL?
+    @Published var downloadError: String?
+
+    var hasScreenshots: Bool {
+        screenshotSets.contains { !$0.screenshots.isEmpty }
+    }
+
     private let versionId: String
     private let account: AccountModel
     private let localizationId: String?
@@ -123,6 +136,105 @@ final class ScreenshotPreviewViewModel: ObservableObject {
     func sets(for device: ScreenshotDeviceType) -> [ScreenshotSetModel] {
         screenshotSets.filter { $0.deviceCategory == device && !$0.screenshots.isEmpty }
     }
+
+    // MARK: - Bulk download + zip
+
+    /// Downloads every screenshot (all devices in the current localization),
+    /// organizing them into folders per size, then zips the result and exposes
+    /// `zipURL` for sharing. Progress is published via `downloadedCount`/`totalCount`.
+    func downloadAllScreenshots() async {
+        let items: [(set: ScreenshotSetModel, shot: ScreenshotModel)] = screenshotSets.flatMap { set in
+            set.screenshots.compactMap { shot in
+                (shot.imageUrl?.isEmpty == false) ? (set, shot) : nil
+            }
+        }
+        guard !items.isEmpty else { return }
+
+        downloadError = nil
+        zipURL = nil
+        downloadedCount = 0
+        totalCount = items.count
+        isZipping = false
+        isPreparingDownload = true
+        defer {
+            isPreparingDownload = false
+            isZipping = false
+        }
+
+        let fileManager = FileManager.default
+        let workDir = fileManager.temporaryDirectory
+            .appendingPathComponent("Screenshots-\(versionId)", isDirectory: true)
+
+        do {
+            // Start from a clean working directory.
+            try? fileManager.removeItem(at: workDir)
+            try fileManager.createDirectory(at: workDir, withIntermediateDirectories: true)
+
+            var perSetIndex: [String: Int] = [:]
+            for item in items {
+                defer { downloadedCount += 1 }
+                guard let urlStr = item.shot.imageUrl, let url = URL(string: urlStr) else { continue }
+
+                let (data, _) = try await URLSession.shared.data(from: url)
+
+                let subdir = workDir.appendingPathComponent(sanitize(item.set.displayName), isDirectory: true)
+                try? fileManager.createDirectory(at: subdir, withIntermediateDirectories: true)
+
+                let index = (perSetIndex[item.set.id] ?? 0) + 1
+                perSetIndex[item.set.id] = index
+                let base = item.shot.fileName.map(sanitize) ?? "\(item.shot.id).png"
+                let destination = subdir.appendingPathComponent("\(index)-\(base)")
+                try await Task.detached { try data.write(to: destination, options: .atomic) }.value
+            }
+
+            isZipping = true
+            let zip = try await Task.detached { try ScreenshotPreviewViewModel.zipDirectory(workDir) }.value
+            zipURL = zip
+            let count = totalCount
+            Log.print.info("[Screenshots] Zipped \(count) screenshots → \(zip.lastPathComponent)")
+        } catch {
+            downloadError = error.localizedDescription
+            Log.print.error("[Screenshots] Bulk download failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func sanitize(_ name: String) -> String {
+        let invalid = CharacterSet(charactersIn: "/\\:?%*|\"<>")
+        let cleaned = name.components(separatedBy: invalid).joined(separator: "-")
+        return cleaned.isEmpty ? "screenshot" : cleaned
+    }
+
+    /// Zips a directory using NSFileCoordinator's `.forUploading` option, which
+    /// produces a `.zip` of the folder without any third-party dependency.
+    nonisolated static func zipDirectory(_ source: URL) throws -> URL {
+        let coordinator = NSFileCoordinator()
+        var coordinatorError: NSError?
+        var copyError: Error?
+        var resultURL: URL?
+
+        coordinator.coordinate(readingItemAt: source, options: [.forUploading], error: &coordinatorError) { zippedURL in
+            let destination = FileManager.default.temporaryDirectory
+                .appendingPathComponent("\(source.lastPathComponent).zip")
+            do {
+                try? FileManager.default.removeItem(at: destination)
+                try FileManager.default.copyItem(at: zippedURL, to: destination)
+                resultURL = destination
+            } catch {
+                copyError = error
+            }
+        }
+
+        if let coordinatorError { throw coordinatorError }
+        if let copyError { throw copyError }
+        guard let resultURL else {
+            throw NSError(
+                domain: "Screenshots",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: String(localized: "Failed to create the zip file.")]
+            )
+        }
+        return resultURL
+    }
 }
 
 // MARK: - Content View
@@ -137,6 +249,69 @@ struct ScreenshotPreviewContentView: View {
             .navigationTitle(String(localized: "Preview and Screenshots"))
             .navigationBarTitleDisplayMode(.inline)
             .task { await viewModel.loadScreenshots() }
+            .safeAreaInset(edge: .bottom) {
+                buildDownloadBar()
+            }
+    }
+
+    // MARK: - Download / Share bar
+
+    @ViewBuilder
+    private func buildDownloadBar() -> some View {
+        if !viewModel.isLoading && viewModel.hasScreenshots {
+            VStack(spacing: 8) {
+                if let zipURL = viewModel.zipURL {
+                    ShareLink(item: zipURL) {
+                        Label(String(localized: "Share Screenshots (.zip)"), systemImage: "square.and.arrow.up")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .foregroundStyle(.white)
+                            .background(Color.accentColor)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+
+                    Button(String(localized: "Download Again")) {
+                        Task { await viewModel.downloadAllScreenshots() }
+                    }
+                    .font(.caption)
+                } else if viewModel.isPreparingDownload {
+                    VStack(spacing: 6) {
+                        ProgressView(
+                            value: Double(viewModel.downloadedCount),
+                            total: Double(max(viewModel.totalCount, 1))
+                        )
+                        Text(viewModel.isZipping
+                             ? String(localized: "Creating zip…")
+                             : String(localized: "Downloading \(viewModel.downloadedCount) of \(viewModel.totalCount)"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Button {
+                        Task { await viewModel.downloadAllScreenshots() }
+                    } label: {
+                        Label(String(localized: "Download All Screenshots"), systemImage: "arrow.down.circle.fill")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .foregroundStyle(.white)
+                            .background(Color.accentColor)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                if let error = viewModel.downloadError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .padding()
+            .background(.bar)
+        }
     }
 
     @ViewBuilder

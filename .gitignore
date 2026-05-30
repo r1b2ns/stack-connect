@@ -10,6 +10,7 @@ DerivedData/
 StackConnect.xcodeproj/
 StackConnect/Info.plist
 StackConnectTests/Info.plist
+StackConnectWidget/Info.plist
 
 # Swift Package Manager
 .build/

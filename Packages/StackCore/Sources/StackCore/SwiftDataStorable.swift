@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 @ModelActor
-final actor SwiftDataStorable: PersistentStorable {
+public final actor SwiftDataStorable: PersistentStorable {
 
     // MARK: - Helpers
 
@@ -29,7 +29,7 @@ final actor SwiftDataStorable: PersistentStorable {
 
     // MARK: - Create / Update
 
-    func save<T: Codable>(_ item: T, id: String) throws {
+    public func save<T: Codable>(_ item: T, id: String) throws {
         let name = typeName(for: T.self)
 
         guard let payload = try? JSONEncoder().encode(item) else {
@@ -55,8 +55,11 @@ final actor SwiftDataStorable: PersistentStorable {
 
     // MARK: - Read
 
-    func fetch<T: Codable>(_ type: T.Type, id: String) throws -> T? {
-        let name = typeName(for: type)
+    public func fetch<T: Codable>(_ type: T.Type, id: String) throws -> T? {
+        try fetch(type, id: id, typeName: typeName(for: type))
+    }
+
+    public func fetch<T: Codable>(_ type: T.Type, id: String, typeName name: String) throws -> T? {
         let fetchDescriptor = descriptor(typeName: name, identifier: id)
 
         guard let item = try modelContext.fetch(fetchDescriptor).first else {
@@ -70,8 +73,11 @@ final actor SwiftDataStorable: PersistentStorable {
         return decoded
     }
 
-    func fetchAll<T: Codable>(_ type: T.Type) throws -> [T] {
-        let name = typeName(for: type)
+    public func fetchAll<T: Codable>(_ type: T.Type) throws -> [T] {
+        try fetchAll(type, typeName: typeName(for: type))
+    }
+
+    public func fetchAll<T: Codable>(_ type: T.Type, typeName name: String) throws -> [T] {
         let fetchDescriptor = descriptor(typeName: name)
 
         let items = try modelContext.fetch(fetchDescriptor)
@@ -88,7 +94,7 @@ final actor SwiftDataStorable: PersistentStorable {
 
     // MARK: - Delete
 
-    func delete<T: Codable>(_ type: T.Type, id: String) throws {
+    public func delete<T: Codable>(_ type: T.Type, id: String) throws {
         let name = typeName(for: type)
         let fetchDescriptor = descriptor(typeName: name, identifier: id)
 
@@ -98,7 +104,7 @@ final actor SwiftDataStorable: PersistentStorable {
         }
     }
 
-    func deleteAll<T: Codable>(_ type: T.Type) throws {
+    public func deleteAll<T: Codable>(_ type: T.Type) throws {
         let name = typeName(for: type)
         let fetchDescriptor = descriptor(typeName: name)
 
@@ -113,6 +119,12 @@ final actor SwiftDataStorable: PersistentStorable {
 
 // MARK: - Shared Instance
 
-extension SwiftDataStorable {
+public extension SwiftDataStorable {
     @MainActor static var shared: SwiftDataStorable!
+
+    /// Factory that creates an instance from a configured `ModelContainer`.
+    /// Provided because `@ModelActor` may synthesize a non-public initializer.
+    static func make(modelContainer: ModelContainer) -> SwiftDataStorable {
+        SwiftDataStorable(modelContainer: modelContainer)
+    }
 }
