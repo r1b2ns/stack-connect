@@ -49670,6 +49670,9 @@
         }
       }
     },
+    "Remove this account and all its data" : {
+
+    },
     "Remove User" : {
       "localizations" : {
         "de" : {

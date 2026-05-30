@@ -36,6 +36,21 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
         buildContent()
             .navigationTitle(String(localized: "Manage Account"))
             .navigationBarTitleDisplayMode(.inline)
+            .alert(
+                String(localized: "Delete Account"),
+                isPresented: $viewModel.uiState.showDeleteConfirmation
+            ) {
+                Button(String(localized: "Cancel"), role: .cancel) {}
+                Button(String(localized: "Delete"), role: .destructive) {
+                    Task {
+                        if await viewModel.deleteAccount() {
+                            homeCoordinator.popToRoot()
+                        }
+                    }
+                }
+            } message: {
+                Text("Are you sure you want to delete \"\(viewModel.uiState.account.name)\"? This action cannot be undone.")
+            }
     }
 
     @ViewBuilder
@@ -84,6 +99,30 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
                     subtitle: String(localized: "Share credentials and rules with others")
                 ) {
                     homeCoordinator.navigateToAccountSettings(viewModel.uiState.account)
+                }
+            }
+
+            Section {
+                Button(role: .destructive) {
+                    viewModel.uiState.showDeleteConfirmation = true
+                } label: {
+                    HStack(spacing: 14) {
+                        Image(systemName: "trash")
+                            .font(.title3)
+                            .foregroundStyle(.red)
+                            .frame(width: 28)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(String(localized: "Delete Account"))
+                                .font(.body)
+                                .foregroundStyle(.red)
+                            Text(String(localized: "Remove this account and all its data"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+                    }
                 }
             }
         }
