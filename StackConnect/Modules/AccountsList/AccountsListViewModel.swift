@@ -114,7 +114,7 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
             return String(localized: "This file contains a \(providerType.displayName) account, but this is the \(uiState.providerType.displayName) section.")
         }
 
-        let emptyRules = AccountRules(apps: [], version: [], users: [], review: [], testFlight: [], analytics: [])
+        let emptyRules = AccountRules()
         var rules = emptyRules
         if let rulesDict = dict["rules"] as? [String: [String]] {
             rules = AccountRules(
@@ -123,7 +123,8 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
                 users: rulesDict["users"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
                 review: rulesDict["review"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
                 testFlight: rulesDict["testFlight"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
-                analytics: rulesDict["analytics"]?.compactMap { AccountPermission(rawValue: $0) } ?? []
+                analytics: rulesDict["analytics"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
+                provisioning: rulesDict["provisioning"]?.compactMap { AccountPermission(rawValue: $0) } ?? []
             )
         }
 

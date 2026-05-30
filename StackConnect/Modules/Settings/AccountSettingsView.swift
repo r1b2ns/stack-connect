@@ -153,7 +153,7 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
     @State private var showNameEdit = false
 
     private let resources: [AccountRuleResource] = [
-        .apps, .version, .review, .testFlight, .analytics, .users
+        .apps, .version, .review, .testFlight, .analytics, .users, .provisioning
     ]
 
     var body: some View {

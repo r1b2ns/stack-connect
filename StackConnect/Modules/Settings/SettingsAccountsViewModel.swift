@@ -131,7 +131,8 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             "users": rules.users.map(\.rawValue),
             "review": rules.review.map(\.rawValue),
             "testFlight": rules.testFlight.map(\.rawValue),
-            "analytics": rules.analytics.map(\.rawValue)
+            "analytics": rules.analytics.map(\.rawValue),
+            "provisioning": rules.provisioning.map(\.rawValue)
         ]
 
         if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(account.id)") {
@@ -211,7 +212,7 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
         }
 
         // 4. Parse rules — use what's in the file; if absent, default to empty (no permissions)
-        let emptyRules = AccountRules(apps: [], version: [], users: [], review: [], testFlight: [], analytics: [])
+        let emptyRules = AccountRules()
         var rules = emptyRules
         if let rulesDict = dict["rules"] as? [String: [String]] {
             rules = AccountRules(
@@ -220,7 +221,8 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
                 users: rulesDict["users"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
                 review: rulesDict["review"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
                 testFlight: rulesDict["testFlight"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
-                analytics: rulesDict["analytics"]?.compactMap { AccountPermission(rawValue: $0) } ?? []
+                analytics: rulesDict["analytics"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
+                provisioning: rulesDict["provisioning"]?.compactMap { AccountPermission(rawValue: $0) } ?? []
             )
         }
 

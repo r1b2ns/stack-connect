@@ -15,7 +15,7 @@ struct ExportAccountView: View {
     @State private var editingResource: AccountRuleResource?
 
     private let resources: [AccountRuleResource] = [
-        .apps, .version, .review, .testFlight, .analytics, .users
+        .apps, .version, .review, .testFlight, .analytics, .users, .provisioning
     ]
 
     var body: some View {
@@ -200,7 +200,8 @@ struct ExportAccountView: View {
             users: permissionsFor(.users),
             review: permissionsFor(.review),
             testFlight: permissionsFor(.testFlight),
-            analytics: permissionsFor(.analytics)
+            analytics: permissionsFor(.analytics),
+            provisioning: permissionsFor(.provisioning)
         )
 
         _ = onExport(exportName, rules, password)

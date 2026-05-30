@@ -18,6 +18,7 @@ enum AccountRuleResource: String, Codable, CaseIterable, Hashable {
     case review
     case testFlight
     case analytics
+    case provisioning
 }
 
 // MARK: - Rules
@@ -29,6 +30,37 @@ struct AccountRules: Codable, Hashable {
     var review: [AccountPermission]
     var testFlight: [AccountPermission]
     var analytics: [AccountPermission]
+    var provisioning: [AccountPermission]
+
+    init(
+        apps: [AccountPermission] = [],
+        version: [AccountPermission] = [],
+        users: [AccountPermission] = [],
+        review: [AccountPermission] = [],
+        testFlight: [AccountPermission] = [],
+        analytics: [AccountPermission] = [],
+        provisioning: [AccountPermission] = []
+    ) {
+        self.apps = apps
+        self.version = version
+        self.users = users
+        self.review = review
+        self.testFlight = testFlight
+        self.analytics = analytics
+        self.provisioning = provisioning
+    }
+
+    // Tolerates rules persisted before a resource existed (e.g. `provisioning`)
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        apps = try container.decodeIfPresent([AccountPermission].self, forKey: .apps) ?? []
+        version = try container.decodeIfPresent([AccountPermission].self, forKey: .version) ?? []
+        users = try container.decodeIfPresent([AccountPermission].self, forKey: .users) ?? []
+        review = try container.decodeIfPresent([AccountPermission].self, forKey: .review) ?? []
+        testFlight = try container.decodeIfPresent([AccountPermission].self, forKey: .testFlight) ?? []
+        analytics = try container.decodeIfPresent([AccountPermission].self, forKey: .analytics) ?? []
+        provisioning = try container.decodeIfPresent([AccountPermission].self, forKey: .provisioning) ?? []
+    }
 
     static var allPermissions: AccountRules {
         let all = AccountPermission.allCases
@@ -38,29 +70,32 @@ struct AccountRules: Codable, Hashable {
             users: all,
             review: all,
             testFlight: all,
-            analytics: all
+            analytics: all,
+            provisioning: all
         )
     }
 
     subscript(resource: AccountRuleResource) -> [AccountPermission] {
         get {
             switch resource {
-            case .apps:      return apps
-            case .version:   return version
-            case .users:     return users
-            case .review:    return review
-            case .testFlight: return testFlight
-            case .analytics: return analytics
+            case .apps:         return apps
+            case .version:      return version
+            case .users:        return users
+            case .review:       return review
+            case .testFlight:   return testFlight
+            case .analytics:    return analytics
+            case .provisioning: return provisioning
             }
         }
         set {
             switch resource {
-            case .apps:      apps = newValue
-            case .version:   version = newValue
-            case .users:     users = newValue
-            case .review:    review = newValue
-            case .testFlight: testFlight = newValue
-            case .analytics: analytics = newValue
+            case .apps:         apps = newValue
+            case .version:      version = newValue
+            case .users:        users = newValue
+            case .review:       review = newValue
+            case .testFlight:   testFlight = newValue
+            case .analytics:    analytics = newValue
+            case .provisioning: provisioning = newValue
             }
         }
     }

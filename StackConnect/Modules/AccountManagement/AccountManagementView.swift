@@ -41,37 +41,39 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
     @ViewBuilder
     private func buildContent() -> some View {
         List {
-            Section {
-                buildRow(
-                    icon: "lock.shield",
-                    title: String(localized: "Certificates"),
-                    subtitle: String(localized: "Signing certificates for this account")
-                ) {
-                    homeCoordinator.navigateToCertificatesList(viewModel.uiState.account)
-                }
+            if viewModel.uiState.account.canView(.provisioning) {
+                Section {
+                    buildRow(
+                        icon: "lock.shield",
+                        title: String(localized: "Certificates"),
+                        subtitle: String(localized: "Signing certificates for this account")
+                    ) {
+                        homeCoordinator.navigateToCertificatesList(viewModel.uiState.account)
+                    }
 
-                buildRow(
-                    icon: "ipod.and.applewatch",
-                    title: String(localized: "Identifiers"),
-                    subtitle: String(localized: "Bundle IDs and their capabilities")
-                ) {
-                    homeCoordinator.navigateToIdentifiersList(viewModel.uiState.account)
-                }
+                    buildRow(
+                        icon: "ipod.and.applewatch",
+                        title: String(localized: "Identifiers"),
+                        subtitle: String(localized: "Bundle IDs and their capabilities")
+                    ) {
+                        homeCoordinator.navigateToIdentifiersList(viewModel.uiState.account)
+                    }
 
-                buildRow(
-                    icon: "iphone.gen3",
-                    title: String(localized: "Devices"),
-                    subtitle: String(localized: "Registered devices for testing")
-                ) {
-                    homeCoordinator.navigateToDevicesList(viewModel.uiState.account)
-                }
+                    buildRow(
+                        icon: "iphone.gen3",
+                        title: String(localized: "Devices"),
+                        subtitle: String(localized: "Registered devices for testing")
+                    ) {
+                        homeCoordinator.navigateToDevicesList(viewModel.uiState.account)
+                    }
 
-                buildRow(
-                    icon: "doc.badge.gearshape",
-                    title: String(localized: "Profiles"),
-                    subtitle: String(localized: "Provisioning profiles for this account")
-                ) {
-                    homeCoordinator.navigateToProfilesList(viewModel.uiState.account)
+                    buildRow(
+                        icon: "doc.badge.gearshape",
+                        title: String(localized: "Profiles"),
+                        subtitle: String(localized: "Provisioning profiles for this account")
+                    ) {
+                        homeCoordinator.navigateToProfilesList(viewModel.uiState.account)
+                    }
                 }
             }
 

@@ -145,19 +145,21 @@ extension AccountRuleResource {
         case .version:    return String(localized: "Versions")
         case .users:      return String(localized: "Users")
         case .review:     return String(localized: "Review and Rating")
-        case .testFlight: return String(localized: "TestFlight")
-        case .analytics:  return String(localized: "Analytics")
+        case .testFlight:   return String(localized: "TestFlight")
+        case .analytics:    return String(localized: "Analytics")
+        case .provisioning: return String(localized: "Certificates, Identifiers, Devices & Profiles")
         }
     }
 
     var footerDescription: String {
         switch self {
-        case .apps:       return String(localized: "Manage app listing, metadata, and pricing")
-        case .version:    return String(localized: "Manage app versions, builds, and releases")
-        case .users:      return String(localized: "Manage team members, roles, and access")
-        case .review:     return String(localized: "Manager and reply user's app review")
-        case .testFlight: return String(localized: "Manage beta groups, testers, and builds distribution")
-        case .analytics:  return String(localized: "View app analytics, trends, and metrics")
+        case .apps:         return String(localized: "Manage app listing, metadata, and pricing")
+        case .version:      return String(localized: "Manage app versions, builds, and releases")
+        case .users:        return String(localized: "Manage team members, roles, and access")
+        case .review:       return String(localized: "Manager and reply user's app review")
+        case .testFlight:   return String(localized: "Manage beta groups, testers, and builds distribution")
+        case .analytics:    return String(localized: "View app analytics, trends, and metrics")
+        case .provisioning: return String(localized: "Manage certificates, identifiers, devices, and provisioning profiles")
         }
     }
 }
