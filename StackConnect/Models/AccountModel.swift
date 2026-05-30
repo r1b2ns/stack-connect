@@ -147,6 +147,13 @@ struct AccountModel: Codable, Identifiable, Hashable {
         return Date() >= expirationDate
     }
 
+    /// True when the account has not expired yet but will within the next 24 hours.
+    var isExpiringSoon: Bool {
+        guard let expirationDate else { return false }
+        let now = Date()
+        return expirationDate > now && expirationDate <= now.addingTimeInterval(24 * 60 * 60)
+    }
+
     // MARK: - Permission Checks (respects hierarchy: add→edit→view, delete→edit→view)
 
     func canView(_ resource: AccountRuleResource) -> Bool {

@@ -25,6 +25,8 @@ struct HomeUiState {
     var syncState = SyncState()
     var expiredAccount: AccountModel?
     var showExpiredAlert = false
+    var expiringSoonAccount: AccountModel?
+    var showExpiringSoonAlert = false
 }
 
 // MARK: - Implementation
@@ -41,6 +43,9 @@ final class HomeViewModel: HomeViewModelProtocol {
     private var cancellables = Set<AnyCancellable>()
 
     private static let widgetsStorageKey = "home.widget.configurations"
+
+    /// Accounts already warned about upcoming expiration this session (avoids repeat alerts).
+    private var warnedAccountIds: Set<String> = []
 
     init(
         storage: PersistentStorable? = nil,
@@ -92,6 +97,10 @@ final class HomeViewModel: HomeViewModelProtocol {
         if let expired = accounts.first(where: { $0.isExpired }) {
             uiState.expiredAccount = expired
             uiState.showExpiredAlert = true
+        } else if let expiringSoon = accounts.first(where: { $0.isExpiringSoon && !warnedAccountIds.contains($0.id) }) {
+            warnedAccountIds.insert(expiringSoon.id)
+            uiState.expiringSoonAccount = expiringSoon
+            uiState.showExpiringSoonAlert = true
         }
     }
 

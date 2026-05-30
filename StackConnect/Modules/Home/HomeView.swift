@@ -108,6 +108,19 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
             } message: { account in
                 Text("The account \"\(account.name)\" has expired. Please request a new file from the administrator.")
             }
+            .alert(
+                String(localized: "Account Expiring Soon"),
+                isPresented: $viewModel.uiState.showExpiringSoonAlert,
+                presenting: viewModel.uiState.expiringSoonAccount
+            ) { _ in
+                Button(String(localized: "OK"), role: .cancel) {}
+            } message: { account in
+                if let expirationDate = account.expirationDate {
+                    Text("The account \"\(account.name)\" will expire on \(expirationDate.formatted(date: .abbreviated, time: .shortened)). Request a new file from the administrator before then.")
+                } else {
+                    Text("The account \"\(account.name)\" will expire soon. Request a new file from the administrator.")
+                }
+            }
         }
     }
 

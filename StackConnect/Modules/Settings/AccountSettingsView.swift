@@ -249,6 +249,16 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
                 Spacer()
                 Text(viewModel.uiState.account.createdAt, style: .date)
             }
+
+            if let expirationDate = viewModel.uiState.account.expirationDate {
+                HStack {
+                    Text(String(localized: "Expiration Date"))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(expirationDate, style: .date)
+                        .foregroundStyle(viewModel.uiState.account.isExpired ? .red : .primary)
+                }
+            }
         } header: {
             Text(String(localized: "Account"))
         }
