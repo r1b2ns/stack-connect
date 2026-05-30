@@ -3,13 +3,15 @@ import SwiftUI
 struct ExportAccountView: View {
 
     let account: AccountModel
-    let onExport: (String, AccountRules, String) -> URL?
+    let onExport: (String, AccountRules, String, Date?) -> URL?
     let onDismiss: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var exportName: String = ""
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
+    @State private var enableExpiration = false
+    @State private var expirationDate = Calendar.current.date(byAdding: .day, value: 30, to: Date()) ?? Date()
     /// nil = not configured; [] = explicitly None; [.view, ...] = selected
     @State private var permissions: [AccountRuleResource: [AccountPermission]?] = [:]
     @State private var editingResource: AccountRuleResource?
@@ -34,6 +36,7 @@ struct ExportAccountView: View {
                 }
 
                 buildPasswordSection()
+                buildExpirationSection()
             }
             .navigationTitle(String(localized: "Export Account"))
             .navigationBarTitleDisplayMode(.inline)
@@ -144,6 +147,25 @@ struct ExportAccountView: View {
         }
     }
 
+    private func buildExpirationSection() -> some View {
+        Section {
+            Toggle(String(localized: "Set expiration date"), isOn: $enableExpiration)
+
+            if enableExpiration {
+                DatePicker(
+                    String(localized: "Expiration Date"),
+                    selection: $expirationDate,
+                    in: Date()...,
+                    displayedComponents: [.date]
+                )
+            }
+        } header: {
+            Text(String(localized: "Expiration"))
+        } footer: {
+            Text(String(localized: "When set, the imported account stops working after this date and is removed. The recipient must request a new file."))
+        }
+    }
+
     // MARK: - Toolbar
 
     @ToolbarContentBuilder
@@ -204,7 +226,7 @@ struct ExportAccountView: View {
             provisioning: permissionsFor(.provisioning)
         )
 
-        _ = onExport(exportName, rules, password)
+        _ = onExport(exportName, rules, password, enableExpiration ? expirationDate : nil)
     }
 }
 

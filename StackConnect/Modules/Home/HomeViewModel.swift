@@ -13,6 +13,7 @@ protocol HomeViewModelProtocol: ObservableObject {
     func removeWidget(id: UUID)
     func moveWidgets(from source: IndexSet, to destination: Int)
     func availableWidgetKinds() -> [HomeWidgetKind]
+    func deleteExpiredAccount(_ account: AccountModel) async
 }
 
 // MARK: - UiState
@@ -22,6 +23,8 @@ struct HomeUiState {
     var widgets: [any HomeWidget] = []
     var isLoading = false
     var syncState = SyncState()
+    var expiredAccount: AccountModel?
+    var showExpiredAlert = false
 }
 
 // MARK: - Implementation
@@ -79,6 +82,43 @@ final class HomeViewModel: HomeViewModelProtocol {
         defer { uiState.isLoading = false }
 
         await reloadWidgets()
+        await checkExpiredAccounts()
+    }
+
+    // MARK: - Account Expiration
+
+    private func checkExpiredAccounts() async {
+        let accounts: [AccountModel] = (try? await storage.fetchAll(AccountModel.self)) ?? []
+        if let expired = accounts.first(where: { $0.isExpired }) {
+            uiState.expiredAccount = expired
+            uiState.showExpiredAlert = true
+        }
+    }
+
+    func deleteExpiredAccount(_ account: AccountModel) async {
+        do {
+            // Delete all apps belonging to this account, and their versions
+            let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
+            let accountApps = allApps.filter { $0.accountId == account.id }
+            for app in accountApps {
+                let allVersions: [AppStoreVersionModel] = try await storage.fetchAll(AppStoreVersionModel.self)
+                let appVersions = allVersions.filter { $0.appId == app.id }
+                for version in appVersions {
+                    try? await storage.delete(AppStoreVersionModel.self, id: "version.\(version.id)")
+                }
+                try? await storage.delete(AppModel.self, id: "\(account.id).\(app.id)")
+            }
+
+            try await storage.delete(AccountModel.self, id: account.id)
+            keychain.removeObject(forKey: "credentials.\(account.id)")
+            Log.print.info("[Home] Deleted expired account and related data: \(account.name)")
+        } catch {
+            Log.print.error("[Home] Failed to delete expired account: \(error.localizedDescription)")
+        }
+
+        uiState.expiredAccount = nil
+        // Surface the next expired account, if any.
+        await checkExpiredAccounts()
     }
 
     // MARK: - Widgets

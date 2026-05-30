@@ -8,7 +8,7 @@ protocol SettingsAccountsViewModelProtocol: ObservableObject {
     func loadAccounts() async
     func updateAccountName(accountId: String, newName: String) async
     func deleteAccount(_ account: AccountModel) async
-    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String) -> URL?
+    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String, expirationDate: Date?) -> URL?
     func importAccount(from url: URL, password: String, customName: String?) async -> String?
 }
 
@@ -117,7 +117,7 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
         }
     }
 
-    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String) -> URL? {
+    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String, expirationDate: Date?) -> URL? {
         var exportDict: [String: Any] = [
             "id": account.id,
             "name": exportName,
@@ -134,6 +134,10 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             "analytics": rules.analytics.map(\.rawValue),
             "provisioning": rules.provisioning.map(\.rawValue)
         ]
+
+        if let expirationDate {
+            exportDict["expirationDate"] = ISO8601DateFormatter().string(from: expirationDate)
+        }
 
         if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(account.id)") {
             exportDict["credentials"] = [
@@ -226,6 +230,12 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             )
         }
 
+        // 4b. Parse optional expiration date
+        var expirationDate: Date?
+        if let expirationRaw = dict["expirationDate"] as? String {
+            expirationDate = ISO8601DateFormatter().date(from: expirationRaw)
+        }
+
         // 5. Validate and store credentials
         guard let credsDict = dict["credentials"] as? [String: String] else {
             return String(localized: "Missing or invalid 'credentials' field.")
@@ -295,7 +305,8 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             name: accountName,
             providerType: providerType,
             rules: rules,
-            origin: .imported
+            origin: .imported,
+            expirationDate: expirationDate
         )
 
         do {

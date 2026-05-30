@@ -128,6 +128,11 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
             )
         }
 
+        var expirationDate: Date?
+        if let expirationRaw = dict["expirationDate"] as? String {
+            expirationDate = ISO8601DateFormatter().date(from: expirationRaw)
+        }
+
         guard let credsDict = dict["credentials"] as? [String: String] else {
             return String(localized: "Missing or invalid 'credentials' field.")
         }
@@ -187,7 +192,8 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
             name: accountName,
             providerType: providerType,
             rules: rules,
-            origin: .imported
+            origin: .imported,
+            expirationDate: expirationDate
         )
 
         do {

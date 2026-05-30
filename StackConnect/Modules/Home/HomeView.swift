@@ -97,6 +97,17 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
             .sheet(isPresented: $isCustomizingWidgets) {
                 CustomizeWidgetsView(viewModel: viewModel)
             }
+            .alert(
+                String(localized: "Account Expired"),
+                isPresented: $viewModel.uiState.showExpiredAlert,
+                presenting: viewModel.uiState.expiredAccount
+            ) { account in
+                Button(String(localized: "OK")) {
+                    Task { await viewModel.deleteExpiredAccount(account) }
+                }
+            } message: { account in
+                Text("The account \"\(account.name)\" has expired. Please request a new file from the administrator.")
+            }
         }
     }
 

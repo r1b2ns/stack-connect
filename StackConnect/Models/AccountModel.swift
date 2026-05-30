@@ -117,6 +117,8 @@ struct AccountModel: Codable, Identifiable, Hashable {
     let createdAt: Date
     var rules: AccountRules
     var origin: AccountOrigin
+    /// Optional expiration set on the export. When reached, the account must be removed.
+    var expirationDate: Date?
 
     init(
         id: String = UUID().uuidString,
@@ -124,7 +126,8 @@ struct AccountModel: Codable, Identifiable, Hashable {
         providerType: ProviderType,
         createdAt: Date = .now,
         rules: AccountRules = .allPermissions,
-        origin: AccountOrigin = .created
+        origin: AccountOrigin = .created,
+        expirationDate: Date? = nil
     ) {
         self.id = id
         self.name = name
@@ -132,10 +135,16 @@ struct AccountModel: Codable, Identifiable, Hashable {
         self.createdAt = createdAt
         self.rules = rules
         self.origin = origin
+        self.expirationDate = expirationDate
     }
 
     var isExportable: Bool {
         origin == .created
+    }
+
+    var isExpired: Bool {
+        guard let expirationDate else { return false }
+        return Date() >= expirationDate
     }
 
     // MARK: - Permission Checks (respects hierarchy: add→edit→view, delete→edit→view)
@@ -179,9 +188,10 @@ struct AccountModel: Codable, Identifiable, Hashable {
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         rules = try container.decodeIfPresent(AccountRules.self, forKey: .rules) ?? .allPermissions
         origin = try container.decodeIfPresent(AccountOrigin.self, forKey: .origin) ?? .created
+        expirationDate = try container.decodeIfPresent(Date.self, forKey: .expirationDate)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, providerType, createdAt, rules, origin
+        case id, name, providerType, createdAt, rules, origin, expirationDate
     }
 }

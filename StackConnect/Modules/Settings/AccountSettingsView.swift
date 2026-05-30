@@ -32,7 +32,7 @@ private struct AccountSettingsEntry: View {
 protocol AccountSettingsViewModelProtocol: ObservableObject {
     var uiState: AccountSettingsUiState { get set }
     func save() async
-    func exportAccountWithRules(exportName: String, rules: AccountRules, password: String) -> URL?
+    func exportAccountWithRules(exportName: String, rules: AccountRules, password: String, expirationDate: Date?) -> URL?
 }
 
 // MARK: - UiState
@@ -89,7 +89,7 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
         }
     }
 
-    func exportAccountWithRules(exportName: String, rules: AccountRules, password: String) -> URL? {
+    func exportAccountWithRules(exportName: String, rules: AccountRules, password: String, expirationDate: Date?) -> URL? {
         var exportDict: [String: Any] = [
             "id": uiState.account.id,
             "name": exportName,
@@ -103,8 +103,13 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
             "users": rules.users.map(\.rawValue),
             "review": rules.review.map(\.rawValue),
             "testFlight": rules.testFlight.map(\.rawValue),
-            "analytics": rules.analytics.map(\.rawValue)
+            "analytics": rules.analytics.map(\.rawValue),
+            "provisioning": rules.provisioning.map(\.rawValue)
         ]
+
+        if let expirationDate {
+            exportDict["expirationDate"] = ISO8601DateFormatter().string(from: expirationDate)
+        }
 
         if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") {
             exportDict["credentials"] = [
@@ -171,8 +176,8 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
         .sheet(isPresented: $showExport) {
             ExportAccountView(
                 account: viewModel.uiState.account,
-                onExport: { name, rules, password in
-                    let url = viewModel.exportAccountWithRules(exportName: name, rules: rules, password: password)
+                onExport: { name, rules, password, expirationDate in
+                    let url = viewModel.exportAccountWithRules(exportName: name, rules: rules, password: password, expirationDate: expirationDate)
                     showExport = false
                     if let url {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
