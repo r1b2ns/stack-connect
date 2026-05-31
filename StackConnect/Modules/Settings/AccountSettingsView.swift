@@ -128,14 +128,8 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
             return nil
         }
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let dateString = dateFormatter.string(from: Date())
-        let sanitizedName = exportName
-            .replacingOccurrences(of: " ", with: "-")
-            .replacingOccurrences(of: "/", with: "-")
-        let accountType = uiState.account.providerType.rawValue
-        let fileName = "\(sanitizedName)-stackconnect-\(accountType)-\(dateString).scexport"
+        // Neutral filename: avoids leaking the account name / provider in the file name.
+        let fileName = "export-\(UUID().uuidString).scexport"
 
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
         do {
@@ -317,7 +311,13 @@ private struct ShareSheetWrapper: UIViewControllerRepresentable {
     let activityItems: [Any]
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+        let controller = UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+        controller.completionWithItemsHandler = { _, _, _, _ in
+            for case let url as URL in activityItems where url.isFileURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+        return controller
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}

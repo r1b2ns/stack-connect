@@ -158,15 +158,8 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             return nil
         }
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let dateString = dateFormatter.string(from: Date())
-
-        let sanitizedName = exportName
-            .replacingOccurrences(of: " ", with: "-")
-            .replacingOccurrences(of: "/", with: "-")
-        let accountType = account.providerType.rawValue
-        let fileName = "\(sanitizedName)-stackconnect-\(accountType)-\(dateString).scexport"
+        // Neutral filename: avoids leaking the account name / provider in the file name.
+        let fileName = "export-\(UUID().uuidString).scexport"
 
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
         do {

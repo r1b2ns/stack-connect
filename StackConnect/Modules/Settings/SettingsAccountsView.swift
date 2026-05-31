@@ -320,7 +320,13 @@ private struct ShareSheetView: UIViewControllerRepresentable {
     let activityItems: [Any]
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+        let controller = UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+        controller.completionWithItemsHandler = { _, _, _, _ in
+            for case let url as URL in activityItems where url.isFileURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+        return controller
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}

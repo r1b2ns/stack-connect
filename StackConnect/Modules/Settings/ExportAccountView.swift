@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ExportAccountView: View {
 
@@ -10,7 +11,14 @@ struct ExportAccountView: View {
     @State private var exportName: String = ""
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
+    @State private var revealPassword = false
+    @State private var revealConfirmPassword = false
+    @State private var passwordCopied = false
+    @State private var generateConfirmed = false
+    @State private var copyConfirmed = false
     @State private var enableExpiration = false
+
+    private let minPasswordLength = 12
     @State private var expirationDate = Calendar.current.date(byAdding: .day, value: 30, to: Date()) ?? Date()
     /// nil = not configured; [] = explicitly None; [.view, ...] = selected
     @State private var permissions: [AccountRuleResource: [AccountPermission]?] = [:]
@@ -130,20 +138,111 @@ struct ExportAccountView: View {
 
     private func buildPasswordSection() -> some View {
         Section {
-            SecureField(String(localized: "Password"), text: $password)
+            HStack {
+                Group {
+                    if revealPassword {
+                        TextField(String(localized: "Password"), text: $password)
+                    } else {
+                        SecureField(String(localized: "Password"), text: $password)
+                    }
+                }
                 .textContentType(.newPassword)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
 
-            SecureField(String(localized: "Confirm Password"), text: $confirmPassword)
+                Button {
+                    revealPassword.toggle()
+                } label: {
+                    Image(systemName: revealPassword ? "eye.slash" : "eye")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(revealPassword
+                    ? String(localized: "Hide password")
+                    : String(localized: "Show password"))
+            }
+
+            HStack {
+                Group {
+                    if revealConfirmPassword {
+                        TextField(String(localized: "Confirm Password"), text: $confirmPassword)
+                    } else {
+                        SecureField(String(localized: "Confirm Password"), text: $confirmPassword)
+                    }
+                }
                 .textContentType(.newPassword)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+
+                Button {
+                    revealConfirmPassword.toggle()
+                } label: {
+                    Image(systemName: revealConfirmPassword ? "eye.slash" : "eye")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(revealConfirmPassword
+                    ? String(localized: "Hide password")
+                    : String(localized: "Show password"))
+            }
+
+            Button {
+                let generated = AccountCrypto.generateStrongPassword()
+                password = generated
+                confirmPassword = generated
+                revealPassword = true
+                UIPasteboard.general.string = generated
+                passwordCopied = true
+                triggerConfirmation($generateConfirmed)
+            } label: {
+                HStack {
+                    Image(systemName: generateConfirmed ? "checkmark.circle.fill" : "wand.and.stars")
+                        .foregroundStyle(generateConfirmed ? .green : .accentColor)
+                    Text(String(localized: "Generate strong password"))
+                }
+            }
+
+            Button {
+                UIPasteboard.general.string = password
+                passwordCopied = true
+                triggerConfirmation($copyConfirmed)
+            } label: {
+                HStack {
+                    Image(systemName: copyConfirmed ? "checkmark.circle.fill" : "doc.on.doc")
+                        .foregroundStyle(copyConfirmed ? .green : .accentColor)
+                    Text(String(localized: "Copy password"))
+                }
+            }
+            .disabled(password.isEmpty)
         } header: {
             Text(String(localized: "Encryption"))
         } footer: {
-            if !password.isEmpty && !confirmPassword.isEmpty && password != confirmPassword {
-                Text(String(localized: "Passwords do not match."))
-                    .foregroundStyle(.red)
-            } else {
-                Text(String(localized: "The exported file will be encrypted. You will need this password to import the account."))
-            }
+            buildPasswordFooter()
+        }
+    }
+
+    @ViewBuilder
+    private func buildPasswordFooter() -> some View {
+        if !password.isEmpty && !confirmPassword.isEmpty && password != confirmPassword {
+            Text(String(localized: "Passwords do not match."))
+                .foregroundStyle(.red)
+        } else if !password.isEmpty && password.count < minPasswordLength {
+            Text(String(localized: "Use at least \(minPasswordLength) characters. Tip: tap \"Generate strong password\" for a secure one."))
+                .foregroundStyle(.orange)
+        } else if passwordCopied {
+            Text(String(localized: "The password was copied to your clipboard. Share it with your team securely — you will need it to import the account."))
+                .foregroundStyle(.green)
+        } else {
+            Text(String(localized: "The exported file will be encrypted. You will need this password to import the account."))
+        }
+    }
+
+    /// Momentarily shows a green checkmark on the button and fires a success haptic.
+    private func triggerConfirmation(_ flag: Binding<Bool>) {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        withAnimation { flag.wrappedValue = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            withAnimation { flag.wrappedValue = false }
         }
     }
 
@@ -200,7 +299,7 @@ struct ExportAccountView: View {
     private var isExportEnabled: Bool {
         let nameValid = !exportName.trimmingCharacters(in: .whitespaces).isEmpty
         let allResourcesConfigured = resources.allSatisfy { !isResourceNil($0) }
-        let passwordValid = !password.isEmpty && password == confirmPassword
+        let passwordValid = password.count >= minPasswordLength && password == confirmPassword
         return nameValid && allResourcesConfigured && passwordValid
     }
 
