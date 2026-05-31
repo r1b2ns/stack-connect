@@ -23,6 +23,7 @@ SCHEME_DEV           = "StackConnect Development"
 SCHEME_PROD          = "StackConnect Production"
 BUNDLE_ID            = ENV["BUNDLE_ID"]
 BUNDLE_ID_DEV        = ENV["BUNDLE_ID_DEV"]
+BUNDLE_ID_WIDGET     = ENV["BUNDLE_ID_WIDGET"]
 OUTPUT_DIR           = "build"
 
 # ─── Platform ────────────────────────────────────────────────────────────────
@@ -78,7 +79,7 @@ platform :ios do
       build_number: Time.now.to_i.to_s
     )
 
-    match(type: "appstore", app_identifier: [BUNDLE_ID_DEV], readonly: false)
+    match(type: "appstore", app_identifier: [BUNDLE_ID_DEV, BUNDLE_ID_WIDGET], readonly: false)
 
     build_app(
       project:          PROJECT,
@@ -110,7 +111,7 @@ platform :ios do
       build_number: Time.now.to_i.to_s
     )
 
-    match(type: "appstore", app_identifier: [BUNDLE_ID], readonly: false)
+    match(type: "appstore", app_identifier: [BUNDLE_ID, BUNDLE_ID_WIDGET], readonly: false)
 
     build_app(
       project:          PROJECT,
@@ -178,7 +179,7 @@ platform :ios do
       build_number: Time.now.to_i.to_s
     )
 
-    match(type: "appstore", app_identifier: [BUNDLE_ID], readonly: false)
+    match(type: "appstore", app_identifier: [BUNDLE_ID, BUNDLE_ID_WIDGET], readonly: false)
 
     build_app(
       project:          PROJECT,

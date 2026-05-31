@@ -7,6 +7,7 @@
 #
 #   bundle exec fastlane match appstore --app_identifier zeroSixteen.stackconnect
 #   bundle exec fastlane match appstore --app_identifier zeroSixteen.stackconnect.dev
+#   bundle exec fastlane match appstore --app_identifier zeroSixteen.stackconnect.widget
 #
 # ─── Rotating certificates (if revoked or expired) ──────────────────────────
 #
@@ -19,4 +20,4 @@ storage_mode("git")
 
 type("appstore")
 
-app_identifier([ENV["BUNDLE_ID"], ENV["BUNDLE_ID_DEV"]])
+app_identifier([ENV["BUNDLE_ID"], ENV["BUNDLE_ID_DEV"], ENV["BUNDLE_ID_WIDGET"]])
