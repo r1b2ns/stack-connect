@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "title": "新機能",
+  "highlights": [
+    {
+      "icon": "square.grid.2x2.fill",
+      "color": "blue",
+      "title": "新しいウィジェット",
+      "description": "ホーム画面とiPhone向けの新しいウィジェット。"
+    },
+    {
+      "icon": "checkmark.seal.fill",
+      "color": "green",
+      "title": "リソース管理",
+      "description": "証明書、プロファイル、デバイス、識別子を一か所で管理。"
+    },
+    {
+      "icon": "lock.shield.fill",
+      "color": "orange",
+      "title": "セキュリティの強化",
+      "description": "チームにメンバーを招待する際のセキュリティを強化しました。"
+    },
+    {
+      "icon": "arrow.triangle.2.circlepath",
+      "color": "purple",
+      "title": "バックグラウンド同期",
+      "description": "データがバックグラウンドで自動的に同期されます。"
+    }
+  ]
+}
