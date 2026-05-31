@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "title": "Novedades",
+  "highlights": [
+    {
+      "icon": "square.grid.2x2.fill",
+      "color": "blue",
+      "title": "Nuevos Widgets",
+      "description": "Nuevos widgets para la pantalla de inicio y para el iPhone."
+    },
+    {
+      "icon": "checkmark.seal.fill",
+      "color": "green",
+      "title": "Gestión de Recursos",
+      "description": "Gestiona Certificados, Perfiles, Dispositivos e Identificadores en un solo lugar."
+    },
+    {
+      "icon": "lock.shield.fill",
+      "color": "orange",
+      "title": "Seguridad Mejorada",
+      "description": "Mejoras de seguridad al invitar a personas a tu equipo."
+    },
+    {
+      "icon": "arrow.triangle.2.circlepath",
+      "color": "purple",
+      "title": "Sincronización en Segundo Plano",
+      "description": "Tus datos se sincronizan automáticamente en segundo plano."
+    }
+  ]
+}

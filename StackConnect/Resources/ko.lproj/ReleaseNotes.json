@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "title": "새로운 기능",
+  "highlights": [
+    {
+      "icon": "square.grid.2x2.fill",
+      "color": "blue",
+      "title": "새로운 위젯",
+      "description": "홈 화면과 iPhone을 위한 새로운 위젯."
+    },
+    {
+      "icon": "checkmark.seal.fill",
+      "color": "green",
+      "title": "리소스 관리",
+      "description": "인증서, 프로파일, 기기, 식별자를 한곳에서 관리하세요."
+    },
+    {
+      "icon": "lock.shield.fill",
+      "color": "orange",
+      "title": "향상된 보안",
+      "description": "팀에 사람을 초대할 때의 보안이 강화되었습니다."
+    },
+    {
+      "icon": "arrow.triangle.2.circlepath",
+      "color": "purple",
+      "title": "백그라운드 동기화",
+      "description": "데이터가 백그라운드에서 자동으로 동기화됩니다."
+    }
+  ]
+}

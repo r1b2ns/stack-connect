@@ -1,5 +1,6 @@
 import Foundation
 import StackProtocols
+import WidgetKit
 
 // MARK: - Protocol
 
@@ -162,6 +163,8 @@ final class AppListViewModel: AppListViewModelProtocol {
 
         do {
             try await storage.save(updated, id: "\(uiState.account.id).\(updated.id)")
+            // Refresh widgets so archived apps' reviews disappear immediately.
+            WidgetCenter.shared.reloadAllTimelines()
             let text = updated.isArchived
                 ? String(localized: "App archived")
                 : String(localized: "App unarchived")

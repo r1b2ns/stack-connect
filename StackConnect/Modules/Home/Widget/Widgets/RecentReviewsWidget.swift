@@ -25,7 +25,9 @@ final class RecentReviewsWidget: HomeWidget, ObservableObject {
 
         do {
             let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
-            let appById = Dictionary(uniqueKeysWithValues: allApps.map { ($0.id, $0) })
+            // Exclude archived apps so their reviews never appear in the widget.
+            let active = allApps.filter { !$0.isArchived }
+            let appById = Dictionary(uniqueKeysWithValues: active.map { ($0.id, $0) })
             let allReviews: [CustomerReviewModel] = try await storage.fetchAll(CustomerReviewModel.self)
             reviews = allReviews
                 .compactMap { review -> HomeRecentReview? in

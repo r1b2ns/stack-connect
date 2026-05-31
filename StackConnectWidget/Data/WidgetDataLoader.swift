@@ -41,7 +41,9 @@ enum WidgetDataLoader {
             let (inReview, awaiting) = categorize(active, phasedByAppId: phasedByAppId)
 
             let reviews = try await storage.fetchAll(WidgetReview.self, typeName: "CustomerReviewModel")
-            let appById = Dictionary(uniqueKeysWithValues: apps.map { ($0.id, $0) })
+            // Match reviews only against active (non-archived) apps so reviews
+            // from archived apps never appear in the Recent Reviews widget.
+            let appById = Dictionary(uniqueKeysWithValues: active.map { ($0.id, $0) })
             let recent = reviews
                 .compactMap { review -> WidgetReviewItem? in
                     guard let appId = review.appId, let app = appById[appId] else { return nil }

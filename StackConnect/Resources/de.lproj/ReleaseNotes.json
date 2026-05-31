@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "title": "Neuigkeiten",
+  "highlights": [
+    {
+      "icon": "square.grid.2x2.fill",
+      "color": "blue",
+      "title": "Neue Widgets",
+      "description": "Neue Widgets für den Home-Bildschirm und das iPhone."
+    },
+    {
+      "icon": "checkmark.seal.fill",
+      "color": "green",
+      "title": "Ressourcenverwaltung",
+      "description": "Verwalte Zertifikate, Profile, Geräte und Identifier an einem Ort."
+    },
+    {
+      "icon": "lock.shield.fill",
+      "color": "orange",
+      "title": "Verbesserte Sicherheit",
+      "description": "Mehr Sicherheit beim Einladen von Personen in dein Team."
+    },
+    {
+      "icon": "arrow.triangle.2.circlepath",
+      "color": "purple",
+      "title": "Synchronisierung im Hintergrund",
+      "description": "Deine Daten werden automatisch im Hintergrund synchronisiert."
+    }
+  ]
+}

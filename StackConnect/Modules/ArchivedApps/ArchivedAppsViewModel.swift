@@ -1,5 +1,6 @@
 import Foundation
 import StackProtocols
+import WidgetKit
 
 // MARK: - Protocol
 
@@ -116,6 +117,8 @@ final class ArchivedAppsViewModel: ArchivedAppsViewModelProtocol {
 
         do {
             try await storage.save(updated, id: "\(uiState.account.id).\(updated.id)")
+            // Refresh widgets so the unarchived app's reviews reappear immediately.
+            WidgetCenter.shared.reloadAllTimelines()
             uiState.apps.removeAll { $0.id == updated.id }
             uiState.toastMessage = ToastMessage(String(localized: "App unarchived"), icon: "archivebox.fill")
             Log.print.info("[ArchivedApps] Unarchived \(updated.name)")

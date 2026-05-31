@@ -1,0 +1,30 @@
+{
+  "version": "2.0.0",
+  "title": "Nieuw",
+  "highlights": [
+    {
+      "icon": "square.grid.2x2.fill",
+      "color": "blue",
+      "title": "Nieuwe Widgets",
+      "description": "Nieuwe widgets voor het beginscherm en de iPhone."
+    },
+    {
+      "icon": "checkmark.seal.fill",
+      "color": "green",
+      "title": "Resourcebeheer",
+      "description": "Beheer certificaten, profielen, apparaten en identifiers op één plek."
+    },
+    {
+      "icon": "lock.shield.fill",
+      "color": "orange",
+      "title": "Verbeterde Beveiliging",
+      "description": "Verbeterde beveiliging bij het uitnodigen van mensen voor je team."
+    },
+    {
+      "icon": "arrow.triangle.2.circlepath",
+      "color": "purple",
+      "title": "Synchronisatie op de Achtergrond",
+      "description": "Je gegevens worden automatisch op de achtergrond gesynchroniseerd."
+    }
+  ]
+}
