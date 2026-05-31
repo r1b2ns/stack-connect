@@ -247,7 +247,7 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
                 Text(String(localized: "Created"))
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text(viewModel.uiState.account.createdAt, style: .date)
+                Text(viewModel.uiState.account.createdAt.formatted(date: .abbreviated, time: .shortened))
             }
 
             if let expirationDate = viewModel.uiState.account.expirationDate {
@@ -255,7 +255,7 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
                     Text(String(localized: "Expiration Date"))
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text(expirationDate, style: .date)
+                    Text(expirationDate.formatted(date: .abbreviated, time: .shortened))
                         .foregroundStyle(viewModel.uiState.account.isExpired ? .red : .primary)
                 }
             }

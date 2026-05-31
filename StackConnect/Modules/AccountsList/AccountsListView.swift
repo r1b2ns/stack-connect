@@ -40,11 +40,19 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
 
     @State private var importError = ""
     @State private var showImportError = false
+    @State private var expiredAccessAccount: AccountModel?
+    @State private var showExpiredAccessAlert = false
 
     var body: some View {
         buildContent()
             .navigationTitle(viewModel.uiState.providerType.displayName)
             .toolbar { buildToolbar() }
+            .onReceive(ReimportRouter.shared.$pending.compactMap { $0 }) { request in
+                guard request.providerType == viewModel.uiState.providerType else { return }
+                viewModel.beginReimport(accountId: request.accountId)
+                coordinator.showImport = true
+                ReimportRouter.shared.pending = nil
+            }
             .sheet(isPresented: $coordinator.showAddOptions) {
                 buildAddOptionsSheet()
                     .presentationDetents([.medium])
@@ -66,6 +74,18 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                 Button(String(localized: "OK"), role: .cancel) {}
             } message: {
                 Text(importError)
+            }
+            .alert(
+                String(localized: "Account Expired"),
+                isPresented: $showExpiredAccessAlert,
+                presenting: expiredAccessAccount
+            ) { account in
+                Button(String(localized: "Re-import File")) {
+                    DeepLinkRouter.shared.open(DeepLink.reimport(accountId: account.id).url)
+                }
+                Button(String(localized: "Cancel"), role: .cancel) {}
+            } message: { account in
+                Text("The account \"\(account.name)\" has expired. Re-import its file to keep using it.")
             }
             .task { await viewModel.loadAccounts() }
     }
@@ -108,6 +128,11 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
 
     private func buildAccountRow(_ account: AccountModel) -> some View {
         Button {
+            guard !account.isExpired else {
+                expiredAccessAccount = account
+                showExpiredAccessAlert = true
+                return
+            }
             switch account.providerType {
             case .apple:
                 homeCoordinator.navigateToAppList(account)
@@ -138,6 +163,17 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                         .clipShape(Capsule())
                 }
 
+                if account.isExpired {
+                    Text(String(localized: "expired"))
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.red)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.red.opacity(0.15))
+                        .clipShape(Capsule())
+                }
+
                 Spacer()
 
                 Image(systemName: "chevron.right")
@@ -161,6 +197,7 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
 
                 if viewModel.uiState.providerType == .apple {
                     Button {
+                        viewModel.uiState.replacingAccountId = nil
                         coordinator.presentImport()
                     } label: {
                         Label(String(localized: "Import"), systemImage: "square.and.arrow.down.fill")
@@ -195,6 +232,7 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                 }
             },
             onCancel: {
+                viewModel.uiState.replacingAccountId = nil
                 coordinator.showImport = false
             }
         )
@@ -221,6 +259,7 @@ private struct AccountsListImportSheet: View {
     let onImport: (URL, String, String?) -> Void
     let onCancel: () -> Void
 
+    @Environment(\.dismiss) private var dismiss
     @State private var showFilePicker = false
     @State private var showPasswordAlert = false
     @State private var showNameAlert = false
@@ -260,7 +299,10 @@ private struct AccountsListImportSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    Button(String(localized: "Cancel")) {
+                        onCancel()
+                        dismiss()
+                    }
                 }
             }
             .fileImporter(

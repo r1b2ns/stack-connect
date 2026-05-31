@@ -2,15 +2,17 @@ import Foundation
 
 /// In-app deep links used by widgets and local notifications. Scheme: `stackconnect`.
 ///
-/// - `home`    → `stackconnect://home`
-/// - `reviews` → `stackconnect://reviews`
-/// - `app`     → `stackconnect://app/{accountId}/{appId}`
-/// - `review`  → `stackconnect://review/{accountId}/{appId}/{reviewId}`
+/// - `home`     → `stackconnect://home`
+/// - `reviews`  → `stackconnect://reviews`
+/// - `app`      → `stackconnect://app/{accountId}/{appId}`
+/// - `review`   → `stackconnect://review/{accountId}/{appId}/{reviewId}`
+/// - `reimport` → `stackconnect://reimport/{accountId}`
 enum DeepLink: Equatable {
     case home
     case reviews
     case app(accountId: String, appId: String)
     case review(accountId: String, appId: String, reviewId: String)
+    case reimport(accountId: String)
 
     static let scheme = "stackconnect"
 
@@ -28,6 +30,9 @@ enum DeepLink: Equatable {
         case let .review(accountId, appId, reviewId):
             components.host = "review"
             components.path = "/" + [accountId, appId, reviewId].map(Self.encode).joined(separator: "/")
+        case let .reimport(accountId):
+            components.host = "reimport"
+            components.path = "/" + Self.encode(accountId)
         }
         // Fallback should never trigger; host strings above are always valid.
         return components.url ?? URL(string: "\(Self.scheme)://home")!
@@ -46,6 +51,8 @@ enum DeepLink: Equatable {
             self = .app(accountId: segments[0], appId: segments[1])
         case "review" where segments.count >= 3:
             self = .review(accountId: segments[0], appId: segments[1], reviewId: segments[2])
+        case "reimport" where segments.count >= 1:
+            self = .reimport(accountId: segments[0])
         default:
             return nil
         }

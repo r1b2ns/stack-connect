@@ -7,6 +7,7 @@ protocol AccountsListViewModelProtocol: ObservableObject {
     var uiState: AccountsListUiState { get set }
     func loadAccounts() async
     func deleteAccount(at offsets: IndexSet) async
+    func beginReimport(accountId: String)
     func importAccount(from url: URL, password: String, customName: String?) async -> String?
 }
 
@@ -16,6 +17,8 @@ struct AccountsListUiState {
     var accounts: [AccountModel] = []
     var isLoading = false
     var providerType: ProviderType
+    /// When set, the next import replaces this account in place, preserving its offline app data.
+    var replacingAccountId: String?
 }
 
 // MARK: - Implementation
@@ -74,6 +77,12 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
             }
         }
         uiState.accounts.remove(atOffsets: offsets)
+    }
+
+    // MARK: - Re-import
+
+    func beginReimport(accountId: String) {
+        uiState.replacingAccountId = accountId
     }
 
     // MARK: - Import
@@ -137,11 +146,12 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
             return String(localized: "Missing or invalid 'credentials' field.")
         }
 
-        // Check for duplicate credentials
-        let allAccounts = (try? await storage.fetchAll(AccountModel.self)) ?? []
-        let sameTypeAccounts = allAccounts.filter { $0.providerType == providerType }
+        // When re-importing, reuse the expired account's id so its offline apps stay linked.
+        let accountId = uiState.replacingAccountId ?? UUID().uuidString
 
-        let accountId = UUID().uuidString
+        // Check for duplicate credentials (ignore the account being replaced)
+        let allAccounts = (try? await storage.fetchAll(AccountModel.self)) ?? []
+        let sameTypeAccounts = allAccounts.filter { $0.providerType == providerType && $0.id != accountId }
 
         switch providerType {
         case .apple:
@@ -198,7 +208,9 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
 
         do {
             try await storage.save(account, id: account.id)
-            Log.print.info("[AccountsList] Imported account: \(accountName)")
+            let wasReimport = uiState.replacingAccountId != nil
+            uiState.replacingAccountId = nil
+            Log.print.info("[AccountsList] \(wasReimport ? "Re-imported" : "Imported") account: \(accountName)")
             await loadAccounts()
             return nil
         } catch {

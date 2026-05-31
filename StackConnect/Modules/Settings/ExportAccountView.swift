@@ -162,7 +162,7 @@ struct ExportAccountView: View {
         } header: {
             Text(String(localized: "Expiration"))
         } footer: {
-            Text(String(localized: "When set, the imported account stops working after this date and is removed. The recipient must request a new file."))
+            Text(String(localized: "When set, the imported account will stop working after this date and will become inaccessible. The recipient must request a new file."))
         }
     }
 
