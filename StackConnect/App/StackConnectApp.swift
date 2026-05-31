@@ -6,7 +6,7 @@ import TipKit
 struct StackConnectApp: App {
 
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @State private var showWelcome = !UserDefaults.standard.bool(forKey: "hasSeenWelcome")
+    @State private var showWelcome: Bool
     @State private var showReleaseNotes: Bool
     @State private var releaseNotes: ReleaseNotes?
 
@@ -17,11 +17,16 @@ struct StackConnectApp: App {
         let hasSeenWelcome = UserDefaults.standard.bool(forKey: "hasSeenWelcome")
         let notes = ReleaseNotes.load()
         let presenter = ReleaseNotesPresenter()
-        // Only surface release notes after onboarding and once per app version.
         _releaseNotes = State(initialValue: notes)
-        _showReleaseNotes = State(
-            initialValue: hasSeenWelcome && notes != nil && presenter.shouldPresent
-        )
+
+        // Prefer the release notes: show them on the first launch and on every
+        // app update (once per version).
+        let canShowReleaseNotes = notes != nil && presenter.shouldPresent
+        _showReleaseNotes = State(initialValue: canShowReleaseNotes)
+
+        // The welcome screen is only a fallback, shown when there are no release
+        // notes available to display on the first launch.
+        _showWelcome = State(initialValue: !hasSeenWelcome && !canShowReleaseNotes)
 
         do {
             let configuration = ModelConfiguration(
@@ -58,6 +63,9 @@ struct StackConnectApp: App {
                     if let releaseNotes {
                         ReleaseNotesView(releaseNotes: releaseNotes) {
                             releaseNotesPresenter.markAsSeen()
+                            // Showing the release notes also completes onboarding,
+                            // so the welcome screen won't appear afterwards.
+                            UserDefaults.standard.set(true, forKey: "hasSeenWelcome")
                             showReleaseNotes = false
                         }
                         .interactiveDismissDisabled(true)
