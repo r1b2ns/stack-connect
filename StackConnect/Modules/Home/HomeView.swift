@@ -143,6 +143,14 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
 
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button {
+                coordinator.navigateToAssistant()
+            } label: {
+                Image(systemName: "sparkles")
+            }
+            .accessibilityLabel(String(localized: "Assistant"))
+        }
         ToolbarItem(placement: .topBarTrailing) {
             Button {
                 isCustomizingWidgets = true
@@ -289,6 +297,8 @@ private extension View {
             switch route {
             case .settings:
                 SettingsViewFactory.build()
+            case .assistant:
+                AssistantViewFactory.build()
             case .settingsAccounts:
                 SettingsAccountsViewFactory.build()
             case .license:

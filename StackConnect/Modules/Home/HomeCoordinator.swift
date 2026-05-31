@@ -2,6 +2,7 @@ import SwiftUI
 
 enum HomeRoute: Hashable {
     case settings
+    case assistant
     case settingsAccounts
     case license
     case accountSettings(AccountModel)
@@ -61,6 +62,10 @@ final class HomeCoordinator: MainCoordinatorProtocol {
 
     func navigateToSettings() {
         path.append(HomeRoute.settings)
+    }
+
+    func navigateToAssistant() {
+        path.append(HomeRoute.assistant)
     }
 
     func navigateToSettingsAccounts() {
