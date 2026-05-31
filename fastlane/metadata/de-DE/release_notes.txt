@@ -1,6 +1,10 @@
-• TestFlight: eigener Tester-Bildschirm mit Suche und CSV-Import (mit Vorschau und Wischen zum Entfernen)
-• App Review und TestFlight-Testinformationen: Passwort einblenden/ausblenden und Benutzernamen kopieren
-• Reviews: eine Bewertung über das System-Share-Sheet teilen
-• App-Liste: Hinweis zu den Wisch-Aktionen
-• Fehler behoben: Abbrechen-Buttons in Sheets funktionieren jetzt auf dem Mac
+• Home-Dashboard mit anpassbaren Widgets: In Prüfung, Wartet auf Freigabe und Letzte Bewertungen
+• Native Home-Bildschirm-Widgets (WidgetKit), die den Status deiner Apps offline anzeigen
+• Zertifikate, Identifier, Geräte und Profile verwalten: erstellen, Details ansehen, widerrufen und löschen
+• Geräte per Massenimport aus .deviceids- oder .txt-Dateien
+• Benachrichtigungen bei App-Store-Statusänderungen und neuen Bewertungen
+• Account-Export: Generator für sichere Passwörter, optionales Ablaufdatum und Re-Import abgelaufener Accounts
+• „In Prüfung“ teilt Multi-Plattform-Apps jetzt nach Plattform auf (iOS, tvOS, …)
+• Kopier-Buttons in den Versions-Metadaten und alle Screenshots als ZIP herunterladen
+• macOS: Favoriten- und Archiv-Buttons direkt in der App-Liste
 • Fehlerbehebungen und Stabilitätsverbesserungen

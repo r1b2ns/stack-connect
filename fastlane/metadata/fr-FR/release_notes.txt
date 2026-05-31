@@ -1,6 +1,10 @@
-• TestFlight : écran dédié des Testeurs avec recherche et import CSV (prévisualisation et balayage pour supprimer)
-• App Review et Informations de test TestFlight : afficher/masquer le mot de passe et copier l'identifiant
-• Reviews : partagez un avis via le menu de partage du système
-• Liste des apps : astuce expliquant les actions de balayage
-• Correction : les boutons Annuler des feuilles modales fonctionnent désormais sur Mac
+• Tableau de bord d'accueil avec widgets personnalisables : En cours d'examen, En attente de publication et Avis récents
+• Widgets natifs sur l'écran d'accueil (WidgetKit) affichant l'état de vos apps hors ligne
+• Gérez certificats, identifiants, appareils et profils : créer, voir les détails, révoquer et supprimer
+• Import groupé d'appareils depuis des fichiers .deviceids ou .txt
+• Notifications pour les changements d'état sur l'App Store et les nouveaux avis
+• Export de compte : générateur de mot de passe robuste, date d'expiration facultative et réimport des comptes expirés
+• En cours d'examen sépare désormais les apps multiplateformes par plateforme (iOS, tvOS, …)
+• Boutons de copie sur les champs de métadonnées de version et téléchargement de toutes les captures en ZIP
+• macOS : boutons favori et archiver intégrés dans la liste des apps
 • Corrections de bogues et améliorations de la stabilité

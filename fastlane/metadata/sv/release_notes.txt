@@ -1,6 +1,10 @@
-• TestFlight: dedikerad Testers-skärm med sökning och CSV-import (med förhandsvisning och svep för att ta bort)
-• App Review och TestFlight Testinformation: visa/dölj lösenord och kopiera användarnamn
-• Reviews: dela en recension via systemets delningsmeny
-• Apps-lista: tips som förklarar svepningsåtgärderna
-• Korrigering: Avbryt-knappar i sheets fungerar nu på Mac
+• Startpanel med anpassningsbara widgetar: Under granskning, Väntar på lansering och Senaste recensioner
+• Inbyggda widgetar på hemskärmen (WidgetKit) som visar dina appars status offline
+• Hantera certifikat, identifierare, enheter och profiler: skapa, visa detaljer, återkalla och radera
+• Massimportera enheter från .deviceids- eller .txt-filer
+• Aviseringar vid statusändringar i App Store och nya recensioner
+• Kontoexport: generator för starka lösenord, valfritt utgångsdatum och återimport av utgångna konton
+• Under granskning delar nu upp appar för flera plattformar per plattform (iOS, tvOS, …)
+• Kopieringsknappar på versionens metadatafält och hämta alla skärmavbilder som en ZIP
+• macOS: knappar för favorit och arkivera direkt i applistan
 • Buggfixar och stabilitetsförbättringar

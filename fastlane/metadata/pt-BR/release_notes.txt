@@ -1,6 +1,10 @@
-• TestFlight: tela dedicada de Testers com busca e importação por CSV (com preview e swipe para remover)
-• App Review e Test Information do TestFlight: mostrar/ocultar senha e copiar nome de usuário
-• Reviews: compartilhe uma avaliação pelo share sheet do sistema
-• Lista de apps: dica explicando as ações de swipe
-• Correção: botões Cancel em sheets agora funcionam no Mac
+• Painel inicial com widgets personalizáveis: Em análise, Aguardando publicação e Avaliações recentes
+• Widgets nativos na tela de início (WidgetKit) que mostram o status dos seus apps offline
+• Gerencie certificados, identificadores, dispositivos e perfis: criar, ver detalhes, revogar e excluir
+• Importação em massa de dispositivos a partir de arquivos .deviceids ou .txt
+• Notificações de mudanças de status na App Store e novas avaliações
+• Exportação de conta: gerador de senha forte, data de expiração opcional e reimportação de contas expiradas
+• Em análise agora separa apps multiplataforma por plataforma (iOS, tvOS, …)
+• Botões de copiar nos campos de metadados da versão e download de todas as capturas em um ZIP
+• macOS: botões de favoritar e arquivar direto na lista de apps
 • Correções de bugs e melhorias de estabilidade
