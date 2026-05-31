@@ -7,6 +7,7 @@ protocol AccountsListViewModelProtocol: ObservableObject {
     var uiState: AccountsListUiState { get set }
     func loadAccounts() async
     func deleteAccount(at offsets: IndexSet) async
+    func beginReimport(accountId: String)
     func importAccount(from url: URL, password: String, customName: String?) async -> String?
 }
 
@@ -16,6 +17,8 @@ struct AccountsListUiState {
     var accounts: [AccountModel] = []
     var isLoading = false
     var providerType: ProviderType
+    /// When set, the next import replaces this account in place, preserving its offline app data.
+    var replacingAccountId: String?
 }
 
 // MARK: - Implementation
@@ -76,6 +79,12 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
         uiState.accounts.remove(atOffsets: offsets)
     }
 
+    // MARK: - Re-import
+
+    func beginReimport(accountId: String) {
+        uiState.replacingAccountId = accountId
+    }
+
     // MARK: - Import
 
     func importAccount(from url: URL, password: String, customName: String?) async -> String? {
@@ -114,7 +123,7 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
             return String(localized: "This file contains a \(providerType.displayName) account, but this is the \(uiState.providerType.displayName) section.")
         }
 
-        let emptyRules = AccountRules(apps: [], version: [], users: [], review: [], testFlight: [], analytics: [])
+        let emptyRules = AccountRules()
         var rules = emptyRules
         if let rulesDict = dict["rules"] as? [String: [String]] {
             rules = AccountRules(
@@ -123,19 +132,26 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
                 users: rulesDict["users"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
                 review: rulesDict["review"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
                 testFlight: rulesDict["testFlight"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
-                analytics: rulesDict["analytics"]?.compactMap { AccountPermission(rawValue: $0) } ?? []
+                analytics: rulesDict["analytics"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
+                provisioning: rulesDict["provisioning"]?.compactMap { AccountPermission(rawValue: $0) } ?? []
             )
+        }
+
+        var expirationDate: Date?
+        if let expirationRaw = dict["expirationDate"] as? String {
+            expirationDate = ISO8601DateFormatter().date(from: expirationRaw)
         }
 
         guard let credsDict = dict["credentials"] as? [String: String] else {
             return String(localized: "Missing or invalid 'credentials' field.")
         }
 
-        // Check for duplicate credentials
-        let allAccounts = (try? await storage.fetchAll(AccountModel.self)) ?? []
-        let sameTypeAccounts = allAccounts.filter { $0.providerType == providerType }
+        // When re-importing, reuse the expired account's id so its offline apps stay linked.
+        let accountId = uiState.replacingAccountId ?? UUID().uuidString
 
-        let accountId = UUID().uuidString
+        // Check for duplicate credentials (ignore the account being replaced)
+        let allAccounts = (try? await storage.fetchAll(AccountModel.self)) ?? []
+        let sameTypeAccounts = allAccounts.filter { $0.providerType == providerType && $0.id != accountId }
 
         switch providerType {
         case .apple:
@@ -186,12 +202,15 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
             name: accountName,
             providerType: providerType,
             rules: rules,
-            origin: .imported
+            origin: .imported,
+            expirationDate: expirationDate
         )
 
         do {
             try await storage.save(account, id: account.id)
-            Log.print.info("[AccountsList] Imported account: \(accountName)")
+            let wasReimport = uiState.replacingAccountId != nil
+            uiState.replacingAccountId = nil
+            Log.print.info("[AccountsList] \(wasReimport ? "Re-imported" : "Imported") account: \(accountName)")
             await loadAccounts()
             return nil
         } catch {

@@ -122,6 +122,10 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
 
     private let swipeActionsTip = AppListSwipeActionsTip()
 
+    private var isRunningOnMac: Bool {
+        ProcessInfo.processInfo.isiOSAppOnMac
+    }
+
     var body: some View {
         buildContent()
             .searchable(
@@ -175,10 +179,12 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
 
     private func buildList() -> some View {
         List {
-            TipView(swipeActionsTip)
-                .listRowBackground(Color.white)
-                .padding(.zero)
-                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+            if !isRunningOnMac {
+                TipView(swipeActionsTip)
+                    .listRowBackground(Color(.secondarySystemGroupedBackground))
+                    .padding(.zero)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+            }
 
             if !viewModel.uiState.favoriteApps.isEmpty {
                 Section {
@@ -258,9 +264,35 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
 
             Spacer()
 
+            if isRunningOnMac {
+                buildInlineActions(app)
+            }
+
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
+        }
+    }
+
+    private func buildInlineActions(_ app: AppModel) -> some View {
+        HStack(spacing: 12) {
+            Button {
+                Task { await viewModel.toggleFavorite(app: app) }
+            } label: {
+                Image(systemName: app.isFavorite ? "star.slash.fill" : "star.fill")
+                    .foregroundStyle(.yellow)
+            }
+            .buttonStyle(.borderless)
+            .help(app.isFavorite ? String(localized: "Unfavorite") : String(localized: "Favorite"))
+
+            Button {
+                Task { await viewModel.toggleArchive(app: app) }
+            } label: {
+                Image(systemName: "archivebox.fill")
+                    .foregroundStyle(.gray)
+            }
+            .buttonStyle(.borderless)
+            .help(String(localized: "Archive"))
         }
     }
 

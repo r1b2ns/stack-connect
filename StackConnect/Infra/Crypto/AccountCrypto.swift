@@ -27,7 +27,8 @@ enum AccountCryptoError: LocalizedError {
 /// File format (.scexport):
 /// ```
 /// [4 bytes]  Magic: "SCEX"
-/// [1 byte]   Version: 0x01 (legacy HKDF, read-only) or 0x02 (PBKDF2-SHA256)
+/// [1 byte]   Version
+/// [4 bytes]  PBKDF2 iterations (UInt32 big-endian) — v3 only
 /// [16 bytes] Random salt
 /// [12 bytes] Nonce
 /// [N bytes]  Ciphertext + GCM tag (16 bytes)
@@ -36,7 +37,10 @@ enum AccountCryptoError: LocalizedError {
 /// Versions:
 /// - v1 (legacy): key = HKDF(SHA256(appSalt || password), randomSalt). Fast — vulnerable to offline brute-force.
 ///   Decryption only — kept for migrating older `.scexport` files.
-/// - v2 (current): key = PBKDF2-SHA256(password, appSalt || randomSalt, 600_000, 32). Slow KDF.
+/// - v2 (legacy): key = PBKDF2-SHA256(password, appSalt || randomSalt, 600_000, 32). Iterations implied by the constant.
+///   Decryption only.
+/// - v3 (current): same KDF as v2 but the iteration count is stored in the header, so changing the default
+///   later does not break older files.
 struct AccountCrypto {
 
     // MARK: - Constants
@@ -52,14 +56,13 @@ struct AccountCrypto {
     ])
 
     private static let magic = Data("SCEX".utf8)
-    private static let currentVersion: UInt8 = 0x02
+    private static let currentVersion: UInt8 = 0x03
     private static let legacyHKDFInfo = Data("StackConnect.Export.v1".utf8)
     private static let pbkdf2Iterations: UInt32 = 600_000
 
     private static let saltLength = 16
     private static let nonceLength = 12
     private static let tagLength = 16
-    private static let headerLength = 4 + 1 + 16 + 12 // 33
 
     // MARK: - Public
 
@@ -71,14 +74,16 @@ struct AccountCrypto {
 
         let randomSalt = try randomBytes(count: saltLength)
         let nonceData = try randomBytes(count: nonceLength)
+        let iterations = pbkdf2Iterations
 
-        let symmetricKey = try deriveKeyV2(password: password, randomSalt: randomSalt)
+        let symmetricKey = try deriveKeyPBKDF2(password: password, randomSalt: randomSalt, iterations: iterations)
         let nonce = try AES.GCM.Nonce(data: nonceData)
         let sealedBox = try AES.GCM.seal(jsonData, using: symmetricKey, nonce: nonce)
 
         var output = Data()
         output.append(magic)
         output.append(currentVersion)
+        output.append(uint32BE(iterations))
         output.append(randomSalt)
         output.append(contentsOf: nonce)
         output.append(sealedBox.ciphertext)
@@ -86,11 +91,9 @@ struct AccountCrypto {
         return output
     }
 
-    /// Decrypts binary `.scexport` data with the given password. Supports v1 and v2.
+    /// Decrypts binary `.scexport` data with the given password. Supports v1, v2, and v3.
     static func decrypt(data: Data, password: String) throws -> String {
-        guard data.count >= headerLength + tagLength else {
-            throw AccountCryptoError.invalidFileFormat
-        }
+        guard data.count >= 5 else { throw AccountCryptoError.invalidFileFormat }
 
         var offset = 0
 
@@ -100,6 +103,17 @@ struct AccountCrypto {
 
         let fileVersion = data[offset]
         offset += 1
+
+        var iterations = pbkdf2Iterations
+        if fileVersion == 0x03 {
+            guard data.count >= offset + 4 else { throw AccountCryptoError.invalidFileFormat }
+            iterations = readUInt32BE(data, at: offset)
+            offset += 4
+        }
+
+        guard data.count >= offset + saltLength + nonceLength + tagLength else {
+            throw AccountCryptoError.invalidFileFormat
+        }
 
         let salt = Data(data[offset..<offset + saltLength])
         offset += saltLength
@@ -113,7 +127,8 @@ struct AccountCrypto {
         let symmetricKey: SymmetricKey
         switch fileVersion {
         case 0x01: symmetricKey = deriveKeyV1(password: password, randomSalt: salt)
-        case 0x02: symmetricKey = try deriveKeyV2(password: password, randomSalt: salt)
+        case 0x02: symmetricKey = try deriveKeyPBKDF2(password: password, randomSalt: salt, iterations: pbkdf2Iterations)
+        case 0x03: symmetricKey = try deriveKeyPBKDF2(password: password, randomSalt: salt, iterations: iterations)
         default:   throw AccountCryptoError.unsupportedVersion
         }
 
@@ -134,6 +149,15 @@ struct AccountCrypto {
         }
     }
 
+    /// Generates a high-entropy random password from an unambiguous alphabet.
+    /// 24 chars over a 68-symbol set ≈ 146 bits of entropy. `SystemRandomNumberGenerator`
+    /// is cryptographically secure on Apple platforms.
+    static func generateStrongPassword(length: Int = 24) -> String {
+        let alphabet = Array("ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*-_=+")
+        var rng = SystemRandomNumberGenerator()
+        return String((0..<length).map { _ in alphabet[Int.random(in: 0..<alphabet.count, using: &rng)] })
+    }
+
     // MARK: - Private
 
     private static func randomBytes(count: Int) throws -> Data {
@@ -145,8 +169,18 @@ struct AccountCrypto {
         return data
     }
 
-    /// v2: PBKDF2-SHA256 with 600k iterations. Salt = appSalt || randomSalt.
-    private static func deriveKeyV2(password: String, randomSalt: Data) throws -> SymmetricKey {
+    private static func uint32BE(_ value: UInt32) -> Data {
+        var bigEndian = value.bigEndian
+        return Data(bytes: &bigEndian, count: 4)
+    }
+
+    private static func readUInt32BE(_ data: Data, at offset: Int) -> UInt32 {
+        let start = data.startIndex + offset
+        return data[start..<start + 4].reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+    }
+
+    /// PBKDF2-SHA256 with the given iteration count. Salt = appSalt || randomSalt.
+    private static func deriveKeyPBKDF2(password: String, randomSalt: Data, iterations: UInt32) throws -> SymmetricKey {
         var combinedSalt = appSalt
         combinedSalt.append(randomSalt)
 
@@ -160,7 +194,7 @@ struct AccountCrypto {
                     passwordBytes, passwordBytes.count,
                     saltBytes.bindMemory(to: UInt8.self).baseAddress, combinedSalt.count,
                     CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
-                    pbkdf2Iterations,
+                    iterations,
                     derivedBytes.bindMemory(to: UInt8.self).baseAddress, 32
                 )
             }

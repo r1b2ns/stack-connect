@@ -32,7 +32,7 @@ private struct AccountSettingsEntry: View {
 protocol AccountSettingsViewModelProtocol: ObservableObject {
     var uiState: AccountSettingsUiState { get set }
     func save() async
-    func exportAccountWithRules(exportName: String, rules: AccountRules, password: String) -> URL?
+    func exportAccountWithRules(exportName: String, rules: AccountRules, password: String, expirationDate: Date?) -> URL?
 }
 
 // MARK: - UiState
@@ -89,7 +89,7 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
         }
     }
 
-    func exportAccountWithRules(exportName: String, rules: AccountRules, password: String) -> URL? {
+    func exportAccountWithRules(exportName: String, rules: AccountRules, password: String, expirationDate: Date?) -> URL? {
         var exportDict: [String: Any] = [
             "id": uiState.account.id,
             "name": exportName,
@@ -103,8 +103,13 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
             "users": rules.users.map(\.rawValue),
             "review": rules.review.map(\.rawValue),
             "testFlight": rules.testFlight.map(\.rawValue),
-            "analytics": rules.analytics.map(\.rawValue)
+            "analytics": rules.analytics.map(\.rawValue),
+            "provisioning": rules.provisioning.map(\.rawValue)
         ]
+
+        if let expirationDate {
+            exportDict["expirationDate"] = ISO8601DateFormatter().string(from: expirationDate)
+        }
 
         if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") {
             exportDict["credentials"] = [
@@ -123,14 +128,8 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
             return nil
         }
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let dateString = dateFormatter.string(from: Date())
-        let sanitizedName = exportName
-            .replacingOccurrences(of: " ", with: "-")
-            .replacingOccurrences(of: "/", with: "-")
-        let accountType = uiState.account.providerType.rawValue
-        let fileName = "\(sanitizedName)-stackconnect-\(accountType)-\(dateString).scexport"
+        // Neutral filename: avoids leaking the account name / provider in the file name.
+        let fileName = "export-\(UUID().uuidString).scexport"
 
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
         do {
@@ -153,7 +152,7 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
     @State private var showNameEdit = false
 
     private let resources: [AccountRuleResource] = [
-        .apps, .version, .review, .testFlight, .analytics, .users
+        .apps, .version, .review, .testFlight, .analytics, .users, .provisioning
     ]
 
     var body: some View {
@@ -171,8 +170,8 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
         .sheet(isPresented: $showExport) {
             ExportAccountView(
                 account: viewModel.uiState.account,
-                onExport: { name, rules, password in
-                    let url = viewModel.exportAccountWithRules(exportName: name, rules: rules, password: password)
+                onExport: { name, rules, password, expirationDate in
+                    let url = viewModel.exportAccountWithRules(exportName: name, rules: rules, password: password, expirationDate: expirationDate)
                     showExport = false
                     if let url {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
@@ -242,7 +241,17 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
                 Text(String(localized: "Created"))
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text(viewModel.uiState.account.createdAt, style: .date)
+                Text(viewModel.uiState.account.createdAt.formatted(date: .abbreviated, time: .shortened))
+            }
+
+            if let expirationDate = viewModel.uiState.account.expirationDate {
+                HStack {
+                    Text(String(localized: "Expiration Date"))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(expirationDate.formatted(date: .abbreviated, time: .shortened))
+                        .foregroundStyle(viewModel.uiState.account.isExpired ? .red : .primary)
+                }
             }
         } header: {
             Text(String(localized: "Account"))
@@ -302,7 +311,13 @@ private struct ShareSheetWrapper: UIViewControllerRepresentable {
     let activityItems: [Any]
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+        let controller = UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+        controller.completionWithItemsHandler = { _, _, _, _ in
+            for case let url as URL in activityItems where url.isFileURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+        return controller
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}

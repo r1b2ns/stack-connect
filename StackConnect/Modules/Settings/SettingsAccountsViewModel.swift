@@ -8,7 +8,7 @@ protocol SettingsAccountsViewModelProtocol: ObservableObject {
     func loadAccounts() async
     func updateAccountName(accountId: String, newName: String) async
     func deleteAccount(_ account: AccountModel) async
-    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String) -> URL?
+    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String, expirationDate: Date?) -> URL?
     func importAccount(from url: URL, password: String, customName: String?) async -> String?
 }
 
@@ -117,7 +117,7 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
         }
     }
 
-    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String) -> URL? {
+    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String, expirationDate: Date?) -> URL? {
         var exportDict: [String: Any] = [
             "id": account.id,
             "name": exportName,
@@ -131,8 +131,13 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             "users": rules.users.map(\.rawValue),
             "review": rules.review.map(\.rawValue),
             "testFlight": rules.testFlight.map(\.rawValue),
-            "analytics": rules.analytics.map(\.rawValue)
+            "analytics": rules.analytics.map(\.rawValue),
+            "provisioning": rules.provisioning.map(\.rawValue)
         ]
+
+        if let expirationDate {
+            exportDict["expirationDate"] = ISO8601DateFormatter().string(from: expirationDate)
+        }
 
         if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(account.id)") {
             exportDict["credentials"] = [
@@ -153,15 +158,8 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             return nil
         }
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        let dateString = dateFormatter.string(from: Date())
-
-        let sanitizedName = exportName
-            .replacingOccurrences(of: " ", with: "-")
-            .replacingOccurrences(of: "/", with: "-")
-        let accountType = account.providerType.rawValue
-        let fileName = "\(sanitizedName)-stackconnect-\(accountType)-\(dateString).scexport"
+        // Neutral filename: avoids leaking the account name / provider in the file name.
+        let fileName = "export-\(UUID().uuidString).scexport"
 
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
         do {
@@ -211,7 +209,7 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
         }
 
         // 4. Parse rules — use what's in the file; if absent, default to empty (no permissions)
-        let emptyRules = AccountRules(apps: [], version: [], users: [], review: [], testFlight: [], analytics: [])
+        let emptyRules = AccountRules()
         var rules = emptyRules
         if let rulesDict = dict["rules"] as? [String: [String]] {
             rules = AccountRules(
@@ -220,8 +218,15 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
                 users: rulesDict["users"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
                 review: rulesDict["review"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
                 testFlight: rulesDict["testFlight"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
-                analytics: rulesDict["analytics"]?.compactMap { AccountPermission(rawValue: $0) } ?? []
+                analytics: rulesDict["analytics"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
+                provisioning: rulesDict["provisioning"]?.compactMap { AccountPermission(rawValue: $0) } ?? []
             )
+        }
+
+        // 4b. Parse optional expiration date
+        var expirationDate: Date?
+        if let expirationRaw = dict["expirationDate"] as? String {
+            expirationDate = ISO8601DateFormatter().date(from: expirationRaw)
         }
 
         // 5. Validate and store credentials
@@ -293,7 +298,8 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             name: accountName,
             providerType: providerType,
             rules: rules,
-            origin: .imported
+            origin: .imported,
+            expirationDate: expirationDate
         )
 
         do {

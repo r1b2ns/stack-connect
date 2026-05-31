@@ -41,7 +41,18 @@ private struct HomeEntry: View {
             Task { await openAppDetail(accountId: accountId, appId: appId) }
         case let .review(accountId, appId, reviewId):
             Task { await openReviewDetail(accountId: accountId, appId: appId, reviewId: reviewId) }
+        case let .reimport(accountId):
+            Task { await openReimport(accountId: accountId) }
         }
+    }
+
+    @MainActor
+    private func openReimport(accountId: String) async {
+        guard let storage = SwiftDataStorable.shared,
+              let account: AccountModel = try? await storage.fetch(AccountModel.self, id: accountId) else { return }
+        coordinator.path = NavigationPath()
+        coordinator.navigateToAccountsList(account.providerType)
+        ReimportRouter.shared.request(accountId: accountId, providerType: account.providerType)
     }
 
     @MainActor
@@ -96,6 +107,34 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
             }
             .sheet(isPresented: $isCustomizingWidgets) {
                 CustomizeWidgetsView(viewModel: viewModel)
+            }
+            .alert(
+                String(localized: "Account Expired"),
+                isPresented: $viewModel.uiState.showExpiredAlert,
+                presenting: viewModel.uiState.expiredAccount
+            ) { account in
+                Button(String(localized: "Re-import File")) {
+                    DeepLinkRouter.shared.open(DeepLink.reimport(accountId: account.id).url)
+                }
+                Button(String(localized: "Cancel"), role: .cancel) {}
+            } message: { account in
+                Text("The account \"\(account.name)\" has expired. Re-import its file to keep using it, or it will stay locked.")
+            }
+            .alert(
+                String(localized: "Account Expiring Soon"),
+                isPresented: $viewModel.uiState.showExpiringSoonAlert,
+                presenting: viewModel.uiState.expiringSoonAccount
+            ) { account in
+                Button(String(localized: "Re-import File")) {
+                    DeepLinkRouter.shared.open(DeepLink.reimport(accountId: account.id).url)
+                }
+                Button(String(localized: "OK"), role: .cancel) {}
+            } message: { account in
+                if let expirationDate = account.expirationDate {
+                    Text("The account \"\(account.name)\" will expire on \(expirationDate.formatted(date: .abbreviated, time: .shortened)). Request a new file from the administrator before then.")
+                } else {
+                    Text("The account \"\(account.name)\" will expire soon. Request a new file from the administrator.")
+                }
             }
         }
     }
