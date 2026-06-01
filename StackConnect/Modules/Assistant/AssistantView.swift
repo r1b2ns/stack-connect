@@ -108,6 +108,7 @@ struct AssistantContentView<ViewModel: AssistantViewModelProtocol>: View {
         .navigationTitle(String(localized: "Assistant"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { buildToolbar() }
+        .task { viewModel.prewarm() }
     }
 
     // MARK: Messages
