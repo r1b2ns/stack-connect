@@ -2,24 +2,19 @@ import CommonCrypto
 import CryptoKit
 import Foundation
 
-enum AccountCryptoError: LocalizedError {
+/// Error thrown by ``AccountCrypto``.
+///
+/// Intentionally carries no user-facing strings: localization lives in the UI layer
+/// (the app adds a `LocalizedError` conformance with localized descriptions), so this
+/// type stays free of `String(localized:)` / bundle lookups and is portable across
+/// platforms.
+public enum AccountCryptoError: Error {
     case encryptionFailed
     case invalidFileFormat
     case unsupportedVersion
     case decryptionFailed
     case invalidPassword
     case keyDerivationFailed
-
-    var errorDescription: String? {
-        switch self {
-        case .encryptionFailed:    return String(localized: "Failed to encrypt data.")
-        case .invalidFileFormat:   return String(localized: "Invalid file format. This is not a StackConnect export file.")
-        case .unsupportedVersion:  return String(localized: "Unsupported file version.")
-        case .decryptionFailed:    return String(localized: "Failed to decrypt file.")
-        case .invalidPassword:     return String(localized: "Invalid password or corrupted file.")
-        case .keyDerivationFailed: return String(localized: "Failed to derive encryption key.")
-        }
-    }
 }
 
 /// AES-256-GCM encryption for account export files.
@@ -41,7 +36,7 @@ enum AccountCryptoError: LocalizedError {
 ///   Decryption only.
 /// - v3 (current): same KDF as v2 but the iteration count is stored in the header, so changing the default
 ///   later does not break older files.
-struct AccountCrypto {
+public struct AccountCrypto {
 
     // MARK: - Constants
 
@@ -67,7 +62,7 @@ struct AccountCrypto {
     // MARK: - Public
 
     /// Encrypts a JSON string with the given password. Always writes the current format version.
-    static func encrypt(json: String, password: String) throws -> Data {
+    public static func encrypt(json: String, password: String) throws -> Data {
         guard let jsonData = json.data(using: .utf8) else {
             throw AccountCryptoError.encryptionFailed
         }
@@ -92,7 +87,7 @@ struct AccountCrypto {
     }
 
     /// Decrypts binary `.scexport` data with the given password. Supports v1, v2, and v3.
-    static func decrypt(data: Data, password: String) throws -> String {
+    public static func decrypt(data: Data, password: String) throws -> String {
         guard data.count >= 5 else { throw AccountCryptoError.invalidFileFormat }
 
         var offset = 0
@@ -152,7 +147,7 @@ struct AccountCrypto {
     /// Generates a high-entropy random password from an unambiguous alphabet.
     /// 24 chars over a 68-symbol set ≈ 146 bits of entropy. `SystemRandomNumberGenerator`
     /// is cryptographically secure on Apple platforms.
-    static func generateStrongPassword(length: Int = 24) -> String {
+    public static func generateStrongPassword(length: Int = 24) -> String {
         let alphabet = Array("ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*-_=+")
         var rng = SystemRandomNumberGenerator()
         return String((0..<length).map { _ in alphabet[Int.random(in: 0..<alphabet.count, using: &rng)] })

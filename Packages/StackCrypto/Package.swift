@@ -3,18 +3,18 @@
 import PackageDescription
 
 let package = Package(
-    name: "StackProtocols",
+    name: "StackCrypto",
     platforms: [.iOS(.v17), .macOS(.v14)],
     products: [
         .library(
-            name: "StackProtocols",
-            targets: ["StackProtocols"]
+            name: "StackCrypto",
+            targets: ["StackCrypto"]
         ),
     ],
     targets: [
         .target(
-            name: "StackProtocols",
-            path: "Sources/StackProtocols"
+            name: "StackCrypto",
+            path: "Sources/StackCrypto"
         ),
     ]
 )

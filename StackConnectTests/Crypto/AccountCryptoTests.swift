@@ -1,5 +1,6 @@
 import CryptoKit
 import XCTest
+import StackCrypto
 @testable import StackConnect
 
 final class AccountCryptoTests: XCTestCase {

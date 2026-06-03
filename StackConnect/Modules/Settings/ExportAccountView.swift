@@ -1,4 +1,5 @@
 import SwiftUI
+import StackCrypto
 import UIKit
 
 struct ExportAccountView: View {
