@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import Foundation
 import SwiftData
 
@@ -28,3 +29,5 @@ public final class PersistedItem {
         self.updatedAt = updatedAt
     }
 }
+
+#endif

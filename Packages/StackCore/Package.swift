@@ -11,9 +11,15 @@ let package = Package(
             targets: ["StackCore"]
         ),
     ],
+    dependencies: [
+        .package(path: "../StackProtocols"),
+    ],
     targets: [
         .target(
             name: "StackCore",
+            dependencies: [
+                .product(name: "StackProtocols", package: "StackProtocols"),
+            ],
             path: "Sources/StackCore"
         ),
     ]

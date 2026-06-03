@@ -1,5 +1,7 @@
+#if canImport(SwiftData)
 import Foundation
 import SwiftData
+import StackProtocols
 
 @ModelActor
 public final actor SwiftDataStorable: PersistentStorable {
@@ -128,3 +130,5 @@ public extension SwiftDataStorable {
         SwiftDataStorable(modelContainer: modelContainer)
     }
 }
+
+#endif
