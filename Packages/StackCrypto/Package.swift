@@ -11,9 +11,16 @@ let package = Package(
             targets: ["StackCrypto"]
         ),
     ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
+    ],
     targets: [
         .target(
             name: "StackCrypto",
+            dependencies: [
+                .product(name: "Crypto", package: "swift-crypto"),
+                .product(name: "_CryptoExtras", package: "swift-crypto"),
+            ],
             path: "Sources/StackCrypto"
         ),
     ]

@@ -1,5 +1,5 @@
-import CommonCrypto
-import CryptoKit
+import Crypto
+import _CryptoExtras
 import Foundation
 
 /// Error thrown by ``AccountCrypto``.
@@ -67,8 +67,8 @@ public struct AccountCrypto {
             throw AccountCryptoError.encryptionFailed
         }
 
-        let randomSalt = try randomBytes(count: saltLength)
-        let nonceData = try randomBytes(count: nonceLength)
+        let randomSalt = randomBytes(count: saltLength)
+        let nonceData = randomBytes(count: nonceLength)
         let iterations = pbkdf2Iterations
 
         let symmetricKey = try deriveKeyPBKDF2(password: password, randomSalt: randomSalt, iterations: iterations)
@@ -155,13 +155,11 @@ public struct AccountCrypto {
 
     // MARK: - Private
 
-    private static func randomBytes(count: Int) throws -> Data {
-        var data = Data(count: count)
-        let result = data.withUnsafeMutableBytes {
-            SecRandomCopyBytes(kSecRandomDefault, count, $0.baseAddress!)
-        }
-        guard result == errSecSuccess else { throw AccountCryptoError.encryptionFailed }
-        return data
+    /// Cryptographically secure random bytes. `SystemRandomNumberGenerator` is backed by the
+    /// platform CSPRNG (SecRandomCopyBytes / getrandom / BCryptGenRandom), so this is portable.
+    private static func randomBytes(count: Int) -> Data {
+        var rng = SystemRandomNumberGenerator()
+        return Data((0..<count).map { _ in UInt8.random(in: .min ... .max, using: &rng) })
     }
 
     private static func uint32BE(_ value: UInt32) -> Data {
@@ -179,23 +177,17 @@ public struct AccountCrypto {
         var combinedSalt = appSalt
         combinedSalt.append(randomSalt)
 
-        var derived = Data(count: 32)
-        let passwordBytes = Array(password.utf8)
-
-        let status = derived.withUnsafeMutableBytes { derivedBytes -> Int32 in
-            combinedSalt.withUnsafeBytes { saltBytes -> Int32 in
-                CCKeyDerivationPBKDF(
-                    CCPBKDFAlgorithm(kCCPBKDF2),
-                    passwordBytes, passwordBytes.count,
-                    saltBytes.bindMemory(to: UInt8.self).baseAddress, combinedSalt.count,
-                    CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
-                    iterations,
-                    derivedBytes.bindMemory(to: UInt8.self).baseAddress, 32
-                )
-            }
+        do {
+            return try KDF.Insecure.PBKDF2.deriveKey(
+                from: Array(password.utf8),
+                salt: combinedSalt,
+                using: .sha256,
+                outputByteCount: 32,
+                rounds: Int(iterations)
+            )
+        } catch {
+            throw AccountCryptoError.keyDerivationFailed
         }
-        guard status == kCCSuccess else { throw AccountCryptoError.keyDerivationFailed }
-        return SymmetricKey(data: derived)
     }
 
     /// v1 (legacy): SHA256(appSalt || password) → HKDF<SHA256>. Decryption only.

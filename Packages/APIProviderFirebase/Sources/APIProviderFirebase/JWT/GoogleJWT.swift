@@ -1,5 +1,5 @@
 import Foundation
-import Security
+import _CryptoExtras
 
 // MARK: - Google JWT Header
 
@@ -50,21 +50,19 @@ struct GoogleJWT {
             throw FirebaseAuthError.invalidJWTPayload
         }
 
-        // Sign with RS256 (PKCS1 SHA256)
-        var error: Unmanaged<CFError>?
-        guard let signatureData = SecKeyCreateSignature(
-            configuration.privateKey,
-            .rsaSignatureMessagePKCS1v15SHA256,
-            inputData as CFData,
-            &error
-        ) as Data? else {
-            if let error = error?.takeRetainedValue() {
-                throw FirebaseAuthError.signingFailed(error as Swift.Error)
-            }
-            throw FirebaseAuthError.signingFailed(nil)
+        // Sign with RS256 (RSASSA-PKCS1-v1_5 over SHA-256). The `DataProtocol` overload
+        // hashes `inputData` with SHA-256 before signing, matching the JWT RS256 spec.
+        let signature: _RSA.Signing.RSASignature
+        do {
+            signature = try configuration.privateKey.signature(
+                for: inputData,
+                padding: .insecurePKCS1v1_5
+            )
+        } catch {
+            throw FirebaseAuthError.signingFailed(error)
         }
 
-        let signatureBase64 = signatureData.base64URLEncoded()
+        let signatureBase64 = signature.rawRepresentation.base64URLEncoded()
         return "\(signingInput).\(signatureBase64)"
     }
 }

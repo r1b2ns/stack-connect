@@ -1,5 +1,5 @@
 import Foundation
-import Security
+import _CryptoExtras
 
 /// Google Service Account credentials parsed from the JSON key file.
 public struct PlayServiceAccount: Codable {
@@ -34,8 +34,8 @@ public struct PlayConfiguration {
     /// The service account parsed from the JSON key file.
     public let serviceAccount: PlayServiceAccount
 
-    /// The RSA private key reference for signing JWTs.
-    let privateKey: SecKey
+    /// The RSA private key used for signing JWTs.
+    let privateKey: _RSA.Signing.PrivateKey
 
     /// The OAuth2 scopes to request.
     public let scopes: [String]
@@ -76,85 +76,14 @@ public struct PlayConfiguration {
 
     // MARK: - Private
 
-    private static func loadRSAPrivateKey(from pemString: String) throws -> SecKey {
-        let stripped = pemString
-            .replacingOccurrences(of: "-----BEGIN PRIVATE KEY-----", with: "")
-            .replacingOccurrences(of: "-----END PRIVATE KEY-----", with: "")
-            .replacingOccurrences(of: "-----BEGIN RSA PRIVATE KEY-----", with: "")
-            .replacingOccurrences(of: "-----END RSA PRIVATE KEY-----", with: "")
-            .replacingOccurrences(of: "\n", with: "")
-            .replacingOccurrences(of: "\r", with: "")
-            .trimmingCharacters(in: .whitespaces)
-
-        guard var keyData = Data(base64Encoded: stripped) else {
-            throw PlayAuthError.invalidPrivateKey
+    /// Parses the service account's PEM private key. `_RSA.Signing.PrivateKey` accepts the full
+    /// PEM (PKCS#8 `BEGIN PRIVATE KEY` or PKCS#1 `BEGIN RSA PRIVATE KEY`) directly, so no manual
+    /// header stripping / ASN.1 unwrapping is needed.
+    private static func loadRSAPrivateKey(from pemString: String) throws -> _RSA.Signing.PrivateKey {
+        do {
+            return try _RSA.Signing.PrivateKey(pemRepresentation: pemString)
+        } catch {
+            throw PlayAuthError.secKeyCreationFailed(error)
         }
-
-        keyData = Self.stripPKCS8HeaderIfNeeded(keyData)
-
-        let attributes: [String: Any] = [
-            kSecAttrKeyType as String: kSecAttrKeyTypeRSA,
-            kSecAttrKeyClass as String: kSecAttrKeyClassPrivate,
-            kSecAttrKeySizeInBits as String: 2048
-        ]
-
-        var error: Unmanaged<CFError>?
-        guard let secKey = SecKeyCreateWithData(keyData as CFData, attributes as CFDictionary, &error) else {
-            if let error = error?.takeRetainedValue() {
-                throw PlayAuthError.secKeyCreationFailed(error as Swift.Error)
-            }
-            throw PlayAuthError.invalidPrivateKey
-        }
-
-        return secKey
-    }
-
-    private static func stripPKCS8HeaderIfNeeded(_ data: Data) -> Data {
-        guard data.count > 26, data[0] == 0x30 else { return data }
-
-        var index = 0
-
-        guard readASN1TagAndLength(data, index: &index) != nil else { return data }
-
-        guard index < data.count, data[index] == 0x02 else { return data }
-        guard skipASN1Element(data, index: &index) else { return data }
-
-        guard index < data.count, data[index] == 0x30 else { return data }
-        guard skipASN1Element(data, index: &index) else { return data }
-
-        guard index < data.count, data[index] == 0x04 else { return data }
-        guard let octetLength = readASN1TagAndLength(data, index: &index) else { return data }
-
-        guard index + octetLength <= data.count else { return data }
-        return data.subdata(in: index..<(index + octetLength))
-    }
-
-    private static func readASN1TagAndLength(_ data: Data, index: inout Int) -> Int? {
-        guard index < data.count else { return nil }
-        index += 1
-        return readASN1Length(data, index: &index)
-    }
-
-    private static func skipASN1Element(_ data: Data, index: inout Int) -> Bool {
-        guard let length = readASN1TagAndLength(data, index: &index) else { return false }
-        index += length
-        return index <= data.count
-    }
-
-    private static func readASN1Length(_ data: Data, index: inout Int) -> Int? {
-        guard index < data.count else { return nil }
-        let first = data[index]
-        index += 1
-        if first & 0x80 == 0 {
-            return Int(first)
-        }
-        let numBytes = Int(first & 0x7F)
-        guard numBytes > 0, numBytes <= 4, index + numBytes <= data.count else { return nil }
-        var length = 0
-        for _ in 0..<numBytes {
-            length = (length << 8) | Int(data[index])
-            index += 1
-        }
-        return length
     }
 }

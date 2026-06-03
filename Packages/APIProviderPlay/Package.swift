@@ -11,9 +11,15 @@ let package = Package(
             targets: ["APIProviderPlay"]
         ),
     ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
+    ],
     targets: [
         .target(
             name: "APIProviderPlay",
+            dependencies: [
+                .product(name: "_CryptoExtras", package: "swift-crypto"),
+            ],
             path: "Sources/APIProviderPlay"
         ),
     ]

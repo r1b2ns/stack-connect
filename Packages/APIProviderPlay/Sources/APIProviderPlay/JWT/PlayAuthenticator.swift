@@ -15,7 +15,7 @@ public enum PlayAuthError: Error, LocalizedError {
         case .invalidPrivateKey:
             return "The RSA private key from the service account is invalid."
         case .secKeyCreationFailed(let error):
-            return "Failed to create SecKey: \(error.localizedDescription)"
+            return "Failed to load private key: \(error.localizedDescription)"
         case .invalidJWTPayload:
             return "Failed to encode JWT payload."
         case .signingFailed(let error):
