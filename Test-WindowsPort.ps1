@@ -9,6 +9,7 @@
       3. Credential store — WindowsCredentialStorable through KeyStorable
       4. ASC SDK build    — does appstoreconnect-swift-sdk compile on Windows
       5. Windows app      — headless StackConnectWindows: whole non-UI stack links + bootstraps
+      6. Windows GUI      — StackConnectWindowsApp (SwiftCrossUI/WinUI) compiles (build only)
 
     Each gate runs independently; one failing does not stop the others. The full
     console output is also written to a timestamped .log file, and a summary
@@ -183,6 +184,14 @@ try {
         Write-Header "Windows app bootstrap (StackConnectWindows, headless)"
         Write-Host "[SKIP] -SkipSDK was passed (depends on the SDK fork)" -ForegroundColor Yellow
     }
+
+    # SwiftCrossUI GUI (B1b): build only — `swift run` would open a window and
+    # block the script. This does not depend on the SDK, so it runs even with
+    # -SkipSDK. To see the window, run manually:
+    #   swift run --scratch-path $env:USERPROFILE\.scw StackConnectWindowsApp
+    Invoke-Gate -Name "Windows GUI build (StackConnectWindowsApp, SwiftCrossUI/WinUI)" `
+                -WorkingDirectory (Join-Path $root "StackConnectWindows") `
+                -SwiftArgs @("build", "--product", "StackConnectWindowsApp", "--scratch-path", $scwScratch)
 
     Write-Header "Summary"
     foreach ($name in $results.Keys) {
