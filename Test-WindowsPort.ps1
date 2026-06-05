@@ -92,7 +92,9 @@ function Invoke-Gate {
     Write-Header $Name
     Push-Location $WorkingDirectory
     try {
-        & swift @SwiftArgs
+        # Merge stderr into the success stream so swift's errors land in the
+        # transcript log (Start-Transcript does not capture native stderr).
+        & swift @SwiftArgs 2>&1 | ForEach-Object { Write-Host $_ }
         $ok = ($LASTEXITCODE -eq 0)
     } catch {
         Write-Host $_.Exception.Message -ForegroundColor Red
