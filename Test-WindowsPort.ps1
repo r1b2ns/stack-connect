@@ -8,6 +8,7 @@
       2. Secrets probe    — Windows Credential Manager round-trip (raw Win32)
       3. Credential store — WindowsCredentialStorable through KeyStorable
       4. ASC SDK build    — does appstoreconnect-swift-sdk compile on Windows
+      5. Windows app      — headless StackConnectWindows: whole non-UI stack links + bootstraps
 
     Each gate runs independently; one failing does not stop the others. The full
     console output is also written to a timestamped .log file, and a summary
@@ -71,6 +72,8 @@ function Invoke-Clean {
         (Join-Path $root "WindowsPoC\Package.resolved"),
         (Join-Path $root "ASCBuildProbe\.build"),
         (Join-Path $root "ASCBuildProbe\Package.resolved"),
+        (Join-Path $root "StackConnectWindows\.build"),
+        (Join-Path $root "StackConnectWindows\Package.resolved"),
         (Join-Path $env:LOCALAPPDATA "org.swift.swiftpm"),
         (Join-Path $env:LOCALAPPDATA "org.swift.swiftpm\cache")
     )
@@ -157,9 +160,18 @@ try {
         Invoke-Gate -Name "App Store Connect SDK build" `
                     -WorkingDirectory (Join-Path $root "ASCBuildProbe") `
                     -SwiftArgs @("build")
+
+        # Headless Windows app: links the whole non-UI stack (storage + secrets +
+        # crypto + providers + ASC SDK) into one executable and runs the B2
+        # bootstrap. Depends on the SDK fork, so it is gated with the SDK build.
+        Invoke-Gate -Name "Windows app bootstrap (StackConnectWindows, headless)" `
+                    -WorkingDirectory (Join-Path $root "StackConnectWindows") `
+                    -SwiftArgs @("run", "StackConnectWindows")
     } else {
         Write-Header "App Store Connect SDK build"
         Write-Host "[SKIP] -SkipSDK was passed" -ForegroundColor Yellow
+        Write-Header "Windows app bootstrap (StackConnectWindows, headless)"
+        Write-Host "[SKIP] -SkipSDK was passed (depends on the SDK fork)" -ForegroundColor Yellow
     }
 
     Write-Header "Summary"
