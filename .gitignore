@@ -40,3 +40,6 @@ fastlane/test_output
 
 # Gemfile
 Gemfile.lock
+
+# Windows-port test logs
+Test-WindowsPort-*.log

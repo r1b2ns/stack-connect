@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Runs the StackConnect Windows-port phase-3 gates and prints a summary.
+    Runs the StackConnect Windows-port phase-3 gates, with logging and cleanup.
 
 .DESCRIPTION
     Executes the three validation gates on the Windows Swift toolchain:
@@ -8,43 +8,79 @@
       2. Secrets probe — Windows Credential Manager round-trip
       3. ASC SDK build — does appstoreconnect-swift-sdk compile on Windows
 
-    Each gate runs independently; one failing does not stop the others. A
-    summary table and an overall exit code (0 = all ran gates passed) are
-    printed at the end.
+    Each gate runs independently; one failing does not stop the others. The full
+    console output is also written to a timestamped .log file, and a summary
+    table plus an overall exit code (0 = all ran gates passed) are printed.
 
 .PARAMETER Pull
     Run `git pull` in the repo root before testing.
+
+.PARAMETER Clean
+    Wipe all SwiftPM state before testing: each package's .build and
+    Package.resolved, plus the global SwiftPM cache
+    (%LOCALAPPDATA%\org.swift.swiftpm). Forces a fresh dependency resolution —
+    use this after changing a branch-based dependency.
 
 .PARAMETER SkipSDK
     Skip the (slow) App Store Connect SDK build gate.
 
 .PARAMETER FirebaseServiceAccount
-    Path to a Firebase service-account .json to also exercise PEM parsing on a
-    real key (sets FIREBASE_SA_JSON for the core PoC).
+    Path to a Firebase service-account .json (sets FIREBASE_SA_JSON).
 
 .PARAMETER PlayServiceAccount
     Path to a Google Play service-account .json (sets PLAY_SA_JSON).
 
-.EXAMPLE
-    .\Test-WindowsPort.ps1
+.PARAMETER LogPath
+    Where to write the log. Defaults to Test-WindowsPort-<timestamp>.log in the
+    repo root.
 
 .EXAMPLE
-    .\Test-WindowsPort.ps1 -Pull -FirebaseServiceAccount C:\keys\firebase.json
+    .\Test-WindowsPort.ps1 -Pull -Clean
+
+.EXAMPLE
+    .\Test-WindowsPort.ps1 -SkipSDK -LogPath C:\temp\run.log
 #>
 [CmdletBinding()]
 param(
     [switch]$Pull,
+    [switch]$Clean,
     [switch]$SkipSDK,
     [string]$FirebaseServiceAccount,
-    [string]$PlayServiceAccount
+    [string]$PlayServiceAccount,
+    [string]$LogPath
 )
 
 $root = $PSScriptRoot
 $results = [ordered]@{}
 
+if (-not $LogPath) {
+    $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+    $LogPath = Join-Path $root "Test-WindowsPort-$stamp.log"
+}
+
 function Write-Header([string]$Text) {
     Write-Host ""
     Write-Host "=== $Text ===" -ForegroundColor Cyan
+}
+
+function Invoke-Clean {
+    Write-Header "Clean (build artifacts + SwiftPM cache)"
+    $paths = @(
+        (Join-Path $root "WindowsPoC\.build"),
+        (Join-Path $root "WindowsPoC\Package.resolved"),
+        (Join-Path $root "ASCBuildProbe\.build"),
+        (Join-Path $root "ASCBuildProbe\Package.resolved"),
+        (Join-Path $env:LOCALAPPDATA "org.swift.swiftpm"),
+        (Join-Path $env:LOCALAPPDATA "org.swift.swiftpm\cache")
+    )
+    foreach ($p in ($paths | Select-Object -Unique)) {
+        if (Test-Path $p) {
+            Write-Host "  removing  $p"
+            Remove-Item -Recurse -Force $p -ErrorAction SilentlyContinue
+        } else {
+            Write-Host "  (absent)  $p"
+        }
+    }
 }
 
 function Invoke-Gate {
@@ -72,63 +108,75 @@ function Invoke-Gate {
     }
 }
 
-# --- Preconditions -----------------------------------------------------------
+# --- Run (wrapped so the whole console session is captured to the log) --------
 
-if (-not (Get-Command swift -ErrorAction SilentlyContinue)) {
-    Write-Host "Swift toolchain not found on PATH." -ForegroundColor Red
-    Write-Host "Install it from https://www.swift.org/install/windows/ and open a new terminal." -ForegroundColor Yellow
-    exit 2
-}
+$exitCode = 0
+Start-Transcript -Path $LogPath -Force | Out-Null
+try {
+    Write-Host "StackConnect Windows-port test run"
+    Write-Host "log: $LogPath"
 
-Write-Header "Toolchain"
-& swift --version
-
-if ($Pull) {
-    Write-Header "git pull"
-    Push-Location $root
-    & git pull
-    Pop-Location
-}
-
-if ($FirebaseServiceAccount) { $env:FIREBASE_SA_JSON = $FirebaseServiceAccount }
-if ($PlayServiceAccount)     { $env:PLAY_SA_JSON     = $PlayServiceAccount }
-
-# --- Gates -------------------------------------------------------------------
-
-Invoke-Gate -Name "Core PoC (SQLite + crypto + RS256 + PEM)" `
-            -WorkingDirectory (Join-Path $root "WindowsPoC") `
-            -SwiftArgs @("run", "StackConnectWindowsPoC")
-
-Invoke-Gate -Name "Secrets probe (Credential Manager)" `
-            -WorkingDirectory (Join-Path $root "WindowsPoC") `
-            -SwiftArgs @("run", "WindowsSecretsProbe")
-
-if (-not $SkipSDK) {
-    Invoke-Gate -Name "App Store Connect SDK build" `
-                -WorkingDirectory (Join-Path $root "ASCBuildProbe") `
-                -SwiftArgs @("build")
-} else {
-    Write-Header "App Store Connect SDK build"
-    Write-Host "[SKIP] -SkipSDK was passed" -ForegroundColor Yellow
-}
-
-# --- Summary -----------------------------------------------------------------
-
-Write-Header "Summary"
-foreach ($name in $results.Keys) {
-    if ($results[$name]) {
-        Write-Host ("  PASS  {0}" -f $name) -ForegroundColor Green
-    } else {
-        Write-Host ("  FAIL  {0}" -f $name) -ForegroundColor Red
+    if (-not (Get-Command swift -ErrorAction SilentlyContinue)) {
+        Write-Host "Swift toolchain not found on PATH." -ForegroundColor Red
+        Write-Host "Install it from https://www.swift.org/install/windows/ and open a new terminal." -ForegroundColor Yellow
+        $exitCode = 2
+        return
     }
+
+    Write-Header "Toolchain"
+    & swift --version
+
+    if ($Pull) {
+        Write-Header "git pull"
+        Push-Location $root
+        & git pull
+        Pop-Location
+    }
+
+    if ($Clean) { Invoke-Clean }
+
+    if ($FirebaseServiceAccount) { $env:FIREBASE_SA_JSON = $FirebaseServiceAccount }
+    if ($PlayServiceAccount)     { $env:PLAY_SA_JSON     = $PlayServiceAccount }
+
+    Invoke-Gate -Name "Core PoC (SQLite + crypto + RS256 + PEM)" `
+                -WorkingDirectory (Join-Path $root "WindowsPoC") `
+                -SwiftArgs @("run", "StackConnectWindowsPoC")
+
+    Invoke-Gate -Name "Secrets probe (Credential Manager)" `
+                -WorkingDirectory (Join-Path $root "WindowsPoC") `
+                -SwiftArgs @("run", "WindowsSecretsProbe")
+
+    if (-not $SkipSDK) {
+        Invoke-Gate -Name "App Store Connect SDK build" `
+                    -WorkingDirectory (Join-Path $root "ASCBuildProbe") `
+                    -SwiftArgs @("build")
+    } else {
+        Write-Header "App Store Connect SDK build"
+        Write-Host "[SKIP] -SkipSDK was passed" -ForegroundColor Yellow
+    }
+
+    Write-Header "Summary"
+    foreach ($name in $results.Keys) {
+        if ($results[$name]) {
+            Write-Host ("  PASS  {0}" -f $name) -ForegroundColor Green
+        } else {
+            Write-Host ("  FAIL  {0}" -f $name) -ForegroundColor Red
+        }
+    }
+
+    $failed = @($results.Values | Where-Object { -not $_ }).Count
+    Write-Host ""
+    if ($failed -eq 0) {
+        Write-Host "All gates passed." -ForegroundColor Green
+        $exitCode = 0
+    } else {
+        Write-Host "$failed gate(s) failed." -ForegroundColor Red
+        $exitCode = 1
+    }
+} finally {
+    Stop-Transcript | Out-Null
+    Write-Host ""
+    Write-Host "Log saved to: $LogPath" -ForegroundColor Cyan
 }
 
-$failed = @($results.Values | Where-Object { -not $_ }).Count
-Write-Host ""
-if ($failed -eq 0) {
-    Write-Host "All gates passed." -ForegroundColor Green
-    exit 0
-} else {
-    Write-Host "$failed gate(s) failed." -ForegroundColor Red
-    exit 1
-}
+exit $exitCode
