@@ -55,6 +55,13 @@ param(
 $root = $PSScriptRoot
 $results = [ordered]@{}
 
+# Short scratch path for the StackConnectWindows build. The repo often lives
+# under a deep folder (e.g. OneDrive\Desktop\repos\...), and that package pulls
+# the App Store Connect SDK whose generated OpenAPI filenames are very long, so
+# the default `.build` tree blows past Windows' 260-char MAX_PATH. Building into
+# a short root (C:\Users\<you>\.scw) keeps every path under the limit.
+$scwScratch = Join-Path $env:USERPROFILE ".scw"
+
 if (-not $LogPath) {
     $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
     $LogPath = Join-Path $root "Test-WindowsPort-$stamp.log"
@@ -74,6 +81,7 @@ function Invoke-Clean {
         (Join-Path $root "ASCBuildProbe\Package.resolved"),
         (Join-Path $root "StackConnectWindows\.build"),
         (Join-Path $root "StackConnectWindows\Package.resolved"),
+        $scwScratch,
         (Join-Path $env:LOCALAPPDATA "org.swift.swiftpm"),
         (Join-Path $env:LOCALAPPDATA "org.swift.swiftpm\cache")
     )
@@ -164,9 +172,11 @@ try {
         # Headless Windows app: links the whole non-UI stack (storage + secrets +
         # crypto + providers + ASC SDK) into one executable and runs the B2
         # bootstrap. Depends on the SDK fork, so it is gated with the SDK build.
+        # --scratch-path keeps the build tree short (see $scwScratch above) so the
+        # SDK's long generated filenames don't overflow Windows MAX_PATH.
         Invoke-Gate -Name "Windows app bootstrap (StackConnectWindows, headless)" `
                     -WorkingDirectory (Join-Path $root "StackConnectWindows") `
-                    -SwiftArgs @("run", "StackConnectWindows")
+                    -SwiftArgs @("run", "--scratch-path", $scwScratch, "StackConnectWindows")
     } else {
         Write-Header "App Store Connect SDK build"
         Write-Host "[SKIP] -SkipSDK was passed" -ForegroundColor Yellow
