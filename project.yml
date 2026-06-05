@@ -239,8 +239,15 @@ targets:
 
     dependencies:
       - target: StackConnect
+      # link: false — the test bundle runs inside the host app (TEST_HOST), so it
+      # only needs these modules at compile time; symbols resolve from the host at
+      # runtime via -bundle_loader. Linking them here would force the dynamic
+      # `_PackageProduct.framework` variant of swift-crypto to build, which fails
+      # to link under Xcode 26 (the app links these packages statically).
       - package: StackCore
+        link: false
       - package: StackCrypto
+        link: false
 
 schemes:
   StackConnect Development:
