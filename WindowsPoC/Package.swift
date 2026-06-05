@@ -7,7 +7,8 @@ import PackageDescription
 // no SwiftUI, no UIKit — so a successful `swift run` on Windows is the phase-3 gate.
 //
 //   swift run StackConnectWindowsPoC      # core checks: SQLite + crypto + RSA
-//   swift run WindowsSecretsProbe         # Windows Credential Manager round-trip
+//   swift run WindowsSecretsProbe         # Windows Credential Manager round-trip (raw Win32)
+//   swift run WindowsCredentialStoreProbe # WindowsCredentialStorable via KeyStorable
 //
 // The App Store Connect SDK gate lives in the sibling ../ASCBuildProbe package.
 let package = Package(
@@ -17,6 +18,7 @@ let package = Package(
         .package(path: "../Packages/StackProtocols"),
         .package(path: "../Packages/StackCrypto"),
         .package(path: "../Packages/StackStorageSQLite"),
+        .package(path: "../Packages/StackSecretsWindows"),
         .package(path: "../Packages/APIProviderFirebase"),
         .package(path: "../Packages/APIProviderPlay"),
         .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
@@ -37,6 +39,14 @@ let package = Package(
         .executableTarget(
             name: "WindowsSecretsProbe",
             path: "Sources/WindowsSecretsProbe"
+        ),
+        .executableTarget(
+            name: "WindowsCredentialStoreProbe",
+            dependencies: [
+                .product(name: "StackProtocols", package: "StackProtocols"),
+                .product(name: "StackSecretsWindows", package: "StackSecretsWindows"),
+            ],
+            path: "Sources/WindowsCredentialStoreProbe"
         ),
     ]
 )

@@ -3,10 +3,11 @@
     Runs the StackConnect Windows-port phase-3 gates, with logging and cleanup.
 
 .DESCRIPTION
-    Executes the three validation gates on the Windows Swift toolchain:
-      1. Core PoC      — SQLite + AES-GCM/PBKDF2 + RS256 + PEM
-      2. Secrets probe — Windows Credential Manager round-trip
-      3. ASC SDK build — does appstoreconnect-swift-sdk compile on Windows
+    Executes the validation gates on the Windows Swift toolchain:
+      1. Core PoC         — SQLite + AES-GCM/PBKDF2 + RS256 + PEM
+      2. Secrets probe    — Windows Credential Manager round-trip (raw Win32)
+      3. Credential store — WindowsCredentialStorable through KeyStorable
+      4. ASC SDK build    — does appstoreconnect-swift-sdk compile on Windows
 
     Each gate runs independently; one failing does not stop the others. The full
     console output is also written to a timestamped .log file, and a summary
@@ -147,6 +148,10 @@ try {
     Invoke-Gate -Name "Secrets probe (Credential Manager)" `
                 -WorkingDirectory (Join-Path $root "WindowsPoC") `
                 -SwiftArgs @("run", "WindowsSecretsProbe")
+
+    Invoke-Gate -Name "Credential store (WindowsCredentialStorable / KeyStorable)" `
+                -WorkingDirectory (Join-Path $root "WindowsPoC") `
+                -SwiftArgs @("run", "WindowsCredentialStoreProbe")
 
     if (-not $SkipSDK) {
         Invoke-Gate -Name "App Store Connect SDK build" `
