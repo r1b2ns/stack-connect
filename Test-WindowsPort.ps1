@@ -192,9 +192,22 @@ try {
 
     # SwiftCrossUI GUI (B1b): its own package. Build only — `swift run` would open
     # a window and block the script. Independent of the SDK, so it runs even with
-    # -SkipSDK. SwiftCrossUI's transitive deps contain symlinks; if this gate fails
-    # at "Creating working copy ... unable to create symlink", run once:
-    #   git config --global core.symlinks false   (or enable Windows Developer Mode)
+    # -SkipSDK.
+    #
+    # SwiftCrossUI's transitive deps (jpeg, swift-java, swift-argument-parser)
+    # contain symlinks that git on Windows refuses to check out by default
+    # ("unable to create symlink ...: Permission denied"). Set core.symlinks=false
+    # so git writes those as plain files instead — they live only in plugin/sample/
+    # test dirs, never in compiled sources. (Alternative: enable Developer Mode.)
+    $symlinksCfg = (& git config --global core.symlinks) 2>$null
+    if ($symlinksCfg -ne "false") {
+        Write-Header "Configure git for SwiftCrossUI checkout"
+        Write-Host "  setting: git config --global core.symlinks false" -ForegroundColor Yellow
+        Write-Host "  (lets SwiftCrossUI's deps check out on Windows; revert with:" -ForegroundColor DarkGray
+        Write-Host "   git config --global --unset core.symlinks)" -ForegroundColor DarkGray
+        & git config --global core.symlinks false
+    }
+
     # To see the window: swift run --scratch-path $env:USERPROFILE\.scwapp StackConnectWindowsApp
     Invoke-Gate -Name "Windows GUI build (StackConnectWindowsApp, SwiftCrossUI/WinUI)" `
                 -WorkingDirectory (Join-Path $root "StackConnectWindowsApp") `
