@@ -62,6 +62,8 @@ $results = [ordered]@{}
 # the default `.build` tree blows past Windows' 260-char MAX_PATH. Building into
 # a short root (C:\Users\<you>\.scw) keeps every path under the limit.
 $scwScratch = Join-Path $env:USERPROFILE ".scw"
+# Separate short scratch path for the GUI package (its own build tree).
+$scwAppScratch = Join-Path $env:USERPROFILE ".scwapp"
 
 if (-not $LogPath) {
     $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -82,7 +84,10 @@ function Invoke-Clean {
         (Join-Path $root "ASCBuildProbe\Package.resolved"),
         (Join-Path $root "StackConnectWindows\.build"),
         (Join-Path $root "StackConnectWindows\Package.resolved"),
+        (Join-Path $root "StackConnectWindowsApp\.build"),
+        (Join-Path $root "StackConnectWindowsApp\Package.resolved"),
         $scwScratch,
+        $scwAppScratch,
         (Join-Path $env:LOCALAPPDATA "org.swift.swiftpm"),
         (Join-Path $env:LOCALAPPDATA "org.swift.swiftpm\cache")
     )
@@ -185,13 +190,15 @@ try {
         Write-Host "[SKIP] -SkipSDK was passed (depends on the SDK fork)" -ForegroundColor Yellow
     }
 
-    # SwiftCrossUI GUI (B1b): build only — `swift run` would open a window and
-    # block the script. This does not depend on the SDK, so it runs even with
-    # -SkipSDK. To see the window, run manually:
-    #   swift run --scratch-path $env:USERPROFILE\.scw StackConnectWindowsApp
+    # SwiftCrossUI GUI (B1b): its own package. Build only — `swift run` would open
+    # a window and block the script. Independent of the SDK, so it runs even with
+    # -SkipSDK. SwiftCrossUI's transitive deps contain symlinks; if this gate fails
+    # at "Creating working copy ... unable to create symlink", run once:
+    #   git config --global core.symlinks false   (or enable Windows Developer Mode)
+    # To see the window: swift run --scratch-path $env:USERPROFILE\.scwapp StackConnectWindowsApp
     Invoke-Gate -Name "Windows GUI build (StackConnectWindowsApp, SwiftCrossUI/WinUI)" `
-                -WorkingDirectory (Join-Path $root "StackConnectWindows") `
-                -SwiftArgs @("build", "--product", "StackConnectWindowsApp", "--scratch-path", $scwScratch)
+                -WorkingDirectory (Join-Path $root "StackConnectWindowsApp") `
+                -SwiftArgs @("build", "--scratch-path", $scwAppScratch)
 
     Write-Header "Summary"
     foreach ($name in $results.Keys) {
