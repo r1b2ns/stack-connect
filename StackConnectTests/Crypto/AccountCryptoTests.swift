@@ -1,3 +1,4 @@
+import CommonCrypto
 import CryptoKit
 import XCTest
 import StackCrypto
@@ -16,7 +17,7 @@ final class AccountCryptoTests: XCTestCase {
 
     func test_encrypt_writesCurrentVersionByte() throws {
         let encrypted = try AccountCrypto.encrypt(json: samplePayload, password: password)
-        XCTAssertEqual(encrypted[4], 0x02, "Encryption must always produce v2 files")
+        XCTAssertEqual(encrypted[4], 0x03, "Encryption must always produce v3 files")
     }
 
     func test_encrypt_producesUniqueCiphertextEachCall() throws {
@@ -78,6 +79,81 @@ final class AccountCryptoTests: XCTestCase {
         XCTAssertThrowsError(try AccountCrypto.decrypt(data: v1File, password: "nope")) { error in
             XCTAssertEqual(error as? AccountCryptoError, .invalidPassword)
         }
+    }
+
+    /// Generates a v2 file (PBKDF2 KDF, iteration count *not* stored in the header) and verifies
+    /// the current implementation can still decrypt it. Protects users who have older `.scexport` files.
+    func test_decrypt_legacyV2File_succeeds() throws {
+        let v2File = try makeV2File(json: samplePayload, password: password)
+        XCTAssertEqual(v2File[4], 0x02)
+
+        let decrypted = try AccountCrypto.decrypt(data: v2File, password: password)
+        XCTAssertEqual(decrypted, samplePayload)
+    }
+
+    func test_decrypt_legacyV2File_wrongPassword_throwsInvalidPassword() throws {
+        let v2File = try makeV2File(json: samplePayload, password: password)
+        XCTAssertThrowsError(try AccountCrypto.decrypt(data: v2File, password: "nope")) { error in
+            XCTAssertEqual(error as? AccountCryptoError, .invalidPassword)
+        }
+    }
+
+    // MARK: - Fixture builders
+
+    private static let fixtureAppSalt = Data([
+        0x4A, 0xC7, 0x1E, 0x93, 0xD2, 0x58, 0xBF, 0x06,
+        0x7D, 0xA4, 0x3B, 0xE1, 0x90, 0xF5, 0x2C, 0x68,
+        0x15, 0x87, 0xDA, 0x4F, 0xC3, 0x72, 0xAE, 0x09,
+        0x5B, 0xE6, 0x31, 0x8C, 0xF0, 0x64, 0xA9, 0x2D
+    ])
+
+    /// Mirror the legacy v2 algorithm bit-for-bit: PBKDF2-SHA256(password, appSalt || randomSalt, 600_000, 32),
+    /// with no iteration count in the header. Must stay in sync with `deriveKeyPBKDF2` / the v2 decrypt path.
+    private func makeV2File(json: String, password: String) throws -> Data {
+        let appSalt = Self.fixtureAppSalt
+
+        let randomSalt = Data((0..<16).map { _ in UInt8.random(in: 0...255) })
+        let nonceBytes = Data((0..<12).map { _ in UInt8.random(in: 0...255) })
+
+        var combinedSalt = appSalt
+        combinedSalt.append(randomSalt)
+        let keyData = pbkdf2SHA256(password: password, salt: combinedSalt, rounds: 600_000, keyLength: 32)
+        let key = SymmetricKey(data: keyData)
+
+        let nonce = try AES.GCM.Nonce(data: nonceBytes)
+        let sealed = try AES.GCM.seal(Data(json.utf8), using: key, nonce: nonce)
+
+        var output = Data("SCEX".utf8)
+        output.append(0x02)
+        output.append(randomSalt)
+        output.append(contentsOf: nonce)
+        output.append(sealed.ciphertext)
+        output.append(sealed.tag)
+        return output
+    }
+
+    /// Standard PBKDF2-HMAC-SHA256 via CommonCrypto. Produces the same bytes as swift-crypto's
+    /// `KDF.Insecure.PBKDF2`, so the fixture stays independent of the package's internal modules.
+    private func pbkdf2SHA256(password: String, salt: Data, rounds: Int, keyLength: Int) -> Data {
+        let passwordBytes = Array(password.utf8)
+        var derived = [UInt8](repeating: 0, count: keyLength)
+        let status = salt.withUnsafeBytes { saltPtr -> Int32 in
+            passwordBytes.withUnsafeBytes { pwPtr -> Int32 in
+                CCKeyDerivationPBKDF(
+                    CCPBKDFAlgorithm(kCCPBKDF2),
+                    pwPtr.baseAddress!.assumingMemoryBound(to: CChar.self),
+                    passwordBytes.count,
+                    saltPtr.baseAddress!.assumingMemoryBound(to: UInt8.self),
+                    salt.count,
+                    CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256),
+                    UInt32(rounds),
+                    &derived,
+                    keyLength
+                )
+            }
+        }
+        XCTAssertEqual(status, Int32(kCCSuccess), "PBKDF2 fixture derivation failed")
+        return Data(derived)
     }
 
     // MARK: - V1 fixture builder

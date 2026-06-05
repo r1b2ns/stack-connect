@@ -37,21 +37,24 @@ final class AddAccountViewModelTests: XCTestCase {
         XCTAssertFalse(sut.uiState.isSaved)
     }
 
-    func testSaveFirebaseAccountSkipsValidation() async {
+    // Firebase used to be a no-op placeholder that saved with just a name ("skips validation").
+    // It is now a real provider: saving requires a Service Account JSON. With no JSON provided,
+    // save() must surface a validation error and persist nothing.
+    func testSaveFirebaseAccountWithoutJSONShowsError() async {
         sut = AddAccountViewModel(
             providerType: .firebase,
             storage: mockStorage,
             keychain: mockKeychain
         )
         sut.uiState.accountName = "My Firebase"
+        // No firebaseJSON set.
 
         await sut.save()
 
-        XCTAssertTrue(sut.uiState.isSaved)
+        XCTAssertNotNil(sut.uiState.validationError)
+        XCTAssertFalse(sut.uiState.isSaved)
 
         let accounts: [AccountModel] = try! await mockStorage.fetchAll(AccountModel.self)
-        XCTAssertEqual(accounts.count, 1)
-        XCTAssertEqual(accounts.first?.name, "My Firebase")
-        XCTAssertEqual(accounts.first?.providerType, .firebase)
+        XCTAssertTrue(accounts.isEmpty)
     }
 }
