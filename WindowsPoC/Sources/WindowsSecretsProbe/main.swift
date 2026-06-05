@@ -35,7 +35,7 @@ private func writeSecret(target: String, secret: String) throws {
             credential.CredentialBlob = blobPtr.baseAddress
             credential.Persist = DWORD(CRED_PERSIST_LOCAL_MACHINE)
 
-            if !CredWriteW(&credential, 0).boolValue {
+            if !CredWriteW(&credential, 0) {
                 throw ProbeError("CredWriteW failed (GetLastError=\(GetLastError()))")
             }
         }
@@ -45,14 +45,17 @@ private func writeSecret(target: String, secret: String) throws {
 private func readSecret(target: String) throws -> String {
     var pointer: PCREDENTIALW?
     let ok = wide(target).withUnsafeBufferPointer {
-        CredReadW($0.baseAddress, DWORD(CRED_TYPE_GENERIC), 0, &pointer).boolValue
+        CredReadW($0.baseAddress, DWORD(CRED_TYPE_GENERIC), 0, &pointer)
     }
     guard ok, let credential = pointer?.pointee else {
         throw ProbeError("CredReadW failed (GetLastError=\(GetLastError()))")
     }
     defer { CredFree(pointer) }
 
-    let data = Data(bytes: credential.CredentialBlob, count: Int(credential.CredentialBlobSize))
+    guard let blob = credential.CredentialBlob else {
+        throw ProbeError("credential has no blob")
+    }
+    let data = Data(bytes: blob, count: Int(credential.CredentialBlobSize))
     return String(decoding: data, as: UTF8.self)
 }
 
