@@ -15,6 +15,7 @@ StackConnectWidget/Info.plist
 # Swift Package Manager
 .build/
 .swiftpm/
+Package.resolved
 
 # CocoaPods
 Pods/
