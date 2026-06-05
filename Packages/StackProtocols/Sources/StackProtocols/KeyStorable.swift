@@ -1,6 +1,10 @@
 import Foundation
 
-protocol KeyStorable {
+/// Key-value store for sensitive/small values, abstracted over the platform
+/// backend (Keychain on Apple, Credential Manager on Windows, UserDefaults for
+/// non-sensitive data). Lives in `StackProtocols` so non-Apple platforms can
+/// provide their own implementation.
+public protocol KeyStorable {
 
     // MARK: - Read (primitives)
 
@@ -29,7 +33,7 @@ protocol KeyStorable {
 
 // MARK: - Default Codable Implementation
 
-extension KeyStorable {
+public extension KeyStorable {
 
     func object<T: Decodable>(forKey key: String) -> T? {
         guard let data = data(forKey: key) else { return nil }
