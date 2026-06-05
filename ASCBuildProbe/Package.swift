@@ -12,7 +12,9 @@ let package = Package(
     name: "ASCBuildProbe",
     platforms: [.macOS(.v13)],
     dependencies: [
-        .package(url: "https://github.com/r1b2ns/appstoreconnect-swift-sdk.git", branch: "master"),
+        // windows-support: adds OpenCombine on Windows so the SDK doesn't fall back
+        // to Apple's Combine. Probe branch only — the iOS app still tracks master.
+        .package(url: "https://github.com/r1b2ns/appstoreconnect-swift-sdk.git", branch: "windows-support"),
     ],
     targets: [
         .executableTarget(
