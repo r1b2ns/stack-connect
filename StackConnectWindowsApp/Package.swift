@@ -23,6 +23,11 @@ let package = Package(
     platforms: [.macOS(.v14)],
     dependencies: [
         .package(url: "https://github.com/moreSwift/swift-cross-ui", .upToNextMinor(from: "0.7.0")),
+        // Shared Home logic core. Foundation-pure (depends only on
+        // StackProtocols), so it does NOT drag a heavy graph into resolution —
+        // safe to add per the note above. StackHomeCore's manifest references
+        // ../StackProtocols, which resolves under Packages/ alongside it.
+        .package(path: "../Packages/StackHomeCore"),
     ],
     targets: [
         .executableTarget(
@@ -30,6 +35,7 @@ let package = Package(
             dependencies: [
                 .product(name: "SwiftCrossUI", package: "swift-cross-ui"),
                 .product(name: "DefaultBackend", package: "swift-cross-ui"),
+                .product(name: "StackHomeCore", package: "StackHomeCore"),
             ],
             path: "Sources/StackConnectWindowsApp"
         ),

@@ -106,6 +106,8 @@ packages:
     path: Packages/APIProviderPlay
   StackCrypto:
     path: Packages/StackCrypto
+  StackHomeCore:
+    path: Packages/StackHomeCore
 
 targets:
   StackConnect:
@@ -173,6 +175,7 @@ targets:
       - package: APIProviderFirebase
       - package: APIProviderPlay
       - package: StackCrypto
+      - package: StackHomeCore
       - target: StackConnectWidgetExtension
         embed: true
 
