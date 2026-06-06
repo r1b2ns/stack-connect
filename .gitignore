@@ -44,3 +44,8 @@ Gemfile.lock
 
 # Windows-port test logs
 Test-WindowsPort-*.log
+
+# Windows-port build/probe artifacts (accidental dumps — never commit)
+sdk-error.txt
+/Gtk
+/GtkCHelpers
