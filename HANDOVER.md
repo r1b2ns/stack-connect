@@ -5,7 +5,25 @@ lógica e reescrevendo só a UI.
 
 **Estado:** Fases 0–3 **concluídas e validadas numa VM Windows real** (Swift 6.3.2,
 aarch64-windows-msvc). Toda a camada não-UI compila e roda no Windows.
-**Fase 4 — Bloco A ✅ (A1+A2), B1a ✅ e B1b-1 ✅ validados na VM.** Os 6 gates passam **e a janela GUI SwiftCrossUI/WinUI agora ABRE e renderiza** (2026-06-05). O bloqueio de symlinks do git foi resolvido (`core.symlinks false` / Developer Mode). **Rodar a janela foi destravado** (eram 2 bloqueios de runtime, não compilação): (1) bootstrap do **Windows App Runtime 1.5** falhava → resolvido dando **identidade de pacote** ao app (manifesto MSIX solto, Developer Mode) → swift-winui pula o bootstrapper; (2) `swift_Concurrency.dll` faltava no app ativado → resolvido **bundlando o runtime Swift** ao lado do `.exe`. Tudo em `StackConnectWindowsApp/Packaging/` (`Register-StackConnectApp.ps1`). Ver §8. Próximo: **B1b-2** (1ª tela: lista de contas). HEAD `9118da2`.
+**Fase 4 — Bloco A ✅ (A1+A2), B1a ✅ e B1b-1 ✅ validados na VM.** Os 6 gates passam **e a janela GUI SwiftCrossUI/WinUI agora ABRE e renderiza** (2026-06-05). O bloqueio de symlinks do git foi resolvido (`core.symlinks false` / Developer Mode). **Rodar a janela foi destravado** (eram 2 bloqueios de runtime, não compilação): (1) bootstrap do **Windows App Runtime 1.5** falhava → resolvido dando **identidade de pacote** ao app (manifesto MSIX solto, Developer Mode) → swift-winui pula o bootstrapper; (2) `swift_Concurrency.dll` faltava no app ativado → resolvido **bundlando o runtime Swift** ao lado do `.exe`. Tudo em `StackConnectWindowsApp/Packaging/` (`Register-StackConnectApp.ps1`). Ver §8. Próximo: **B1b-2** (1ª tela: lista de contas). HEAD `cced8ae` (pushado).
+
+---
+
+## 0. Atualização da sessão — 2026-06-05 (cont.)
+
+**Contexto:** um `Test-WindowsPort.ps1 -Clean` do zero **regrediu o gate 6 (GUI)** — o `core.symlinks=false` sozinho **não** era suficiente.
+
+- **Causa raiz do gate 6 num build limpo:** `StackConnectWindowsApp` dependia de `DefaultBackend`. No Windows, o `DefaultBackend` do swift-cross-ui ainda arrastava `GtkBackend → Gtk → GtkCHelpers` para o build plan (a condição `.when(platforms: [.linux])` **não poda** o C target), e o `GtkCHelpers` falhava em `fatal error: 'gtk/gtk.h' file not found` (e `gdk/gdk.h`).
+- **Fix (commit `fcdc8cc`, pushado):** o `Test-WindowsPort.ps1` agora seta **`$env:SCUI_DEFAULT_BACKEND = "WinUIBackend"`** antes do gate 6. Com isso, o `DefaultBackend` resolve **só** o `WinUIBackend` (manifesto do swift-cross-ui, `Initialize` linhas ~56-57) e o grafo GTK some por completo da resolução. Alterar a env var muda a avaliação do manifesto → **exige resolução limpa** (`-Clean` ou apagar `~/.scwapp` + `StackConnectWindowsApp/Package.resolved`).
+- **Validação:** `.\Test-WindowsPort.ps1 -Clean` (build do zero, caches do SwiftPM apagados) → **6/6 gates PASS** (`All gates passed.`, exit 0). Log `Test-WindowsPort-20260605-213113.log`. No gate 6: **zero** ocorrências de `GtkCHelpers`/`gtk.h`; compila `WinUI Microsoft.UI.Xaml.*` + `Emitting module WinUI`. Tempos: Core 122s · Secrets 17s · CredStore 2s · SDK 350s · headless 263s · **GUI 592s**.
+- **Alternativa não adotada:** trocar a dep para `WinUIBackend` direto no `Package.swift` (fixaria no manifesto, sem env var, mas amarraria o package ao Windows). Optou-se pela env var p/ manter o `Package.swift` portável.
+
+**Observação sobre RODAR a janela (a confirmar — pode simplificar o §8):** nesta sessão, após `winget install Microsoft.WindowsAppRuntime.1.5 --force` (reinstalou o redistribuível arm64 oficial), o **`.exe` unpackaged** (`~/.scwapp/aarch64-unknown-windows-msvc/debug/StackConnectWindowsApp.exe`) rodou **~30 s sem crashar** (morto por `timeout`, não por `fatalError`), com só um warning benigno `[WinUIBackend] failed to attach to parent console`. Ou seja, o `WindowsAppRuntimeInitializer` **inicializou** sem cair no caminho fatal do §8a. ⚠️ **Não houve confirmação visual** de que a janela renderiza, e isso diverge do §8 (que conclui ser preciso identidade de pacote). **Antes de descartar o §8, confirmar visualmente** rodando o exe direto vs. via `Register-StackConnectApp.ps1`.
+
+**🧹 Limpeza pendente no repo (commit `cced8ae`, já pushado, adicionou lixo):**
+- `Gtk` e `GtkCHelpers` na raiz são **arquivos de 0 byte** (artefatos acidentais, provavelmente de um redirect/probe) — remover do tracking.
+- `sdk-error.txt` é um **dump binário de ~2,17 MB** — não deveria estar versionado.
+- `HANDOVER.md` foi **commitado** apesar de o §6 dizer que é gitignored/local. O `.gitignore` atual só ignora `Test-WindowsPort-*.log` — **não** ignora `HANDOVER.md`, `sdk-error.txt`, `Gtk`, `GtkCHelpers`, `docs/`. Decidir: ou alinhar o `.gitignore` ao §6 (e `git rm --cached` esses arquivos), ou atualizar o §6 para refletir que o handover passou a ser versionado de propósito.
 
 ---
 
@@ -13,7 +31,7 @@ aarch64-windows-msvc). Toda a camada não-UI compila e roda no Windows.
 
 | Repo | Remote | Branch | HEAD | Estado |
 |------|--------|--------|------|--------|
-| Principal | `git@github.com:r1b2ns/stack-connect.git` | `experiment/windows` | `9118da2` | limpo, pushado |
+| Principal | `git@github.com:r1b2ns/stack-connect.git` | `experiment/windows` | `cced8ae` | pushado (ver §0: `cced8ae` traz lixo a limpar) |
 | Fork do SDK | `git@github.com:r1b2ns/appstoreconnect-swift-sdk.git` | `windows-support` | `885bacc4` | pushado |
 
 - **Mac:** `/Users/rubensmachion/repos/Open/stack-connect`
@@ -40,6 +58,8 @@ aarch64-windows-msvc). Toda a camada não-UI compila e roda no Windows.
 | `f6cae86` | 4·B1a | Build do app via `--scratch-path` curto (MAX_PATH no Windows) |
 | `85dcc85` → `9ecb9d1` | 4·B1b | Janela mínima SwiftCrossUI; GUI isolada em package próprio `StackConnectWindowsApp` |
 | `9118da2` | 4·B1b | Script seta `git core.symlinks=false` antes do gate GUI |
+| `fcdc8cc` | 4·B1b | Script seta `SCUI_DEFAULT_BACKEND=WinUIBackend` antes do gate GUI (tira o grafo GTK do build limpo — ver §0) |
+| `cced8ae` | — | (commit "no message") versiona `HANDOVER.md`, `Packaging/`, `KeyStorable.swift` + **lixo a limpar**: `Gtk`/`GtkCHelpers` (0 B), `sdk-error.txt` (~2 MB) |
 
 Fork (`windows-support`): `2990e673` (OpenCombine condicional) → `885bacc4` (**Combine opcional — é o que faz o SDK compilar no Windows**).
 
@@ -56,7 +76,7 @@ Rodar na VM: `.\Test-WindowsPort.ps1 -Pull -Clean` (use `-SkipSDK` p/ pular o bu
 | 3 | Credential store (`WindowsPoC` → `WindowsCredentialStoreProbe`) | **PASS** | **A2:** `WindowsCredentialStorable` via `KeyStorable` |
 | 4 | SDK ASC (`ASCBuildProbe` → `swift build`) | **PASS** (~280 s) | `appstoreconnect-swift-sdk` compila no Windows |
 | 5 | App headless (`StackConnectWindows` → `swift run`) | **PASS** | **B1a:** stack não-UI inteira linka num exe + bootstrap abre o store em `%APPDATA%` |
-| 6 | GUI (`StackConnectWindowsApp` → `swift build`) | **PASS** (build) | **B1b:** SwiftCrossUI/WinUI compila no Windows (symlinks resolvidos via `core.symlinks=false` / Developer Mode) |
+| 6 | GUI (`StackConnectWindowsApp` → `swift build`) | **PASS** (build) | **B1b:** SwiftCrossUI/WinUI compila no Windows. Precisa de **dois** ajustes: symlinks (`core.symlinks=false` / Developer Mode) **e** `SCUI_DEFAULT_BACKEND=WinUIBackend` (senão o `DefaultBackend` arrasta o grafo GTK e falha em `gtk/gtk.h` num build limpo — ver §0) |
 | — | GUI **rodar** a janela | ✅ **PASS** | janela SwiftCrossUI/WinUI abre e renderiza — resolvido via identidade de pacote + bundle do runtime Swift (ver **§8**) |
 
 ### 4 armadilhas de portabilidade encontradas e resolvidas
