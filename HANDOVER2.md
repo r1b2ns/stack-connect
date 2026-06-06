@@ -5,7 +5,25 @@ lógica e reescrevendo só a UI.
 
 **Estado:** Fases 0–3 **concluídas e validadas numa VM Windows real** (Swift 6.3.2,
 aarch64-windows-msvc). Toda a camada não-UI compila e roda no Windows.
-**Fase 4 — Bloco A ✅ (A1+A2), B1a ✅ e B1b-1 (build) ✅ validados na VM.** Na última run da VM **os 6 gates passaram** (todo o stack não-UI + app headless roda com store em `%APPDATA%\StackConnect\store.sqlite`, **e a GUI SwiftCrossUI/WinUI compila**). O bloqueio de symlinks do git foi resolvido (`core.symlinks false` / Developer Mode / Admin). **Bloqueio atual: RODAR a janela.** O `.exe` builda e inicia, mas o backend WinUI aborta no bootstrap do **Windows App Runtime 1.5** (o swift-winui 0.2.0 fixa o SDK 1.5; app *unpackaged* precisa do **DDLM de 1.5** e a VM só tem DDLM de 2.x). **Correção recomendada: dar identidade de pacote (MSIX) ao app** — ver §8. HEAD `9118da2`.
+**Fase 4 — Bloco A ✅ (A1+A2), B1a ✅ e B1b-1 ✅ validados na VM.** Os 6 gates passam **e a janela GUI SwiftCrossUI/WinUI agora ABRE e renderiza** (2026-06-05). O bloqueio de symlinks do git foi resolvido (`core.symlinks false` / Developer Mode). **Rodar a janela foi destravado** (eram 2 bloqueios de runtime, não compilação): (1) bootstrap do **Windows App Runtime 1.5** falhava → resolvido dando **identidade de pacote** ao app (manifesto MSIX solto, Developer Mode) → swift-winui pula o bootstrapper; (2) `swift_Concurrency.dll` faltava no app ativado → resolvido **bundlando o runtime Swift** ao lado do `.exe`. Tudo em `StackConnectWindowsApp/Packaging/` (`Register-StackConnectApp.ps1`). Ver §8. Próximo: **B1b-2** (1ª tela: lista de contas). HEAD `cced8ae` (pushado).
+
+---
+
+## 0. Atualização da sessão — 2026-06-05 (cont.)
+
+**Contexto:** um `Test-WindowsPort.ps1 -Clean` do zero **regrediu o gate 6 (GUI)** — o `core.symlinks=false` sozinho **não** era suficiente.
+
+- **Causa raiz do gate 6 num build limpo:** `StackConnectWindowsApp` dependia de `DefaultBackend`. No Windows, o `DefaultBackend` do swift-cross-ui ainda arrastava `GtkBackend → Gtk → GtkCHelpers` para o build plan (a condição `.when(platforms: [.linux])` **não poda** o C target), e o `GtkCHelpers` falhava em `fatal error: 'gtk/gtk.h' file not found` (e `gdk/gdk.h`).
+- **Fix (commit `fcdc8cc`, pushado):** o `Test-WindowsPort.ps1` agora seta **`$env:SCUI_DEFAULT_BACKEND = "WinUIBackend"`** antes do gate 6. Com isso, o `DefaultBackend` resolve **só** o `WinUIBackend` (manifesto do swift-cross-ui, `Initialize` linhas ~56-57) e o grafo GTK some por completo da resolução. Alterar a env var muda a avaliação do manifesto → **exige resolução limpa** (`-Clean` ou apagar `~/.scwapp` + `StackConnectWindowsApp/Package.resolved`).
+- **Validação:** `.\Test-WindowsPort.ps1 -Clean` (build do zero, caches do SwiftPM apagados) → **6/6 gates PASS** (`All gates passed.`, exit 0). Log `Test-WindowsPort-20260605-213113.log`. No gate 6: **zero** ocorrências de `GtkCHelpers`/`gtk.h`; compila `WinUI Microsoft.UI.Xaml.*` + `Emitting module WinUI`. Tempos: Core 122s · Secrets 17s · CredStore 2s · SDK 350s · headless 263s · **GUI 592s**.
+- **Alternativa não adotada:** trocar a dep para `WinUIBackend` direto no `Package.swift` (fixaria no manifesto, sem env var, mas amarraria o package ao Windows). Optou-se pela env var p/ manter o `Package.swift` portável.
+
+**Observação sobre RODAR a janela (a confirmar — pode simplificar o §8):** nesta sessão, após `winget install Microsoft.WindowsAppRuntime.1.5 --force` (reinstalou o redistribuível arm64 oficial), o **`.exe` unpackaged** (`~/.scwapp/aarch64-unknown-windows-msvc/debug/StackConnectWindowsApp.exe`) rodou **~30 s sem crashar** (morto por `timeout`, não por `fatalError`), com só um warning benigno `[WinUIBackend] failed to attach to parent console`. Ou seja, o `WindowsAppRuntimeInitializer` **inicializou** sem cair no caminho fatal do §8a. ⚠️ **Não houve confirmação visual** de que a janela renderiza, e isso diverge do §8 (que conclui ser preciso identidade de pacote). **Antes de descartar o §8, confirmar visualmente** rodando o exe direto vs. via `Register-StackConnectApp.ps1`.
+
+**🧹 Limpeza pendente no repo (commit `cced8ae`, já pushado, adicionou lixo):**
+- `Gtk` e `GtkCHelpers` na raiz são **arquivos de 0 byte** (artefatos acidentais, provavelmente de um redirect/probe) — remover do tracking.
+- `sdk-error.txt` é um **dump binário de ~2,17 MB** — não deveria estar versionado.
+- `HANDOVER.md` foi **commitado** apesar de o §6 dizer que é gitignored/local. O `.gitignore` atual só ignora `Test-WindowsPort-*.log` — **não** ignora `HANDOVER.md`, `sdk-error.txt`, `Gtk`, `GtkCHelpers`, `docs/`. Decidir: ou alinhar o `.gitignore` ao §6 (e `git rm --cached` esses arquivos), ou atualizar o §6 para refletir que o handover passou a ser versionado de propósito.
 
 ---
 
@@ -13,7 +31,7 @@ aarch64-windows-msvc). Toda a camada não-UI compila e roda no Windows.
 
 | Repo | Remote | Branch | HEAD | Estado |
 |------|--------|--------|------|--------|
-| Principal | `git@github.com:r1b2ns/stack-connect.git` | `experiment/windows` | `9118da2` | limpo, pushado |
+| Principal | `git@github.com:r1b2ns/stack-connect.git` | `experiment/windows` | `cced8ae` | pushado (ver §0: `cced8ae` traz lixo a limpar) |
 | Fork do SDK | `git@github.com:r1b2ns/appstoreconnect-swift-sdk.git` | `windows-support` | `885bacc4` | pushado |
 
 - **Mac:** `/Users/rubensmachion/repos/Open/stack-connect`
@@ -40,6 +58,8 @@ aarch64-windows-msvc). Toda a camada não-UI compila e roda no Windows.
 | `f6cae86` | 4·B1a | Build do app via `--scratch-path` curto (MAX_PATH no Windows) |
 | `85dcc85` → `9ecb9d1` | 4·B1b | Janela mínima SwiftCrossUI; GUI isolada em package próprio `StackConnectWindowsApp` |
 | `9118da2` | 4·B1b | Script seta `git core.symlinks=false` antes do gate GUI |
+| `fcdc8cc` | 4·B1b | Script seta `SCUI_DEFAULT_BACKEND=WinUIBackend` antes do gate GUI (tira o grafo GTK do build limpo — ver §0) |
+| `cced8ae` | — | (commit "no message") versiona `HANDOVER.md`, `Packaging/`, `KeyStorable.swift` + **lixo a limpar**: `Gtk`/`GtkCHelpers` (0 B), `sdk-error.txt` (~2 MB) |
 
 Fork (`windows-support`): `2990e673` (OpenCombine condicional) → `885bacc4` (**Combine opcional — é o que faz o SDK compilar no Windows**).
 
@@ -56,8 +76,8 @@ Rodar na VM: `.\Test-WindowsPort.ps1 -Pull -Clean` (use `-SkipSDK` p/ pular o bu
 | 3 | Credential store (`WindowsPoC` → `WindowsCredentialStoreProbe`) | **PASS** | **A2:** `WindowsCredentialStorable` via `KeyStorable` |
 | 4 | SDK ASC (`ASCBuildProbe` → `swift build`) | **PASS** (~280 s) | `appstoreconnect-swift-sdk` compila no Windows |
 | 5 | App headless (`StackConnectWindows` → `swift run`) | **PASS** | **B1a:** stack não-UI inteira linka num exe + bootstrap abre o store em `%APPDATA%` |
-| 6 | GUI (`StackConnectWindowsApp` → `swift build`) | **PASS** (build) | **B1b:** SwiftCrossUI/WinUI compila no Windows (symlinks resolvidos via `core.symlinks=false` / Developer Mode) |
-| — | GUI **rodar** a janela (`swift run`) | ❌ **bloqueado** | bootstrap do Windows App Runtime 1.5 falha (DDLM 1.5 ausente) — ver **§8** |
+| 6 | GUI (`StackConnectWindowsApp` → `swift build`) | **PASS** (build) | **B1b:** SwiftCrossUI/WinUI compila no Windows. Precisa de **dois** ajustes: symlinks (`core.symlinks=false` / Developer Mode) **e** `SCUI_DEFAULT_BACKEND=WinUIBackend` (senão o `DefaultBackend` arrasta o grafo GTK e falha em `gtk/gtk.h` num build limpo — ver §0) |
+| — | GUI **rodar** a janela | ✅ **PASS** | janela SwiftCrossUI/WinUI abre e renderiza — resolvido via identidade de pacote + bundle do runtime Swift (ver **§8**) |
 
 ### 4 armadilhas de portabilidade encontradas e resolvidas
 1. **`FoundationNetworking`** — `URLRequest`/`URLSession`/`HTTPURLResponse` ficam nesse módulo fora da Apple. Solução: `#if canImport(FoundationNetworking) import FoundationNetworking` (nos dois `APIProvider*`).
@@ -146,31 +166,59 @@ docs/windows-port-plan.md   Plano completo das fases (gitignored, local).
 - `docs/`, `HANDOVER.md` e `Test-WindowsPort-*.log` são **gitignored** (ficam locais).
 
 ## 7. Retomar
-Nova sessão no repo: *"Leia o HANDOVER.md — continuar a Fase 4 do port Windows. Build da GUI SwiftCrossUI já passa (6/6 gates). Falta RODAR a janela: o bootstrap do Windows App Runtime 1.5 falha — aplicar a correção da §8 (identidade de pacote MSIX) e então seguir pro B1b-2 (1ª tela: lista de contas)."*
+Nova sessão no repo: *"Leia o HANDOVER.md — continuar a Fase 4 do port Windows. A janela GUI SwiftCrossUI já RODA (§8 resolvido). Seguir pro B1b-2 (1ª tela: lista de contas reusando ViewModel Foundation-puro + `Bootstrap`/storage)."*
 
-**Passo imediato na VM** (tentar rodar a janela):
+**Rodar a janela na VM** (já funciona):
 ```powershell
-cd C:\Users\<você>\OneDrive\Desktop\repos\stack-connect\StackConnectWindowsApp
-swift run --scratch-path $env:USERPROFILE\.scwapp StackConnectWindowsApp
+cd C:\Users\<você>\OneDrive\Desktop\repos\stack-connect
+swift run --scratch-path $env:USERPROFILE\.scwapp StackConnectWindowsApp   # builda (~135 s; o run aborta no bootstrap, é esperado)
+.\StackConnectWindowsApp\Packaging\Register-StackConnectApp.ps1            # dá identidade + bundla runtime + lança a janela
 ```
-- Se a janela **abrir** → seguir para **B1b-2** (lista de contas reusando ViewModel Foundation-puro + `Bootstrap`/storage).
-- Se abortar com *"Windows App Runtime not found / Failed to initialize WindowsAppRuntimeInitializer: Major.Minor=1.5"* → **aplicar a §8** (é o estado atual).
 
 Arquivo é gitignored; se a sessão for na VM Windows, traga-o via pasta compartilhada do VMware.
 
 ---
 
-## 8. Bloqueio atual: rodar a janela WinUI (Windows App Runtime 1.5 / DDLM)
+## 8. ✅ RESOLVIDO: rodar a janela WinUI (identidade de pacote + bundle do runtime Swift)
 
-**Sintoma** (ao `swift run StackConnectWindowsApp` na VM — o build passa, o `.exe` inicia e aborta):
+**A janela abre e renderiza.** A solução que funcionou na VM (2026-06-05) está em
+`StackConnectWindowsApp/Packaging/` — basta buildar e rodar o script:
+```powershell
+swift run --scratch-path $env:USERPROFILE\.scwapp StackConnectWindowsApp   # builda (~135 s)
+# (o swift run vai abortar no bootstrap; é esperado — o build é o que importa)
+.\StackConnectWindowsApp\Packaging\Register-StackConnectApp.ps1            # dá identidade + lança
 ```
-Windows App Runtime not found on system, and no installer was present to install it
-  (expected at 'WindowsAppRuntimeInstaller.exe')
-Failed to initialize WindowsAppRuntimeInitializer: Major.Minor=1.5, Tag=, MinVersion=0.0.0.0
-WinUI/SwiftApplication.swift:64: Fatal error: fatal
-```
+O script: resolve o symlink `\.scwapp\debug` → `aarch64-unknown-windows-msvc\debug`,
+**bundla as 32 DLLs do runtime Swift** ao lado do `.exe`, registra o `AppxManifest.xml`
+solto (Developer Mode) e lança via `shell:AppsFolder\<PFN>!StackConnectWindowsApp`.
 
-**Causa raiz (confirmada):**
+**Foram DOIS bloqueios de runtime em sequência (não eram erro de compilação):**
+
+### 8a · Bootstrap do Windows App Runtime 1.5 (resolvido por identidade de pacote)
+Sintoma: `Failed to initialize WindowsAppRuntimeInitializer: Major.Minor=1.5` →
+`WinUI/SwiftApplication.swift:64: Fatal error: fatal`.
+Correção: dar **identidade de pacote** ao app. Com identidade, `processHasIdentity()`
+no swift-winui retorna `true` e ele **pula o bootstrapper inteiro**
+(`Initialize.swift:103-105`), resolvendo o framework 1.5 (já instalado) pelo
+`<PackageDependency Name="Microsoft.WindowsAppRuntime.1.5" .../>` do manifesto — **sem
+DDLM**. Como Developer Mode está ON, registra-se o manifesto **solto** (sem MakeAppx/
+assinatura) com `Add-AppxPackage -Register <AppxManifest.xml>`. Detalhes que custaram tempo:
+- O manifesto/exe/assets têm que estar na mesma pasta (root do pacote in-place); **não**
+  usar `<uap10:AllowExternalContent>` (força `-ExternalLocation`, erro `0x80073CF9`).
+- `Add-AppxPackage -Register` recusa caminho que atravessa reparse point → **resolver o
+  symlink `\.scwapp\debug` primeiro** (senão `0x800701C0` "untrusted mount point").
+- Lançar via `shell:AppsFolder\<PFN>!<AppId>` (rodar o `.exe` cru NÃO carrega identidade).
+
+### 8b · `swift_Concurrency.dll` não encontrada (resolvido por bundle do runtime)
+Depois de 8a, o app abria um modal **"System Error: swift_Concurrency.dll was not found"**.
+Causa: ativado via pacote, o processo tem PATH limpo (sem o toolchain Swift), então as
+DLLs do runtime que o `swift run` acha via PATH somem. Correção: **copiar as 32 DLLs de
+`...\Swift\Runtimes\6.3.2\usr\bin` para junto do `.exe`** (o script faz isso). Para
+distribuição real, um swift-bundler/MSIX adequado bundla isso automaticamente.
+
+---
+
+### Histórico da investigação (mantido p/ contexto — causa raiz original)
 - O app é **unpackaged** (sem identidade MSIX) → o swift-winui chama `MddBootstrapInitialize2` pedindo **Windows App SDK 1.5** (`MinVersion 0.0.0.0`). Código: `swift-winui/Sources/WinAppSDK/Initialize.swift` (versão pedida nas linhas ~112-121; mensagens de erro ~128; **early-return se o processo tem identidade** nas linhas **103-105**).
 - **swift-winui 0.2.0 é a última versão e fixa o SDK 1.5 hard-coded** (bundla `Microsoft.WindowsAppRuntime.Bootstrap.dll` + header `WINDOWSAPPSDK_RELEASE_MAJORMINOR 0x00010005`). swift-cross-ui 0.7.0 (última) usa essa swift-winui. **Não dá pra "subir de versão" pra fugir do 1.5.**
 - App unpackaged + `MddBootstrap` exige o **DDLM (Dynamic Dependency Lifetime Manager)** da versão pedida. A VM tem **DDLM só de 2.x** (`2.1.3.0`, `2.0.0.2`); **nenhum DDLM de 1.x**.
@@ -181,26 +229,22 @@ WinUI/SwiftApplication.swift:64: Fatal error: fatal
 - **Remover o 1.5 pra reinstalar limpo NÃO é possível:** `Remove-AppxPackage` → `0x80073CF3` porque `Microsoft.StartExperiencesApp` (app inbox do Windows) depende do framework 1.5.
 - Pôr `WindowsAppRuntimeInstaller.exe` ao lado do `.exe` (plano B do swift-winui) roda o **mesmo** instalador → mesmo no-op. Não adianta.
 
-### ✅ Correção recomendada: dar **identidade de pacote (MSIX)** ao app
-Com identidade, `processHasIdentity()` no swift-winui retorna `true` e ele **pula o bootstrapper inteiro** (Initialize.swift:103-105), resolvendo o framework 1.5 (já instalado) **pelo manifesto** — sem precisar de DDLM. É também como o app vai ser distribuído de verdade.
-
-Dois caminhos (preferir o swift-bundler):
-
-1. **swift-bundler** (ferramenta do mesmo autor do SwiftCrossUI, recomendada pra empacotar GUI no Windows). Gera o `.msix`/app com identidade. Investigar/instalar na VM:
-   - `swift-bundler` (https://github.com/stackotter/swift-bundler) — criar um `Bundler.toml` pro produto `StackConnectWindowsApp`, declarar a dependência do framework `Microsoft.WindowsAppRuntime.1.5` e empacotar. Validar os comandos exatos na VM (a CLI evolui).
-
-2. **Sparse package manual** (fallback, mais trabalhoso, 100% sob controle): criar um `AppxManifest.xml` com `<Identity .../>` + `<PackageDependency Name="Microsoft.WindowsAppRuntime.1.5" MinVersion="5001.373.1736.0" Publisher="CN=Microsoft Corporation, ..."/>`, empacotar com `MakeAppx.exe`, assinar com um cert de dev (`MakeCert`/`signtool` ou `New-SelfSignedCertificate`) e registrar apontando pro dir do exe:
-   ```powershell
-   Add-AppxPackage -Path .\StackConnectWindowsApp.msix -ExternalLocation <pasta-do-.exe>
-   ```
-   Depois rodar o `.exe` registrado (já com identidade → bootstrapper é pulado).
-
-**Antes de partir pra MSIX, teste barato:** o `Main 1.5` foi instalado depois da 1ª falha — então rode `swift run ... StackConnectWindowsApp` **mais uma vez**; se por acaso a janela abrir, o item está resolvido e pula-se a §8. (Improvável sem o DDLM, mas é 1 comando.)
+**Por que identidade era o caminho** (e não instalar o DDLM): com identidade,
+`processHasIdentity()` no swift-winui retorna `true` e ele pula o bootstrapper, resolvendo
+o framework 1.5 pelo manifesto. Tentativas que NÃO funcionaram (não repetir): instalar
+`windowsappruntimeinstall-arm64.exe` 1.5 (elevado/`--force`) → `ExitCode 0` mas nunca cria
+DDLM 1.5; remover o 1.5 p/ reinstalar → `0x80073CF3` (inbox `Microsoft.StartExperiencesApp`
+depende dele); pôr `WindowsAppRuntimeInstaller.exe` ao lado do `.exe` → mesmo no-op.
 
 **Verificações úteis na VM:**
 ```powershell
-Get-AppxPackage *DDLM* | Select Name, Version, Architecture          # hoje: só 2.x
-Get-AppxPackage *WinAppRuntime*1.5*, *WindowsAppRuntime.1.5* | Select Name, Version, Architecture
+Get-AppxPackage *DDLM* | Select Name, Version, Architecture          # só 2.x (sem 1.x)
+Get-AppxPackage StackConnect.WindowsApp | Select PackageFullName     # confirma identidade registrada
 ```
 
-Quando a janela abrir, atualizar §2 (gate "GUI rodar" → PASS) e seguir para **B1b-2** (1ª tela: lista de contas).
+**Distribuição real (futuro):** o registro de manifesto solto + bundle manual de DLLs serve
+para dev/validação. Para empacotar de verdade, avaliar **swift-bundler**
+(https://github.com/stackotter/swift-bundler) — gera `.msix` com identidade e bundla o
+runtime automaticamente.
+
+Próximo passo: **B1b-2** (1ª tela real: lista de contas reusando ViewModel Foundation-puro + `Bootstrap`/storage).
