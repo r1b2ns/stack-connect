@@ -251,6 +251,8 @@ targets:
         link: false
       - package: StackCrypto
         link: false
+      - package: StackHomeCore
+        link: false
 
 schemes:
   StackConnect Development:

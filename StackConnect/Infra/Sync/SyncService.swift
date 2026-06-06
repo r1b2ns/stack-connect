@@ -5,23 +5,9 @@ import UIKit
 import UserNotifications
 #endif
 
-// MARK: - State
-
-struct SyncState: Equatable {
-    var isSyncing = false
-    var accountsInProgress: Set<String> = []
-    var lastSyncedAt: Date?
-    var lastError: String?
-}
-
-// MARK: - Mode
-
-enum SyncMode: Sendable {
-    /// Apps, enrichment, reviews, phased. Used at foreground launch + pull-to-refresh.
-    case full
-    /// Apps + enrichment + phased only — skips reviews to fit in BG refresh budgets.
-    case lightweight
-}
+// `SyncState` and `SyncMode` now live in StackHomeCore (T-A4). The SyncService
+// orchestrator itself, and its Apple-only side effects, are migrated separately
+// in T-A9.
 
 // MARK: - Service
 
