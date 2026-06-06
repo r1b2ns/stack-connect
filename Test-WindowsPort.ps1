@@ -10,6 +10,15 @@
       4. ASC SDK build    — does appstoreconnect-swift-sdk compile on Windows
       5. Windows app      — headless StackConnectWindows: whole non-UI stack links + bootstraps
       6. Windows GUI      — StackConnectWindowsApp (SwiftCrossUI/WinUI) compiles (build only)
+      7. GUI screen test  — (only with -RunGui) register package identity + LAUNCH the window
+
+    With -RunGui, after gate 6 builds the GUI, the script runs
+    StackConnectWindowsApp\Packaging\Register-StackConnectApp.ps1 to give the .exe
+    package identity (HANDOVER §8: skips the Windows App Runtime 1.5 bootstrap),
+    bundle the Swift runtime DLLs, and LAUNCH the window via package activation.
+    The launch is non-blocking (Start-Process), so the run still finishes and
+    prints its summary — confirm the window renders on screen. Needs Developer
+    Mode ON. Build gate 6 must have passed (the launch is skipped otherwise).
 
     Each gate runs independently; one failing does not stop the others. The full
     console output is also written to a timestamped .log file, and a summary
@@ -27,6 +36,11 @@
 .PARAMETER SkipSDK
     Skip the (slow) App Store Connect SDK build gate.
 
+.PARAMETER RunGui
+    After the GUI build gate, register package identity and LAUNCH the window
+    (the on-screen test) via Packaging\Register-StackConnectApp.ps1. Needs
+    Developer Mode ON. Without this switch gate 6 is build-only.
+
 .PARAMETER FirebaseServiceAccount
     Path to a Firebase service-account .json (sets FIREBASE_SA_JSON).
 
@@ -42,12 +56,17 @@
 
 .EXAMPLE
     .\Test-WindowsPort.ps1 -SkipSDK -LogPath C:\temp\run.log
+
+.EXAMPLE
+    # Build the GUI and actually open the window (on-screen test):
+    .\Test-WindowsPort.ps1 -SkipSDK -RunGui
 #>
 [CmdletBinding()]
 param(
     [switch]$Pull,
     [switch]$Clean,
     [switch]$SkipSDK,
+    [switch]$RunGui,
     [string]$FirebaseServiceAccount,
     [string]$PlayServiceAccount,
     [string]$LogPath
@@ -219,9 +238,43 @@ try {
     $env:SCUI_DEFAULT_BACKEND = "WinUIBackend"
 
     # To see the window: swift run --scratch-path $env:USERPROFILE\.scwapp StackConnectWindowsApp
-    Invoke-Gate -Name "Windows GUI build (StackConnectWindowsApp, SwiftCrossUI/WinUI)" `
+    $guiBuildName = "Windows GUI build (StackConnectWindowsApp, SwiftCrossUI/WinUI)"
+    Invoke-Gate -Name $guiBuildName `
                 -WorkingDirectory (Join-Path $root "StackConnectWindowsApp") `
                 -SwiftArgs @("build", "--scratch-path", $scwAppScratch)
+
+    # GUI screen test (only with -RunGui): the build above proves it compiles, but
+    # actually opening the window needs package identity so the Windows App Runtime
+    # 1.5 bootstrap is skipped (HANDOVER §8). Register-StackConnectApp.ps1 bundles
+    # the Swift runtime DLLs next to the .exe, registers the loose AppxManifest, and
+    # launches via package activation (Start-Process — non-blocking, so the run
+    # continues to the summary). The .exe lives in the GUI scratch's debug dir.
+    if ($RunGui) {
+        $guiLaunchName = "GUI screen test (register identity + launch window)"
+        Write-Header $guiLaunchName
+        if (-not $results[$guiBuildName]) {
+            Write-Host "[SKIP] GUI build did not pass; nothing to launch." -ForegroundColor Yellow
+            $results[$guiLaunchName] = $false
+        } else {
+            $register  = Join-Path $root "StackConnectWindowsApp\Packaging\Register-StackConnectApp.ps1"
+            $guiExeDir = Join-Path $scwAppScratch "debug"
+            try {
+                # The child script sets $ErrorActionPreference='Stop' and throws on
+                # any failure, so reaching the next line means it registered and
+                # launched successfully.
+                & $register -ExeDir $guiExeDir
+                $results[$guiLaunchName] = $true
+            } catch {
+                Write-Host $_.Exception.Message -ForegroundColor Red
+                $results[$guiLaunchName] = $false
+            }
+            if ($results[$guiLaunchName]) {
+                Write-Host "[PASS] $guiLaunchName — confirm the window renders on screen." -ForegroundColor Green
+            } else {
+                Write-Host "[FAIL] $guiLaunchName" -ForegroundColor Red
+            }
+        }
+    }
 
     Write-Header "Summary"
     foreach ($name in $results.Keys) {
