@@ -329,9 +329,3 @@ struct ExportAccountView: View {
         _ = onExport(exportName, rules, password, enableExpiration ? expirationDate : nil)
     }
 }
-
-// MARK: - AccountRuleResource + Identifiable
-
-extension AccountRuleResource: Identifiable {
-    var id: String { rawValue }
-}

@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Permission
 
-enum AccountPermission: String, Codable, CaseIterable, Hashable {
+public enum AccountPermission: String, Codable, CaseIterable, Hashable, Sendable {
     case view
     case edit
     case delete
@@ -11,7 +11,7 @@ enum AccountPermission: String, Codable, CaseIterable, Hashable {
 
 // MARK: - Rule Resource
 
-enum AccountRuleResource: String, Codable, CaseIterable, Hashable {
+public enum AccountRuleResource: String, Codable, CaseIterable, Hashable, Sendable, Identifiable {
     case apps
     case version
     case users
@@ -19,20 +19,23 @@ enum AccountRuleResource: String, Codable, CaseIterable, Hashable {
     case testFlight
     case analytics
     case provisioning
+
+    /// Stable identity (the raw value), e.g. for SwiftUI `ForEach`/`sheet(item:)`.
+    public var id: String { rawValue }
 }
 
 // MARK: - Rules
 
-struct AccountRules: Codable, Hashable {
-    var apps: [AccountPermission]
-    var version: [AccountPermission]
-    var users: [AccountPermission]
-    var review: [AccountPermission]
-    var testFlight: [AccountPermission]
-    var analytics: [AccountPermission]
-    var provisioning: [AccountPermission]
+public struct AccountRules: Codable, Hashable, Sendable {
+    public var apps: [AccountPermission]
+    public var version: [AccountPermission]
+    public var users: [AccountPermission]
+    public var review: [AccountPermission]
+    public var testFlight: [AccountPermission]
+    public var analytics: [AccountPermission]
+    public var provisioning: [AccountPermission]
 
-    init(
+    public init(
         apps: [AccountPermission] = [],
         version: [AccountPermission] = [],
         users: [AccountPermission] = [],
@@ -51,7 +54,7 @@ struct AccountRules: Codable, Hashable {
     }
 
     // Tolerates rules persisted before a resource existed (e.g. `provisioning`)
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         apps = try container.decodeIfPresent([AccountPermission].self, forKey: .apps) ?? []
         version = try container.decodeIfPresent([AccountPermission].self, forKey: .version) ?? []
@@ -62,7 +65,7 @@ struct AccountRules: Codable, Hashable {
         provisioning = try container.decodeIfPresent([AccountPermission].self, forKey: .provisioning) ?? []
     }
 
-    static var allPermissions: AccountRules {
+    public static var allPermissions: AccountRules {
         let all = AccountPermission.allCases
         return AccountRules(
             apps: all,
@@ -75,7 +78,7 @@ struct AccountRules: Codable, Hashable {
         )
     }
 
-    subscript(resource: AccountRuleResource) -> [AccountPermission] {
+    public subscript(resource: AccountRuleResource) -> [AccountPermission] {
         get {
             switch resource {
             case .apps:         return apps
@@ -103,24 +106,24 @@ struct AccountRules: Codable, Hashable {
 
 // MARK: - Account Origin
 
-enum AccountOrigin: String, Codable, Hashable {
+public enum AccountOrigin: String, Codable, Hashable, Sendable {
     case created
     case imported
 }
 
 // MARK: - Account Model
 
-struct AccountModel: Codable, Identifiable, Hashable {
-    let id: String
-    let name: String
-    let providerType: ProviderType
-    let createdAt: Date
-    var rules: AccountRules
-    var origin: AccountOrigin
+public struct AccountModel: Codable, Identifiable, Hashable, Sendable {
+    public let id: String
+    public let name: String
+    public let providerType: ProviderType
+    public let createdAt: Date
+    public var rules: AccountRules
+    public var origin: AccountOrigin
     /// Optional expiration set on the export. When reached, the account must be removed.
-    var expirationDate: Date?
+    public var expirationDate: Date?
 
-    init(
+    public init(
         id: String = UUID().uuidString,
         name: String,
         providerType: ProviderType,
@@ -138,17 +141,17 @@ struct AccountModel: Codable, Identifiable, Hashable {
         self.expirationDate = expirationDate
     }
 
-    var isExportable: Bool {
+    public var isExportable: Bool {
         origin == .created
     }
 
-    var isExpired: Bool {
+    public var isExpired: Bool {
         guard let expirationDate else { return false }
         return Date() >= expirationDate
     }
 
     /// True when the account has not expired yet but will within the next 24 hours.
-    var isExpiringSoon: Bool {
+    public var isExpiringSoon: Bool {
         guard let expirationDate else { return false }
         let now = Date()
         return expirationDate > now && expirationDate <= now.addingTimeInterval(24 * 60 * 60)
@@ -156,27 +159,27 @@ struct AccountModel: Codable, Identifiable, Hashable {
 
     // MARK: - Permission Checks (respects hierarchy: add→edit→view, delete→edit→view)
 
-    func canView(_ resource: AccountRuleResource) -> Bool {
+    public func canView(_ resource: AccountRuleResource) -> Bool {
         let perms = rules[resource]
         return perms.contains(.view) || perms.contains(.edit) || perms.contains(.delete) || perms.contains(.add)
     }
 
-    func canEdit(_ resource: AccountRuleResource) -> Bool {
+    public func canEdit(_ resource: AccountRuleResource) -> Bool {
         let perms = rules[resource]
         return perms.contains(.edit) || perms.contains(.delete) || perms.contains(.add)
     }
 
-    func canDelete(_ resource: AccountRuleResource) -> Bool {
+    public func canDelete(_ resource: AccountRuleResource) -> Bool {
         rules[resource].contains(.delete)
     }
 
-    func canAdd(_ resource: AccountRuleResource) -> Bool {
+    public func canAdd(_ resource: AccountRuleResource) -> Bool {
         rules[resource].contains(.add)
     }
 
     /// Ensures all rule resources have values for created accounts.
     /// Imported accounts keep their original permissions (even if empty).
-    mutating func fillMissingRules() {
+    public mutating func fillMissingRules() {
         guard origin == .created else { return }
         let all = AccountPermission.allCases
         for resource in AccountRuleResource.allCases {
@@ -187,7 +190,7 @@ struct AccountModel: Codable, Identifiable, Hashable {
     }
 
     // Custom decoder to handle existing accounts without rules/origin
-    init(from decoder: Decoder) throws {
+    public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)

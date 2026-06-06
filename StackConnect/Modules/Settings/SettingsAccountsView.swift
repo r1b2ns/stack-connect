@@ -309,12 +309,6 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
     }
 }
 
-// MARK: - ProviderType + Identifiable (for sheet item)
-
-extension ProviderType: Identifiable {
-    var id: String { rawValue }
-}
-
 // MARK: - Share Sheet
 
 private struct ShareSheetView: UIViewControllerRepresentable {
