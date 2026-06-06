@@ -98,8 +98,10 @@ encrypt/decrypt e decriptação dos formatos legados v1/v2/v3 do `.scexport`. Na
 
 ### Fase 4 — UI Windows com SwiftCrossUI
 1. Novo package executável `StackConnectWindows` dependendo de StackCore/StackProtocols/APIProvider* + `SwiftCrossUI` (backend WinUI).
-2. Portar telas incrementalmente, começando por: lista de contas → adicionar conta → detalhe.
+2. Portar telas incrementalmente. **1ª tela = HOME** (decidido no refinamento de 2026-06-06; antes era "lista de contas"). Próximas: lista de contas → adicionar conta → detalhe.
 3. Reusar ViewModels onde forem Foundation-puro; adaptar os que tocam SwiftUI/`@Published` ao modelo do SwiftCrossUI.
+
+> **Refinamento da Home no Windows (2026-06-06):** `docs/refinements/2026-06-06-windows-home-screen.md` — paridade total ao iOS (cards + nav, banner de sync, alertas de expiração, sistema de widgets). 12 user stories, 30 tarefas (5 blocos), 92 casos de teste. Decisão central: extrair **`Packages/StackHomeCore`** (Foundation-puro: models + `HomeViewModel` + `SyncService` gateado + protocolo `HomeWidget` sem `makeView()` + 3 widgets) consumido por iOS **e** Windows; bridge Combine→callback/`AsyncStream`; split de `ProviderType`; novo `KeyStorable` em arquivo (`%APPDATA%`) p/ prefs não-secretas; `WindowsHomeCoordinator` (sem NavigationStack); alertas como InfoBar inline; rotas de destino = placeholders no v1; +7º gate (GUI Home) no `Test-WindowsPort.ps1`.
 
 ### Fase 5 — Empacotamento/distribuição (depois)
 - Instalador MSIX / bundle, ícones, code signing Windows.
