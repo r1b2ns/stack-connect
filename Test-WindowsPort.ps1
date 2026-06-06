@@ -4,20 +4,20 @@
 
 .DESCRIPTION
     Executes the validation gates on the Windows Swift toolchain:
-      1. Core PoC         — SQLite + AES-GCM/PBKDF2 + RS256 + PEM
-      2. Secrets probe    — Windows Credential Manager round-trip (raw Win32)
-      3. Credential store — WindowsCredentialStorable through KeyStorable
-      4. ASC SDK build    — does appstoreconnect-swift-sdk compile on Windows
-      5. Windows app      — headless StackConnectWindows: whole non-UI stack links + bootstraps
-      6. Windows GUI      — StackConnectWindowsApp (SwiftCrossUI/WinUI) compiles (build only)
-      7. GUI screen test  — (only with -RunGui) register package identity + LAUNCH the window
+      1. Core PoC         - SQLite + AES-GCM/PBKDF2 + RS256 + PEM
+      2. Secrets probe    - Windows Credential Manager round-trip (raw Win32)
+      3. Credential store - WindowsCredentialStorable through KeyStorable
+      4. ASC SDK build    - does appstoreconnect-swift-sdk compile on Windows
+      5. Windows app      - headless StackConnectWindows: whole non-UI stack links + bootstraps
+      6. Windows GUI      - StackConnectWindowsApp (SwiftCrossUI/WinUI) compiles (build only)
+      7. GUI screen test  - (only with -RunGui) register package identity + LAUNCH the window
 
     With -RunGui, after gate 6 builds the GUI, the script runs
     StackConnectWindowsApp\Packaging\Register-StackConnectApp.ps1 to give the .exe
-    package identity (HANDOVER §8: skips the Windows App Runtime 1.5 bootstrap),
+    package identity (HANDOVER section 8: skips the Windows App Runtime 1.5 bootstrap),
     bundle the Swift runtime DLLs, and LAUNCH the window via package activation.
     The launch is non-blocking (Start-Process), so the run still finishes and
-    prints its summary — confirm the window renders on screen. Needs Developer
+    prints its summary - confirm the window renders on screen. Needs Developer
     Mode ON. Build gate 6 must have passed (the launch is skipped otherwise).
 
     Each gate runs independently; one failing does not stop the others. The full
@@ -30,7 +30,7 @@
 .PARAMETER Clean
     Wipe all SwiftPM state before testing: each package's .build and
     Package.resolved, plus the global SwiftPM cache
-    (%LOCALAPPDATA%\org.swift.swiftpm). Forces a fresh dependency resolution —
+    (%LOCALAPPDATA%\org.swift.swiftpm). Forces a fresh dependency resolution -
     use this after changing a branch-based dependency.
 
 .PARAMETER SkipSDK
@@ -209,14 +209,14 @@ try {
         Write-Host "[SKIP] -SkipSDK was passed (depends on the SDK fork)" -ForegroundColor Yellow
     }
 
-    # SwiftCrossUI GUI (B1b): its own package. Build only — `swift run` would open
+    # SwiftCrossUI GUI (B1b): its own package. Build only - `swift run` would open
     # a window and block the script. Independent of the SDK, so it runs even with
     # -SkipSDK.
     #
     # SwiftCrossUI's transitive deps (jpeg, swift-java, swift-argument-parser)
     # contain symlinks that git on Windows refuses to check out by default
     # ("unable to create symlink ...: Permission denied"). Set core.symlinks=false
-    # so git writes those as plain files instead — they live only in plugin/sample/
+    # so git writes those as plain files instead - they live only in plugin/sample/
     # test dirs, never in compiled sources. (Alternative: enable Developer Mode.)
     $symlinksCfg = (& git config --global core.symlinks) 2>$null
     if ($symlinksCfg -ne "false") {
@@ -245,9 +245,9 @@ try {
 
     # GUI screen test (only with -RunGui): the build above proves it compiles, but
     # actually opening the window needs package identity so the Windows App Runtime
-    # 1.5 bootstrap is skipped (HANDOVER §8). Register-StackConnectApp.ps1 bundles
+    # 1.5 bootstrap is skipped (HANDOVER section 8). Register-StackConnectApp.ps1 bundles
     # the Swift runtime DLLs next to the .exe, registers the loose AppxManifest, and
-    # launches via package activation (Start-Process — non-blocking, so the run
+    # launches via package activation (Start-Process - non-blocking, so the run
     # continues to the summary). The .exe lives in the GUI scratch's debug dir.
     if ($RunGui) {
         $guiLaunchName = "GUI screen test (register identity + launch window)"
@@ -269,7 +269,7 @@ try {
                 $results[$guiLaunchName] = $false
             }
             if ($results[$guiLaunchName]) {
-                Write-Host "[PASS] $guiLaunchName — confirm the window renders on screen." -ForegroundColor Green
+                Write-Host "[PASS] $guiLaunchName - confirm the window renders on screen." -ForegroundColor Green
             } else {
                 Write-Host "[FAIL] $guiLaunchName" -ForegroundColor Red
             }
