@@ -1,24 +1,24 @@
 import Foundation
 
-struct AppModel: Codable, Identifiable, Hashable {
-    let id: String
-    let name: String
-    let bundleId: String
-    var platform: String?
-    let accountId: String
-    var iconUrl: String?
-    var appStoreState: AppStoreState?
-    var versionString: String?
-    var lastModifiedDate: Date?
-    var isArchived: Bool
-    var isFavorite: Bool
-    var hasReviewPending: Bool
+public struct AppModel: Codable, Identifiable, Hashable, Sendable {
+    public let id: String
+    public let name: String
+    public let bundleId: String
+    public var platform: String?
+    public let accountId: String
+    public var iconUrl: String?
+    public var appStoreState: AppStoreState?
+    public var versionString: String?
+    public var lastModifiedDate: Date?
+    public var isArchived: Bool
+    public var isFavorite: Bool
+    public var hasReviewPending: Bool
     /// Latest version state per platform (an App Store app can ship iOS, tvOS,
     /// macOS, etc. under one record). `appStoreState`/`platform` above hold the
     /// most-recent version overall; this captures each platform individually.
-    var platformVersions: [AppPlatformVersion]?
+    public var platformVersions: [AppPlatformVersion]?
 
-    init(
+    public init(
         id: String,
         name: String,
         bundleId: String,
@@ -51,15 +51,25 @@ struct AppModel: Codable, Identifiable, Hashable {
 
 // MARK: - Per-platform version
 
-struct AppPlatformVersion: Codable, Hashable {
-    let platform: String
-    var appStoreState: AppStoreState?
-    var versionString: String?
+public struct AppPlatformVersion: Codable, Hashable, Sendable {
+    public let platform: String
+    public var appStoreState: AppStoreState?
+    public var versionString: String?
+
+    public init(
+        platform: String,
+        appStoreState: AppStoreState? = nil,
+        versionString: String? = nil
+    ) {
+        self.platform = platform
+        self.appStoreState = appStoreState
+        self.versionString = versionString
+    }
 }
 
 // MARK: - AppStoreState
 
-enum AppStoreState: String, Codable, Hashable {
+public enum AppStoreState: String, Codable, Hashable, Sendable {
     case accepted = "ACCEPTED"
     case developerRemovedFromSale = "DEVELOPER_REMOVED_FROM_SALE"
     case developerRejected = "DEVELOPER_REJECTED"
@@ -81,7 +91,7 @@ enum AppStoreState: String, Codable, Hashable {
     case replacedWithNewVersion = "REPLACED_WITH_NEW_VERSION"
     case notApplicable = "NOT_APPLICABLE"
 
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .accepted:                  return String(localized: "Accepted")
         case .developerRemovedFromSale:  return String(localized: "Removed from Sale")
@@ -107,7 +117,7 @@ enum AppStoreState: String, Codable, Hashable {
     }
 
     /// Whether this state indicates the app has a pending review action (waiting, in review, rejected, etc.)
-    var isReviewPending: Bool {
+    public var isReviewPending: Bool {
         switch self {
         case .waitingForReview, .inReview, .readyForReview, .rejected, .metadataRejected,
              .invalidBinary, .pendingDeveloperRelease, .pendingAppleRelease:
@@ -118,7 +128,7 @@ enum AppStoreState: String, Codable, Hashable {
     }
 
     /// Whether this state belongs in the "In Review" widget bucket.
-    var isInReviewBucket: Bool {
+    public var isInReviewBucket: Bool {
         switch self {
         case .waitingForReview, .inReview, .readyForReview,
              .pendingAppleRelease, .processingForAppStore,
@@ -129,7 +139,7 @@ enum AppStoreState: String, Codable, Hashable {
         }
     }
 
-    var color: AppStoreStateColor {
+    public var color: AppStoreStateColor {
         switch self {
         case .readyForSale, .preorderReadyForSale:
             return .green
@@ -151,6 +161,6 @@ enum AppStoreState: String, Codable, Hashable {
     }
 }
 
-enum AppStoreStateColor {
+public enum AppStoreStateColor: Sendable {
     case green, orange, red, gray, blue, yellow
 }
