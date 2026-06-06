@@ -208,6 +208,16 @@ try {
         & git config --global core.symlinks false
     }
 
+    # Force SwiftCrossUI's DefaultBackend to resolve to WinUIBackend only. Without
+    # this, DefaultBackend's dependency list still drags GtkBackend -> Gtk ->
+    # GtkCHelpers into the Windows build plan (the `.when(platforms: [.linux])`
+    # condition doesn't prune the C helper target), and GtkCHelpers fails on the
+    # missing <gtk/gtk.h>/<gdk/gdk.h> headers. Setting SCUI_DEFAULT_BACKEND makes
+    # DefaultBackend depend on the named target alone, so the Gtk graph never
+    # enters resolution. Changing it alters manifest evaluation, so a fresh
+    # resolution is required (run with -Clean or delete the .scwapp scratch).
+    $env:SCUI_DEFAULT_BACKEND = "WinUIBackend"
+
     # To see the window: swift run --scratch-path $env:USERPROFILE\.scwapp StackConnectWindowsApp
     Invoke-Gate -Name "Windows GUI build (StackConnectWindowsApp, SwiftCrossUI/WinUI)" `
                 -WorkingDirectory (Join-Path $root "StackConnectWindowsApp") `
