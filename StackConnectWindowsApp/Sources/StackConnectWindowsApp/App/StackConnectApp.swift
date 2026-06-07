@@ -30,7 +30,19 @@ struct StackConnectApp: App {
     var body: some Scene {
         WindowGroup("StackConnect") {
             RootView(model: model)
+                // T-D4 (design §2.9): enforce the minimum window size. In
+                // SwiftCrossUI the window's minimum is derived from the content's
+                // layout size when proposed `.zero`, so a min-size frame on the
+                // root content makes the probing pass report ≥ 680×520 — which
+                // the backend then sets as the window's `contentMinSize`. This is
+                // what blocks resizing below the minimum (AC-4 / TC-077) and
+                // guarantees the narrow layout is only ever exercised at ≥ 680px.
+                .frame(minWidth: 680, minHeight: 520)
         }
         .defaultSize(width: 900, height: 660)
+        // `.contentMinSize`: floor at the content's minimum (the 680×520 above),
+        // no maximum — the window grows freely past the content (design: "no
+        // max"), keeping the 860-capped content centered in the extra space.
+        .windowResizability(.contentMinSize)
     }
 }

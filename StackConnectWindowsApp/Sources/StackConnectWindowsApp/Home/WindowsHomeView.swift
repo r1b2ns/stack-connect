@@ -21,6 +21,20 @@ struct WindowsHomeView: View {
     let coordinator: WindowsHomeCoordinator
 
     var body: some View {
+        // T-D4 (design §2.9): the content column is capped at 860px and the
+        // vertical `ScrollView` horizontally centers content narrower than the
+        // window, so the cap yields the centered layout (AC-1). The two
+        // width-sensitive sections (toolbar labels + provider grid columns) each
+        // resolve their `WindowsLayoutTier` from a scoped `GeometryReader`.
+        //
+        // Scoped (not one column-wide) readers on purpose: a single reader
+        // wrapping the whole VStack would have to be pinned to a FIXED height,
+        // which would clip the variable-height widget list (TC-085, N=20). Each
+        // reader here wraps only a section with a computable intrinsic height
+        // (the toolbar row, the grid), so the rest of the column — including the
+        // widget list — keeps flowing and scrolling normally (AC-3). Both
+        // readers sit inside the same 860-capped column, so they observe the
+        // same width and resolve to the same tier.
         ScrollView {
             VStack(spacing: 16) {
                 // Expiration alert (US-005, design §2.7) — rendered at the very
@@ -29,11 +43,7 @@ struct WindowsHomeView: View {
                 // state (Expired precedence lives in the core).
                 expirationAlertSlot
 
-                WindowsToolbarView(
-                    title: "StackConnect",
-                    onSync: { model.triggerSync() },
-                    onCustomizeWidgets: { coordinator.push(.customizeWidgets) }
-                )
+                toolbarSlot
 
                 syncBannerSlot
                 loadingSlot
@@ -45,6 +55,27 @@ struct WindowsHomeView: View {
             .padding(16)
             .frame(maxWidth: 860)
         }
+    }
+
+    // MARK: - Toolbar slot (US-004 / US-009, responsive labels — T-D4)
+
+    /// Fixed height reserved for the toolbar row so its scoped `GeometryReader`
+    /// reports width without stretching vertically. The row is a single line of
+    /// `.title2` text + buttons; 44px comfortably fits it at every tier.
+    private let toolbarRowHeight = 44.0
+
+    /// The toolbar row, width-aware via a scoped reader that resolves the
+    /// responsive tier driving the action-label length (design §2.9).
+    private var toolbarSlot: some View {
+        GeometryReader { proxy in
+            WindowsToolbarView(
+                title: "StackConnect",
+                tier: windowsLayoutTier(availableWidth: proxy.size.width),
+                onSync: { model.triggerSync() },
+                onCustomizeWidgets: { coordinator.push(.customizeWidgets) }
+            )
+        }
+        .frame(height: toolbarRowHeight)
     }
 
     // MARK: - Expiration alert slot (US-005)
@@ -100,28 +131,31 @@ struct WindowsHomeView: View {
         }
     }
 
-    // MARK: - Provider cards grid (US-001 / US-002)
-
-    /// Width below which the 2-column grid collapses to a single column
-    /// (design §2.9: < 680px → single column).
-    private let singleColumnBreakpoint = 680.0
+    // MARK: - Provider cards grid (US-001 / US-002, responsive columns — T-D4)
 
     /// The provider cards + Settings cell laid out as a manual 2-column grid
-    /// (no `LazyVGrid` in SwiftCrossUI 0.7). The grid reads the proposed width
-    /// and collapses to one column on narrow widths. The cells (providers then
-    /// the trailing Settings cell) come from the pure `homeGridCells` helper so
-    /// the ordering is unit-testable without a GUI (US-001 AC-1, US-002 AC-1).
+    /// (no `LazyVGrid` in SwiftCrossUI 0.7). A scoped `GeometryReader` reads the
+    /// proposed width, resolves the responsive `WindowsLayoutTier` (design §2.9),
+    /// and the grid renders `tier.gridColumns` columns — collapsing 2 → 1 below
+    /// the 680px breakpoint (AC-2). The cells (providers then the trailing
+    /// Settings cell) come from the pure `homeGridCells` helper so the ordering
+    /// is unit-testable without a GUI (US-001 AC-1, US-002 AC-1).
     @ViewBuilder
     private var providerGridSlot: some View {
         GeometryReader { proxy in
-            grid(columns: proxy.size.width < singleColumnBreakpoint ? 1 : 2)
+            let columns = windowsLayoutTier(availableWidth: proxy.size.width).gridColumns
+            grid(columns: columns)
+                // The reader fills the proposed size, so pin its height to the
+                // grid's intrinsic height for THIS column count (rows of 120px
+                // cards + 12px spacing) so it never steals scroll space or clips
+                // cards. Single-column reserves more rows (taller); two-column
+                // reserves fewer — pinning to the actual count avoids both a
+                // clip and a large empty gap below the grid (AC-3).
+                .frame(height: gridHeight(columns: columns))
         }
-        // GeometryReader fills the proposed size, so cap its height to the grid's
-        // intrinsic height (rows of 120px cards + 12px spacing) to avoid it
-        // stealing vertical space from the scroll content. Reserve the tallest
-        // layout — the single-column case (most rows) — so cards never clip when
-        // the grid collapses on narrow widths; the grid is top-aligned, so the
-        // 2-column layout simply leaves slack below.
+        // Outer height matches the tallest possible layout (single column) so
+        // the GeometryReader itself never under-reserves before the inner pin is
+        // applied; the inner frame then trims to the real column count.
         .frame(height: gridHeight(columns: 1))
     }
 
