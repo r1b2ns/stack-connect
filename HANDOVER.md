@@ -5,7 +5,72 @@ lógica e reescrevendo só a UI.
 
 **Estado:** Fases 0–3 **concluídas e validadas numa VM Windows real** (Swift 6.3.2,
 aarch64-windows-msvc). Toda a camada não-UI compila e roda no Windows.
-**Fase 4 — Bloco A ✅ (A1+A2), B1a ✅ e B1b-1 ✅ validados na VM.** Os 6 gates passam **e a janela GUI SwiftCrossUI/WinUI agora ABRE e renderiza** (2026-06-05). O bloqueio de symlinks do git foi resolvido (`core.symlinks false` / Developer Mode). **Rodar a janela foi destravado** (eram 2 bloqueios de runtime, não compilação): (1) bootstrap do **Windows App Runtime 1.5** falhava → resolvido dando **identidade de pacote** ao app (manifesto MSIX solto, Developer Mode) → swift-winui pula o bootstrapper; (2) `swift_Concurrency.dll` faltava no app ativado → resolvido **bundlando o runtime Swift** ao lado do `.exe`. Tudo em `StackConnectWindowsApp/Packaging/` (`Register-StackConnectApp.ps1`). Ver §8. Próximo: **B1b-2** (1ª tela: lista de contas). HEAD `cced8ae` (pushado).
+**Fase 4 — Bloco A ✅ (A1+A2), B1a ✅ e B1b-1 ✅ validados na VM.** Os 6 gates passam **e a janela GUI SwiftCrossUI/WinUI agora ABRE e renderiza** (2026-06-05). O bloqueio de symlinks do git foi resolvido (`core.symlinks false` / Developer Mode). **Rodar a janela foi destravado** (eram 2 bloqueios de runtime, não compilação): (1) bootstrap do **Windows App Runtime 1.5** falhava → resolvido dando **identidade de pacote** ao app (manifesto MSIX solto, Developer Mode) → swift-winui pula o bootstrapper; (2) `swift_Concurrency.dll` faltava no app ativado → resolvido **bundlando o runtime Swift** ao lado do `.exe`. Tudo em `StackConnectWindowsApp/Packaging/` (`Register-StackConnectApp.ps1`). Ver §8. Próximo: **B1b-2** (1ª tela: agora é a **HOME** em paridade com iOS — ver §0-BIS). HEAD do port `cced8ae` (pushado); refinamento da Home avançando em `experiment/windows` (ver §0-BIS).
+
+> ⚠️ **Leia o §0-BIS abaixo primeiro** — é a sessão mais recente (2026-06-07) e descreve a entrega da **extração do StackHomeCore** (refinamento da tela Home), que é onde o desenvolvimento parou.
+
+---
+
+## 0-BIS. Atualização da sessão — 2026-06-07 (pipeline `/personal-development` · refinamento Home → StackHomeCore)
+
+**Contexto / thread:** esta sessão NÃO mexeu no runtime Windows (§8). Rodou o pipeline `/personal-development` sobre o refinamento **`docs/refinements/2026-06-06-windows-home-screen.md`** — **Bloco A**: extrair um pacote Foundation-pure **`Packages/StackHomeCore`** que compartilha a lógica da Home entre iOS e Windows. Cada task passa por 4 gates (Senior Dev → Staff Review → Mobile QA → Product Owner).
+
+### ✅ Concluídas e mergeadas em `experiment/windows` (tip local `f095652`) — 10/12 do Bloco A, 0 loop-backs reais
+| Task | Entrega |
+|------|---------|
+| T-A1 | Removido `KeyStorable` duplicado do app (o público fica em `StackProtocols`) |
+| T-A2 | Skeleton do pacote `StackHomeCore` (Foundation-only, dep só `StackProtocols`) |
+| T-A3 | Split `ProviderType` (enum puro no core + extensão SwiftUI iOS) + `AccountModel` → core |
+| T-A4 | Value models da Home → core (`AppModel`/`CustomerReviewModel`/`SyncState`) |
+| T-A5 | Widget value types (`HomeWidgetKind/Size/Configuration`) + protocolo `HomeWidget` puro **sem `makeView()`** → core; ponte SwiftUI iOS (`HomeWidgetKind+SwiftUI.swift` + interim `HomeWidgetViewProviding`) |
+| T-A6 | Os 3 widget data types (`InReview/AwaitingRelease/RecentReviews`) → core c/ structs de resultado tipados; `StarRatingFormatter`, `AppStatusCategorizer`, `PhasedReleaseModel` → core; novo target `StackHomeCoreTests` |
+| T-A7 | iOS `HomeWidgetViewFactory` (switch **exaustivo** sobre `HomeWidgetKind`, sem `default`); removido o bridge interino `HomeWidgetViewProviding`/`makeView()` |
+| T-A8 | Protocolo `AppleAccountSyncing` → core (Foundation-only, SDK-free); conformância `AppleAccountConnection` (ASC SDK) fica no iOS; `AppStoreVersionModel`/`AppPlatform` → core |
+| **T-A9** | **(1º merge via PR — [#34](https://github.com/r1b2ns/stack-connect/pull/34), merge `f095652`)** Extrair `SyncService` → core: side-effects Apple (WidgetKit/UIKit/UserNotifications) isolados via **hook injetável `SyncSideEffects`** (no-op default, `AppleSyncSideEffects` no iOS); estado via `onStateChanged` callback + `AsyncStream<SyncState>`; adapter iOS fino republica em `@Published` (Combine só sob `#if canImport(Combine)`); coalescing preservado. |
+| T-A12 | `WindowsFilePreferencesStorable: KeyStorable` (prefs não-secretas em JSON sob `%APPDATA%\StackConnect\prefs.json`, com fallback de host) em `Packages/StackSecretsWindows`; Credential Manager fica só p/ secrets |
+
+Saúde: iOS **60/60** verde o tempo todo; `StackHomeCore` **21/21** (pós-T-A9); `StackSecretsWindows` **26/26**.
+
+### ⏸️ ONDE PARAMOS (sessão 2026-06-07 cont.) — T-A10 commitada, gates SEGURADOS a pedido do usuário
+- **T-A9 fechada nesta sessão:** push da branch → PR [#34](https://github.com/r1b2ns/stack-connect/pull/34) → Staff Review **APPROVED + merge** (`f095652`) → QA **PASS** (1 finding falso-positivo, ver abaixo) → PO **ACCEPTED**. 81 testes verdes (21 core + 60 iOS). Branch/worktree limpos. **Done.**
+- **T-A10** (migrar `HomeViewModel` → core + bridge Combine): **committed** em `feat/T-A10-homeviewmodel-core` (`d10ed2c`), worktree em `../stack-connect-worktrees/T-A10-homeviewmodel-core`, **PR [#35](https://github.com/r1b2ns/stack-connect/pull/35) aberta** (base `experiment/windows`, NÃO mergeada). Build verde segundo o dev: **core 37/37** (16 testes novos de `HomeViewModel`), iOS BUILD SUCCEEDED + 20 testes. **Os gates (Staff Review → QA → PO) foram SEGURADOS** porque o usuário pediu para parar após os agentes em voo terminarem — não foram rodados.
+  - Design entregue: core `HomeViewModel` Foundation-pure (novos arquivos em `Packages/StackHomeCore/Sources/StackHomeCore/Home/`: `HomeViewModel.swift`, `HomeSyncObserving.swift` (protocolo da fatia de sync, mantém o core livre do genérico `AppleCredentials`), `SyncService+HomeSyncObserving.swift`, `Array+Move.swift` (substituto Foundation do `move(_:to:)` do SwiftUI), `HomeViewModelLog.swift` (shim `os` gateado), `Tests/.../HomeViewModelTests.swift` (T-E1, 16 casos)); iOS `StackConnect/Modules/Home/HomeViewModel.swift` virou adapter fino `#if canImport(Combine)` `ObservableObject` republicando `state` do core via `@Published uiState`, injetando `HomeWidgetRegistry` como `widgetFactory` do core; `StackConnect/Infra/Sync/SyncService.swift` ganhou conformância `HomeSyncObserving`.
+  - Nota do dev p/ o reviewer: o init do `HomeViewModel` iOS mantém o parâmetro `keychain:` (agora não usado pelo VM, só pelo sync service) por compat de source/testes — pode ser removido em follow-up.
+  - **Retomar = rodar os gates da T-A10**: Staff Review (mergeia a PR [#35](https://github.com/r1b2ns/stack-connect/pull/35) em `experiment/windows`) → QA → PO. No merge, desbloqueia T-A11.
+
+### ⬜ Restante do Bloco A
+- **T-A10** — commitada (PR #35), **gates pendentes** (ver acima).
+- **T-A11** — verificar paridade de regressão iOS (gate D6) (⇠ T-A7 + T-A10). Última task do Bloco A; depois disso o Bloco B precisa da VM.
+- Depois: Blocos B/C/D/E. **Caminho crítico:** ~~T-A9~~ → **T-A10 (gates)** → T-A11 → T-B2 → T-B4 → T-C1 → T-C2 → T-C3 → T-E3 → T-E4.
+
+### 🪟 Algo para testar na VM Windows agora (validação de COMPILAÇÃO, não de UI)
+Ainda **não há tela Home no Windows** (isso é o Bloco B). Mas o `StackHomeCore` cresceu (`SyncService` da T-A9 + `HomeViewModel` da T-A10) e **nunca foi compilado de verdade num toolchain Windows** — só validado como Foundation-pure no Mac. O pacote GUI `StackConnectWindowsApp` **já declara `StackHomeCore` como dependência** (`Package.swift:30/38`; o source da GUI ainda **não importa** — é a janela-contador), então o **gate 6 do `Test-WindowsPort.ps1` recompila o `StackHomeCore`** como parte do build da GUI. É a validação real de **US-010 AC-1/AC-3 + TC-056** que o QA marcou BLOCKED.
+- Rodar na VM: `git pull` → `.\Test-WindowsPort.ps1 -SkipSDK` (6 gates; o 6 cobre o core ampliado).
+- ⚠️ **T-A10 ainda NÃO está em `experiment/windows`** (só na PR #35). Um `git pull` hoje valida **até a T-A9**. Para cobrir o `HomeViewModel` da T-A10, mergear a #35 antes (rodar os gates) ou dar checkout em `feat/T-A10-homeviewmodel-core`.
+- Teste comportamental/visual no Windows só vem com o **Bloco B (T-B2)**, que injeta o core `HomeViewModel` na janela; aí o gate 7 (`-RunGui`) renderiza a Home.
+
+### ❗ Falso-positivo de QA registrado (não repetir como defeito)
+O QA da T-A9 reprovou alegando que o `project.pbxproj` referenciava 2 arquivos deletados → build iOS quebraria em checkout limpo. **É falso-positivo:** `StackConnect.xcodeproj/` é **gitignored** (`.gitignore:10`), zero `pbxproj` versionado; o projeto é gerado on-the-fly por `xcodegen generate` (fluxo documentado no CLAUDE.md). O agente de QA bateu num projeto **gerado** (não-versionado) desatualizado no checkout dele antes de rodar o xcodegen, e atribuiu ao commit. Vale para **todas** as tasks, não é defeito de nenhuma. Após `xcodegen generate` tudo fica verde. → overruled, T-A9 seguiu para PO.
+
+### 🔧 Mudança de workflow feita nesta sessão (vale para as próximas entregas)
+Os agentes globais (`~/.claude/agents/`) foram atualizados:
+- **`senior-mobile-developer`**: ao final de cada entrega faz `git push` da branch e **abre um PR** (`gh pr create --base experiment/windows`) com task ID + ACs + test cases (sem atribuição de IA); não mergeia.
+- **`staff-code-reviewer`**: **todo merge passa pelo PR** (`gh pr merge <pr> --merge --delete-branch`) para deixar histórico — acabou o `git merge` local. Merge em `master`/`main` continua exigindo autorização explícita.
+- **Consequência:** da T-A9 em diante o fluxo **exige push para o `origin`** (os 9 merges já feitos foram **locais**, via `git merge --no-ff`, não viraram PRs).
+
+### ✔️ Verificar no início da próxima sessão
+- **Push de `experiment/windows` confirmado:** local == `origin/experiment/windows` == `f095652` (fetch feito nesta sessão). A PR [#34](https://github.com/r1b2ns/stack-connect/pull/34) (T-A9) já foi mergeada e a branch remota deletada. A PR [#35](https://github.com/r1b2ns/stack-connect/pull/35) (T-A10) está **aberta**, base `experiment/windows`.
+- **Branches locais já mergeadas e órfãs** (anteriores à regra de auto-exclusão): `feat/T-A2-stackhomecore-skeleton`, `feat/T-A3-split-providertype`, `feat/T-A4-migrate-home-models` — podem ser podadas. (`feat/T-A9-syncservice-core` já foi deletada local+remota no merge.)
+- **Worktree ativo da T-A10:** `../stack-connect-worktrees/T-A10-homeviewmodel-core` (branch `feat/T-A10-homeviewmodel-core`, `d10ed2c`) — manter até a #35 mergear; o reviewer remove no merge.
+- **Worktrees de agente obsoletos** em `.claude/worktrees/agent-*` (detached em `16edd63`) — podem ser removidos.
+- **Working tree sujo (não-versionado, fora de qualquer task):** `HANDOVER.md` (este arquivo) e `StackConnect/Resources/Localizable.xcstrings` (churn de extração de strings: strings de widget marcadas `stale`/removidas após o código de widget migrar p/ o core em T-A5/A6/A7). Candidatos a dobrar na T-A11 (passada iOS) ou num commit de limpeza.
+
+### 📌 Follow-ups não-bloqueantes (sinalizados pelos gates)
+1. Remover `AppStatusCategorizerTests` duplicado no target iOS (o canônico agora está em `StackHomeCoreTests`).
+2. Corrigir warning de Swift 6 concurrency em `RecentReviewsWidgetTests.swift:10` (`maxReviews` main-actor-isolated acessado de autoclosure não-isolada).
+
+### ▶️ Para retomar
+Dizer **"continue o desenvolvimento"** → rodar os gates da T-A10 (Staff Review da PR [#35](https://github.com/r1b2ns/stack-connect/pull/35) → QA → PO; no merge desbloqueia T-A11), depois T-A11 (fecha o Bloco A). Push de `experiment/windows` já está em sincronia (`f095652`).
 
 ---
 
