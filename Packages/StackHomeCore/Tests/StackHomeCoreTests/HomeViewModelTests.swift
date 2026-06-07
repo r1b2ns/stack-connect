@@ -254,6 +254,42 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertFalse(sut.state.showExpiringSoonAlert, "Already-warned account must not re-warn this session (AC-6)")
     }
 
+    /// Dismissing an EXPIRED account must not block a DIFFERENT expiring-soon
+    /// account from surfacing on the next load (US-005 AC-3 × AC-6). Account A is
+    /// expired and dismissed; account B is expiring-soon and not yet warned. The
+    /// expired alert wins on load 1 (precedence), so B is never warned then; on
+    /// load 2, A stays suppressed and B's expiring-soon alert surfaces.
+    func testDismissExpiredSurfacesExpiringSoonOnNextLoad() async throws {
+        let expired = AccountModel(
+            name: "Expired",
+            providerType: .apple,
+            expirationDate: Date().addingTimeInterval(-60)
+        )
+        let expiring = AccountModel(
+            name: "Expiring",
+            providerType: .apple,
+            expirationDate: Date().addingTimeInterval(60 * 60)
+        )
+        try await storage.save(expired, id: expired.id)
+        try await storage.save(expiring, id: expiring.id)
+
+        let sut = makeSUT()
+        await sut.loadDashboard()
+
+        // Load 1: expired wins (precedence), expiring-soon stays suppressed.
+        XCTAssertTrue(sut.state.showExpiredAlert)
+        XCTAssertEqual(sut.state.expiredAccount?.id, expired.id)
+        XCTAssertFalse(sut.state.showExpiringSoonAlert)
+
+        sut.dismissExpiredAlert()
+        await sut.loadDashboard()
+
+        // Load 2: expired stays dismissed (AC-3), expiring-soon now surfaces (AC-6).
+        XCTAssertFalse(sut.state.showExpiredAlert)
+        XCTAssertTrue(sut.state.showExpiringSoonAlert)
+        XCTAssertEqual(sut.state.expiringSoonAccount?.id, expiring.id)
+    }
+
     /// Already-warned account produces no expiring-soon alert on a fresh reload
     /// even without an explicit dismiss (warnedAccountIds is session-scoped —
     /// US-005 / TC-025).

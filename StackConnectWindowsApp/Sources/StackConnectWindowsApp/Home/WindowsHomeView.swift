@@ -51,6 +51,7 @@ struct WindowsHomeView: View {
     /// The inline expiration banner. The slot only owns placement (top of the
     /// content); the banner view reads the core's resolved expiration state and
     /// renders nothing when no alert is active.
+    @ViewBuilder
     private var expirationAlertSlot: some View {
         WindowsAlertBannerView(model: model, coordinator: coordinator)
     }
