@@ -1,9 +1,22 @@
 # Refinement: Windows Home Screen
 
 **Date:** 2026-06-06
-**Status:** Refined
+**Status:** Delivered — Fase 4 complete & VM-tested (2026-06-07)
 **Feature:** Port the StackConnect **Home screen** to Windows (SwiftCrossUI / WinUI), at full iOS parity, reusing the logic via a shared Foundation-pure package.
 **Branch:** `experiment/windows`
+
+---
+
+## Delivery Status (2026-06-07)
+
+All 30 tasks across Blocks A–E are **delivered**. Blocks A–D were merged into `experiment/windows` in prior commits. **Block E status:**
+
+- **T-E1** (StackHomeCore unit tests) — **DONE** & merged via PR #44 (merge commit `c1cca0d`). All gates pass: Staff Review approved after 1 fix-loop (flaky Task.sleep resolved), QA suite PASS (56/56), PO accepted.
+- **T-E2** (SyncService gating tests) — Delivered on PR #45 (branch `feat/T-E2-syncservice-gating-tests`). StackHomeCore test suite green (51/51). PR is **OPEN**, awaiting review close-out (Staff Review returned 2 non-blocking should-fix items).
+- **T-E3** (full-Home GUI build gate in Test-WindowsPort.ps1) — Delivered on PR #46 (branch `feat/T-E3-gui-build-gate`). Branch synced with `experiment/windows` (clean diff). PR is **OPEN**, awaiting re-review (earlier false-positive resolved).
+- **T-E4** (VM end-to-end Home smoke) — **DONE** & **VM-validated** (2026-06-07). Home screen renders, navigation push/pop works, Customize Widgets configuration persists across restart (covers TC-090).
+
+**Fase 5** (packaging/distribution: MSIX installer, app icons, Windows code signing) remains future work — it is a prerequisite for release but not for Fase 4 completion.
 
 ---
 
