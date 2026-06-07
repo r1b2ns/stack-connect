@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Runs the StackConnect Windows-port phase-3 gates, with logging and cleanup.
+    Runs the StackConnect Windows-port phase-4 gates, with logging and cleanup.
 
 .DESCRIPTION
     Executes the validation gates on the Windows Swift toolchain:
@@ -9,8 +9,13 @@
       3. Credential store - WindowsCredentialStorable through KeyStorable
       4. ASC SDK build    - does appstoreconnect-swift-sdk compile on Windows
       5. Windows app      - headless StackConnectWindows: whole non-UI stack links + bootstraps
-      6. Windows GUI      - StackConnectWindowsApp (SwiftCrossUI/WinUI) compiles (build only)
-      7. GUI screen test  - (only with -RunGui) register package identity + LAUNCH the window
+      6. Windows GUI      - StackConnectWindowsApp (SwiftCrossUI/WinUI) Home shell + StackHomeCore compile (build only)
+      7. GUI screen test  - (only with -RunGui) register package identity + LAUNCH the Home window
+
+    The GUI gate (6) builds the real Home shell (T-B1..T-B4): the route stack,
+    the SQLite + file-prefs bootstrap, the shared StackHomeCore HomeViewModel, and
+    the toolbar / provider cards / widgets content. StackHomeCore is a dependency
+    of StackConnectWindowsApp, so this gate recompiles it as part of the GUI build.
 
     With -RunGui, after gate 6 builds the GUI, the script runs
     StackConnectWindowsApp\Packaging\Register-StackConnectApp.ps1 to give the .exe
@@ -36,6 +41,14 @@
 .PARAMETER SkipSDK
     Skip the (slow) App Store Connect SDK build gate.
 
+.PARAMETER CleanGui
+    Wipe ONLY the GUI package's SwiftPM state (StackConnectWindowsApp\.build,
+    its Package.resolved, and the .scwapp scratch) before testing - a light
+    alternative to -Clean that forces a fresh resolution of the GUI package
+    without rebuilding the slow ASC SDK. Use this after the GUI Package.swift
+    changes (e.g. new dependencies) so the GUI gate picks them up. Implied by
+    -Clean (which already wipes everything).
+
 .PARAMETER RunGui
     After the GUI build gate, register package identity and LAUNCH the window
     (the on-screen test) via Packaging\Register-StackConnectApp.ps1. Needs
@@ -60,11 +73,17 @@
 .EXAMPLE
     # Build the GUI and actually open the window (on-screen test):
     .\Test-WindowsPort.ps1 -SkipSDK -RunGui
+
+.EXAMPLE
+    # After the GUI Package.swift changed: refresh just the GUI package and
+    # open the Home window, skipping the slow SDK gates:
+    .\Test-WindowsPort.ps1 -Pull -SkipSDK -CleanGui -RunGui
 #>
 [CmdletBinding()]
 param(
     [switch]$Pull,
     [switch]$Clean,
+    [switch]$CleanGui,
     [switch]$SkipSDK,
     [switch]$RunGui,
     [string]$FirebaseServiceAccount,
@@ -109,6 +128,27 @@ function Invoke-Clean {
         $scwAppScratch,
         (Join-Path $env:LOCALAPPDATA "org.swift.swiftpm"),
         (Join-Path $env:LOCALAPPDATA "org.swift.swiftpm\cache")
+    )
+    foreach ($p in ($paths | Select-Object -Unique)) {
+        if (Test-Path $p) {
+            Write-Host "  removing  $p"
+            Remove-Item -Recurse -Force $p -ErrorAction SilentlyContinue
+        } else {
+            Write-Host "  (absent)  $p"
+        }
+    }
+}
+
+function Invoke-CleanGui {
+    # Light clean: only the GUI package's resolution + build trees, so a changed
+    # StackConnectWindowsApp\Package.swift (new deps, backend env var) resolves
+    # fresh without touching the slow ASC SDK build. The global SwiftPM cache is
+    # left intact (local path deps don't need re-downloading).
+    Write-Header "Clean GUI package (StackConnectWindowsApp resolution + scratch)"
+    $paths = @(
+        (Join-Path $root "StackConnectWindowsApp\.build"),
+        (Join-Path $root "StackConnectWindowsApp\Package.resolved"),
+        $scwAppScratch
     )
     foreach ($p in ($paths | Select-Object -Unique)) {
         if (Test-Path $p) {
@@ -172,7 +212,13 @@ try {
         Pop-Location
     }
 
-    if ($Clean) { Invoke-Clean }
+    if ($Clean) {
+        Invoke-Clean
+    } elseif ($CleanGui) {
+        # -Clean already wipes the GUI package, so only run the light clean when
+        # the full clean wasn't requested.
+        Invoke-CleanGui
+    }
 
     if ($FirebaseServiceAccount) { $env:FIREBASE_SA_JSON = $FirebaseServiceAccount }
     if ($PlayServiceAccount)     { $env:PLAY_SA_JSON     = $PlayServiceAccount }
@@ -209,9 +255,11 @@ try {
         Write-Host "[SKIP] -SkipSDK was passed (depends on the SDK fork)" -ForegroundColor Yellow
     }
 
-    # SwiftCrossUI GUI (B1b): its own package. Build only - `swift run` would open
-    # a window and block the script. Independent of the SDK, so it runs even with
-    # -SkipSDK.
+    # SwiftCrossUI GUI (B1b-2): its own package, now hosting the real Home shell
+    # (T-B1..T-B4) over the shared StackHomeCore. Build only - `swift run` would
+    # open the window and block the script (use -RunGui to launch it). Independent
+    # of the SDK, so it runs even with -SkipSDK. Building it also recompiles
+    # StackHomeCore, which it depends on.
     #
     # SwiftCrossUI's transitive deps (jpeg, swift-java, swift-argument-parser)
     # contain symlinks that git on Windows refuses to check out by default
@@ -238,7 +286,7 @@ try {
     $env:SCUI_DEFAULT_BACKEND = "WinUIBackend"
 
     # To see the window: swift run --scratch-path $env:USERPROFILE\.scwapp StackConnectWindowsApp
-    $guiBuildName = "Windows GUI build (StackConnectWindowsApp, SwiftCrossUI/WinUI)"
+    $guiBuildName = "Windows GUI build (StackConnectWindowsApp Home shell + StackHomeCore)"
     Invoke-Gate -Name $guiBuildName `
                 -WorkingDirectory (Join-Path $root "StackConnectWindowsApp") `
                 -SwiftArgs @("build", "--scratch-path", $scwAppScratch)
