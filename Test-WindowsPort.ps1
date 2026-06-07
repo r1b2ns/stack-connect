@@ -93,6 +93,18 @@
     # After the GUI Package.swift changed: refresh just the GUI package and
     # open the Home window, skipping the slow SDK gates:
     .\Test-WindowsPort.ps1 -Pull -SkipSDK -CleanGui -RunGui
+
+.EXAMPLE
+    # Full E2E smoke for T-E4 (all 7 gates + GUI launch for manual verification):
+    .\Test-WindowsPort.ps1 -Pull -Clean -RunGui
+
+.NOTES
+    After a -RunGui pass, the test plan (docs/test-plans/T-E4-vm-e2e-smoke.md)
+    documents the manual verification steps for US-001 through US-012. Confirm
+    the window renders, then walk through the checklist.
+
+    Persistence file: %APPDATA%\StackConnect\prefs.json
+    SQLite store:     %APPDATA%\StackConnect\store.sqlite
 #>
 [CmdletBinding()]
 param(
@@ -235,6 +247,17 @@ try {
         Invoke-CleanGui
     }
 
+    # TC-091: log the scratch paths so the reviewer can confirm MAX_PATH is
+    # respected (both are under ~30 chars vs the 260-char limit).
+    Write-Header "Scratch paths (TC-091: MAX_PATH mitigation)"
+    Write-Host "  Headless: $scwScratch ($($scwScratch.Length) chars)"
+    Write-Host "  GUI:      $scwAppScratch ($($scwAppScratch.Length) chars)"
+    if ($scwScratch.Length -gt 40 -or $scwAppScratch.Length -gt 40) {
+        Write-Host "  WARNING: scratch path exceeds 40 chars - MAX_PATH risk increases." -ForegroundColor Yellow
+    } else {
+        Write-Host "  OK: scratch paths are short." -ForegroundColor Green
+    }
+
     if ($FirebaseServiceAccount) { $env:FIREBASE_SA_JSON = $FirebaseServiceAccount }
     if ($PlayServiceAccount)     { $env:PLAY_SA_JSON     = $PlayServiceAccount }
 
@@ -305,6 +328,7 @@ try {
     # enters resolution. Changing it alters manifest evaluation, so a fresh
     # resolution is required (run with -Clean or delete the .scwapp scratch).
     $env:SCUI_DEFAULT_BACKEND = "WinUIBackend"
+    Write-Host "  SCUI_DEFAULT_BACKEND = $env:SCUI_DEFAULT_BACKEND (TC-092)" -ForegroundColor DarkGray
 
     # To see the window: swift run --scratch-path $env:USERPROFILE\.scwapp StackConnectWindowsApp
     $guiBuildName = "Windows GUI build (StackConnectWindowsApp full Home B+C+D + StackHomeCore)"
@@ -339,6 +363,11 @@ try {
             }
             if ($results[$guiLaunchName]) {
                 Write-Host "[PASS] $guiLaunchName - confirm the window renders on screen." -ForegroundColor Green
+                Write-Host ""
+                Write-Host "  Manual verification checklist: docs\test-plans\T-E4-vm-e2e-smoke.md" -ForegroundColor DarkGray
+                Write-Host "  Persistence file:  $env:APPDATA\StackConnect\prefs.json" -ForegroundColor DarkGray
+                Write-Host "  SQLite store:      $env:APPDATA\StackConnect\store.sqlite" -ForegroundColor DarkGray
+                Write-Host "  Scratch path:      $scwAppScratch" -ForegroundColor DarkGray
             } else {
                 Write-Host "[FAIL] $guiLaunchName" -ForegroundColor Red
             }
