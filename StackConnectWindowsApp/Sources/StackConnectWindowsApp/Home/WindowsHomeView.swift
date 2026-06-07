@@ -30,6 +30,7 @@ struct WindowsHomeView: View {
                 )
 
                 syncBannerSlot
+                loadingSlot
                 providerGridSlot
                 widgetsSlot
 
@@ -46,6 +47,40 @@ struct WindowsHomeView: View {
     private var syncBannerSlot: some View {
         if model.state.syncState.isSyncing {
             WindowsSyncBannerView(syncState: model.state.syncState)
+        }
+    }
+
+    // MARK: - Cold-start / loading slot (US-012)
+    //
+    // While the core's `loadDashboard()` runs, `model.state.isLoading` is true
+    // (the core flips it true on entry and back to false via `defer`, T-A10), so
+    // this slot shows a single inline indicator at the top of the content area
+    // and drops it the instant the load completes (AC-1 / AC-2). It is purely a
+    // function of `state.isLoading`, mounted/unmounted by the parent — it never
+    // subscribes to anything itself.
+    //
+    // It deliberately sits BELOW the toolbar + sync-banner region rather than at
+    // the very top of the VStack, so it never overlaps T-D1's expiration-alert
+    // slot. It is an inline row, never an overlay, so it never blocks input and
+    // the offline-first content (provider grid + widgets) keeps rendering its
+    // SQLite snapshot underneath it (AC-3) — the indicator only ever sits above
+    // already-visible content, signalling a refresh in flight.
+    //
+    // D5: SwiftCrossUI 0.7 DOES expose the indeterminate `ProgressView` spinner
+    // (the same primitive `WindowsSyncBannerView` uses, T-B6), so this shell-
+    // level affordance uses it directly + a "Loading…" label. (The per-widget
+    // rows keep their text-only fallback — that is a separate, intentional D5
+    // decision for the smaller in-card rows, not contradicted here.)
+
+    @ViewBuilder
+    private var loadingSlot: some View {
+        if model.state.isLoading {
+            HStack(spacing: 8) {
+                ProgressView()
+                Text("Loading…")
+                    .foregroundColor(.gray)
+                Spacer()
+            }
         }
     }
 
