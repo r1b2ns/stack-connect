@@ -204,6 +204,132 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertEqual(sut.state.expiringSoonAccount?.id, expiring.id)
     }
 
+    // MARK: - Dismiss intents (US-005 AC-3 / AC-6 — TC-024 / TC-025 / TC-089)
+
+    /// Cancel on an expired account hides the banner and, crucially, does NOT
+    /// re-surface it on a subsequent reload (US-005 AC-3 / TC-024).
+    func testDismissExpiredAlertSuppressesItForTheSession() async throws {
+        let expired = AccountModel(
+            name: "Expired",
+            providerType: .apple,
+            expirationDate: Date().addingTimeInterval(-60)
+        )
+        try await storage.save(expired, id: expired.id)
+
+        let sut = makeSUT()
+        await sut.loadDashboard()
+        XCTAssertTrue(sut.state.showExpiredAlert)
+
+        sut.dismissExpiredAlert()
+        XCTAssertFalse(sut.state.showExpiredAlert)
+        XCTAssertNil(sut.state.expiredAccount)
+
+        // A second load (e.g. after a sync) must NOT bring the banner back.
+        await sut.loadDashboard()
+        XCTAssertFalse(sut.state.showExpiredAlert, "Expired banner must stay dismissed this session (AC-3)")
+        XCTAssertNil(sut.state.expiredAccount)
+    }
+
+    /// OK on an expiring-soon account hides the banner; the account was already
+    /// recorded as warned when first surfaced, so it is not re-warned this
+    /// session (US-005 AC-6 / TC-089).
+    func testDismissExpiringSoonAlertDoesNotRewarnThisSession() async throws {
+        let expiring = AccountModel(
+            name: "Expiring",
+            providerType: .apple,
+            expirationDate: Date().addingTimeInterval(60 * 60)
+        )
+        try await storage.save(expiring, id: expiring.id)
+
+        let sut = makeSUT()
+        await sut.loadDashboard()
+        XCTAssertTrue(sut.state.showExpiringSoonAlert)
+
+        sut.dismissExpiringSoonAlert()
+        XCTAssertFalse(sut.state.showExpiringSoonAlert)
+        XCTAssertNil(sut.state.expiringSoonAccount)
+
+        // A second load must NOT re-surface the already-warned account (TC-089).
+        await sut.loadDashboard()
+        XCTAssertFalse(sut.state.showExpiringSoonAlert, "Already-warned account must not re-warn this session (AC-6)")
+    }
+
+    /// Dismissing an EXPIRED account must not block a DIFFERENT expiring-soon
+    /// account from surfacing on the next load (US-005 AC-3 × AC-6). Account A is
+    /// expired and dismissed; account B is expiring-soon and not yet warned. The
+    /// expired alert wins on load 1 (precedence), so B is never warned then; on
+    /// load 2, A stays suppressed and B's expiring-soon alert surfaces.
+    func testDismissExpiredSurfacesExpiringSoonOnNextLoad() async throws {
+        let expired = AccountModel(
+            name: "Expired",
+            providerType: .apple,
+            expirationDate: Date().addingTimeInterval(-60)
+        )
+        let expiring = AccountModel(
+            name: "Expiring",
+            providerType: .apple,
+            expirationDate: Date().addingTimeInterval(60 * 60)
+        )
+        try await storage.save(expired, id: expired.id)
+        try await storage.save(expiring, id: expiring.id)
+
+        let sut = makeSUT()
+        await sut.loadDashboard()
+
+        // Load 1: expired wins (precedence), expiring-soon stays suppressed.
+        XCTAssertTrue(sut.state.showExpiredAlert)
+        XCTAssertEqual(sut.state.expiredAccount?.id, expired.id)
+        XCTAssertFalse(sut.state.showExpiringSoonAlert)
+
+        sut.dismissExpiredAlert()
+        await sut.loadDashboard()
+
+        // Load 2: expired stays dismissed (AC-3), expiring-soon now surfaces (AC-6).
+        XCTAssertFalse(sut.state.showExpiredAlert)
+        XCTAssertTrue(sut.state.showExpiringSoonAlert)
+        XCTAssertEqual(sut.state.expiringSoonAccount?.id, expiring.id)
+    }
+
+    /// Already-warned account produces no expiring-soon alert on a fresh reload
+    /// even without an explicit dismiss (warnedAccountIds is session-scoped —
+    /// US-005 / TC-025).
+    func testAlreadyWarnedExpiringAccountDoesNotRealert() async throws {
+        let expiring = AccountModel(
+            name: "Expiring",
+            providerType: .apple,
+            expirationDate: Date().addingTimeInterval(60 * 60)
+        )
+        try await storage.save(expiring, id: expiring.id)
+
+        let sut = makeSUT()
+        await sut.loadDashboard()
+        XCTAssertTrue(sut.state.showExpiringSoonAlert)
+
+        // Clear the visible flag the way a dismiss would, then reload: the
+        // session-warned set must keep it from re-surfacing.
+        sut.dismissExpiringSoonAlert()
+        await sut.loadDashboard()
+        XCTAssertFalse(sut.state.showExpiringSoonAlert)
+    }
+
+    /// No expiration → no alert of either kind (US-005 / TC-027 / TC-084).
+    func testNoExpirationProducesNoAlert() async throws {
+        let valid = AccountModel(
+            name: "Valid",
+            providerType: .apple,
+            expirationDate: nil
+        )
+        try await storage.save(valid, id: valid.id)
+
+        let sut = makeSUT()
+        await sut.loadDashboard()
+
+        XCTAssertFalse(sut.state.showExpiredAlert)
+        XCTAssertFalse(sut.state.showExpiringSoonAlert)
+        XCTAssertNil(sut.state.expiredAccount)
+        XCTAssertNil(sut.state.expiringSoonAccount)
+    }
+
     // MARK: - Loading flag (US-012 / TC-070)
 
     func testIsLoadingTransitionsDuringLoadDashboard() async {

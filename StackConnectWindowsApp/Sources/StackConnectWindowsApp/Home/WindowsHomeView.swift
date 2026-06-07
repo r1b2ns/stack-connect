@@ -23,6 +23,12 @@ struct WindowsHomeView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
+                // Expiration alert (US-005, design §2.7) — rendered at the very
+                // top, above the toolbar row, so it is visible regardless of
+                // scroll. Driven entirely by the core's resolved expiration
+                // state (Expired precedence lives in the core).
+                expirationAlertSlot
+
                 WindowsToolbarView(
                     title: "StackConnect",
                     onSync: { model.triggerSync() },
@@ -39,6 +45,16 @@ struct WindowsHomeView: View {
             .padding(16)
             .frame(maxWidth: 860)
         }
+    }
+
+    // MARK: - Expiration alert slot (US-005)
+
+    /// The inline expiration banner. The slot only owns placement (top of the
+    /// content); the banner view reads the core's resolved expiration state and
+    /// renders nothing when no alert is active.
+    @ViewBuilder
+    private var expirationAlertSlot: some View {
+        WindowsAlertBannerView(model: model, coordinator: coordinator)
     }
 
     // MARK: - Sync banner slot (US-003)

@@ -78,6 +78,20 @@ final class WindowsHomeModel: SwiftCrossUI.ObservableObject {
         core.availableWidgetKinds()
     }
 
+    // MARK: - Expiration alerts (US-005)
+
+    /// Dismisses the expired-account banner (US-005 AC-3). Delegates to the core,
+    /// which records the account so it is not re-surfaced this session.
+    func dismissExpiredAlert() {
+        core.dismissExpiredAlert()
+    }
+
+    /// Dismisses the expiring-soon banner (US-005 AC-6). The account was already
+    /// added to the core's session-warned set when first surfaced.
+    func dismissExpiringSoonAlert() {
+        core.dismissExpiringSoonAlert()
+    }
+
     // MARK: - Widget factory
 
     /// Builds the Foundation-pure core widget data object for a configuration.
