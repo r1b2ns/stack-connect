@@ -41,9 +41,16 @@ Saúde: iOS **60/60** verde o tempo todo; `StackHomeCore` **21/21** (pós-T-A9);
   - **Follow-up não-bloqueante:** `HomeViewModelLog` está definido mas **não é usado** (dead code) — remover ou ligar nos `try?` que engolem erro.
   - Nota: o init do `HomeViewModel` iOS mantém o parâmetro `keychain:` (não usado pelo VM) por compat de source/testes — removível em follow-up.
 
-### ⬜ Restante do Bloco A
-- **T-A11** — verificar paridade de regressão iOS (gate D6) (⇠ T-A7 + T-A10). **Última task do Bloco A**.
-- Depois: Blocos C/D/E. **Caminho crítico:** ~~T-A9~~ → ~~T-A10~~ → **T-A11** → ~~T-B2~~ → ~~T-B4~~ → T-C1 → T-C2 → T-C3 → T-E3 → T-E4.
+### ✅ T-A11 FINALIZADA (gate D6 — paridade de regressão iOS) — **Bloco A 100% concluído**
+Última task do Bloco A. Tarefa **só de verificação** — nenhuma alteração de código foi necessária; não havia vazamento residual de SwiftUI/UIKit/WidgetKit/Combine para corrigir no target iOS (os `import WidgetKit`/`UIKit`/`UserNotifications` que restam estão em adapters iOS-only legítimos: o `SyncService.swift` adapter — pipeline puro fica no core — e VMs fora da Home `AppDetail/AppList/ArchivedApps`, todos corretamente gateados). Branch `feat/T-A11-ios-regression-gate` (base `experiment/windows`, tip `38df2fd`).
+- **TC-062 (`xcodegen generate --spec project.yml`):** regenerou limpo, **EXIT 0**, sem erros, com `StackHomeCore` + `StackSecretsWindows` no grafo.
+- **TC-059 / D6 (build + suíte iOS):** `xcodebuild build` (scheme `StackConnect Development`, iPhone 17/iOS 26.x) → **BUILD SUCCEEDED**; `xcodebuild test` → **`** TEST SUCCEEDED **`, 60/60, 0 falhas**. Único warning é pré-existente e não relacionado (versão da widget extension 1.0 vs app 2.0.0).
+- **Suítes dos packages (bônus, mesmo tip):** `StackHomeCore` **37/37**, `StackSecretsWindows` **26/26** — ambas EXIT 0, casando com o baseline.
+- **US-010 AC-2/AC-7 atendidas:** app iOS compila + suíte Home/Sync/ViewModel/widget passa, comportamento idêntico ao baseline; `xcodegen` regenera limpo com os novos packages.
+- Follow-ups não-bloqueantes (§ abaixo) deixados como estão (não introduzem regressão): `AppStatusCategorizerTests` duplicado no iOS, warning Swift 6 em `RecentReviewsWidgetTests.swift:10`, `HomeViewModelLog` dead code no core.
+
+### ⬜ Restante do port
+- Bloco A **fechado**. Próximo: Blocos C/D/E. **Caminho crítico:** ~~T-A9~~ → ~~T-A10~~ → ~~T-A11~~ → ~~T-B2~~ → ~~T-B4~~ → T-C1 → T-C2 → T-C3 → T-E3 → T-E4.
 
 ### ✅ T-B1→T-B4 FEITAS E VALIDADAS NA VM (a janela da Home abre e renderiza — sessão 2026-06-07) — primeira tela funcional da Home
 **🎉 Validado na VM Windows real:** `.\Test-WindowsPort.ps1 -Pull -SkipSDK -CleanGui -RunGui` → gate 6 (build do shell da Home + StackHomeCore) PASS e gate 7 (`-RunGui`) abriu a janela na tela. Primeira tela de UI do port rodando no Windows.
@@ -86,7 +93,7 @@ Os agentes globais (`~/.claude/agents/`) foram atualizados:
 2. Corrigir warning de Swift 6 concurrency em `RecentReviewsWidgetTests.swift:10` (`maxReviews` main-actor-isolated acessado de autoclosure não-isolada).
 
 ### ▶️ Para retomar
-Dizer **"continue o desenvolvimento"** → rodar a **T-A11** (regressão iOS, gate D6) para fechar o Bloco A; depois Bloco B (precisa da VM). Push de `experiment/windows` em sincronia (`cb91ae2`, == origin).
+Dizer **"continue o desenvolvimento"** → Bloco A está **fechado** (T-A11 / gate D6 verde). Seguir para os Blocos C/D/E (widgets reais, alertas, loading, gates de VM). Push de `experiment/windows` em sincronia (`cb91ae2`, == origin).
 
 ---
 
