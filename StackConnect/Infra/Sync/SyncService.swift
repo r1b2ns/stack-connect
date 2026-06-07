@@ -17,8 +17,9 @@ import UserNotifications
 //     `SyncService<AppleCredentials>`, subscribes to its `onStateChanged`
 //     callback, and republishes `state` via `@Published` so the existing
 //     `HomeViewModel`/`AllReviewsViewModel` Combine bindings (`$state`) and the
-//     SwiftUI banner keep working unchanged. `HomeViewModel` migrates to core in
-//     T-A10; until then this adapter is the seam.
+//     SwiftUI banner keep working unchanged. As of T-A10 the adapter also
+//     conforms to `HomeSyncObserving` so the now-core `HomeViewModel` consumes
+//     it as its sync dependency.
 //  2. `AppleSyncSideEffects` — the concrete `SyncSideEffects` conformance that
 //     performs the Apple-only effects the core deliberately abstracts away:
 //     WidgetKit timeline reloads, widget icon preloading, and the "fake push"
@@ -40,6 +41,12 @@ final class SyncService: ObservableObject {
 
     private let core: StackHomeCore.SyncService<AppleCredentials>
 
+    /// Extra observer registered by the core `HomeViewModel` via
+    /// `HomeSyncObserving.observeSyncState`. The adapter already owns the core
+    /// service's single `onStateChanged` slot to drive `@Published state`, so it
+    /// multiplexes that one callback out to this observer too.
+    private var homeStateObserver: ((SyncState) -> Void)?
+
     init(
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
@@ -57,7 +64,9 @@ final class SyncService: ObservableObject {
         // Mirror the initial snapshot, then republish every transition.
         state = core.state
         core.onStateChanged = { [weak self] newState in
-            self?.state = newState
+            guard let self else { return }
+            self.state = newState
+            self.homeStateObserver?(newState)
         }
     }
 
@@ -66,6 +75,25 @@ final class SyncService: ObservableObject {
     @discardableResult
     func syncAll(mode: SyncMode = .full) -> Task<Void, Never> {
         core.syncAll(mode: mode)
+    }
+}
+
+// MARK: - HomeSyncObserving
+
+/// Lets the migrated core `HomeViewModel` consume this adapter as its sync
+/// dependency. It observes through the adapter (which already republishes via
+/// `@Published`) rather than touching the core service's `onStateChanged` slot
+/// directly, so the two consumers don't contend for it.
+extension SyncService: HomeSyncObserving {
+    var syncState: SyncState { state }
+
+    @discardableResult
+    func triggerSync() -> Task<Void, Never> {
+        syncAll()
+    }
+
+    func observeSyncState(_ onChange: @escaping (SyncState) -> Void) {
+        homeStateObserver = onChange
     }
 }
 

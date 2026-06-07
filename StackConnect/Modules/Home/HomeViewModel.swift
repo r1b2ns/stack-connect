@@ -1,5 +1,28 @@
-import Combine
 import Foundation
+import StackHomeCore
+#if canImport(Combine)
+import Combine
+#endif
+
+// The Home dashboard logic now lives in StackHomeCore (Foundation-pure,
+// `StackHomeCore.HomeViewModel`, T-A10): state shaping, manual + auto sync
+// orchestration, account-expiration precedence, widget add/remove/reorder, and
+// widget-configuration load+save via `KeyStorable`. This file keeps only the
+// iOS seam:
+//
+//  - `HomeUiState` re-exports the core UI state value type so the SwiftUI views
+//    and `HomeViewModelProtocol` keep their existing name.
+//  - `HomeViewModel` — a thin `ObservableObject` adapter that owns a core
+//    `HomeViewModel`, republishes its `state` via `@Published uiState`, and
+//    forwards intents. The SwiftUI Home view / CustomizeWidgets sheet observe
+//    `$uiState` exactly as before (US-010 AC-2). Widgets are built by the iOS
+//    `HomeWidgetRegistry` (observable adapters) and injected into core via its
+//    `widgetFactory`, so core never references the registry.
+
+// MARK: - UiState
+
+/// iOS alias for the Foundation-pure core Home UI state.
+typealias HomeUiState = StackHomeCore.HomeUiState
 
 // MARK: - Protocol
 
@@ -15,36 +38,18 @@ protocol HomeViewModelProtocol: ObservableObject {
     func availableWidgetKinds() -> [HomeWidgetKind]
 }
 
-// MARK: - UiState
-
-struct HomeUiState {
-    var providers: [ProviderType] = ProviderType.allCases.filter { $0 != .googlePlay }
-    var widgets: [any HomeWidget] = []
-    var isLoading = false
-    var syncState = SyncState()
-    var expiredAccount: AccountModel?
-    var showExpiredAlert = false
-    var expiringSoonAccount: AccountModel?
-    var showExpiringSoonAlert = false
-}
-
-// MARK: - Implementation
+// MARK: - iOS adapter
 
 @MainActor
 final class HomeViewModel: HomeViewModelProtocol {
 
-    @Published var uiState = HomeUiState()
+    /// Republished snapshot of the core view model's `HomeUiState`. Kept in sync
+    /// via the core's `onStateChanged` callback. `@Published` preserves the
+    /// `$uiState` Combine publisher the SwiftUI views bind to (incl. the two-way
+    /// `$uiState.showExpiredAlert` alert bindings).
+    @Published var uiState: HomeUiState
 
-    private let storage: PersistentStorable
-    private let keychain: KeyStorable
-    private let preferences: KeyStorable
-    private let syncService: SyncService
-    private var cancellables = Set<AnyCancellable>()
-
-    private static let widgetsStorageKey = "home.widget.configurations"
-
-    /// Accounts already warned about upcoming expiration this session (avoids repeat alerts).
-    private var warnedAccountIds: Set<String> = []
+    private let core: StackHomeCore.HomeViewModel
 
     init(
         storage: PersistentStorable? = nil,
@@ -52,99 +57,47 @@ final class HomeViewModel: HomeViewModelProtocol {
         preferences: KeyStorable = UserDefaultsStorable(),
         syncService: SyncService = .shared
     ) {
-        self.storage = storage ?? SwiftDataStorable.shared
-        self.keychain = keychain
-        self.preferences = preferences
-        self.syncService = syncService
-
-        loadWidgetConfigurations()
-
-        syncService.$state
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] newState in
-                guard let self else { return }
-                let previousTimestamp = self.uiState.syncState.lastSyncedAt
-                self.uiState.syncState = newState
-                if newState.lastSyncedAt != previousTimestamp {
-                    Task { await self.loadDashboard() }
-                }
+        let resolvedStorage: any PersistentStorable = storage ?? SwiftDataStorable.shared
+        core = StackHomeCore.HomeViewModel(
+            storage: resolvedStorage,
+            preferences: preferences,
+            sync: syncService,
+            widgetFactory: { config in
+                HomeWidgetRegistry.make(for: config, storage: resolvedStorage)
             }
-            .store(in: &cancellables)
+        )
+        // Mirror the initial snapshot, then republish every change.
+        uiState = core.state
+        core.onStateChanged = { [weak self] newState in
+            self?.uiState = newState
+        }
     }
 
     func triggerSync() {
-        syncService.syncAll()
+        core.triggerSync()
     }
 
     func refresh() async {
-        await syncService.syncAll().value
-        await loadDashboard()
+        await core.refresh()
     }
 
     func loadDashboard() async {
-        uiState.isLoading = true
-        defer { uiState.isLoading = false }
-
-        await reloadWidgets()
-        await checkExpiredAccounts()
+        await core.loadDashboard()
     }
-
-    // MARK: - Account Expiration
-
-    private func checkExpiredAccounts() async {
-        let accounts: [AccountModel] = (try? await storage.fetchAll(AccountModel.self)) ?? []
-        if let expired = accounts.first(where: { $0.isExpired }) {
-            uiState.expiredAccount = expired
-            uiState.showExpiredAlert = true
-        } else if let expiringSoon = accounts.first(where: { $0.isExpiringSoon && !warnedAccountIds.contains($0.id) }) {
-            warnedAccountIds.insert(expiringSoon.id)
-            uiState.expiringSoonAccount = expiringSoon
-            uiState.showExpiringSoonAlert = true
-        }
-    }
-
-    // MARK: - Widgets
 
     func addWidget(_ kind: HomeWidgetKind) {
-        guard !uiState.widgets.contains(where: { $0.kind == kind }) else { return }
-        let config = HomeWidgetConfiguration(kind: kind)
-        let widget = HomeWidgetRegistry.make(for: config, storage: storage)
-        uiState.widgets.append(widget)
-        saveWidgetConfigurations()
-        Task { await widget.load() }
+        core.addWidget(kind)
     }
 
     func removeWidget(id: UUID) {
-        uiState.widgets.removeAll { $0.id == id }
-        saveWidgetConfigurations()
+        core.removeWidget(id: id)
     }
 
     func moveWidgets(from source: IndexSet, to destination: Int) {
-        uiState.widgets.move(fromOffsets: source, toOffset: destination)
-        saveWidgetConfigurations()
+        core.moveWidgets(from: source, to: destination)
     }
 
     func availableWidgetKinds() -> [HomeWidgetKind] {
-        let active = Set(uiState.widgets.map { $0.kind })
-        return HomeWidgetKind.allCases.filter { !active.contains($0) }
-    }
-
-    private func loadWidgetConfigurations() {
-        let configurations: [HomeWidgetConfiguration] = preferences.object(forKey: Self.widgetsStorageKey)
-            ?? HomeWidgetRegistry.defaultConfigurations
-        uiState.widgets = configurations.map { config in
-            HomeWidgetRegistry.make(for: config, storage: storage)
-        }
-    }
-
-    private func saveWidgetConfigurations() {
-        let configurations = uiState.widgets.map { $0.configuration }
-        preferences.setObject(configurations, forKey: Self.widgetsStorageKey)
-    }
-
-    private func reloadWidgets() async {
-        for widget in uiState.widgets {
-            await widget.load()
-        }
+        core.availableWidgetKinds()
     }
 }
