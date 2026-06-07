@@ -1,14 +1,16 @@
 import StackHomeCore
 import SwiftUI
 
+/// Chrome around a single Home widget: padding, gray card background, rounded
+/// border. The widget's content view is produced by `HomeWidgetViewFactory`
+/// (T-A7), which dispatches on `HomeWidgetKind` — replacing the interim
+/// `HomeWidgetViewProviding.makeView()` bridge.
 struct HomeWidgetContainerView: View {
 
-    // Interim: takes the iOS-only view-providing widget (T-A5). Reverts to a
-    // `HomeWidgetViewFactory` dispatch in T-A7.
-    let widget: any HomeWidgetViewProviding
+    let widget: any HomeWidget
 
     var body: some View {
-        widget.makeView()
+        HomeWidgetViewFactory.build(for: widget)
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.gray.opacity(0.1))
