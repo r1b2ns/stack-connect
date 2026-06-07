@@ -108,17 +108,23 @@ struct WindowsRecentReviewsWidgetView: View {
 
     // MARK: - Relative date
 
-    /// Foundation's `RelativeDateTimeFormatter` (e.g. "2 days ago"), the
-    /// cross-platform stand-in for iOS SwiftUI's `Text(date, style: .relative)`,
-    /// which SwiftCrossUI has no equivalent for. This is a Foundation API, not a
-    /// reimplementation of date logic.
-    private static let relativeFormatter: RelativeDateTimeFormatter = {
+    /// Returns a short relative date string (e.g. "2h ago").
+    /// `RelativeDateTimeFormatter` is Apple-only; the Windows/Linux build uses a
+    /// manual fallback so no Darwin API leaks into swift-corelibs-foundation.
+    private static func relativeDate(_ date: Date) -> String {
+        #if canImport(Darwin)
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
-        return formatter
-    }()
-
-    private static func relativeDate(_ date: Date) -> String {
-        relativeFormatter.localizedString(for: date, relativeTo: Date())
+        return formatter.localizedString(for: date, relativeTo: Date())
+        #else
+        let seconds = Int(Date().timeIntervalSince(date))
+        switch seconds {
+        case ..<60:      return "just now"
+        case ..<3_600:   return "\(seconds / 60)m ago"
+        case ..<86_400:  return "\(seconds / 3_600)h ago"
+        case ..<604_800: return "\(seconds / 86_400)d ago"
+        default:         return "\(seconds / 604_800)w ago"
+        }
+        #endif
     }
 }
