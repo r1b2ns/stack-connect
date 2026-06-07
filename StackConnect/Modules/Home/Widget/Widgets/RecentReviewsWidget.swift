@@ -2,49 +2,34 @@ import Combine
 import StackHomeCore
 import SwiftUI
 
+/// iOS observable adapter over the Foundation-pure
+/// `StackHomeCore.RecentReviewsWidget`.
+///
+/// T-A6 moved the pure `load()` logic + typed result (`RecentReviewsWidgetData`,
+/// capped at 5 reviews) into core. This wrapper republishes the result for
+/// SwiftUI and keeps the interim `HomeWidgetViewProviding.makeView()` bridge
+/// alive until T-A7.
 @MainActor
 final class RecentReviewsWidget: HomeWidget, HomeWidgetViewProviding, ObservableObject {
 
     static let kind: HomeWidgetKind = .recentReviews
 
-    let configuration: HomeWidgetConfiguration
+    var configuration: HomeWidgetConfiguration { core.configuration }
 
-    @Published private(set) var reviews: [HomeRecentReview] = []
-    @Published private(set) var accountsMap: [String: AccountModel] = [:]
+    @Published private(set) var data = RecentReviewsWidgetData()
     @Published private(set) var isLoading: Bool = false
 
-    private let storage: PersistentStorable
+    private let core: StackHomeCore.RecentReviewsWidget
 
     init(configuration: HomeWidgetConfiguration, storage: PersistentStorable) {
-        self.configuration = configuration
-        self.storage = storage
+        self.core = StackHomeCore.RecentReviewsWidget(configuration: configuration, storage: storage)
     }
 
     func load() async {
         isLoading = true
-        defer { isLoading = false }
-
-        do {
-            let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
-            // Exclude archived apps so their reviews never appear in the widget.
-            let active = allApps.filter { !$0.isArchived }
-            let appById = Dictionary(uniqueKeysWithValues: active.map { ($0.id, $0) })
-            let allReviews: [CustomerReviewModel] = try await storage.fetchAll(CustomerReviewModel.self)
-            reviews = allReviews
-                .compactMap { review -> HomeRecentReview? in
-                    guard let appId = review.appId, let app = appById[appId] else { return nil }
-                    return HomeRecentReview(review: review, app: app)
-                }
-                .sorted { (a, b) in
-                    (a.review.createdDate ?? .distantPast) > (b.review.createdDate ?? .distantPast)
-                }
-                .prefix(5)
-                .map { $0 }
-            accountsMap = await HomeWidgetDataLoader.loadAccounts(storage: storage)
-        } catch {
-            Log.print.error("[Widget][RecentReviews] Failed to load reviews: \(error.localizedDescription)")
-            reviews = []
-        }
+        await core.load()
+        data = core.data
+        isLoading = false
     }
 
     func makeView() -> AnyView {
@@ -64,22 +49,22 @@ private struct RecentReviewsWidgetView: View {
             HomeWidgetSectionHeader(
                 icon: "star.bubble.fill",
                 title: String(localized: "Recent Reviews"),
-                count: widget.reviews.count,
+                count: widget.data.reviews.count,
                 tint: .yellow
             )
 
-            if widget.reviews.isEmpty {
+            if widget.data.reviews.isEmpty {
                 HomeWidgetEmptyRow(
                     icon: "clock.arrow.circlepath",
                     text: String(localized: "Reviews will appear after the next sync")
                 )
             } else {
-                ForEach(Array(widget.reviews.enumerated()), id: \.element.id) { index, item in
+                ForEach(Array(widget.data.reviews.enumerated()), id: \.element.id) { index, item in
                     Button {
                         coordinator.navigateToReviewDetail(
                             review: item.review,
                             appName: item.app.name,
-                            account: HomeWidgetDataLoader.account(for: item.app, in: widget.accountsMap)
+                            account: HomeWidgetDataLoader.account(for: item.app, in: widget.data.accountsMap)
                         )
                     } label: {
                         HomeReviewRowView(item: item)
@@ -87,7 +72,7 @@ private struct RecentReviewsWidgetView: View {
                     .buttonStyle(.borderless)
                     .foregroundStyle(.primary)
 
-                    if index < widget.reviews.count - 1 {
+                    if index < widget.data.reviews.count - 1 {
                         Divider()
                     }
                 }
