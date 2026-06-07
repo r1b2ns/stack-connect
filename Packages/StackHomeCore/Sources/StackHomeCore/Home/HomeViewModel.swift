@@ -114,6 +114,12 @@ public final class HomeViewModel {
     /// repeat alerts).
     private var warnedAccountIds: Set<String> = []
 
+    /// Expired accounts the user has dismissed this session. Once dismissed
+    /// (US-005 AC-3 — "Cancel → not shown again for that account this session")
+    /// the expired banner is not re-surfaced for that account on subsequent
+    /// `loadDashboard()` calls until the app restarts.
+    private var dismissedExpiredAccountIds: Set<String> = []
+
     public init(
         storage: PersistentStorable,
         preferences: KeyStorable,
@@ -176,7 +182,7 @@ public final class HomeViewModel {
     /// expiring-soon warning (once per account per session).
     private func checkExpiredAccounts() async {
         let accounts: [AccountModel] = (try? await storage.fetchAll(AccountModel.self)) ?? []
-        if let expired = accounts.first(where: { $0.isExpired }) {
+        if let expired = accounts.first(where: { $0.isExpired && !dismissedExpiredAccountIds.contains($0.id) }) {
             state.expiredAccount = expired
             state.showExpiredAlert = true
         } else if let expiringSoon = accounts.first(where: { $0.isExpiringSoon && !warnedAccountIds.contains($0.id) }) {
@@ -184,6 +190,27 @@ public final class HomeViewModel {
             state.expiringSoonAccount = expiringSoon
             state.showExpiringSoonAlert = true
         }
+    }
+
+    /// Dismisses the expired-account banner (US-005 AC-3). Records the account
+    /// so it is not re-surfaced this session. Mirrors the effect of the iOS
+    /// `.alert` `isPresented` binding flipping to `false` on Cancel; on Windows
+    /// the inline banner calls this explicitly.
+    public func dismissExpiredAlert() {
+        if let id = state.expiredAccount?.id {
+            dismissedExpiredAccountIds.insert(id)
+        }
+        state.showExpiredAlert = false
+        state.expiredAccount = nil
+    }
+
+    /// Dismisses the expiring-soon banner (US-005 AC-6). The account is already
+    /// recorded in `warnedAccountIds` when the warning is first surfaced, so it
+    /// is not re-warned this session; this just hides the banner. Mirrors the
+    /// iOS `.alert` `isPresented` binding flipping to `false` on OK.
+    public func dismissExpiringSoonAlert() {
+        state.showExpiringSoonAlert = false
+        state.expiringSoonAccount = nil
     }
 
     // MARK: - Widgets (US-008)
