@@ -5,7 +5,7 @@ lógica e reescrevendo só a UI.
 
 **Estado:** Fases 0–3 **concluídas e validadas numa VM Windows real** (Swift 6.3.2,
 aarch64-windows-msvc). Toda a camada não-UI compila e roda no Windows.
-**Fase 4 — Bloco A ✅ (A1+A2), B1a ✅ e B1b-1 ✅ validados na VM.** Os 6 gates passam **e a janela GUI SwiftCrossUI/WinUI agora ABRE e renderiza** (2026-06-05). O bloqueio de symlinks do git foi resolvido (`core.symlinks false` / Developer Mode). **Rodar a janela foi destravado** (eram 2 bloqueios de runtime, não compilação): (1) bootstrap do **Windows App Runtime 1.5** falhava → resolvido dando **identidade de pacote** ao app (manifesto MSIX solto, Developer Mode) → swift-winui pula o bootstrapper; (2) `swift_Concurrency.dll` faltava no app ativado → resolvido **bundlando o runtime Swift** ao lado do `.exe`. Tudo em `StackConnectWindowsApp/Packaging/` (`Register-StackConnectApp.ps1`). Ver §8. Próximo: **B1b-2** (1ª tela: agora é a **HOME** em paridade com iOS — ver §0-BIS). HEAD do port `cced8ae` (pushado); refinamento da Home avançando em `experiment/windows` (ver §0-BIS).
+**Fase 4 — Bloco A ✅ (A1+A2), B1a ✅ e B1b-1 ✅ validados na VM.** Os 6 gates passam **e a janela GUI SwiftCrossUI/WinUI agora ABRE e renderiza** (2026-06-05). O bloqueio de symlinks do git foi resolvido (`core.symlinks false` / Developer Mode). **Rodar a janela foi destravado** (eram 2 bloqueios de runtime, não compilação): (1) bootstrap do **Windows App Runtime 1.5** falhava → resolvido dando **identidade de pacote** ao app (manifesto MSIX solto, Developer Mode) → swift-winui pula o bootstrapper; (2) `swift_Concurrency.dll` faltava no app ativado → resolvido **bundlando o runtime Swift** ao lado do `.exe`. Tudo em `StackConnectWindowsApp/Packaging/` (`Register-StackConnectApp.ps1`). Ver §8. **B1b-2 FEITO E VALIDADO NA VM (2026-06-07): o shell da tela HOME (T-B1..T-B4) abre e renderiza** — ver §0-BIS. HEAD do port `b0917cc` (pushado em `experiment/windows`).
 
 > ⚠️ **Leia o §0-BIS abaixo primeiro** — é a sessão mais recente (2026-06-07) e descreve a entrega da **extração do StackHomeCore** (refinamento da tela Home), que é onde o desenvolvimento parou.
 
@@ -45,7 +45,9 @@ Saúde: iOS **60/60** verde o tempo todo; `StackHomeCore` **21/21** (pós-T-A9);
 - **T-A11** — verificar paridade de regressão iOS (gate D6) (⇠ T-A7 + T-A10). **Última task do Bloco A**.
 - Depois: Blocos C/D/E. **Caminho crítico:** ~~T-A9~~ → ~~T-A10~~ → **T-A11** → ~~T-B2~~ → ~~T-B4~~ → T-C1 → T-C2 → T-C3 → T-E3 → T-E4.
 
-### ✅ T-B1→T-B4 FEITAS (Mac, compilação validada — sessão 2026-06-07) — primeira tela funcional da Home
+### ✅ T-B1→T-B4 FEITAS E VALIDADAS NA VM (a janela da Home abre e renderiza — sessão 2026-06-07) — primeira tela funcional da Home
+**🎉 Validado na VM Windows real:** `.\Test-WindowsPort.ps1 -Pull -SkipSDK -CleanGui -RunGui` → gate 6 (build do shell da Home + StackHomeCore) PASS e gate 7 (`-RunGui`) abriu a janela na tela. Primeira tela de UI do port rodando no Windows.
+
 Construído o shell funcional da Home Windows em `StackConnectWindowsApp/Sources/StackConnectWindowsApp/` (substitui a janela-contador):
 - **T-B1** `App/WindowsHomeCoordinator.swift` — `WindowsRoute` enum + pilha de rotas (Home = pilha vazia), push/pop/current, `ObservableObject` (SwiftCrossUI).
 - **T-B2** `App/AppPaths.swift` + `App/Bootstrap.swift` (replicados do headless — exe não pode ser dep de lib): `AppEnvironment` = `SQLitePersistentStorable` (`%APPDATA%\StackConnect\store.sqlite`) + `WindowsFilePreferencesStorable` (prefs JSON). `App/WindowsHomeModel.swift` — adapter `SwiftCrossUI.ObservableObject` sobre o core `HomeViewModel` (republica `state` via `@Published`); `WindowsNoOpSyncObserver: HomeSyncObserving` (sem sync Apple ao vivo na v1, D7); `widgetFactory` → tipos de dado de widget do core. `App/StackConnectApp.swift` + `App/RootView.swift` — `WindowGroup` 900×660 + route switch; rotas empurradas = placeholders rotulados com Back funcional.
@@ -53,14 +55,15 @@ Construído o shell funcional da Home Windows em `StackConnectWindowsApp/Sources
 - **T-B4** `Home/WindowsHomeView.swift` — `ScrollView`+`VStack` capado em 860px: toolbar + slot de banner de sync + cards de provider tappáveis (→ `.accountsList`) + card Settings (→ `.settings`) + seção de widgets (empty-state → `.customizeWidgets`, ou lista dos ativos). Offline-first: `loadDashboard()` no `.task`.
 - `Package.swift` ganhou deps diretas: `StackProtocols`, `StackStorageSQLite`, `StackSecretsWindows`.
 - **`swift build` no Mac (backend AppKit) = Build complete, EXIT 0, 0 warnings.** Armadilha resolvida: no host macOS o Foundation reexporta `Published`/`ObservableObject` do Combine → ambiguidade; qualificado como `SwiftCrossUI.Published`/`SwiftCrossUI.ObservableObject` (inócuo no Windows, que não tem Combine).
-- **NÃO incluído** (continua pendente): T-B5 (cards de provider completos), T-B6 (banner real), T-C* (views reais dos 3 widgets), T-D* (alertas/loading), T-E3 (7º gate). São placeholders/slots por enquanto.
-- ⚠️ **Ainda NÃO rodado na VM.** Para testar: commit/push → na VM `git pull` → `swift run --scratch-path $env:USERPROFILE\.scwapp StackConnectWindowsApp` (com `git config --global core.symlinks false` e `$env:SCUI_DEFAULT_BACKEND="WinUIBackend"`). Mudou o `Package.swift`/deps → resolução limpa (`-Clean` ou apagar `~/.scwapp` + `StackConnectWindowsApp/Package.resolved`).
+- **NÃO incluído** (continua pendente): T-B5 (cards de provider completos), T-B6 (banner real), T-C* (views reais dos 3 widgets), T-D* (alertas/loading). São placeholders/slots por enquanto.
+- **Gate da VM (≈T-E3) atualizado no `Test-WindowsPort.ps1`** (commit `b0917cc`): o gate 6 agora builda o shell da Home + `StackHomeCore`; o gate 7 (`-RunGui`) registra identidade + abre a janela. Novo `-CleanGui` (clean leve só do pacote da GUI, sem rebuildar o SDK) p/ quando o `Package.swift` da GUI mudar. Comando de teste: `.\Test-WindowsPort.ps1 -Pull -SkipSDK -CleanGui -RunGui`. (Um 7º gate **separado e dedicado** ainda pode ser formalizado, mas o build+launch do shell já está coberto pelos gates 6+7.)
+- **Commits:** app `1c512b7` (T-B1..T-B4) + script `b0917cc`. Ambos em `origin/experiment/windows`.
 
-### 🪟 Algo para testar na VM Windows agora (validação de COMPILAÇÃO, não de UI)
-Ainda **não há tela Home no Windows** (isso é o Bloco B). Mas o `StackHomeCore` cresceu (`SyncService` da T-A9 + `HomeViewModel` da T-A10) e **nunca foi compilado de verdade num toolchain Windows** — só validado como Foundation-pure no Mac. O pacote GUI `StackConnectWindowsApp` **já declara `StackHomeCore` como dependência** (`Package.swift:30/38`; o source da GUI ainda **não importa** — é a janela-contador), então o **gate 6 do `Test-WindowsPort.ps1` recompila o `StackHomeCore`** como parte do build da GUI. É a validação real de **US-010 AC-1/AC-3 + TC-056** que o QA marcou BLOCKED.
-- Rodar na VM: `git pull` → `.\Test-WindowsPort.ps1 -SkipSDK` (6 gates; o 6 cobre o core ampliado).
-- ⚠️ **T-A10 ainda NÃO está em `experiment/windows`** (só na PR #35). Um `git pull` hoje valida **até a T-A9**. Para cobrir o `HomeViewModel` da T-A10, mergear a #35 antes (rodar os gates) ou dar checkout em `feat/T-A10-homeviewmodel-core`.
-- Teste comportamental/visual no Windows só vem com o **Bloco B (T-B2)**, que injeta o core `HomeViewModel` na janela; aí o gate 7 (`-RunGui`) renderiza a Home.
+### 🪟 Testar na VM Windows (validação de UI — a Home roda)
+**Superada a fase só-compilação:** T-A10 está mergeada (`cb91ae2`) e o shell da Home (T-B1..T-B4) **abre e renderiza na VM**. O gate 6 recompila o `StackHomeCore` como parte do build da GUI (cobre US-010 AC-1/AC-3 + TC-056), e o gate 7 (`-RunGui`) abre a janela.
+- **Comando:** `.\Test-WindowsPort.ps1 -Pull -SkipSDK -CleanGui -RunGui` (Developer Mode ON p/ o `-RunGui`).
+- `-CleanGui` faz clean leve só do pacote da GUI (pega mudanças no `Package.swift` sem rebuildar o SDK). `-Clean` continua sendo o clean total.
+- O que renderiza hoje: toolbar (Sync / Customize Widgets), cards ASC + Firebase + Settings (tappáveis → placeholder com `< Back`), empty-state de widgets; dados lidos do SQLite em `%APPDATA%\StackConnect`. Cards/widgets reais e alertas = T-B5/T-B6/T-C*/T-D* (pendentes).
 
 ### ❗ Falso-positivo de QA registrado (não repetir como defeito)
 O QA da T-A9 reprovou alegando que o `project.pbxproj` referenciava 2 arquivos deletados → build iOS quebraria em checkout limpo. **É falso-positivo:** `StackConnect.xcodeproj/` é **gitignored** (`.gitignore:10`), zero `pbxproj` versionado; o projeto é gerado on-the-fly por `xcodegen generate` (fluxo documentado no CLAUDE.md). O agente de QA bateu num projeto **gerado** (não-versionado) desatualizado no checkout dele antes de rodar o xcodegen, e atribuiu ao commit. Vale para **todas** as tasks, não é defeito de nenhuma. Após `xcodegen generate` tudo fica verde. → overruled, T-A9 seguiu para PO.
@@ -143,7 +146,7 @@ Fork (`windows-support`): `2990e673` (OpenCombine condicional) → `885bacc4` (*
 
 ---
 
-## 2. O que já funciona no Windows (6 gates do `Test-WindowsPort.ps1`)
+## 2. O que já funciona no Windows (7 gates do `Test-WindowsPort.ps1`)
 
 Rodar na VM: `.\Test-WindowsPort.ps1 -Pull -Clean` (use `-SkipSDK` p/ pular o build longo do SDK + a bootstrap do app que dependem do fork).
 
@@ -154,8 +157,8 @@ Rodar na VM: `.\Test-WindowsPort.ps1 -Pull -Clean` (use `-SkipSDK` p/ pular o bu
 | 3 | Credential store (`WindowsPoC` → `WindowsCredentialStoreProbe`) | **PASS** | **A2:** `WindowsCredentialStorable` via `KeyStorable` |
 | 4 | SDK ASC (`ASCBuildProbe` → `swift build`) | **PASS** (~280 s) | `appstoreconnect-swift-sdk` compila no Windows |
 | 5 | App headless (`StackConnectWindows` → `swift run`) | **PASS** | **B1a:** stack não-UI inteira linka num exe + bootstrap abre o store em `%APPDATA%` |
-| 6 | GUI (`StackConnectWindowsApp` → `swift build`) | **PASS** (build) | **B1b:** SwiftCrossUI/WinUI compila no Windows. Precisa de **dois** ajustes: symlinks (`core.symlinks=false` / Developer Mode) **e** `SCUI_DEFAULT_BACKEND=WinUIBackend` (senão o `DefaultBackend` arrasta o grafo GTK e falha em `gtk/gtk.h` num build limpo — ver §0) |
-| — | GUI **rodar** a janela | ✅ **PASS** | janela SwiftCrossUI/WinUI abre e renderiza — resolvido via identidade de pacote + bundle do runtime Swift (ver **§8**) |
+| 6 | GUI (`StackConnectWindowsApp` → `swift build`) | **PASS** (build) | **B1b-2:** SwiftCrossUI/WinUI compila no Windows — agora o **shell da Home (T-B1..T-B4) + `StackHomeCore`**, não mais a janela-contador. Precisa de **dois** ajustes: symlinks (`core.symlinks=false` / Developer Mode) **e** `SCUI_DEFAULT_BACKEND=WinUIBackend` (senão o `DefaultBackend` arrasta o grafo GTK e falha em `gtk/gtk.h` num build limpo — ver §0) |
+| 7 | GUI **rodar** a janela (`-RunGui`) | ✅ **PASS** | a **tela Home abre e renderiza** na VM (2026-06-07) — identidade de pacote + bundle do runtime Swift (ver **§8**) via `Register-StackConnectApp.ps1` |
 
 ### 4 armadilhas de portabilidade encontradas e resolvidas
 1. **`FoundationNetworking`** — `URLRequest`/`URLSession`/`HTTPURLResponse` ficam nesse módulo fora da Apple. Solução: `#if canImport(FoundationNetworking) import FoundationNetworking` (nos dois `APIProvider*`).
