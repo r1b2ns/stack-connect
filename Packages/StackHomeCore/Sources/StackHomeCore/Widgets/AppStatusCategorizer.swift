@@ -1,8 +1,19 @@
 import Foundation
 
-enum AppStatusCategorizer {
+/// Pure categorization of apps into the "In Review" and "Awaiting Release"
+/// buckets that back the Home widgets.
+///
+/// Foundation-pure (US-010): no UIKit/SwiftUI/WidgetKit imports. Shared by the
+/// iOS app and the Windows port. Implements the widget semantics for In Review
+/// (TC-033) and Awaiting Release phased grouping (TC-034).
+public enum AppStatusCategorizer {
 
-    static func categorize(
+    /// Splits apps into the In Review and Awaiting Release buckets.
+    ///
+    /// - `readyForSale` apps only count as awaiting release when they have an
+    ///   *active* or *paused* phased release (TC-034); a *complete* phased
+    ///   release is ignored.
+    public static func categorize(
         _ apps: [AppModel],
         phasedByAppId: [String: PhasedReleaseModel]
     ) -> (inReview: [AppModel], awaitingRelease: [AppModel]) {
@@ -34,7 +45,7 @@ enum AppStatusCategorizer {
     /// yields two entries. Each entry is a copy of the app with `appStoreState`,
     /// `platform` and `versionString` set to that platform's values. Falls back
     /// to the app's primary state when no per-platform data is available.
-    static func inReviewEntries(_ apps: [AppModel]) -> [AppModel] {
+    public static func inReviewEntries(_ apps: [AppModel]) -> [AppModel] {
         var result: [AppModel] = []
         for app in apps {
             if let platformVersions = app.platformVersions, !platformVersions.isEmpty {

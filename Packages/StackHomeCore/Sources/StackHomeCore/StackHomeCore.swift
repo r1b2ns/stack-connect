@@ -1,10 +1,11 @@
 import Foundation
 
-/// Namespace placeholder for the StackHomeCore module.
-///
-/// This skeleton exists so the library target builds and can be wired into
-/// both build systems (iOS via project.yml, Windows via
-/// StackConnectWindowsApp/Package.swift). The actual Home logic — value models,
-/// widget data types, the SyncService pipeline and the platform-agnostic
-/// HomeViewModel — is migrated in tasks T-A3…T-A10.
-public enum StackHomeCore {}
+// StackHomeCore — the Foundation-pure shared Home logic core.
+//
+// The original skeleton declared a placeholder `enum StackHomeCore {}` so the
+// empty target would compile. That has been removed: the module now carries
+// real public types (Home value models, widget value types + the pure
+// `HomeWidget` protocol, the 3 widget data types). The placeholder also
+// shadowed the module name, so `StackHomeCore.InReviewWidget` (the iOS
+// observable adapter qualifying the core type) failed to resolve — dropping it
+// lets module-qualified references resolve to the module.
