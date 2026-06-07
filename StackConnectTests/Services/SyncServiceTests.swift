@@ -8,18 +8,23 @@ final class SyncServiceTests: XCTestCase {
     private var sut: SyncService!
     private var mockStorage: MockPersistentStorable!
     private var mockKeychain: MockKeyStorable!
-    private var connections: [String: MockAppleAccountSyncing] = [:]
+    /// Sendable registry of per-issuer mock connections. The core
+    /// `appleConnectionFactory` is `@Sendable`, so the lookup captures this
+    /// thread-safe box rather than the MainActor-isolated test case. Tests keep
+    /// writing `connections["issuer"] = …` unchanged via its subscript.
+    private var connections: ConnectionRegistry!
 
     override func setUp() async throws {
         try await super.setUp()
         mockStorage = MockPersistentStorable()
         mockKeychain = MockKeyStorable()
-        connections = [:]
+        connections = ConnectionRegistry()
+        let registry = connections!
         sut = SyncService(
             storage: mockStorage,
             keychain: mockKeychain,
-            appleConnectionFactory: { [weak self] credentials in
-                self?.connections[credentials.issuerID] ?? MockAppleAccountSyncing()
+            appleConnectionFactory: { credentials in
+                registry[credentials.issuerID] ?? MockAppleAccountSyncing()
             }
         )
     }
@@ -28,6 +33,7 @@ final class SyncServiceTests: XCTestCase {
         sut = nil
         mockStorage = nil
         mockKeychain = nil
+        connections = nil
         try await super.tearDown()
     }
 
@@ -312,5 +318,21 @@ final class SyncServiceTests: XCTestCase {
             versionString: versionString,
             appId: appId
         )
+    }
+}
+
+// MARK: - Test support
+
+/// Thread-safe, `Sendable` registry of mock connections keyed by issuer id.
+/// Backs the `@Sendable appleConnectionFactory` so the lookup doesn't capture
+/// the MainActor-isolated test case. Preserves the `registry["issuer"] = …`
+/// subscript the tests already use.
+private final class ConnectionRegistry: @unchecked Sendable {
+    private var storage: [String: MockAppleAccountSyncing] = [:]
+    private let lock = NSLock()
+
+    subscript(issuerID: String) -> MockAppleAccountSyncing? {
+        get { lock.lock(); defer { lock.unlock() }; return storage[issuerID] }
+        set { lock.lock(); defer { lock.unlock() }; storage[issuerID] = newValue }
     }
 }
