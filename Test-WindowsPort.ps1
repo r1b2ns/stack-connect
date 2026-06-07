@@ -9,13 +9,28 @@
       3. Credential store - WindowsCredentialStorable through KeyStorable
       4. ASC SDK build    - does appstoreconnect-swift-sdk compile on Windows
       5. Windows app      - headless StackConnectWindows: whole non-UI stack links + bootstraps
-      6. Windows GUI      - StackConnectWindowsApp (SwiftCrossUI/WinUI) Home shell + StackHomeCore compile (build only)
+      6. Windows GUI      - StackConnectWindowsApp (SwiftCrossUI/WinUI) FULL Home (Blocks B+C+D) + StackHomeCore compile (build only)
       7. GUI screen test  - (only with -RunGui) register package identity + LAUNCH the Home window
 
-    The GUI gate (6) builds the real Home shell (T-B1..T-B4): the route stack,
-    the SQLite + file-prefs bootstrap, the shared StackHomeCore HomeViewModel, and
-    the toolbar / provider cards / widgets content. StackHomeCore is a dependency
-    of StackConnectWindowsApp, so this gate recompiles it as part of the GUI build.
+    The GUI gate (6) builds the COMPLETE Windows Home (T-E3), not just the
+    earlier shell - Blocks B, C and D are all part of the StackConnectWindowsApp
+    package, so a single `swift build` over the whole package compiles every
+    Home surface:
+      - Block B (T-B1..T-B6, US-011/US-001/US-002/US-003/US-004): the route
+        stack + WindowsHomeCoordinator, the SQLite + file-prefs DI bootstrap, the
+        toolbar, provider cards (incl. Settings cell) and the sync banner.
+      - Block C (T-C1..T-C3, US-006/US-007/US-008/US-009): the widget container +
+        empty state, the 3 widget views (In Review / Awaiting Release / Recent
+        Reviews) and the Customize Widgets full-screen panel.
+      - Block D (T-D1..T-D4, US-005/US-012): the inline alert banner (Expired /
+        Expiring Soon), the cold-start / loading state, the v1 navigation
+        placeholders (accountsList / settings / appDetail / reviewDetail /
+        allReviews / reimport) and the responsive 2-col->1-col reflow.
+    All of it builds against StackHomeCore (US-010 AC-3: the shared core compiles
+    when imported by StackConnectWindowsApp); StackHomeCore is a dependency of the
+    GUI package, so this gate recompiles it as part of the GUI build. The build is
+    over the whole package (no single product/target filter), so the entire Home
+    surface above is exercised on every run.
 
     With -RunGui, after gate 6 builds the GUI, the script runs
     StackConnectWindowsApp\Packaging\Register-StackConnectApp.ps1 to give the .exe
@@ -255,11 +270,17 @@ try {
         Write-Host "[SKIP] -SkipSDK was passed (depends on the SDK fork)" -ForegroundColor Yellow
     }
 
-    # SwiftCrossUI GUI (B1b-2): its own package, now hosting the real Home shell
-    # (T-B1..T-B4) over the shared StackHomeCore. Build only - `swift run` would
-    # open the window and block the script (use -RunGui to launch it). Independent
-    # of the SDK, so it runs even with -SkipSDK. Building it also recompiles
-    # StackHomeCore, which it depends on.
+    # SwiftCrossUI GUI (T-E3): its own package, now hosting the COMPLETE Windows
+    # Home (Blocks B+C+D) over the shared StackHomeCore - navigation + provider
+    # cards + sync banner (T-B1..T-B6), widget container + 3 widget views +
+    # Customize Widgets (T-C1..T-C3), and the alert banner / loading / v1 nav
+    # placeholders / responsive reflow (T-D1..T-D4). The build below is `swift
+    # build` over the ENTIRE StackConnectWindowsApp package (no product/target
+    # filter), so it compiles every one of those files in one pass - the full
+    # Home surface, not a subset. Build only - `swift run` would open the window
+    # and block the script (use -RunGui to launch it). Independent of the SDK, so
+    # it runs even with -SkipSDK. Building it also recompiles StackHomeCore, which
+    # it depends on (US-010 AC-3: core compiles when imported by the GUI app).
     #
     # SwiftCrossUI's transitive deps (jpeg, swift-java, swift-argument-parser)
     # contain symlinks that git on Windows refuses to check out by default
@@ -286,7 +307,7 @@ try {
     $env:SCUI_DEFAULT_BACKEND = "WinUIBackend"
 
     # To see the window: swift run --scratch-path $env:USERPROFILE\.scwapp StackConnectWindowsApp
-    $guiBuildName = "Windows GUI build (StackConnectWindowsApp Home shell + StackHomeCore)"
+    $guiBuildName = "Windows GUI build (StackConnectWindowsApp full Home B+C+D + StackHomeCore)"
     Invoke-Gate -Name $guiBuildName `
                 -WorkingDirectory (Join-Path $root "StackConnectWindowsApp") `
                 -SwiftArgs @("build", "--scratch-path", $scwAppScratch)
