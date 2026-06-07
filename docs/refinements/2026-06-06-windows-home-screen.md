@@ -9,12 +9,12 @@
 
 ## Delivery Status (2026-06-07)
 
-All 30 tasks across Blocks A–E are **delivered**. Blocks A–D were merged into `experiment/windows` in prior commits. **Block E status:**
+All 30 tasks across Blocks A–E are **delivered and merged**. No open PRs. All Block E tasks merged into `experiment/windows`:
 
 - **T-E1** (StackHomeCore unit tests) — **DONE** & merged via PR #44 (merge commit `c1cca0d`). All gates pass: Staff Review approved after 1 fix-loop (flaky Task.sleep resolved), QA suite PASS (56/56), PO accepted.
-- **T-E2** (SyncService gating tests) — Delivered on PR #45 (branch `feat/T-E2-syncservice-gating-tests`). StackHomeCore test suite green (51/51). PR is **OPEN**, awaiting review close-out (Staff Review returned 2 non-blocking should-fix items).
-- **T-E3** (full-Home GUI build gate in Test-WindowsPort.ps1) — Delivered on PR #46 (branch `feat/T-E3-gui-build-gate`). Branch synced with `experiment/windows` (clean diff). PR is **OPEN**, awaiting re-review (earlier false-positive resolved).
-- **T-E4** (VM end-to-end Home smoke) — **DONE** & **VM-validated** (2026-06-07). Home screen renders, navigation push/pop works, Customize Widgets configuration persists across restart (covers TC-090).
+- **T-E2** (SyncService gating tests) — **MERGED** via PR #45 (commit `aaad497`). StackHomeCore test suite green (51/51). **Follow-up note (non-blocking, merged):** Staff Review returned 2 should-fix items now merged unaddressed: (SF-1) test double `GatingInMemoryKeychain` is a null/no-op stub with misleading name; (SF-2) forbidden-import scan calls `ungatedImports(of: module, allowedGate: module, ...)`, too permissive (contradicts US-010 AC-1); should use `allowedGate: ""` (strict) for forbidden modules.
+- **T-E3** (full-Home GUI build gate in Test-WindowsPort.ps1) — **MERGED** via PR #46 (merge commit `d3b79de`). Branch synced with `experiment/windows`.
+- **T-E4** (VM end-to-end Home smoke) — **MERGED** via PR #47 (commit `2e9694c`). VM-validated (2026-06-07). Home screen renders, navigation push/pop works, Customize Widgets configuration persists across restart (covers TC-090). VM smoke test plan and enhanced Test-WindowsPort diagnostics added.
 
 **Fase 5** (packaging/distribution: MSIX installer, app icons, Windows code signing) remains future work — it is a prerequisite for release but not for Fase 4 completion.
 
