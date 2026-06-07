@@ -134,7 +134,10 @@ struct WindowsHomeView: View {
     private var widgetsSlot: some View {
         WindowsWidgetContainerView(
             widgets: model.state.widgets,
-            onAddWidgets: { coordinator.push(.customizeWidgets) }
+            onAddWidgets: { coordinator.push(.customizeWidgets) },
+            onSelectApp: { _ in coordinator.push(.appDetail) },
+            onSelectReview: { _ in coordinator.push(.reviewDetail) },
+            onSeeMoreReviews: { coordinator.push(.allReviews) }
         )
     }
 }
