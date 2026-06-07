@@ -1,17 +1,20 @@
 import Foundation
 
-struct AppStoreVersionModel: Codable, Identifiable, Hashable {
-    let id: String
-    let platform: AppPlatform?
-    var appStoreState: AppStoreState?
-    var appVersionState: String?
-    var versionString: String?
-    var copyright: String?
-    var releaseType: String?
-    var createdDate: Date?
-    let appId: String
+/// Foundation-pure value model for an App Store version. Migrated into
+/// StackHomeCore so the SDK-free `AppleAccountSyncing` protocol can reference it
+/// from core. `AppStoreState` already lives in core (AppModel.swift).
+public struct AppStoreVersionModel: Codable, Identifiable, Hashable, Sendable {
+    public let id: String
+    public let platform: AppPlatform?
+    public var appStoreState: AppStoreState?
+    public var appVersionState: String?
+    public var versionString: String?
+    public var copyright: String?
+    public var releaseType: String?
+    public var createdDate: Date?
+    public let appId: String
 
-    init(
+    public init(
         id: String,
         platform: AppPlatform? = nil,
         appStoreState: AppStoreState? = nil,

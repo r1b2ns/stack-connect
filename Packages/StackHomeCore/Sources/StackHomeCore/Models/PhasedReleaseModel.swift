@@ -1,13 +1,16 @@
 import Foundation
 
-struct PhasedReleaseModel: Codable, Identifiable, Hashable {
-    let id: String
-    var state: PhasedReleaseStatus?
-    var startDate: Date?
-    var totalPauseDuration: Int?
-    var currentDayNumber: Int?
+/// Foundation-pure value model for an App Store phased release. Migrated into
+/// StackHomeCore so the SDK-free `AppleAccountSyncing` protocol can reference it
+/// from core.
+public struct PhasedReleaseModel: Codable, Identifiable, Hashable, Sendable {
+    public let id: String
+    public var state: PhasedReleaseStatus?
+    public var startDate: Date?
+    public var totalPauseDuration: Int?
+    public var currentDayNumber: Int?
 
-    init(
+    public init(
         id: String,
         state: PhasedReleaseStatus? = nil,
         startDate: Date? = nil,
@@ -22,13 +25,13 @@ struct PhasedReleaseModel: Codable, Identifiable, Hashable {
     }
 }
 
-enum PhasedReleaseStatus: String, Codable, CaseIterable, Hashable {
+public enum PhasedReleaseStatus: String, Codable, CaseIterable, Hashable, Sendable {
     case inactive = "INACTIVE"
     case active = "ACTIVE"
     case paused = "PAUSED"
     case complete = "COMPLETE"
 
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .inactive: return String(localized: "Inactive")
         case .active:   return String(localized: "Active")
