@@ -28,6 +28,13 @@ let package = Package(
         // safe to add per the note above. StackHomeCore's manifest references
         // ../StackProtocols, which resolves under Packages/ alongside it.
         .package(path: "../Packages/StackHomeCore"),
+        // Storage protocols + the cross-platform persistence/secret backends the
+        // B2 bootstrap wires into the core HomeViewModel. All Foundation-pure
+        // (StackProtocols) or light C-target/Win32 packages already used by the
+        // headless StackConnectWindows exe — no heavy graph.
+        .package(path: "../Packages/StackProtocols"),
+        .package(path: "../Packages/StackStorageSQLite"),
+        .package(path: "../Packages/StackSecretsWindows"),
     ],
     targets: [
         .executableTarget(
@@ -36,6 +43,9 @@ let package = Package(
                 .product(name: "SwiftCrossUI", package: "swift-cross-ui"),
                 .product(name: "DefaultBackend", package: "swift-cross-ui"),
                 .product(name: "StackHomeCore", package: "StackHomeCore"),
+                .product(name: "StackProtocols", package: "StackProtocols"),
+                .product(name: "StackStorageSQLite", package: "StackStorageSQLite"),
+                .product(name: "StackSecretsWindows", package: "StackSecretsWindows"),
             ],
             path: "Sources/StackConnectWindowsApp"
         ),
