@@ -1,13 +1,18 @@
 import Foundation
 
-struct PhasedReleaseModel: Codable, Identifiable, Hashable {
-    let id: String
-    var state: PhasedReleaseStatus?
-    var startDate: Date?
-    var totalPauseDuration: Int?
-    var currentDayNumber: Int?
+/// Phased-release state for an App Store app version.
+///
+/// Foundation-pure value model shared by the iOS app and the Windows port.
+/// Drives the "Awaiting Release" widget's phased grouping (TC-034) and the
+/// iOS "Day N of 7" progress row.
+public struct PhasedReleaseModel: Codable, Identifiable, Hashable, Sendable {
+    public let id: String
+    public var state: PhasedReleaseStatus?
+    public var startDate: Date?
+    public var totalPauseDuration: Int?
+    public var currentDayNumber: Int?
 
-    init(
+    public init(
         id: String,
         state: PhasedReleaseStatus? = nil,
         startDate: Date? = nil,
@@ -22,13 +27,13 @@ struct PhasedReleaseModel: Codable, Identifiable, Hashable {
     }
 }
 
-enum PhasedReleaseStatus: String, Codable, CaseIterable, Hashable {
+public enum PhasedReleaseStatus: String, Codable, CaseIterable, Hashable, Sendable {
     case inactive = "INACTIVE"
     case active = "ACTIVE"
     case paused = "PAUSED"
     case complete = "COMPLETE"
 
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .inactive: return String(localized: "Inactive")
         case .active:   return String(localized: "Active")

@@ -31,5 +31,10 @@ let package = Package(
             ],
             path: "Sources/StackHomeCore"
         ),
+        .testTarget(
+            name: "StackHomeCoreTests",
+            dependencies: ["StackHomeCore"],
+            path: "Tests/StackHomeCoreTests"
+        ),
     ]
 )

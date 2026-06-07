@@ -1,57 +1,14 @@
+import StackHomeCore
 import SwiftUI
 
-// MARK: - Models
+// NOTE (T-A6): `HomeRecentReview`, `HomeWidgetDataLoader`, `AppStatusCategorizer`
+// and `PhasedReleaseModel` moved into the Foundation-pure `StackHomeCore`
+// package. The view-only platform grouping (which depends on the iOS-side
+// `AppPlatform` iconography) stays here.
 
-struct HomeRecentReview: Identifiable, Hashable {
-    let review: CustomerReviewModel
-    let app: AppModel
-    var id: String { review.id }
-}
+// MARK: - View-only Platform Grouping (iOS)
 
-// MARK: - Shared Data Loading
-
-enum HomeWidgetDataLoader {
-
-    static func loadAccounts(storage: PersistentStorable) async -> [String: AccountModel] {
-        do {
-            let accounts: [AccountModel] = try await storage.fetchAll(AccountModel.self)
-            var map: [String: AccountModel] = [:]
-            for var account in accounts {
-                account.fillMissingRules()
-                map[account.id] = account
-            }
-            return map
-        } catch {
-            Log.print.error("[Widget] Failed to load accounts: \(error.localizedDescription)")
-            return [:]
-        }
-    }
-
-    static func loadPhasedReleases(
-        for apps: [AppModel],
-        storage: PersistentStorable
-    ) async -> [String: PhasedReleaseModel] {
-        var result: [String: PhasedReleaseModel] = [:]
-        for app in apps {
-            if let phased: PhasedReleaseModel = try? await storage.fetch(PhasedReleaseModel.self, id: "phased.\(app.id)") {
-                result[app.id] = phased
-            }
-        }
-        return result
-    }
-
-    static func sortByRecency(_ a: AppModel, _ b: AppModel) -> Bool {
-        switch (a.lastModifiedDate, b.lastModifiedDate) {
-        case let (dateA?, dateB?): return dateA > dateB
-        case (_?, nil):            return true
-        case (nil, _?):            return false
-        case (nil, nil):           return a.name < b.name
-        }
-    }
-
-    static func account(for app: AppModel, in map: [String: AccountModel]) -> AccountModel {
-        map[app.accountId] ?? AccountModel(id: app.accountId, name: "", providerType: .apple)
-    }
+enum HomeWidgetPlatformGrouping {
 
     /// Groups apps by their platform in a canonical order, keeping unknown-platform
     /// apps in a trailing `nil` group. Order within each group is preserved.

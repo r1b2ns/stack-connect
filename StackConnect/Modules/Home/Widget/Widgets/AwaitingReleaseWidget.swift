@@ -2,41 +2,33 @@ import Combine
 import StackHomeCore
 import SwiftUI
 
+/// iOS observable adapter over the Foundation-pure
+/// `StackHomeCore.AwaitingReleaseWidget`.
+///
+/// T-A6 moved the pure `load()` logic + typed result (`AwaitingReleaseWidgetData`)
+/// into core. This wrapper republishes the result for SwiftUI and keeps the
+/// interim `HomeWidgetViewProviding.makeView()` bridge alive until T-A7.
 @MainActor
 final class AwaitingReleaseWidget: HomeWidget, HomeWidgetViewProviding, ObservableObject {
 
     static let kind: HomeWidgetKind = .awaitingRelease
 
-    let configuration: HomeWidgetConfiguration
+    var configuration: HomeWidgetConfiguration { core.configuration }
 
-    @Published private(set) var apps: [AppModel] = []
-    @Published private(set) var phasedByAppId: [String: PhasedReleaseModel] = [:]
-    @Published private(set) var accountsMap: [String: AccountModel] = [:]
+    @Published private(set) var data = AwaitingReleaseWidgetData()
     @Published private(set) var isLoading: Bool = false
 
-    private let storage: PersistentStorable
+    private let core: StackHomeCore.AwaitingReleaseWidget
 
     init(configuration: HomeWidgetConfiguration, storage: PersistentStorable) {
-        self.configuration = configuration
-        self.storage = storage
+        self.core = StackHomeCore.AwaitingReleaseWidget(configuration: configuration, storage: storage)
     }
 
     func load() async {
         isLoading = true
-        defer { isLoading = false }
-
-        do {
-            let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
-            let active = allApps.filter { !$0.isArchived }
-            let phased = await HomeWidgetDataLoader.loadPhasedReleases(for: active, storage: storage)
-            let (_, awaiting) = AppStatusCategorizer.categorize(active, phasedByAppId: phased)
-            apps = awaiting.sorted(by: HomeWidgetDataLoader.sortByRecency)
-            phasedByAppId = phased
-            accountsMap = await HomeWidgetDataLoader.loadAccounts(storage: storage)
-        } catch {
-            Log.print.error("[Widget][AwaitingRelease] Failed to load apps: \(error.localizedDescription)")
-            apps = []
-        }
+        await core.load()
+        data = core.data
+        isLoading = false
     }
 
     func makeView() -> AnyView {
@@ -56,21 +48,21 @@ private struct AwaitingReleaseWidgetView: View {
             HomeWidgetSectionHeader(
                 icon: "paperplane.circle.fill",
                 title: String(localized: "Awaiting Release"),
-                count: widget.apps.count,
+                count: widget.data.apps.count,
                 tint: .blue
             )
 
-            if widget.apps.isEmpty {
+            if widget.data.apps.isEmpty {
                 HomeWidgetEmptyRow(
                     icon: "checkmark.circle",
                     text: String(localized: "Nothing awaiting release")
                 )
             } else {
-                ForEach(widget.apps) { app in
+                ForEach(widget.data.apps) { app in
                     Button {
                         coordinator.navigateToAppDetail(
                             app,
-                            account: HomeWidgetDataLoader.account(for: app, in: widget.accountsMap)
+                            account: HomeWidgetDataLoader.account(for: app, in: widget.data.accountsMap)
                         )
                     } label: {
                         buildRow(app)
@@ -86,7 +78,7 @@ private struct AwaitingReleaseWidgetView: View {
     private func buildRow(_ app: AppModel) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HomeAppRowView(app: app)
-            if let phased = widget.phasedByAppId[app.id],
+            if let phased = widget.data.phasedByAppId[app.id],
                phased.state == .active || phased.state == .paused,
                let day = phased.currentDayNumber {
                 HomePhasedProgressView(day: day, total: 7, paused: phased.state == .paused)
