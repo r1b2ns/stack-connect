@@ -9,10 +9,12 @@ import StackHomeCore
 //   2. sync banner slot (shown while syncing)
 //   3. provider cards grid (T-B5 — real radius-8 tinted cards in a manual
 //      2-column grid + the Settings cell; see WindowsProviderCardView.swift)
-//   4. widgets slot (empty-state or a list of active widgets; widget views = T-C)
+//   4. widgets slot (WindowsWidgetContainerView — empty-state card or active
+//      widget cards; T-C1. The real widget visuals land in T-C2.)
 //
-// Everything binds to the shared core state via `model.state`. The widget cells
-// are still lightweight placeholders — the real widget visuals land in T-C*.
+// Everything binds to the shared core state via `model.state`. The active-widget
+// cards inside the container are still lightweight placeholders — the real
+// widget visuals land in T-C2.
 
 struct WindowsHomeView: View {
     let model: WindowsHomeModel
@@ -123,60 +125,17 @@ struct WindowsHomeView: View {
     }
 
     // MARK: - Widgets slot (US-006 / US-007)
-
-    @ViewBuilder
-    private var widgetsSlot: some View {
-        if model.state.widgets.isEmpty {
-            widgetsEmptyState
-        } else {
-            VStack(spacing: 8) {
-                ForEach(model.state.widgets, id: \.id) { widget in
-                    widgetCard(widget)
-                }
-            }
-        }
-    }
-
-    private var widgetsEmptyState: some View {
-        VStack(spacing: 8) {
-            Text("[#]")
-            Text("No widgets yet")
-                .fontWeight(.semibold)
-            Text("Add widgets to see your apps in review, awaiting release, and recent reviews.")
-                .foregroundColor(.gray)
-            Button("Add Widgets") {
-                coordinator.push(.customizeWidgets)
-            }
-        }
-        .padding(16)
-        .background(Color(white: 0.95))
-        .cornerRadius(8)
-    }
-
-    private func widgetCard(_ widget: any HomeWidget) -> some View {
-        HStack(spacing: 12) {
-            Text(glyph(for: widget.kind))
-            Text(widget.kind.displayName)
-                .fontWeight(.semibold)
-            Spacer()
-        }
-        .padding(16)
-        .background(Color(white: 0.95))
-        .cornerRadius(8)
-    }
-
-    // MARK: - Icon substitution (design §2.8)
     //
-    // The provider/Settings icon + color substitution now lives on `HomeGridCell`
-    // (WindowsProviderCardView.swift). The widget-kind glyph stays here until the
-    // widget views land (T-C*).
+    // The widgets section (empty state + active-widget cards) lives in its own
+    // `WindowsWidgetContainerView` (T-C1). This slot only owns where it sits in
+    // the Home layout — below the provider cards + Settings (US-006 AC-3) — and
+    // wires the "Add Widgets" action to the coordinator route (US-006 AC-2).
 
-    private func glyph(for kind: HomeWidgetKind) -> String {
-        switch kind {
-        case .inReview: return "🔍"
-        case .awaitingRelease: return "📤"
-        case .recentReviews: return "💬"
-        }
+    private var widgetsSlot: some View {
+        WindowsWidgetContainerView(
+            widgets: model.state.widgets,
+            onAddWidgets: { coordinator.push(.customizeWidgets) }
+        )
     }
 }
 
