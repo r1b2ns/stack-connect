@@ -57,10 +57,11 @@ final class HomeViewModelEdgeCasesTests: XCTestCase {
         let sut = makeSUT()
         sut.addWidget(.inReview)
         let widget = sut.state.widgets.first as? EdgeMockWidget
-        // Let the detached load() that `addWidget` kicks off settle so the
-        // baseline count is stable before we measure the loadDashboard effect.
+        // Drain the detached load() Task that `addWidget` kicks off via the
+        // MainActor queue so the baseline count is stable before we measure the
+        // loadDashboard effect. `Task.yield()` hops the cooperative queue
+        // deterministically — no fixed sleep, no CI-timing race.
         await Task.yield()
-        try? await Task.sleep(nanoseconds: 20_000_000)
         let loadsAfterAdd = widget?.loadCount ?? 0
 
         // Simulated first-appearance sequence.
@@ -168,7 +169,20 @@ final class HomeViewModelEdgeCasesTests: XCTestCase {
         XCTAssertNil(sut.state.expiringSoonAccount)
         // Provider cards are always present (no empty state — US-001 AC-5).
         XCTAssertFalse(sut.state.providers.isEmpty)
-        XCTAssertFalse(sut.state.providers.contains(.googlePlay))
+    }
+
+    // MARK: - Provider grid invariant (US-001)
+
+    /// The provider grid must never surface Google Play. This is a provider-type
+    /// invariant independent of account count, so it lives in its own test rather
+    /// than riding on the zero-accounts behavior above.
+    func testProviderGridNeverContainsGooglePlay() async {
+        let sut = makeSUT()
+
+        await sut.loadDashboard()
+
+        XCTAssertFalse(sut.state.providers.contains(.googlePlay),
+            "provider grid must never expose Google Play (provider-type invariant)")
     }
 
     /// TC-072: a brand-new install with empty preferences yields a valid state —
