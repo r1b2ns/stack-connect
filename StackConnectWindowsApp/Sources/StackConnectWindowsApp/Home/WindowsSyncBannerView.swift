@@ -28,9 +28,17 @@ struct WindowsSyncBannerView: View {
         if let text = syncBannerText(for: syncState) {
             HStack(spacing: 0) {
                 // 4px colored left border standing in for the InfoBar accent.
+                // SwiftCrossUI 0.7 exposes neither `.clipped()` nor `.clipShape`,
+                // and `.cornerRadius(8)` on the container does NOT clip children —
+                // so the strip's right corners are rounded by the container while
+                // its own corners stay square and bleed past the rounded card. We
+                // round the strip itself to the same radius (the `cornerRadius`
+                // modifier is documented to support exactly this case: rounding a
+                // coloured rectangle on the WinUI backend), masking it to the card.
                 Rectangle()
                     .fill(.blue)
                     .frame(width: 4)
+                    .cornerRadius(8)
 
                 HStack(spacing: 8) {
                     // D5: SwiftCrossUI 0.7 exposes an indeterminate ProgressView
