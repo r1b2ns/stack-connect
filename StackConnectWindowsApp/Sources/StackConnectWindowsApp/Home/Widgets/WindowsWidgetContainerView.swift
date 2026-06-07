@@ -18,10 +18,11 @@ import StackHomeCore
 // scrolls with the rest of the content (design §2.4: the widgets are part of the
 // single vertical scroll, never their own scroll region).
 //
-// SCOPE (T-C1): only the container + empty state are real. The three concrete
-// widget views (In Review / Awaiting Release / Recent Reviews) are T-C2; here
-// each active widget renders a minimal, clearly-marked placeholder card carrying
-// just the widget's kind header, as a slot T-C2 will replace.
+// SCOPE (T-C2): the three concrete widget views (In Review / Awaiting Release /
+// Recent Reviews) are now wired in here, replacing the T-C1 placeholder slot.
+// Each active widget is dispatched on its `kind` to the matching SwiftCrossUI
+// view, fed the widget's typed core result data + `isLoading`, and routed
+// through the coordinator callbacks (US-007 AC-1/AC-6/AC-7).
 
 struct WindowsWidgetContainerView: View {
 
@@ -32,9 +33,17 @@ struct WindowsWidgetContainerView: View {
     /// "Add Widgets" button (US-006 AC-2).
     let onAddWidgets: () -> Void
 
-    /// Corner radius shared with the provider/empty-state cards (design §2.4:
-    /// radius 8).
-    private let cardRadius = 8
+    /// Pushes the App Detail route when an In Review / Awaiting Release row is
+    /// tapped (US-007 AC-6 — v1 placeholder).
+    let onSelectApp: (AppModel) -> Void
+
+    /// Pushes the Review Detail route when a Recent Reviews row is tapped
+    /// (US-007 AC-6 — v1 placeholder).
+    let onSelectReview: (HomeRecentReview) -> Void
+
+    /// Pushes the All Reviews route from the Recent Reviews "See more" link
+    /// (US-007 AC-7 — v1 placeholder).
+    let onSeeMoreReviews: () -> Void
 
     var body: some View {
         // The empty flag is derived by a pure helper so the "empty drives empty
@@ -44,56 +53,47 @@ struct WindowsWidgetContainerView: View {
         } else {
             VStack(spacing: 12) {
                 ForEach(widgets, id: \.id) { widget in
-                    placeholderCard(for: widget)
+                    widgetView(for: widget)
                 }
             }
         }
     }
 
-    // MARK: - Per-widget placeholder slot (T-C2 replaces this)
+    // MARK: - Per-widget dispatch (T-C2)
 
-    /// A minimal placeholder card for a single active widget: the kind glyph +
-    /// header, plus a clearly-marked TODO note. T-C2 swaps this out for the real
-    /// In Review / Awaiting Release / Recent Reviews views. Kept here so the
-    /// non-empty branch is wired end-to-end (US-007 AC-1: each widget renders in
-    /// stored order in a card container; the actual content lands in T-C2).
-    private func placeholderCard(for widget: any HomeWidget) -> some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 12) {
-                Text(glyph(for: widget.kind))
-                    .fontWeight(.bold)
-                Text(widget.kind.displayName)
-                    .fontWeight(.semibold)
-                Spacer()
+    /// Dispatches a single active widget on its concrete type to the matching
+    /// Windows view, passing the widget's typed result data + `isLoading` and
+    /// wiring its taps through the coordinator callbacks. The downcast mirrors
+    /// the iOS `HomeWidgetViewFactory`: the registry pairs each `kind` with its
+    /// concrete data object, so a mismatch (not expected) renders nothing.
+    @ViewBuilder
+    private func widgetView(for widget: any HomeWidget) -> some View {
+        switch widget.kind {
+        case .inReview:
+            if let widget = widget as? InReviewWidget {
+                WindowsInReviewWidgetView(
+                    data: widget.data,
+                    isLoading: widget.isLoading,
+                    onSelectApp: onSelectApp
+                )
             }
-            HStack {
-                // TODO: T-C2 — replace with the real widget view
-                // (loading / empty / data states).
-                Text("Widget content coming soon")
-                    .foregroundColor(.gray)
-                Spacer()
+        case .awaitingRelease:
+            if let widget = widget as? AwaitingReleaseWidget {
+                WindowsAwaitingReleaseWidgetView(
+                    data: widget.data,
+                    isLoading: widget.isLoading,
+                    onSelectApp: onSelectApp
+                )
             }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Color(white: 0.92).opacity(0.08))
-        .cornerRadius(cardRadius)
-        .overlay {
-            RoundedRectangle(cornerRadius: Double(cardRadius))
-                .stroke(Color.gray.opacity(0.3), style: StrokeStyle(width: 1.0))
-        }
-    }
-
-    // MARK: - Icon substitution (design §2.8)
-
-    /// Text/glyph icon substitute per widget kind (no SF Symbols in SwiftCrossUI
-    /// 0.7, design §2.8). Mirrors the placeholder glyphs the Home shell used
-    /// before this container existed.
-    private func glyph(for kind: HomeWidgetKind) -> String {
-        switch kind {
-        case .inReview:        return "🔍"
-        case .awaitingRelease: return "📤"
-        case .recentReviews:   return "💬"
+        case .recentReviews:
+            if let widget = widget as? RecentReviewsWidget {
+                WindowsRecentReviewsWidgetView(
+                    data: widget.data,
+                    isLoading: widget.isLoading,
+                    onSelectReview: onSelectReview,
+                    onSeeMore: onSeeMoreReviews
+                )
+            }
         }
     }
 }
