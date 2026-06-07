@@ -37,7 +37,7 @@ struct WindowsRecentReviewsWidgetView: View {
     var body: some View {
         VStack(spacing: 12) {
             WindowsWidgetHeaderView(
-                glyph: "💬",
+                glyph: HomeWidgetKind.recentReviews.windowsGlyph,
                 title: "Recent Reviews",
                 count: data.reviews.count
             )

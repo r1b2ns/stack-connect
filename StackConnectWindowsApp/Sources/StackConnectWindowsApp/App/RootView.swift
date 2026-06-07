@@ -37,9 +37,22 @@ struct RootView: View {
         }
     }
 
+    /// Resolves a pushed route to its destination. Customize Widgets (T-C3) is a
+    /// real full-screen screen (US-008); the remaining routes are labeled
+    /// placeholders with a working "< Back" (T-D3 builds them out).
+    @ViewBuilder
+    private func destination(for route: WindowsRoute) -> some View {
+        switch route {
+        case .customizeWidgets:
+            WindowsCustomizeWidgetsView(model: model, coordinator: coordinator)
+        default:
+            placeholder(for: route)
+        }
+    }
+
     /// Placeholder destinations for v1 (T-D3 replaces these with real screens).
     /// Each keeps a working "< Back" so push/pop is verifiable now.
-    private func destination(for route: WindowsRoute) -> AnyView {
+    private func placeholder(for route: WindowsRoute) -> AnyView {
         AnyView(
             VStack(spacing: 16) {
                 WindowsBackButtonView { coordinator.pop() }

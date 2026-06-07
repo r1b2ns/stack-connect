@@ -39,6 +39,22 @@ enum WindowsWidgetMetrics {
     static let placeholderIconSize = 36.0
 }
 
+// MARK: - Widget glyph table (design §2.8)
+
+extension HomeWidgetKind {
+    /// The Windows v1 Unicode/emoji glyph for this widget kind. SwiftCrossUI 0.7
+    /// has no SF Symbols, so the icon table (design §2.8) maps each kind's
+    /// `iconSymbolName` to an emoji. Centralised here so the three widget headers
+    /// (T-C2) and the Customize Widgets panel (T-C3) share one source of truth.
+    var windowsGlyph: String {
+        switch self {
+        case .inReview:       return "🔍"
+        case .awaitingRelease: return "📤"
+        case .recentReviews:  return "💬"
+        }
+    }
+}
+
 // MARK: - Header
 
 /// The widget header row: a glyph (Unicode/emoji per §2.8) + bold title +

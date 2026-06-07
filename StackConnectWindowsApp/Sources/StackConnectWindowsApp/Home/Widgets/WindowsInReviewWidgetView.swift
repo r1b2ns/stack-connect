@@ -36,7 +36,7 @@ struct WindowsInReviewWidgetView: View {
     var body: some View {
         VStack(spacing: 12) {
             WindowsWidgetHeaderView(
-                glyph: "🔍",
+                glyph: HomeWidgetKind.inReview.windowsGlyph,
                 title: "In Review",
                 count: data.apps.count
             )
