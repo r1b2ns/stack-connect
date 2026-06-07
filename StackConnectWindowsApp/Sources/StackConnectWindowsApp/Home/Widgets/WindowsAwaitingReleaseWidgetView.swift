@@ -37,7 +37,7 @@ struct WindowsAwaitingReleaseWidgetView: View {
     var body: some View {
         VStack(spacing: 12) {
             WindowsWidgetHeaderView(
-                glyph: "📤",
+                glyph: HomeWidgetKind.awaitingRelease.windowsGlyph,
                 title: "Awaiting Release",
                 count: data.apps.count
             )
