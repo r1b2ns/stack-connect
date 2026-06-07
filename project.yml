@@ -23,6 +23,18 @@ options:
     - sv
     - zh-Hant
 
+# Windows port folders shown in the Xcode navigator for visibility only.
+# They are NOT compiled into any iOS target (the Windows app is built via SPM
+# on the VM) — fileGroups adds folder references without target membership.
+# Specific subpaths are listed (not the package roots) so the SPM build noise
+# (.build/, .swiftpm/, Package.resolved) stays out of the navigator.
+fileGroups:
+  - StackConnectWindows/Sources
+  - StackConnectWindows/Package.swift
+  - StackConnectWindowsApp/Sources
+  - StackConnectWindowsApp/Packaging
+  - StackConnectWindowsApp/Package.swift
+
 settings:
   base:
     ALWAYS_SEARCH_USER_PATHS: NO
