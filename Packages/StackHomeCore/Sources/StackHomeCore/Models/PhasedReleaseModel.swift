@@ -4,7 +4,8 @@ import Foundation
 ///
 /// Foundation-pure value model shared by the iOS app and the Windows port.
 /// Drives the "Awaiting Release" widget's phased grouping (TC-034) and the
-/// iOS "Day N of 7" progress row.
+/// iOS "Day N of 7" progress row, and is referenced from core by the SDK-free
+/// `AppleAccountSyncing` protocol and `AppStoreVersionModel`.
 public struct PhasedReleaseModel: Codable, Identifiable, Hashable, Sendable {
     public let id: String
     public var state: PhasedReleaseStatus?
