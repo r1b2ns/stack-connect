@@ -37,47 +37,39 @@ struct RootView: View {
         }
     }
 
-    /// Resolves a pushed route to its destination. Customize Widgets (T-C3) is a
-    /// real full-screen screen (US-008); the remaining routes are labeled
-    /// placeholders with a working "< Back" (T-D3 builds them out).
+    /// Resolves a pushed route to its destination (US-011 AC-1). Customize
+    /// Widgets (T-C3) is a real full-screen screen (US-008); every other v1
+    /// route is a labeled placeholder with a working "< Back" (design D3), with
+    /// `reimport` rendered as a DISABLED placeholder (design D7 — no live Apple
+    /// sync on Windows v1).
+    ///
+    /// The switch is exhaustive (no `default`) so adding a route to
+    /// `WindowsRoute` is a compile error until a destination is wired here.
     @ViewBuilder
     private func destination(for route: WindowsRoute) -> some View {
         switch route {
         case .customizeWidgets:
             WindowsCustomizeWidgetsView(model: model, coordinator: coordinator)
-        default:
-            placeholder(for: route)
-        }
-    }
 
-    /// Placeholder destinations for v1 (T-D3 replaces these with real screens).
-    /// Each keeps a working "< Back" so push/pop is verifiable now.
-    private func placeholder(for route: WindowsRoute) -> AnyView {
-        AnyView(
-            VStack(spacing: 16) {
-                WindowsBackButtonView { coordinator.pop() }
-                Spacer()
-                Text(title(for: route))
-                    .font(.title2)
-                    .fontWeight(.bold)
-                Text("Coming soon")
-                    .foregroundColor(.gray)
-                Spacer()
-            }
-            .padding(16)
-            .frame(maxWidth: 860)
-        )
-    }
+        // D7: re-import is intentionally unavailable on Windows v1.
+        case .reimport:
+            WindowsPlaceholderView(
+                title: "Re-import",
+                isDisabled: true,
+                onBack: { coordinator.pop() }
+            )
 
-    private func title(for route: WindowsRoute) -> String {
-        switch route {
-        case .accountsList(let provider): return provider.displayName
-        case .settings: return "Settings"
-        case .appDetail: return "App Detail"
-        case .reviewDetail: return "Review Detail"
-        case .allReviews: return "All Reviews"
-        case .reimport: return "Re-import"
-        case .customizeWidgets: return "Customize Widgets"
+        // D3: labeled "coming soon" placeholders with a working "< Back".
+        case .accountsList(let provider):
+            WindowsPlaceholderView(title: provider.displayName) { coordinator.pop() }
+        case .settings:
+            WindowsPlaceholderView(title: "Settings") { coordinator.pop() }
+        case .appDetail:
+            WindowsPlaceholderView(title: "App Detail") { coordinator.pop() }
+        case .reviewDetail:
+            WindowsPlaceholderView(title: "Review Detail") { coordinator.pop() }
+        case .allReviews:
+            WindowsPlaceholderView(title: "All Reviews") { coordinator.pop() }
         }
     }
 }
