@@ -13,12 +13,19 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../StackProtocols"),
+        // Test-only: the prefs-store round-trip test persists
+        // `[HomeWidgetConfiguration]` (defined in StackHomeCore) to prove the
+        // same widget config the iOS app stores survives this Windows store.
+        // The library target itself depends ONLY on StackProtocols.
+        .package(path: "../StackHomeCore"),
     ],
     targets: [
-        // `KeyStorable` backed by the Windows Credential Manager. The Win32 body
-        // is gated `#if os(Windows)`; on other platforms an in-memory fallback
-        // keeps the type building/testable on the macOS host. This package is
-        // never part of the iOS app target (kept out of project.yml).
+        // `WindowsCredentialStorable` (secrets, Credential Manager) and
+        // `WindowsFilePreferencesStorable` (non-secret prefs, JSON file under
+        // %APPDATA%\StackConnect). The platform bodies are gated `#if os(Windows)`;
+        // on other platforms a host fallback keeps both types building/testable
+        // on the macOS host. This package is never part of the iOS app target
+        // (kept out of project.yml).
         .target(
             name: "StackSecretsWindows",
             dependencies: [
@@ -28,7 +35,10 @@ let package = Package(
         ),
         .testTarget(
             name: "StackSecretsWindowsTests",
-            dependencies: ["StackSecretsWindows"],
+            dependencies: [
+                "StackSecretsWindows",
+                .product(name: "StackHomeCore", package: "StackHomeCore"),
+            ],
             path: "Tests/StackSecretsWindowsTests"
         ),
     ]
