@@ -42,15 +42,7 @@ struct WindowsHomeView: View {
     @ViewBuilder
     private var syncBannerSlot: some View {
         if model.state.syncState.isSyncing {
-            let count = model.state.syncState.accountsInProgress.count
-            HStack(spacing: 8) {
-                Text("Syncing \(count) account\(count == 1 ? "" : "s")…")
-                    .foregroundColor(.blue)
-                Spacer()
-            }
-            .padding(12)
-            .background(Color(white: 0.94))
-            .cornerRadius(8)
+            WindowsSyncBannerView(syncState: model.state.syncState)
         }
     }
 
