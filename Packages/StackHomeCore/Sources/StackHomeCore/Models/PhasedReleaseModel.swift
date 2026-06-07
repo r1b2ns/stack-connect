@@ -36,10 +36,10 @@ public enum PhasedReleaseStatus: String, Codable, CaseIterable, Hashable, Sendab
 
     public var displayName: String {
         switch self {
-        case .inactive: return String(localized: "Inactive")
-        case .active:   return String(localized: "Active")
-        case .paused:   return String(localized: "Paused")
-        case .complete: return String(localized: "Complete")
+        case .inactive: return localizedString("Inactive")
+        case .active:   return localizedString("Active")
+        case .paused:   return localizedString("Paused")
+        case .complete: return localizedString("Complete")
         }
     }
 }

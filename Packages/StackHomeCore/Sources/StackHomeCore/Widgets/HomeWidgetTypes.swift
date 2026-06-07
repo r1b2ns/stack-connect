@@ -25,11 +25,11 @@ public enum HomeWidgetKind: String, Codable, CaseIterable, Hashable, Identifiabl
     public var displayName: String {
         switch self {
         case .inReview:
-            return String(localized: "In Review")
+            return localizedString("In Review")
         case .awaitingRelease:
-            return String(localized: "Awaiting Release")
+            return localizedString("Awaiting Release")
         case .recentReviews:
-            return String(localized: "Recent Reviews")
+            return localizedString("Recent Reviews")
         }
     }
 
@@ -37,11 +37,11 @@ public enum HomeWidgetKind: String, Codable, CaseIterable, Hashable, Identifiabl
     public var summary: String {
         switch self {
         case .inReview:
-            return String(localized: "Apps waiting on App Review")
+            return localizedString("Apps waiting on App Review")
         case .awaitingRelease:
-            return String(localized: "Approved apps ready to release")
+            return localizedString("Approved apps ready to release")
         case .recentReviews:
-            return String(localized: "Latest customer reviews across your apps")
+            return localizedString("Latest customer reviews across your apps")
         }
     }
 

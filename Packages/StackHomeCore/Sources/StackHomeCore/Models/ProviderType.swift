@@ -21,9 +21,9 @@ public enum ProviderType: String, Codable, CaseIterable, Hashable, Sendable, Ide
     /// Localized, user-facing name of the provider.
     public var displayName: String {
         switch self {
-        case .apple:      return String(localized: "App Store Connect")
-        case .firebase:   return String(localized: "Firebase")
-        case .googlePlay: return String(localized: "Google Play")
+        case .apple:      return localizedString("App Store Connect")
+        case .firebase:   return localizedString("Firebase")
+        case .googlePlay: return localizedString("Google Play")
         }
     }
 
