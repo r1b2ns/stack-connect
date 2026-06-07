@@ -195,9 +195,13 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
         } else {
             Section {
                 ForEach(viewModel.uiState.widgets, id: \.id) { widget in
-                    HomeWidgetContainerView(widget: widget)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
-                        .listRowSeparator(.hidden)
+                    // Interim cast (T-A5): all registry widgets are
+                    // `HomeWidgetViewProviding` on iOS until the T-A7 factory lands.
+                    if let renderable = widget as? any HomeWidgetViewProviding {
+                        HomeWidgetContainerView(widget: renderable)
+                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                            .listRowSeparator(.hidden)
+                    }
                 }
             }
             .listRowBackground(Color.clear)

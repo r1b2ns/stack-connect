@@ -1,8 +1,9 @@
 import Combine
+import StackHomeCore
 import SwiftUI
 
 @MainActor
-final class AwaitingReleaseWidget: HomeWidget, ObservableObject {
+final class AwaitingReleaseWidget: HomeWidget, HomeWidgetViewProviding, ObservableObject {
 
     static let kind: HomeWidgetKind = .awaitingRelease
 

@@ -1,8 +1,9 @@
 import Combine
+import StackHomeCore
 import SwiftUI
 
 @MainActor
-final class RecentReviewsWidget: HomeWidget, ObservableObject {
+final class RecentReviewsWidget: HomeWidget, HomeWidgetViewProviding, ObservableObject {
 
     static let kind: HomeWidgetKind = .recentReviews
 
