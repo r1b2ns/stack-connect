@@ -5,13 +5,13 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 IN PROGRESS — T-W05 DONE and MERGED.
+**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 IN PROGRESS — T-W05 and T-W06 DONE and MERGED.
 
 **Snapshot:**
 - **Wave 0 (DONE):** All four foundation tasks merged into `experiment/windows`: T-W01 (`7ef4617`), T-W02 (`eba9738`), T-W03 (`1bf59ab`), T-W04 (`0786ae8`).
-- **Wave 1 (IN PROGRESS):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`.
+- **Wave 1 (IN PROGRESS):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`. T-W06 (`WindowsAppsListView` + `WindowsAppRow`) DONE and MERGED as `de9b89a`.
 
-> **Wave 0 foundation complete.** Wave 1 development started. Next unblocked task: **T-W06** (`WindowsAppsListView` + `WindowsAppRow` — all dependencies met).
+> **Wave 0 foundation complete.** Wave 1 development ongoing. Next unblocked task: **T-W07** (`WindowsArchivedAppsView` — all dependencies met).
 
 ---
 
@@ -41,9 +41,10 @@
 | Task | Title | Deps | Gate state |
 |------|-------|------|------------|
 | **T-W05** | `WindowsAppsListModel` (F1 Apps List) | T-W01 | ✅ DONE — merged `13e82b4`. Staff APPROVE (1 correction round: 3 should-fixes on duplicate-ID safety, cached fields on live-sync, loading-indicator test rename) / QA PASS 19 WindowsAppsListModelTests + full package 138/138 tests, 0 failures / PO ACCEPTED. 1 correction. |
-| **T-W06** | `WindowsAppsListView` + `WindowsAppRow` | T-W03, T-W04, T-W05 | ⏳ PENDING (next unblocked task) — waiting for development session. |
-| **T-W07** | `WindowsAppDetailView` (header + metadata) | T-W03, T-W05 | ⏳ BLOCKED until T-W05 done. |
-| **T-W09** | Status badges / category pills | T-W05 | ⏳ BLOCKED until T-W05 done. |
+| **T-W06** | `WindowsAppsListView` + `WindowsAppRow` | T-W03, T-W04, T-W05 | ✅ DONE — merged `de9b89a`. Staff APPROVE (1 correction round: BL-1 dead accountId removed from view+route+callsites, SF-1 state-guard order isSearchEmpty-before-isEmpty, SF-2 os.Logger fallback warning in RootView) / QA PASS (full WindowsAppCore suite 138 tests 0 failures; view-layer ACs inspection-verified; SwiftCrossUI rendering flagged platform-only manual) / PO ACCEPTED (all in-scope ACs met). 1 correction. |
+| **T-W07** | `WindowsArchivedAppsView` (Archived Apps + Restore) | T-W03, T-W05 | ⏳ PENDING (next unblocked task) — waiting for development session. |
+| **T-W08** | `WindowsUsersTabView` (Users tab content) | T-W01, T-W06 | ⏳ PENDING (now unblocked) — waiting for development session. |
+| **T-W09** | Status badges / category pills | T-W05 | ⏳ BLOCKED until T-W07 done. |
 | **T-W11** | Clipboard sync UX + affordances | T-W01 (soft) | ⏳ BLOCKED softly (can start independently). |
 | **T-W15** | macOS integration + WKWebView bridge | none | ⏳ BLOCKED (depends on iOS side stability first; soft block). |
 | **T-W17** | Review detail view (header + reply composer UX) | T-W04 | ⏳ BLOCKED. |
@@ -54,9 +55,9 @@
 
 ## Now-unblocked tasks (situational awareness)
 
-- **T-W06** (T-W03, T-W04, T-W05 all DONE) — **NEXT POINTER**.
-- **T-W07** (T-W03, T-W05 both DONE).
-- **T-W09** (T-W05 DONE).
+- **T-W07** (T-W03, T-W05 both DONE) — **NEXT POINTER**.
+- **T-W08** (T-W01, T-W06 both DONE) — now unblocked.
+- **T-W09** (T-W05 DONE; depends on T-W07 for full feature).
 - **T-W11** (no critical blockers; T-W01 soft dep DONE).
 - **T-W15** (no deps; soft-blocked pending iOS stability).
 - **T-W17**, **T-W18** (T-W04 DONE).
@@ -175,6 +176,36 @@ Merged into `experiment/windows` as `0786ae8`. Wave 0 close-out complete.
 
 ---
 
+## Wave 1 Development — T-W06 (DONE)
+
+### T-W06 (branch `feat/T-W06-windows-apps-list-view`)
+**Task:** Build `WindowsAppsListView` + `WindowsAppRow` + `WindowsArchiveAppConfirmView` — the SwiftCrossUI view layer for Feature 1 (Apps List), consuming the merged `WindowsAppsListModel` (T-W05) and shared components (T-W04), wiring `.appsList` + `.archiveAppConfirm` in RootView.
+
+**Deliverables:**
+- `StackConnectWindowsApp/Sources/StackConnectWindowsApp/Apps/WindowsAppsListView.swift` — toolbar (back + account name + Archived + Refresh), Apps|Users tab strip (Apps default), search field, Favorites + All Apps sections, loading/empty/search-empty/sync-error states.
+- `.../Apps/WindowsAppRow.swift` — icon glyph, name, WindowsStatusBadge (colored status), version, favorite star toggle, explicit Archive button, chevron. No swipe actions.
+- `.../Apps/WindowsArchiveAppConfirmView.swift` — archive confirmation as a PUSHED route (Confirm/Cancel), not an alert/sheet.
+- Modified `.../App/WindowsHomeCoordinator.swift` (added `accountName` to `.appsList`; `.archiveAppConfirm(appId:appName:)` — `accountId` removed in correction per BL-1) and `.../App/RootView.swift` (wired `.appsList`/`.archiveAppConfirm` to real views; introduced `AppsListModelCache` reference-holder so both routes share one `WindowsAppsListModel`).
+
+**Commits:**
+- `9d08bdb` (feat) — Initial `WindowsAppsListView`, `WindowsAppRow`, `WindowsArchiveAppConfirmView`, and RootView integration.
+- `e7bbcfa` (fix: staff BL-1/SF-1/SF-2) — Corrections for accountId removal, state-guard order, and os.Logger fallback.
+
+**Gate verdicts:**
+- **Staff Review:** APPROVE (after 1 correction round).
+  - **BL-1 (blocking):** `WindowsRoute.archiveAppConfirm(accountId:appId:appName:)` carried dead `accountId` field (not used in view) — removed from enum case, updated RootView callsite, removed from WindowsArchiveAppConfirmView signature (option b applied).
+  - **SF-1:** State-guard order in `WindowsAppsListView.buildAppsList()` — reordered guards to loading → isSearchEmpty → isEmpty → populated to prevent "No Apps" flash when search text is empty on first render.
+  - **SF-2:** RootView's `.archiveAppConfirm` nil-model fallback had no logging — added `os.Logger.warning` under `#if canImport(os)`, matching the StackHomeCore HomeWidgetLog/SyncLog convention (since `Log.print` isn't available in the Windows app target).
+- **QA:** PASS (full WindowsAppCore suite 138 tests, 0 failures, no regressions; view-layer acceptance criteria inspection-verified; SwiftCrossUI rendering flagged platform-only manual).
+- **PO:** ACCEPTED (all in-scope acceptance criteria met).
+- **Corrections:** 1 (fix: e7bbcfa).
+
+**Merged into `experiment/windows`:** Merge commit `de9b89a` (--no-ff merge strategy).
+
+**Notes:** Out-of-scope correctly deferred — T-W07 (Archived Apps screen + Restore) still a placeholder; T-W08 (Users tab content) still a placeholder. Windows package files auto-discovered → no xcodegen. Push/PR remain gated.
+
+---
+
 ## Resume checklist — ONE TASK PER SESSION (serial)
 
 The four agents from the old parallel run all finished green. The remaining work is now done **one task per session** (the new skill model). **Do exactly one task per session**, in this order, then update this handover and end the session.
@@ -188,7 +219,8 @@ The four agents from the old parallel run all finished green. The remaining work
 | 3 | **T-W03** | ✅ DONE (merged `1bf59ab`) | Wave 0 |
 | 4 | **T-W04** | ✅ DONE (merged `0786ae8`) | Wave 0 |
 | 5 | **T-W05** | ✅ DONE (merged `13e82b4`) | Wave 1 — `WindowsAppsListModel` |
-| 6 | **T-W06** | ⏳ NEXT (pending) | Wave 1 — `WindowsAppsListView` + `WindowsAppRow` (deps: T-W03, T-W04, T-W05 all DONE) |
+| 6 | **T-W06** | ✅ DONE (merged `de9b89a`) | Wave 1 — `WindowsAppsListView` + `WindowsAppRow` + `WindowsArchiveAppConfirmView` |
+| 7 | **T-W07** | ⏳ NEXT (pending) | Wave 1 — `WindowsArchivedAppsView` (deps: T-W03, T-W05 DONE) |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
