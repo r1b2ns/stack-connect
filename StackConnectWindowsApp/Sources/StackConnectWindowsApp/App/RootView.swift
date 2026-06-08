@@ -59,9 +59,14 @@ struct RootView: View {
                 onBack: { coordinator.pop() }
             )
 
-        // D3: labeled "coming soon" placeholders with a working "< Back".
+        // T-F07: real accounts list screen (US-W01 / US-W06).
         case .accountsList(let provider):
-            WindowsPlaceholderView(title: provider.displayName) { coordinator.pop() }
+            WindowsAccountsListView(
+                provider: provider,
+                coordinator: coordinator,
+                storage: model.storage,
+                secrets: model.secrets
+            )
         case .addAccountOptions(let provider):
             WindowsAddAccountOptionsView(provider: provider, coordinator: coordinator)
         case .createAppleAccount:
