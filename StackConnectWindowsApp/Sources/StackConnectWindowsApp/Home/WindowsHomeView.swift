@@ -209,20 +209,39 @@ struct WindowsHomeView: View {
         return Double(rowCount) * cardHeight + Double(rowCount - 1) * spacing
     }
 
-    // MARK: - Widgets slot (US-006 / US-007)
+    // MARK: - Widgets slot (US-006 / US-007, updated T-W03)
     //
     // The widgets section (empty state + active-widget cards) lives in its own
     // `WindowsWidgetContainerView` (T-C1). This slot only owns where it sits in
     // the Home layout — below the provider cards + Settings (US-006 AC-3) — and
     // wires the "Add Widgets" action to the coordinator route (US-006 AC-2).
+    //
+    // T-W03: the closures now thread real ids from the `AppModel` /
+    // `HomeRecentReview` into the parameterized routes (§2.2). `onSeeMoreReviews`
+    // has no single-app context (the widget spans all apps), so it routes to
+    // `.comingSoon` until a cross-app reviews screen is designed.
 
     private var widgetsSlot: some View {
         WindowsWidgetContainerView(
             widgets: model.state.widgets,
             onAddWidgets: { coordinator.push(.customizeWidgets) },
-            onSelectApp: { _ in coordinator.push(.appDetail) },
-            onSelectReview: { _ in coordinator.push(.reviewDetail) },
-            onSeeMoreReviews: { coordinator.push(.allReviews) }
+            onSelectApp: { app in
+                coordinator.push(
+                    .appDetail(appId: app.id, accountId: app.accountId)
+                )
+            },
+            onSelectReview: { item in
+                coordinator.push(
+                    .reviewDetail(
+                        reviewId: item.review.id,
+                        appId: item.app.id,
+                        accountId: item.app.accountId
+                    )
+                )
+            },
+            onSeeMoreReviews: {
+                coordinator.push(.comingSoon(title: "All Reviews"))
+            }
         )
     }
 }

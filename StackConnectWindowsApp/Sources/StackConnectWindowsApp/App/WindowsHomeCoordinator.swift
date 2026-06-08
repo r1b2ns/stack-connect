@@ -2,28 +2,63 @@ import Foundation
 import SwiftCrossUI
 import StackHomeCore
 
-// Phase 4 · B1b-2 · T-B1 — Windows navigation foundation.
+// Phase 4 · B1b-2 · T-B1 / T-W03 — Windows navigation foundation.
 //
 // SwiftCrossUI 0.7 has no NavigationStack/NavigationSplitView, so navigation is
 // a hand-rolled route stack the window redraws against (design §2.3). Home is
 // the implicit root: an empty `routeStack` means "show Home"; the top of the
 // stack is the current pushed screen. In-content "< Back" pops; there is no
 // title-bar back button in v1.
+//
+// T-W03: the route set is extended with parameterized cases for the Apps &
+// Reviews feature screens (design §2.2). The previous value-less `appDetail`,
+// `reviewDetail`, and `allReviews` are replaced by parameterized variants that
+// carry the identifiers the destination screens need. Account-management routes
+// are preserved unchanged.
 
 /// A destination pushed on top of Home. Home itself is the empty/root state, so
 /// it is intentionally NOT a case here.
 enum WindowsRoute: Hashable {
+
+    // MARK: - Account management (unchanged)
+
     case accountsList(ProviderType)
     case addAccountOptions(ProviderType)
     case createAppleAccount
     case createFirebaseAccount
     case importScexport
     case settings
-    case appDetail
-    case reviewDetail
-    case allReviews
     case reimport
     case customizeWidgets
+
+    // MARK: - Apps & Reviews (T-W03, design §2.2)
+
+    /// Lists all active apps for an account.
+    case appsList(accountId: String)
+
+    /// Lists archived apps for an account.
+    case archivedApps(accountId: String)
+
+    /// App detail screen. Parameterized with the app and owning account ids.
+    case appDetail(appId: String, accountId: String)
+
+    /// Generic "coming soon" placeholder for features not yet implemented.
+    case comingSoon(title: String)
+
+    /// Ratings & Reviews list for a specific app. Replaces the previous
+    /// value-less `allReviews` case; the app context (id + bundle id + account)
+    /// is required for filtering and API calls.
+    case ratingsAndReviews(appId: String, bundleId: String, accountId: String)
+
+    /// Single review detail. Parameterized with review, app, and account ids.
+    case reviewDetail(reviewId: String, appId: String, accountId: String)
+
+    /// Compose or edit a developer response to a review. `existingReplyBody` is
+    /// non-nil when editing an already-published response.
+    case replyComposer(reviewId: String, accountId: String, existingReplyBody: String?)
+
+    /// Confirmation dialog before deleting a developer response.
+    case deleteReplyConfirm(reviewId: String, responseId: String, accountId: String)
 }
 
 /// Holds the Windows navigation route stack and the push/pop operations the
