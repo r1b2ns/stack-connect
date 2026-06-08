@@ -64,8 +64,13 @@ struct RootView: View {
             WindowsPlaceholderView(title: provider.displayName) { coordinator.pop() }
         case .addAccountOptions(let provider):
             WindowsAddAccountOptionsView(provider: provider, coordinator: coordinator)
+        // T-F10: real create Apple account form (US-W03).
         case .createAppleAccount:
-            WindowsPlaceholderView(title: "Create Apple Account") { coordinator.pop() }
+            WindowsCreateAppleAccountView(
+                coordinator: coordinator,
+                storage: model.storage,
+                secrets: model.secrets
+            )
         case .createFirebaseAccount:
             WindowsPlaceholderView(title: "Create Firebase Account") { coordinator.pop() }
         case .importScexport:
