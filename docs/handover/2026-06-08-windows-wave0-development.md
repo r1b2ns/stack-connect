@@ -5,11 +5,11 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** T-W01 DONE (merged into `experiment/windows` as `7ef4617`); T-W02 DONE (accepted, committed `556c537`, not yet merged); T-W03 DONE (committed `d40635e` + `a34995e`, all gates passed, not yet merged); next session begins with **T-W04**.
+**Status:** ALL FOUR Wave 0 tasks DONE. T-W01 DONE (merged into `experiment/windows` as `7ef4617`). T-W02 DONE (committed `556c537`, not yet merged). T-W03 DONE (committed `d40635e` + `a34995e`, not yet merged). T-W04 DONE (committed `949101a`, all gates passed, not yet merged). Wave 0 development complete; remaining action is gated close-out (merge approved branches into `experiment/windows` pending explicit user authorization).
 
-**Snapshot:** T-W01 went through the serial one-task-per-session pipeline, passed all gates (Staff APPROVE, QA PASS 98/98 tests, PO ACCEPTED all 5 acceptance criteria), and is merged to `experiment/windows`. T-W02 has been committed (556c537), passed all gates (Staff APPROVE, QA PASS 89 tests, PO ACCEPTED all ACs), but **not yet merged** (merge deferred to Wave 0 close-out). T-W03 has been committed (`d40635e` feat + `a34995e` S-1 correction), passed all gates (Staff APPROVE, QA PASS 86 tests, PO ACCEPTED all ACs), but **not yet merged**. T-W04 dev is green in worktree but uncommitted. No pushes/merges to remote yet.
+**Snapshot:** All four Wave 0 tasks have been implemented, passed all gates, and are committed on their feature branches. T-W01 is merged to `experiment/windows` (7ef4617). T-W02 (committed 556c537), T-W03 (committed `d40635e` + `a34995e`), and T-W04 (committed 949101a) are **not yet merged** — merges deferred to Wave 0 close-out. T-W01 and T-W02 passed all gates first round. T-W03 required one S-1 correction (now complete). T-W04 passed all gates first review: Staff APPROVE, QA PASS 104 tests 0 fail, PO ACCEPTED, 0 corrections (3 non-blocking follow-ups recorded).
 
-> **How to resume:** the next session begins with **T-W04** (shared Windows UI components). Its dev is green & uncommitted in worktree `feat-T-W04-windows-shared-components` — the next session commits it (message in the T-W04 section below) → Staff Review → QA → PO. Start a fresh session, run `/personal-development`, pick T-W04, and follow the serial pipeline. Update handover and end.
+> **Wave 0 development is complete.** Remaining action: user must authorize merge of the four approved branches into `experiment/windows` (never to `master` without explicit authorization). See "Wave 0 close-out" section below for branch list and next steps.
 
 ---
 
@@ -30,9 +30,9 @@
 | **T-W01** | SDK + AppleConnectionProtocol for Windows GUI | `feat/T-W01-windows-apple-connection` | `7e5fbca` (feat) + `3eb047b` (correction) | DONE — merged into experiment/windows (7ef4617). Staff APPROVE / QA PASS 98/98 / PO ACCEPTED. 1 correction. |
 | **T-W02** | `WindowsClipboard.setText()` | `feat/T-W02-windows-clipboard-settext` | `ab1f133` (feat) + `556c537` (correction) | DONE — PO ACCEPTED. Staff APPROVE / QA PASS (3 macOS-host tests pass, 5 clipboard tests, 89 total 0 fail) / 0 new corrections. Not yet merged (Wave 0 close-out). |
 | **T-W03** | Parameterize `WindowsRoute` + wire RootView | `feat/T-W03-windows-route-enum` | `d40635e` (feat) + `a34995e` (S-1 correction) | DONE — PO ACCEPTED. Staff APPROVE / QA PASS 86 tests 0 fail / PO ACCEPTED / 1 correction. Not yet merged (Wave 0 close-out). |
-| **T-W04** | Shared Windows UI components | `feat/T-W04-windows-shared-components` | none yet | Developer agent `a9537749abaac23c7` **DONE green (104 tests, 0 fail)** — 9 files in worktree, **NOT yet committed**. Next: `git-docs-manager` commits → Staff Review → QA → PO |
+| **T-W04** | Shared Windows UI components | `feat/T-W04-windows-shared-components` | `949101a` (feat) | DONE — PO ACCEPTED. Staff APPROVE / QA PASS 104 tests 0 fail / PO ACCEPTED / 0 corrections. Not yet merged (Wave 0 close-out). 3 non-blocking follow-ups (S-1, S-2, S-3). |
 
-QA and PO gates have run for T-W02 and T-W03. T-W04 still awaits its first Staff Review, QA, and PO gate runs. No pushes, no merges to remote yet.
+QA and PO gates have run for all four Wave 0 tasks. All tasks passed their gate verdicts and are ready for Wave 0 close-out. No pushes, no merges to remote yet.
 
 Worktrees live under `/Users/rubensmachion/repos/Open/stack-connect-worktrees/feat-<task>/`.
 
@@ -74,7 +74,7 @@ Staff review APPROVE with should-fix:
 Correction agent `a72f606078658fd0d` **finished green** (86 tests, 0 fail). Changed `onSeeMore`/`onSeeMoreReviews` signature `() -> Void` → `(AppModel?) -> Void` across `WindowsRecentReviewsWidgetView.swift`, `WindowsWidgetContainerView.swift`, `WindowsHomeView.swift`; widget passes `data.reviews.first?.app`; `widgetsSlot` routes to `.ratingsAndReviews(appId:bundleId:accountId:)` (falls back to `.comingSoon` only when nil). **Committed as `a34995e`**. Task DONE: Staff APPROVE / QA PASS 86 tests 0 fail / PO ACCEPTED. 1 correction. Not yet merged (Wave 0 close-out).
 
 ### T-W04 (branch `feat/T-W04-windows-shared-components`)
-Developer `a9537749abaac23c7` **finished green** (104 tests, 0 fail). 9 files created, **not yet committed**:
+Developer `a9537749abaac23c7` **finished green** (104 tests, 0 fail). 9 files created and **committed as `949101a`**:
 - `.../StackConnectWindowsApp/Shared/WindowsStatusBadge.swift` (uses `AppStoreState.color`; Ready for Sale=green, Pending Developer Release=yellow, Prepare for Submission=blue; colored-text fallback per A-04)
 - `.../StackConnectWindowsApp/Shared/WindowsSectionHeader.swift` (title + optional `onSeeAll`)
 - `.../StackConnectWindowsApp/Shared/WindowsOptionRow.swift` (glyph/label + chevron; `.onTapGesture`)
@@ -85,7 +85,7 @@ Developer `a9537749abaac23c7` **finished green** (104 tests, 0 fail). 9 files cr
 - `.../WindowsAppCore/Shared/WindowsDateFormatting.swift` (Foundation-pure: `relativeDate(_:relativeTo:)` time-ago + `absoluteDate(_:timeZone:)` "d MMM yyyy"; injectable `now`)
 - `.../Tests/WindowsAppCoreTests/WindowsDateFormattingTests.swift` (18 tests)
 
-Proposed commit message:
+**Task DONE:** Committed as `949101a` with message:
 ```
 feat(T-W04): add reusable Windows UI components and date formatting helper
 
@@ -100,6 +100,17 @@ WindowsRatingStarsView reuses StarRatingFormatter from StackHomeCore.
 WindowsDateFormatting is fully unit-tested (18 test cases).
 ```
 
+**Gate verdicts:** All gates passed first review.
+- **Staff Review:** APPROVE (no blocking findings; 3 non-blocking should-fix follow-ups).
+  - **S-1:** `WindowsAppCore` target declares `SwiftCrossUI` in Package.swift — pre-existing drift from earlier account-model tasks (NOT introduced by T-W04). The new WindowsDateFormatting.swift is itself Foundation-only/clean. Follow-up: either remove SwiftCrossUI from WindowsAppCore + move the model files importing it into the executable target, or document the deviation.
+  - **S-2:** `WindowsDateFormatting.absoluteDate(_:timeZone:)` allocates a new DateFormatter per call — cache it as a static formatter (single-threaded renderer, so safe).
+  - **S-3:** `WindowsRecentReviewsWidgetView` has a private `relativeDate` duplicating `WindowsDateFormatting.relativeDate` (diverges on the Darwin path) — refactor to use the canonical helper. This file is owned by downstream task T-W28.
+- **QA:** PASS (104 tests, 0 failures, including 18 new WindowsDateFormatting tests; all 7 components PASS-by-inspection).
+- **PO:** ACCEPTED (all 6 acceptance criteria met).
+- **Corrections:** 0 (first review approved).
+
+Not yet merged (Wave 0 close-out).
+
 ---
 
 ## Resume checklist — ONE TASK PER SESSION (serial)
@@ -113,15 +124,23 @@ The four agents from the old parallel run all finished green. The remaining work
 | 1 | **T-W01** | ✅ DONE (merged `7ef4617`) | — |
 | 2 | **T-W02** | ✅ DONE (committed `556c537`, not yet merged) | — |
 | 3 | **T-W03** | ✅ DONE (committed `d40635e` + `a34995e`, all gates passed, not yet merged) | — |
-| 4 | **T-W04** | Dev green, **uncommitted** (no prior review) | `git-docs-manager` commits (msg below) → first Staff Review → QA → PO → done → update handover → END |
+| 4 | **T-W04** | ✅ DONE (committed `949101a`, all gates passed, not yet merged) | — |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
 - **Git auth is per session, commit-only** — confirm at session start. Push/PR stay gated. **Merges into `experiment/windows` need explicit user OK; never merge to `master` automatically.**
 - After the task is **PO-ACCEPTED**, `git-docs-manager` updates this handover (mark done, record SHA/verdicts, set next-task pointer) and the session **ends** — the next task is a **fresh session** to save tokens.
 
-### Wave 0 close-out (after all 4 tasks are done)
-Ask the user for explicit authorization to merge the approved Wave 0 branches into `experiment/windows`. Never merge to `master` without explicit authorization.
+### Wave 0 close-out (all 4 tasks are DONE)
+All four Wave 0 tasks have been implemented, passed all gates (Staff APPROVE, QA PASS, PO ACCEPTED), and are committed on their feature branches. **Remaining action: merge the approved branches into `experiment/windows` (requires explicit user authorization; never merge to `master` without explicit authorization).**
+
+**Approved branches ready for merge:**
+- **T-W01:** `feat/T-W01-windows-apple-connection` (tip `7ef4617`) — **already merged** into `experiment/windows`.
+- **T-W02:** `feat/T-W02-windows-clipboard-settext` (tip `556c537`) — **not yet merged**.
+- **T-W03:** `feat/T-W03-windows-route-enum` (tip `a34995e`, after S-1 correction) — **not yet merged**.
+- **T-W04:** `feat/T-W04-windows-shared-components` (tip `949101a`) — **not yet merged**.
+
+To close out Wave 0: ask the user for explicit authorization, then merge T-W02, T-W03, and T-W04 into `experiment/windows` (in any order; no interdependencies). After all merges complete, Wave 0 Windows port foundation is live on `experiment/windows`.
 
 ## Key facts for gate agents
 - Pass per-task slice of: Task Breakdown (artifact §3.2), Acceptance Criteria, Test Cases — keyed by task id.
