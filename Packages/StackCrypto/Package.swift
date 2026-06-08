@@ -4,6 +4,10 @@ import PackageDescription
 
 let package = Package(
     name: "StackCrypto",
+    // macOS/iOS minimum needed for CryptoKit availability on Apple platforms.
+    // SPM ignores the `platforms` array entirely on non-Darwin (Windows, Linux),
+    // so this does NOT restrict cross-platform builds.
+    platforms: [.macOS(.v13), .iOS(.v15)],
     products: [
         .library(
             name: "StackCrypto",
