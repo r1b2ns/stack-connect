@@ -78,8 +78,13 @@ struct RootView: View {
             )
         case .createFirebaseAccount:
             WindowsPlaceholderView(title: "Create Firebase Account") { coordinator.pop() }
+        // T-F13: real import .scexport screen (US-W05).
         case .importScexport:
-            WindowsPlaceholderView(title: "Import .scexport") { coordinator.pop() }
+            WindowsImportAccountView(
+                coordinator: coordinator,
+                storage: model.storage,
+                secrets: model.secrets
+            )
         case .settings:
             WindowsPlaceholderView(title: "Settings") { coordinator.pop() }
         case .appDetail:
