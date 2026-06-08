@@ -5,11 +5,11 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** T-W01 DONE (merged into `experiment/windows` as `7ef4617`); T-W02 DONE (accepted, committed `556c537`, not yet merged); next session begins with **T-W03**.
+**Status:** T-W01 DONE (merged into `experiment/windows` as `7ef4617`); T-W02 DONE (accepted, committed `556c537`, not yet merged); T-W03 DONE (committed `d40635e` + `a34995e`, all gates passed, not yet merged); next session begins with **T-W04**.
 
-**Snapshot:** T-W01 went through the serial one-task-per-session pipeline, passed all gates (Staff APPROVE, QA PASS 98/98 tests, PO ACCEPTED all 5 acceptance criteria), and is merged to `experiment/windows`. T-W02 has been committed (556c537), passed all gates (Staff APPROVE, QA PASS 89 tests, PO ACCEPTED all ACs), but **not yet merged** (merge deferred to Wave 0 close-out). T-W03, T-W04 corrections/dev are green in worktrees but uncommitted. No pushes/merges to remote yet.
+**Snapshot:** T-W01 went through the serial one-task-per-session pipeline, passed all gates (Staff APPROVE, QA PASS 98/98 tests, PO ACCEPTED all 5 acceptance criteria), and is merged to `experiment/windows`. T-W02 has been committed (556c537), passed all gates (Staff APPROVE, QA PASS 89 tests, PO ACCEPTED all ACs), but **not yet merged** (merge deferred to Wave 0 close-out). T-W03 has been committed (`d40635e` feat + `a34995e` S-1 correction), passed all gates (Staff APPROVE, QA PASS 86 tests, PO ACCEPTED all ACs), but **not yet merged**. T-W04 dev is green in worktree but uncommitted. No pushes/merges to remote yet.
 
-> **How to resume:** the next session begins with **T-W03** (parameterize WindowsRoute + wire RootView). Its correction is green & uncommitted in worktree `feat-T-W03-windows-route-enum` — the next session commits it (message in the T-W03 section below) → Staff Review → QA → PO. Start a fresh session, run `/personal-development`, pick T-W03, and follow the serial pipeline. Update handover and end.
+> **How to resume:** the next session begins with **T-W04** (shared Windows UI components). Its dev is green & uncommitted in worktree `feat-T-W04-windows-shared-components` — the next session commits it (message in the T-W04 section below) → Staff Review → QA → PO. Start a fresh session, run `/personal-development`, pick T-W04, and follow the serial pipeline. Update handover and end.
 
 ---
 
@@ -29,10 +29,10 @@
 |------|-------|--------|--------------------------|------------|
 | **T-W01** | SDK + AppleConnectionProtocol for Windows GUI | `feat/T-W01-windows-apple-connection` | `7e5fbca` (feat) + `3eb047b` (correction) | DONE — merged into experiment/windows (7ef4617). Staff APPROVE / QA PASS 98/98 / PO ACCEPTED. 1 correction. |
 | **T-W02** | `WindowsClipboard.setText()` | `feat/T-W02-windows-clipboard-settext` | `ab1f133` (feat) + `556c537` (correction) | DONE — PO ACCEPTED. Staff APPROVE / QA PASS (3 macOS-host tests pass, 5 clipboard tests, 89 total 0 fail) / 0 new corrections. Not yet merged (Wave 0 close-out). |
-| **T-W03** | Parameterize `WindowsRoute` + wire RootView | `feat/T-W03-windows-route-enum` | `d40635e` (feat) | Staff review APPROVE w/ should-fix S-1. Correction agent `a72f606078658fd0d` **DONE green (86 tests, 0 fail)** — fix in worktree, **NOT yet committed**. Next: `git-docs-manager` commits → re-run Staff Review → QA → PO |
+| **T-W03** | Parameterize `WindowsRoute` + wire RootView | `feat/T-W03-windows-route-enum` | `d40635e` (feat) + `a34995e` (S-1 correction) | DONE — PO ACCEPTED. Staff APPROVE / QA PASS 86 tests 0 fail / PO ACCEPTED / 1 correction. Not yet merged (Wave 0 close-out). |
 | **T-W04** | Shared Windows UI components | `feat/T-W04-windows-shared-components` | none yet | Developer agent `a9537749abaac23c7` **DONE green (104 tests, 0 fail)** — 9 files in worktree, **NOT yet committed**. Next: `git-docs-manager` commits → Staff Review → QA → PO |
 
-**No QA (mobile-qa-reviewer) or PO (product-owner) gate has run for any task yet. No pushes, no merges.**
+QA and PO gates have run for T-W02 and T-W03. T-W04 still awaits its first Staff Review, QA, and PO gate runs. No pushes, no merges to remote yet.
 
 Worktrees live under `/Users/rubensmachion/repos/Open/stack-connect-worktrees/feat-<task>/`.
 
@@ -71,17 +71,7 @@ Correction agent `ae685d87701072ab0` **finished green** (89 tests, 0 fail). Fixe
 Modified `.../StackConnectWindowsApp/App/WindowsHomeCoordinator.swift` (parameterized cases: `appsList(accountId:)`, `archivedApps(accountId:)`, `appDetail(appId:accountId:)`, `comingSoon(title:)`, `ratingsAndReviews(appId:bundleId:accountId:)`, `reviewDetail(reviewId:appId:accountId:)`, `replyComposer(reviewId:accountId:existingReplyBody:)`, `deleteReplyConfirm(reviewId:responseId:accountId:)` — all ids `String`), `.../App/RootView.swift` (exhaustive `destination(for:)`, no default; placeholders via `WindowsPlaceholderView`), `.../Home/WindowsHomeView.swift` (widgetsSlot closures). 86 tests green.
 Staff review APPROVE with should-fix:
 - **S-1:** `onSeeMoreReviews` pushed `.comingSoon` instead of `.ratingsAndReviews(firstReviewApp)` (violates AC-W16-2 / A-01).
-Correction agent `a72f606078658fd0d` **finished green** (86 tests, 0 fail). Changed `onSeeMore`/`onSeeMoreReviews` signature `() -> Void` → `(AppModel?) -> Void` across `WindowsRecentReviewsWidgetView.swift`, `WindowsWidgetContainerView.swift`, `WindowsHomeView.swift`; widget passes `data.reviews.first?.app`; `widgetsSlot` routes to `.ratingsAndReviews(appId:bundleId:accountId:)` (falls back to `.comingSoon` only when nil). **Not yet committed.** Proposed commit message:
-```
-fix(T-W03): route "See more" reviews to ratingsAndReviews (S-1)
-
-Thread the first review's AppModel through the onSeeMoreReviews
-callback chain so the Recent Reviews widget's "See more" action
-pushes .ratingsAndReviews(appId:bundleId:accountId:) instead of
-.comingSoon. Falls back to .comingSoon only when the widget has no
-reviews (nil app). Corrects the comment that wrongly claimed there
-was no single-app context available.
-```
+Correction agent `a72f606078658fd0d` **finished green** (86 tests, 0 fail). Changed `onSeeMore`/`onSeeMoreReviews` signature `() -> Void` → `(AppModel?) -> Void` across `WindowsRecentReviewsWidgetView.swift`, `WindowsWidgetContainerView.swift`, `WindowsHomeView.swift`; widget passes `data.reviews.first?.app`; `widgetsSlot` routes to `.ratingsAndReviews(appId:bundleId:accountId:)` (falls back to `.comingSoon` only when nil). **Committed as `a34995e`**. Task DONE: Staff APPROVE / QA PASS 86 tests 0 fail / PO ACCEPTED. 1 correction. Not yet merged (Wave 0 close-out).
 
 ### T-W04 (branch `feat/T-W04-windows-shared-components`)
 Developer `a9537749abaac23c7` **finished green** (104 tests, 0 fail). 9 files created, **not yet committed**:
@@ -122,7 +112,7 @@ The four agents from the old parallel run all finished green. The remaining work
 |-------|------|------------------------------|---------------------------------------------|
 | 1 | **T-W01** | ✅ DONE (merged `7ef4617`) | — |
 | 2 | **T-W02** | ✅ DONE (committed `556c537`, not yet merged) | — |
-| 3 | **T-W03** | Correction green, **uncommitted** | `git-docs-manager` commits (msg below) → Staff Review (S-1 was should-fix; APPROVE expected) → QA → PO → done → update handover → END |
+| 3 | **T-W03** | ✅ DONE (committed `d40635e` + `a34995e`, all gates passed, not yet merged) | — |
 | 4 | **T-W04** | Dev green, **uncommitted** (no prior review) | `git-docs-manager` commits (msg below) → first Staff Review → QA → PO → done → update handover → END |
 
 ### Per-session rules (from the rewritten skill)
