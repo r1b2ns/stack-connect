@@ -27,11 +27,23 @@ final class WindowsHomeModel: SwiftCrossUI.ObservableObject {
     /// bootstrap owns both the core model and navigation.
     let coordinator: WindowsHomeCoordinator
 
+    /// The persistence backend, exposed so pushed screens (e.g.
+    /// `WindowsAccountsListView`) can create their own models against the same
+    /// store without duplicating the bootstrap.
+    let storage: PersistentStorable
+
+    /// The encrypted credential backend, exposed so pushed screens can pass it
+    /// to models that need secret access (e.g. account deletion removes
+    /// credentials from the secret store).
+    let secrets: KeyStorable
+
     private let core: StackHomeCore.HomeViewModel
 
     init(environment: AppEnvironment) {
         let storage = environment.storage
         let coordinator = WindowsHomeCoordinator()
+        self.storage = storage
+        self.secrets = environment.secrets
         let core = StackHomeCore.HomeViewModel(
             storage: storage,
             preferences: environment.preferences,
