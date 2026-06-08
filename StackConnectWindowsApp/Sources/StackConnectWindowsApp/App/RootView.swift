@@ -1,13 +1,14 @@
 import SwiftCrossUI
 import StackHomeCore
 
-// Phase 4 · B1b-2 · T-B2/T-B4 — the window's root view + route switch.
+// Phase 4 · Block F · T-F16 — the window's root view + route switch.
 //
 // Owns the observed state (the core adapter and the navigation coordinator) and
 // renders the current screen: Home when the route stack is empty, otherwise the
-// pushed destination. The pushed destinations are labeled placeholders in v1
-// (T-D3 builds them out) but navigation — push from Home, "< Back" to pop — is
-// fully functional so the shell is testable end-to-end.
+// pushed destination. Account management routes (accounts list, add options,
+// create Apple/Firebase, import .scexport) are wired to real views. Remaining
+// routes (settings, appDetail, reviewDetail, allReviews) use placeholders.
+// Navigation — push from Home, "< Back" to pop — is fully functional.
 
 struct RootView: View {
     /// Observed core adapter (state + intents).
@@ -37,11 +38,10 @@ struct RootView: View {
         }
     }
 
-    /// Resolves a pushed route to its destination (US-011 AC-1). Customize
-    /// Widgets (T-C3) is a real full-screen screen (US-008); every other v1
-    /// route is a labeled placeholder with a working "< Back" (design D3), with
-    /// `reimport` rendered as a DISABLED placeholder (design D7 — no live Apple
-    /// sync on Windows v1).
+    /// Resolves a pushed route to its destination. Account management screens
+    /// (T-F07, T-F08, T-F10, T-F11, T-F13) are real views; `reimport` is
+    /// intentionally disabled (no live Apple sync on Windows v1); remaining
+    /// routes are labeled placeholders.
     ///
     /// The switch is exhaustive (no `default`) so adding a route to
     /// `WindowsRoute` is a compile error until a destination is wired here.
