@@ -29,7 +29,7 @@ struct WindowsAccountsListView: View {
     /// The provider this list displays — drives the title and "+ Add" route.
     let provider: ProviderType
     /// Navigation coordinator — Back pops, "+ Add" pushes the add-account route.
-    let coordinator: WindowsHomeCoordinator
+    @State private var coordinator: WindowsHomeCoordinator
 
     /// The accounts list model. Observed via `@State` so the view redraws when
     /// the model's `@Published` properties change.
@@ -47,7 +47,7 @@ struct WindowsAccountsListView: View {
         secrets: KeyStorable
     ) {
         self.provider = provider
-        self.coordinator = coordinator
+        _coordinator = State(wrappedValue: coordinator)
         _model = State(wrappedValue: WindowsAccountsListModel(
             providerType: provider,
             storage: storage,
@@ -201,6 +201,7 @@ struct WindowsAccountsListView: View {
 
                 // Inline Delete button (US-W06 AC-1)
                 Button("Delete") {
+                    expiredTappedId = nil
                     model.confirmDelete(id: account.id)
                 }
                 .foregroundColor(.red)
@@ -217,6 +218,9 @@ struct WindowsAccountsListView: View {
                 // inline error instead of navigating. Non-expired rows do
                 // not navigate in v1 (future: push to account detail).
                 if account.isExpired {
+                    if model.deleteConfirmingId == account.id {
+                        model.cancelDelete()
+                    }
                     expiredTappedId = (expiredTappedId == account.id) ? nil : account.id
                 }
             }
