@@ -13,9 +13,11 @@ final class MockStorage: PersistentStorable, @unchecked Sendable {
     var shouldThrowOnSave = false
     var shouldThrowOnDelete = false
     private(set) var fetchAllCallCount: [String: Int] = [:]
+    private(set) var saveCallCount: Int = 0
 
     func save<T: Codable>(_ item: T, id: String) async throws {
         if shouldThrowOnSave { throw PersistentStorableError.encodingFailed }
+        saveCallCount += 1
         let data = try JSONEncoder().encode(item)
         store["\(String(describing: T.self)).\(id)"] = data
     }
@@ -49,6 +51,8 @@ final class MockStorage: PersistentStorable, @unchecked Sendable {
 /// In-memory mock for `KeyStorable`.
 final class MockSecrets: KeyStorable {
     private var store: [String: Any] = [:]
+
+    var allKeys: [String] { Array(store.keys) }
 
     func string(forKey key: String) -> String? { store[key] as? String }
     func int(forKey key: String) -> Int? { store[key] as? Int }

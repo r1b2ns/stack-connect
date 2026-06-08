@@ -34,7 +34,7 @@ final class WindowsHomeModel: SwiftCrossUI.ObservableObject {
 
     /// The encrypted credential backend, exposed so pushed screens can pass it
     /// to models that need secret access (e.g. account creation stores
-    /// credentials in the secret store).
+    /// credentials in the secret store, account deletion removes them).
     let secrets: KeyStorable
 
     private let core: StackHomeCore.HomeViewModel

@@ -47,6 +47,7 @@ let package = Package(
                 .product(name: "SwiftCrossUI", package: "swift-cross-ui"),
                 .product(name: "StackHomeCore", package: "StackHomeCore"),
                 .product(name: "StackProtocols", package: "StackProtocols"),
+                .product(name: "StackCrypto", package: "StackCrypto"),
             ],
             path: "Sources/WindowsAppCore"
         ),
@@ -70,6 +71,7 @@ let package = Package(
                 "WindowsAppCore",
                 .product(name: "StackHomeCore", package: "StackHomeCore"),
                 .product(name: "StackProtocols", package: "StackProtocols"),
+                .product(name: "StackCrypto", package: "StackCrypto"),
             ],
             path: "Tests/WindowsAppCoreTests"
         ),
