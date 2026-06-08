@@ -50,17 +50,14 @@ struct WindowsCreateFirebaseAccountView: View {
             .padding(16)
             .frame(maxWidth: 860)
         }
-        .onChange(of: model.isSaved) {
-            if model.isSaved {
-                coordinator.pop()
-            }
-        }
     }
 
     // MARK: - Toolbar (Back + Save)
 
-    /// Top bar: "< Back" on the left, Save button on the right. Save is disabled
-    /// when the form is incomplete or while saving is in progress (AC-1).
+    /// Header row: "< Back" on the left, "Save" button on the right.
+    /// Back pops without saving. Save triggers the async save flow (AC-1).
+    /// While saving, the button shows a loading indicator and the form is
+    /// disabled.
     private func buildToolbar() -> some View {
         HStack {
             WindowsBackButtonView(onBack: { coordinator.pop() })
@@ -68,49 +65,54 @@ struct WindowsCreateFirebaseAccountView: View {
             Spacer()
 
             if model.isSaving {
-                Text("Saving...")
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Saving...")
+                        .foregroundColor(.gray)
+                }
             } else {
                 Button("Save") {
                     Task {
                         await model.saveFirebaseAccount()
+                        if model.isSaved {
+                            coordinator.pop()
+                        }
                     }
                 }
-                .disabled(!isFormComplete)
+                .disabled(
+                    model.accountName.trimmingCharacters(in: .whitespaces).isEmpty
+                    || model.serviceAccountJSON.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                )
             }
         }
     }
 
     // MARK: - General Section
 
-    /// The "General" section containing the Account Name text field (AC-1).
+    /// The "GENERAL" section containing the Account Name text field (AC-1).
     private func buildGeneralSection() -> some View {
-        VStack(spacing: 8) {
-            HStack {
-                Text("GENERAL")
-                    .fontWeight(.semibold)
-                Spacer()
-            }
+        VStack(alignment: .leading, spacing: 8) {
+            Text("GENERAL")
+                .fontWeight(.bold)
+                .foregroundColor(.gray)
 
-            HStack {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("Account Name")
-                Spacer()
+                TextField("Account Name", text: $model.accountName)
+                    .disabled(model.isSaving)
             }
-            TextField("Account Name", text: $model.accountName)
-                .disabled(model.isSaving)
         }
     }
 
     // MARK: - Firebase Credentials Section
 
-    /// The "Firebase Credentials" section with Service Account JSON TextEditor,
+    /// The "FIREBASE CREDENTIALS" section with Service Account JSON TextEditor,
     /// Paste button, and Browse button (AC-1).
     private func buildFirebaseCredentialsSection() -> some View {
-        VStack(spacing: 8) {
-            HStack {
-                Text("FIREBASE CREDENTIALS")
-                    .fontWeight(.semibold)
-                Spacer()
-            }
+        VStack(alignment: .leading, spacing: 8) {
+            Text("FIREBASE CREDENTIALS")
+                .fontWeight(.bold)
+                .foregroundColor(.gray)
 
             HStack {
                 Text("Service Account Key (JSON)")
@@ -127,69 +129,44 @@ struct WindowsCreateFirebaseAccountView: View {
                 .frame(minHeight: 200)
                 .disabled(model.isSaving)
 
-            HStack {
-                Button("+ Browse...") {
-                    if let path = WindowsFilePicker.openFile(
-                        title: "Select Service Account JSON",
-                        filters: [
-                            ("JSON Files (*.json)", "*.json"),
-                            ("All Files (*.*)", "*.*"),
-                        ]
-                    ) {
-                        loadFileContents(at: path)
-                    }
+            Button("+ Browse...") {
+                if let path = WindowsFilePicker.openFile(
+                    title: "Select Service Account JSON",
+                    filters: [
+                        ("JSON Files (*.json)", "*.json"),
+                        ("All Files (*.*)", "*.*"),
+                    ]
+                ) {
+                    model.loadJSONFromFile(at: path)
                 }
-                .disabled(model.isSaving)
-                Spacer()
             }
+            .disabled(model.isSaving)
         }
     }
 
     // MARK: - Error Banner
 
-    /// Red-left-border InfoBar error banner. Shown only when the model has a
-    /// non-nil error message (AC-2, AC-3, AC-5).
+    /// Inline error banner shown when the model has a non-nil `errorMessage`.
+    /// Uses the red left-border InfoBar style matching the accounts list
+    /// error pattern (AC-2, AC-3, AC-5).
     @ViewBuilder
     private func buildErrorBanner() -> some View {
-        if let error = model.errorMessage {
+        if let message = model.errorMessage {
             HStack(spacing: 0) {
                 Rectangle()
-                    .fill(.red)
+                    .fill(Color.red)
                     .frame(width: 4)
                     .cornerRadius(8)
 
-                VStack(spacing: 8) {
-                    HStack {
-                        Text(error)
-                            .foregroundColor(.red)
-                        Spacer()
-                    }
+                HStack(spacing: 8) {
+                    Text(message)
+                        .foregroundColor(.red)
+                    Spacer()
                 }
                 .padding(12)
             }
             .background(Color(white: 0.94))
             .cornerRadius(8)
         }
-    }
-
-    // MARK: - Helpers
-
-    /// Whether the form has enough data to attempt a save. The actual validation
-    /// (JSON parsing, duplicate detection) lives in the model; this only gates
-    /// the Save button so the user gets immediate visual feedback.
-    private var isFormComplete: Bool {
-        let nameFilled = !model.accountName.trimmingCharacters(in: .whitespaces).isEmpty
-        let jsonFilled = !model.serviceAccountJSON.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return nameFilled && jsonFilled
-    }
-
-    /// Reads a file from disk and loads its content into the JSON text editor.
-    private func loadFileContents(at path: String) {
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
-              let content = String(data: data, encoding: .utf8) else {
-            model.errorMessage = "Could not read file."
-            return
-        }
-        model.serviceAccountJSON = content
     }
 }
