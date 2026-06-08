@@ -1,4 +1,6 @@
+// Phase 4 · Block F · T-F14 — Win32 file picker helper.
 import Foundation
+import WindowsAppCore
 
 #if os(Windows)
 import WinSDK
@@ -51,34 +53,6 @@ enum WindowsFilePicker {
 #if os(Windows)
 private extension WindowsFilePicker {
 
-    /// Converts a Swift `String` to a null-terminated UTF-16 array suitable for
-    /// Win32 W-suffix functions.
-    static func wide(_ string: String) -> [UInt16] {
-        Array(string.utf16) + [0]
-    }
-
-    /// Builds the Win32 filter string from the Swift-friendly tuple array.
-    ///
-    /// The Win32 format is pairs of null-terminated UTF-16 strings
-    /// (`description\0pattern\0`) terminated by a final null character.
-    /// For example, two filters become:
-    ///
-    ///     "P8 Files (*.p8)\0*.p8\0All Files (*.*)\0*.*\0\0"
-    ///
-    static func buildFilterString(
-        _ filters: [(description: String, pattern: String)]
-    ) -> [UInt16] {
-        var result: [UInt16] = []
-        for filter in filters {
-            result.append(contentsOf: filter.description.utf16)
-            result.append(0) // null terminator between description and pattern
-            result.append(contentsOf: filter.pattern.utf16)
-            result.append(0) // null terminator between pattern and next pair
-        }
-        result.append(0) // final double-null terminator
-        return result
-    }
-
     static func openFileWin32(
         title: String,
         filters: [(description: String, pattern: String)]
@@ -103,6 +77,11 @@ private extension WindowsFilePicker {
         //                      dialog closes (prevents side-effects).
         ofn.Flags = DWORD(OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR)
 
+        // The three buffers (file, title, filter) must all remain pinned for
+        // the duration of the GetOpenFileNameW call, because the OPENFILENAMEW
+        // struct holds raw pointers into each of them. The triple nesting
+        // ensures all three withUnsafeMutableBufferPointer scopes overlap,
+        // keeping every buffer alive and addressable simultaneously.
         let result: Bool = fileBuffer.withUnsafeMutableBufferPointer { fileBuf in
             titleW.withUnsafeMutableBufferPointer { titleBuf in
                 filterW.withUnsafeMutableBufferPointer { filterBuf in
@@ -114,6 +93,11 @@ private extension WindowsFilePicker {
             }
         }
 
+        // When GetOpenFileNameW returns false it can mean either a user
+        // cancellation (CommDlgExtendedError() == 0) or a real error
+        // (CommDlgExtendedError() != 0). For v1 we treat both as "no file
+        // selected"; callers needing richer diagnostics can check
+        // CommDlgExtendedError() here.
         guard result else { return nil }
 
         // Convert the null-terminated UTF-16 buffer back to a Swift String.
