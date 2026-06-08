@@ -1,5 +1,6 @@
 import SwiftCrossUI
 import StackHomeCore
+import WindowsAppCore
 
 // Phase 4 · Block F · T-F08 — Add Account Options screen (US-W02, design §F).
 //
@@ -10,17 +11,21 @@ import StackHomeCore
 //
 // In-content "< Back" pops back to the accounts list. Content is capped at
 // 860px (consistent with the rest of the Windows app layout).
+//
+// Routing decisions (which cards to show, which routes to push) are delegated
+// to `WindowsAddAccountOptionsModel` (in WindowsAppCore) so they can be
+// unit-tested without SwiftCrossUI views.
 
 struct WindowsAddAccountOptionsView: View {
 
-    /// The provider type this screen was invoked for. Determines which "Create"
-    /// route is pushed and whether the Import card is visible.
-    let provider: ProviderType
+    /// Pure-logic model that decides which options are available and what
+    /// navigation targets they map to.
+    private let model: WindowsAddAccountOptionsModel
     /// Observed navigation coordinator (push/pop).
     @State private var coordinator: WindowsHomeCoordinator
 
     init(provider: ProviderType, coordinator: WindowsHomeCoordinator) {
-        self.provider = provider
+        self.model = WindowsAddAccountOptionsModel(provider: provider)
         _coordinator = State(wrappedValue: coordinator)
     }
 
@@ -40,7 +45,7 @@ struct WindowsAddAccountOptionsView: View {
             buildCreateNewCard()
 
             // "Import .scexport" card — only for Apple provider (AC-1, TC-F020).
-            if provider == .apple {
+            if model.showImportOption {
                 buildImportCard()
             }
 
@@ -58,18 +63,17 @@ struct WindowsAddAccountOptionsView: View {
     private func buildCreateNewCard() -> some View {
         WindowsProviderCardView(
             glyph: "+",
-            glyphColor: HomeGridCell.color(named: provider.colorName),
+            glyphColor: HomeGridCell.color(named: model.provider.colorName),
             title: "Create New",
-            tint: HomeGridCell.color(named: provider.colorName)
+            tint: HomeGridCell.color(named: model.provider.colorName)
         ) {
-            switch provider {
-            case .apple:
-                coordinator.push(.createAppleAccount)
-            case .firebase:
-                coordinator.push(.createFirebaseAccount)
-            case .googlePlay:
-                // Google Play is not supported in this flow; guard for exhaustiveness.
-                break
+            if let route = model.createRoute {
+                switch route {
+                case .createAppleAccount:
+                    coordinator.push(.createAppleAccount)
+                case .createFirebaseAccount:
+                    coordinator.push(.createFirebaseAccount)
+                }
             }
         }
     }
