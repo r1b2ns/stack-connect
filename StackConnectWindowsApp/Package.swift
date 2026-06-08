@@ -35,6 +35,7 @@ let package = Package(
         .package(path: "../Packages/StackProtocols"),
         .package(path: "../Packages/StackStorageSQLite"),
         .package(path: "../Packages/StackSecretsWindows"),
+        .package(path: "../Packages/StackCrypto"),
     ],
     targets: [
         .executableTarget(
@@ -46,6 +47,7 @@ let package = Package(
                 .product(name: "StackProtocols", package: "StackProtocols"),
                 .product(name: "StackStorageSQLite", package: "StackStorageSQLite"),
                 .product(name: "StackSecretsWindows", package: "StackSecretsWindows"),
+                .product(name: "StackCrypto", package: "StackCrypto"),
             ],
             path: "Sources/StackConnectWindowsApp"
         ),
