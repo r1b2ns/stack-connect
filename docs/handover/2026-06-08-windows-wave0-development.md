@@ -5,11 +5,11 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** T-W01 DONE (merged into `experiment/windows` as `7ef4617`). Next session begins with **T-W02**.
+**Status:** T-W01 DONE (merged into `experiment/windows` as `7ef4617`); T-W02 DONE (accepted, committed `556c537`, not yet merged); next session begins with **T-W03**.
 
-**Snapshot:** T-W01 went through the serial one-task-per-session pipeline, passed all gates (Staff APPROVE, QA PASS 98/98 tests, PO ACCEPTED all 5 acceptance criteria), and is merged to `experiment/windows`. T-W02, T-W03, T-W04 corrections/dev are green in worktrees but **uncommitted**. No pushes/merges to remote yet.
+**Snapshot:** T-W01 went through the serial one-task-per-session pipeline, passed all gates (Staff APPROVE, QA PASS 98/98 tests, PO ACCEPTED all 5 acceptance criteria), and is merged to `experiment/windows`. T-W02 has been committed (556c537), passed all gates (Staff APPROVE, QA PASS 89 tests, PO ACCEPTED all ACs), but **not yet merged** (merge deferred to Wave 0 close-out). T-W03, T-W04 corrections/dev are green in worktrees but uncommitted. No pushes/merges to remote yet.
 
-> **How to resume:** the next session begins with **T-W02** (WindowsClipboard.setText). Start a fresh session and run `/personal-development`; pick T-W02 from the "Resume checklist" below, run the serial pipeline (commit → Staff Review → QA → PO), update handover, then end.
+> **How to resume:** the next session begins with **T-W03** (parameterize WindowsRoute + wire RootView). Its correction is green & uncommitted in worktree `feat-T-W03-windows-route-enum` — the next session commits it (message in the T-W03 section below) → Staff Review → QA → PO. Start a fresh session, run `/personal-development`, pick T-W03, and follow the serial pipeline. Update handover and end.
 
 ---
 
@@ -28,7 +28,7 @@
 | Task | Title | Branch | Commits (ahead of base) | Gate state |
 |------|-------|--------|--------------------------|------------|
 | **T-W01** | SDK + AppleConnectionProtocol for Windows GUI | `feat/T-W01-windows-apple-connection` | `7e5fbca` (feat) + `3eb047b` (correction) | DONE — merged into experiment/windows (7ef4617). Staff APPROVE / QA PASS 98/98 / PO ACCEPTED. 1 correction. |
-| **T-W02** | `WindowsClipboard.setText()` | `feat/T-W02-windows-clipboard-settext` | `ab1f133` (feat) | Staff review CHANGES REQUESTED. Correction agent `ae685d87701072ab0` **DONE green (89 tests, 0 fail)** — fix in worktree, **NOT yet committed**. Next: `git-docs-manager` commits → re-run Staff Review → QA → PO |
+| **T-W02** | `WindowsClipboard.setText()` | `feat/T-W02-windows-clipboard-settext` | `ab1f133` (feat) + `556c537` (correction) | DONE — PO ACCEPTED. Staff APPROVE / QA PASS (3 macOS-host tests pass, 5 clipboard tests, 89 total 0 fail) / 0 new corrections. Not yet merged (Wave 0 close-out). |
 | **T-W03** | Parameterize `WindowsRoute` + wire RootView | `feat/T-W03-windows-route-enum` | `d40635e` (feat) | Staff review APPROVE w/ should-fix S-1. Correction agent `a72f606078658fd0d` **DONE green (86 tests, 0 fail)** — fix in worktree, **NOT yet committed**. Next: `git-docs-manager` commits → re-run Staff Review → QA → PO |
 | **T-W04** | Shared Windows UI components | `feat/T-W04-windows-shared-components` | none yet | Developer agent `a9537749abaac23c7` **DONE green (104 tests, 0 fail)** — 9 files in worktree, **NOT yet committed**. Next: `git-docs-manager` commits → Staff Review → QA → PO |
 
@@ -57,20 +57,15 @@ Staff review findings (all addressed in `3eb047b`):
 - **N-3:** mock argument capture added (lastFetchReviewsSort/FilterRating/Limit, lastUpsertReplyExistingResponseId).
 
 ### T-W02 (branch `feat/T-W02-windows-clipboard-settext`)
-Modified `.../WindowsAppCore/Shared/WindowsClipboard.swift` (added `setText(_:) -> Bool`), created `.../Tests/WindowsAppCoreTests/WindowsClipboardTests.swift` (6 tests; TC-073 macOS-host returns false). 89 tests green at commit.
+Modified `.../WindowsAppCore/Shared/WindowsClipboard.swift` (added `setText(_:) -> Bool`), created `.../Tests/WindowsAppCoreTests/WindowsClipboardTests.swift` (6 tests; TC-073 macOS-host returns false). 89 tests green.
 Staff review CHANGES REQUESTED:
 - **Blocking:** committed `setText` uses direct `memcpy(pMem, utf16Units, byteCount)` with a Swift array → must use `withUnsafeBufferPointer` (team standard from commit `37dbdc3`).
 - **Should-fix:** add `defer { CloseClipboard() }`.
-Correction agent `ae685d87701072ab0` **finished green** (89 tests, 0 fail). Fixes applied in worktree: B-1 `memcpy` now inside `utf16Units.withUnsafeBufferPointer`; S-2 `defer { CloseClipboard() }` (removed 4 manual calls); N-2 reuse `wide(_:)` helper; N-1 `pMem`→`lockedPointer`; test nit `XCTAssertNotNil(retrieved)` added. **Not yet committed.** Proposed commit message:
-```
-fix(T-W02): address code-review findings for WindowsClipboard.setText()
+Correction agent `ae685d87701072ab0` **finished green** (89 tests, 0 fail). Fixes applied and committed as `556c537`: B-1 `memcpy` now inside `utf16Units.withUnsafeBufferPointer`; S-2 `defer { CloseClipboard() }` (removed 4 manual calls); N-2 reuse `wide(_:)` helper; N-1 `pMem`→`lockedPointer`; test nit `XCTAssertNotNil(retrieved)` added. **Committed 556c537, passed all gates (Staff APPROVE, QA PASS, PO ACCEPTED), not yet merged.**
 
-Pin UTF-16 buffer with withUnsafeBufferPointer during memcpy (B-1),
-replace fragile manual CloseClipboard() calls with defer (S-2),
-reuse wide() helper from WindowsFilePickerHelpers (N-2), rename
-pMem to lockedPointer for Swift idiom (N-1), and add XCTAssertNotNil
-guard in round-trip test.
-```
+**Non-blocking follow-up (do not block task completion):**
+- **S-1 (should-fix):** replace `buffer.baseAddress!` force-unwrap in `WindowsClipboard.setText` with a guard-let defensive pattern (safe today because `wide()` always appends a null terminator, but defensive idiom preferred).
+- **2 style nits:** (1) consistency in `EmptyClipboard` guard brace placement; (2) header-comment confirmation that the Windows clipboard is now properly locked/unlocked. Record these as optional cleanup for a future refactor, not blockers.
 
 ### T-W03 (branch `feat/T-W03-windows-route-enum`)
 Modified `.../StackConnectWindowsApp/App/WindowsHomeCoordinator.swift` (parameterized cases: `appsList(accountId:)`, `archivedApps(accountId:)`, `appDetail(appId:accountId:)`, `comingSoon(title:)`, `ratingsAndReviews(appId:bundleId:accountId:)`, `reviewDetail(reviewId:appId:accountId:)`, `replyComposer(reviewId:accountId:existingReplyBody:)`, `deleteReplyConfirm(reviewId:responseId:accountId:)` — all ids `String`), `.../App/RootView.swift` (exhaustive `destination(for:)`, no default; placeholders via `WindowsPlaceholderView`), `.../Home/WindowsHomeView.swift` (widgetsSlot closures). 86 tests green.
@@ -126,9 +121,9 @@ The four agents from the old parallel run all finished green. The remaining work
 | Order | Task | Starting point this session | Steps to run (serial, one agent at a time) |
 |-------|------|------------------------------|---------------------------------------------|
 | 1 | **T-W01** | ✅ DONE (merged `7ef4617`) | — |
-| 2 | **T-W02** | Correction green, **uncommitted** | `git-docs-manager` commits (msg above) → Staff Review → QA → PO → done → update handover → END |
-| 3 | **T-W03** | Correction green, **uncommitted** | `git-docs-manager` commits (msg above) → Staff Review (S-1 was should-fix; APPROVE expected) → QA → PO → done → update handover → END |
-| 4 | **T-W04** | Dev green, **uncommitted** (no prior review) | `git-docs-manager` commits (msg above) → first Staff Review → QA → PO → done → update handover → END |
+| 2 | **T-W02** | ✅ DONE (committed `556c537`, not yet merged) | — |
+| 3 | **T-W03** | Correction green, **uncommitted** | `git-docs-manager` commits (msg below) → Staff Review (S-1 was should-fix; APPROVE expected) → QA → PO → done → update handover → END |
+| 4 | **T-W04** | Dev green, **uncommitted** (no prior review) | `git-docs-manager` commits (msg below) → first Staff Review → QA → PO → done → update handover → END |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
