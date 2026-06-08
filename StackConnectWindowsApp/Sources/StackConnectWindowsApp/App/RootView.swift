@@ -77,7 +77,11 @@ struct RootView: View {
                 secrets: model.secrets
             )
         case .createFirebaseAccount:
-            WindowsPlaceholderView(title: "Create Firebase Account") { coordinator.pop() }
+            WindowsCreateFirebaseAccountView(
+                coordinator: coordinator,
+                storage: model.storage,
+                secrets: model.secrets
+            )
         case .importScexport:
             WindowsPlaceholderView(title: "Import .scexport") { coordinator.pop() }
         case .settings:

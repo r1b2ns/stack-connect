@@ -420,4 +420,30 @@ final class WindowsCreateAccountModelTests: XCTestCase {
         XCTAssertEqual(accounts.count, 1)
         XCTAssertEqual(accounts.first?.providerType, .firebase)
     }
+
+    // MARK: - loadJSONFromFile (Finding 3)
+
+    func testLoadJSONFromFile_validFile_setsServiceAccountJSON() {
+        let sut = makeFirebaseSUT()
+        let tempDir = NSTemporaryDirectory()
+        let filePath = (tempDir as NSString).appendingPathComponent("test_sa_\(UUID().uuidString).json")
+        let content = "{\"type\":\"service_account\",\"project_id\":\"test\"}"
+        FileManager.default.createFile(atPath: filePath, contents: content.data(using: .utf8))
+        defer { try? FileManager.default.removeItem(atPath: filePath) }
+
+        sut.loadJSONFromFile(at: filePath)
+
+        XCTAssertEqual(sut.serviceAccountJSON, content)
+        XCTAssertNil(sut.errorMessage)
+    }
+
+    func testLoadJSONFromFile_invalidPath_setsErrorMessage() {
+        let sut = makeFirebaseSUT()
+
+        sut.loadJSONFromFile(at: "/nonexistent/path/service_account.json")
+
+        XCTAssertTrue(sut.serviceAccountJSON.isEmpty)
+        XCTAssertNotNil(sut.errorMessage)
+        XCTAssertTrue(sut.errorMessage?.contains("Could not read file") == true)
+    }
 }

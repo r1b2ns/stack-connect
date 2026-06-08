@@ -206,6 +206,21 @@ public final class WindowsCreateAccountModel: SwiftCrossUI.ObservableObject {
         privateKey = content
     }
 
+    /// Reads the file at the given path and sets its content as the Service
+    /// Account JSON. Sets `errorMessage` on failure (file not readable or not
+    /// valid UTF-8).
+    public func loadJSONFromFile(at path: String) {
+        guard let data = FileManager.default.contents(atPath: path) else {
+            errorMessage = "Could not read file at path: \(path)"
+            return
+        }
+        guard let content = String(data: data, encoding: .utf8) else {
+            errorMessage = "File is not valid UTF-8: \(path)"
+            return
+        }
+        serviceAccountJSON = content
+    }
+
     // MARK: - PEM Sanitization (AC-7)
 
     /// Strips ALL PEM header/footer lines (any line starting with "-----"),
