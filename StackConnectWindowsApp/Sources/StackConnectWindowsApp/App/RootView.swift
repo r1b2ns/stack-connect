@@ -3,6 +3,10 @@ import StackHomeCore
 import StackProtocols
 import WindowsAppCore
 
+#if canImport(os)
+import os
+#endif
+
 // Phase 4 · Block F · T-F16 / T-W03 / T-W06 — the window's root view + route switch.
 //
 // Owns the observed state (the core adapter and the navigation coordinator) and
@@ -176,11 +180,10 @@ struct RootView: View {
         // T-W06: archive confirmation screen. Uses the shared `appsListCache`
         // so confirm/cancel mutate the same state as the apps list (TC-072:
         // pushed route, not an alert/sheet).
-        case .archiveAppConfirm(let appId, let accountId, let appName):
+        case .archiveAppConfirm(let appId, let appName):
             if let listModel = appsListCache.model {
                 WindowsArchiveAppConfirmView(
                     appId: appId,
-                    accountId: accountId,
                     appName: appName,
                     model: listModel,
                     coordinator: coordinator
@@ -188,8 +191,23 @@ struct RootView: View {
             } else {
                 // Safety fallback: should never happen because archiveAppConfirm
                 // is only pushed from the apps list (which creates the model).
+                let _ = Self.logArchiveAppConfirmFallback()
                 WindowsPlaceholderView(title: "Archive App") { coordinator.pop() }
             }
         }
+    }
+
+    // MARK: - Logging helpers
+
+    /// Logs a warning when the archive-app-confirm route is rendered without a
+    /// cached `WindowsAppsListModel`. Called via `let _ =` inside `@ViewBuilder`
+    /// so the log fires as a side-effect before the fallback placeholder renders.
+    private static func logArchiveAppConfirmFallback() {
+        #if canImport(os)
+        Logger(
+            subsystem: "com.stackconnect.windows",
+            category: "RootView"
+        ).warning("[RootView] .archiveAppConfirm pushed without an AppsListModelCache model; rendering safe fallback")
+        #endif
     }
 }

@@ -15,7 +15,6 @@ import WindowsAppCore
 struct WindowsArchiveAppConfirmView: View {
 
     let appId: String
-    let accountId: String
     /// Display name passed from the route so the confirmation can show it
     /// without a model lookup (the model is still used for confirm/cancel).
     let appName: String

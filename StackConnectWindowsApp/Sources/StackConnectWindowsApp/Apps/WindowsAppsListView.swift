@@ -181,12 +181,12 @@ struct WindowsAppsListView: View {
         if model.isLoading && model.apps.isEmpty {
             // AC-W01-4: First load -> loading indicator (no stale/partial content)
             loadingState
-        } else if model.isEmpty {
-            // AC-W01-3: No apps -> empty state
-            emptyState
         } else if model.isSearchEmpty {
             // AC-W02-3: Search with no matches -> empty search state
             searchEmptyState
+        } else if model.isEmpty {
+            // AC-W01-3: No apps -> empty state
+            emptyState
         } else {
             populatedState
         }
@@ -299,7 +299,6 @@ struct WindowsAppsListView: View {
                 coordinator.push(
                     .archiveAppConfirm(
                         appId: app.id,
-                        accountId: accountId,
                         appName: app.name
                     )
                 )

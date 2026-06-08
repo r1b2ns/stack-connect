@@ -64,7 +64,7 @@ enum WindowsRoute: Hashable {
     /// Confirmation screen before archiving an app (T-W06, AC-W04).
     /// Pushed as a route (TC-072: not an alert/sheet). The `appName` is passed
     /// through so the confirmation screen can display it without a model lookup.
-    case archiveAppConfirm(appId: String, accountId: String, appName: String)
+    case archiveAppConfirm(appId: String, appName: String)
 }
 
 /// Holds the Windows navigation route stack and the push/pop operations the
