@@ -96,43 +96,77 @@ final class AppleConnectionProtocolTests: XCTestCase {
         XCTAssertEqual(page.cursor, "next-token")
         XCTAssertEqual(connection.fetchReviewsCallCount, 1)
         XCTAssertEqual(connection.lastFetchReviewsAppId, "app-123")
+        XCTAssertEqual(connection.lastFetchReviewsSort, .createdDateDescending)
+        XCTAssertNil(connection.lastFetchReviewsFilterRating)
+        XCTAssertEqual(connection.lastFetchReviewsLimit, 50)
         XCTAssertNil(connection.lastFetchReviewsCursor)
     }
 
-    func testFetchReviews_nextPage_passesCursor() async throws {
+    func testFetchReviews_nextPage_passesCursorAndSort() async throws {
         connection.fetchReviewsResult = .success(
             ReviewsPage(reviews: [], hasNextPage: false, cursor: nil)
         )
 
         _ = try await connection.fetchReviews(
             appId: "app-123",
-            sort: "-createdDate",
-            filterRating: nil,
+            sort: .ratingAscending,
+            filterRating: ["1", "2"],
             limit: 20,
             cursor: "page-2-cursor"
         )
 
         XCTAssertEqual(connection.lastFetchReviewsCursor, "page-2-cursor")
+        XCTAssertEqual(connection.lastFetchReviewsSort, .ratingAscending)
+        XCTAssertEqual(connection.lastFetchReviewsFilterRating, ["1", "2"])
+        XCTAssertEqual(connection.lastFetchReviewsLimit, 20)
     }
 
-    // MARK: - upsertReply
+    // MARK: - upsertReply (create path — existingResponseId is nil)
 
-    func testUpsertReply_capturesArguments() async throws {
+    func testUpsertReply_create_capturesArguments() async throws {
         connection.upsertReplyResult = .success(())
 
-        try await connection.upsertReply(reviewId: "r1", responseBody: "Thank you!")
+        try await connection.upsertReply(
+            reviewId: "r1",
+            existingResponseId: nil,
+            responseBody: "Thank you!"
+        )
 
         XCTAssertEqual(connection.upsertReplyCallCount, 1)
         XCTAssertEqual(connection.lastUpsertReplyReviewId, "r1")
+        XCTAssertNil(connection.lastUpsertReplyExistingResponseId)
         XCTAssertEqual(connection.lastUpsertReplyBody, "Thank you!")
     }
+
+    // MARK: - upsertReply (update path — existingResponseId is non-nil)
+
+    func testUpsertReply_update_capturesExistingResponseId() async throws {
+        connection.upsertReplyResult = .success(())
+
+        try await connection.upsertReply(
+            reviewId: "r1",
+            existingResponseId: "resp-42",
+            responseBody: "Updated reply"
+        )
+
+        XCTAssertEqual(connection.upsertReplyCallCount, 1)
+        XCTAssertEqual(connection.lastUpsertReplyReviewId, "r1")
+        XCTAssertEqual(connection.lastUpsertReplyExistingResponseId, "resp-42")
+        XCTAssertEqual(connection.lastUpsertReplyBody, "Updated reply")
+    }
+
+    // MARK: - upsertReply (error path)
 
     func testUpsertReply_propagatesError() async {
         let expectedError = NSError(domain: "test", code: 500)
         connection.upsertReplyResult = .failure(expectedError)
 
         do {
-            try await connection.upsertReply(reviewId: "r1", responseBody: "Thanks")
+            try await connection.upsertReply(
+                reviewId: "r1",
+                existingResponseId: nil,
+                responseBody: "Thanks"
+            )
             XCTFail("Expected error to be thrown")
         } catch {
             XCTAssertEqual((error as NSError).code, 500)

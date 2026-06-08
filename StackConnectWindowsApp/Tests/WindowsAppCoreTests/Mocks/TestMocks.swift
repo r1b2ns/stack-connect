@@ -105,8 +105,12 @@ final class MockAppleConnection: AppleConnectionProtocol, @unchecked Sendable {
     // MARK: - Captured Arguments
 
     private(set) var lastFetchReviewsAppId: String?
+    private(set) var lastFetchReviewsSort: ReviewSortOrder?
+    private(set) var lastFetchReviewsFilterRating: [String]?
+    private(set) var lastFetchReviewsLimit: Int?
     private(set) var lastFetchReviewsCursor: String?
     private(set) var lastUpsertReplyReviewId: String?
+    private(set) var lastUpsertReplyExistingResponseId: String?
     private(set) var lastUpsertReplyBody: String?
     private(set) var lastDeleteReplyResponseId: String?
 
@@ -129,20 +133,28 @@ final class MockAppleConnection: AppleConnectionProtocol, @unchecked Sendable {
 
     func fetchReviews(
         appId: String,
-        sort: String,
+        sort: ReviewSortOrder,
         filterRating: [String]?,
         limit: Int,
         cursor: String?
     ) async throws -> ReviewsPage {
         fetchReviewsCallCount += 1
         lastFetchReviewsAppId = appId
+        lastFetchReviewsSort = sort
+        lastFetchReviewsFilterRating = filterRating
+        lastFetchReviewsLimit = limit
         lastFetchReviewsCursor = cursor
         return try fetchReviewsResult.get()
     }
 
-    func upsertReply(reviewId: String, responseBody: String) async throws {
+    func upsertReply(
+        reviewId: String,
+        existingResponseId: String?,
+        responseBody: String
+    ) async throws {
         upsertReplyCallCount += 1
         lastUpsertReplyReviewId = reviewId
+        lastUpsertReplyExistingResponseId = existingResponseId
         lastUpsertReplyBody = responseBody
         try upsertReplyResult.get()
     }

@@ -43,7 +43,7 @@ public protocol AppleConnectionProtocol: Sendable {
     ///
     /// - Parameters:
     ///   - appId: The App Store app identifier.
-    ///   - sort: Sort order string, e.g. `"-createdDate"` (default).
+    ///   - sort: Type-safe sort order (default `.createdDateDescending`).
     ///   - filterRating: Optional rating filter (e.g. `["1", "2"]`).
     ///   - limit: Maximum reviews per page (default 50).
     ///   - cursor: Opaque pagination cursor from a previous `ReviewsPage`.
@@ -51,7 +51,7 @@ public protocol AppleConnectionProtocol: Sendable {
     /// - Returns: A `ReviewsPage` containing the reviews and pagination info.
     func fetchReviews(
         appId: String,
-        sort: String,
+        sort: ReviewSortOrder,
         filterRating: [String]?,
         limit: Int,
         cursor: String?
@@ -61,14 +61,23 @@ public protocol AppleConnectionProtocol: Sendable {
 
     /// Creates a new reply or updates an existing reply for a customer review.
     ///
-    /// The underlying API distinguishes create vs. update; this method
-    /// intentionally combines both under "upsert" semantics so callers do not
-    /// need to track whether a response already exists.
+    /// When `existingResponseId` is `nil`, a new response is created via
+    /// `POST /v1/customerReviewResponses`. When it is non-nil, the existing
+    /// response is deleted first and then a fresh response is created, achieving
+    /// upsert semantics. (The App Store Connect API does not expose a PATCH
+    /// endpoint for review responses; delete-then-create is the canonical
+    /// update path.)
     ///
     /// - Parameters:
     ///   - reviewId: The customer review identifier to reply to.
+    ///   - existingResponseId: The identifier of an already-existing response
+    ///     to this review, or `nil` when creating a brand-new reply.
     ///   - responseBody: The text of the reply.
-    func upsertReply(reviewId: String, responseBody: String) async throws
+    func upsertReply(
+        reviewId: String,
+        existingResponseId: String?,
+        responseBody: String
+    ) async throws
 
     /// Deletes an existing reply to a customer review.
     ///
@@ -83,7 +92,7 @@ public extension AppleConnectionProtocol {
     /// Fetches the first page of reviews with default sort and no rating filter.
     func fetchReviews(
         appId: String,
-        sort: String = "-createdDate",
+        sort: ReviewSortOrder = .createdDateDescending,
         filterRating: [String]? = nil,
         limit: Int = 50,
         cursor: String? = nil

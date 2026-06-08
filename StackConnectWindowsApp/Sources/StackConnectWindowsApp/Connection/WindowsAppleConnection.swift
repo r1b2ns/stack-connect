@@ -10,7 +10,10 @@ import WindowsAppCore
 ///
 /// Mirrors the shape of the iOS `AppleAccountConnection` but exposes only the
 /// subset of operations required by the Windows feature set (T-W01).
-final class WindowsAppleConnection: AppleConnectionProtocol, @unchecked Sendable {
+///
+/// Declared as an `actor` so the lazily-initialised `provider` is protected
+/// from data races without requiring `@unchecked Sendable`.
+actor WindowsAppleConnection: AppleConnectionProtocol {
 
     private let credentials: AppleCredentials
     private var provider: APIProvider?
@@ -120,7 +123,7 @@ final class WindowsAppleConnection: AppleConnectionProtocol, @unchecked Sendable
 
     func fetchReviews(
         appId: String,
-        sort: String,
+        sort: ReviewSortOrder,
         filterRating: [String]?,
         limit: Int,
         cursor: String?
@@ -131,11 +134,10 @@ final class WindowsAppleConnection: AppleConnectionProtocol, @unchecked Sendable
 
         let sortValue: [Params.Sort] = {
             switch sort {
-            case "-createdDate": return [.minuscreatedDate]
-            case "createdDate":  return [.createdDate]
-            case "-rating":      return [.minusrating]
-            case "rating":       return [.rating]
-            default:             return [.minuscreatedDate]
+            case .createdDateDescending: return [.minuscreatedDate]
+            case .createdDateAscending:  return [.createdDate]
+            case .ratingDescending:      return [.minusrating]
+            case .ratingAscending:       return [.rating]
             }
         }()
 
@@ -194,8 +196,21 @@ final class WindowsAppleConnection: AppleConnectionProtocol, @unchecked Sendable
         )
     }
 
-    func upsertReply(reviewId: String, responseBody: String) async throws {
+    func upsertReply(
+        reviewId: String,
+        existingResponseId: String?,
+        responseBody: String
+    ) async throws {
         let provider = try ensureProvider()
+
+        // Update path: the App Store Connect API does not expose a PATCH
+        // endpoint for customer review responses. To update an existing reply,
+        // delete it first and then create a fresh one.
+        if let existingResponseId {
+            let deleteEndpoint = APIEndpoint.v1.customerReviewResponses
+                .id(existingResponseId).delete
+            _ = try await provider.request(deleteEndpoint)
+        }
 
         let body = CustomerReviewResponseV1CreateRequest(
             data: .init(
