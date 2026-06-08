@@ -31,8 +31,10 @@ struct WindowsRecentReviewsWidgetView: View {
     let isLoading: Bool
     /// Pushes the Review Detail route on tap (AC-6 — v1 placeholder).
     let onSelectReview: (HomeRecentReview) -> Void
-    /// Pushes the All Reviews route from "See more" (AC-7 — v1 placeholder).
-    let onSeeMore: () -> Void
+    /// Pushes the Ratings & Reviews route from "See more" (AC-7, design §2.3).
+    /// Receives the first review's app context so the caller can route to the
+    /// correct app's ratings screen; `nil` when the widget is empty.
+    let onSeeMore: (AppModel?) -> Void
 
     var body: some View {
         VStack(spacing: 12) {
@@ -60,7 +62,7 @@ struct WindowsRecentReviewsWidgetView: View {
                         .foregroundColor(.blue)
                     Spacer()
                 }
-                .onTapGesture(perform: onSeeMore)
+                .onTapGesture { onSeeMore(data.reviews.first?.app) }
             }
         }
         .windowsWidgetCard()

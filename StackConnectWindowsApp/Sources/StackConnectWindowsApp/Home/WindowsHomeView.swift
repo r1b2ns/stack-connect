@@ -216,10 +216,11 @@ struct WindowsHomeView: View {
     // the Home layout — below the provider cards + Settings (US-006 AC-3) — and
     // wires the "Add Widgets" action to the coordinator route (US-006 AC-2).
     //
-    // T-W03: the closures now thread real ids from the `AppModel` /
-    // `HomeRecentReview` into the parameterized routes (§2.2). `onSeeMoreReviews`
-    // has no single-app context (the widget spans all apps), so it routes to
-    // `.comingSoon` until a cross-app reviews screen is designed.
+    // T-W03: the closures thread real ids from the `AppModel` /
+    // `HomeRecentReview` into the parameterized routes (§2.2).
+    // `onSeeMoreReviews` receives the first review's `AppModel` so it can route
+    // to `.ratingsAndReviews` for that app (design §2.3, AC-W16-2). When the
+    // widget is empty (nil app) the route falls back to `.comingSoon`.
 
     private var widgetsSlot: some View {
         WindowsWidgetContainerView(
@@ -239,8 +240,18 @@ struct WindowsHomeView: View {
                     )
                 )
             },
-            onSeeMoreReviews: {
-                coordinator.push(.comingSoon(title: "All Reviews"))
+            onSeeMoreReviews: { app in
+                if let app {
+                    coordinator.push(
+                        .ratingsAndReviews(
+                            appId: app.id,
+                            bundleId: app.bundleId,
+                            accountId: app.accountId
+                        )
+                    )
+                } else {
+                    coordinator.push(.comingSoon(title: "All Reviews"))
+                }
             }
         )
     }
