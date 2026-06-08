@@ -1,7 +1,9 @@
 import SwiftCrossUI
 import StackHomeCore
+import StackProtocols
+import WindowsAppCore
 
-// Phase 4 · Block F · T-F16 / T-W03 — the window's root view + route switch.
+// Phase 4 · Block F · T-F16 / T-W03 / T-W06 — the window's root view + route switch.
 //
 // Owns the observed state (the core adapter and the navigation coordinator) and
 // renders the current screen: Home when the route stack is empty, otherwise the
@@ -11,15 +13,49 @@ import StackHomeCore
 // T-W03: the Apps & Reviews routes (appsList, archivedApps, appDetail,
 // comingSoon, ratingsAndReviews, reviewDetail, replyComposer,
 // deleteReplyConfirm) are now parameterized per §2.2. Until the real feature
-// views land (T-W06, T-W12, T-W19, T-W23 etc.), every new route renders a
+// views land (T-W12, T-W19, T-W23 etc.), every new route renders a
 // `WindowsPlaceholderView` with the route name/title. The switch remains
 // exhaustive (no `default`) so new routes are compile-safe.
+//
+// T-W06: `.appsList` and `.archiveAppConfirm` are wired to real views.
+// The apps list model is shared between the list and the archive confirmation
+// screen so both views mutate the same state (the confirmation screen reads the
+// app name from the shared model). The model is lazily created when the
+// `.appsList` route is first pushed and reused by `.archiveAppConfirm` via the
+// `AppsListModelCache` reference-type holder.
+
+/// Reference-type holder for the shared `WindowsAppsListModel`. Using a class
+/// avoids mutating `@State` during the view body: the `@State` reference stays
+/// stable, and the class's `var model` is mutated freely (T-W06).
+@MainActor
+private final class AppsListModelCache {
+    var model: WindowsAppsListModel?
+
+    /// Returns the cached model if it matches the requested account id; otherwise
+    /// creates a new one, caches it, and returns it.
+    func resolve(accountId: String, storage: PersistentStorable) -> WindowsAppsListModel {
+        if let existing = model, existing.accountId == accountId {
+            return existing
+        }
+        let newModel = WindowsAppsListModel(
+            accountId: accountId,
+            storage: storage
+        )
+        model = newModel
+        return newModel
+    }
+}
 
 struct RootView: View {
     /// Observed core adapter (state + intents).
     @State private var model: WindowsHomeModel
     /// Observed navigation coordinator (route stack).
     @State private var coordinator: WindowsHomeCoordinator
+
+    /// Shared apps list model cache. The reference-type holder keeps the model
+    /// alive across route transitions (appsList -> archiveAppConfirm -> appsList)
+    /// so both screens share the same state (T-W06).
+    @State private var appsListCache = AppsListModelCache()
 
     init(model: WindowsHomeModel) {
         _model = State(wrappedValue: model)
@@ -100,10 +136,21 @@ struct RootView: View {
         case .settings:
             WindowsPlaceholderView(title: "Settings") { coordinator.pop() }
 
-        // MARK: Apps & Reviews placeholders (T-W03)
+        // MARK: Apps & Reviews (T-W06 real views + remaining placeholders)
 
-        case .appsList:
-            WindowsPlaceholderView(title: "Apps List") { coordinator.pop() }
+        // T-W06: real apps list screen. The model is lazily created and cached
+        // in `appsListCache` so the archive confirmation view (pushed on top)
+        // shares the same instance.
+        case .appsList(let accountId, let accountName):
+            WindowsAppsListView(
+                accountId: accountId,
+                accountName: accountName,
+                coordinator: coordinator,
+                model: appsListCache.resolve(
+                    accountId: accountId,
+                    storage: model.storage
+                )
+            )
 
         case .archivedApps:
             WindowsPlaceholderView(title: "Archived Apps") { coordinator.pop() }
@@ -125,6 +172,24 @@ struct RootView: View {
 
         case .deleteReplyConfirm:
             WindowsPlaceholderView(title: "Delete Reply") { coordinator.pop() }
+
+        // T-W06: archive confirmation screen. Uses the shared `appsListCache`
+        // so confirm/cancel mutate the same state as the apps list (TC-072:
+        // pushed route, not an alert/sheet).
+        case .archiveAppConfirm(let appId, let accountId, let appName):
+            if let listModel = appsListCache.model {
+                WindowsArchiveAppConfirmView(
+                    appId: appId,
+                    accountId: accountId,
+                    appName: appName,
+                    model: listModel,
+                    coordinator: coordinator
+                )
+            } else {
+                // Safety fallback: should never happen because archiveAppConfirm
+                // is only pushed from the apps list (which creates the model).
+                WindowsPlaceholderView(title: "Archive App") { coordinator.pop() }
+            }
         }
     }
 }
