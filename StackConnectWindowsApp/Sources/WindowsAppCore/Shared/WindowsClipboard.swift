@@ -59,30 +59,30 @@ public enum WindowsClipboard {
     public static func setText(_ text: String) -> Bool {
         #if os(Windows)
         // Encode the Swift string as a null-terminated UTF-16 array.
-        let utf16Units = Array(text.utf16) + [0]
+        let utf16Units = wide(text)
         let byteCount = utf16Units.count * MemoryLayout<WCHAR>.size
 
         guard OpenClipboard(nil) else { return false }
+        defer { CloseClipboard() }
 
         guard EmptyClipboard() else {
-            CloseClipboard()
             return false
         }
 
         // Allocate moveable global memory for the clipboard data.
         guard let hMem = GlobalAlloc(UINT(GMEM_MOVEABLE), SIZE_T(byteCount)) else {
-            CloseClipboard()
             return false
         }
 
         // Lock the memory and copy the UTF-16 data into it.
-        guard let pMem = GlobalLock(hMem) else {
+        guard let lockedPointer = GlobalLock(hMem) else {
             GlobalFree(hMem)
-            CloseClipboard()
             return false
         }
 
-        memcpy(pMem, utf16Units, byteCount)
+        utf16Units.withUnsafeBufferPointer { buffer in
+            memcpy(lockedPointer, buffer.baseAddress!, byteCount)
+        }
         GlobalUnlock(hMem)
 
         // Transfer ownership of hMem to the clipboard. After a successful
@@ -90,11 +90,9 @@ public enum WindowsClipboard {
         guard SetClipboardData(UINT(CF_UNICODETEXT), hMem) != nil else {
             // SetClipboardData failed; we still own hMem, so free it.
             GlobalFree(hMem)
-            CloseClipboard()
             return false
         }
 
-        CloseClipboard()
         return true
         #else
         return false

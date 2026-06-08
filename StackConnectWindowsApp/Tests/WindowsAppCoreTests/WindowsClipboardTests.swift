@@ -64,6 +64,7 @@ final class WindowsClipboardTests: XCTestCase {
         let didSet = WindowsClipboard.setText(testString)
         XCTAssertTrue(didSet)
         let retrieved = WindowsClipboard.getText()
+        XCTAssertNotNil(retrieved)
         XCTAssertEqual(retrieved, testString,
                        "getText() must return the exact string previously set via setText()")
     }
