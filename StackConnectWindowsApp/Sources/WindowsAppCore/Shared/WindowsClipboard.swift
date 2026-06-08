@@ -1,5 +1,3 @@
-import Foundation
-
 #if os(Windows)
 import WinSDK
 #endif
@@ -16,8 +14,14 @@ import WinSDK
 /// Caseless namespace for clipboard operations.
 enum WindowsClipboard {
 
-    /// Returns the current text content of the system clipboard, or nil if the
+    /// Returns the current text content of the system clipboard, or `nil` if the
     /// clipboard is empty, unavailable, or does not contain Unicode text.
+    ///
+    /// - Important: Win32 clipboard APIs (`OpenClipboard`, `CloseClipboard`, etc.)
+    ///   use a per-thread open/close model. The caller must ensure this method is
+    ///   invoked on the same thread that owns the clipboard session — typically the
+    ///   main (UI) thread. Calling from multiple threads concurrently is undefined
+    ///   behavior at the Win32 level.
     static func getText() -> String? {
         #if os(Windows)
         guard OpenClipboard(nil) else { return nil }
