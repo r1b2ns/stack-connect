@@ -5,11 +5,11 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** PAUSED. All background agents from the previous (parallel) run have finished. Nothing is running.
+**Status:** T-W01 DONE (merged into `experiment/windows` as `7ef4617`). Next session begins with **T-W02**.
 
-**Snapshot when all agents settled:** T-W01 correction committed (`3eb047b`); T-W02, T-W03, T-W04 all green in their worktrees but **uncommitted**. No QA/PO gate ran. No pushes/merges.
+**Snapshot:** T-W01 went through the serial one-task-per-session pipeline, passed all gates (Staff APPROVE, QA PASS 98/98 tests, PO ACCEPTED all 5 acceptance criteria), and is merged to `experiment/windows`. T-W02, T-W03, T-W04 corrections/dev are green in worktrees but **uncommitted**. No pushes/merges to remote yet.
 
-> **How to resume:** the skill is now one-task-per-session. Each new session picks up **a single task**, drives it through commit → Staff Review → QA → PO, then updates this handover and ends. Start a fresh session and run `/personal-development`; it should pick the next task per the "Resume checklist" below (begin with **T-W01**).
+> **How to resume:** the next session begins with **T-W02** (WindowsClipboard.setText). Start a fresh session and run `/personal-development`; pick T-W02 from the "Resume checklist" below, run the serial pipeline (commit → Staff Review → QA → PO), update handover, then end.
 
 ---
 
@@ -27,7 +27,7 @@
 
 | Task | Title | Branch | Commits (ahead of base) | Gate state |
 |------|-------|--------|--------------------------|------------|
-| **T-W01** | SDK + AppleConnectionProtocol for Windows GUI | `feat/T-W01-windows-apple-connection` | `7e5fbca` (feat) + `3eb047b` (correction) | Correction committed (98 tests green). **Needs RE-RUN of Staff Review** → then QA → PO |
+| **T-W01** | SDK + AppleConnectionProtocol for Windows GUI | `feat/T-W01-windows-apple-connection` | `7e5fbca` (feat) + `3eb047b` (correction) | DONE — merged into experiment/windows (7ef4617). Staff APPROVE / QA PASS 98/98 / PO ACCEPTED. 1 correction. |
 | **T-W02** | `WindowsClipboard.setText()` | `feat/T-W02-windows-clipboard-settext` | `ab1f133` (feat) | Staff review CHANGES REQUESTED. Correction agent `ae685d87701072ab0` **DONE green (89 tests, 0 fail)** — fix in worktree, **NOT yet committed**. Next: `git-docs-manager` commits → re-run Staff Review → QA → PO |
 | **T-W03** | Parameterize `WindowsRoute` + wire RootView | `feat/T-W03-windows-route-enum` | `d40635e` (feat) | Staff review APPROVE w/ should-fix S-1. Correction agent `a72f606078658fd0d` **DONE green (86 tests, 0 fail)** — fix in worktree, **NOT yet committed**. Next: `git-docs-manager` commits → re-run Staff Review → QA → PO |
 | **T-W04** | Shared Windows UI components | `feat/T-W04-windows-shared-components` | none yet | Developer agent `a9537749abaac23c7` **DONE green (104 tests, 0 fail)** — 9 files in worktree, **NOT yet committed**. Next: `git-docs-manager` commits → Staff Review → QA → PO |
@@ -125,7 +125,7 @@ The four agents from the old parallel run all finished green. The remaining work
 
 | Order | Task | Starting point this session | Steps to run (serial, one agent at a time) |
 |-------|------|------------------------------|---------------------------------------------|
-| 1 | **T-W01** | Correction already committed (`3eb047b`) | Staff Review → (merge to `experiment/windows` only with user OK) → QA → PO → mark done → update handover → END |
+| 1 | **T-W01** | ✅ DONE (merged `7ef4617`) | — |
 | 2 | **T-W02** | Correction green, **uncommitted** | `git-docs-manager` commits (msg above) → Staff Review → QA → PO → done → update handover → END |
 | 3 | **T-W03** | Correction green, **uncommitted** | `git-docs-manager` commits (msg above) → Staff Review (S-1 was should-fix; APPROVE expected) → QA → PO → done → update handover → END |
 | 4 | **T-W04** | Dev green, **uncommitted** (no prior review) | `git-docs-manager` commits (msg above) → first Staff Review → QA → PO → done → update handover → END |
