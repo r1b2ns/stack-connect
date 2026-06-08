@@ -36,6 +36,10 @@ let package = Package(
         .package(path: "../Packages/StackStorageSQLite"),
         .package(path: "../Packages/StackSecretsWindows"),
         .package(path: "../Packages/StackCrypto"),
+        // App Store Connect SDK (windows-support branch). Added to the
+        // executable target only — WindowsAppCore stays SDK-free so it
+        // remains fully testable without the SDK's transitive graph.
+        .package(url: "https://github.com/r1b2ns/appstoreconnect-swift-sdk.git", branch: "windows-support"),
     ],
     targets: [
         // Library target containing testable business logic (models, view models).
@@ -62,6 +66,7 @@ let package = Package(
                 .product(name: "StackStorageSQLite", package: "StackStorageSQLite"),
                 .product(name: "StackSecretsWindows", package: "StackSecretsWindows"),
                 .product(name: "StackCrypto", package: "StackCrypto"),
+                .product(name: "AppStoreConnect-Swift-SDK", package: "appstoreconnect-swift-sdk"),
             ],
             path: "Sources/StackConnectWindowsApp"
         ),
