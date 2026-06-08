@@ -62,6 +62,14 @@ struct RootView: View {
         // D3: labeled "coming soon" placeholders with a working "< Back".
         case .accountsList(let provider):
             WindowsPlaceholderView(title: provider.displayName) { coordinator.pop() }
+        case .addAccountOptions(let provider):
+            WindowsPlaceholderView(title: "Add \(provider.displayName) Account") { coordinator.pop() }
+        case .createAppleAccount:
+            WindowsPlaceholderView(title: "Create Apple Account") { coordinator.pop() }
+        case .createFirebaseAccount:
+            WindowsPlaceholderView(title: "Create Firebase Account") { coordinator.pop() }
+        case .importScexport:
+            WindowsPlaceholderView(title: "Import .scexport") { coordinator.pop() }
         case .settings:
             WindowsPlaceholderView(title: "Settings") { coordinator.pop() }
         case .appDetail:
