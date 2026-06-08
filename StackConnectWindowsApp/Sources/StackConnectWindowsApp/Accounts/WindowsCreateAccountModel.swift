@@ -1,0 +1,240 @@
+import Foundation
+import SwiftCrossUI
+import StackProtocols
+import StackHomeCore
+
+// Phase 4 · Block F · T-F09 — Create account model for the Windows app.
+//
+// SwiftCrossUI `ObservableObject` that drives the create-account form for both
+// Apple and Firebase provider types. Handles field validation, PEM header
+// sanitization, duplicate credential detection, and persists the account to
+// SQLite + credentials to the Windows Credential Manager.
+
+@MainActor
+final class WindowsCreateAccountModel: SwiftCrossUI.ObservableObject {
+
+    // MARK: - Apple form fields
+
+    @SwiftCrossUI.Published var accountName: String = ""
+    @SwiftCrossUI.Published var issuerID: String = ""
+    @SwiftCrossUI.Published var privateKeyID: String = ""
+    @SwiftCrossUI.Published var privateKey: String = ""
+
+    // MARK: - Firebase form fields
+
+    @SwiftCrossUI.Published var serviceAccountJSON: String = ""
+
+    // MARK: - State
+
+    @SwiftCrossUI.Published var isSaving: Bool = false
+    @SwiftCrossUI.Published var errorMessage: String? = nil
+    @SwiftCrossUI.Published var isSaved: Bool = false
+
+    // MARK: - Dependencies
+
+    private let storage: PersistentStorable
+    private let secrets: KeyStorable
+    private let providerType: ProviderType
+
+    init(
+        providerType: ProviderType,
+        storage: PersistentStorable,
+        secrets: KeyStorable
+    ) {
+        self.providerType = providerType
+        self.storage = storage
+        self.secrets = secrets
+    }
+
+    // MARK: - Save Apple Account (US-W03)
+
+    /// Validates Apple account fields, sanitizes the PEM key, checks for
+    /// duplicate credentials, and persists the account + credentials.
+    func saveAppleAccount() async {
+        // AC-4: Account Name empty -> inline error
+        guard !accountName.trimmingCharacters(in: .whitespaces).isEmpty else {
+            errorMessage = "Account name is required."
+            return
+        }
+
+        // AC-2: All four fields non-empty validation
+        guard !issuerID.trimmingCharacters(in: .whitespaces).isEmpty else {
+            errorMessage = "Issuer ID is required."
+            return
+        }
+
+        guard !privateKeyID.trimmingCharacters(in: .whitespaces).isEmpty else {
+            errorMessage = "Private Key ID is required."
+            return
+        }
+
+        guard !privateKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            errorMessage = "Private Key is required."
+            return
+        }
+
+        // AC-2: Show loading, disable form
+        isSaving = true
+        errorMessage = nil
+
+        do {
+            // AC-7: Sanitize PEM headers/footer before storing
+            let sanitizedKey = sanitizedPrivateKey(privateKey)
+
+            // AC-5: Duplicate private key detection
+            if let duplicateName = try await findDuplicateAppleCredentials(sanitizedKey: sanitizedKey) {
+                errorMessage = "An account with these credentials already exists: \"\(duplicateName)\"."
+                isSaving = false
+                return
+            }
+
+            // AC-3: Build and persist the account
+            let account = AccountModel(
+                name: accountName.trimmingCharacters(in: .whitespaces),
+                providerType: .apple
+            )
+
+            let credentials = AppleCredentials(
+                issuerID: issuerID.trimmingCharacters(in: .whitespaces),
+                privateKeyID: privateKeyID.trimmingCharacters(in: .whitespaces),
+                privateKey: sanitizedKey
+            )
+
+            // Store credentials in WindowsCredentialStorable
+            secrets.setObject(credentials, forKey: "credentials.\(account.id)")
+
+            // Store AccountModel in SQLite
+            try await storage.save(account, id: account.id)
+
+            isSaved = true
+
+        } catch {
+            // AC-6: Save failure -> inline error with description, form re-enabled
+            errorMessage = error.localizedDescription
+        }
+
+        isSaving = false
+    }
+
+    // MARK: - Save Firebase Account (US-W04)
+
+    /// Validates Firebase account fields (JSON non-empty + parseable), checks for
+    /// duplicate credentials, and persists the account + credentials.
+    func saveFirebaseAccount() async {
+        // Account name is required for Firebase too
+        guard !accountName.trimmingCharacters(in: .whitespaces).isEmpty else {
+            errorMessage = "Account name is required."
+            return
+        }
+
+        let trimmedJSON = serviceAccountJSON.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // AC-2: JSON empty -> inline error
+        guard !trimmedJSON.isEmpty else {
+            errorMessage = "Service Account JSON is required."
+            return
+        }
+
+        // AC-3: Invalid JSON -> inline error
+        guard let jsonData = trimmedJSON.data(using: .utf8),
+              isValidJSON(jsonData) else {
+            errorMessage = "Invalid JSON format."
+            return
+        }
+
+        // Show loading, disable form
+        isSaving = true
+        errorMessage = nil
+
+        do {
+            // AC-5: Duplicate JSON detection
+            if let duplicateName = try await findDuplicateFirebaseCredentials(json: trimmedJSON) {
+                errorMessage = "An account with these credentials already exists: \"\(duplicateName)\"."
+                isSaving = false
+                return
+            }
+
+            // AC-4: Build and persist the account
+            let account = AccountModel(
+                name: accountName.trimmingCharacters(in: .whitespaces),
+                providerType: .firebase
+            )
+
+            let credentials = FirebaseCredentials(serviceAccountJSON: trimmedJSON)
+
+            // Store credentials in WindowsCredentialStorable
+            secrets.setObject(credentials, forKey: "credentials.\(account.id)")
+
+            // Store AccountModel in SQLite
+            try await storage.save(account, id: account.id)
+
+            isSaved = true
+
+        } catch {
+            // Save failure -> inline error with description, form re-enabled
+            errorMessage = error.localizedDescription
+        }
+
+        isSaving = false
+    }
+
+    // MARK: - PEM Sanitization (AC-7)
+
+    /// Strips PEM header/footer lines and whitespace from a private key string.
+    /// Returns the raw base64 content suitable for credential storage.
+    func sanitizedPrivateKey(_ key: String) -> String {
+        key
+            .replacingOccurrences(of: "-----BEGIN PRIVATE KEY-----", with: "")
+            .replacingOccurrences(of: "-----END PRIVATE KEY-----", with: "")
+            .replacingOccurrences(of: "\n", with: "")
+            .trimmingCharacters(in: .whitespaces)
+    }
+
+    // MARK: - Duplicate Detection
+
+    /// Checks all existing Apple accounts for a matching private key.
+    /// Returns the name of the duplicate account if found, nil otherwise.
+    private func findDuplicateAppleCredentials(sanitizedKey: String) async throws -> String? {
+        let allAccounts = try await storage.fetchAll(AccountModel.self)
+        let appleAccounts = allAccounts.filter { $0.providerType == .apple }
+
+        for existing in appleAccounts {
+            if let creds: AppleCredentials = secrets.object(forKey: "credentials.\(existing.id)") {
+                if creds.privateKey == sanitizedKey {
+                    return existing.name
+                }
+            }
+        }
+
+        return nil
+    }
+
+    /// Checks all existing Firebase accounts for a matching service account JSON.
+    /// Returns the name of the duplicate account if found, nil otherwise.
+    private func findDuplicateFirebaseCredentials(json: String) async throws -> String? {
+        let allAccounts = try await storage.fetchAll(AccountModel.self)
+        let firebaseAccounts = allAccounts.filter { $0.providerType == .firebase }
+
+        for existing in firebaseAccounts {
+            if let creds: FirebaseCredentials = secrets.object(forKey: "credentials.\(existing.id)") {
+                if creds.serviceAccountJSON == json {
+                    return existing.name
+                }
+            }
+        }
+
+        return nil
+    }
+
+    // MARK: - JSON Validation
+
+    /// Validates that the given data is parseable as JSON.
+    private func isValidJSON(_ data: Data) -> Bool {
+        do {
+            _ = try JSONSerialization.jsonObject(with: data, options: [])
+            return true
+        } catch {
+            return false
+        }
+    }
+}
