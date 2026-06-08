@@ -208,5 +208,3 @@ final class WindowsAccountsListModelTests: XCTestCase {
         XCTAssertNil(sut.deleteConfirmingId)
     }
 }
-
-// Mocks are shared via TestMocks.swift (MockStorage, MockSecrets).

@@ -598,10 +598,10 @@ final class WindowsImportAccountModelTests: XCTestCase {
         await sut.advanceStep()
 
         // No credentials should remain in secrets (they were rolled back)
-        // We don't know the exact account ID, but we can check that no new
-        // credentials keys were added (only the mock's initial empty state)
-        let allSecretKeys = secrets.data(forKey: "credentials.")
-        XCTAssertNil(allSecretKeys, "Rolled-back credentials should not persist")
+        // We don't know the exact account ID, but we can verify that no
+        // credentials keys persist (the mock's store should be clean)
+        let credentialKeys = secrets.allKeys.filter { $0.hasPrefix("credentials.") }
+        XCTAssertTrue(credentialKeys.isEmpty, "Rolled-back credentials should not persist")
     }
 
     // MARK: - Empty account name on confirm

@@ -2,9 +2,6 @@ import Foundation
 import StackProtocols
 
 // MARK: - Shared Test Mocks
-//
-// In-memory mocks for `PersistentStorable` and `KeyStorable` shared across all
-// WindowsAppCoreTests test files. Extracted here to avoid duplication.
 
 /// In-memory mock for `PersistentStorable` that tracks call counts per type.
 /// All access is serialized through `@MainActor` (test class annotation), so no
@@ -54,6 +51,8 @@ final class MockStorage: PersistentStorable, @unchecked Sendable {
 /// In-memory mock for `KeyStorable`.
 final class MockSecrets: KeyStorable {
     private var store: [String: Any] = [:]
+
+    var allKeys: [String] { Array(store.keys) }
 
     func string(forKey key: String) -> String? { store[key] as? String }
     func int(forKey key: String) -> Int? { store[key] as? Int }
