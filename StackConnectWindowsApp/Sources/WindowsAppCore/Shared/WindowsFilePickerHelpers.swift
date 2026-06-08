@@ -8,7 +8,7 @@ import Foundation
 
 /// Converts a Swift `String` to a null-terminated UTF-16 array suitable for
 /// Win32 W-suffix functions.
-func wide(_ string: String) -> [UInt16] {
+public func wide(_ string: String) -> [UInt16] {
     Array(string.utf16) + [0]
 }
 
@@ -20,7 +20,7 @@ func wide(_ string: String) -> [UInt16] {
 ///
 ///     "P8 Files (*.p8)\0*.p8\0All Files (*.*)\0*.*\0\0"
 ///
-func buildFilterString(
+public func buildFilterString(
     _ filters: [(description: String, pattern: String)]
 ) -> [UInt16] {
     var result: [UInt16] = []
