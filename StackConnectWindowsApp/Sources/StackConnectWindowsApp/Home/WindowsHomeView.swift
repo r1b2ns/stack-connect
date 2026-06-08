@@ -209,20 +209,50 @@ struct WindowsHomeView: View {
         return Double(rowCount) * cardHeight + Double(rowCount - 1) * spacing
     }
 
-    // MARK: - Widgets slot (US-006 / US-007)
+    // MARK: - Widgets slot (US-006 / US-007, updated T-W03)
     //
     // The widgets section (empty state + active-widget cards) lives in its own
     // `WindowsWidgetContainerView` (T-C1). This slot only owns where it sits in
     // the Home layout — below the provider cards + Settings (US-006 AC-3) — and
     // wires the "Add Widgets" action to the coordinator route (US-006 AC-2).
+    //
+    // T-W03: the closures thread real ids from the `AppModel` /
+    // `HomeRecentReview` into the parameterized routes (§2.2).
+    // `onSeeMoreReviews` receives the first review's `AppModel` so it can route
+    // to `.ratingsAndReviews` for that app (design §2.3, AC-W16-2). When the
+    // widget is empty (nil app) the route falls back to `.comingSoon`.
 
     private var widgetsSlot: some View {
         WindowsWidgetContainerView(
             widgets: model.state.widgets,
             onAddWidgets: { coordinator.push(.customizeWidgets) },
-            onSelectApp: { _ in coordinator.push(.appDetail) },
-            onSelectReview: { _ in coordinator.push(.reviewDetail) },
-            onSeeMoreReviews: { coordinator.push(.allReviews) }
+            onSelectApp: { app in
+                coordinator.push(
+                    .appDetail(appId: app.id, accountId: app.accountId)
+                )
+            },
+            onSelectReview: { item in
+                coordinator.push(
+                    .reviewDetail(
+                        reviewId: item.review.id,
+                        appId: item.app.id,
+                        accountId: item.app.accountId
+                    )
+                )
+            },
+            onSeeMoreReviews: { app in
+                if let app {
+                    coordinator.push(
+                        .ratingsAndReviews(
+                            appId: app.id,
+                            bundleId: app.bundleId,
+                            accountId: app.accountId
+                        )
+                    )
+                } else {
+                    coordinator.push(.comingSoon(title: "All Reviews"))
+                }
+            }
         )
     }
 }

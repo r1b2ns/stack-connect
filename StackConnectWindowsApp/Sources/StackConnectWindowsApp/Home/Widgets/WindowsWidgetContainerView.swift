@@ -41,9 +41,11 @@ struct WindowsWidgetContainerView: View {
     /// (US-007 AC-6 — v1 placeholder).
     let onSelectReview: (HomeRecentReview) -> Void
 
-    /// Pushes the All Reviews route from the Recent Reviews "See more" link
-    /// (US-007 AC-7 — v1 placeholder).
-    let onSeeMoreReviews: () -> Void
+    /// Pushes the Ratings & Reviews route from the Recent Reviews "See more"
+    /// link (US-007 AC-7, design §2.3). Receives the first review's app so the
+    /// caller can route to that app's ratings screen; `nil` when the widget has
+    /// no reviews.
+    let onSeeMoreReviews: (AppModel?) -> Void
 
     var body: some View {
         // The empty flag is derived by a pure helper so the "empty drives empty
