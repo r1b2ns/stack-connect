@@ -14,6 +14,10 @@ import StackHomeCore
 /// it is intentionally NOT a case here.
 enum WindowsRoute: Hashable {
     case accountsList(ProviderType)
+    case addAccountOptions(ProviderType)
+    case createAppleAccount
+    case createFirebaseAccount
+    case importScexport
     case settings
     case appDetail
     case reviewDetail
