@@ -151,7 +151,7 @@ struct WindowsImportAccountView: View {
     /// after a file has been selected (step >= enterPassword).
     @ViewBuilder
     private func buildStep2() -> some View {
-        if model.step.rawValue >= ImportStep.enterPassword.rawValue {
+        if model.step == .enterPassword || model.step == .confirmName {
             VStack(alignment: .leading, spacing: 8) {
                 Text("STEP 2 — PASSWORD")
                     .fontWeight(.bold)
@@ -159,7 +159,7 @@ struct WindowsImportAccountView: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Password")
-                    TextField("Enter decryption password", text: $model.password)
+                    SecureField("Enter decryption password", text: $model.password)
                         .disabled(model.isProcessing || model.step == .confirmName)
                 }
 
@@ -204,8 +204,6 @@ struct WindowsImportAccountView: View {
                     .cornerRadius(8)
 
                 HStack(spacing: 8) {
-                    Text("\u{26A0}")
-                        .foregroundColor(.red)
                     Text(message)
                         .foregroundColor(.red)
                     Spacer()
