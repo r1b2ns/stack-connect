@@ -17,26 +17,26 @@ import StackProtocols
 /// `WindowsAccountsListView` binds to and exposes intents for loading,
 /// confirming, and executing account deletion.
 @MainActor
-final class WindowsAccountsListModel: SwiftCrossUI.ObservableObject {
+public final class WindowsAccountsListModel: SwiftCrossUI.ObservableObject {
 
     // MARK: - Published State
 
     /// Accounts filtered by the configured `providerType`.
-    @SwiftCrossUI.Published private(set) var accounts: [AccountModel] = []
+    @SwiftCrossUI.Published public private(set) var accounts: [AccountModel] = []
 
     /// True while a fetch is in progress.
-    @SwiftCrossUI.Published private(set) var isLoading: Bool = false
+    @SwiftCrossUI.Published public private(set) var isLoading: Bool = false
 
     /// When non-nil, the inline confirmation banner is shown for this account id.
-    @SwiftCrossUI.Published var deleteConfirmingId: String? = nil
+    @SwiftCrossUI.Published public var deleteConfirmingId: String? = nil
 
     /// When non-nil, an inline error banner is shown with this message.
-    @SwiftCrossUI.Published var errorMessage: String? = nil
+    @SwiftCrossUI.Published public var errorMessage: String? = nil
 
     // MARK: - Configuration
 
     /// The provider type this list displays.
-    let providerType: ProviderType
+    public let providerType: ProviderType
 
     // MARK: - Dependencies
 
@@ -45,7 +45,7 @@ final class WindowsAccountsListModel: SwiftCrossUI.ObservableObject {
 
     // MARK: - Init
 
-    init(
+    public init(
         providerType: ProviderType,
         storage: PersistentStorable,
         secrets: KeyStorable
@@ -60,7 +60,7 @@ final class WindowsAccountsListModel: SwiftCrossUI.ObservableObject {
     /// Fetches all accounts from the SQLite store, filters by `providerType`, and
     /// fills missing rules for created accounts. Clears the loading flag on
     /// completion regardless of success or failure.
-    func loadAccounts() async {
+    public func loadAccounts() async {
         isLoading = true
         do {
             var allAccounts: [AccountModel] = try await storage.fetchAll(AccountModel.self)
@@ -77,26 +77,27 @@ final class WindowsAccountsListModel: SwiftCrossUI.ObservableObject {
     // MARK: - Delete Flow
 
     /// Shows the inline confirmation banner for the given account id (US-W06 AC-2).
-    func confirmDelete(id: String) {
+    public func confirmDelete(id: String) {
         errorMessage = nil
         deleteConfirmingId = id
     }
 
     /// Dismisses the confirmation banner without deleting (US-W06 AC-4).
-    func cancelDelete() {
+    public func cancelDelete() {
         deleteConfirmingId = nil
     }
 
     /// Executes the cascade delete for the account currently held in
     /// `deleteConfirmingId` (US-W06 AC-3):
     ///
-    /// 1. Removes all `AppStoreVersionModel` entries for the account's apps.
-    /// 2. Removes all `AppModel` entries belonging to the account.
-    /// 3. Removes the `AccountModel` itself.
-    /// 4. Removes the credentials from the secret store.
+    /// 1. Fetches all apps and versions in bulk (single query each).
+    /// 2. Removes all `AppStoreVersionModel` entries for the account's apps.
+    /// 3. Removes all `AppModel` entries belonging to the account.
+    /// 4. Removes the `AccountModel` itself.
+    /// 5. Removes the credentials from the secret store.
     ///
     /// On failure, sets `errorMessage` and leaves the account intact (AC-5).
-    func executeDelete() async {
+    public func executeDelete() async {
         guard let accountId = deleteConfirmingId else { return }
         guard let account = accounts.first(where: { $0.id == accountId }) else {
             deleteConfirmingId = nil
@@ -104,24 +105,25 @@ final class WindowsAccountsListModel: SwiftCrossUI.ObservableObject {
         }
 
         do {
-            // 1. Delete all versions belonging to this account's apps
+            // 1. Fetch all apps and versions in bulk (avoids N+1 queries)
             let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
             let accountApps = allApps.filter { $0.accountId == account.id }
+            let allVersions: [AppStoreVersionModel] = try await storage.fetchAll(AppStoreVersionModel.self)
 
+            // 2. Delete all versions belonging to this account's apps
             for app in accountApps {
-                let allVersions: [AppStoreVersionModel] = try await storage.fetchAll(AppStoreVersionModel.self)
                 let appVersions = allVersions.filter { $0.appId == app.id }
                 for version in appVersions {
                     try? await storage.delete(AppStoreVersionModel.self, id: "version.\(version.id)")
                 }
-                // 2. Delete the app
+                // 3. Delete the app
                 try? await storage.delete(AppModel.self, id: "\(account.id).\(app.id)")
             }
 
-            // 3. Delete the account
+            // 4. Delete the account
             try await storage.delete(AccountModel.self, id: account.id)
 
-            // 4. Remove credentials from the secret store
+            // 5. Remove credentials from the secret store
             secrets.removeObject(forKey: "credentials.\(account.id)")
 
             // Success: remove from local array and clear confirmation state

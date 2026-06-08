@@ -37,9 +37,22 @@ let package = Package(
         .package(path: "../Packages/StackSecretsWindows"),
     ],
     targets: [
+        // Library target containing testable business logic (models, view models).
+        // Separated from the executable so unit tests can `@testable import` it
+        // without linking the `@main` entry point.
+        .target(
+            name: "WindowsAppCore",
+            dependencies: [
+                .product(name: "SwiftCrossUI", package: "swift-cross-ui"),
+                .product(name: "StackHomeCore", package: "StackHomeCore"),
+                .product(name: "StackProtocols", package: "StackProtocols"),
+            ],
+            path: "Sources/WindowsAppCore"
+        ),
         .executableTarget(
             name: "StackConnectWindowsApp",
             dependencies: [
+                "WindowsAppCore",
                 .product(name: "SwiftCrossUI", package: "swift-cross-ui"),
                 .product(name: "DefaultBackend", package: "swift-cross-ui"),
                 .product(name: "StackHomeCore", package: "StackHomeCore"),
@@ -48,6 +61,15 @@ let package = Package(
                 .product(name: "StackSecretsWindows", package: "StackSecretsWindows"),
             ],
             path: "Sources/StackConnectWindowsApp"
+        ),
+        .testTarget(
+            name: "WindowsAppCoreTests",
+            dependencies: [
+                "WindowsAppCore",
+                .product(name: "StackHomeCore", package: "StackHomeCore"),
+                .product(name: "StackProtocols", package: "StackProtocols"),
+            ],
+            path: "Tests/WindowsAppCoreTests"
         ),
     ]
 )
