@@ -91,7 +91,7 @@ struct WindowsCreateAppleAccountView: View {
                         }
                     }
                 }
-                .disabled(!isFormComplete)
+                .disabled(!model.isFormComplete)
             }
         }
     }
@@ -200,7 +200,7 @@ struct WindowsCreateAppleAccountView: View {
                         ("All Files (*.*)", "*.*"),
                     ]
                 ) {
-                    loadFileContents(at: path)
+                    model.loadPrivateKeyFromFile(at: path)
                 }
             }
             .disabled(model.isSaving)
@@ -233,24 +233,4 @@ struct WindowsCreateAppleAccountView: View {
         }
     }
 
-    // MARK: - Helpers
-
-    /// Whether all four form fields are non-empty (AC-2). Drives the Save
-    /// button's enabled state.
-    private var isFormComplete: Bool {
-        !model.accountName.trimmingCharacters(in: .whitespaces).isEmpty
-            && !model.issuerID.trimmingCharacters(in: .whitespaces).isEmpty
-            && !model.privateKeyID.trimmingCharacters(in: .whitespaces).isEmpty
-            && !model.privateKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    /// Reads the file at the given path and sets its content as the Private
-    /// Key. Called after a successful file-picker selection.
-    private func loadFileContents(at path: String) {
-        guard let data = FileManager.default.contents(atPath: path),
-              let content = String(data: data, encoding: .utf8) else {
-            return
-        }
-        model.privateKey = content
-    }
 }

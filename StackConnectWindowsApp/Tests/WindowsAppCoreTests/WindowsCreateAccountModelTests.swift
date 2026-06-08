@@ -180,6 +180,97 @@ final class WindowsCreateAccountModelTests: XCTestCase {
         XCTAssertTrue(accounts.isEmpty, "No account should be saved when storage throws")
     }
 
+    // MARK: - isFormComplete (Issue 1a)
+
+    func testIsFormComplete_allFieldsFilled_returnsTrue() {
+        let sut = makeAppleSUT()
+        fillAppleFields(sut)
+
+        XCTAssertTrue(sut.isFormComplete)
+    }
+
+    func testIsFormComplete_emptyAccountName_returnsFalse() {
+        let sut = makeAppleSUT()
+        fillAppleFields(sut)
+        sut.accountName = ""
+
+        XCTAssertFalse(sut.isFormComplete)
+    }
+
+    func testIsFormComplete_whitespaceAccountName_returnsFalse() {
+        let sut = makeAppleSUT()
+        fillAppleFields(sut)
+        sut.accountName = "   "
+
+        XCTAssertFalse(sut.isFormComplete)
+    }
+
+    func testIsFormComplete_emptyIssuerID_returnsFalse() {
+        let sut = makeAppleSUT()
+        fillAppleFields(sut)
+        sut.issuerID = ""
+
+        XCTAssertFalse(sut.isFormComplete)
+    }
+
+    func testIsFormComplete_whitespaceIssuerID_returnsFalse() {
+        let sut = makeAppleSUT()
+        fillAppleFields(sut)
+        sut.issuerID = "  "
+
+        XCTAssertFalse(sut.isFormComplete)
+    }
+
+    func testIsFormComplete_emptyPrivateKeyID_returnsFalse() {
+        let sut = makeAppleSUT()
+        fillAppleFields(sut)
+        sut.privateKeyID = ""
+
+        XCTAssertFalse(sut.isFormComplete)
+    }
+
+    func testIsFormComplete_emptyPrivateKey_returnsFalse() {
+        let sut = makeAppleSUT()
+        fillAppleFields(sut)
+        sut.privateKey = ""
+
+        XCTAssertFalse(sut.isFormComplete)
+    }
+
+    func testIsFormComplete_whitespaceAndNewlinePrivateKey_returnsFalse() {
+        let sut = makeAppleSUT()
+        fillAppleFields(sut)
+        sut.privateKey = " \n\n "
+
+        XCTAssertFalse(sut.isFormComplete)
+    }
+
+    // MARK: - loadPrivateKeyFromFile (Issue 1b)
+
+    func testLoadPrivateKeyFromFile_validFile_setsPrivateKey() {
+        let sut = makeAppleSUT()
+        let tempDir = NSTemporaryDirectory()
+        let filePath = (tempDir as NSString).appendingPathComponent("test_key_\(UUID().uuidString).p8")
+        let content = "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg==\n-----END PRIVATE KEY-----"
+        FileManager.default.createFile(atPath: filePath, contents: content.data(using: .utf8))
+        defer { try? FileManager.default.removeItem(atPath: filePath) }
+
+        sut.loadPrivateKeyFromFile(at: filePath)
+
+        XCTAssertEqual(sut.privateKey, content)
+        XCTAssertNil(sut.errorMessage)
+    }
+
+    func testLoadPrivateKeyFromFile_invalidPath_setsErrorMessage() {
+        let sut = makeAppleSUT()
+
+        sut.loadPrivateKeyFromFile(at: "/nonexistent/path/key.p8")
+
+        XCTAssertTrue(sut.privateKey.isEmpty)
+        XCTAssertNotNil(sut.errorMessage)
+        XCTAssertTrue(sut.errorMessage?.contains("Could not read file") == true)
+    }
+
     // MARK: - PEM Sanitization
 
     func testSanitizedPrivateKey_stripsPEMHeaders() {
@@ -215,6 +306,21 @@ final class WindowsCreateAccountModelTests: XCTestCase {
 
         XCTAssertEqual(result, "MIIEvQIBADANBg==")
         XCTAssertFalse(result.contains("\r"))
+        XCTAssertFalse(result.contains("\n"))
+    }
+
+    func testSanitizedPrivateKey_stripsECPEMHeaders() {
+        let sut = makeAppleSUT()
+        let pemKey = """
+        -----BEGIN EC PRIVATE KEY-----
+        MHQCAQEEIBkg5J6b
+        -----END EC PRIVATE KEY-----
+        """
+
+        let result = sut.sanitizedPrivateKey(pemKey)
+
+        XCTAssertEqual(result, "MHQCAQEEIBkg5J6b")
+        XCTAssertFalse(result.contains("-----"))
         XCTAssertFalse(result.contains("\n"))
     }
 

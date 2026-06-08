@@ -178,17 +178,46 @@ public final class WindowsCreateAccountModel: SwiftCrossUI.ObservableObject {
         }
     }
 
+    // MARK: - Form Completion (AC-2)
+
+    /// Whether all four Apple form fields are non-empty after trimming.
+    /// Uses `.whitespaces` for text fields and `.whitespacesAndNewlines` for the
+    /// Private Key TextEditor (intentional: editor content may contain newlines).
+    public var isFormComplete: Bool {
+        !accountName.trimmingCharacters(in: .whitespaces).isEmpty
+            && !issuerID.trimmingCharacters(in: .whitespaces).isEmpty
+            && !privateKeyID.trimmingCharacters(in: .whitespaces).isEmpty
+            && !privateKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    // MARK: - File Loading
+
+    /// Reads the file at the given path and sets its content as the Private Key.
+    /// Sets `errorMessage` on failure (file not readable or not valid UTF-8).
+    public func loadPrivateKeyFromFile(at path: String) {
+        guard let data = FileManager.default.contents(atPath: path) else {
+            errorMessage = "Could not read file at path: \(path)"
+            return
+        }
+        guard let content = String(data: data, encoding: .utf8) else {
+            errorMessage = "File is not valid UTF-8: \(path)"
+            return
+        }
+        privateKey = content
+    }
+
     // MARK: - PEM Sanitization (AC-7)
 
-    /// Strips PEM header/footer lines, carriage returns (Windows `\r\n`), and
-    /// remaining whitespace from a private key string. Returns the raw base64
-    /// content suitable for credential storage.
+    /// Strips ALL PEM header/footer lines (any line starting with "-----"),
+    /// carriage returns (Windows `\r\n`), and remaining whitespace from a private
+    /// key string. Returns the raw base64 content suitable for credential storage.
+    /// Handles both `BEGIN PRIVATE KEY` and `BEGIN EC PRIVATE KEY` variants.
     public func sanitizedPrivateKey(_ key: String) -> String {
         key
-            .replacingOccurrences(of: "-----BEGIN PRIVATE KEY-----", with: "")
-            .replacingOccurrences(of: "-----END PRIVATE KEY-----", with: "")
+            .components(separatedBy: .newlines)
+            .filter { !$0.hasPrefix("-----") }
+            .joined()
             .replacingOccurrences(of: "\r", with: "")
-            .replacingOccurrences(of: "\n", with: "")
             .trimmingCharacters(in: .whitespaces)
     }
 
