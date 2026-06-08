@@ -83,8 +83,8 @@ private extension WindowsFilePicker {
         // ensures all three withUnsafeMutableBufferPointer scopes overlap,
         // keeping every buffer alive and addressable simultaneously.
         let result: Bool = fileBuffer.withUnsafeMutableBufferPointer { fileBuf in
-            titleW.withUnsafeMutableBufferPointer { titleBuf in
-                filterW.withUnsafeMutableBufferPointer { filterBuf in
+            titleW.withUnsafeBufferPointer { titleBuf in
+                filterW.withUnsafeBufferPointer { filterBuf in
                     ofn.lpstrFile = fileBuf.baseAddress
                     ofn.lpstrTitle = titleBuf.baseAddress
                     ofn.lpstrFilter = filterBuf.baseAddress
