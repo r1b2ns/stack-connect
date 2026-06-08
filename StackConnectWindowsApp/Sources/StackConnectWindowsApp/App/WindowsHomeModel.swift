@@ -27,10 +27,18 @@ final class WindowsHomeModel: SwiftCrossUI.ObservableObject {
     /// bootstrap owns both the core model and navigation.
     let coordinator: WindowsHomeCoordinator
 
+    /// SQLite store exposed to child screens (e.g. create-account forms) that
+    /// need to persist data outside the core `HomeViewModel` scope.
+    let storage: PersistentStorable
+    /// Encrypted credential store exposed to child screens that save secrets
+    /// (API keys, service-account JSON, etc.).
+    let secrets: KeyStorable
+
     private let core: StackHomeCore.HomeViewModel
 
     init(environment: AppEnvironment) {
         let storage = environment.storage
+        let secrets = environment.secrets
         let coordinator = WindowsHomeCoordinator()
         let core = StackHomeCore.HomeViewModel(
             storage: storage,
@@ -42,6 +50,8 @@ final class WindowsHomeModel: SwiftCrossUI.ObservableObject {
         )
         self.core = core
         self.coordinator = coordinator
+        self.storage = storage
+        self.secrets = secrets
         self.state = core.state
         core.onStateChanged = { [weak self] newState in
             self?.state = newState
