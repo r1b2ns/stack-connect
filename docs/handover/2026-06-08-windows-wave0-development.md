@@ -5,11 +5,11 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** ALL FOUR Wave 0 tasks DONE. T-W01 DONE (merged into `experiment/windows` as `7ef4617`). T-W02 DONE (committed `556c537`, not yet merged). T-W03 DONE (committed `d40635e` + `a34995e`, not yet merged). T-W04 DONE (committed `949101a`, all gates passed, not yet merged). Wave 0 development complete; remaining action is gated close-out (merge approved branches into `experiment/windows` pending explicit user authorization).
+**Status:** ALL FOUR Wave 0 tasks DONE and MERGED. T-W01 merged into `experiment/windows` as `7ef4617`. T-W02 merged as `eba9738`. T-W03 merged as `1bf59ab`. T-W04 merged as `0786ae8`. Wave 0 development and close-out complete.
 
-**Snapshot:** All four Wave 0 tasks have been implemented, passed all gates, and are committed on their feature branches. T-W01 is merged to `experiment/windows` (7ef4617). T-W02 (committed 556c537), T-W03 (committed `d40635e` + `a34995e`), and T-W04 (committed 949101a) are **not yet merged** — merges deferred to Wave 0 close-out. T-W01 and T-W02 passed all gates first round. T-W03 required one S-1 correction (now complete). T-W04 passed all gates first review: Staff APPROVE, QA PASS 104 tests 0 fail, PO ACCEPTED, 0 corrections (3 non-blocking follow-ups recorded).
+**Snapshot:** All four Wave 0 tasks have been implemented, passed all gates, and are now merged into `experiment/windows`. T-W01 merged as `7ef4617`. T-W02 merged as `eba9738`. T-W03 merged as `1bf59ab`. T-W04 merged as `0786ae8`. Windows port foundation is live on `experiment/windows`.
 
-> **Wave 0 development is complete.** Remaining action: user must authorize merge of the four approved branches into `experiment/windows` (never to `master` without explicit authorization). See "Wave 0 close-out" section below for branch list and next steps.
+> **Wave 0 development and close-out complete.** All feature branches have been merged into `experiment/windows`. Windows port foundation is ready for T-W05 and beyond.
 
 ---
 
@@ -28,9 +28,9 @@
 | Task | Title | Branch | Commits (ahead of base) | Gate state |
 |------|-------|--------|--------------------------|------------|
 | **T-W01** | SDK + AppleConnectionProtocol for Windows GUI | `feat/T-W01-windows-apple-connection` | `7e5fbca` (feat) + `3eb047b` (correction) | DONE — merged into experiment/windows (7ef4617). Staff APPROVE / QA PASS 98/98 / PO ACCEPTED. 1 correction. |
-| **T-W02** | `WindowsClipboard.setText()` | `feat/T-W02-windows-clipboard-settext` | `ab1f133` (feat) + `556c537` (correction) | DONE — PO ACCEPTED. Staff APPROVE / QA PASS (3 macOS-host tests pass, 5 clipboard tests, 89 total 0 fail) / 0 new corrections. Not yet merged (Wave 0 close-out). |
-| **T-W03** | Parameterize `WindowsRoute` + wire RootView | `feat/T-W03-windows-route-enum` | `d40635e` (feat) + `a34995e` (S-1 correction) | DONE — PO ACCEPTED. Staff APPROVE / QA PASS 86 tests 0 fail / PO ACCEPTED / 1 correction. Not yet merged (Wave 0 close-out). |
-| **T-W04** | Shared Windows UI components | `feat/T-W04-windows-shared-components` | `949101a` (feat) | DONE — PO ACCEPTED. Staff APPROVE / QA PASS 104 tests 0 fail / PO ACCEPTED / 0 corrections. Not yet merged (Wave 0 close-out). 3 non-blocking follow-ups (S-1, S-2, S-3). |
+| **T-W02** | `WindowsClipboard.setText()` | `feat/T-W02-windows-clipboard-settext` | `ab1f133` (feat) + `556c537` (correction) | DONE — merged into experiment/windows (eba9738). Staff APPROVE / QA PASS 89 tests 0 fail / PO ACCEPTED / 1 correction. |
+| **T-W03** | Parameterize `WindowsRoute` + wire RootView | `feat/T-W03-windows-route-enum` | `d40635e` (feat) + `a34995e` (S-1 correction) | DONE — merged into experiment/windows (1bf59ab). Staff APPROVE / QA PASS 86 tests 0 fail / PO ACCEPTED / 1 correction. |
+| **T-W04** | Shared Windows UI components | `feat/T-W04-windows-shared-components` | `949101a` (feat) | DONE — merged into experiment/windows (0786ae8). Staff APPROVE / QA PASS 104 tests 0 fail / PO ACCEPTED / 0 corrections. 3 non-blocking follow-ups (S-1, S-2, S-3). |
 
 QA and PO gates have run for all four Wave 0 tasks. All tasks passed their gate verdicts and are ready for Wave 0 close-out. No pushes, no merges to remote yet.
 
@@ -122,25 +122,25 @@ The four agents from the old parallel run all finished green. The remaining work
 | Order | Task | Starting point this session | Steps to run (serial, one agent at a time) |
 |-------|------|------------------------------|---------------------------------------------|
 | 1 | **T-W01** | ✅ DONE (merged `7ef4617`) | — |
-| 2 | **T-W02** | ✅ DONE (committed `556c537`, not yet merged) | — |
-| 3 | **T-W03** | ✅ DONE (committed `d40635e` + `a34995e`, all gates passed, not yet merged) | — |
-| 4 | **T-W04** | ✅ DONE (committed `949101a`, all gates passed, not yet merged) | — |
+| 2 | **T-W02** | ✅ DONE (merged `eba9738`) | — |
+| 3 | **T-W03** | ✅ DONE (merged `1bf59ab`) | — |
+| 4 | **T-W04** | ✅ DONE (merged `0786ae8`) | — |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
 - **Git auth is per session, commit-only** — confirm at session start. Push/PR stay gated. **Merges into `experiment/windows` need explicit user OK; never merge to `master` automatically.**
 - After the task is **PO-ACCEPTED**, `git-docs-manager` updates this handover (mark done, record SHA/verdicts, set next-task pointer) and the session **ends** — the next task is a **fresh session** to save tokens.
 
-### Wave 0 close-out (all 4 tasks are DONE)
-All four Wave 0 tasks have been implemented, passed all gates (Staff APPROVE, QA PASS, PO ACCEPTED), and are committed on their feature branches. **Remaining action: merge the approved branches into `experiment/windows` (requires explicit user authorization; never merge to `master` without explicit authorization).**
+### Wave 0 close-out (COMPLETE)
+All four Wave 0 tasks have been implemented, passed all gates (Staff APPROVE, QA PASS, PO ACCEPTED), and are now merged into `experiment/windows`. Wave 0 Windows port foundation is live.
 
-**Approved branches ready for merge:**
-- **T-W01:** `feat/T-W01-windows-apple-connection` (tip `7ef4617`) — **already merged** into `experiment/windows`.
-- **T-W02:** `feat/T-W02-windows-clipboard-settext` (tip `556c537`) — **not yet merged**.
-- **T-W03:** `feat/T-W03-windows-route-enum` (tip `a34995e`, after S-1 correction) — **not yet merged**.
-- **T-W04:** `feat/T-W04-windows-shared-components` (tip `949101a`) — **not yet merged**.
+**Merged branches:**
+- **T-W01:** `feat/T-W01-windows-apple-connection` → merged as `7ef4617`.
+- **T-W02:** `feat/T-W02-windows-clipboard-settext` → merged as `eba9738`.
+- **T-W03:** `feat/T-W03-windows-route-enum` → merged as `1bf59ab`.
+- **T-W04:** `feat/T-W04-windows-shared-components` → merged as `0786ae8`.
 
-To close out Wave 0: ask the user for explicit authorization, then merge T-W02, T-W03, and T-W04 into `experiment/windows` (in any order; no interdependencies). After all merges complete, Wave 0 Windows port foundation is live on `experiment/windows`.
+Wave 0 is fully closed. Next unblocked task: **T-W05** (WindowsAppsListModel; depends only on T-W01, which is done).
 
 ## Key facts for gate agents
 - Pass per-task slice of: Task Breakdown (artifact §3.2), Acceptance Criteria, Test Cases — keyed by task id.
