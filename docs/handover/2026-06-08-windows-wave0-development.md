@@ -1,15 +1,17 @@
-# Handover — Windows Port Wave 0 Development
+# Handover — Windows Port Wave 0 & Wave 1 Development
 
 **Date:** 2026-06-08
 **Skill:** `/personal-development` — **now SERIAL, ONE TASK PER SESSION** (the skill was rewritten: one agent at a time, foreground only; each session develops exactly one task end-to-end then ends).
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** ALL FOUR Wave 0 tasks DONE and MERGED. T-W01 merged into `experiment/windows` as `7ef4617`. T-W02 merged as `eba9738`. T-W03 merged as `1bf59ab`. T-W04 merged as `0786ae8`. Wave 0 development and close-out complete.
+**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 IN PROGRESS — T-W05 DONE and MERGED.
 
-**Snapshot:** All four Wave 0 tasks have been implemented, passed all gates, and are now merged into `experiment/windows`. T-W01 merged as `7ef4617`. T-W02 merged as `eba9738`. T-W03 merged as `1bf59ab`. T-W04 merged as `0786ae8`. Windows port foundation is live on `experiment/windows`.
+**Snapshot:**
+- **Wave 0 (DONE):** All four foundation tasks merged into `experiment/windows`: T-W01 (`7ef4617`), T-W02 (`eba9738`), T-W03 (`1bf59ab`), T-W04 (`0786ae8`).
+- **Wave 1 (IN PROGRESS):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`.
 
-> **Wave 0 development and close-out complete.** All feature branches have been merged into `experiment/windows`. Windows port foundation is ready for T-W05 and beyond.
+> **Wave 0 foundation complete.** Wave 1 development started. Next unblocked task: **T-W06** (`WindowsAppsListView` + `WindowsAppRow` — all dependencies met).
 
 ---
 
@@ -25,14 +27,42 @@
 
 ## Task board (current state)
 
-| Task | Title | Branch | Commits (ahead of base) | Gate state |
-|------|-------|--------|--------------------------|------------|
-| **T-W01** | SDK + AppleConnectionProtocol for Windows GUI | `feat/T-W01-windows-apple-connection` | `7e5fbca` (feat) + `3eb047b` (correction) | DONE — merged into experiment/windows (7ef4617). Staff APPROVE / QA PASS 98/98 / PO ACCEPTED. 1 correction. |
-| **T-W02** | `WindowsClipboard.setText()` | `feat/T-W02-windows-clipboard-settext` | `ab1f133` (feat) + `556c537` (correction) | DONE — merged into experiment/windows (eba9738). Staff APPROVE / QA PASS 89 tests 0 fail / PO ACCEPTED / 1 correction. |
-| **T-W03** | Parameterize `WindowsRoute` + wire RootView | `feat/T-W03-windows-route-enum` | `d40635e` (feat) + `a34995e` (S-1 correction) | DONE — merged into experiment/windows (1bf59ab). Staff APPROVE / QA PASS 86 tests 0 fail / PO ACCEPTED / 1 correction. |
-| **T-W04** | Shared Windows UI components | `feat/T-W04-windows-shared-components` | `949101a` (feat) | DONE — merged into experiment/windows (0786ae8). Staff APPROVE / QA PASS 104 tests 0 fail / PO ACCEPTED / 0 corrections. 3 non-blocking follow-ups (S-1, S-2, S-3). |
+### Wave 0 (DONE)
 
-QA and PO gates have run for all four Wave 0 tasks. All tasks passed their gate verdicts and are ready for Wave 0 close-out. No pushes, no merges to remote yet.
+| Task | Title | Branch | Commits | Gate state |
+|------|-------|--------|---------|------------|
+| **T-W01** | SDK + AppleConnectionProtocol for Windows GUI | `feat/T-W01-windows-apple-connection` | `7e5fbca` (feat) + `3eb047b` (correction) | ✅ DONE — merged `7ef4617`. Staff APPROVE / QA PASS 98/98 / PO ACCEPTED. 1 correction. |
+| **T-W02** | `WindowsClipboard.setText()` | `feat/T-W02-windows-clipboard-settext` | `ab1f133` (feat) + `556c537` (correction) | ✅ DONE — merged `eba9738`. Staff APPROVE / QA PASS 89 tests 0 fail / PO ACCEPTED / 1 correction. |
+| **T-W03** | Parameterize `WindowsRoute` + wire RootView | `feat/T-W03-windows-route-enum` | `d40635e` (feat) + `a34995e` (S-1 correction) | ✅ DONE — merged `1bf59ab`. Staff APPROVE / QA PASS 86 tests 0 fail / PO ACCEPTED / 1 correction. |
+| **T-W04** | Shared Windows UI components | `feat/T-W04-windows-shared-components` | `949101a` (feat) | ✅ DONE — merged `0786ae8`. Staff APPROVE / QA PASS 104 tests 0 fail / PO ACCEPTED / 0 corrections. 3 non-blocking follow-ups (S-1, S-2, S-3). |
+
+### Wave 1 (IN PROGRESS)
+
+| Task | Title | Deps | Gate state |
+|------|-------|------|------------|
+| **T-W05** | `WindowsAppsListModel` (F1 Apps List) | T-W01 | ✅ DONE — merged `13e82b4`. Staff APPROVE (1 correction round: 3 should-fixes on duplicate-ID safety, cached fields on live-sync, loading-indicator test rename) / QA PASS 19 WindowsAppsListModelTests + full package 138/138 tests, 0 failures / PO ACCEPTED. 1 correction. |
+| **T-W06** | `WindowsAppsListView` + `WindowsAppRow` | T-W03, T-W04, T-W05 | ⏳ PENDING (next unblocked task) — waiting for development session. |
+| **T-W07** | `WindowsAppDetailView` (header + metadata) | T-W03, T-W05 | ⏳ BLOCKED until T-W05 done. |
+| **T-W09** | Status badges / category pills | T-W05 | ⏳ BLOCKED until T-W05 done. |
+| **T-W11** | Clipboard sync UX + affordances | T-W01 (soft) | ⏳ BLOCKED softly (can start independently). |
+| **T-W15** | macOS integration + WKWebView bridge | none | ⏳ BLOCKED (depends on iOS side stability first; soft block). |
+| **T-W17** | Review detail view (header + reply composer UX) | T-W04 | ⏳ BLOCKED. |
+| **T-W18** | Rating histogram + filter UI | T-W04 | ⏳ BLOCKED. |
+| **T-W30** | Splash screen + app launch sequencing | none | ⏳ BLOCKED (late-stage task; wait for core features stable). |
+
+---
+
+## Now-unblocked tasks (situational awareness)
+
+- **T-W06** (T-W03, T-W04, T-W05 all DONE) — **NEXT POINTER**.
+- **T-W07** (T-W03, T-W05 both DONE).
+- **T-W09** (T-W05 DONE).
+- **T-W11** (no critical blockers; T-W01 soft dep DONE).
+- **T-W15** (no deps; soft-blocked pending iOS stability).
+- **T-W17**, **T-W18** (T-W04 DONE).
+- **T-W30** (no deps; late-stage, soft-blocked).
+
+**Critical path (unchanged):** T-W01 → T-W16 → T-W19 → T-W28 → T-W29.
 
 Worktrees live under `/Users/rubensmachion/repos/Open/stack-connect-worktrees/feat-<task>/`.
 
@@ -109,7 +139,39 @@ WindowsDateFormatting is fully unit-tested (18 test cases).
 - **PO:** ACCEPTED (all 6 acceptance criteria met).
 - **Corrections:** 0 (first review approved).
 
-Not yet merged (Wave 0 close-out).
+Merged into `experiment/windows` as `0786ae8`. Wave 0 close-out complete.
+
+---
+
+## Wave 1 Development — T-W05 (DONE)
+
+### T-W05 (branch `feat/T-W05-windows-apps-list-model`)
+**Task:** Build `WindowsAppsListModel` — the data model fetching and managing the list of apps for the authenticated account, with cached state, live-sync merge strategy, and comprehensive test suite.
+
+**Deliverables:**
+- `StackConnectWindowsApp/Sources/WindowsAppCore/Models/WindowsAppsListModel.swift` — Main model with `@MainActor` concurrency protection, cached app store from SwiftData, live-sync merge logic using `uniquingKeysWith` to prevent duplicate-ID crashes.
+- Preserved cached fields (`hasReviewPending`, `platformVersions`) across live-sync updates per staff feedback.
+- `.../Tests/WindowsAppCoreTests/WindowsAppsListModelTests.swift` — 19 comprehensive test cases covering:
+  - Initial load (empty cache, fetch from API).
+  - Merge on live-sync (new apps, updated names, deleted apps).
+  - Duplicate-ID safety via `uniquingKeysWith` resolver.
+  - Cached metadata preservation.
+  - Loading state transitions.
+
+**Commits:**
+- `046c133` (feat) — Initial `WindowsAppsListModel` and 15 test cases.
+- `2e54227` (fix: staff should-fixes) — Corrections for duplicate-ID crash safety, cached-field preservation, and loading-indicator test rename.
+
+**Gate verdicts:**
+- **Staff Review:** APPROVE (after 1 correction round).
+  - **B-0:** Duplicate-app IDs caused array merge crashes — fixed via `uniquingKeysWith { $1 }` (newer wins).
+  - **S-1:** Live-sync merge overwrote `hasReviewPending`/`platformVersions` cached flags — fixed: filter merge to exclude these keys, restore from old state.
+  - **S-2:** Loading indicator test name misleading (`testLoadingState` vs `testLoadingIndicator`) — renamed to `testLoadingTransitions` for clarity.
+- **QA:** PASS (19 WindowsAppsListModelTests passing; full package run: 138 tests, 0 failures, no regressions).
+- **PO:** ACCEPTED (all in-scope acceptance criteria met).
+- **Corrections:** 1 (fix: 2e54227).
+
+**Merged into `experiment/windows`:** Merge commit `13e82b4` (--no-ff merge strategy).
 
 ---
 
@@ -119,12 +181,14 @@ The four agents from the old parallel run all finished green. The remaining work
 
 ### Session order (next session starts at the top non-done task)
 
-| Order | Task | Starting point this session | Steps to run (serial, one agent at a time) |
-|-------|------|------------------------------|---------------------------------------------|
-| 1 | **T-W01** | ✅ DONE (merged `7ef4617`) | — |
-| 2 | **T-W02** | ✅ DONE (merged `eba9738`) | — |
-| 3 | **T-W03** | ✅ DONE (merged `1bf59ab`) | — |
-| 4 | **T-W04** | ✅ DONE (merged `0786ae8`) | — |
+| Order | Task | Status | Notes |
+|-------|------|--------|-------|
+| 1 | **T-W01** | ✅ DONE (merged `7ef4617`) | Wave 0 |
+| 2 | **T-W02** | ✅ DONE (merged `eba9738`) | Wave 0 |
+| 3 | **T-W03** | ✅ DONE (merged `1bf59ab`) | Wave 0 |
+| 4 | **T-W04** | ✅ DONE (merged `0786ae8`) | Wave 0 |
+| 5 | **T-W05** | ✅ DONE (merged `13e82b4`) | Wave 1 — `WindowsAppsListModel` |
+| 6 | **T-W06** | ⏳ NEXT (pending) | Wave 1 — `WindowsAppsListView` + `WindowsAppRow` (deps: T-W03, T-W04, T-W05 all DONE) |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
