@@ -33,8 +33,9 @@ enum WindowsRoute: Hashable {
 
     // MARK: - Apps & Reviews (T-W03, design §2.2)
 
-    /// Lists all active apps for an account.
-    case appsList(accountId: String)
+    /// Lists all active apps for an account. The `accountName` is passed through
+    /// so the toolbar can display it without an async lookup (T-W06).
+    case appsList(accountId: String, accountName: String)
 
     /// Lists archived apps for an account.
     case archivedApps(accountId: String)
@@ -59,6 +60,11 @@ enum WindowsRoute: Hashable {
 
     /// Confirmation dialog before deleting a developer response.
     case deleteReplyConfirm(reviewId: String, responseId: String, accountId: String)
+
+    /// Confirmation screen before archiving an app (T-W06, AC-W04).
+    /// Pushed as a route (TC-072: not an alert/sheet). The `appName` is passed
+    /// through so the confirmation screen can display it without a model lookup.
+    case archiveAppConfirm(appId: String, appName: String)
 }
 
 /// Holds the Windows navigation route stack and the push/pop operations the
