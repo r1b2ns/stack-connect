@@ -11,24 +11,24 @@ import StackHomeCore
 // SQLite + credentials to the Windows Credential Manager.
 
 @MainActor
-final class WindowsCreateAccountModel: SwiftCrossUI.ObservableObject {
+public final class WindowsCreateAccountModel: SwiftCrossUI.ObservableObject {
 
     // MARK: - Apple form fields
 
-    @SwiftCrossUI.Published var accountName: String = ""
-    @SwiftCrossUI.Published var issuerID: String = ""
-    @SwiftCrossUI.Published var privateKeyID: String = ""
-    @SwiftCrossUI.Published var privateKey: String = ""
+    @SwiftCrossUI.Published public var accountName: String = ""
+    @SwiftCrossUI.Published public var issuerID: String = ""
+    @SwiftCrossUI.Published public var privateKeyID: String = ""
+    @SwiftCrossUI.Published public var privateKey: String = ""
 
     // MARK: - Firebase form fields
 
-    @SwiftCrossUI.Published var serviceAccountJSON: String = ""
+    @SwiftCrossUI.Published public var serviceAccountJSON: String = ""
 
     // MARK: - State
 
-    @SwiftCrossUI.Published var isSaving: Bool = false
-    @SwiftCrossUI.Published var errorMessage: String? = nil
-    @SwiftCrossUI.Published var isSaved: Bool = false
+    @SwiftCrossUI.Published public var isSaving: Bool = false
+    @SwiftCrossUI.Published public var errorMessage: String? = nil
+    @SwiftCrossUI.Published public var isSaved: Bool = false
 
     // MARK: - Dependencies
 
@@ -36,7 +36,7 @@ final class WindowsCreateAccountModel: SwiftCrossUI.ObservableObject {
     private let secrets: KeyStorable
     private let providerType: ProviderType
 
-    init(
+    public init(
         providerType: ProviderType,
         storage: PersistentStorable,
         secrets: KeyStorable
@@ -50,7 +50,7 @@ final class WindowsCreateAccountModel: SwiftCrossUI.ObservableObject {
 
     /// Validates Apple account fields, sanitizes the PEM key, checks for
     /// duplicate credentials, and persists the account + credentials.
-    func saveAppleAccount() async {
+    public func saveAppleAccount() async {
         // AC-4: Account Name empty -> inline error
         guard !accountName.trimmingCharacters(in: .whitespaces).isEmpty else {
             errorMessage = "Account name is required."
@@ -91,7 +91,7 @@ final class WindowsCreateAccountModel: SwiftCrossUI.ObservableObject {
             // AC-3: Build and persist the account
             let account = AccountModel(
                 name: accountName.trimmingCharacters(in: .whitespaces),
-                providerType: .apple
+                providerType: self.providerType
             )
 
             let credentials = AppleCredentials(
@@ -100,27 +100,27 @@ final class WindowsCreateAccountModel: SwiftCrossUI.ObservableObject {
                 privateKey: sanitizedKey
             )
 
-            // Store credentials in WindowsCredentialStorable
-            secrets.setObject(credentials, forKey: "credentials.\(account.id)")
-
-            // Store AccountModel in SQLite
+            // 1. Persist account to SQLite first (can throw)
             try await storage.save(account, id: account.id)
 
+            // 2. Only if SQLite succeeded, write credentials
+            secrets.setObject(credentials, forKey: "credentials.\(account.id)")
+
+            isSaving = false
             isSaved = true
 
         } catch {
             // AC-6: Save failure -> inline error with description, form re-enabled
             errorMessage = error.localizedDescription
+            isSaving = false
         }
-
-        isSaving = false
     }
 
     // MARK: - Save Firebase Account (US-W04)
 
     /// Validates Firebase account fields (JSON non-empty + parseable), checks for
     /// duplicate credentials, and persists the account + credentials.
-    func saveFirebaseAccount() async {
+    public func saveFirebaseAccount() async {
         // Account name is required for Firebase too
         guard !accountName.trimmingCharacters(in: .whitespaces).isEmpty else {
             errorMessage = "Account name is required."
@@ -157,35 +157,37 @@ final class WindowsCreateAccountModel: SwiftCrossUI.ObservableObject {
             // AC-4: Build and persist the account
             let account = AccountModel(
                 name: accountName.trimmingCharacters(in: .whitespaces),
-                providerType: .firebase
+                providerType: self.providerType
             )
 
             let credentials = FirebaseCredentials(serviceAccountJSON: trimmedJSON)
 
-            // Store credentials in WindowsCredentialStorable
-            secrets.setObject(credentials, forKey: "credentials.\(account.id)")
-
-            // Store AccountModel in SQLite
+            // 1. Persist account to SQLite first (can throw)
             try await storage.save(account, id: account.id)
 
+            // 2. Only if SQLite succeeded, write credentials
+            secrets.setObject(credentials, forKey: "credentials.\(account.id)")
+
+            isSaving = false
             isSaved = true
 
         } catch {
             // Save failure -> inline error with description, form re-enabled
             errorMessage = error.localizedDescription
+            isSaving = false
         }
-
-        isSaving = false
     }
 
     // MARK: - PEM Sanitization (AC-7)
 
-    /// Strips PEM header/footer lines and whitespace from a private key string.
-    /// Returns the raw base64 content suitable for credential storage.
-    func sanitizedPrivateKey(_ key: String) -> String {
+    /// Strips PEM header/footer lines, carriage returns (Windows `\r\n`), and
+    /// remaining whitespace from a private key string. Returns the raw base64
+    /// content suitable for credential storage.
+    public func sanitizedPrivateKey(_ key: String) -> String {
         key
             .replacingOccurrences(of: "-----BEGIN PRIVATE KEY-----", with: "")
             .replacingOccurrences(of: "-----END PRIVATE KEY-----", with: "")
+            .replacingOccurrences(of: "\r", with: "")
             .replacingOccurrences(of: "\n", with: "")
             .trimmingCharacters(in: .whitespaces)
     }
