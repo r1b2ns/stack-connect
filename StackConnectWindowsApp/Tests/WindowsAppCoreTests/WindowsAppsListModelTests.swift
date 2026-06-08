@@ -426,9 +426,9 @@ final class WindowsAppsListModelTests: XCTestCase {
         XCTAssertTrue(sut.apps.first!.isFavorite)
     }
 
-    // MARK: - AC-W01-4: First load shows loading, no stale content before resolve
+    // MARK: - AC-W01-4: First load completes with data and clears loading
 
-    func testFirstLoadShowsLoadingIndicator() async {
+    func testFirstLoadCompletesWithDataAndClearsLoading() async {
         // Given: empty cache + connection that returns data
         connection.fetchAppsResult = .success([
             AppInfo(id: "a", name: "App", bundleId: "com.app")
@@ -441,6 +441,9 @@ final class WindowsAppsListModelTests: XCTestCase {
         XCTAssertTrue(sut.apps.isEmpty)
 
         // After load completes
+        // NOTE: Observing the intermediate `isLoading == true` state mid-flight
+        // requires an async/suspendable mock; that is deferred to the
+        // comprehensive T-W09 suite. Here we verify the before/after states.
         await sut.loadApps()
         XCTAssertFalse(sut.isLoading)
         XCTAssertEqual(sut.apps.count, 1)

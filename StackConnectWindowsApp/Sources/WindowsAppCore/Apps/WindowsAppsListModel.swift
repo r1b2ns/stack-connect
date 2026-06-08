@@ -133,7 +133,7 @@ public final class WindowsAppsListModel: SwiftCrossUI.ObservableObject {
             let remoteAppInfos = try await connection.fetchApps()
 
             // Merge remote data with local flags (isFavorite, isArchived)
-            let cachedById = Dictionary(uniqueKeysWithValues: apps.map { ($0.id, $0) })
+            let cachedById = Dictionary(apps.map { ($0.id, $0) }, uniquingKeysWith: { _, last in last })
             let merged = remoteAppInfos.map { info -> AppModel in
                 let cached = cachedById[info.id]
                 return AppModel(
@@ -147,7 +147,9 @@ public final class WindowsAppsListModel: SwiftCrossUI.ObservableObject {
                     versionString: cached?.versionString,
                     lastModifiedDate: cached?.lastModifiedDate,
                     isArchived: cached?.isArchived ?? false,
-                    isFavorite: cached?.isFavorite ?? false
+                    isFavorite: cached?.isFavorite ?? false,
+                    hasReviewPending: cached?.hasReviewPending ?? false,
+                    platformVersions: cached?.platformVersions
                 )
             }.sorted(by: Self.appSortOrder)
 
