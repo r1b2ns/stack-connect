@@ -63,7 +63,7 @@ struct RootView: View {
         case .accountsList(let provider):
             WindowsPlaceholderView(title: provider.displayName) { coordinator.pop() }
         case .addAccountOptions(let provider):
-            WindowsPlaceholderView(title: "Add \(provider.displayName) Account") { coordinator.pop() }
+            WindowsAddAccountOptionsView(provider: provider, coordinator: coordinator)
         case .createAppleAccount:
             WindowsPlaceholderView(title: "Create Apple Account") { coordinator.pop() }
         case .createFirebaseAccount:
