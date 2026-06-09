@@ -24,7 +24,6 @@ struct WindowsUsersTabView: View {
 
     init(model: WindowsUsersListModel) {
         _model = State(wrappedValue: model)
-        _hasLoaded = State(wrappedValue: false)
     }
 
     var body: some View {
@@ -163,6 +162,7 @@ struct WindowsUsersTabView: View {
     /// A graceful fallback avatar. Uses the first letter of the display name
     /// (uppercased), or a generic person glyph.
     private func avatarGlyph(for user: UserModel) -> String {
+        // "\u{2013}" (en-dash) is the no-name fallback defined by UserModel.displayName
         if let first = user.displayName.first, first != "\u{2013}" {
             return String(first).uppercased()
         }

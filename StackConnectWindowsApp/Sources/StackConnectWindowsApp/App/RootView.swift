@@ -36,8 +36,8 @@ import os
 // T-W08: the Users tab on the Apps List screen is wired to a real
 // `WindowsUsersListModel` + `WindowsUsersTabView`. The users model is lazily
 // created and cached in `UsersListModelCache`, mirroring the apps/archived
-// model caches. Currently no live connection is passed (same as apps); the
-// connection plumbing lands with the live-sync integration.
+// model caches. No `connection` is passed for now; the live-connection
+// injection lands with the account-level sync integration.
 
 /// Reference-type holder for the shared `WindowsAppsListModel`. Using a class
 /// avoids mutating `@State` during the view body: the `@State` reference stays

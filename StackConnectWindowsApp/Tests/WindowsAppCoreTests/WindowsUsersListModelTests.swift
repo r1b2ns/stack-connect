@@ -166,6 +166,9 @@ final class WindowsUsersListModelTests: XCTestCase {
         XCTAssertFalse(sut.isLoading)
 
         // After load completes
+        // NOTE: Observing the intermediate `isLoading == true` state mid-flight
+        // requires a controlled-suspension mock; that is deferred to the
+        // comprehensive T-W09 suite. Here we verify the before/after (false) states.
         connection.fetchUsersResult = .success([])
         await sut.loadUsers()
         XCTAssertFalse(sut.isLoading)
