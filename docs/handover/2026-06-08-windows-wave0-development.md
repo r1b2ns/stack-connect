@@ -5,14 +5,15 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 IN PROGRESS — T-W11/T-W12/T-W13 DONE, next T-W14.
+**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Next: Wave 3 (F3 Ratings & Reviews) — **T-W15** (M iTunesLookupService, critical path, NEXT pointer).
 
 **Snapshot:**
 - **Wave 0 (DONE):** All four foundation tasks merged into `experiment/windows`: T-W01 (`7ef4617`), T-W02 (`eba9738`), T-W03 (`1bf59ab`), T-W04 (`0786ae8`).
 - **Wave 1 (COMPLETE):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`. T-W06 (`WindowsAppsListView` + `WindowsAppRow`) DONE and MERGED as `de9b89a`. T-W07 (`WindowsArchivedAppsView` + Restore) DONE and MERGED as `0fcc886`. T-W08 (`WindowsUsersTabView`) DONE and MERGED as `bae0951`. T-W09 (`WindowsAppsListModel` comprehensive tests) DONE and MERGED as `216329f`. T-W10 (accounts-row → Apps List navigation) DONE and MERGED as `ad04ce6`.
-- **Wave 2 (IN PROGRESS):** T-W11 (`WindowsAppDetailModel`) **DONE and MERGED as `7186f9c`**. T-W12 (`WindowsAppDetailView`) **DONE and MERGED as `6e45f26`**. T-W13 (Unit tests for WindowsAppDetailModel) **DONE** — 15 tests already delivered under T-W11, all TC-coverage satisfied, 0 new diff. Next unblocked task: **T-W14** (Wire `.appDetail`/`.comingSoon` in RootView).
+- **Wave 2 (COMPLETE — F2 App Detail):** T-W11 (`WindowsAppDetailModel`) DONE and MERGED as `7186f9c`. T-W12 (`WindowsAppDetailView`) DONE and MERGED as `6e45f26`. T-W13 (Unit tests) DONE (no new diff; covered by T-W11). T-W14 (`RootView` route wiring verification) **DONE and MERGED as `6574aa1`** (verify commit `7ae86ba` + correction `a396b68`). Wave 2 Feature 2 (App Detail) complete.
+- **Wave 3 (PENDING — F3 Ratings & Reviews + cross-cutting):** Next unblocked task: **T-W15** (M iTunesLookupService, no deps, critical path).
 
-> **Wave 0/1 foundation complete. Wave 2 in progress.** T-W11/T-W12/T-W13 DONE. Next task: **T-W14** (RootView wiring).
+> **Wave 0/1/2 complete. Wave 3 starting.** App Detail Feature complete; next: iTunesLookupService for F3 Ratings & Reviews.
 
 ---
 
@@ -48,30 +49,51 @@
 | **T-W09** | Comprehensive unit tests for `WindowsAppsListModel` | T-W05 | ✅ DONE — merged `216329f`. Staff APPROVE (1 correction round: S-1 duplicate-ID assertion strengthened to `count == 2`, S-2 `SuspendableAppleConnection.resumeFetchApps` guarded against nil-continuation, N-1 removed trivially-true assertion, N-4 added `resumeIfPending()` teardown) / QA PASS (199 tests, 0 failures, all WindowsAppsListModelTests 56/56 green, no CheckedContinuation leaks) / PO ACCEPTED (all ACs met by real assertions). 1 correction (629ee8a). |
 | **T-W10** | Wire `.appsList`/`.archivedApps` in RootView + navigate from accounts row | T-W03, T-W06, T-W07, T-W08 | ✅ DONE — merged `ad04ce6`. Commits `b667283` (feat) + `536bd6d` (correction: Nit-2 clear stale banner). Gate state: Staff APPROVE (1 correction: Nit-2 applied; should-fix S-1 coordinator unit test documented as not feasible — `WindowsHomeCoordinator` lives in the executable target, not `@testable`-importable by `WindowsAppCoreTests`; recommended future refactor) / QA PASS (199 tests, 0 failures; navigation verified by inspection, SwiftCrossUI rendering platform-only) / PO ACCEPTED (all 4 ACs Met). 1 correction. |
 
-### Wave 2 (STARTED)
+### Wave 2 (COMPLETE — F2 App Detail)
 
 | Task | Title | Deps | Gate state |
 |------|-------|------|------------|
 | **T-W11** | `WindowsAppDetailModel` (F2 App Detail) | T-W03, T-W04, T-W05 | ✅ DONE — merged `7186f9c`. Commits `7159bac` (feat) + `36fb14a` (correction). Gate state: Staff APPROVE (1 correction round: SF1 buildSections single-assignment consolidation, SF2 guarded os.Logger diagnostics via #if canImport(os) in catch handlers, SF3 clear syncError before optimistic mutation, Nit-1 rename error→syncError for consistency, Nit-2 reduce buildSections from public to internal) / QA PASS (214 tests, 0 failures; 15 WindowsAppDetailModelTests map to TC-014/015/020/021/022 + edge cases; UI/nav TC-016..019 deferred to T-W12) / PO ACCEPTED (all 7 model-slice ACs Met: AC-W06-1/2/3/4, AC-W09-1/2/3). 1 correction. |
 | **T-W12** | `WindowsAppDetailView` (F2 UI layer) | T-W03, T-W04, T-W11 | ✅ DONE — merged `6e45f26`. Commits `605a6d0` (feat) + `3626a1a` (correction). Gate state: Staff APPROVE (1 correction round: SF-1 AppDetailModelCache keyed on appId+accountId to prevent stale reuse, SF-2 invalidate() wired via onArchiveConfirmed, SF-3 removed unused os import, SF-4 Refresh button comment re: loadAppIfNeeded, SF-5 NOTE-for-T-W14 route pre-wiring comments, Nit-1 toolbar if-let consolidation, Nit-3 platform fallback "Unknown", Nit-4 single "See All") / QA PASS (274 tests, 0 failures; TC-016..022 verified; platform-only manual on Windows VM) / PO ACCEPTED (all 9 ACs Met: AC-W06-1..4, AC-W07-1/2, AC-W08-1/2, AC-W09-1..3). 1 correction. Scope: T-W12 pre-wired .appDetail/.comingSoon routes for compilation; T-W14 to verify/finalize. |
 | **T-W13** | Unit tests for `WindowsAppDetailModel` | T-W11 | ✅ DONE — **no new diff, satisfied by 15 tests from T-W11**. Senior audit: 15 existing `WindowsAppDetailModelTests` fully cover all in-scope TCs (TC-014/015/020/021/022) and ACs. All 15 tests green (verified by test-runner). Correction rounds: 0. Scope: TC-016..019 (UI/nav) owned by T-W12 view layer. |
-| **T-W14** | Wire `.appDetail`/`.comingSoon` in RootView (full) | T-W03, T-W04, T-W12 | ⏳ NEXT unblocked (T-W03/T-W04/T-W12 all done). Note: T-W12 pre-wired `.appDetail`/`.comingSoon`/`.archiveAppDetailConfirm` routes in RootView with NOTE-for-T-W14 comments; T-W14 is largely verify/finalize-and-document task, not re-implement. |
-| **T-W15** | macOS integration + WKWebView bridge | none | ⏳ BLOCKED (depends on iOS side stability first; soft block). |
-| **T-W17** | Review detail view (header + reply composer UX) | T-W04 | ⏳ BLOCKED. |
-| **T-W18** | Rating histogram + filter UI | T-W04 | ⏳ BLOCKED. |
-| **T-W30** | Splash screen + app launch sequencing | none | ⏳ BLOCKED (late-stage task; wait for core features stable). |
+| **T-W14** | Wire `.appDetail`/`.comingSoon` in RootView (verify/finalize) | T-W03, T-W04, T-W12 | ✅ DONE — merged `6574aa1` (verify commit `7ae86ba` + correction `a396b68`). Gate state: Staff APPROVE (1 correction round: F1 `.comingSoon` comment rewritten to correctly enumerate 7 non-functional rows including Analytics/TestFlight, plus platform "See All"; F2 `.archiveAppDetailConfirm` comment updated with T-W14 co-ownership and AC-W09-3 note) / QA PASS (214 tests, 0 failures; route verification code-inspected: `.appDetail` maps appId/accountId, `.comingSoon` title placeholder, `.archiveAppDetailConfirm` with params; TC-016/017/018/019 navigation verified by code review, platform-only UI harness manual on Windows VM) / PO ACCEPTED (all 5 ACs Met: AC-W07-1/2, AC-W08-1/2, AC-W09-3; platform-only UI rendering/interaction residual is known constraint, not blocker). 1 correction. Verify-and-finalize task: T-W12 pre-landed route wiring; T-W14 verified it satisfies ACs and finalized ownership comments. |
+
+### Wave 3 (PENDING — F3 Ratings & Reviews + cross-cutting)
+
+| Task | Title | Deps | Gate state |
+|------|-------|------|------------|
+| **T-W15** | `iTunesLookupService` (M) | none | ⏳ NEXT unblocked (no deps; critical path: T-W01→T-W16→T-W19→T-W28→T-W29). |
+| **T-W17** | `WindowsAggregateRatingCard` (S) | T-W04 | ⏳ Unblocked (T-W04 DONE). |
+| **T-W18** | `WindowsReviewRow` (S) | T-W04 | ⏳ Unblocked (T-W04 DONE). |
+| **T-W30** | Integration test multi-account aggregation (S) | none | ⏳ Unblocked (no deps). |
+| **T-W31** | Re-import merge preserving flags (M) | T-W05 | ⏳ Unblocked (T-W05 DONE). |
+| **T-W16** | `WindowsRatingsAndReviewsView` (M) | T-W15, T-W17, T-W18 | ⏳ Blocked by T-W15/T-W17/T-W18. |
+| **T-W19** | `WindowsReviewDetailView` (M) | T-W16, T-W17, T-W18 | ⏳ Blocked by T-W16/T-W17/T-W18. |
+| **T-W21** | Sync engine multi-review-page merge (M) | T-W19 | ⏳ Blocked by T-W19. |
 
 ---
 
 ## Now-unblocked tasks (situational awareness)
 
+**Wave 2 (COMPLETE):**
 - **T-W11** (DONE — merged as `7186f9c`; commits `7159bac`, `36fb14a`).
 - **T-W12** (DONE — merged as `6e45f26`; commits `605a6d0`, `3626a1a`).
 - **T-W13** (DONE — no new diff; 15 existing tests from T-W11 fully satisfy scope).
-- **T-W14** (T-W03, T-W04, T-W12 all done) — **NEXT POINTER** (Wire `.appDetail`/`.comingSoon` in RootView; note T-W12 pre-wired, T-W14 verifies/finalizes).
-- **T-W15** (no deps; soft-blocked pending iOS stability).
-- **T-W17**, **T-W18** (T-W04 DONE).
-- **T-W30** (no deps; late-stage, soft-blocked).
+- **T-W14** (DONE — merged as `6574aa1`; commits `7ae86ba`, `a396b68`).
+
+**Wave 3 (PENDING) — now unblocked:**
+- **T-W15** (M, no deps, critical path) — **NEXT POINTER** (iTunesLookupService for F3 Ratings & Reviews).
+- **T-W17** (S, T-W04 done) — `WindowsAggregateRatingCard` (unblocked).
+- **T-W18** (S, T-W04 done) — `WindowsReviewRow` (unblocked).
+- **T-W30** (S, no deps) — Integration test multi-account aggregation (unblocked).
+- **T-W31** (M, T-W05 done) — Re-import merge preserving flags (unblocked).
+
+**Still blocked:**
+- **T-W16** (M) — blocked by T-W15/T-W17/T-W18.
+- **T-W19** (M) — blocked by T-W16/T-W17/T-W18.
+- **T-W21** (M) — blocked by T-W19.
+
+**Critical path (unchanged):** T-W01 → T-W16 (via T-W15) → T-W19 (via T-W17/T-W18) → T-W28 → T-W29.
 
 **Critical path (unchanged):** T-W01 → T-W16 → T-W19 → T-W28 → T-W29.
 
@@ -485,6 +507,42 @@ Merged into `experiment/windows` as `0786ae8`. Wave 0 close-out complete.
 
 ---
 
+## Wave 2 Development — T-W14 (DONE)
+
+### T-W14 (branch `feat/T-W14-wire-appdetail-comingsoon`)
+**Task:** Wire `.appDetail`, `.comingSoon`, and `.archiveAppDetailConfirm` routes in `RootView` — verify and finalize the app-detail route infrastructure satisfies all acceptance criteria and finalize ownership comments.
+
+**Status:** DONE — Verify-and-finalize task. Route wiring was pre-landed by T-W12 to exercise the view layer; T-W14 verified sufficiency and finalized ownership comments (comment-only diff).
+
+**Deliverables:**
+- Modified `StackConnectWindowsApp/Sources/StackConnectWindowsApp/App/RootView.swift`:
+  - Verified `.appDetail(appId:accountId:)` route maps correctly to `WindowsAppDetailView`, carrying appId and accountId params from `AppDetailModelCache`.
+  - Verified `.comingSoon(title:)` placeholder route for non-functional options and platform-section "See All" affordance, correctly routes to `WindowsComingSoonView`.
+  - Verified `.archiveAppDetailConfirm(appId:appName:)` confirmation route carries correct params and pops double to list on confirm.
+  - Updated file-header task trail to include T-W14.
+  - Updated `.appDetail`, `.comingSoon`, `.archiveAppDetailConfirm` case comments: replaced T-W12 "NOTE for T-W14" deferral comments with "T-W12 / T-W14:" co-ownership attribution citing AC-W07-1/2, AC-W08-1/2, AC-W09-3 verification.
+
+**Commits:**
+- `7ae86ba` (verify) — Initial ownership comment updates citing AC-W07/AC-W08/AC-W09-3 verification; no behavioral changes (214 tests green).
+- `a396b68` (fix: staff review corrections) — Correct `.comingSoon` comment double-counting of Analytics/TestFlight (now correctly enumerates 7 non-functional rows including them); add T-W14 co-ownership to `.archiveAppDetailConfirm` comment (was missing, inconsistent with others).
+
+**Gate verdicts:**
+- **Staff Review:** APPROVE (after 1 correction round).
+  - **Finding 1:** `.comingSoon` verification comment double-counted Analytics/TestFlight as additional to "7 non-functional rows" — rewritten to correctly state the 7 rows already include Analytics/TestFlight sections, plus the platform "See All" as the additional route for comingSoon.
+  - **Finding 2:** `.archiveAppDetailConfirm` comment lacked T-W14 co-ownership attribution (was missing, inconsistent with `.appDetail` and `.comingSoon` which already had "T-W12 / T-W14:" markers) — updated to `// T-W12 / T-W14:` with AC-W09-3 note for parity.
+- **QA:** PASS (214 WindowsAppCore tests, 0 failures; route verification code-inspected: `.appDetail` param mapping, `.comingSoon` title placeholder, `.archiveAppDetailConfirm` double-pop logic verified by code review; TC-016/017/018/019 navigation verified by code inspection, platform-only UI harness manual residual on Windows VM is expected constraint, not defect).
+- **PO:** ACCEPTED (all 5 ACs Met: AC-W07-1/2 ratingsAndReviews navigation + comingSoon routing, AC-W08-1/2 non-functional options → comingSoon, AC-W09-3 archive confirm route; platform-only UI rendering/interaction residual is known SwiftCrossUI Windows limitation, not scope miss).
+- **Corrections:** 1 (fix: a396b68).
+
+**Files modified:**
+- MODIFIED: `RootView.swift` (comment-only: task trail adds T-W14; ownership comments finalized with "T-W12 / T-W14:" co-attribution and AC citations; no behavioral changes).
+
+**Merged into `experiment/windows`:** Merge commit `6574aa1` (--no-ff merge strategy). Feature branch `feat/T-W14-wire-appdetail-comingsoon` deleted.
+
+**Wave 2 (F2 App Detail) Summary:** All four tasks (T-W11 model, T-W12 view, T-W13 tests, T-W14 route finalization) complete and merged. App Detail feature layer delivered.
+
+---
+
 ## Resume checklist — ONE TASK PER SESSION (serial)
 
 The four agents from the old parallel run all finished green. The remaining work is now done **one task per session** (the new skill model). **Do exactly one task per session**, in this order, then update this handover and end the session.
@@ -506,7 +564,8 @@ The four agents from the old parallel run all finished green. The remaining work
 | 11 | **T-W11** | ✅ DONE (merged `7186f9c`) | Wave 2 — `WindowsAppDetailModel` (F2 App Detail); 1 correction (buildSections, logging, syncError) |
 | 12 | **T-W12** | ✅ DONE (merged `6e45f26`) | Wave 2 — `WindowsAppDetailView` (F2 UI layer); 1 correction (cache keying, invalidate wiring, logging/comments, toolbar consolidation) |
 | 13 | **T-W13** | ✅ DONE (no diff) | Wave 2 — Unit tests for `WindowsAppDetailModel`; satisfied by 15 tests from T-W11; 0 corrections |
-| 14 | **T-W14** | ⏳ NEXT (pending) | Wave 2 — Wire `.appDetail`/`.comingSoon` in RootView (verify/finalize; much pre-wired by T-W12) |
+| 14 | **T-W14** | ✅ DONE (merged `6574aa1`) | Wave 2 — Wire `.appDetail`/`.comingSoon` in RootView (verify/finalize); 1 correction (ownership comments) |
+| 15 | **T-W15** | ⏳ NEXT (pending) | Wave 3 — `iTunesLookupService` (M, no deps, critical path) |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
