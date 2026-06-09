@@ -5,13 +5,13 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Wave 3 IN PROGRESS (F3 Ratings & Reviews) — **T-W15** (M iTunesLookupService) DONE and MERGED; next: **T-W16** (M WindowsRatingsReviewsModel, critical path, NEXT pointer).
+**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Wave 3 IN PROGRESS (F3 Ratings & Reviews) — **T-W15** (M iTunesLookupService) DONE, **T-W16** (M WindowsRatingsReviewsModel) DONE, **T-W17** (S WindowsAggregateRatingCard) DONE, **T-W18** (S WindowsReviewRow) DONE; next: **T-W19** (M WindowsRatingsReviewsView, critical path, NEXT pointer, deps T-W03+T-W16+T-W17+T-W18 all satisfied).
 
 **Snapshot:**
 - **Wave 0 (DONE):** All four foundation tasks merged into `experiment/windows`: T-W01 (`7ef4617`), T-W02 (`eba9738`), T-W03 (`1bf59ab`), T-W04 (`0786ae8`).
 - **Wave 1 (COMPLETE):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`. T-W06 (`WindowsAppsListView` + `WindowsAppRow`) DONE and MERGED as `de9b89a`. T-W07 (`WindowsArchivedAppsView` + Restore) DONE and MERGED as `0fcc886`. T-W08 (`WindowsUsersTabView`) DONE and MERGED as `bae0951`. T-W09 (`WindowsAppsListModel` comprehensive tests) DONE and MERGED as `216329f`. T-W10 (accounts-row → Apps List navigation) DONE and MERGED as `ad04ce6`.
 - **Wave 2 (COMPLETE — F2 App Detail):** T-W11 (`WindowsAppDetailModel`) DONE and MERGED as `7186f9c`. T-W12 (`WindowsAppDetailView`) DONE and MERGED as `6e45f26`. T-W13 (Unit tests) DONE (no new diff; covered by T-W11). T-W14 (`RootView` route wiring verification) **DONE and MERGED as `6574aa1`** (verify commit `7ae86ba` + correction `a396b68`). Wave 2 Feature 2 (App Detail) complete.
-- **Wave 3 (IN PROGRESS — F3 Ratings & Reviews + cross-cutting):** **T-W15** (iTunesLookupService) DONE and MERGED as `63b0e8a`. Next unblocked task: **T-W16** (M WindowsRatingsReviewsModel, critical path: T-W01→T-W16→T-W19→T-W28→T-W29).
+- **Wave 3 (IN PROGRESS — F3 Ratings & Reviews + cross-cutting):** **T-W15** (iTunesLookupService) DONE and MERGED as `63b0e8a`. **T-W16** (WindowsRatingsReviewsModel) DONE and MERGED as `fa757b6`. **T-W17** (WindowsAggregateRatingCard) DONE and MERGED as `b1f97dd`. **T-W18** (WindowsReviewRow) DONE and MERGED as `493ddc7`. Next unblocked task: **T-W19** (M WindowsRatingsReviewsView, critical path: T-W01→T-W16→T-W19→T-W28→T-W29; all deps T-W03+T-W16+T-W17+T-W18 now satisfied).
 
 > **Wave 0/1/2 complete. Wave 3 starting.** App Detail Feature complete; next: iTunesLookupService for F3 Ratings & Reviews.
 
@@ -65,12 +65,13 @@
 | **T-W15** | `iTunesLookupService` (M) | none | ✅ DONE — merged `63b0e8a`. Feature commit `a8220f6`, correction commit `cf83c5f`. Staff APPROVE (1 correction: TC-079 formula compliance, cache resilience tests SF-1/SF-2, name comments N-1/N-2/N-3). QA PASS 235/235 suite green, 21/21 ITunesLookupService tests. PO ACCEPTED (ACs AC-W10-1, AC-W10-3 Met). 1 correction. |
 | **T-W16** | `WindowsRatingsReviewsModel` (M) | T-W01, T-W15 | ✅ DONE — merged `fa757b6`. Commits `8c6ebcb` (feat) + `b49c908` (correction). Staff APPROVE (1 correction: SF-1 loading-flag atomicity, SF-2 pagination cursor moved to private, Nit-1/Nit-2 error handling) / QA PASS 16/16 model tests, 251/251 suite / PO ACCEPTED (7 in-scope ACs, 7 TCs). 1 correction. |
 | **T-W17** | `WindowsAggregateRatingCard` (S) | T-W04 | ✅ DONE — merged `b1f97dd`. Feature commit `b4bb5ad`, correction commit `cd5ba13`. Staff APPROVE (1 correction: BLOCKING-1 cached `private static let` NumberFormatters; SHOULD-FIX-1 locale-independent formatter tests; SHOULD-FIX-2 totalCount==0 "No ratings yet" empty state; NIT-1 redundant usesGroupingSeparator) / QA PASS 6/6 AggregateRatingFormatterTests, 257/257 full suite, 1/1 integration TC-023, visuals BLOCKED platform-only / PO ACCEPTED (AC-W10-1). Files: `WindowsAppCore/Ratings/AggregateRatingFormatter.swift`, `StackConnectWindowsApp/Shared/WindowsAggregateRatingCard.swift`, `Tests/WindowsAppCoreTests/AggregateRatingFormatterTests.swift`. 1 correction. |
-| **T-W18** | `WindowsReviewRow` (S) | T-W04 | ⏳ **NEXT unblocked** (T-W04 DONE, T-W17 DONE; feeds critical-path T-W19 deps). |
-| **T-W30** | Integration test multi-account aggregation (S) | none | ⏳ Unblocked (no deps). |
-| **T-W31** | Re-import merge preserving flags (M) | T-W05 | ⏳ Unblocked (T-W05 DONE). |
-| **T-W19** | `WindowsReviewDetailView` (M) | T-W03, T-W16, T-W17, T-W18 | ⏳ Blocked by T-W18 (T-W03+T-W16+T-W17 DONE); wait for T-W18 component sister. |
+| **T-W18** | `WindowsReviewRow` (S) | T-W04 | ✅ DONE — merged `493ddc7`. Feature commit `8adf872`. Staff APPROVE (0 corrections; non-blocking follow-ups noted) / QA PASS 270/270 (TC-064 10 tests, TC-065 3 tests) / PO ACCEPTED (AC-W11-1, AC-W11-6). Files: `WindowsAppCore/Ratings/ReviewExcerptFormatter.swift`, `StackConnectWindowsApp/Shared/WindowsReviewRow.swift` (variants: `.list`, `.home` with tap callback), `Tests/WindowsAppCoreTests/ReviewExcerptFormatterTests.swift` (13 tests). Follow-ups: Should-fix DateFormatter caching in `WindowsDateFormatting.absoluteDate` (T-W04 file; recommended before/within T-W19 QA); Should-fix `variant` parameter default to `.list`; Nit doc/test alignment on `"…"` ellipsis. |
+| **T-W19** | `WindowsRatingsReviewsView` (M) | T-W03, T-W16, T-W17, T-W18 | ⏳ **NEXT unblocked** (all deps T-W03+T-W16+T-W17+T-W18 now DONE; critical path). |
 | **T-W20** | Test consolidation (S) | T-W15, T-W16 | ⏳ Unblocked (T-W15+T-W16 DONE); test-consolidation task. |
 | **T-W21** | Sync engine multi-review-page merge (M) | T-W19 | ⏳ Blocked by T-W19. |
+| **T-W22** | `WindowsReviewDetailModel` (M) | T-W01, T-W02 | ⏳ Unblocked (T-W01+T-W02 DONE). |
+| **T-W30** | Integration test multi-account aggregation (S) | none | ⏳ Unblocked (no deps). |
+| **T-W31** | Re-import merge preserving flags (M) | T-W05 | ⏳ Unblocked (T-W05 DONE). |
 
 ---
 
@@ -82,20 +83,26 @@
 - **T-W13** (DONE — no new diff; 15 existing tests from T-W11 fully satisfy scope).
 - **T-W14** (DONE — merged as `6574aa1`; commits `7ae86ba`, `a396b68`).
 
-**Wave 3 (IN PROGRESS) — now unblocked:**
+**Wave 3 (IN PROGRESS) — just completed:**
 - **T-W15** (M, no deps) — ✅ DONE (merged as `63b0e8a`; commits `a8220f6`, `cf83c5f`); iTunesLookupService for F3 Ratings & Reviews.
 - **T-W16** (M, T-W01 + T-W15 done) — ✅ DONE (merged as `fa757b6`; commits `8c6ebcb`, `b49c908`); WindowsRatingsReviewsModel on critical path.
 - **T-W17** (S, T-W04 done) — ✅ DONE (merged as `b1f97dd`; commits `b4bb5ad`, `cd5ba13`); WindowsAggregateRatingCard component with NumberFormatter caching.
-- **T-W18** (S, T-W04 done) — **NEXT POINTER** (WindowsReviewRow; unblocked, feeds critical-path view T-W19).
+- **T-W18** (S, T-W04 done) — ✅ DONE (merged as `493ddc7`; feature commit `8adf872`); WindowsReviewRow component with excerpt formatter and variants.
+
+**Wave 3 (IN PROGRESS) — now unblocked (next to schedule):**
+- **T-W19** (M, T-W03+T-W16+T-W17+T-W18 done) — **NEXT POINTER** (WindowsRatingsReviewsView; critical path); unblocked, all deps satisfied.
 - **T-W20** (S, T-W15 + T-W16 done) — Test consolidation (unblocked).
+- **T-W22** (M, T-W01 + T-W02 done) — WindowsReviewDetailModel (unblocked).
 - **T-W30** (S, no deps) — Integration test multi-account aggregation (unblocked).
 - **T-W31** (M, T-W05 done) — Re-import merge preserving flags (unblocked).
 
 **Still blocked:**
-- **T-W19** (M) — blocked by T-W18 only (T-W03+T-W16+T-W17 now done); wait for T-W18.
-- **T-W21** (M) — blocked by T-W19.
+- **T-W21** (M) — blocked by T-W19; wait for T-W19 (Sync engine multi-review-page merge).
+- **T-W23..T-W27** (F4 view/test tasks) — blocked by T-W22 (WindowsReviewDetailModel).
+- **T-W28** (M) — blocked by T-W19 + T-W23.
+- **T-W29** (M) — blocked by T-W28.
 
-**Critical path (now clearer):** T-W01 → T-W16 (DONE) → T-W19 (blocked until T-W18 done) → T-W28 → T-W29.
+**Critical path (now clearer):** T-W01 → T-W16 (DONE) → T-W19 (**NEXT**) → T-W28 → T-W29.
 
 Worktrees live under `/Users/rubensmachion/repos/Open/stack-connect-worktrees/feat-<task>/`.
 
@@ -703,6 +710,53 @@ Merged into `experiment/windows` as `0786ae8`. Wave 0 close-out complete.
 
 ---
 
+## Wave 3 Development — T-W18 (DONE)
+
+### T-W18 (branch `feat/T-W18-windows-review-row`)
+**Task:** Build `WindowsReviewRow` — the SwiftCrossUI row component for displaying individual app reviews in the Ratings & Reviews screen (Feature 3), providing excerpt formatting, variant layouts (`.list`, `.home`), and tap callback for review detail navigation.
+
+**Deliverables:**
+- `StackConnectWindowsApp/Sources/WindowsAppCore/Ratings/ReviewExcerptFormatter.swift` — Formatter service:
+  - `excerptBody(_:maxLength:)` — truncates review body to max length with ellipsis indicator (U+2026 `"…"`) when truncated.
+  - Handles nil/empty body gracefully (no-op, returns input or placeholder).
+  - 13 comprehensive test cases covering truncation at word boundaries, exact-length matches, empty input, unicode handling.
+- `StackConnectWindowsApp/Sources/StackConnectWindowsApp/Shared/WindowsReviewRow.swift` — Row view component:
+  - Two variants: `.list` (full-height review card) and `.home` (compact preview for home screen).
+  - Displays: reviewer name, rating (stars via `WindowsRatingStarsView` from T-W04), date (formatted via `WindowsDateFormatting` from T-W04), excerpt (via `ReviewExcerptFormatter`).
+  - Tap callback: `onTap: () -> Void` (wired by parent view to navigate to review detail).
+  - `.list` variant: full review excerpt, standard spacing, intended for full Ratings & Reviews list.
+  - `.home` variant: compact preview with reduced spacing, intended for home screen recent reviews widget.
+- `StackConnectWindowsApp/Tests/WindowsAppCoreTests/ReviewExcerptFormatterTests.swift` — Test suite:
+  - 13 comprehensive test cases covering truncation logic, word-boundary handling, exact matches, empty/nil input, unicode characters, edge cases.
+
+**Commits:**
+- `8adf872` (feat) — Initial `ReviewExcerptFormatter` and `WindowsReviewRow` with 13 test cases, `.list` and `.home` variants.
+
+**Gate verdicts:**
+- **Staff Review:** APPROVE (0 corrections; 2 non-blocking follow-ups noted).
+  - **Follow-up 1 (Should-fix):** `WindowsDateFormatting.absoluteDate` (T-W04 file) allocates a new `DateFormatter` per call — should cache as `private static let` (like `AggregateRatingFormatter` from T-W17). Recommended to address before/within T-W19 QA to avoid per-row allocation overhead in the reviews list.
+  - **Follow-up 2 (Should-fix, optional):** `WindowsReviewRow` `variant` parameter lacks default value — consider defaulting to `.list` for caller ergonomics.
+  - **Nit:** Header comment and test docstring reference `"..."` (literal dots) but code uses U+2026 `"…"` (unicode ellipsis) — align wording for consistency (doc-only, no behavioral change).
+- **QA:** PASS (full suite 270/270 tests green, 0 failures; TC-064 10 tests, TC-065 3 tests, all passing; 13 ReviewExcerptFormatterTests passing; platform-only SwiftCrossUI rendering manual on Windows VM verified).
+- **PO:** ACCEPTED (AC-W11-1 excerpt formatter met, AC-W11-6 review row display with tap callback met).
+- **Corrections:** 0 (first review approved; non-blocking follow-ups recorded).
+
+**Files created:**
+- NEW: `ReviewExcerptFormatter.swift` (review body truncation with ellipsis).
+- NEW: `WindowsReviewRow.swift` (row component with `.list` and `.home` variants, tap callback).
+- NEW: `ReviewExcerptFormatterTests.swift` (13 test cases; truncation, boundaries, unicode, edge cases).
+
+**Merged into `experiment/windows`:** Merge commit `493ddc7` (--no-ff merge strategy). Feature branch `feat/T-W18-windows-review-row` deleted; worktree removed.
+
+**Wave 3 progress:** Review Row component complete. All T-W15/T-W16/T-W17/T-W18 component sisters for ratings & reviews now delivered. Next unblocked: **T-W19** (`WindowsRatingsReviewsView`, critical path; all deps T-W03+T-W16+T-W17+T-W18 now satisfied).
+
+**Non-blocking follow-ups recorded for future sessions:**
+1. **Should-fix: DateFormatter caching in T-W04** (`WindowsDateFormatting.absoluteDate`) — allocates new formatter per call; should cache as static let (recommended before/within T-W19 QA).
+2. **Should-fix: `variant` default** — `WindowsReviewRow` should default `variant` to `.list` for caller convenience.
+3. **Nit: Doc/code consistency** — align header comment + test docstring from `"..."` to `"…"` (unicode ellipsis) to match implementation.
+
+---
+
 ## Resume checklist — ONE TASK PER SESSION (serial)
 
 The four agents from the old parallel run all finished green. The remaining work is now done **one task per session** (the new skill model). **Do exactly one task per session**, in this order, then update this handover and end the session.
@@ -728,7 +782,8 @@ The four agents from the old parallel run all finished green. The remaining work
 | 15 | **T-W15** | ✅ DONE (merged `63b0e8a`) | Wave 3 — `iTunesLookupService` (M); commits `a8220f6`, `cf83c5f`; TC-079 formula authority (4.5225), cache resilience (SF-1/SF-2), concurrency/encoding comments (N-1/N-2/N-3); QA 235/235 suite + 21/21 ITunesLookupServiceTests green; 1 correction |
 | 16 | **T-W16** | ✅ DONE (merged `fa757b6`) | Wave 3 — `WindowsRatingsReviewsModel` (M, critical path); commits `8c6ebcb`, `b49c908`; Staff APPROVE (SF-1/SF-2/Nit-1/Nit-2); QA 251/251 suite, 16/16 model tests; PO ACCEPTED (7 ACs, 7 TCs); 1 correction |
 | 17 | **T-W17** | ✅ DONE (merged `b1f97dd`) | Wave 3 — `WindowsAggregateRatingCard` (S); commits `b4bb5ad`, `cd5ba13`; Staff APPROVE (BLOCKING-1 cached formatters, SHOULD-FIX-1/2 locale tests & empty state, NIT-1 redundant property); QA 257/257 suite + 6/6 formatter tests; PO ACCEPTED (AC-W10-1); 1 correction |
-| 18 | **T-W18** | ⏳ NEXT (pending) | Wave 3 — `WindowsReviewRow` (S, deps T-W04 done, feeds critical-path T-W19) |
+| 18 | **T-W18** | ✅ DONE (merged `493ddc7`) | Wave 3 — `WindowsReviewRow` (S); feature commit `8adf872`; Staff APPROVE (0 corrections; non-blocking follow-ups: SF-1 DateFormatter caching in T-W04, SF-2 variant default, Nit doc consistency); QA PASS 270/270 (TC-064 10 tests, TC-065 3 tests + 13 ReviewExcerptFormatterTests); PO ACCEPTED (AC-W11-1, AC-W11-6); 0 corrections |
+| 19 | **T-W19** | ⏳ NEXT (pending) | Wave 3 — `WindowsRatingsReviewsView` (M, critical path, deps T-W03+T-W16+T-W17+T-W18 all satisfied) |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
