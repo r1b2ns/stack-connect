@@ -5,13 +5,13 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Next: Wave 3 (F3 Ratings & Reviews) — **T-W15** (M iTunesLookupService, critical path, NEXT pointer).
+**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Wave 3 IN PROGRESS (F3 Ratings & Reviews) — **T-W15** (M iTunesLookupService) DONE and MERGED; next: **T-W16** (M WindowsRatingsReviewsModel, critical path, NEXT pointer).
 
 **Snapshot:**
 - **Wave 0 (DONE):** All four foundation tasks merged into `experiment/windows`: T-W01 (`7ef4617`), T-W02 (`eba9738`), T-W03 (`1bf59ab`), T-W04 (`0786ae8`).
 - **Wave 1 (COMPLETE):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`. T-W06 (`WindowsAppsListView` + `WindowsAppRow`) DONE and MERGED as `de9b89a`. T-W07 (`WindowsArchivedAppsView` + Restore) DONE and MERGED as `0fcc886`. T-W08 (`WindowsUsersTabView`) DONE and MERGED as `bae0951`. T-W09 (`WindowsAppsListModel` comprehensive tests) DONE and MERGED as `216329f`. T-W10 (accounts-row → Apps List navigation) DONE and MERGED as `ad04ce6`.
 - **Wave 2 (COMPLETE — F2 App Detail):** T-W11 (`WindowsAppDetailModel`) DONE and MERGED as `7186f9c`. T-W12 (`WindowsAppDetailView`) DONE and MERGED as `6e45f26`. T-W13 (Unit tests) DONE (no new diff; covered by T-W11). T-W14 (`RootView` route wiring verification) **DONE and MERGED as `6574aa1`** (verify commit `7ae86ba` + correction `a396b68`). Wave 2 Feature 2 (App Detail) complete.
-- **Wave 3 (PENDING — F3 Ratings & Reviews + cross-cutting):** Next unblocked task: **T-W15** (M iTunesLookupService, no deps, critical path).
+- **Wave 3 (IN PROGRESS — F3 Ratings & Reviews + cross-cutting):** **T-W15** (iTunesLookupService) DONE and MERGED as `63b0e8a`. Next unblocked task: **T-W16** (M WindowsRatingsReviewsModel, critical path: T-W01→T-W16→T-W19→T-W28→T-W29).
 
 > **Wave 0/1/2 complete. Wave 3 starting.** App Detail Feature complete; next: iTunesLookupService for F3 Ratings & Reviews.
 
@@ -58,16 +58,16 @@
 | **T-W13** | Unit tests for `WindowsAppDetailModel` | T-W11 | ✅ DONE — **no new diff, satisfied by 15 tests from T-W11**. Senior audit: 15 existing `WindowsAppDetailModelTests` fully cover all in-scope TCs (TC-014/015/020/021/022) and ACs. All 15 tests green (verified by test-runner). Correction rounds: 0. Scope: TC-016..019 (UI/nav) owned by T-W12 view layer. |
 | **T-W14** | Wire `.appDetail`/`.comingSoon` in RootView (verify/finalize) | T-W03, T-W04, T-W12 | ✅ DONE — merged `6574aa1` (verify commit `7ae86ba` + correction `a396b68`). Gate state: Staff APPROVE (1 correction round: F1 `.comingSoon` comment rewritten to correctly enumerate 7 non-functional rows including Analytics/TestFlight, plus platform "See All"; F2 `.archiveAppDetailConfirm` comment updated with T-W14 co-ownership and AC-W09-3 note) / QA PASS (214 tests, 0 failures; route verification code-inspected: `.appDetail` maps appId/accountId, `.comingSoon` title placeholder, `.archiveAppDetailConfirm` with params; TC-016/017/018/019 navigation verified by code review, platform-only UI harness manual on Windows VM) / PO ACCEPTED (all 5 ACs Met: AC-W07-1/2, AC-W08-1/2, AC-W09-3; platform-only UI rendering/interaction residual is known constraint, not blocker). 1 correction. Verify-and-finalize task: T-W12 pre-landed route wiring; T-W14 verified it satisfies ACs and finalized ownership comments. |
 
-### Wave 3 (PENDING — F3 Ratings & Reviews + cross-cutting)
+### Wave 3 (IN PROGRESS — F3 Ratings & Reviews + cross-cutting)
 
 | Task | Title | Deps | Gate state |
 |------|-------|------|------------|
-| **T-W15** | `iTunesLookupService` (M) | none | ⏳ NEXT unblocked (no deps; critical path: T-W01→T-W16→T-W19→T-W28→T-W29). |
+| **T-W15** | `iTunesLookupService` (M) | none | ✅ DONE — merged `63b0e8a`. Feature commit `a8220f6`, correction commit `cf83c5f`. Staff APPROVE (1 correction: TC-079 formula compliance, cache resilience tests SF-1/SF-2, name comments N-1/N-2/N-3). QA PASS 235/235 suite green, 21/21 ITunesLookupService tests. PO ACCEPTED (ACs AC-W10-1, AC-W10-3 Met). 1 correction. |
+| **T-W16** | `WindowsRatingsAndReviewsModel` (M) | T-W01, T-W15 | ⏳ NEXT unblocked (T-W01 DONE, T-W15 DONE; critical path). |
 | **T-W17** | `WindowsAggregateRatingCard` (S) | T-W04 | ⏳ Unblocked (T-W04 DONE). |
 | **T-W18** | `WindowsReviewRow` (S) | T-W04 | ⏳ Unblocked (T-W04 DONE). |
 | **T-W30** | Integration test multi-account aggregation (S) | none | ⏳ Unblocked (no deps). |
 | **T-W31** | Re-import merge preserving flags (M) | T-W05 | ⏳ Unblocked (T-W05 DONE). |
-| **T-W16** | `WindowsRatingsAndReviewsView` (M) | T-W15, T-W17, T-W18 | ⏳ Blocked by T-W15/T-W17/T-W18. |
 | **T-W19** | `WindowsReviewDetailView` (M) | T-W16, T-W17, T-W18 | ⏳ Blocked by T-W16/T-W17/T-W18. |
 | **T-W21** | Sync engine multi-review-page merge (M) | T-W19 | ⏳ Blocked by T-W19. |
 
@@ -81,21 +81,19 @@
 - **T-W13** (DONE — no new diff; 15 existing tests from T-W11 fully satisfy scope).
 - **T-W14** (DONE — merged as `6574aa1`; commits `7ae86ba`, `a396b68`).
 
-**Wave 3 (PENDING) — now unblocked:**
-- **T-W15** (M, no deps, critical path) — **NEXT POINTER** (iTunesLookupService for F3 Ratings & Reviews).
+**Wave 3 (IN PROGRESS) — now unblocked:**
+- **T-W15** (M, no deps) — ✅ DONE (merged as `63b0e8a`; commits `a8220f6`, `cf83c5f`); iTunesLookupService for F3 Ratings & Reviews.
+- **T-W16** (M, T-W01 + T-W15 done) — **NEXT POINTER** (WindowsRatingsReviewsModel on critical path; unblocked).
 - **T-W17** (S, T-W04 done) — `WindowsAggregateRatingCard` (unblocked).
 - **T-W18** (S, T-W04 done) — `WindowsReviewRow` (unblocked).
 - **T-W30** (S, no deps) — Integration test multi-account aggregation (unblocked).
 - **T-W31** (M, T-W05 done) — Re-import merge preserving flags (unblocked).
 
 **Still blocked:**
-- **T-W16** (M) — blocked by T-W15/T-W17/T-W18.
 - **T-W19** (M) — blocked by T-W16/T-W17/T-W18.
 - **T-W21** (M) — blocked by T-W19.
 
-**Critical path (unchanged):** T-W01 → T-W16 (via T-W15) → T-W19 (via T-W17/T-W18) → T-W28 → T-W29.
-
-**Critical path (unchanged):** T-W01 → T-W16 → T-W19 → T-W28 → T-W29.
+**Critical path (now clearer):** T-W01 → T-W16 → T-W19 → T-W28 → T-W29 (T-W15 prerequisite for T-W16 now satisfied).
 
 Worktrees live under `/Users/rubensmachion/repos/Open/stack-connect-worktrees/feat-<task>/`.
 
@@ -543,6 +541,59 @@ Merged into `experiment/windows` as `0786ae8`. Wave 0 close-out complete.
 
 ---
 
+## Wave 3 Development — T-W15 (DONE)
+
+### T-W15 (branch `feat/T-W15-itunes-lookup-service`)
+**Task:** Build `iTunesLookupService` — the core service for fetching app ratings from iTunes Lookup API, applying the TC-079 authority formula for aggregating ratings, with comprehensive test coverage and cache resilience safeguards.
+
+**Deliverables:**
+- `StackConnectWindowsApp/Sources/WindowsAppCore/Ratings/ITunesLookupService.swift` — Core service with `fetchRating(bundleId:)` method:
+  - Calls iTunes Lookup API using the app's bundleId (percent-encoded).
+  - Applies TC-079 authority formula: `(weighted average of 5-star + 4-star + 3-star + 2-star + 1-star ratings) / (sum of ratings)` = 191300 / 42300 = **4.5225** (formula-authoritative per gate verdict, not ≈4.8).
+  - Implements cache save-failure resilience (SF-1): fetch failure does not fail the overall operation if cache save fails.
+  - Implements cache fetch-failure → network fallback (SF-2): if cached lookup fails, fall back to network request.
+  - Guarded os.Logger diagnostics for debugging.
+  - Returns `Double` rating on success, nil on all-failures (cache + network both failed).
+- `StackConnectWindowsApp/Tests/WindowsAppCoreTests/ITunesLookupServiceTests.swift` — 21 comprehensive test cases covering:
+  - Successful network fetch (happy path).
+  - Successful cache fetch (offline path).
+  - Network → cache fallback (SF-2 gate verdict).
+  - Cache save-failure resilience (SF-1 gate verdict).
+  - TC-079 formula verification (authority formula: 191300/42300 = 4.5225, not approximation).
+  - Error handling (network + cache both fail).
+  - Nil bundleId safety.
+  - Concurrent requests.
+  - BundleId percent-encoding (N-3: encoding applied in lookup URL construction).
+- Modified `StackConnectWindowsApp/Tests/WindowsAppCoreTests/Mocks/TestMocks.swift`:
+  - Updated `MockAppleConnection` concurrency comment (N-2: clarified actor-based concurrent access semantics).
+
+**Commits:**
+- `a8220f6` (feat) — Initial `ITunesLookupService` with 19 test cases and formula implementation.
+- `cf83c5f` (fix: staff corrections) — Applied cache resilience tests SF-1/SF-2; corrected formula constant from 4.8 (doc approx) to 4.5225 (TC-079 formula: 191300/42300); added comment N-1 (constant formula derivation); improved N-2 MockAppleConnection concurrency comment; added N-3 bundleId percent-encoding in lookup URL.
+
+**Gate verdicts:**
+- **Staff Review:** APPROVE (after 1 correction round).
+  - **TC-079 formula authority:** Initial doc-sourced approximation ≈4.8 ruled insufficient. Correction applied to implement formula-derived constant **4.5225 = 191300 / 42300**, with inline comment documenting the derivation (N-1). Formula is now **authoritative per gate verdict** and applied before merge.
+  - **SF-1 (cache save-failure resilience test):** Added test `testCacheSaveFailureDoesNotFailOverallFetch()` verifying fetch succeeds even if cache-write fails.
+  - **SF-2 (cache fetch-failure → network fallback test):** Added test `testCacheFetchFailureTriesNetworkFallback()` verifying network request triggered when cached lookup fails.
+  - **N-1 (comment constant derivation):** Added inline comment explaining TC-079 formula and constant value 4.5225.
+  - **N-2 (MockStorage concurrency comment accuracy):** Improved `MockAppleConnection` comment clarifying concurrent-access semantics via actor.
+  - **N-3 (bundleId percent-encoding in lookup URL):** Applied percent-encoding to bundleId in iTunes Lookup URL construction.
+- **QA:** PASS (full test suite 235/235 tests green, 0 failures; 21 new ITunesLookupServiceTests all passing, covering TC-079 formula, SF-1/SF-2 resilience, all error paths, concurrency safety).
+- **PO:** ACCEPTED (all in-scope acceptance criteria met: AC-W10-1 fetch rating from iTunes, AC-W10-3 TC-079 formula applied; TC-079 formula-authoritative ruling explicitly accepted by gate verdict).
+- **Corrections:** 1 (fix: cf83c5f).
+
+**Files created/modified:**
+- NEW: `ITunesLookupService.swift` (iTunes Lookup API integration with TC-079 formula).
+- NEW: `ITunesLookupServiceTests.swift` (21 test cases; SF-1, SF-2, TC-079, all paths).
+- MODIFIED: `TestMocks.swift` (N-2 MockAppleConnection concurrency comment).
+
+**Merged into `experiment/windows`:** Merge commit `63b0e8a` (--no-ff merge strategy). Branch `feat/T-W15-itunes-lookup-service` deleted.
+
+**Wave 3 kickoff:** iTunesLookupService foundation complete. T-W16 (WindowsRatingsReviewsModel) now unblocked (deps T-W01 + T-W15 both DONE; on critical path T-W01→T-W16→T-W19→T-W28→T-W29).
+
+---
+
 ## Resume checklist — ONE TASK PER SESSION (serial)
 
 The four agents from the old parallel run all finished green. The remaining work is now done **one task per session** (the new skill model). **Do exactly one task per session**, in this order, then update this handover and end the session.
@@ -565,7 +616,8 @@ The four agents from the old parallel run all finished green. The remaining work
 | 12 | **T-W12** | ✅ DONE (merged `6e45f26`) | Wave 2 — `WindowsAppDetailView` (F2 UI layer); 1 correction (cache keying, invalidate wiring, logging/comments, toolbar consolidation) |
 | 13 | **T-W13** | ✅ DONE (no diff) | Wave 2 — Unit tests for `WindowsAppDetailModel`; satisfied by 15 tests from T-W11; 0 corrections |
 | 14 | **T-W14** | ✅ DONE (merged `6574aa1`) | Wave 2 — Wire `.appDetail`/`.comingSoon` in RootView (verify/finalize); 1 correction (ownership comments) |
-| 15 | **T-W15** | ⏳ NEXT (pending) | Wave 3 — `iTunesLookupService` (M, no deps, critical path) |
+| 15 | **T-W15** | ✅ DONE (merged `63b0e8a`) | Wave 3 — `iTunesLookupService` (M); commits `a8220f6`, `cf83c5f`; TC-079 formula authority (4.5225), cache resilience (SF-1/SF-2), concurrency/encoding comments (N-1/N-2/N-3); QA 235/235 suite + 21/21 ITunesLookupServiceTests green; 1 correction |
+| 16 | **T-W16** | ⏳ NEXT (pending) | Wave 3 — `WindowsRatingsReviewsModel` (M, deps T-W01+T-W15 done, critical path) |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
