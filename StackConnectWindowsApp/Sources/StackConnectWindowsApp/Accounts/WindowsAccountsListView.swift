@@ -214,14 +214,21 @@ struct WindowsAccountsListView: View {
                     .stroke(providerColor.opacity(0.4), style: StrokeStyle(width: 1.0))
             }
             .onTapGesture {
-                // US-W01 AC-6 / TC-F014: tapping an expired row shows an
-                // inline error instead of navigating. Non-expired rows do
-                // not navigate in v1 (future: push to account detail).
                 if account.isExpired {
+                    // US-W01 AC-6 / TC-F014: tapping an expired row shows an
+                    // inline error instead of navigating. If a delete
+                    // confirmation is showing for this row, dismiss it first.
                     if model.deleteConfirmingId == account.id {
                         model.cancelDelete()
                     }
                     expiredTappedId = (expiredTappedId == account.id) ? nil : account.id
+                } else {
+                    // T-W10: non-expired account — navigate to the Apps List
+                    // for this account (design §2.3: Accounts list → appsList).
+                    coordinator.push(.appsList(
+                        accountId: account.id,
+                        accountName: account.name
+                    ))
                 }
             }
 
