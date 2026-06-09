@@ -196,21 +196,42 @@ final class SuspendableAppleConnection: AppleConnectionProtocol, @unchecked Send
     /// Fulfilled when `fetchApps()` has been called and is suspended.
     private var fetchAppsCalledContinuation: CheckedContinuation<Void, Never>?
 
+    /// Buffered flag: set to `true` when `fetchApps()` is called, so that
+    /// `waitForFetchAppsCall()` returns immediately if the call already
+    /// happened (eliminates the lost-wakeup race).
+    private var fetchAppsWasCalled = false
+
     /// Awaitable signal that fires once `fetchApps()` is in-flight.
+    /// If `fetchApps()` was already called before this method runs, returns
+    /// immediately without creating a continuation (race-safe).
+    @MainActor
     func waitForFetchAppsCall() async {
+        if fetchAppsWasCalled {
+            // Signal already buffered — consume it and return immediately.
+            fetchAppsWasCalled = false
+            return
+        }
         await withCheckedContinuation { continuation in
             fetchAppsCalledContinuation = continuation
         }
     }
 
-    /// Safe teardown helper: resumes the continuation with a benign empty
-    /// success ONLY if one is still in-flight, otherwise it is a silent no-op.
-    /// Does NOT trip the S-2 `assertionFailure` guard — it checks
-    /// `fetchAppsContinuation` directly.
+    /// Safe teardown helper: resumes BOTH continuations (fetchApps and
+    /// fetchAppsCalled) if they are still in-flight, otherwise silent no-op.
+    /// Also clears the buffered flag to leave the mock in a clean state.
+    @MainActor
     func resumeIfPending() {
-        guard let continuation = fetchAppsContinuation else { return }
-        fetchAppsContinuation = nil
-        continuation.resume(returning: [])
+        // Resume the fetchApps data continuation if pending.
+        if let continuation = fetchAppsContinuation {
+            fetchAppsContinuation = nil
+            continuation.resume(returning: [])
+        }
+        // Resume the "called" signal continuation if pending (defense-in-depth).
+        if let calledContinuation = fetchAppsCalledContinuation {
+            fetchAppsCalledContinuation = nil
+            calledContinuation.resume()
+        }
+        fetchAppsWasCalled = false
     }
 
     /// Resumes the suspended `fetchApps()` with the given result.
@@ -227,9 +248,11 @@ final class SuspendableAppleConnection: AppleConnectionProtocol, @unchecked Send
         }
     }
 
+    @MainActor
     func fetchApps() async throws -> [AppInfo] {
         try await withCheckedThrowingContinuation { continuation in
             fetchAppsContinuation = continuation
+            fetchAppsWasCalled = true
             fetchAppsCalledContinuation?.resume()
             fetchAppsCalledContinuation = nil
         }

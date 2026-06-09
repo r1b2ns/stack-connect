@@ -486,7 +486,7 @@ final class WindowsAppsListModelTests: XCTestCase {
     func testIsLoadingTrueDuringLiveSync() async {
         // Given: empty cache, suspendable connection
         let suspendable = SuspendableAppleConnection()
-        addTeardownBlock { [suspendable] in
+        addTeardownBlock { @MainActor [suspendable] in
             // Safe cleanup: if the test failed before resuming, release the continuation.
             suspendable.resumeIfPending()
         }
