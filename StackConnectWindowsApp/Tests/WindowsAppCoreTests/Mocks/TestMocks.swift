@@ -165,3 +165,68 @@ final class MockAppleConnection: AppleConnectionProtocol, @unchecked Sendable {
         try deleteReplyResult.get()
     }
 }
+
+// MARK: - Suspendable Apple Connection (T-W09)
+
+/// A mock connection that suspends `fetchApps()` on a continuation, allowing
+/// tests to inspect mid-flight state (e.g. `isLoading == true`) before resuming
+/// the call. All other protocol methods delegate to a canned result or throw.
+///
+/// Usage:
+/// 1. Create the mock.
+/// 2. Call the model's async method that triggers `fetchApps()`.
+/// 3. `await` the mock's `fetchAppsCalled` to know the call is in-flight.
+/// 4. Inspect the model's state (e.g. `isLoading`).
+/// 5. Call `resumeFetchApps(with:)` to let the call complete.
+final class SuspendableAppleConnection: AppleConnectionProtocol, @unchecked Sendable {
+
+    // MARK: - fetchApps suspension
+
+    /// Continuation held while `fetchApps()` is suspended.
+    private var fetchAppsContinuation: CheckedContinuation<[AppInfo], Error>?
+
+    /// Fulfilled when `fetchApps()` has been called and is suspended.
+    private var fetchAppsCalledContinuation: CheckedContinuation<Void, Never>?
+
+    /// Awaitable signal that fires once `fetchApps()` is in-flight.
+    func waitForFetchAppsCall() async {
+        await withCheckedContinuation { continuation in
+            fetchAppsCalledContinuation = continuation
+        }
+    }
+
+    /// Resumes the suspended `fetchApps()` with the given result.
+    func resumeFetchApps(with result: Result<[AppInfo], Error>) {
+        switch result {
+        case .success(let apps):
+            fetchAppsContinuation?.resume(returning: apps)
+        case .failure(let error):
+            fetchAppsContinuation?.resume(throwing: error)
+        }
+        fetchAppsContinuation = nil
+    }
+
+    func fetchApps() async throws -> [AppInfo] {
+        try await withCheckedThrowingContinuation { continuation in
+            fetchAppsContinuation = continuation
+            fetchAppsCalledContinuation?.resume()
+            fetchAppsCalledContinuation = nil
+        }
+    }
+
+    // MARK: - Canned stubs for other protocol methods
+
+    func validateCredentials() async throws {}
+    func fetchUsers() async throws -> [UserModel] { [] }
+    func fetchReviews(
+        appId: String,
+        sort: ReviewSortOrder,
+        filterRating: [String]?,
+        limit: Int,
+        cursor: String?
+    ) async throws -> ReviewsPage {
+        ReviewsPage(reviews: [], hasNextPage: false, cursor: nil)
+    }
+    func upsertReply(reviewId: String, existingResponseId: String?, responseBody: String) async throws {}
+    func deleteReply(responseId: String) async throws {}
+}
