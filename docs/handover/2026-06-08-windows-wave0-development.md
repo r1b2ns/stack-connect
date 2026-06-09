@@ -5,13 +5,13 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 IN PROGRESS — T-W05, T-W06, and T-W07 DONE and MERGED.
+**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 IN PROGRESS — T-W05, T-W06, T-W07, T-W08 DONE and MERGED; T-W09 DONE (tests, awaiting merge).
 
 **Snapshot:**
 - **Wave 0 (DONE):** All four foundation tasks merged into `experiment/windows`: T-W01 (`7ef4617`), T-W02 (`eba9738`), T-W03 (`1bf59ab`), T-W04 (`0786ae8`).
-- **Wave 1 (IN PROGRESS):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`. T-W06 (`WindowsAppsListView` + `WindowsAppRow`) DONE and MERGED as `de9b89a`. T-W07 (`WindowsArchivedAppsView` + Restore) DONE and MERGED as `0fcc886`. T-W08 (`WindowsUsersTabView`) DONE and MERGED as `bae0951`.
+- **Wave 1 (IN PROGRESS):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`. T-W06 (`WindowsAppsListView` + `WindowsAppRow`) DONE and MERGED as `de9b89a`. T-W07 (`WindowsArchivedAppsView` + Restore) DONE and MERGED as `0fcc886`. T-W08 (`WindowsUsersTabView`) DONE and MERGED as `bae0951`. T-W09 (`WindowsAppsListModel` comprehensive tests) DONE, awaiting merge (branch `feat/T-W09-windows-apps-list-model-tests` + commits `9c76869`, `629ee8a`). Next unblocked task: **T-W10** (wire `.appsList`/`.archivedApps` in RootView + navigate from accounts row — deps T-W03, T-W06, T-W07, T-W08 all DONE).
 
-> **Wave 0 foundation complete.** Wave 1: T-W05/T-W06/T-W07/T-W08 DONE and MERGED. Next unblocked task: **T-W09** (status badges / category pills — deps T-W05 DONE).
+> **Wave 0 foundation complete.** Wave 1: T-W05/T-W06/T-W07/T-W08 DONE and MERGED; T-W09 DONE and awaiting merge. Next task: **T-W10**.
 
 ---
 
@@ -44,7 +44,8 @@
 | **T-W06** | `WindowsAppsListView` + `WindowsAppRow` | T-W03, T-W04, T-W05 | ✅ DONE — merged `de9b89a`. Staff APPROVE (1 correction round: BL-1 dead accountId removed from view+route+callsites, SF-1 state-guard order isSearchEmpty-before-isEmpty, SF-2 os.Logger fallback warning in RootView) / QA PASS (full WindowsAppCore suite 138 tests 0 failures; view-layer ACs inspection-verified; SwiftCrossUI rendering flagged platform-only manual) / PO ACCEPTED (all in-scope ACs met). 1 correction. |
 | **T-W07** | `WindowsArchivedAppsView` (Archived Apps + Restore) | T-W03, T-W05 | ✅ DONE — merged `0fcc886`. Staff APPROVE (1 correction round: SF#1 silent storage-fetch error, SF#2 missing test, Nit#3 stale doc-comment) / QA PASS (150 tests, 0 failures; all TCs + edge cases verified) / PO ACCEPTED (AC-W04-3, AC-W04-4, AC-W04-5 all Met). 1 correction. |
 | **T-W08** | `WindowsUsersTabView` (Users tab content) | T-W01, T-W06 | ✅ DONE — merged `bae0951`. Staff APPROVE (1 correction round: S-1 SwiftCrossUI-import observation left intentionally as-is per accepted pattern) / QA PASS (162 tests, 0 failures; TC-012, TC-013 + edge/negative verified; SwiftCrossUI platform-only) / PO ACCEPTED (AC-W05-1..5 all Met). 1 correction. |
-| **T-W09** | Status badges / category pills | T-W05 | ⏳ NEXT UNBLOCKED (all deps met). |
+| **T-W09** | Comprehensive unit tests for `WindowsAppsListModel` | T-W05 | ✅ DONE — awaiting merge from `feat/T-W09-windows-apps-list-model-tests`. Staff APPROVE (1 correction round: S-1 duplicate-ID assertion strengthened to `count == 2`, S-2 `SuspendableAppleConnection.resumeFetchApps` guarded against nil-continuation, N-1 removed trivially-true assertion, N-4 added `resumeIfPending()` teardown) / QA PASS (199 tests, 0 failures, all WindowsAppsListModelTests 56/56 green, no CheckedContinuation leaks) / PO ACCEPTED (all ACs met by real assertions). 1 correction (629ee8a). |
+| **T-W10** | Wire `.appsList`/`.archivedApps` in RootView + navigate from accounts row | T-W03, T-W06, T-W07, T-W08 | ⏳ NEXT UNBLOCKED (all deps met). |
 | **T-W11** | Clipboard sync UX + affordances | T-W01 (soft) | ⏳ BLOCKED softly (can start independently). |
 | **T-W15** | macOS integration + WKWebView bridge | none | ⏳ BLOCKED (depends on iOS side stability first; soft block). |
 | **T-W17** | Review detail view (header + reply composer UX) | T-W04 | ⏳ BLOCKED. |
@@ -55,8 +56,8 @@
 
 ## Now-unblocked tasks (situational awareness)
 
-- **T-W09** (T-W05 DONE; all other deps satisfied) — **NEXT POINTER**.
-- **T-W10** (wire `.appsList`/`.archivedApps` in RootView + navigate from accounts row — deps T-W03, T-W06, T-W07, T-W08 now all DONE).
+- **T-W09** (DONE — awaiting merge from `feat/T-W09-windows-apps-list-model-tests`; commits `9c76869`, `629ee8a`).
+- **T-W10** (wire `.appsList`/`.archivedApps` in RootView + navigate from accounts row — deps T-W03, T-W06, T-W07, T-W08 now all DONE) — **NEXT POINTER**.
 - **T-W11** (no critical blockers; T-W01 soft dep DONE).
 - **T-W15** (no deps; soft-blocked pending iOS stability).
 - **T-W17**, **T-W18** (T-W04 DONE).
@@ -277,6 +278,49 @@ Merged into `experiment/windows` as `0786ae8`. Wave 0 close-out complete.
 
 ---
 
+## Wave 1 Development — T-W09 (DONE)
+
+### T-W09 (branch `feat/T-W09-windows-apps-list-model-tests`)
+**Task:** Comprehensive unit tests for `WindowsAppsListModel` — extend the baseline 19 tests (from T-W05) to 56 tests covering load, cache, search, favorite, archive, and revert workflows with mid-flight state observation via suspendable mock.
+
+**Deliverables:**
+- Extended `StackConnectWindowsApp/Tests/WindowsAppCoreTests/WindowsAppsListModelTests.swift` from 19 → 56 test cases covering:
+  - Initial load (empty cache, fetch from API).
+  - Merge on live-sync (new apps, updated names, deleted apps).
+  - Search filtering (by name, status).
+  - Favorite toggle (local + remote sync).
+  - Archive workflow (local + remote).
+  - Revert on failure (favorite/archive rollback).
+  - Duplicate-ID safety via `uniquingKeysWith`.
+  - Cached metadata preservation.
+  - Loading state transitions and mid-flight observation.
+- Added `SuspendableAppleConnection` mock (additive, extends baseline mocks) to `StackConnectWindowsApp/Tests/WindowsAppCoreTests/Mocks/TestMocks.swift`:
+  - Uses `CheckedContinuation` to observe mid-flight `isLoading` state.
+  - Provides `resumeIfPending()` teardown helper to prevent leaked continuations.
+- No production code changed (test-only task).
+
+**Commits:**
+- `9c76869` (feat) — Extended test suite from 19 → 56 tests, added `SuspendableAppleConnection` mock with CheckedContinuation support.
+- `629ee8a` (fix: staff findings) — Corrections for S-1 (duplicate-ID assertion), S-2 (continuation safeguard), N-1 (trivial assertion removal), N-4 (teardown cleanup).
+
+**Gate verdicts:**
+- **Staff Review:** APPROVE (after 1 correction round).
+  - **S-1:** Weak duplicate-ID remote assertion (only checked existence) — strengthened to explicit `count == 2` to catch off-by-one errors.
+  - **S-2:** `SuspendableAppleConnection.resumeFetchApps` could resume a nil continuation on teardown misuse — added assertionFailure guard + nil-before-resume check.
+  - **N-1:** Test `testDuplicateRemoteApps` had trivially-true assertion `fetchAppsCallCount == 0` — removed (fetch was never called in this path).
+  - **N-4:** `SuspendableAppleConnection` CheckedContinuation could leak if test exited early — added `addTeardownBlock` with `resumeIfPending()` helper to safe-close all pending continuations.
+- **QA:** PASS (full WindowsAppCore suite 199 tests, 0 failures, no flakiness, no CheckedContinuation leaks; `WindowsAppsListModelTests` 56/56 green; all test cases TC-001..011, TC-057/058/059, TC-078 covered by real assertions).
+- **PO:** ACCEPTED (all in-scope acceptance criteria met: AC-W01-1..5, AC-W02-1..5, AC-W03-1..3, AC-W04-1..2 model slice, revert-on-failure favorite+archive — all verified by real, green test assertions).
+- **Corrections:** 1 (commit `629ee8a`).
+
+**Files created/modified:**
+- EXTENDED: `WindowsAppsListModelTests.swift` (19 → 56 tests).
+- MODIFIED: `TestMocks.swift` (added `SuspendableAppleConnection`).
+
+**Status:** DONE — all gates passed. Branch `feat/T-W09-windows-apps-list-model-tests` awaiting merge into `experiment/windows` (pending explicit user authorization per project rule).
+
+---
+
 ## Resume checklist — ONE TASK PER SESSION (serial)
 
 The four agents from the old parallel run all finished green. The remaining work is now done **one task per session** (the new skill model). **Do exactly one task per session**, in this order, then update this handover and end the session.
@@ -293,7 +337,8 @@ The four agents from the old parallel run all finished green. The remaining work
 | 6 | **T-W06** | ✅ DONE (merged `de9b89a`) | Wave 1 — `WindowsAppsListView` + `WindowsAppRow` + `WindowsArchiveAppConfirmView` |
 | 7 | **T-W07** | ✅ DONE (merged `0fcc886`) | Wave 1 — `WindowsArchivedAppsView` + restore confirmation |
 | 8 | **T-W08** | ✅ DONE (merged `bae0951`) | Wave 1 — `WindowsUsersTabView` (Users tab content) |
-| 9 | **T-W09** | ⏳ NEXT (pending) | Wave 1 — Status badges / category pills (deps: T-W05 DONE) |
+| 9 | **T-W09** | ✅ DONE (awaiting merge) | Wave 1 — Comprehensive unit tests for `WindowsAppsListModel` |
+| 10 | **T-W10** | ⏳ NEXT (pending) | Wave 1 — Wire `.appsList`/`.archivedApps` in RootView + navigate from accounts row |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
