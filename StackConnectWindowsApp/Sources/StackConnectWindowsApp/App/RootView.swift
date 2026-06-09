@@ -7,7 +7,7 @@ import WindowsAppCore
 import os
 #endif
 
-// Phase 4 · Block F · T-F16 / T-W03 / T-W06 / T-W07 / T-W08 — the window's root view + route switch.
+// Phase 4 · Block F · T-F16 / T-W03 / T-W06 / T-W07 / T-W08 / T-W12 — the window's root view + route switch.
 //
 // Owns the observed state (the core adapter and the navigation coordinator) and
 // renders the current screen: Home when the route stack is empty, otherwise the
@@ -17,7 +17,7 @@ import os
 // T-W03: the Apps & Reviews routes (appsList, archivedApps, appDetail,
 // comingSoon, ratingsAndReviews, reviewDetail, replyComposer,
 // deleteReplyConfirm) are now parameterized per §2.2. Until the real feature
-// views land (T-W12, T-W19, T-W23 etc.), every new route renders a
+// views land (T-W19, T-W23 etc.), every new route renders a
 // `WindowsPlaceholderView` with the route name/title. The switch remains
 // exhaustive (no `default`) so new routes are compile-safe.
 //
@@ -38,6 +38,11 @@ import os
 // created and cached in `UsersListModelCache`, mirroring the apps/archived
 // model caches. No `connection` is passed for now; the live-connection
 // injection lands with the account-level sync integration.
+//
+// T-W12: `.appDetail` and `.archiveAppDetailConfirm` are wired to real views.
+// The app detail model is shared between the detail and the archive-from-detail
+// confirmation screen via the `AppDetailModelCache` reference-type holder,
+// mirroring the `AppsListModelCache` pattern from T-W06.
 
 /// Reference-type holder for the shared `WindowsAppsListModel`. Using a class
 /// avoids mutating `@State` during the view body: the `@State` reference stays
@@ -105,6 +110,39 @@ private final class UsersListModelCache {
     }
 }
 
+/// Reference-type holder for the shared `WindowsAppDetailModel`. Mirrors
+/// `AppsListModelCache` — the `@State` reference stays stable, and the class's
+/// `var model` is mutated freely (T-W12). The app detail model is lazily
+/// created when the `.appDetail` route is first pushed and reused by
+/// `.archiveAppDetailConfirm` via the same reference-type holder.
+@MainActor
+private final class AppDetailModelCache {
+    private var cachedAppId: String?
+    private var cachedAccountId: String?
+    var model: WindowsAppDetailModel?
+
+    /// Returns the cached model if it matches the requested app+account ids;
+    /// otherwise creates a new one, caches it, and returns it.
+    func resolve(appId: String, accountId: String, storage: PersistentStorable) -> WindowsAppDetailModel {
+        if let existing = model, cachedAppId == appId, cachedAccountId == accountId {
+            return existing
+        }
+        let newModel = WindowsAppDetailModel(storage: storage)
+        model = newModel
+        cachedAppId = appId
+        cachedAccountId = accountId
+        return newModel
+    }
+
+    /// Invalidates the cached model (called after a confirmed archive so the
+    /// freed model is not retained). The next `resolve` call creates a fresh one.
+    func invalidate() {
+        model = nil
+        cachedAppId = nil
+        cachedAccountId = nil
+    }
+}
+
 struct RootView: View {
     /// Observed core adapter (state + intents).
     @State private var model: WindowsHomeModel
@@ -125,6 +163,11 @@ struct RootView: View {
     /// `.appsList` route is first pushed and shared with the Users tab inside
     /// `WindowsAppsListView` so tab switches preserve state (T-W08).
     @State private var usersListCache = UsersListModelCache()
+
+    /// Shared app detail model cache. The model is lazily created when the
+    /// `.appDetail` route is first pushed and reused by
+    /// `.archiveAppDetailConfirm` so both views share the same state (T-W12).
+    @State private var appDetailCache = AppDetailModelCache()
 
     init(model: WindowsHomeModel) {
         _model = State(wrappedValue: model)
@@ -238,11 +281,44 @@ struct RootView: View {
                 )
             )
 
-        case .appDetail:
-            WindowsPlaceholderView(title: "App Detail") { coordinator.pop() }
+        // T-W12: real app detail screen. The detail model is lazily created
+        // and cached in `appDetailCache` so the archive-from-detail
+        // confirmation view (pushed on top) shares the same instance.
+        //
+        // NOTE for T-W14: this route was pre-wired by T-W12 so the App
+        // Detail view is exercisable end-to-end. T-W14 should VERIFY this
+        // wiring is sufficient and mark `.appDetail` done WITHOUT
+        // re-implementing (avoid double-wiring / conflict).
+        case .appDetail(let appId, let accountId):
+            WindowsAppDetailView(
+                appId: appId,
+                accountId: accountId,
+                coordinator: coordinator,
+                model: appDetailCache.resolve(
+                    appId: appId,
+                    accountId: accountId,
+                    storage: model.storage
+                )
+            )
 
+        // T-W12: coming soon placeholder. Wrapped with a back button so the
+        // user can navigate back from sub-routes pushed by App Detail.
+        //
+        // NOTE for T-W14: this route was pre-wired by T-W12 (replacing the
+        // previous placeholder) so the App Detail's comingSoon navigations
+        // work end-to-end. T-W14 should VERIFY this wiring is sufficient
+        // and mark `.comingSoon` done WITHOUT re-implementing (avoid
+        // double-wiring / conflict).
         case .comingSoon(let title):
-            WindowsPlaceholderView(title: title) { coordinator.pop() }
+            ScrollView {
+                VStack(spacing: 16) {
+                    WindowsBackButtonView(onBack: { coordinator.pop() })
+                    WindowsComingSoonView(title: title)
+                    Spacer()
+                }
+                .padding(16)
+                .frame(maxWidth: 860)
+            }
 
         case .ratingsAndReviews:
             WindowsPlaceholderView(title: "Ratings & Reviews") { coordinator.pop() }
@@ -292,6 +368,31 @@ struct RootView: View {
                 let _ = Self.logRestoreAppConfirmFallback()
                 WindowsPlaceholderView(title: "Restore App") { coordinator.pop() }
             }
+
+        // T-W12: archive-from-detail confirmation screen. Uses the shared
+        // `appDetailCache` so confirm mutates the same detail model that
+        // owns the app state (TC-072: pushed route, not an alert/sheet).
+        // On confirmed archive, the cache is invalidated so the freed model
+        // is not retained across future navigations (SF-2).
+        case .archiveAppDetailConfirm(let appId, let appName, let accountId):
+            if let detailModel = appDetailCache.model {
+                WindowsArchiveAppDetailConfirmView(
+                    appId: appId,
+                    appName: appName,
+                    accountId: accountId,
+                    model: detailModel,
+                    coordinator: coordinator,
+                    onArchiveConfirmed: { [appDetailCache] in
+                        appDetailCache.invalidate()
+                    }
+                )
+            } else {
+                // Safety fallback: should never happen because
+                // archiveAppDetailConfirm is only pushed from the app detail
+                // (which creates the model).
+                let _ = Self.logArchiveAppDetailConfirmFallback()
+                WindowsPlaceholderView(title: "Archive App") { coordinator.pop() }
+            }
         }
     }
 
@@ -319,6 +420,19 @@ struct RootView: View {
             subsystem: "com.stackconnect.windows",
             category: "RootView"
         ).warning("[RootView] .restoreAppConfirm pushed without an ArchivedAppsModelCache model; rendering safe fallback")
+        #endif
+    }
+
+    /// Logs a warning when the archive-app-detail-confirm route is rendered
+    /// without a cached `WindowsAppDetailModel`. Called via `let _ =` inside
+    /// `@ViewBuilder` so the log fires as a side-effect before the fallback
+    /// placeholder renders.
+    private static func logArchiveAppDetailConfirmFallback() {
+        #if canImport(os)
+        Logger(
+            subsystem: "com.stackconnect.windows",
+            category: "RootView"
+        ).warning("[RootView] .archiveAppDetailConfirm pushed without an AppDetailModelCache model; rendering safe fallback")
         #endif
     }
 }
