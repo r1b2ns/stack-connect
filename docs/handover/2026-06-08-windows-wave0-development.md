@@ -9,9 +9,9 @@
 
 **Snapshot:**
 - **Wave 0 (DONE):** All four foundation tasks merged into `experiment/windows`: T-W01 (`7ef4617`), T-W02 (`eba9738`), T-W03 (`1bf59ab`), T-W04 (`0786ae8`).
-- **Wave 1 (IN PROGRESS):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`. T-W06 (`WindowsAppsListView` + `WindowsAppRow`) DONE and MERGED as `de9b89a`. T-W07 (`WindowsArchivedAppsView` + Restore) DONE and MERGED as `0fcc886`. T-W08 (`WindowsUsersTabView`) DONE and MERGED as `bae0951`. T-W09 (`WindowsAppsListModel` comprehensive tests) DONE and MERGED as `216329f`. T-W10 (accounts-row → Apps List navigation) **DONE (awaiting merge)** as branch `feat/T-W10-windows-accounts-row-navigation` (commits `b667283` + `536bd6d`). Next unblocked task: **T-W11** (WindowsAppDetailModel — Wave 2 F2 App Detail).
+- **Wave 1 (COMPLETE):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`. T-W06 (`WindowsAppsListView` + `WindowsAppRow`) DONE and MERGED as `de9b89a`. T-W07 (`WindowsArchivedAppsView` + Restore) DONE and MERGED as `0fcc886`. T-W08 (`WindowsUsersTabView`) DONE and MERGED as `bae0951`. T-W09 (`WindowsAppsListModel` comprehensive tests) DONE and MERGED as `216329f`. T-W10 (accounts-row → Apps List navigation) **DONE (merged into experiment/windows)** as merge commit `ad04ce6`. Next unblocked task: **T-W11** (WindowsAppDetailModel — Wave 2 F2 App Detail).
 
-> **Wave 0 foundation complete.** Wave 1: T-W05/T-W06/T-W07/T-W08/T-W09 DONE and MERGED. T-W10 DONE (awaiting merge). Next task: **T-W11** (Wave 2).
+> **Wave 0 foundation complete. Wave 1 complete.** All Wave 1 tasks (T-W05/T-W06/T-W07/T-W08/T-W09/T-W10) DONE and MERGED. Next task: **T-W11** (Wave 2).
 
 ---
 
@@ -45,7 +45,7 @@
 | **T-W07** | `WindowsArchivedAppsView` (Archived Apps + Restore) | T-W03, T-W05 | ✅ DONE — merged `0fcc886`. Staff APPROVE (1 correction round: SF#1 silent storage-fetch error, SF#2 missing test, Nit#3 stale doc-comment) / QA PASS (150 tests, 0 failures; all TCs + edge cases verified) / PO ACCEPTED (AC-W04-3, AC-W04-4, AC-W04-5 all Met). 1 correction. |
 | **T-W08** | `WindowsUsersTabView` (Users tab content) | T-W01, T-W06 | ✅ DONE — merged `bae0951`. Staff APPROVE (1 correction round: S-1 SwiftCrossUI-import observation left intentionally as-is per accepted pattern) / QA PASS (162 tests, 0 failures; TC-012, TC-013 + edge/negative verified; SwiftCrossUI platform-only) / PO ACCEPTED (AC-W05-1..5 all Met). 1 correction. |
 | **T-W09** | Comprehensive unit tests for `WindowsAppsListModel` | T-W05 | ✅ DONE — merged `216329f`. Staff APPROVE (1 correction round: S-1 duplicate-ID assertion strengthened to `count == 2`, S-2 `SuspendableAppleConnection.resumeFetchApps` guarded against nil-continuation, N-1 removed trivially-true assertion, N-4 added `resumeIfPending()` teardown) / QA PASS (199 tests, 0 failures, all WindowsAppsListModelTests 56/56 green, no CheckedContinuation leaks) / PO ACCEPTED (all ACs met by real assertions). 1 correction (629ee8a). |
-| **T-W10** | Wire `.appsList`/`.archivedApps` in RootView + navigate from accounts row | T-W03, T-W06, T-W07, T-W08 | ✅ DONE (awaiting merge). Branch `feat/T-W10-windows-accounts-row-navigation`. Commits `b667283` (feat) + `536bd6d` (correction: Nit-2 clear stale banner). Gate state: Staff APPROVE (1 correction: Nit-2 applied; should-fix S-1 coordinator unit test documented as not feasible — `WindowsHomeCoordinator` lives in the executable target, not `@testable`-importable by `WindowsAppCoreTests`; recommended future refactor) / QA PASS (199 tests, 0 failures; navigation verified by inspection, SwiftCrossUI rendering platform-only) / PO ACCEPTED (all 4 ACs Met). 1 correction. |
+| **T-W10** | Wire `.appsList`/`.archivedApps` in RootView + navigate from accounts row | T-W03, T-W06, T-W07, T-W08 | ✅ DONE — merged `ad04ce6`. Commits `b667283` (feat) + `536bd6d` (correction: Nit-2 clear stale banner). Gate state: Staff APPROVE (1 correction: Nit-2 applied; should-fix S-1 coordinator unit test documented as not feasible — `WindowsHomeCoordinator` lives in the executable target, not `@testable`-importable by `WindowsAppCoreTests`; recommended future refactor) / QA PASS (199 tests, 0 failures; navigation verified by inspection, SwiftCrossUI rendering platform-only) / PO ACCEPTED (all 4 ACs Met). 1 correction. |
 | **T-W11** | Clipboard sync UX + affordances | T-W01 (soft) | ⏳ BLOCKED softly (can start independently). |
 | **T-W15** | macOS integration + WKWebView bridge | none | ⏳ BLOCKED (depends on iOS side stability first; soft block). |
 | **T-W17** | Review detail view (header + reply composer UX) | T-W04 | ⏳ BLOCKED. |
@@ -348,7 +348,7 @@ Merged into `experiment/windows` as `0786ae8`. Wave 0 close-out complete.
 **Files modified:**
 - `WindowsAccountsListView.swift` (single-file delta: added `.onTapGesture` for non-expired rows, added `dismissStaleAppNotification()` call, routing logic to coordinator).
 
-**Status:** DONE — all gates passed. Awaiting explicit user merge authorization into `experiment/windows`. Branch `feat/T-W10-windows-accounts-row-navigation`, commits `b667283` + `536bd6d`.
+**Status:** DONE — all gates passed. Merged into `experiment/windows` as `ad04ce6` (--no-ff merge strategy). Branch `feat/T-W10-windows-accounts-row-navigation` and its worktree removed.
 
 ---
 
@@ -369,7 +369,7 @@ The four agents from the old parallel run all finished green. The remaining work
 | 7 | **T-W07** | ✅ DONE (merged `0fcc886`) | Wave 1 — `WindowsArchivedAppsView` + restore confirmation |
 | 8 | **T-W08** | ✅ DONE (merged `bae0951`) | Wave 1 — `WindowsUsersTabView` (Users tab content) |
 | 9 | **T-W09** | ✅ DONE (merged `216329f`) | Wave 1 — Comprehensive unit tests for `WindowsAppsListModel` |
-| 10 | **T-W10** | ✅ DONE (awaiting merge `536bd6d`) | Wave 1 — Wire `.appsList`/`.archivedApps` in RootView + navigate from accounts row |
+| 10 | **T-W10** | ✅ DONE (merged `ad04ce6`) | Wave 1 — Wire `.appsList`/`.archivedApps` in RootView + navigate from accounts row |
 | 11 | **T-W11** | ⏳ NEXT (pending) | Wave 2 — `WindowsAppDetailModel` (F2 App Detail; soft dep T-W01 DONE) |
 
 ### Per-session rules (from the rewritten skill)
