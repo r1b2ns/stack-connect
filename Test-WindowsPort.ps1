@@ -140,8 +140,22 @@ function Write-Header([string]$Text) {
     Write-Host "=== $Text ===" -ForegroundColor Cyan
 }
 
+function Stop-StackConnectApp {
+    # Kill any running StackConnectWindowsApp.exe so it releases the lock on
+    # Microsoft.WindowsAppRuntime.Bootstrap.dll before we try to remove or
+    # overwrite the file. A previous -RunGui pass launches non-blocking, so
+    # the process can still be alive when the next run starts.
+    $procs = Get-Process -Name "StackConnectWindowsApp" -ErrorAction SilentlyContinue
+    if ($procs) {
+        Write-Host "  stopping StackConnectWindowsApp.exe (PID: $($procs.Id -join ', '))" -ForegroundColor Yellow
+        $procs | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Milliseconds 500
+    }
+}
+
 function Invoke-Clean {
     Write-Header "Clean (build artifacts + SwiftPM cache)"
+    Stop-StackConnectApp
     $paths = @(
         (Join-Path $root "WindowsPoC\.build"),
         (Join-Path $root "WindowsPoC\Package.resolved"),
@@ -172,6 +186,7 @@ function Invoke-CleanGui {
     # fresh without touching the slow ASC SDK build. The global SwiftPM cache is
     # left intact (local path deps don't need re-downloading).
     Write-Header "Clean GUI package (StackConnectWindowsApp resolution + scratch)"
+    Stop-StackConnectApp
     $paths = @(
         (Join-Path $root "StackConnectWindowsApp\.build"),
         (Join-Path $root "StackConnectWindowsApp\Package.resolved"),
@@ -221,6 +236,8 @@ Start-Transcript -Path $LogPath -Force | Out-Null
 try {
     Write-Host "StackConnect Windows-port test run"
     Write-Host "log: $LogPath"
+
+    Stop-StackConnectApp
 
     if (-not (Get-Command swift -ErrorAction SilentlyContinue)) {
         Write-Host "Swift toolchain not found on PATH." -ForegroundColor Red
@@ -329,6 +346,10 @@ try {
     # resolution is required (run with -Clean or delete the .scwapp scratch).
     $env:SCUI_DEFAULT_BACKEND = "WinUIBackend"
     Write-Host "  SCUI_DEFAULT_BACKEND = $env:SCUI_DEFAULT_BACKEND (TC-092)" -ForegroundColor DarkGray
+
+    # Kill any leftover app process so it doesn't hold Microsoft.WindowsAppRuntime.Bootstrap.dll
+    # locked when SwiftPM tries to copy the DLL into the scratch path (Win32 error 5).
+    Stop-StackConnectApp
 
     # To see the window: swift run --scratch-path $env:USERPROFILE\.scwapp StackConnectWindowsApp
     $guiBuildName = "Windows GUI build (StackConnectWindowsApp full Home B+C+D + StackHomeCore)"
