@@ -63,12 +63,13 @@
 | Task | Title | Deps | Gate state |
 |------|-------|------|------------|
 | **T-W15** | `iTunesLookupService` (M) | none | ✅ DONE — merged `63b0e8a`. Feature commit `a8220f6`, correction commit `cf83c5f`. Staff APPROVE (1 correction: TC-079 formula compliance, cache resilience tests SF-1/SF-2, name comments N-1/N-2/N-3). QA PASS 235/235 suite green, 21/21 ITunesLookupService tests. PO ACCEPTED (ACs AC-W10-1, AC-W10-3 Met). 1 correction. |
-| **T-W16** | `WindowsRatingsAndReviewsModel` (M) | T-W01, T-W15 | ⏳ NEXT unblocked (T-W01 DONE, T-W15 DONE; critical path). |
-| **T-W17** | `WindowsAggregateRatingCard` (S) | T-W04 | ⏳ Unblocked (T-W04 DONE). |
+| **T-W16** | `WindowsRatingsReviewsModel` (M) | T-W01, T-W15 | ✅ DONE — merged `fa757b6`. Commits `8c6ebcb` (feat) + `b49c908` (correction). Staff APPROVE (1 correction: SF-1 loading-flag atomicity, SF-2 pagination cursor moved to private, Nit-1/Nit-2 error handling) / QA PASS 16/16 model tests, 251/251 suite / PO ACCEPTED (7 in-scope ACs, 7 TCs). 1 correction. |
+| **T-W17** | `WindowsAggregateRatingCard` (S) | T-W04 | ⏳ **NEXT unblocked** (T-W04 DONE, T-W16 DONE; feeds critical-path view T-W19). |
 | **T-W18** | `WindowsReviewRow` (S) | T-W04 | ⏳ Unblocked (T-W04 DONE). |
 | **T-W30** | Integration test multi-account aggregation (S) | none | ⏳ Unblocked (no deps). |
 | **T-W31** | Re-import merge preserving flags (M) | T-W05 | ⏳ Unblocked (T-W05 DONE). |
-| **T-W19** | `WindowsReviewDetailView` (M) | T-W16, T-W17, T-W18 | ⏳ Blocked by T-W16/T-W17/T-W18. |
+| **T-W19** | `WindowsReviewDetailView` (M) | T-W03, T-W16, T-W17, T-W18 | ⏳ Blocked by T-W17/T-W18 (T-W03+T-W16 DONE); wait for component sisters. |
+| **T-W20** | Test consolidation (S) | T-W15, T-W16 | ⏳ Unblocked (T-W15+T-W16 DONE); test-consolidation task. |
 | **T-W21** | Sync engine multi-review-page merge (M) | T-W19 | ⏳ Blocked by T-W19. |
 
 ---
@@ -83,17 +84,18 @@
 
 **Wave 3 (IN PROGRESS) — now unblocked:**
 - **T-W15** (M, no deps) — ✅ DONE (merged as `63b0e8a`; commits `a8220f6`, `cf83c5f`); iTunesLookupService for F3 Ratings & Reviews.
-- **T-W16** (M, T-W01 + T-W15 done) — **NEXT POINTER** (WindowsRatingsReviewsModel on critical path; unblocked).
-- **T-W17** (S, T-W04 done) — `WindowsAggregateRatingCard` (unblocked).
+- **T-W16** (M, T-W01 + T-W15 done) — ✅ DONE (merged as `fa757b6`; commits `8c6ebcb`, `b49c908`); WindowsRatingsReviewsModel on critical path.
+- **T-W17** (S, T-W04 done) — **NEXT POINTER** (WindowsAggregateRatingCard; unblocked, feeds critical-path view T-W19).
 - **T-W18** (S, T-W04 done) — `WindowsReviewRow` (unblocked).
+- **T-W20** (S, T-W15 + T-W16 done) — Test consolidation (unblocked).
 - **T-W30** (S, no deps) — Integration test multi-account aggregation (unblocked).
 - **T-W31** (M, T-W05 done) — Re-import merge preserving flags (unblocked).
 
 **Still blocked:**
-- **T-W19** (M) — blocked by T-W16/T-W17/T-W18.
+- **T-W19** (M) — blocked by T-W17/T-W18 (T-W03+T-W16 now done).
 - **T-W21** (M) — blocked by T-W19.
 
-**Critical path (now clearer):** T-W01 → T-W16 → T-W19 → T-W28 → T-W29 (T-W15 prerequisite for T-W16 now satisfied).
+**Critical path (now clearer):** T-W01 → T-W16 (DONE) → T-W19 (blocked until T-W17+T-W18 done) → T-W28 → T-W29.
 
 Worktrees live under `/Users/rubensmachion/repos/Open/stack-connect-worktrees/feat-<task>/`.
 
@@ -594,6 +596,66 @@ Merged into `experiment/windows` as `0786ae8`. Wave 0 close-out complete.
 
 ---
 
+## Wave 3 Development — T-W16 (DONE)
+
+### T-W16 (branch `feat/T-W16-windows-ratings-reviews-model`)
+**Task:** Build `WindowsRatingsReviewsModel` — the data model for the Ratings & Reviews screen (Feature 3), providing aggregate rating via iTunesLookupService, paginated reviews with Load More support, graceful iTunes failure handling, and comprehensive test coverage.
+
+**Deliverables:**
+- `StackConnectWindowsApp/Sources/WindowsAppCore/Ratings/WindowsRatingsReviewsModel.swift` — Main model with `@MainActor` concurrency protection:
+  - `loadRatingsIfNeeded()` — dual-path async load: aggregate rating via `iTunesLookupService`, reviews via `AppleConnectionProtocol.fetchReviews()`.
+  - **SF-1 (correction):** Atomic loading-state setting — both `isLoadingRating` and `isLoading` set atomically before spawning async let children, eliminating the non-deterministic empty+not-loading flash window.
+  - Independent loading states: `isLoadingRating`, `isLoading`, with `canLoadMore` flag for pagination.
+  - **SF-2 (correction):** Pagination cursor moved from public `UiState.pageToken` to private `var nextPageCursor` on the model class; public `UiState` now exposes only `canLoadMore` flag.
+  - Graceful iTunes failure: if `iTunesLookupService.fetchRating()` fails, sets `ratingUnavailable` flag (AC-W10-3).
+  - Paginated reviews with opaque cursor (per R4: memory-only, non-persisted).
+  - `loadNextPage()` — Load More support with independent loading state.
+  - **Nit-2 (correction):** `loadNextPage` catch block sets `uiState.reviewsError` so Load-More failures are observable by future UI; preserves existing reviews and `canLoadMore`/cursor for retry.
+  - Empty reviews state support.
+  - First-page failure with retry support.
+  - Hidden sort/filter plumbing for future UI (ready for expanded functionality).
+  - **Carry-forward note:** Reviews persistence cache intentionally NOT added (no reviews-caching infra in WindowsAppCore; canonical WindowsAppDetailModel doesn't persist reviews either). Localization strings ("Failed to load reviews", "Rating unavailable") should be revisited for `String(localized:)` before main-branch integration.
+
+- `StackConnectWindowsApp/Tests/WindowsAppCoreTests/WindowsRatingsReviewsModelTests.swift` — 16 comprehensive test cases covering:
+  - Successful dual-load (rating + reviews from API).
+  - Cached load (offline path).
+  - iTunes failure → graceful degradation with `ratingUnavailable` flag.
+  - First-page load failure with retry support.
+  - Paginated Load More (happy path + failure with error preservation).
+  - Refresh failure preserving cached reviews.
+  - Empty reviews state.
+  - Concurrent request safety.
+  - Sort/filter plumbing (no-op for now).
+
+- Modified `StackConnectWindowsApp/Tests/WindowsAppCoreTests/Mocks/TestMocks.swift`:
+  - Added `fetchReviewsResultQueue` to `MockAppleConnection` for paginated load simulation.
+  - Added `lastFetchReviewsCursor` capture for test assertion on opaque cursor handling.
+
+**Commits:**
+- `8c6ebcb` (feat) — Initial `WindowsRatingsReviewsModel` with 15 test cases, aggregate rating via iTunesLookupService, independent loading states, paginated reviews with Load More, iTunes failure handling, empty reviews state, first-page failure retry.
+- `b49c908` (fix: staff review corrections SF-1/SF-2/Nit-1/Nit-2) — Atomic loading-state setting in `loadRatingsIfNeeded` (SF-1); move pagination cursor to private `nextPageCursor` (SF-2); add explicit reviews-count assert in refresh-failure test (Nit-1); set `reviewsError` in `loadNextPage` catch block for observable Load-More failures (Nit-2); updated tests to assert on `canLoadMore` and mock-captured cursor.
+
+**Gate verdicts:**
+- **Staff Review:** APPROVE (after 1 correction round).
+  - **SF-1:** Non-deterministic loading-state flash on dual-async-let load — fixed by setting both `isLoadingRating` and `isLoading` atomically before spawning async let children.
+  - **SF-2:** Public `UiState.pageToken` exposed opaque pagination cursor; view layer should see only `canLoadMore` boolean — moved cursor to private `var nextPageCursor` on model class; public state now exposes only `canLoadMore`; tests updated.
+  - **Nit-1:** Refresh failure preservation test lacked explicit reviews-count assertion — added `XCTAssertEqual(reviews.count, 2)` for clarity.
+  - **Nit-2:** `loadNextPage` catch block did not set error state, making Load-More failures invisible to future UI — added `uiState.reviewsError = error` to preserve failure for display; existing reviews and cursor preserved for retry.
+- **QA:** PASS (full test suite 251/251 tests green, 0 failures; 16 new WindowsRatingsReviewsModelTests all passing; covers TC-023..TC-029, TC-080 (memory-only cursor); all paths verified).
+- **PO:** ACCEPTED (all 7 in-scope acceptance criteria met: AC-W10-1 aggregate rating fetch, AC-W10-2 independent loading states, AC-W10-3 graceful iTunes failure, AC-W11-2 paginated reviews, AC-W11-3 opaque cursor, AC-W11-4 empty reviews state, AC-W11-5 first-page failure with retry; in-memory interpretation of AC-W11-5 explicitly accepted for this scope).
+- **Corrections:** 1 (fix: b49c908).
+
+**Files created/modified:**
+- NEW: `WindowsRatingsReviewsModel.swift` (291 lines after correction; pagination cursor, dual-path async load, graceful iTunes failure, Load More, error states).
+- NEW: `WindowsRatingsReviewsModelTests.swift` (541 lines after correction; 16 test cases: dual-load, cache, iTunes failure, first-page failure, paginated Load More with error, refresh preservation, empty state, concurrency, sort/filter plumbing).
+- MODIFIED: `TestMocks.swift` (added `fetchReviewsResultQueue` and `lastFetchReviewsCursor` to `MockAppleConnection` for paginated-load simulation and cursor test assertion).
+
+**Merged into `experiment/windows`:** Merge commit `fa757b6` (--no-ff merge strategy). Worktree and branch removed.
+
+**Wave 3 progress:** Ratings & Reviews model layer complete. T-W16 critical-path task done. Next unblocked: **T-W17** (`WindowsAggregateRatingCard` component, dep T-W04 DONE; feeds critical-path view T-W19). Still unblocked (no new deps): T-W18 (dep T-W04 done), T-W20 (test consolidation, deps T-W15+T-W16 now done), T-W30 (no deps), T-W31 (dep T-W05 done). T-W19 remains BLOCKED until T-W17+T-W18 done (deps now T-W03/T-W16/T-W17/T-W18; T-W03+T-W16 satisfied).
+
+---
+
 ## Resume checklist — ONE TASK PER SESSION (serial)
 
 The four agents from the old parallel run all finished green. The remaining work is now done **one task per session** (the new skill model). **Do exactly one task per session**, in this order, then update this handover and end the session.
@@ -617,7 +679,8 @@ The four agents from the old parallel run all finished green. The remaining work
 | 13 | **T-W13** | ✅ DONE (no diff) | Wave 2 — Unit tests for `WindowsAppDetailModel`; satisfied by 15 tests from T-W11; 0 corrections |
 | 14 | **T-W14** | ✅ DONE (merged `6574aa1`) | Wave 2 — Wire `.appDetail`/`.comingSoon` in RootView (verify/finalize); 1 correction (ownership comments) |
 | 15 | **T-W15** | ✅ DONE (merged `63b0e8a`) | Wave 3 — `iTunesLookupService` (M); commits `a8220f6`, `cf83c5f`; TC-079 formula authority (4.5225), cache resilience (SF-1/SF-2), concurrency/encoding comments (N-1/N-2/N-3); QA 235/235 suite + 21/21 ITunesLookupServiceTests green; 1 correction |
-| 16 | **T-W16** | ⏳ NEXT (pending) | Wave 3 — `WindowsRatingsReviewsModel` (M, deps T-W01+T-W15 done, critical path) |
+| 16 | **T-W16** | ✅ DONE (merged `fa757b6`) | Wave 3 — `WindowsRatingsReviewsModel` (M, critical path); commits `8c6ebcb`, `b49c908`; Staff APPROVE (SF-1/SF-2/Nit-1/Nit-2); QA 251/251 suite, 16/16 model tests; PO ACCEPTED (7 ACs, 7 TCs); 1 correction |
+| 17 | **T-W17** | ⏳ NEXT (pending) | Wave 3 — `WindowsAggregateRatingCard` (S, deps T-W04 done, feeds critical-path T-W19) |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
