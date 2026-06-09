@@ -97,6 +97,7 @@ public final class WindowsArchivedAppsModel: SwiftCrossUI.ObservableObject {
             archivedApps = archived
         } catch {
             archivedApps = []
+            syncError = "Failed to load archived apps."
         }
 
         isLoading = false
@@ -151,8 +152,8 @@ public final class WindowsArchivedAppsModel: SwiftCrossUI.ObservableObject {
 
     // MARK: - Private Helpers
 
-    /// Sort order: alphabetically by name. Matches the convention used by
-    /// `WindowsAppsListModel` for the fallback case (no dates).
+    /// Sort order: most-recently modified first; apps without a date sort
+    /// alphabetically by name at the end. Matches the iOS convention.
     private static func appSortOrder(_ a: AppModel, _ b: AppModel) -> Bool {
         switch (a.lastModifiedDate, b.lastModifiedDate) {
         case let (dateA?, dateB?): return dateA > dateB

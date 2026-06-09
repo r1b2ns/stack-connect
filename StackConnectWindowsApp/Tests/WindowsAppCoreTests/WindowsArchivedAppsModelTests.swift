@@ -269,6 +269,19 @@ final class WindowsArchivedAppsModelTests: XCTestCase {
         XCTAssertFalse(sut.isLoading)
     }
 
+    // MARK: - Storage fetch failure surfaces syncError (SF#1 coverage)
+
+    func testLoadArchivedAppsHandlesStorageError() async {
+        storage.shouldThrowOnFetch = true
+        let sut = makeSUT()
+
+        await sut.loadArchivedApps()
+
+        XCTAssertTrue(sut.archivedApps.isEmpty)
+        XCTAssertFalse(sut.isLoading)
+        XCTAssertNotNil(sut.syncError)
+    }
+
     // MARK: - restoreAppConfirmed for non-existent id clears confirmingId safely
 
     func testRestoreNonExistentIdClearsConfirmingId() async {
