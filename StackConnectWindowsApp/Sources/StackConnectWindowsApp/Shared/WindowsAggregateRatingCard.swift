@@ -16,23 +16,38 @@ import WindowsAppCore
 //
 // Number formatting is delegated to `AggregateRatingFormatter` in
 // `WindowsAppCore`, which is unit-tested (TC-023).
+//
+// When `totalCount == 0` (the zero-rating fallback from `ITunesLookupService`),
+// the card renders a neutral "No ratings yet" placeholder instead of misleading
+// "0 ratings" + empty stars (SHOULD-FIX-2).
 
 struct WindowsAggregateRatingCard: View {
     let rating: AggregateRating
 
     var body: some View {
-        VStack(spacing: 4) {
-            // Numeric average — prominent display
-            Text(AggregateRatingFormatter.formattedAverage(rating.averageRating))
-                .fontWeight(.bold)
+        buildContent()
+            .windowsWidgetCard()
+    }
 
-            // Star glyphs (integer-based; half-stars not supported)
-            WindowsRatingStarsView(rating: Int(rating.averageRating.rounded()))
-
-            // Total count with label
-            Text(AggregateRatingFormatter.formattedTotalCount(rating.totalCount))
+    @ViewBuilder
+    private func buildContent() -> some View {
+        if rating.totalCount == 0 {
+            // Empty state: no rating data available (SHOULD-FIX-2)
+            Text("No ratings yet")
                 .foregroundColor(.gray)
+        } else {
+            VStack(spacing: 4) {
+                // Numeric average — prominent display
+                Text(AggregateRatingFormatter.formattedAverage(rating.averageRating))
+                    .fontWeight(.bold)
+
+                // Star glyphs (integer-based; half-stars not supported)
+                WindowsRatingStarsView(rating: Int(rating.averageRating.rounded()))
+
+                // Total count with label
+                Text(AggregateRatingFormatter.formattedTotalCount(rating.totalCount))
+                    .foregroundColor(.gray)
+            }
         }
-        .windowsWidgetCard()
     }
 }

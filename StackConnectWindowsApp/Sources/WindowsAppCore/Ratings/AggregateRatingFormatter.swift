@@ -13,6 +13,27 @@ import Foundation
 /// Pure formatting helpers for `AggregateRating` display values.
 public enum AggregateRatingFormatter {
 
+    // MARK: - Cached Formatters
+
+    /// One-decimal-place formatter for the average rating. Configured once,
+    /// read-only afterwards — thread-safe for concurrent reads (BLOCKING-1).
+    private static let averageFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.minimumFractionDigits = 1
+        f.maximumFractionDigits = 1
+        return f
+    }()
+
+    /// Grouping-separator formatter for the total count. `.decimal` style
+    /// enables grouping by default (NIT-1: no explicit
+    /// `usesGroupingSeparator` needed). Configured once (BLOCKING-1).
+    private static let countFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        return f
+    }()
+
     // MARK: - Average Rating
 
     /// Formats the average rating to exactly one decimal place using the
@@ -23,11 +44,8 @@ public enum AggregateRatingFormatter {
     /// - Parameter averageRating: The weighted average (typically 0.0...5.0).
     /// - Returns: A locale-formatted string with one fractional digit.
     public static func formattedAverage(_ averageRating: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 1
-        formatter.maximumFractionDigits = 1
-        return formatter.string(from: NSNumber(value: averageRating)) ?? String(format: "%.1f", averageRating)
+        averageFormatter.string(from: NSNumber(value: averageRating))
+            ?? String(format: "%.1f", averageRating)
     }
 
     // MARK: - Total Count
@@ -40,10 +58,8 @@ public enum AggregateRatingFormatter {
     /// - Parameter totalCount: The sum of ratings across all storefronts.
     /// - Returns: A formatted string like "42,308 ratings".
     public static func formattedTotalCount(_ totalCount: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.usesGroupingSeparator = true
-        let countString = formatter.string(from: NSNumber(value: totalCount)) ?? "\(totalCount)"
+        let countString = countFormatter.string(from: NSNumber(value: totalCount))
+            ?? "\(totalCount)"
         return "\(countString) ratings"
     }
 }
