@@ -117,29 +117,29 @@ private final class UsersListModelCache {
 /// `.archiveAppDetailConfirm` via the same reference-type holder.
 @MainActor
 private final class AppDetailModelCache {
+    private var cachedAppId: String?
+    private var cachedAccountId: String?
     var model: WindowsAppDetailModel?
 
     /// Returns the cached model if it matches the requested app+account ids;
     /// otherwise creates a new one, caches it, and returns it.
     func resolve(appId: String, accountId: String, storage: PersistentStorable) -> WindowsAppDetailModel {
-        if let existing = model {
-            // Reuse if it was created for the same app; otherwise create fresh.
-            // The model does not expose appId/accountId, but the RootView route
-            // guarantees the appDetail model is only resolved for one app at a
-            // time (the user navigates away before viewing another detail).
+        if let existing = model, cachedAppId == appId, cachedAccountId == accountId {
             return existing
         }
-        let newModel = WindowsAppDetailModel(
-            storage: storage
-        )
+        let newModel = WindowsAppDetailModel(storage: storage)
         model = newModel
+        cachedAppId = appId
+        cachedAccountId = accountId
         return newModel
     }
 
-    /// Invalidates the cached model (e.g. after archiving when the detail
-    /// screen is popped). The next `resolve` call will create a fresh one.
+    /// Invalidates the cached model (called after a confirmed archive so the
+    /// freed model is not retained). The next `resolve` call creates a fresh one.
     func invalidate() {
         model = nil
+        cachedAppId = nil
+        cachedAccountId = nil
     }
 }
 
@@ -284,6 +284,11 @@ struct RootView: View {
         // T-W12: real app detail screen. The detail model is lazily created
         // and cached in `appDetailCache` so the archive-from-detail
         // confirmation view (pushed on top) shares the same instance.
+        //
+        // NOTE for T-W14: this route was pre-wired by T-W12 so the App
+        // Detail view is exercisable end-to-end. T-W14 should VERIFY this
+        // wiring is sufficient and mark `.appDetail` done WITHOUT
+        // re-implementing (avoid double-wiring / conflict).
         case .appDetail(let appId, let accountId):
             WindowsAppDetailView(
                 appId: appId,
@@ -298,6 +303,12 @@ struct RootView: View {
 
         // T-W12: coming soon placeholder. Wrapped with a back button so the
         // user can navigate back from sub-routes pushed by App Detail.
+        //
+        // NOTE for T-W14: this route was pre-wired by T-W12 (replacing the
+        // previous placeholder) so the App Detail's comingSoon navigations
+        // work end-to-end. T-W14 should VERIFY this wiring is sufficient
+        // and mark `.comingSoon` done WITHOUT re-implementing (avoid
+        // double-wiring / conflict).
         case .comingSoon(let title):
             ScrollView {
                 VStack(spacing: 16) {
@@ -361,6 +372,8 @@ struct RootView: View {
         // T-W12: archive-from-detail confirmation screen. Uses the shared
         // `appDetailCache` so confirm mutates the same detail model that
         // owns the app state (TC-072: pushed route, not an alert/sheet).
+        // On confirmed archive, the cache is invalidated so the freed model
+        // is not retained across future navigations (SF-2).
         case .archiveAppDetailConfirm(let appId, let appName, let accountId):
             if let detailModel = appDetailCache.model {
                 WindowsArchiveAppDetailConfirmView(
@@ -368,7 +381,10 @@ struct RootView: View {
                     appName: appName,
                     accountId: accountId,
                     model: detailModel,
-                    coordinator: coordinator
+                    coordinator: coordinator,
+                    onArchiveConfirmed: { [appDetailCache] in
+                        appDetailCache.invalidate()
+                    }
                 )
             } else {
                 // Safety fallback: should never happen because

@@ -27,6 +27,9 @@ struct WindowsArchiveAppDetailConfirmView: View {
     let accountId: String
     let model: WindowsAppDetailModel
     let coordinator: WindowsHomeCoordinator
+    /// Called after a confirmed archive to invalidate the cached detail model
+    /// so the freed model is not retained across future navigations (SF-2).
+    let onArchiveConfirmed: () -> Void
 
     var body: some View {
         VStack(spacing: 16) {
@@ -55,6 +58,7 @@ struct WindowsArchiveAppDetailConfirmView: View {
                 Button("Confirm Archive") {
                     Task {
                         await model.archiveApp(appId: appId, accountId: accountId)
+                        onArchiveConfirmed()
                         // Pop twice: past the confirmation AND the detail screen,
                         // returning to the apps list (AC-W09-3 / TC-021).
                         coordinator.pop()

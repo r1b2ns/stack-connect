@@ -2,10 +2,6 @@ import SwiftCrossUI
 import StackHomeCore
 import WindowsAppCore
 
-#if canImport(os)
-import os
-#endif
-
 // T-W12 — App Detail screen for the Windows GUI.
 //
 // Displays the detail of a single app: a header card (icon glyph, name,
@@ -86,7 +82,7 @@ struct WindowsAppDetailView: View {
             HStack {
                 WindowsBackButtonView(onBack: { coordinator.pop() })
                 Spacer()
-                // Favorite toggle (AC-W06-4 / AC-W09-1 / TC-020)
+                // Favorite + Archive (AC-W06-4 / AC-W09-1/3 / TC-020/021)
                 if let app = model.uiState.app {
                     Button(app.isFavorite ? "\u{2605} Favorite" : "\u{2606} Favorite") {
                         Task {
@@ -94,21 +90,22 @@ struct WindowsAppDetailView: View {
                         }
                     }
                     .foregroundColor(app.isFavorite ? .yellow : .gray)
-                }
-                // Archive button (AC-W06-4 / AC-W09-3 / TC-021)
-                if model.uiState.app != nil {
+
                     Button("Archive") {
-                        let appName = model.uiState.app?.name ?? ""
                         coordinator.push(
                             .archiveAppDetailConfirm(
                                 appId: appId,
-                                appName: appName,
+                                appName: app.name,
                                 accountId: accountId
                             )
                         )
                     }
                     .foregroundColor(.orange)
                 }
+                // Refresh (TC-070: explicit button, NO pull-to-refresh).
+                // NOTE: `loadAppIfNeeded` currently always reloads (T-W11).
+                // If T-W11 later adds skip-if-loaded logic, a separate
+                // `reload()` intent should be exposed and used here instead.
                 Button("Refresh") {
                     Task {
                         await model.loadAppIfNeeded(appId: appId, accountId: accountId)
@@ -234,17 +231,15 @@ struct WindowsAppDetailView: View {
 
     // MARK: - Platform Section (AC-W06-3 / TC-019)
 
-    /// Platform section: "iOS" label with a "See All" affordance that pushes
-    /// comingSoon(title: "Platforms"). No functional navigation.
+    /// Platform section: platform label with a single "See All" button that
+    /// pushes comingSoon(title: "Platforms"). No functional navigation.
     private func platformSection(app: AppModel) -> some View {
         VStack(spacing: 8) {
-            WindowsSectionHeader(title: "Platforms") {
-                coordinator.push(.comingSoon(title: "Platforms"))
-            }
+            WindowsSectionHeader(title: "Platforms")
 
             HStack(spacing: 10) {
                 Text("\u{1F4F1}") // mobile phone emoji as platform glyph
-                Text(app.platform ?? "iOS")
+                Text(app.platform ?? "Unknown")
                 Spacer()
                 Button("See All") {
                     coordinator.push(.comingSoon(title: "Platforms"))
