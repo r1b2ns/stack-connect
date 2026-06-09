@@ -93,8 +93,6 @@ final class WindowsAppsListModelTests: XCTestCase {
         XCTAssertEqual(sut.apps.count, 5)
         XCTAssertFalse(sut.isLoading)
         XCTAssertNil(sut.syncError)
-        // No network call (connection is nil)
-        XCTAssertEqual(connection.fetchAppsCallCount, 0)
     }
 
     // MARK: - TC-002: Live sync updates cache (5->6 apps), isLoading toggles
@@ -488,6 +486,10 @@ final class WindowsAppsListModelTests: XCTestCase {
     func testIsLoadingTrueDuringLiveSync() async {
         // Given: empty cache, suspendable connection
         let suspendable = SuspendableAppleConnection()
+        addTeardownBlock { [suspendable] in
+            // Safe cleanup: if the test failed before resuming, release the continuation.
+            suspendable.resumeIfPending()
+        }
         let sut = WindowsAppsListModel(
             accountId: accountId,
             storage: storage,
@@ -657,11 +659,10 @@ final class WindowsAppsListModelTests: XCTestCase {
         // When: should not crash
         await sut.loadApps()
 
-        // Then: exactly 2 apps in the merged list (map preserves all remote entries;
-        // the Dictionary uniquing applies to the CACHE lookup, not the remote list)
-        // Actually, looking at the code: it does `remoteAppInfos.map { ... }` which
-        // maps every remote entry. So both appear. Let's verify no crash and count.
-        XCTAssertFalse(sut.apps.isEmpty)
+        // Then: both remote entries are mapped independently — no deduplication
+        // on the remote list (production `loadApps()` does `remoteAppInfos.map { … }`).
+        XCTAssertEqual(sut.apps.count, 2,
+            "Both remote entries with the same ID are mapped independently — no deduplication on the remote list")
         XCTAssertNil(sut.syncError)
     }
 

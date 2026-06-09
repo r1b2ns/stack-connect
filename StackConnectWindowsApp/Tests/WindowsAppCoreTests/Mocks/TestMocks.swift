@@ -195,15 +195,28 @@ final class SuspendableAppleConnection: AppleConnectionProtocol, @unchecked Send
         }
     }
 
+    /// Safe teardown helper: resumes the continuation with a benign empty
+    /// success ONLY if one is still in-flight, otherwise it is a silent no-op.
+    /// Does NOT trip the S-2 `assertionFailure` guard — it checks
+    /// `fetchAppsContinuation` directly.
+    func resumeIfPending() {
+        guard let continuation = fetchAppsContinuation else { return }
+        fetchAppsContinuation = nil
+        continuation.resume(returning: [])
+    }
+
     /// Resumes the suspended `fetchApps()` with the given result.
+    /// Trips `assertionFailure` if called when no continuation is in-flight.
     func resumeFetchApps(with result: Result<[AppInfo], Error>) {
-        switch result {
-        case .success(let apps):
-            fetchAppsContinuation?.resume(returning: apps)
-        case .failure(let error):
-            fetchAppsContinuation?.resume(throwing: error)
+        guard let continuation = fetchAppsContinuation else {
+            assertionFailure("resumeFetchApps called with no in-flight fetchApps continuation")
+            return
         }
         fetchAppsContinuation = nil
+        switch result {
+        case .success(let apps): continuation.resume(returning: apps)
+        case .failure(let error): continuation.resume(throwing: error)
+        }
     }
 
     func fetchApps() async throws -> [AppInfo] {
