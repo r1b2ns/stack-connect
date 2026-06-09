@@ -91,6 +91,10 @@ final class MockAppleConnection: AppleConnectionProtocol, @unchecked Sendable {
     var fetchReviewsResult: Result<ReviewsPage, Error> = .success(
         ReviewsPage(reviews: [], hasNextPage: false, cursor: nil)
     )
+    /// When non-empty, `fetchReviews` pops and returns the first element instead
+    /// of using `fetchReviewsResult`. Allows multi-page pagination tests to
+    /// return different results on successive calls.
+    var fetchReviewsResultQueue: [Result<ReviewsPage, Error>] = []
     var upsertReplyResult: Result<Void, Error> = .success(())
     var deleteReplyResult: Result<Void, Error> = .success(())
 
@@ -145,6 +149,9 @@ final class MockAppleConnection: AppleConnectionProtocol, @unchecked Sendable {
         lastFetchReviewsFilterRating = filterRating
         lastFetchReviewsLimit = limit
         lastFetchReviewsCursor = cursor
+        if !fetchReviewsResultQueue.isEmpty {
+            return try fetchReviewsResultQueue.removeFirst().get()
+        }
         return try fetchReviewsResult.get()
     }
 
