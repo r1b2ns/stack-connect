@@ -306,14 +306,16 @@ struct RootView: View {
                 )
             )
 
-        // T-W12 / T-W14: coming soon placeholder. Wrapped with a back
+        // T-W12 / T-W14: coming soon placeholder, wrapped with a back
         // button so the user can navigate back from sub-routes pushed by
         // App Detail.
         //
-        // T-W14 verified: wiring satisfies AC-W08-1/2 (all 7 non-functional
-        // options + Analytics/TestFlight leaf sections + platform "See All"
-        // render WindowsComingSoonView with the correct title and a working
-        // back button). No changes needed.
+        // T-W14 verified: wiring satisfies AC-W08-1/2 — all 7 non-functional
+        // rows (App Information, App Review, History, App Privacy, App
+        // Accessibility, Analytics, TestFlight) plus the platform "See All"
+        // push .comingSoon with the correct title and render
+        // WindowsComingSoonView with a working back button. No behavioral
+        // changes needed.
         case .comingSoon(let title):
             ScrollView {
                 VStack(spacing: 16) {
@@ -374,11 +376,14 @@ struct RootView: View {
                 WindowsPlaceholderView(title: "Restore App") { coordinator.pop() }
             }
 
-        // T-W12: archive-from-detail confirmation screen. Uses the shared
-        // `appDetailCache` so confirm mutates the same detail model that
-        // owns the app state (TC-072: pushed route, not an alert/sheet).
+        // T-W12 / T-W14: archive-from-detail confirmation screen. Uses the
+        // shared `appDetailCache` so confirm mutates the same detail model
+        // that owns the app state (TC-072: pushed route, not an alert/sheet).
         // On confirmed archive, the cache is invalidated so the freed model
         // is not retained across future navigations (SF-2).
+        //
+        // T-W14 verified: AC-W09-3 (double-pop back to apps list after
+        // confirmed archive).
         case .archiveAppDetailConfirm(let appId, let appName, let accountId):
             if let detailModel = appDetailCache.model {
                 WindowsArchiveAppDetailConfirmView(
