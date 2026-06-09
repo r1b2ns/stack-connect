@@ -4,7 +4,7 @@ import StackHomeCore
 import StackProtocols
 import WindowsAppCore
 
-// T-W06 — Apps List screen for the Windows GUI.
+// T-W06 / T-W08 — Apps List screen for the Windows GUI.
 //
 // Displays the apps belonging to a single Apple account, with a toolbar (back,
 // account title, Archived button, Refresh button), an Apps/Users tab strip,
@@ -26,8 +26,12 @@ import WindowsAppCore
 // `model.cancelArchive` and pops. This uses a PUSHED ROUTE (TC-072), not an
 // alert/sheet.
 //
-// Users tab (AC-W05-1): present in the tab strip with Apps selected by default.
-// The Users tab content is a placeholder -- the real implementation is T-W08.
+// Users tab (AC-W05-1 / T-W08): Apps selected by default. Switching to the
+// Users tab shows team members via `WindowsUsersTabView` backed by
+// `WindowsUsersListModel`. The users model is held as `@State` so switching
+// tabs back and forth does NOT lose state (AC-W05-3: apps state preserved;
+// users state preserved). The users model loads lazily on first Users-tab
+// appearance (`.task` inside `WindowsUsersTabView`), not eagerly on screen load.
 
 struct WindowsAppsListView: View {
 
@@ -41,6 +45,10 @@ struct WindowsAppsListView: View {
     /// model's `@Published` properties change. The same instance is shared with
     /// the archive confirmation view via the RootView's `AppsListModelCache`.
     @State private var model: WindowsAppsListModel
+    /// The users list model. Held as `@State` so switching tabs back and forth
+    /// preserves the users state (AC-W05-3). Loads lazily on first Users-tab
+    /// appearance. Created from the same `accountId` and optional connection.
+    @State private var usersModel: WindowsUsersListModel
     /// The currently selected tab index (0 = Apps, 1 = Users).
     @State private var selectedTab: Int = 0
 
@@ -48,12 +56,14 @@ struct WindowsAppsListView: View {
         accountId: String,
         accountName: String,
         coordinator: WindowsHomeCoordinator,
-        model: WindowsAppsListModel
+        model: WindowsAppsListModel,
+        usersModel: WindowsUsersListModel
     ) {
         self.accountId = accountId
         self.accountName = accountName
         _coordinator = State(wrappedValue: coordinator)
         _model = State(wrappedValue: model)
+        _usersModel = State(wrappedValue: usersModel)
     }
 
     var body: some View {
@@ -132,7 +142,7 @@ struct WindowsAppsListView: View {
 
     /// Custom HStack of buttons simulating a segmented control with an accent
     /// underline on the selected tab. Apps is selected by default (index 0).
-    /// Users tab content is deferred to T-W08.
+    /// Users tab content is provided by `WindowsUsersTabView` (T-W08).
     private var tabStrip: some View {
         HStack(spacing: 0) {
             tabButton(title: "Apps", index: 0)
@@ -167,7 +177,11 @@ struct WindowsAppsListView: View {
         if selectedTab == 0 {
             appsTabContent
         } else {
-            usersTabPlaceholder
+            // T-W08: real Users tab content, backed by WindowsUsersListModel.
+            // The model is held as @State so tab switches do NOT lose state.
+            // loadUsers() is triggered lazily inside WindowsUsersTabView's
+            // .task on first appearance.
+            WindowsUsersTabView(model: usersModel)
         }
     }
 
@@ -306,21 +320,4 @@ struct WindowsAppsListView: View {
         )
     }
 
-    // MARK: - Users Tab Placeholder (AC-W05-1, deferred to T-W08)
-
-    /// Minimal placeholder for the Users tab. The real implementation lands
-    /// in T-W08. The tab strip is present and switchable; Users shows a
-    /// "Coming Soon" slot.
-    private var usersTabPlaceholder: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Text("Users")
-                .font(.title2)
-                .fontWeight(.semibold)
-            Text("Coming soon")
-                .foregroundColor(.gray)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-    }
 }
