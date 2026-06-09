@@ -360,7 +360,8 @@ public final class ITunesLookupService: Sendable {
         country: String,
         networking: ITunesLookupNetworking
     ) async -> StorefrontOutcome {
-        let urlString = "https://itunes.apple.com/lookup?bundleId=\(bundleId)&country=\(country)"
+        let encodedBundleId = bundleId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? bundleId
+        let urlString = "https://itunes.apple.com/lookup?bundleId=\(encodedBundleId)&country=\(country)"
         guard let url = URL(string: urlString) else { return .failed }
 
         do {

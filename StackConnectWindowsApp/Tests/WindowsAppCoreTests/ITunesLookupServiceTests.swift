@@ -164,17 +164,17 @@ final class ITunesLookupServiceTests: XCTestCase {
     ///
     /// The spec formula: (5*30000 + 4*8000 + 3*2000 + 2*1000 + 1*1300)
     ///                    / (30000 + 8000 + 2000 + 1000 + 1300)
-    ///                  = 191300 / 42300 ≈ 4.5248
+    ///                  = 191300 / 42300 ≈ 4.5225
     ///
     /// The spec text says "approximately 4.8" but the formula itself yields
-    /// ~4.525. We assert against the formula result (the ground truth) with
+    /// ~4.5225. We assert against the formula result (the ground truth) with
     /// +/-0.01 tolerance as the spec requires.
     func testComputeWeightedAverageSpecDistribution() {
         let distribution: [Int: Int] = [5: 30000, 4: 8000, 3: 2000, 2: 1000, 1: 1300]
         let result = ITunesLookupService.computeWeightedAverage(from: distribution)
 
         XCTAssertNotNil(result)
-        let expected = 191300.0 / 42300.0 // ≈ 4.5248
+        let expected = 191300.0 / 42300.0 // ≈ 4.5225
         XCTAssertEqual(result!, expected, accuracy: 0.01)
         XCTAssertGreaterThan(result!, 4.0)
         XCTAssertLessThanOrEqual(result!, 5.0)
@@ -476,5 +476,46 @@ final class ITunesLookupServiceTests: XCTestCase {
         XCTAssertNotNil(result)
         XCTAssertEqual(result?.storefrontCount, 1)
         XCTAssertEqual(result?.storefronts.first?.country, "us")
+    }
+
+    // MARK: - SF-1: Cache-Save Failure Does Not Affect Result
+
+    /// When cache persistence fails (e.g. disk full), the service still
+    /// returns the correct aggregate from the network lookup — the swallowed
+    /// save error in `saveToCache` must not break the return value.
+    func testCacheSaveFailureDoesNotAffectResult() async {
+        storage.shouldThrowOnSave = true
+        let sut = makeSUT()
+
+        seedResponse(bundleId: "com.save.fail", country: "us", averageRating: 4.7, ratingCount: 8000)
+
+        let result = await sut.fetchAggregateRating(bundleId: "com.save.fail")
+
+        XCTAssertNotNil(result, "Result must be returned even when cache save fails")
+        XCTAssertGreaterThan(result!.averageRating, 0)
+        XCTAssertEqual(result?.storefrontCount, 1)
+        XCTAssertEqual(result?.storefronts.first?.country, "us")
+        XCTAssertEqual(result?.totalCount, 8000)
+    }
+
+    // MARK: - SF-2: Cache-Fetch Failure Falls Back to Network
+
+    /// When reading from the cache throws (e.g. corrupt data), the service
+    /// falls through to the network lookup and returns fresh data rather
+    /// than returning nil.
+    func testCacheFetchFailureFallsBackToNetwork() async {
+        storage.shouldThrowOnFetch = true
+        let sut = makeSUT()
+
+        seedResponse(bundleId: "com.fetch.fail", country: "us", averageRating: 4.3, ratingCount: 1200)
+
+        let result = await sut.fetchAggregateRating(bundleId: "com.fetch.fail")
+
+        XCTAssertNotNil(result, "Must fall back to network when cache fetch fails")
+        XCTAssertGreaterThan(result!.averageRating, 0)
+        XCTAssertEqual(result?.storefrontCount, 1)
+        XCTAssertEqual(result?.totalCount, 1200)
+        // Network was actually called
+        XCTAssertGreaterThan(networking.fetchCallCount, 0)
     }
 }
