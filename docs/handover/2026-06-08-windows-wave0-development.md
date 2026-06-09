@@ -64,11 +64,11 @@
 |------|-------|------|------------|
 | **T-W15** | `iTunesLookupService` (M) | none | ✅ DONE — merged `63b0e8a`. Feature commit `a8220f6`, correction commit `cf83c5f`. Staff APPROVE (1 correction: TC-079 formula compliance, cache resilience tests SF-1/SF-2, name comments N-1/N-2/N-3). QA PASS 235/235 suite green, 21/21 ITunesLookupService tests. PO ACCEPTED (ACs AC-W10-1, AC-W10-3 Met). 1 correction. |
 | **T-W16** | `WindowsRatingsReviewsModel` (M) | T-W01, T-W15 | ✅ DONE — merged `fa757b6`. Commits `8c6ebcb` (feat) + `b49c908` (correction). Staff APPROVE (1 correction: SF-1 loading-flag atomicity, SF-2 pagination cursor moved to private, Nit-1/Nit-2 error handling) / QA PASS 16/16 model tests, 251/251 suite / PO ACCEPTED (7 in-scope ACs, 7 TCs). 1 correction. |
-| **T-W17** | `WindowsAggregateRatingCard` (S) | T-W04 | ⏳ **NEXT unblocked** (T-W04 DONE, T-W16 DONE; feeds critical-path view T-W19). |
-| **T-W18** | `WindowsReviewRow` (S) | T-W04 | ⏳ Unblocked (T-W04 DONE). |
+| **T-W17** | `WindowsAggregateRatingCard` (S) | T-W04 | ✅ DONE — merged `b1f97dd`. Feature commit `b4bb5ad`, correction commit `cd5ba13`. Staff APPROVE (1 correction: BLOCKING-1 cached `private static let` NumberFormatters; SHOULD-FIX-1 locale-independent formatter tests; SHOULD-FIX-2 totalCount==0 "No ratings yet" empty state; NIT-1 redundant usesGroupingSeparator) / QA PASS 6/6 AggregateRatingFormatterTests, 257/257 full suite, 1/1 integration TC-023, visuals BLOCKED platform-only / PO ACCEPTED (AC-W10-1). Files: `WindowsAppCore/Ratings/AggregateRatingFormatter.swift`, `StackConnectWindowsApp/Shared/WindowsAggregateRatingCard.swift`, `Tests/WindowsAppCoreTests/AggregateRatingFormatterTests.swift`. 1 correction. |
+| **T-W18** | `WindowsReviewRow` (S) | T-W04 | ⏳ **NEXT unblocked** (T-W04 DONE, T-W17 DONE; feeds critical-path T-W19 deps). |
 | **T-W30** | Integration test multi-account aggregation (S) | none | ⏳ Unblocked (no deps). |
 | **T-W31** | Re-import merge preserving flags (M) | T-W05 | ⏳ Unblocked (T-W05 DONE). |
-| **T-W19** | `WindowsReviewDetailView` (M) | T-W03, T-W16, T-W17, T-W18 | ⏳ Blocked by T-W17/T-W18 (T-W03+T-W16 DONE); wait for component sisters. |
+| **T-W19** | `WindowsReviewDetailView` (M) | T-W03, T-W16, T-W17, T-W18 | ⏳ Blocked by T-W18 (T-W03+T-W16+T-W17 DONE); wait for T-W18 component sister. |
 | **T-W20** | Test consolidation (S) | T-W15, T-W16 | ⏳ Unblocked (T-W15+T-W16 DONE); test-consolidation task. |
 | **T-W21** | Sync engine multi-review-page merge (M) | T-W19 | ⏳ Blocked by T-W19. |
 
@@ -85,17 +85,17 @@
 **Wave 3 (IN PROGRESS) — now unblocked:**
 - **T-W15** (M, no deps) — ✅ DONE (merged as `63b0e8a`; commits `a8220f6`, `cf83c5f`); iTunesLookupService for F3 Ratings & Reviews.
 - **T-W16** (M, T-W01 + T-W15 done) — ✅ DONE (merged as `fa757b6`; commits `8c6ebcb`, `b49c908`); WindowsRatingsReviewsModel on critical path.
-- **T-W17** (S, T-W04 done) — **NEXT POINTER** (WindowsAggregateRatingCard; unblocked, feeds critical-path view T-W19).
-- **T-W18** (S, T-W04 done) — `WindowsReviewRow` (unblocked).
+- **T-W17** (S, T-W04 done) — ✅ DONE (merged as `b1f97dd`; commits `b4bb5ad`, `cd5ba13`); WindowsAggregateRatingCard component with NumberFormatter caching.
+- **T-W18** (S, T-W04 done) — **NEXT POINTER** (WindowsReviewRow; unblocked, feeds critical-path view T-W19).
 - **T-W20** (S, T-W15 + T-W16 done) — Test consolidation (unblocked).
 - **T-W30** (S, no deps) — Integration test multi-account aggregation (unblocked).
 - **T-W31** (M, T-W05 done) — Re-import merge preserving flags (unblocked).
 
 **Still blocked:**
-- **T-W19** (M) — blocked by T-W17/T-W18 (T-W03+T-W16 now done).
+- **T-W19** (M) — blocked by T-W18 only (T-W03+T-W16+T-W17 now done); wait for T-W18.
 - **T-W21** (M) — blocked by T-W19.
 
-**Critical path (now clearer):** T-W01 → T-W16 (DONE) → T-W19 (blocked until T-W17+T-W18 done) → T-W28 → T-W29.
+**Critical path (now clearer):** T-W01 → T-W16 (DONE) → T-W19 (blocked until T-W18 done) → T-W28 → T-W29.
 
 Worktrees live under `/Users/rubensmachion/repos/Open/stack-connect-worktrees/feat-<task>/`.
 
@@ -656,6 +656,53 @@ Merged into `experiment/windows` as `0786ae8`. Wave 0 close-out complete.
 
 ---
 
+## Wave 3 Development — T-W17 (DONE)
+
+### T-W17 (branch `feat/T-W17-windows-aggregate-rating-card`)
+**Task:** Build `WindowsAggregateRatingCard` — the SwiftCrossUI card view component for displaying aggregate app rating with star visualization, integration with iTunesLookupService (T-W15), proper formatter caching, and comprehensive test coverage.
+
+**Deliverables:**
+- `StackConnectWindowsApp/Sources/WindowsAppCore/Ratings/AggregateRatingFormatter.swift` — Formatter service with NumberFormatter caching:
+  - `formatRating(_:)` — formats aggregate rating to 1 decimal place (e.g., 4.5).
+  - **BLOCKING-1 (correction):** NumberFormatters cached as `private static let` to prevent repeated allocations per call (single-threaded renderer, safe to cache statically).
+  - Locale-independent formatting for robust cross-locale operation.
+  - Handles nil/zero ratings gracefully.
+  - **Test coverage:** 6 comprehensive test cases (AggregateRatingFormatterTests).
+- `StackConnectWindowsApp/Sources/StackConnectWindowsApp/Shared/WindowsAggregateRatingCard.swift` — Card view component:
+  - Displays aggregate rating via `AggregateRatingFormatter`.
+  - Star visualization using `WindowsRatingStarsView` (reuses T-W04 component).
+  - **SHOULD-FIX-2 (correction):** "No ratings yet" empty state when totalCount == 0.
+  - **NIT-1 (correction):** Removed redundant `usesGroupingSeparator` property (already handled by formatter).
+  - Compact layout suitable for detail view integration into T-W19.
+- `StackConnectWindowsApp/Tests/WindowsAppCoreTests/AggregateRatingFormatterTests.swift` — Test suite:
+  - 6 test cases covering formatting, nil/zero handling, locale independence, edge cases.
+  - All tests green; full suite 257/257 tests passing.
+
+**Commits:**
+- `b4bb5ad` (feat) — Initial `AggregateRatingFormatter` and `WindowsAggregateRatingCard` with 6 test cases.
+- `cd5ba13` (fix: staff review corrections BLOCKING-1/SHOULD-FIX-1/SHOULD-FIX-2/NIT-1) — Cached NumberFormatters as `private static let` (BLOCKING-1); added locale-independent formatter tests (SHOULD-FIX-1); added "No ratings yet" empty state for totalCount==0 (SHOULD-FIX-2); removed redundant `usesGroupingSeparator` property (NIT-1).
+
+**Gate verdicts:**
+- **Staff Review:** APPROVE (after 1 correction round).
+  - **BLOCKING-1:** NumberFormatter instances allocated per call — fixed by caching as `private static let decimalFormatter`, `private static let percentFormatter`.
+  - **SHOULD-FIX-1:** Formatter not tested for locale independence — added test cases verifying consistent formatting across locales.
+  - **SHOULD-FIX-2:** Missing "No ratings yet" empty state when totalCount==0 — added conditional view displaying appropriate message.
+  - **NIT-1:** `usesGroupingSeparator` property redundant (already set in formatter) — removed.
+- **QA:** PASS (6 AggregateRatingFormatterTests green, 257/257 full suite 0 failures; integration test TC-023 verified; visuals BLOCKED platform-only on Windows VM, expected constraint, not defect).
+- **PO:** ACCEPTED (AC-W10-1 aggregate rating display fully met; empty state and formatter robustness complete; platform-only UI rendering residual expected).
+- **Corrections:** 1 (fix: cd5ba13).
+
+**Files created:**
+- NEW: `AggregateRatingFormatter.swift` (NumberFormatter caching, locale-independent formatting).
+- NEW: `WindowsAggregateRatingCard.swift` (card view with star display, empty state).
+- NEW: `AggregateRatingFormatterTests.swift` (6 test cases).
+
+**Merged into `experiment/windows`:** Merge commit `b1f97dd` (--no-ff merge strategy). Branch `feat/T-W17-windows-aggregate-rating-card` deleted.
+
+**Wave 3 progress:** Aggregate Rating Card component complete. Next unblocked: **T-W18** (`WindowsReviewRow`, dep T-W04 DONE; feeds critical-path view T-W19 alongside T-W17 just completed). T-W19 remains BLOCKED until T-W18 done (deps T-W03/T-W16/T-W17 now satisfied; awaiting T-W18).
+
+---
+
 ## Resume checklist — ONE TASK PER SESSION (serial)
 
 The four agents from the old parallel run all finished green. The remaining work is now done **one task per session** (the new skill model). **Do exactly one task per session**, in this order, then update this handover and end the session.
@@ -680,7 +727,8 @@ The four agents from the old parallel run all finished green. The remaining work
 | 14 | **T-W14** | ✅ DONE (merged `6574aa1`) | Wave 2 — Wire `.appDetail`/`.comingSoon` in RootView (verify/finalize); 1 correction (ownership comments) |
 | 15 | **T-W15** | ✅ DONE (merged `63b0e8a`) | Wave 3 — `iTunesLookupService` (M); commits `a8220f6`, `cf83c5f`; TC-079 formula authority (4.5225), cache resilience (SF-1/SF-2), concurrency/encoding comments (N-1/N-2/N-3); QA 235/235 suite + 21/21 ITunesLookupServiceTests green; 1 correction |
 | 16 | **T-W16** | ✅ DONE (merged `fa757b6`) | Wave 3 — `WindowsRatingsReviewsModel` (M, critical path); commits `8c6ebcb`, `b49c908`; Staff APPROVE (SF-1/SF-2/Nit-1/Nit-2); QA 251/251 suite, 16/16 model tests; PO ACCEPTED (7 ACs, 7 TCs); 1 correction |
-| 17 | **T-W17** | ⏳ NEXT (pending) | Wave 3 — `WindowsAggregateRatingCard` (S, deps T-W04 done, feeds critical-path T-W19) |
+| 17 | **T-W17** | ✅ DONE (merged `b1f97dd`) | Wave 3 — `WindowsAggregateRatingCard` (S); commits `b4bb5ad`, `cd5ba13`; Staff APPROVE (BLOCKING-1 cached formatters, SHOULD-FIX-1/2 locale tests & empty state, NIT-1 redundant property); QA 257/257 suite + 6/6 formatter tests; PO ACCEPTED (AC-W10-1); 1 correction |
+| 18 | **T-W18** | ⏳ NEXT (pending) | Wave 3 — `WindowsReviewRow` (S, deps T-W04 done, feeds critical-path T-W19) |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
