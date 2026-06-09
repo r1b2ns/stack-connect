@@ -10,8 +10,8 @@ import StackHomeCore
 /// Covers:
 /// - TC-023: Load aggregate card happy path
 /// - TC-024: iTunes failure graceful fallback (aggregate nil, reviews still load)
-/// - TC-025: Page 1 reviews + cursor + canLoadMore
-/// - TC-026: Load More appends (3+2=5), cursor updated, isLoadingMore toggles
+/// - TC-025: Page 1 reviews + canLoadMore
+/// - TC-026: Load More appends (3+2=5), canLoadMore updated, isLoadingMore toggles
 /// - TC-027: Final page → Load More hidden
 /// - TC-029: Empty reviews → empty state, no Load More
 /// - TC-080: Cursor not persisted; fresh instance reloads page 1
@@ -184,10 +184,7 @@ final class WindowsRatingsReviewsModelTests: XCTestCase {
         XCTAssertEqual(sut.uiState.reviews[1].id, "r2")
         XCTAssertEqual(sut.uiState.reviews[2].id, "r3")
 
-        // Cursor captured
-        XCTAssertEqual(sut.uiState.pageToken, "page2-cursor")
-
-        // Load More visible
+        // Load More visible (cursor is private; view uses canLoadMore)
         XCTAssertTrue(sut.uiState.canLoadMore)
 
         // Loading finished
@@ -230,7 +227,6 @@ final class WindowsRatingsReviewsModelTests: XCTestCase {
         await sut.loadRatingsIfNeeded(appId: "app-001", bundleId: "com.example.app", accountId: "acct-001")
         XCTAssertEqual(sut.uiState.reviews.count, 3)
         XCTAssertTrue(sut.uiState.canLoadMore)
-        XCTAssertEqual(sut.uiState.pageToken, "page2-cursor")
 
         // When: Load More
         await sut.loadNextPage(appId: "app-001")
@@ -242,9 +238,6 @@ final class WindowsRatingsReviewsModelTests: XCTestCase {
         XCTAssertEqual(sut.uiState.reviews[2].id, "r3")
         XCTAssertEqual(sut.uiState.reviews[3].id, "r4")
         XCTAssertEqual(sut.uiState.reviews[4].id, "r5")
-
-        // Cursor updated (nil = last page)
-        XCTAssertNil(sut.uiState.pageToken)
 
         // isLoadingMore back to false
         XCTAssertFalse(sut.uiState.isLoadingMore)
@@ -275,7 +268,6 @@ final class WindowsRatingsReviewsModelTests: XCTestCase {
 
         // Then: no more pages
         XCTAssertFalse(sut.uiState.canLoadMore)
-        XCTAssertNil(sut.uiState.pageToken)
 
         // Load More call with no cursor is a no-op
         await sut.loadNextPage(appId: "app-001")
@@ -301,7 +293,6 @@ final class WindowsRatingsReviewsModelTests: XCTestCase {
 
         // No Load More
         XCTAssertFalse(sut.uiState.canLoadMore)
-        XCTAssertNil(sut.uiState.pageToken)
 
         // No error
         XCTAssertNil(sut.uiState.reviewsError)
@@ -313,9 +304,9 @@ final class WindowsRatingsReviewsModelTests: XCTestCase {
     // MARK: - TC-080: Cursor not persisted; fresh instance reloads page 1
 
     /// Verifies that the pagination cursor is memory-only. A fresh model
-    /// instance starts with pageToken = nil and reloads page 1 (R4).
+    /// instance starts with canLoadMore = false and reloads page 1 (R4).
     func testTC080_CursorNotPersistedFreshInstanceReloadsPage1() async {
-        // Given: First instance loads page 1 with cursor
+        // Given: First instance loads page 1 with cursor (canLoadMore = true)
         let page1Reviews = [makeReview(id: "r1", rating: 5)]
         connection.fetchReviewsResultQueue = [
             .success(ReviewsPage(reviews: page1Reviews, hasNextPage: true, cursor: "cursor-abc")),
@@ -323,7 +314,7 @@ final class WindowsRatingsReviewsModelTests: XCTestCase {
 
         let sut1 = makeSUT()
         await sut1.loadRatingsIfNeeded(appId: "app-001", bundleId: "com.example.app", accountId: "acct-001")
-        XCTAssertEqual(sut1.uiState.pageToken, "cursor-abc")
+        XCTAssertTrue(sut1.uiState.canLoadMore, "First instance should have more pages")
 
         // When: a fresh instance is created
         let page1Again = [makeReview(id: "r1-fresh", rating: 4)]
@@ -333,14 +324,15 @@ final class WindowsRatingsReviewsModelTests: XCTestCase {
 
         let sut2 = makeSUT()
 
-        // Then: fresh instance starts with nil cursor
-        XCTAssertNil(sut2.uiState.pageToken, "Fresh instance must start with nil pageToken")
+        // Then: fresh instance starts with canLoadMore = false (no stale cursor)
+        XCTAssertFalse(sut2.uiState.canLoadMore, "Fresh instance must start with canLoadMore = false")
 
-        // And: loading fetches page 1 again (cursor=nil)
+        // And: loading fetches page 1 again (cursor=nil passed to connection)
         await sut2.loadRatingsIfNeeded(appId: "app-001", bundleId: "com.example.app", accountId: "acct-001")
         XCTAssertEqual(connection.lastFetchReviewsCursor, nil, "Fresh load must pass nil cursor (page 1)")
         XCTAssertEqual(sut2.uiState.reviews.count, 1)
         XCTAssertEqual(sut2.uiState.reviews[0].id, "r1-fresh")
+        XCTAssertFalse(sut2.uiState.canLoadMore, "No more pages after fresh load")
     }
 
     // MARK: - AC-W10-2: Rating loading state independent of reviews list
@@ -430,8 +422,8 @@ final class WindowsRatingsReviewsModelTests: XCTestCase {
 
         // Then: error is set but previously loaded reviews are preserved
         XCTAssertNotNil(sut.uiState.reviewsError)
-        // Note: in current implementation, reviews are replaced on success and
-        // kept on failure. The first-page load on failure does not clear reviews.
+        XCTAssertEqual(sut.uiState.reviews.count, 2,
+                       "Reviews from first load should be preserved on refresh failure")
     }
 
     // MARK: - Sort/Filter plumbing
@@ -464,7 +456,7 @@ final class WindowsRatingsReviewsModelTests: XCTestCase {
 
     // MARK: - Load More no-op when no cursor
 
-    /// Verifies that loadNextPage is a no-op when there is no pageToken.
+    /// Verifies that loadNextPage is a no-op when there is no cursor.
     func testLoadNextPageNoOpWhenNoCursor() async {
         connection.fetchReviewsResult = .success(
             ReviewsPage(reviews: [makeReview()], hasNextPage: false, cursor: nil)
@@ -472,13 +464,53 @@ final class WindowsRatingsReviewsModelTests: XCTestCase {
 
         let sut = makeSUT()
         await sut.loadRatingsIfNeeded(appId: "app-001", bundleId: "com.example.app", accountId: "acct-001")
-        XCTAssertNil(sut.uiState.pageToken)
+        XCTAssertFalse(sut.uiState.canLoadMore)
 
         let callCountBefore = connection.fetchReviewsCallCount
         await sut.loadNextPage(appId: "app-001")
 
         XCTAssertEqual(connection.fetchReviewsCallCount, callCountBefore,
                        "Should not call fetchReviews when no cursor")
+    }
+
+    // MARK: - Load More failure sets reviewsError and preserves state
+
+    /// Verifies that when Load More fails, reviewsError is set with a
+    /// non-blocking message, existing reviews are preserved, and canLoadMore
+    /// remains true so the user can retry.
+    func testLoadMoreFailureSetsErrorAndPreservesState() async {
+        // Given: First page loads successfully with a next-page cursor
+        let page1Reviews = [
+            makeReview(id: "r1", rating: 5),
+            makeReview(id: "r2", rating: 4),
+        ]
+        connection.fetchReviewsResultQueue = [
+            .success(ReviewsPage(reviews: page1Reviews, hasNextPage: true, cursor: "page2-cursor")),
+            .failure(NSError(domain: "net", code: -1)),
+        ]
+
+        let sut = makeSUT()
+        await sut.loadRatingsIfNeeded(appId: "app-001", bundleId: "com.example.app", accountId: "acct-001")
+        XCTAssertEqual(sut.uiState.reviews.count, 2)
+        XCTAssertTrue(sut.uiState.canLoadMore)
+        XCTAssertNil(sut.uiState.reviewsError)
+
+        // When: Load More fails
+        await sut.loadNextPage(appId: "app-001")
+
+        // Then: error is set
+        XCTAssertEqual(sut.uiState.reviewsError, "Failed to load more reviews.")
+
+        // Existing reviews preserved
+        XCTAssertEqual(sut.uiState.reviews.count, 2, "Existing reviews must not be cleared on Load More failure")
+        XCTAssertEqual(sut.uiState.reviews[0].id, "r1")
+        XCTAssertEqual(sut.uiState.reviews[1].id, "r2")
+
+        // canLoadMore still true (cursor preserved so retry is possible)
+        XCTAssertTrue(sut.uiState.canLoadMore, "canLoadMore must remain true so retry is possible")
+
+        // isLoadingMore reset
+        XCTAssertFalse(sut.uiState.isLoadingMore)
     }
 
     // MARK: - No connection → offline mode

@@ -52,12 +52,8 @@ public struct WindowsRatingsReviewsUiState {
     /// Whether there are more pages to load (drives Load More visibility).
     public var canLoadMore: Bool = false
 
-    /// Opaque pagination cursor for the next page. Memory-only; not persisted
-    /// (TC-080 / R4). A fresh model instance starts with nil and loads page 1.
-    public var pageToken: String?
-
-    /// Non-nil when the first page of reviews failed to load. The view can
-    /// offer a retry action.
+    /// Non-nil when a reviews load (first page or Load More) failed. The view
+    /// can offer a retry action.
     public var reviewsError: String?
 
     public init(
@@ -68,7 +64,6 @@ public struct WindowsRatingsReviewsUiState {
         isLoading: Bool = false,
         isLoadingMore: Bool = false,
         canLoadMore: Bool = false,
-        pageToken: String? = nil,
         reviewsError: String? = nil
     ) {
         self.aggregateRating = aggregateRating
@@ -78,7 +73,6 @@ public struct WindowsRatingsReviewsUiState {
         self.isLoading = isLoading
         self.isLoadingMore = isLoadingMore
         self.canLoadMore = canLoadMore
-        self.pageToken = pageToken
         self.reviewsError = reviewsError
     }
 }
@@ -108,6 +102,14 @@ public final class WindowsRatingsReviewsModel: SwiftCrossUI.ObservableObject {
 
     /// Optional rating filter passed to `fetchReviews`. nil = all ratings.
     private var filterRating: [String]?
+
+    // MARK: - Pagination (private, memory-only)
+
+    /// Opaque pagination cursor for the next page. Memory-only; not persisted
+    /// (TC-080 / R4). A fresh model instance starts with nil and loads page 1.
+    /// Kept private so the view layer cannot observe or depend on the opaque
+    /// cursor — only `uiState.canLoadMore` is public.
+    private var nextPageCursor: String?
 
     // MARK: - Concurrency Guard
 
@@ -144,7 +146,11 @@ public final class WindowsRatingsReviewsModel: SwiftCrossUI.ObservableObject {
     ///   - bundleId: The app's bundle identifier (for iTunes lookup).
     ///   - accountId: The account identifier (for storage key context).
     public func loadRatingsIfNeeded(appId: String, bundleId: String, accountId: String) async {
-        // Reset errors from a previous load
+        // SF-1: Set BOTH loading flags and clear errors atomically BEFORE
+        // spawning the concurrent child tasks, so there is never an observable
+        // window where one flag isn't set yet.
+        uiState.isLoadingRating = true
+        uiState.isLoading = true
         uiState.ratingError = nil
         uiState.reviewsError = nil
 
@@ -162,8 +168,6 @@ public final class WindowsRatingsReviewsModel: SwiftCrossUI.ObservableObject {
     /// leaves `aggregateRating` nil and sets a non-blocking error flag
     /// (AC-W10-3). Does NOT affect the reviews list.
     private func loadAggregateRating(bundleId: String) async {
-        uiState.isLoadingRating = true
-
         let result = await lookupService.fetchAggregateRating(bundleId: bundleId)
 
         if let result {
@@ -187,9 +191,6 @@ public final class WindowsRatingsReviewsModel: SwiftCrossUI.ObservableObject {
     /// On success, populates reviews, cursor, and canLoadMore. On failure,
     /// sets a non-blocking error with retry capability (AC-W11-5).
     private func loadFirstPage(appId: String) async {
-        uiState.isLoading = true
-        uiState.reviewsError = nil
-
         guard let connection else {
             // No connection: offline mode; no reviews to load.
             uiState.isLoading = false
@@ -206,7 +207,7 @@ public final class WindowsRatingsReviewsModel: SwiftCrossUI.ObservableObject {
             )
 
             uiState.reviews = page.reviews
-            uiState.pageToken = page.cursor
+            nextPageCursor = page.cursor
             uiState.canLoadMore = page.hasNextPage
         } catch {
             #if canImport(os)
@@ -233,7 +234,7 @@ public final class WindowsRatingsReviewsModel: SwiftCrossUI.ObservableObject {
     /// - Parameter appId: The App Store app identifier.
     public func loadNextPage(appId: String) async {
         // Guard: no cursor means no more pages
-        guard uiState.pageToken != nil else { return }
+        guard nextPageCursor != nil else { return }
         // Guard: prevent concurrent Load More calls
         guard !isLoadMoreInFlight else { return }
 
@@ -252,20 +253,22 @@ public final class WindowsRatingsReviewsModel: SwiftCrossUI.ObservableObject {
                 sort: sort,
                 filterRating: filterRating,
                 limit: 50,
-                cursor: uiState.pageToken
+                cursor: nextPageCursor
             )
 
             // Append new reviews to existing list
             uiState.reviews.append(contentsOf: page.reviews)
-            uiState.pageToken = page.cursor
+            nextPageCursor = page.cursor
             uiState.canLoadMore = page.hasNextPage
         } catch {
             #if canImport(os)
             Logger(subsystem: "com.stackconnect.windows", category: "RatingsReviews")
                 .warning("[RatingsReviews] Load More failed for app \(appId, privacy: .public): \(error.localizedDescription, privacy: .public)")
             #endif
-            // On Load More failure, keep existing reviews. The cursor is still
-            // valid so the user can retry.
+            // Nit-2: Surface a non-blocking error so a future UI can react.
+            // Keep existing reviews and canLoadMore/cursor intact so retry
+            // remains possible.
+            uiState.reviewsError = "Failed to load more reviews."
         }
 
         uiState.isLoadingMore = false
