@@ -6,8 +6,9 @@ import StackHomeCore
 // MARK: - Shared Test Mocks
 
 /// In-memory mock for `PersistentStorable` that tracks call counts per type.
-/// All access is serialized through `@MainActor` (test class annotation), so no
-/// locking is needed.
+/// Storage is accessed sequentially within callers (e.g. `fetchAggregateRating`
+/// reads/writes cache outside the concurrent `TaskGroup` which covers only
+/// network calls), so no locking is needed.
 final class MockStorage: PersistentStorable, @unchecked Sendable {
     private var store: [String: Data] = [:]
 
