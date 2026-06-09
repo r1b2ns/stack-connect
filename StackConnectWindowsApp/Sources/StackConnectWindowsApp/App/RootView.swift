@@ -7,7 +7,7 @@ import WindowsAppCore
 import os
 #endif
 
-// Phase 4 · Block F · T-F16 / T-W03 / T-W06 / T-W07 / T-W08 / T-W12 — the window's root view + route switch.
+// Phase 4 · Block F · T-F16 / T-W03 / T-W06 / T-W07 / T-W08 / T-W12 / T-W14 — the window's root view + route switch.
 //
 // Owns the observed state (the core adapter and the navigation coordinator) and
 // renders the current screen: Home when the route stack is empty, otherwise the
@@ -43,6 +43,10 @@ import os
 // The app detail model is shared between the detail and the archive-from-detail
 // confirmation screen via the `AppDetailModelCache` reference-type holder,
 // mirroring the `AppsListModelCache` pattern from T-W06.
+//
+// T-W14: verified `.appDetail`, `.comingSoon`, and `.archiveAppDetailConfirm`
+// wiring satisfies AC-W07-1/2, AC-W08-1/2, and AC-W09-3. Updated ownership
+// comments; no behavioral changes needed.
 
 /// Reference-type holder for the shared `WindowsAppsListModel`. Using a class
 /// avoids mutating `@State` during the view body: the `@State` reference stays
@@ -281,14 +285,15 @@ struct RootView: View {
                 )
             )
 
-        // T-W12: real app detail screen. The detail model is lazily created
-        // and cached in `appDetailCache` so the archive-from-detail
+        // T-W12 / T-W14: real app detail screen. The detail model is lazily
+        // created and cached in `appDetailCache` so the archive-from-detail
         // confirmation view (pushed on top) shares the same instance.
         //
-        // NOTE for T-W14: this route was pre-wired by T-W12 so the App
-        // Detail view is exercisable end-to-end. T-W14 should VERIFY this
-        // wiring is sufficient and mark `.appDetail` done WITHOUT
-        // re-implementing (avoid double-wiring / conflict).
+        // T-W14 verified: wiring satisfies AC-W07-1/2 (Ratings and Reviews
+        // pushes .ratingsAndReviews with correct appId/bundleId/accountId),
+        // AC-W08-1/2 (7 non-functional options push .comingSoon with correct
+        // titles), and AC-W09-3 (archive confirms via .archiveAppDetailConfirm,
+        // pops back to apps list). No changes needed.
         case .appDetail(let appId, let accountId):
             WindowsAppDetailView(
                 appId: appId,
@@ -301,14 +306,14 @@ struct RootView: View {
                 )
             )
 
-        // T-W12: coming soon placeholder. Wrapped with a back button so the
-        // user can navigate back from sub-routes pushed by App Detail.
+        // T-W12 / T-W14: coming soon placeholder. Wrapped with a back
+        // button so the user can navigate back from sub-routes pushed by
+        // App Detail.
         //
-        // NOTE for T-W14: this route was pre-wired by T-W12 (replacing the
-        // previous placeholder) so the App Detail's comingSoon navigations
-        // work end-to-end. T-W14 should VERIFY this wiring is sufficient
-        // and mark `.comingSoon` done WITHOUT re-implementing (avoid
-        // double-wiring / conflict).
+        // T-W14 verified: wiring satisfies AC-W08-1/2 (all 7 non-functional
+        // options + Analytics/TestFlight leaf sections + platform "See All"
+        // render WindowsComingSoonView with the correct title and a working
+        // back button). No changes needed.
         case .comingSoon(let title):
             ScrollView {
                 VStack(spacing: 16) {
