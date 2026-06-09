@@ -5,14 +5,14 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 IN PROGRESS — T-W11 DONE and MERGED, T-W12 DONE and MERGED.
+**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 IN PROGRESS — T-W11/T-W12/T-W13 DONE, next T-W14.
 
 **Snapshot:**
 - **Wave 0 (DONE):** All four foundation tasks merged into `experiment/windows`: T-W01 (`7ef4617`), T-W02 (`eba9738`), T-W03 (`1bf59ab`), T-W04 (`0786ae8`).
 - **Wave 1 (COMPLETE):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`. T-W06 (`WindowsAppsListView` + `WindowsAppRow`) DONE and MERGED as `de9b89a`. T-W07 (`WindowsArchivedAppsView` + Restore) DONE and MERGED as `0fcc886`. T-W08 (`WindowsUsersTabView`) DONE and MERGED as `bae0951`. T-W09 (`WindowsAppsListModel` comprehensive tests) DONE and MERGED as `216329f`. T-W10 (accounts-row → Apps List navigation) DONE and MERGED as `ad04ce6`.
-- **Wave 2 (IN PROGRESS):** T-W11 (`WindowsAppDetailModel`) **DONE and MERGED as `7186f9c`** (feat `7159bac` + review-fix `36fb14a`). T-W12 (`WindowsAppDetailView`) **DONE and MERGED as `6e45f26`** (feat `605a6d0` + correction `3626a1a`). Next unblocked task: **T-W13** (Unit tests for WindowsAppDetailModel).
+- **Wave 2 (IN PROGRESS):** T-W11 (`WindowsAppDetailModel`) **DONE and MERGED as `7186f9c`**. T-W12 (`WindowsAppDetailView`) **DONE and MERGED as `6e45f26`**. T-W13 (Unit tests for WindowsAppDetailModel) **DONE** — 15 tests already delivered under T-W11, all TC-coverage satisfied, 0 new diff. Next unblocked task: **T-W14** (Wire `.appDetail`/`.comingSoon` in RootView).
 
-> **Wave 0/1 foundation complete. Wave 2 in progress.** T-W11 and T-W12 DONE and MERGED. Next task: **T-W13** (Unit tests).
+> **Wave 0/1 foundation complete. Wave 2 in progress.** T-W11/T-W12/T-W13 DONE. Next task: **T-W14** (RootView wiring).
 
 ---
 
@@ -54,8 +54,8 @@
 |------|-------|------|------------|
 | **T-W11** | `WindowsAppDetailModel` (F2 App Detail) | T-W03, T-W04, T-W05 | ✅ DONE — merged `7186f9c`. Commits `7159bac` (feat) + `36fb14a` (correction). Gate state: Staff APPROVE (1 correction round: SF1 buildSections single-assignment consolidation, SF2 guarded os.Logger diagnostics via #if canImport(os) in catch handlers, SF3 clear syncError before optimistic mutation, Nit-1 rename error→syncError for consistency, Nit-2 reduce buildSections from public to internal) / QA PASS (214 tests, 0 failures; 15 WindowsAppDetailModelTests map to TC-014/015/020/021/022 + edge cases; UI/nav TC-016..019 deferred to T-W12) / PO ACCEPTED (all 7 model-slice ACs Met: AC-W06-1/2/3/4, AC-W09-1/2/3). 1 correction. |
 | **T-W12** | `WindowsAppDetailView` (F2 UI layer) | T-W03, T-W04, T-W11 | ✅ DONE — merged `6e45f26`. Commits `605a6d0` (feat) + `3626a1a` (correction). Gate state: Staff APPROVE (1 correction round: SF-1 AppDetailModelCache keyed on appId+accountId to prevent stale reuse, SF-2 invalidate() wired via onArchiveConfirmed, SF-3 removed unused os import, SF-4 Refresh button comment re: loadAppIfNeeded, SF-5 NOTE-for-T-W14 route pre-wiring comments, Nit-1 toolbar if-let consolidation, Nit-3 platform fallback "Unknown", Nit-4 single "See All") / QA PASS (274 tests, 0 failures; TC-016..022 verified; platform-only manual on Windows VM) / PO ACCEPTED (all 9 ACs Met: AC-W06-1..4, AC-W07-1/2, AC-W08-1/2, AC-W09-1..3). 1 correction. Scope: T-W12 pre-wired .appDetail/.comingSoon routes for compilation; T-W14 to verify/finalize. |
-| **T-W13** | Unit tests for `WindowsAppDetailModel` | T-W11 | ⏳ NEXT unblocked (T-W11 done). |
-| **T-W14** | Wire `.appDetail`/`.comingSoon` in RootView (full) | T-W03, T-W04, T-W12 | ⏳ Now unblocked (T-W03/T-W04/T-W12 done). Note: much of T-W12's pre-wiring landed in T-W12; T-W14 should verify/finalize without re-implementing. |
+| **T-W13** | Unit tests for `WindowsAppDetailModel` | T-W11 | ✅ DONE — **no new diff, satisfied by 15 tests from T-W11**. Senior audit: 15 existing `WindowsAppDetailModelTests` fully cover all in-scope TCs (TC-014/015/020/021/022) and ACs. All 15 tests green (verified by test-runner). Correction rounds: 0. Scope: TC-016..019 (UI/nav) owned by T-W12 view layer. |
+| **T-W14** | Wire `.appDetail`/`.comingSoon` in RootView (full) | T-W03, T-W04, T-W12 | ⏳ NEXT unblocked (T-W03/T-W04/T-W12 all done). Note: T-W12 pre-wired `.appDetail`/`.comingSoon`/`.archiveAppDetailConfirm` routes in RootView with NOTE-for-T-W14 comments; T-W14 is largely verify/finalize-and-document task, not re-implement. |
 | **T-W15** | macOS integration + WKWebView bridge | none | ⏳ BLOCKED (depends on iOS side stability first; soft block). |
 | **T-W17** | Review detail view (header + reply composer UX) | T-W04 | ⏳ BLOCKED. |
 | **T-W18** | Rating histogram + filter UI | T-W04 | ⏳ BLOCKED. |
@@ -67,8 +67,8 @@
 
 - **T-W11** (DONE — merged as `7186f9c`; commits `7159bac`, `36fb14a`).
 - **T-W12** (DONE — merged as `6e45f26`; commits `605a6d0`, `3626a1a`).
-- **T-W13** (T-W11 done) — **NEXT POINTER** (Unit tests for WindowsAppDetailModel).
-- **T-W14** (T-W03, T-W04, T-W12 all done; note T-W12 pre-wired routes, T-W14 verifies/finalizes).
+- **T-W13** (DONE — no new diff; 15 existing tests from T-W11 fully satisfy scope).
+- **T-W14** (T-W03, T-W04, T-W12 all done) — **NEXT POINTER** (Wire `.appDetail`/`.comingSoon` in RootView; note T-W12 pre-wired, T-W14 verifies/finalizes).
 - **T-W15** (no deps; soft-blocked pending iOS stability).
 - **T-W17**, **T-W18** (T-W04 DONE).
 - **T-W30** (no deps; late-stage, soft-blocked).
@@ -455,6 +455,36 @@ Merged into `experiment/windows` as `0786ae8`. Wave 0 close-out complete.
 
 ---
 
+## Wave 2 Development — T-W13 (DONE)
+
+### T-W13 (Unit tests for WindowsAppDetailModel)
+**Task:** Comprehensive unit tests for `WindowsAppDetailModel` — extend test coverage for the App Detail data model to verify all in-scope test cases and acceptance criteria.
+
+**Status:** DONE — **No new code changes required.** Senior audit confirmed the 15 existing tests delivered under T-W11 (`StackConnectWindowsApp/Tests/WindowsAppCoreTests/WindowsAppDetailModelTests.swift`) fully satisfy all in-scope test case and AC requirements for T-W13.
+
+**Test coverage map (all satisfied by T-W11 tests):**
+- **TC-014 (header load):** `testLoadAppPopulatesHeaderData()` — verifies icon, name, bundle ID, status, version populated on load.
+- **TC-015 (4 sections structure):** `testSectionsContainCorrectStructure()` + `testOnlyRatingsAndReviewsIsFunctional()` — verify General, App Store, Analytics, TestFlight sections with correct option counts; only Ratings and Reviews is functional.
+- **TC-020 (favorite toggle persist):** `testToggleFavoritePersistsAndTogglesBack()` — toggle favorite, verify model state, toggle back, verify revert on failure.
+- **TC-021 (archive persist):** `testArchiveAppSetsIsArchivedAndPersists()` — archive app, verify persisted to SwiftData, toggle state.
+- **TC-022 (network failure → cache fallback):** `testNetworkFailureKeepsCachedDetailAndSetsError()` — network fetch fails, cached detail preserved, sync error set.
+- **Bonus edge coverage:** Revert-on-failure mechanics (favorite/archive rollback on network error), live-refresh merge logic preserving local flags (`isFavorite`, `isArchived`), empty cache → nil handling, mismatched appId no-ops, syncError clearing before mutations, static `buildSections()` data.
+- **Deferred (owned by T-W12 view layer, platform-only):** TC-016 (header render), TC-017 (sections render), TC-018 (favorite UI toggle), TC-019 (archive confirmation nav) — all UI/navigation cases verified by manual inspection on Windows VM, not model unit-test scope.
+
+**Verification:**
+- Test-runner audit: all 15 existing tests from T-W11 verified green in WindowsAppCore suite (`swift test`): 15 tests passed, 0 failures.
+- No new test files created, no test modifications.
+- Scope ruling: TC-016..019 (UI rendering and navigation) are owned by the view layer (T-W12) and marked platform-only manual on Windows VM — correctly out of scope for this model unit-test task.
+
+**Gate note:**
+- No separate commit/staff-review/QA/PO cycle run (no new diff to review).
+- "Requirement already met" outcome validated by developer audit + test-runner verification.
+- Corrections: 0.
+
+**Task outcome:** Closed DONE — all in-scope coverage objectives achieved without new code.
+
+---
+
 ## Resume checklist — ONE TASK PER SESSION (serial)
 
 The four agents from the old parallel run all finished green. The remaining work is now done **one task per session** (the new skill model). **Do exactly one task per session**, in this order, then update this handover and end the session.
@@ -475,7 +505,8 @@ The four agents from the old parallel run all finished green. The remaining work
 | 10 | **T-W10** | ✅ DONE (merged `ad04ce6`) | Wave 1 — Wire `.appsList`/`.archivedApps` in RootView + navigate from accounts row |
 | 11 | **T-W11** | ✅ DONE (merged `7186f9c`) | Wave 2 — `WindowsAppDetailModel` (F2 App Detail); 1 correction (buildSections, logging, syncError) |
 | 12 | **T-W12** | ✅ DONE (merged `6e45f26`) | Wave 2 — `WindowsAppDetailView` (F2 UI layer); 1 correction (cache keying, invalidate wiring, logging/comments, toolbar consolidation) |
-| 13 | **T-W13** | ⏳ NEXT (pending) | Wave 2 — Unit tests for `WindowsAppDetailModel` (dep T-W11 done) |
+| 13 | **T-W13** | ✅ DONE (no diff) | Wave 2 — Unit tests for `WindowsAppDetailModel`; satisfied by 15 tests from T-W11; 0 corrections |
+| 14 | **T-W14** | ⏳ NEXT (pending) | Wave 2 — Wire `.appDetail`/`.comingSoon` in RootView (verify/finalize; much pre-wired by T-W12) |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
