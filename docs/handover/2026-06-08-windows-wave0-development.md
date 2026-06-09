@@ -5,20 +5,21 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 IN PROGRESS — T-W05, T-W06, T-W07, T-W08, T-W09 DONE and MERGED.
+**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 STARTED — T-W11 DONE and MERGED.
 
 **Snapshot:**
 - **Wave 0 (DONE):** All four foundation tasks merged into `experiment/windows`: T-W01 (`7ef4617`), T-W02 (`eba9738`), T-W03 (`1bf59ab`), T-W04 (`0786ae8`).
-- **Wave 1 (COMPLETE):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`. T-W06 (`WindowsAppsListView` + `WindowsAppRow`) DONE and MERGED as `de9b89a`. T-W07 (`WindowsArchivedAppsView` + Restore) DONE and MERGED as `0fcc886`. T-W08 (`WindowsUsersTabView`) DONE and MERGED as `bae0951`. T-W09 (`WindowsAppsListModel` comprehensive tests) DONE and MERGED as `216329f`. T-W10 (accounts-row → Apps List navigation) **DONE (merged into experiment/windows)** as merge commit `ad04ce6`. Next unblocked task: **T-W11** (WindowsAppDetailModel — Wave 2 F2 App Detail).
+- **Wave 1 (COMPLETE):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`. T-W06 (`WindowsAppsListView` + `WindowsAppRow`) DONE and MERGED as `de9b89a`. T-W07 (`WindowsArchivedAppsView` + Restore) DONE and MERGED as `0fcc886`. T-W08 (`WindowsUsersTabView`) DONE and MERGED as `bae0951`. T-W09 (`WindowsAppsListModel` comprehensive tests) DONE and MERGED as `216329f`. T-W10 (accounts-row → Apps List navigation) DONE and MERGED as `ad04ce6`.
+- **Wave 2 (STARTED):** T-W11 (`WindowsAppDetailModel`) **DONE and MERGED as `7186f9c`** (feat `7159bac` + review-fix `36fb14a`). Next unblocked task: **T-W12** (WindowsAppDetailView — Wave 2 F2 App Detail).
 
-> **Wave 0 foundation complete. Wave 1 complete.** All Wave 1 tasks (T-W05/T-W06/T-W07/T-W08/T-W09/T-W10) DONE and MERGED. Next task: **T-W11** (Wave 2).
+> **Wave 0/1 foundation complete. Wave 2 started.** T-W11 DONE and MERGED. Next task: **T-W12** (WindowsAppDetailView).
 
 ---
 
 ## Session decisions (locked in)
 
 - **Scope:** Wave 0 — Foundation only: **T-W01, T-W02, T-W03, T-W04** (no inter-dependencies among them).
-- **Git authorization:** **Commit only.** `git-docs-manager` auto-commits each green task. **Push, PR, and all merges (to `experiment/windows` or `master`) stay gated** — ask the user before any of them.
+- **Git authorization:** **Commit only.** `git-docs-manager` auto-commits each green task. **Push and PR stay gated.** **Merges into `experiment/windows` APPROVED for the rest of this run** (secondary-branch merges no longer individually gated this session; user authorized merge-on-APPROVE as of T-W11). **Master merge stays gated** — never merge to `master` automatically.
 - **No AI attribution** in any commit/PR (verified on all commits so far).
 - Windows SwiftPM packages auto-discover files → **no `xcodegen` needed** for Windows package changes (only for iOS app-target file changes).
 - All test execution → `test-runner` agent. All git/docs → `git-docs-manager` agent.
@@ -46,7 +47,14 @@
 | **T-W08** | `WindowsUsersTabView` (Users tab content) | T-W01, T-W06 | ✅ DONE — merged `bae0951`. Staff APPROVE (1 correction round: S-1 SwiftCrossUI-import observation left intentionally as-is per accepted pattern) / QA PASS (162 tests, 0 failures; TC-012, TC-013 + edge/negative verified; SwiftCrossUI platform-only) / PO ACCEPTED (AC-W05-1..5 all Met). 1 correction. |
 | **T-W09** | Comprehensive unit tests for `WindowsAppsListModel` | T-W05 | ✅ DONE — merged `216329f`. Staff APPROVE (1 correction round: S-1 duplicate-ID assertion strengthened to `count == 2`, S-2 `SuspendableAppleConnection.resumeFetchApps` guarded against nil-continuation, N-1 removed trivially-true assertion, N-4 added `resumeIfPending()` teardown) / QA PASS (199 tests, 0 failures, all WindowsAppsListModelTests 56/56 green, no CheckedContinuation leaks) / PO ACCEPTED (all ACs met by real assertions). 1 correction (629ee8a). |
 | **T-W10** | Wire `.appsList`/`.archivedApps` in RootView + navigate from accounts row | T-W03, T-W06, T-W07, T-W08 | ✅ DONE — merged `ad04ce6`. Commits `b667283` (feat) + `536bd6d` (correction: Nit-2 clear stale banner). Gate state: Staff APPROVE (1 correction: Nit-2 applied; should-fix S-1 coordinator unit test documented as not feasible — `WindowsHomeCoordinator` lives in the executable target, not `@testable`-importable by `WindowsAppCoreTests`; recommended future refactor) / QA PASS (199 tests, 0 failures; navigation verified by inspection, SwiftCrossUI rendering platform-only) / PO ACCEPTED (all 4 ACs Met). 1 correction. |
-| **T-W11** | Clipboard sync UX + affordances | T-W01 (soft) | ⏳ BLOCKED softly (can start independently). |
+
+### Wave 2 (STARTED)
+
+| Task | Title | Deps | Gate state |
+|------|-------|------|------------|
+| **T-W11** | `WindowsAppDetailModel` (F2 App Detail) | T-W03, T-W04, T-W05 | ✅ DONE — merged `7186f9c`. Commits `7159bac` (feat) + `36fb14a` (correction). Gate state: Staff APPROVE (1 correction round: SF1 buildSections single-assignment consolidation, SF2 guarded os.Logger diagnostics via #if canImport(os) in catch handlers, SF3 clear syncError before optimistic mutation, Nit-1 rename error→syncError for consistency, Nit-2 reduce buildSections from public to internal) / QA PASS (214 tests, 0 failures; 15 WindowsAppDetailModelTests map to TC-014/015/020/021/022 + edge cases; UI/nav TC-016..019 deferred to T-W12) / PO ACCEPTED (all 7 model-slice ACs Met: AC-W06-1/2/3/4, AC-W09-1/2/3). 1 correction. |
+| **T-W12** | `WindowsAppDetailView` (F2 UI layer) | T-W03, T-W04, T-W11 | ⏳ NEXT unblocked (deps T-W03/T-W04/T-W11 all done). |
+| **T-W13** | Unit tests for `WindowsAppDetailView` | T-W11, T-W12 | ⏳ Now unblocked (T-W11 done); awaits T-W12 completion. |
 | **T-W15** | macOS integration + WKWebView bridge | none | ⏳ BLOCKED (depends on iOS side stability first; soft block). |
 | **T-W17** | Review detail view (header + reply composer UX) | T-W04 | ⏳ BLOCKED. |
 | **T-W18** | Rating histogram + filter UI | T-W04 | ⏳ BLOCKED. |
@@ -56,9 +64,9 @@
 
 ## Now-unblocked tasks (situational awareness)
 
-- **T-W09** (DONE — merged as `216329f`; commits `9c76869`, `629ee8a`).
-- **T-W10** (DONE — awaiting merge; commits `b667283`, `536bd6d`).
-- **T-W11** (no critical blockers; T-W01 soft dep DONE) — **NEXT POINTER**.
+- **T-W11** (DONE — merged as `7186f9c`; commits `7159bac`, `36fb14a`).
+- **T-W12** (all deps done: T-W03, T-W04, T-W05, T-W11) — **NEXT POINTER**.
+- **T-W13** (T-W11 done; awaits T-W12 for full unblock).
 - **T-W15** (no deps; soft-blocked pending iOS stability).
 - **T-W17**, **T-W18** (T-W04 DONE).
 - **T-W30** (no deps; late-stage, soft-blocked).
@@ -352,6 +360,50 @@ Merged into `experiment/windows` as `0786ae8`. Wave 0 close-out complete.
 
 ---
 
+## Wave 2 Development — T-W11 (DONE)
+
+### T-W11 (branch `feat/T-W11-windows-app-detail-model`)
+**Task:** Build `WindowsAppDetailModel` — the data model for the App Detail screen (Feature 2), providing offline-first load with optional live refresh, header data exposure, static sections structure, and mutable toggles (favorite/archive) with revert-on-failure.
+
+**Deliverables:**
+- `StackConnectWindowsApp/Sources/WindowsAppCore/Apps/WindowsAppDetailModel.swift` — Main model with `@MainActor` concurrency protection:
+  - `loadAppIfNeeded()` — cached load from SwiftData with optional live-sync refresh (offline-first pattern).
+  - Header data exposure: icon, name, bundle ID, colored status (via `AppStoreState.color`), version.
+  - Static sections data structure: General, App Store, Analytics, TestFlight (4 sections, each with multiple options).
+  - `toggleFavorite()` — optimistic local mutation with revert-on-failure and `syncError` clearing at start.
+  - `archiveApp()` — optimistic local mutation with revert-on-failure and `syncError` clearing at start.
+  - Guarded `os.Logger` diagnostics in catch handlers using `#if canImport(os)`, matching `RootView.swift` pattern.
+- `StackConnectWindowsApp/Tests/WindowsAppCoreTests/WindowsAppDetailModelTests.swift` — 15 comprehensive test cases covering:
+  - Initial load (empty cache, fetch from API).
+  - Merge on live-sync (updated fields, archived state).
+  - Favorite toggle (local + remote sync, revert on error).
+  - Archive workflow (local + remote).
+  - Cached metadata preservation.
+  - Loading state transitions.
+
+**Commits:**
+- `7159bac` (feat) — Initial `WindowsAppDetailModel` and 15 test cases (624 insertions).
+- `36fb14a` (fix: staff code review corrections) — Consolidate `buildSections()` to single assignment at end of load (SF1); add guarded os.Logger diagnostics (SF2); clear `syncError` at start of `toggleFavorite`/`archiveApp` before optimistic mutation (SF3); rename `error` → `syncError` for consistency (Nit-1); reduce `buildSections()` visibility from public to internal (Nit-2).
+
+**Gate verdicts:**
+- **Staff Review:** APPROVE (after 1 correction round).
+  - **SF1:** `buildSections()` was called multiple times in load flow — consolidated to single assignment at the end for clarity.
+  - **SF2:** Catch handlers lacked proper logging — added guarded `os.Logger.warning` diagnostics under `#if canImport(os)`, matching `RootView.swift` pattern (since `Log.print` unavailable in Windows target).
+  - **SF3:** `toggleFavorite()` and `archiveApp()` did not clear prior `syncError` before optimistic mutation — added `syncError = nil` at start to prevent stale error display.
+  - **Nit-1:** Error variable inconsistently named — renamed `error` → `syncError` for consistency with reference models.
+  - **Nit-2:** `buildSections()` exposed as public — reduced to internal (only used internally).
+- **QA:** PASS (full WindowsAppCore suite 214 tests, 0 failures; 15 new WindowsAppDetailModelTests passing; map to TC-014/015/020/021/022 + edge cases; UI/nav test cases TC-016..019 deferred to T-W12).
+- **PO:** ACCEPTED (all 7 model-slice acceptance criteria met: AC-W06-1/2/3/4, AC-W09-1/2/3).
+- **Corrections:** 1 (fix: 36fb14a).
+
+**Files created:**
+- NEW: `WindowsAppDetailModel.swift` (301 lines after correction).
+- NEW: `WindowsAppDetailModelTests.swift` (391 lines after correction).
+
+**Merged into `experiment/windows`:** Merge commit `7186f9c` (--no-ff merge strategy). Branch `feat/T-W11-windows-app-detail-model` deleted.
+
+---
+
 ## Resume checklist — ONE TASK PER SESSION (serial)
 
 The four agents from the old parallel run all finished green. The remaining work is now done **one task per session** (the new skill model). **Do exactly one task per session**, in this order, then update this handover and end the session.
@@ -370,7 +422,8 @@ The four agents from the old parallel run all finished green. The remaining work
 | 8 | **T-W08** | ✅ DONE (merged `bae0951`) | Wave 1 — `WindowsUsersTabView` (Users tab content) |
 | 9 | **T-W09** | ✅ DONE (merged `216329f`) | Wave 1 — Comprehensive unit tests for `WindowsAppsListModel` |
 | 10 | **T-W10** | ✅ DONE (merged `ad04ce6`) | Wave 1 — Wire `.appsList`/`.archivedApps` in RootView + navigate from accounts row |
-| 11 | **T-W11** | ⏳ NEXT (pending) | Wave 2 — `WindowsAppDetailModel` (F2 App Detail; soft dep T-W01 DONE) |
+| 11 | **T-W11** | ✅ DONE (merged `7186f9c`) | Wave 2 — `WindowsAppDetailModel` (F2 App Detail); 1 correction (buildSections, logging, syncError) |
+| 12 | **T-W12** | ⏳ NEXT (pending) | Wave 2 — `WindowsAppDetailView` (F2 UI layer; deps T-W03/T-W04/T-W11 all done) |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
