@@ -89,7 +89,7 @@ final class WindowsAppDetailModelTests: XCTestCase {
         XCTAssertEqual(loaded?.versionString, "2.1.0")
         XCTAssertEqual(loaded?.iconUrl, "https://example.com/icon.png")
         XCTAssertFalse(sut.uiState.isLoading)
-        XCTAssertNil(sut.uiState.error)
+        XCTAssertNil(sut.uiState.syncError)
     }
 
     // MARK: - TC-015: uiState.sections contains the 4 sections with correct option titles
@@ -223,8 +223,8 @@ final class WindowsAppDetailModelTests: XCTestCase {
         XCTAssertEqual(sut.uiState.app?.name, "MyApp")
         XCTAssertEqual(sut.uiState.app?.bundleId, "com.example")
         // Error is set
-        XCTAssertNotNil(sut.uiState.error)
-        XCTAssertEqual(sut.uiState.error, "Sync failed. Showing cached data.")
+        XCTAssertNotNil(sut.uiState.syncError)
+        XCTAssertEqual(sut.uiState.syncError, "Sync failed. Showing cached data.")
         // Loading is done
         XCTAssertFalse(sut.uiState.isLoading)
     }
@@ -245,8 +245,8 @@ final class WindowsAppDetailModelTests: XCTestCase {
 
         // Reverted: still not favorite
         XCTAssertFalse(sut.uiState.app!.isFavorite)
-        XCTAssertNotNil(sut.uiState.error)
-        XCTAssertEqual(sut.uiState.error, "Failed to update favorite.")
+        XCTAssertNotNil(sut.uiState.syncError)
+        XCTAssertEqual(sut.uiState.syncError, "Failed to update favorite.")
     }
 
     // MARK: - Archive revert-on-failure
@@ -264,8 +264,8 @@ final class WindowsAppDetailModelTests: XCTestCase {
 
         // Reverted: not archived, error set
         XCTAssertFalse(sut.uiState.app!.isArchived)
-        XCTAssertNotNil(sut.uiState.error)
-        XCTAssertEqual(sut.uiState.error, "Failed to archive app.")
+        XCTAssertNotNil(sut.uiState.syncError)
+        XCTAssertEqual(sut.uiState.syncError, "Failed to archive app.")
     }
 
     // MARK: - Live refresh merges remote data with cached local flags
@@ -297,7 +297,7 @@ final class WindowsAppDetailModelTests: XCTestCase {
 
         XCTAssertNil(sut.uiState.app)
         XCTAssertFalse(sut.uiState.isLoading)
-        XCTAssertNil(sut.uiState.error)
+        XCTAssertNil(sut.uiState.syncError)
         // Sections should be empty since no app was loaded
         XCTAssertTrue(sut.uiState.sections.isEmpty)
     }
@@ -326,7 +326,7 @@ final class WindowsAppDetailModelTests: XCTestCase {
 
         // No change
         XCTAssertFalse(sut.uiState.app!.isFavorite)
-        XCTAssertNil(sut.uiState.error)
+        XCTAssertNil(sut.uiState.syncError)
     }
 
     // MARK: - archiveApp on mismatched appId is a no-op
@@ -342,6 +342,50 @@ final class WindowsAppDetailModelTests: XCTestCase {
 
         // No change
         XCTAssertFalse(sut.uiState.app!.isArchived)
-        XCTAssertNil(sut.uiState.error)
+        XCTAssertNil(sut.uiState.syncError)
+    }
+
+    // MARK: - SF3: toggleFavorite clears pre-existing syncError
+
+    func testToggleFavoriteClearsPreExistingSyncError() async {
+        let app = makeApp()
+        await seedApp(app)
+
+        let sut = makeSUT(withConnection: false)
+        await sut.loadAppIfNeeded(appId: "app-001", accountId: accountId)
+
+        // Cause a syncError via a failed favorite toggle
+        storage.shouldThrowOnSave = true
+        await sut.toggleFavorite(appId: "app-001")
+        XCTAssertNotNil(sut.uiState.syncError, "Precondition: syncError should be set")
+        storage.shouldThrowOnSave = false
+
+        // When: toggleFavorite is called again (successfully this time)
+        await sut.toggleFavorite(appId: "app-001")
+
+        // Then: syncError is cleared
+        XCTAssertNil(sut.uiState.syncError, "toggleFavorite should clear pre-existing syncError")
+    }
+
+    // MARK: - SF3: archiveApp clears pre-existing syncError
+
+    func testArchiveAppClearsPreExistingSyncError() async {
+        let app = makeApp()
+        await seedApp(app)
+
+        let sut = makeSUT(withConnection: false)
+        await sut.loadAppIfNeeded(appId: "app-001", accountId: accountId)
+
+        // Cause a syncError via a failed favorite toggle
+        storage.shouldThrowOnSave = true
+        await sut.toggleFavorite(appId: "app-001")
+        XCTAssertNotNil(sut.uiState.syncError, "Precondition: syncError should be set")
+        storage.shouldThrowOnSave = false
+
+        // When: archiveApp is called (successfully)
+        await sut.archiveApp(appId: "app-001", accountId: accountId)
+
+        // Then: syncError is cleared
+        XCTAssertNil(sut.uiState.syncError, "archiveApp should clear pre-existing syncError")
     }
 }

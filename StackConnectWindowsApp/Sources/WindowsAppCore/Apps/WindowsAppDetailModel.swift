@@ -3,6 +3,10 @@ import SwiftCrossUI
 import StackHomeCore
 import StackProtocols
 
+#if canImport(os)
+import os
+#endif
+
 // T-W11 — App Detail model for the Windows GUI.
 //
 // SwiftCrossUI `ObservableObject` adapter that provides offline-first loading,
@@ -61,7 +65,7 @@ public struct AppDetailUiState {
 
     /// Non-nil when a live refresh or mutation fails; the cached detail
     /// remains visible.
-    public var error: String? = nil
+    public var syncError: String? = nil
 
     /// The option sections for the App Detail screen.
     public var sections: [AppDetailSection] = []
@@ -69,12 +73,12 @@ public struct AppDetailUiState {
     public init(
         app: AppModel? = nil,
         isLoading: Bool = false,
-        error: String? = nil,
+        syncError: String? = nil,
         sections: [AppDetailSection] = []
     ) {
         self.app = app
         self.isLoading = isLoading
-        self.error = error
+        self.syncError = syncError
         self.sections = sections
     }
 }
@@ -117,14 +121,14 @@ public final class WindowsAppDetailModel: SwiftCrossUI.ObservableObject {
     /// then optionally live-refreshes from the API.
     ///
     /// On live-refresh failure, the cached app remains shown and
-    /// `uiState.error` is set (the cached app is never cleared).
+    /// `uiState.syncError` is set (the cached app is never cleared).
     ///
     /// - Parameters:
     ///   - appId: The App Store app identifier.
     ///   - accountId: The account this app belongs to.
     public func loadAppIfNeeded(appId: String, accountId: String) async {
         uiState.isLoading = true
-        uiState.error = nil
+        uiState.syncError = nil
 
         // Phase 1: Load from cache
         var cachedApp: AppModel?
@@ -138,11 +142,14 @@ public final class WindowsAppDetailModel: SwiftCrossUI.ObservableObject {
 
         if let cachedApp {
             uiState.app = cachedApp
-            uiState.sections = Self.buildSections()
         }
 
         // If no connection, we are done after cache.
         guard let connection else {
+            // Assign sections once when an app was found (sections accompany a non-nil app).
+            if uiState.app != nil {
+                uiState.sections = Self.buildSections()
+            }
             uiState.isLoading = false
             return
         }
@@ -169,16 +176,23 @@ public final class WindowsAppDetailModel: SwiftCrossUI.ObservableObject {
                     platformVersions: cachedApp?.platformVersions
                 )
                 uiState.app = merged
-                uiState.sections = Self.buildSections()
 
                 // Persist the merged model
                 try await storage.save(merged, id: "\(accountId).\(merged.id)")
             }
         } catch {
             // On live-refresh failure, keep the cached app shown and set error.
-            uiState.error = "Sync failed. Showing cached data."
+            #if canImport(os)
+            Logger(subsystem: "com.stackconnect.windows", category: "AppDetail")
+                .warning("[AppDetail] Live refresh failed for app \(appId, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            #endif
+            uiState.syncError = "Sync failed. Showing cached data."
         }
 
+        // Assign sections exactly once at the end when an app is available.
+        if uiState.app != nil {
+            uiState.sections = Self.buildSections()
+        }
         uiState.isLoading = false
     }
 
@@ -186,9 +200,10 @@ public final class WindowsAppDetailModel: SwiftCrossUI.ObservableObject {
 
     /// Toggles the `isFavorite` flag for the given app. The change is applied
     /// optimistically to the UI, then persisted. On persistence failure the
-    /// change is reverted and `uiState.error` is set.
+    /// change is reverted and `uiState.syncError` is set.
     public func toggleFavorite(appId: String) async {
         guard var app = uiState.app, app.id == appId else { return }
+        uiState.syncError = nil
 
         // Optimistic update
         app.isFavorite.toggle()
@@ -198,9 +213,13 @@ public final class WindowsAppDetailModel: SwiftCrossUI.ObservableObject {
             try await storage.save(app, id: "\(app.accountId).\(app.id)")
         } catch {
             // Revert on failure
+            #if canImport(os)
+            Logger(subsystem: "com.stackconnect.windows", category: "AppDetail")
+                .warning("[AppDetail] Failed to persist favorite toggle for app \(appId, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            #endif
             app.isFavorite.toggle()
             uiState.app = app
-            uiState.error = "Failed to update favorite."
+            uiState.syncError = "Failed to update favorite."
         }
     }
 
@@ -208,13 +227,14 @@ public final class WindowsAppDetailModel: SwiftCrossUI.ObservableObject {
 
     /// Sets `isArchived = true` on the app, persists the change. On
     /// persistence failure the optimistic change is reverted and
-    /// `uiState.error` is set.
+    /// `uiState.syncError` is set.
     ///
     /// The confirmation screen and pop-back navigation are the view's
     /// concern (T-W12); the model just performs the archive + persistence
     /// and exposes the `isArchived` state.
     public func archiveApp(appId: String, accountId: String) async {
         guard var app = uiState.app, app.id == appId else { return }
+        uiState.syncError = nil
 
         // Optimistic update
         app.isArchived = true
@@ -224,9 +244,13 @@ public final class WindowsAppDetailModel: SwiftCrossUI.ObservableObject {
             try await storage.save(app, id: "\(accountId).\(app.id)")
         } catch {
             // Revert on failure
+            #if canImport(os)
+            Logger(subsystem: "com.stackconnect.windows", category: "AppDetail")
+                .warning("[AppDetail] Failed to persist archive for app \(appId, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            #endif
             app.isArchived = false
             uiState.app = app
-            uiState.error = "Failed to archive app."
+            uiState.syncError = "Failed to archive app."
         }
     }
 
@@ -246,7 +270,7 @@ public final class WindowsAppDetailModel: SwiftCrossUI.ObservableObject {
     /// - "TestFlight" (leaf section, no sub-options)
     ///
     /// Only "Ratings and Reviews" is functional; all others are coming-soon.
-    public static func buildSections() -> [AppDetailSection] {
+    static func buildSections() -> [AppDetailSection] {
         [
             AppDetailSection(
                 title: "General",
