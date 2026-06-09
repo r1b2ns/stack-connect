@@ -7,7 +7,7 @@ import WindowsAppCore
 import os
 #endif
 
-// Phase 4 · Block F · T-F16 / T-W03 / T-W06 — the window's root view + route switch.
+// Phase 4 · Block F · T-F16 / T-W03 / T-W06 / T-W07 — the window's root view + route switch.
 //
 // Owns the observed state (the core adapter and the navigation coordinator) and
 // renders the current screen: Home when the route stack is empty, otherwise the
@@ -27,6 +27,11 @@ import os
 // app name from the shared model). The model is lazily created when the
 // `.appsList` route is first pushed and reused by `.archiveAppConfirm` via the
 // `AppsListModelCache` reference-type holder.
+//
+// T-W07: `.archivedApps` and `.restoreAppConfirm` are wired to real views.
+// The archived apps model is shared between the archived list and the restore
+// confirmation screen via the `ArchivedAppsModelCache` reference-type holder,
+// mirroring the `AppsListModelCache` pattern from T-W06.
 
 /// Reference-type holder for the shared `WindowsAppsListModel`. Using a class
 /// avoids mutating `@State` during the view body: the `@State` reference stays
@@ -50,6 +55,28 @@ private final class AppsListModelCache {
     }
 }
 
+/// Reference-type holder for the shared `WindowsArchivedAppsModel`. Mirrors
+/// `AppsListModelCache` — the `@State` reference stays stable, and the class's
+/// `var model` is mutated freely (T-W07).
+@MainActor
+private final class ArchivedAppsModelCache {
+    var model: WindowsArchivedAppsModel?
+
+    /// Returns the cached model if it matches the requested account id; otherwise
+    /// creates a new one, caches it, and returns it.
+    func resolve(accountId: String, storage: PersistentStorable) -> WindowsArchivedAppsModel {
+        if let existing = model, existing.accountId == accountId {
+            return existing
+        }
+        let newModel = WindowsArchivedAppsModel(
+            accountId: accountId,
+            storage: storage
+        )
+        model = newModel
+        return newModel
+    }
+}
+
 struct RootView: View {
     /// Observed core adapter (state + intents).
     @State private var model: WindowsHomeModel
@@ -60,6 +87,11 @@ struct RootView: View {
     /// alive across route transitions (appsList -> archiveAppConfirm -> appsList)
     /// so both screens share the same state (T-W06).
     @State private var appsListCache = AppsListModelCache()
+
+    /// Shared archived apps model cache. Mirrors `appsListCache` — the model is
+    /// lazily created when the `.archivedApps` route is first pushed and reused
+    /// by `.restoreAppConfirm` via the same reference-type holder (T-W07).
+    @State private var archivedAppsCache = ArchivedAppsModelCache()
 
     init(model: WindowsHomeModel) {
         _model = State(wrappedValue: model)
@@ -156,8 +188,18 @@ struct RootView: View {
                 )
             )
 
-        case .archivedApps:
-            WindowsPlaceholderView(title: "Archived Apps") { coordinator.pop() }
+        // T-W07: real archived apps screen. The model is lazily created and
+        // cached in `archivedAppsCache` so the restore confirmation view
+        // (pushed on top) shares the same instance.
+        case .archivedApps(let accountId):
+            WindowsArchivedAppsView(
+                accountId: accountId,
+                coordinator: coordinator,
+                model: archivedAppsCache.resolve(
+                    accountId: accountId,
+                    storage: model.storage
+                )
+            )
 
         case .appDetail:
             WindowsPlaceholderView(title: "App Detail") { coordinator.pop() }
@@ -194,6 +236,25 @@ struct RootView: View {
                 let _ = Self.logArchiveAppConfirmFallback()
                 WindowsPlaceholderView(title: "Archive App") { coordinator.pop() }
             }
+
+        // T-W07: restore confirmation screen. Uses the shared
+        // `archivedAppsCache` so confirm/cancel mutate the same state as
+        // the archived apps list (TC-072: pushed route, not an alert/sheet).
+        case .restoreAppConfirm(let appId, let appName):
+            if let archivedModel = archivedAppsCache.model {
+                WindowsRestoreAppConfirmView(
+                    appId: appId,
+                    appName: appName,
+                    model: archivedModel,
+                    coordinator: coordinator
+                )
+            } else {
+                // Safety fallback: should never happen because restoreAppConfirm
+                // is only pushed from the archived apps list (which creates the
+                // model).
+                let _ = Self.logRestoreAppConfirmFallback()
+                WindowsPlaceholderView(title: "Restore App") { coordinator.pop() }
+            }
         }
     }
 
@@ -208,6 +269,19 @@ struct RootView: View {
             subsystem: "com.stackconnect.windows",
             category: "RootView"
         ).warning("[RootView] .archiveAppConfirm pushed without an AppsListModelCache model; rendering safe fallback")
+        #endif
+    }
+
+    /// Logs a warning when the restore-app-confirm route is rendered without a
+    /// cached `WindowsArchivedAppsModel`. Called via `let _ =` inside
+    /// `@ViewBuilder` so the log fires as a side-effect before the fallback
+    /// placeholder renders.
+    private static func logRestoreAppConfirmFallback() {
+        #if canImport(os)
+        Logger(
+            subsystem: "com.stackconnect.windows",
+            category: "RootView"
+        ).warning("[RootView] .restoreAppConfirm pushed without an ArchivedAppsModelCache model; rendering safe fallback")
         #endif
     }
 }
