@@ -225,6 +225,9 @@ struct WindowsAccountsListView: View {
                 } else {
                     // T-W10: non-expired account — navigate to the Apps List
                     // for this account (design §2.3: Accounts list → appsList).
+                    // Nit-2: clear any lingering expired-account error banner
+                    // before navigating, so it does not persist on back.
+                    expiredTappedId = nil
                     coordinator.push(.appsList(
                         accountId: account.id,
                         accountName: account.name
