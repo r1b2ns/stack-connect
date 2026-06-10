@@ -5,7 +5,7 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Wave 3 COMPLETE (F3 Ratings & Reviews: T-W15..T-W22 all done). Wave 4 IN PROGRESS (F4 Review Detail) — **T-W27** (S Wire .reviewDetail/.replyComposer/.deleteReplyConfirm routes in RootView) DONE; next: **T-W28** (M Enhance WindowsRecentReviewsWidgetView + widgetsSlot).
+**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Wave 3 COMPLETE (F3 Ratings & Reviews: T-W15..T-W22 all done). Wave 4 IN PROGRESS (F4 Review Detail) — **T-W28** (M Enhance WindowsRecentReviewsWidgetView + widgetsSlot) DONE; next: **T-W29** (M Verify auto-refresh + add manual refresh button).
 
 **Snapshot:**
 - **Wave 0 (DONE):** All four foundation tasks merged into `experiment/windows`: T-W01 (`7ef4617`), T-W02 (`eba9738`), T-W03 (`1bf59ab`), T-W04 (`0786ae8`).
@@ -110,14 +110,12 @@
 - **T-W27** (S, T-W03+T-W23+T-W24+T-W25 done) — ✅ DONE (merged `4823d83`; feature commit `86568aa`); Wire `.reviewDetail`/`.replyComposer`/`.deleteReplyConfirm` in RootView (F4 Review Detail route wiring verification, critical path); Staff Code Review APPROVE (0 corrections; verification-only + comment consolidation—the three review-reply routes were already wired incrementally in T-W23/T-W24/T-W25; T-W27 statically verified the wiring via exhaustive switch, correct param flow, create-vs-edit cache identity via existingResponseId, and documented it in RootView.swift comments); QA PASS 339/339 tests, 0 failures; PO ACCEPTED (all 9 ACs: AC-W12-1/2/3, AC-W13-1..9, AC-W14-1/2 satisfied; route-push test cases TC-028/033/035/037 verified); 0 corrections.
 
 **Wave 4 (IN PROGRESS — F4 Review Detail) — now unblocked (next to schedule):**
-- **T-W28** (M, deps T-W03+T-W04+T-W19+T-W23 all DONE) — **NEXT POINTER** — Enhance WindowsRecentReviewsWidgetView + widgetsSlot for real navigation (review→detail, see-more→ratings, app→detail) + count badge (now unblocked; critical path).
+- **T-W28** (M, deps T-W03+T-W04+T-W19+T-W23 all DONE) — ✅ DONE (merged `c6e7ea8`; feature commit `50bf1f3`); Enhance WindowsRecentReviewsWidgetView + widgetsSlot for real navigation (review→detail, see-more→ratings, app→detail) + count badge (critical path). Gate verdicts: Staff Review APPROVE / QA PASS (339/339) / PO ACCEPTED. 0 corrections. Most navigation already wired in T-W03/T-C2; T-W28 added trailing ">" chevron to each row (AC-W15-2). All 7 ACs (AC-W15-1..4, AC-W16-1..3) verified Met. No new tests (executable-package UI has no unit-test surface). Full WindowsAppCore suite remains 339 tests, 0 failures. NOTE: multi-account aggregation/cap-5/date-desc integration tests scoped to T-W30.
+- **T-W29** (M, deps T-W28 DONE) — **NEXT POINTER** — Verify auto-refresh via HomeViewModel.loadDashboard() + add manual refresh button (now unblocked; critical path).
 - **T-W30** (S, no deps) — Integration test multi-account aggregation (unblocked).
 - **T-W31** (M, T-W05 done) — Re-import merge preserving flags (unblocked).
 
-**Still blocked:**
-- **T-W29** (M, deps T-W28) — Final critical-path tests (blocked by T-W28).
-
-**Critical path:** T-W01 → T-W16 → T-W19 → T-W22 → T-W23 → T-W24 → T-W25 → T-W26 → T-W27 → **T-W28** (**NEXT**) → T-W29.
+**Critical path:** T-W01 → T-W16 → T-W19 → T-W22 → T-W23 → T-W24 → T-W25 → T-W26 → T-W27 → T-W28 → **T-W29** (**NEXT**).
 
 Worktrees live under `/Users/rubensmachion/repos/Open/stack-connect-worktrees/feat-<task>/`.
 
@@ -1047,7 +1045,8 @@ The four agents from the old parallel run all finished green. The remaining work
 | 25 | **T-W25** | ✅ DONE (merged `6f0da00`) | Wave 4 — `WindowsDeleteReplyConfirmView` (S, critical path); commit `f128292`; Staff Code Review APPROVE (0 blocking corrections; 1 SHOULD-FIX: connection wiring limitation shared by F4 caches, tracked later; 2 cosmetic nits); QA PASS 309/309 tests; PO ACCEPTED (AC-W13-7/8/9 + cancel); 0 corrections |
 | 26 | **T-W26** | ✅ DONE (merged `9f8deeb`) | Wave 4 — Unit tests for `WindowsReviewDetailModel` (M, critical path); commits `60fcf0f` → `9f8deeb`; Staff Code Review APPROVE (0 corrections); QA PASS 339/339 tests; PO ACCEPTED; 0 corrections. Created `WindowsReviewDetailModelTests.swift` (30 new tests, +886 lines); added `MockClipboardProvider`. No production code modified. |
 | 27 | **T-W27** | ✅ DONE (merged `4823d83`) | Wave 4 — Wire `.reviewDetail`/`.replyComposer`/`.deleteReplyConfirm` in RootView (S, critical path); feature commit `86568aa`; Staff Code Review APPROVE (0 corrections); QA PASS 339/339 tests; PO ACCEPTED (all 9 ACs: AC-W12-1/2/3, AC-W13-1..9, AC-W14-1/2); 0 corrections. Verification-only + comment consolidation—three review-reply routes pre-wired incrementally in T-W23/T-W24/T-W25; T-W27 statically verified wiring (exhaustive switch, correct param flow, cache identity via existingResponseId) and documented in RootView. |
-| 28 | **T-W28** | ⏳ NEXT (unblocked) | Wave 4 — Enhance WindowsRecentReviewsWidgetView + widgetsSlot for real navigation (review→detail, see-more→ratings, app→detail) + count badge (M, critical path, deps T-W03+T-W04+T-W19+T-W23 DONE) |
+| 28 | **T-W28** | ✅ DONE (merged `c6e7ea8`) | Wave 4 — Enhance WindowsRecentReviewsWidgetView + widgetsSlot (M, critical path); feature commit `50bf1f3`; Staff Code Review APPROVE (0 corrections); QA PASS 339/339 tests; PO ACCEPTED (all 7 ACs: AC-W15-1/2/3/4, AC-W16-1/2/3); 0 corrections. Most navigation and count badge already wired in T-W03/T-C2. T-W28's delta: trailing ">" chevron on each Recent Reviews row (AC-W15-2), consistent with WindowsWidgetAppRow style. Full WindowsAppCore suite remains 339 tests, 0 failures. No production logic changes beyond chevron; no new tests (executable-package UI has no unit-test surface). NOTE: multi-account aggregation/cap-5/date-desc integration tests scoped to T-W30. |
+| 29 | **T-W29** | ⏳ NEXT (unblocked) | Wave 4 — Verify auto-refresh via HomeViewModel.loadDashboard() + add manual refresh button (M, critical path, deps T-W28 DONE) |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
