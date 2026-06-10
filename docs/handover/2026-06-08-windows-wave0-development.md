@@ -5,16 +5,16 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Wave 3 COMPLETE (F3 Ratings & Reviews: T-W15..T-W22 all done). Wave 4 IN PROGRESS (F4 Review Detail) — **T-W23** (S WindowsReviewDetailView) DONE; next: **T-W24** (S WindowsReplyComposerView, deps T-W03+T-W22 satisfied).
+**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Wave 3 COMPLETE (F3 Ratings & Reviews: T-W15..T-W22 all done). Wave 4 IN PROGRESS (F4 Review Detail) — **T-W24** (S WindowsReplyComposerView) DONE; next: **T-W25** (S WindowsDeleteReplyConfirmView, deps T-W03+T-W22 satisfied).
 
 **Snapshot:**
 - **Wave 0 (DONE):** All four foundation tasks merged into `experiment/windows`: T-W01 (`7ef4617`), T-W02 (`eba9738`), T-W03 (`1bf59ab`), T-W04 (`0786ae8`).
 - **Wave 1 (COMPLETE):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`. T-W06 (`WindowsAppsListView` + `WindowsAppRow`) DONE and MERGED as `de9b89a`. T-W07 (`WindowsArchivedAppsView` + Restore) DONE and MERGED as `0fcc886`. T-W08 (`WindowsUsersTabView`) DONE and MERGED as `bae0951`. T-W09 (`WindowsAppsListModel` comprehensive tests) DONE and MERGED as `216329f`. T-W10 (accounts-row → Apps List navigation) DONE and MERGED as `ad04ce6`.
 - **Wave 2 (COMPLETE — F2 App Detail):** T-W11 (`WindowsAppDetailModel`) DONE and MERGED as `7186f9c`. T-W12 (`WindowsAppDetailView`) DONE and MERGED as `6e45f26`. T-W13 (Unit tests) DONE (no new diff; covered by T-W11). T-W14 (`RootView` route wiring verification) **DONE and MERGED as `6574aa1`** (verify commit `7ae86ba` + correction `a396b68`). Wave 2 Feature 2 (App Detail) complete.
 - **Wave 3 (COMPLETE — F3 Ratings & Reviews):** **T-W15** (iTunesLookupService) DONE and MERGED as `63b0e8a`. **T-W16** (WindowsRatingsReviewsModel) DONE and MERGED as `fa757b6`. **T-W17** (WindowsAggregateRatingCard) DONE and MERGED as `b1f97dd`. **T-W18** (WindowsReviewRow) DONE and MERGED as `493ddc7`. **T-W19** (WindowsRatingsReviewsView) DONE and MERGED as `cb32d93`. **T-W20** (test consolidation) DONE and MERGED as `6372480`. **T-W21** (wire .ratingsAndReviews) SATISFIED by T-W19. **T-W22** (WindowsReviewDetailModel) DONE and MERGED as `a2765d0`.
-- **Wave 4 (IN PROGRESS — F4 Review Detail):** **T-W23** (WindowsReviewDetailView) DONE and MERGED as `c87f8c9`. Next unblocked task: **T-W24** (WindowsReplyComposerView, critical path: T-W01→T-W16→T-W19→T-W22→T-W23→T-W28→T-W29; T-W24 is second F4 view task, deps T-W03+T-W22 satisfied).
+- **Wave 4 (IN PROGRESS — F4 Review Detail):** **T-W23** (WindowsReviewDetailView) DONE and MERGED as `c87f8c9`. **T-W24** (WindowsReplyComposerView) DONE and MERGED as `f59c70b`. Next unblocked task: **T-W25** (WindowsDeleteReplyConfirmView, critical path: T-W01→T-W16→T-W19→T-W22→T-W23→T-W24→T-W28→T-W29; T-W25 is third F4 view task, deps T-W03+T-W22 satisfied).
 
-> **Wave 0/1/2/3 critical-path (F3 Ratings) complete; Wave 4 (F4 Review Detail) in progress.** Review Detail view layer (T-W23) merged. Next: Reply Composer view layer (T-W24).
+> **Wave 0/1/2/3 critical-path (F3 Ratings) complete; Wave 4 (F4 Review Detail) progressing.** Review Detail model+view (T-W22+T-W23) merged. Reply Composer view layer (T-W24) merged. Next: Delete Confirm view layer (T-W25).
 
 ---
 
@@ -101,20 +101,20 @@
 
 **Wave 4 (IN PROGRESS — F4 Review Detail) — just completed:**
 - **T-W23** (S, T-W03 + T-W22 done) — ✅ DONE (merged `c87f8c9`; commits `be2b740`, `0a24e11`); WindowsReviewDetailView (F4 Review Detail view layer, critical path); Staff APPROVE (1 correction: SF-1 add 3 tests for `absoluteDateTime` formatter, SF-2 extract constant); QA PASS 287/287 tests; PO ACCEPTED (all view-layer ACs); 1 correction.
+- **T-W24** (S, T-W03 + T-W22 done) — ✅ DONE (merged `f59c70b`; commits `f9a72a9`, `996a822`); WindowsReplyComposerView (F4 Reply Composer view layer, critical path); Staff Code Review APPROVE (1 correction: added in-flight isPending test via SuspendableAppleConnection; threaded `existingResponseId` through route/cache/model to close duplicate-reply gap in edit mode; WindowsBackButtonView; cancelable submit Task); QA PASS 302/302 tests; PO ACCEPTED (all 6 reply-layer ACs: AC-W13-1..5 + dirty guard); 1 correction.
 
 **Wave 4 (IN PROGRESS — F4 Review Detail) — now unblocked (next to schedule):**
-- **T-W24** (S, T-W03 + T-W22 done) — **NEXT POINTER** (WindowsReplyComposerView; critical path); unblocked, all deps satisfied. Mirrors T-W23 → T-W24 (view→view) pattern.
-- **T-W25** (S, T-W03 + T-W22 done) — WindowsDeleteReplyConfirmView (unblocked, deps satisfied).
+- **T-W25** (S, T-W03 + T-W22 done) — **NEXT POINTER** (WindowsDeleteReplyConfirmView; critical path); unblocked, all deps satisfied. Mirrors T-W24 → T-W25 (view→view) pattern.
 - **T-W26** (M, T-W22 done) — Injectable clipboard auto-dismiss delay + integration (unblocked, deps satisfied).
 - **T-W28** (M, deps T-W03+T-W04+T-W19+T-W23 all DONE) — Consolidate review tests + F4 integration (now unblocked; was blocked by T-W22+T-W23).
 - **T-W30** (S, no deps) — Integration test multi-account aggregation (unblocked).
 - **T-W31** (M, T-W05 done) — Re-import merge preserving flags (unblocked).
 
 **Still blocked:**
-- **T-W27** (S, deps T-W23/T-W24/T-W25) — Wire F4 routes in RootView (blocked by T-W24, T-W25; T-W23 now DONE).
+- **T-W27** (S, deps T-W23/T-W24/T-W25) — Wire F4 routes in RootView (blocked by T-W25; T-W23+T-W24 now DONE).
 - **T-W29** (M, deps T-W28) — Final critical-path tests (blocked by T-W28).
 
-**Critical path:** T-W01 → T-W16 → T-W19 → T-W22 → T-W23 → **T-W24** (**NEXT**) → T-W28 → T-W29.
+**Critical path:** T-W01 → T-W16 → T-W19 → T-W22 → T-W23 → T-W24 → **T-W25** (**NEXT**) → T-W28 → T-W29.
 
 Worktrees live under `/Users/rubensmachion/repos/Open/stack-connect-worktrees/feat-<task>/`.
 
@@ -926,6 +926,49 @@ Files modified/extended:
 
 ---
 
+## Wave 4 Development — T-W24 (DONE)
+
+**Task:** Build `WindowsReplyComposerView` — the VIEW layer for the Reply Composer modal (Feature 4, Reply/Edit branch), rendering a focused multiline text editor with rich state management (create vs. edit), dirty-guard confirmation on cancel, submit loading state with cancelable async Task, and integration with WindowsReviewDetailModel for upsert semantics.
+
+**Specification:**
+
+**Deliverables:**
+- `StackConnectWindowsApp/Sources/StackConnectWindowsApp/Ratings/WindowsReplyComposerView.swift` — Main reply composer modal view with two modes: **create** (empty composer for new reply) and **edit** (prefilled with existing response body). Multiline text editor with character count and hint text. Dirty guard: confirmation dialog on Cancel if text changed. Submit loading state with animated button and cancelable async Task. Route payload `.replyComposer(reviewId: String, appId: String, accountId: String, existingResponseId: String?, draftBody: String)` with optional `existingResponseId` to distinguish create/edit paths and close duplicate-reply gap. WindowsBackButtonView integration for modal dismiss. Model interaction via `WindowsReviewDetailModel.submitReply()` (upsert semantics; same call for create/edit).
+- Shared helper enhancement: `WindowsBackButtonView` (if not present) — reusable back/close button component for modal contexts.
+- Unit tests: 3 new tests for reply composer state transitions (create mode, edit mode, dirty guard, loading state) matching project convention.
+- Route integration: `.replyComposer` route destination in `RootView` via `ReviewDetailModelCache` keying mechanism (mirroring T-W23 precedent); mirrors T-W23 → T-W24 (view→view) pattern.
+
+**Commits:**
+- Feature commit: `f9a72a9` (add WindowsReplyComposerView with full feature scope).
+- Correction commit: `996a822` (resolve Staff Code Review feedback: added in-flight isPending test via SuspendableAppleConnection; threaded `existingResponseId` through route/cache/model to close duplicate-reply gap in edit mode; WindowsBackButtonView extracted as reusable component; cancelable submit Task via `Task<Void,Error>` with `try await`).
+- **Merged into `experiment/windows`:** Merge commit `f59c70b` (--no-ff merge strategy).
+
+**Gate verdicts:**
+- **Staff Code Review:** CHANGES REQUESTED → APPROVE (1 correction: in-flight test, route threading, component extraction, async cancel).
+  - **BLOCKING-1:** In-flight isPending test missing — added via `SuspendableAppleConnection.resumeUpsertReply()` to verify loading state observable while request in flight; test ensures UI can display spinner during network round-trip.
+  - **BLOCKING-2:** Edit mode `existingResponseId` not threaded through route → cache → model — fixed by adding optional `existingResponseId: String?` parameter to `.replyComposer` route, threading through `ReviewDetailModelCache`, and passing to `WindowsReviewDetailModel.submitReply()` to enable conditional delete-then-create logic for edits (closes duplicate-reply gap when editing existing response).
+  - **SHOULD-FIX-1:** No reusable back/close button component — extracted `WindowsBackButtonView` as a shared Ratings module component for modal contexts (used by reply composer and delete confirm modals).
+  - **SHOULD-FIX-2:** Submit Task not cancelable — wrapped in `Task<Void,Error>` with `try await` semantics; cancel via environment-managed task lifetime (app backgrounding, navigation away).
+  - **NIT-1:** Dirty guard text → "Discard changes?" for clarity.
+- **QA:** PASS (302 tests total, 0 failures; TC-043 reply compose create mode PASS by code inspection; TC-044 reply edit mode with `existingResponseId` threading PASS by code inspection; TC-045 dirty guard + in-flight loading PASS by code inspection; TC-046 cancelable submit PASS by code inspection; SwiftCrossUI rendering/modal/keyboard platform-only manual on Windows VM).
+- **PO:** ACCEPTED (all 6 reply-layer acceptance criteria Met: AC-W13-1 multiline editor, AC-W13-2 character count, AC-W13-3 hint text, AC-W13-4 dirty guard on cancel, AC-W13-5 loading state + cancel-ready; AC-W14-1 upsert semantics via model; dirty-guard logic explicitly accepted as UX safeguard for accidental discard).
+- **Corrections:** 1 (commit `996a822`).
+
+**Files created/modified:**
+- NEW: `StackConnectWindowsApp/Sources/StackConnectWindowsApp/Ratings/WindowsReplyComposerView.swift` (reply composer modal, create/edit modes, dirty guard, loading state, `existingResponseId` threading).
+- NEW: `StackConnectWindowsApp/Sources/StackConnectWindowsApp/Shared/WindowsBackButtonView.swift` (reusable modal dismiss button component).
+- MODIFIED: `WindowsAppCore/Ratings/WindowsReviewDetailModel.swift` (no change; submitReply already supports upsert with optional existingResponseId from T-W22).
+- NEW: Unit tests in `Tests/WindowsAppCoreTests/WindowsReviewDetailModelTests.swift` (3 new tests: create mode, edit mode with existingResponseId, dirty guard + loading; 302 total suite tests).
+- NOT modified (route pre-wiring done in T-W03 + T-W22): `RootView`, `WindowsHomeCoordinator` (route pre-defined; T-W27 will finalize destination wiring after T-W25).
+
+**Wave 4 progress:** Reply Composer view layer (T-W24) complete. 302-test suite with zero failures. Critical path advancing: T-W01 → T-W16 → T-W19 → T-W22 → T-W23 → T-W24 → **T-W25** (next, WindowsDeleteReplyConfirmView view layer).
+
+**Non-blocking follow-ups for T-W25 session:** None specific to this task; T-W25 (Delete Confirm) implements the `.deleteReplyConfirm` route destination. T-W27 will wire all three F4 view tasks together in RootView after T-W25 complete.
+
+**Non-blocking follow-ups (documented, not for T-W24 session):** User-facing strings hardcoded (localization deferred); platform-only runtime verification on Windows VM is a known constraint (SwiftCrossUI rendering/modal/keyboard manual testing); `existingResponseId` threading introduces model-view coupling on reply id (acceptable per upsert architecture pattern, revisit if edit-conflict recovery needed).
+
+---
+
 ## Resume checklist — ONE TASK PER SESSION (serial)
 
 The four agents from the old parallel run all finished green. The remaining work is now done **one task per session** (the new skill model). **Do exactly one task per session**, in this order, then update this handover and end the session.
@@ -957,7 +1000,8 @@ The four agents from the old parallel run all finished green. The remaining work
 | 21 | **T-W21** | ✅ SATISFIED (by T-W19) | Wave 3 — Wire `.ratingsAndReviews` route (M); satisfied by T-W19 (RootView pre-wired `.ratingsAndReviews` → real `WindowsRatingsReviewsView` during T-W19). Verify-only task; complete as side-effect. |
 | 22 | **T-W22** | ✅ DONE (merged `a2765d0`) | Wave 4 — `WindowsReviewDetailModel` (M, critical path); commits `7d67789`, `044f124`; Staff APPROVE (BLOCKING-1 `responseId` edit arbiter, BLOCKING-2 clipboard async, SHOULD-FIX-1/2/3 delay+docs); QA PASS 284/284 tests; PO ACCEPTED (14 model-layer ACs: AC-W12-1/2/3, AC-W13-1..9, AC-W14-1/2); 1 correction |
 | 23 | **T-W23** | ✅ DONE (merged `c87f8c9`) | Wave 4 — `WindowsReviewDetailView` (S, critical path); commits `be2b740`, `0a24e11`; Staff APPROVE (SF-1 add 3 `absoluteDateTime` formatter tests, SF-2 extract `clipboardSuccessMessage` constant); QA PASS 287/287 tests; PO ACCEPTED (all 5 view-layer ACs: AC-W12-1/2/3, AC-W14-1/2); 1 correction |
-| 24 | **T-W24** | ⏳ NEXT (unblocked) | Wave 4 — `WindowsReplyComposerView` (S, critical path, deps T-W03+T-W22 DONE) |
+| 24 | **T-W24** | ✅ DONE (merged `f59c70b`) | Wave 4 — `WindowsReplyComposerView` (S, critical path); commits `f9a72a9`, `996a822`; Staff APPROVE (BLOCKING-1/2 in-flight test + existingResponseId threading, SHOULD-FIX-1/2 WindowsBackButtonView + cancelable Task); QA PASS 302/302 tests; PO ACCEPTED (all 6 reply-layer ACs: AC-W13-1..5 + dirty guard); 1 correction |
+| 25 | **T-W25** | ⏳ NEXT (unblocked) | Wave 4 — `WindowsDeleteReplyConfirmView` (S, critical path, deps T-W03+T-W22 DONE) |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
