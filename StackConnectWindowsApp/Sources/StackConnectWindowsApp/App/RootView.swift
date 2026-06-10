@@ -40,8 +40,8 @@ import os
 // T-W08: the Users tab on the Apps List screen is wired to a real
 // `WindowsUsersListModel` + `WindowsUsersTabView`. The users model is lazily
 // created and cached in `UsersListModelCache`, mirroring the apps/archived
-// model caches. No `connection` is passed for now; the live-connection
-// injection lands with the account-level sync integration.
+// model caches. A live `connection` is now injected per account via
+// `makeConnection(accountId:)` so the Users tab fetches from the API.
 //
 // T-W12: `.appDetail` and `.archiveAppDetailConfirm` are wired to real views.
 // The app detail model is shared between the detail and the archive-from-detail
@@ -77,13 +77,18 @@ private final class AppsListModelCache {
 
     /// Returns the cached model if it matches the requested account id; otherwise
     /// creates a new one, caches it, and returns it.
-    func resolve(accountId: String, storage: PersistentStorable) -> WindowsAppsListModel {
+    func resolve(
+        accountId: String,
+        storage: PersistentStorable,
+        connection: AppleConnectionProtocol?
+    ) -> WindowsAppsListModel {
         if let existing = model, existing.accountId == accountId {
             return existing
         }
         let newModel = WindowsAppsListModel(
             accountId: accountId,
-            storage: storage
+            storage: storage,
+            connection: connection
         )
         model = newModel
         return newModel
@@ -99,13 +104,18 @@ private final class ArchivedAppsModelCache {
 
     /// Returns the cached model if it matches the requested account id; otherwise
     /// creates a new one, caches it, and returns it.
-    func resolve(accountId: String, storage: PersistentStorable) -> WindowsArchivedAppsModel {
+    func resolve(
+        accountId: String,
+        storage: PersistentStorable,
+        connection: AppleConnectionProtocol?
+    ) -> WindowsArchivedAppsModel {
         if let existing = model, existing.accountId == accountId {
             return existing
         }
         let newModel = WindowsArchivedAppsModel(
             accountId: accountId,
-            storage: storage
+            storage: storage,
+            connection: connection
         )
         model = newModel
         return newModel
@@ -122,12 +132,16 @@ private final class UsersListModelCache {
 
     /// Returns the cached model if it matches the requested account id; otherwise
     /// creates a new one, caches it, and returns it.
-    func resolve(accountId: String) -> WindowsUsersListModel {
+    func resolve(
+        accountId: String,
+        connection: AppleConnectionProtocol?
+    ) -> WindowsUsersListModel {
         if let existing = model, existing.accountId == accountId {
             return existing
         }
         let newModel = WindowsUsersListModel(
-            accountId: accountId
+            accountId: accountId,
+            connection: connection
         )
         model = newModel
         return newModel
@@ -147,11 +161,16 @@ private final class AppDetailModelCache {
 
     /// Returns the cached model if it matches the requested app+account ids;
     /// otherwise creates a new one, caches it, and returns it.
-    func resolve(appId: String, accountId: String, storage: PersistentStorable) -> WindowsAppDetailModel {
+    func resolve(
+        appId: String,
+        accountId: String,
+        storage: PersistentStorable,
+        connection: AppleConnectionProtocol?
+    ) -> WindowsAppDetailModel {
         if let existing = model, cachedAppId == appId, cachedAccountId == accountId {
             return existing
         }
-        let newModel = WindowsAppDetailModel(storage: storage)
+        let newModel = WindowsAppDetailModel(storage: storage, connection: connection)
         model = newModel
         cachedAppId = appId
         cachedAccountId = accountId
@@ -180,14 +199,19 @@ private final class RatingsReviewsModelCache {
 
     /// Returns the cached model if it matches the requested app+account ids;
     /// otherwise creates a new one, caches it, and returns it.
-    func resolve(appId: String, accountId: String, storage: PersistentStorable) -> WindowsRatingsReviewsModel {
+    func resolve(
+        appId: String,
+        accountId: String,
+        storage: PersistentStorable,
+        connection: AppleConnectionProtocol?
+    ) -> WindowsRatingsReviewsModel {
         if let existing = model, cachedAppId == appId, cachedAccountId == accountId {
             return existing
         }
         let lookupService = ITunesLookupService(storage: storage)
         let newModel = WindowsRatingsReviewsModel(
             storage: storage,
-            connection: nil,
+            connection: connection,
             lookupService: lookupService
         )
         model = newModel
@@ -210,11 +234,16 @@ private final class ReviewDetailModelCache {
 
     /// Returns the cached model if it matches the requested review+account ids;
     /// otherwise creates a new one, caches it, and returns it.
-    func resolve(reviewId: String, accountId: String, storage: PersistentStorable) -> WindowsReviewDetailModel {
+    func resolve(
+        reviewId: String,
+        accountId: String,
+        storage: PersistentStorable,
+        connection: AppleConnectionProtocol?
+    ) -> WindowsReviewDetailModel {
         if let existing = model, cachedReviewId == reviewId, cachedAccountId == accountId {
             return existing
         }
-        let newModel = WindowsReviewDetailModel(storage: storage)
+        let newModel = WindowsReviewDetailModel(storage: storage, connection: connection)
         model = newModel
         cachedReviewId = reviewId
         cachedAccountId = accountId
@@ -246,7 +275,8 @@ private final class ReplyComposerModelCache {
         accountId: String,
         existingReplyBody: String?,
         existingResponseId: String?,
-        storage: PersistentStorable
+        storage: PersistentStorable,
+        connection: AppleConnectionProtocol?
     ) -> WindowsReplyComposerModel {
         if let existing = model,
            cachedReviewId == reviewId,
@@ -260,7 +290,8 @@ private final class ReplyComposerModelCache {
             accountId: accountId,
             existingReplyBody: existingReplyBody,
             existingResponseId: existingResponseId,
-            storage: storage
+            storage: storage,
+            connection: connection
         )
         model = newModel
         cachedReviewId = reviewId
@@ -290,7 +321,8 @@ private final class DeleteReplyConfirmModelCache {
         reviewId: String,
         responseId: String,
         accountId: String,
-        storage: PersistentStorable
+        storage: PersistentStorable,
+        connection: AppleConnectionProtocol?
     ) -> WindowsDeleteReplyConfirmModel {
         if let existing = model,
            cachedReviewId == reviewId,
@@ -302,7 +334,8 @@ private final class DeleteReplyConfirmModelCache {
             reviewId: reviewId,
             responseId: responseId,
             accountId: accountId,
-            storage: storage
+            storage: storage,
+            connection: connection
         )
         model = newModel
         cachedReviewId = reviewId
@@ -360,6 +393,20 @@ struct RootView: View {
     init(model: WindowsHomeModel) {
         _model = State(wrappedValue: model)
         _coordinator = State(wrappedValue: model.coordinator)
+    }
+
+    /// Builds a live App Store Connect connection for the given account by
+    /// loading its stored `AppleCredentials` from the secret store (saved on
+    /// import/creation at key `credentials.<accountId>`). Returns `nil` when the
+    /// account has no Apple credentials (e.g. a Firebase account, or before any
+    /// credentials are stored), in which case the models fall back to their
+    /// offline cache-only behavior — preserving the prior nil-connection path.
+    private func makeConnection(accountId: String) -> AppleConnectionProtocol? {
+        guard let credentials: AppleCredentials =
+            model.secrets.object(forKey: "credentials.\(accountId)") else {
+            return nil
+        }
+        return WindowsAppleConnection(credentials: credentials)
     }
 
     var body: some View {
@@ -449,10 +496,12 @@ struct RootView: View {
                 coordinator: coordinator,
                 model: appsListCache.resolve(
                     accountId: accountId,
-                    storage: model.storage
+                    storage: model.storage,
+                    connection: makeConnection(accountId: accountId)
                 ),
                 usersModel: usersListCache.resolve(
-                    accountId: accountId
+                    accountId: accountId,
+                    connection: makeConnection(accountId: accountId)
                 )
             )
 
@@ -465,7 +514,8 @@ struct RootView: View {
                 coordinator: coordinator,
                 model: archivedAppsCache.resolve(
                     accountId: accountId,
-                    storage: model.storage
+                    storage: model.storage,
+                    connection: makeConnection(accountId: accountId)
                 )
             )
 
@@ -486,7 +536,8 @@ struct RootView: View {
                 model: appDetailCache.resolve(
                     appId: appId,
                     accountId: accountId,
-                    storage: model.storage
+                    storage: model.storage,
+                    connection: makeConnection(accountId: accountId)
                 )
             )
 
@@ -513,9 +564,10 @@ struct RootView: View {
 
         // T-W19: real Ratings & Reviews screen. The model is lazily created
         // and cached in `ratingsReviewsCache` so navigating back and re-entering
-        // reuses the same model (preserving loaded state). No connection on
-        // Windows v1 (reviews come from cache only); the aggregate rating is
-        // fetched live via ITunesLookupService.
+        // reuses the same model (preserving loaded state). A live connection is
+        // injected per account via `makeConnection(accountId:)` so reviews are
+        // fetched from the API; the aggregate rating still comes from
+        // ITunesLookupService.
         case .ratingsAndReviews(let appId, let bundleId, let accountId):
             WindowsRatingsReviewsView(
                 appId: appId,
@@ -525,14 +577,16 @@ struct RootView: View {
                 model: ratingsReviewsCache.resolve(
                     appId: appId,
                     accountId: accountId,
-                    storage: model.storage
+                    storage: model.storage,
+                    connection: makeConnection(accountId: accountId)
                 )
             )
 
         // T-W23 / T-W27 verified: real Review Detail screen. The model is
         // lazily created and cached in `reviewDetailCache` so navigating back
-        // and re-entering reuses the same model (preserving loaded state). No
-        // connection on Windows v1 (review data comes from cache only).
+        // and re-entering reuses the same model (preserving loaded state). A
+        // live connection is injected per account via `makeConnection(accountId:)`
+        // so review data refreshes from the API.
         // Satisfies AC-W12-1/2/3 and AC-W14-1/2 (TC-028).
         case .reviewDetail(let reviewId, let appId, let accountId):
             WindowsReviewDetailView(
@@ -543,16 +597,17 @@ struct RootView: View {
                 model: reviewDetailCache.resolve(
                     reviewId: reviewId,
                     accountId: accountId,
-                    storage: model.storage
+                    storage: model.storage,
+                    connection: makeConnection(accountId: accountId)
                 )
             )
 
         // T-W24 / T-W27 verified: real Reply Composer screen. The model is
         // lazily created and cached in `replyComposerCache`. Supports both
         // create (nil existingReplyBody/existingResponseId, AC-W13-1..4,
-        // TC-033) and edit (pre-populated, AC-W13-5/6, TC-035) flows. No
-        // connection on Windows v1 (reply submission requires a live
-        // connection, which will be wired when account-level sync lands).
+        // TC-033) and edit (pre-populated, AC-W13-5/6, TC-035) flows. A live
+        // connection is injected per account via `makeConnection(accountId:)`
+        // so reply submission posts to the API.
         // The `existingResponseId` is threaded from the route so the model
         // can upsert the correct response without relying solely on cache
         // resolution (AC-W13-3).
@@ -567,7 +622,8 @@ struct RootView: View {
                     accountId: accountId,
                     existingReplyBody: existingReplyBody,
                     existingResponseId: existingResponseId,
-                    storage: model.storage
+                    storage: model.storage,
+                    connection: makeConnection(accountId: accountId)
                 )
             )
 
@@ -575,8 +631,8 @@ struct RootView: View {
         // is lazily created and cached in `deleteReplyConfirmCache`. A new
         // model is created each time the route parameters change (different
         // reviewId, responseId, or accountId). Satisfies AC-W13-7/8/9
-        // (TC-037). No connection on Windows v1 (delete requires a live
-        // connection, which will be wired when account-level sync lands).
+        // (TC-037). A live connection is injected per account via
+        // `makeConnection(accountId:)` so the delete posts to the API.
         case .deleteReplyConfirm(let reviewId, let responseId, let accountId):
             WindowsDeleteReplyConfirmView(
                 reviewId: reviewId,
@@ -587,7 +643,8 @@ struct RootView: View {
                     reviewId: reviewId,
                     responseId: responseId,
                     accountId: accountId,
-                    storage: model.storage
+                    storage: model.storage,
+                    connection: makeConnection(accountId: accountId)
                 )
             )
 

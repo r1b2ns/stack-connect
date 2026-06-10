@@ -22,10 +22,38 @@ actor WindowsAppleConnection: AppleConnectionProtocol {
         self.credentials = credentials
     }
 
+    // MARK: - Request Logging
+
+    /// Cross-platform request log. Uses `print()` (not `os.Logger`) because the
+    /// `os` module is unavailable on Windows Swift, so it is the only sink that
+    /// shows up in the console on every platform this target runs on.
+    private func log(_ message: String) {
+        print("[WindowsAppleConnection] \(message)")
+    }
+
+    /// Wraps a single API call so every request prints a `→` start line, a `←`
+    /// success line (with elapsed milliseconds), and a `✗` line on failure.
+    /// Lets the user see exactly which requests fire and how they resolve.
+    private func perform<R>(_ label: String, _ block: () async throws -> R) async throws -> R {
+        let start = Date()
+        log("→ \(label)")
+        do {
+            let result = try await block()
+            let ms = Int(Date().timeIntervalSince(start) * 1000)
+            log("← \(label) (\(ms)ms)")
+            return result
+        } catch {
+            log("✗ \(label) failed: \(error)")
+            throw error
+        }
+    }
+
     // MARK: - Provider Bootstrap
 
     private func ensureProvider() throws -> APIProvider {
         if let provider { return provider }
+        // Never log the private key — only the public issuer + key identifiers.
+        log("building APIProvider (issuer=\(credentials.issuerID) keyID=\(credentials.privateKeyID))")
         let configuration = try APIConfiguration(
             issuerID: credentials.issuerID,
             privateKeyID: credentials.privateKeyID,
@@ -41,7 +69,9 @@ actor WindowsAppleConnection: AppleConnectionProtocol {
     func validateCredentials() async throws {
         let provider = try ensureProvider()
         let request = APIEndpoint.v1.apps.get(parameters: .init(limit: 1))
-        _ = try await provider.request(request)
+        _ = try await perform("GET /v1/apps (validate, limit 1)") {
+            try await provider.request(request)
+        }
     }
 
     func fetchApps() async throws -> [StackProtocols.AppInfo] {
@@ -49,7 +79,10 @@ actor WindowsAppleConnection: AppleConnectionProtocol {
         let request = APIEndpoint.v1.apps.get(
             parameters: .init(sort: [.minusname], limit: 200)
         )
-        let response = try await provider.request(request)
+        let response = try await perform("GET /v1/apps (limit 200)") {
+            try await provider.request(request)
+        }
+        log("  /v1/apps → \(response.data.count) apps")
 
         return response.data.map { app in
             StackProtocols.AppInfo(
@@ -64,30 +97,34 @@ actor WindowsAppleConnection: AppleConnectionProtocol {
     func fetchUsers() async throws -> [UserModel] {
         let provider = try ensureProvider()
 
-        async let activeResponse = provider.request(
-            APIEndpoint.v1.users.get(
-                parameters: .init(
-                    fieldsUsers: [
-                        .firstName, .lastName, .username,
-                        .roles, .allAppsVisible, .provisioningAllowed
-                    ],
-                    limit: 200
+        async let activeResponse = perform("GET /v1/users (limit 200)") {
+            try await provider.request(
+                APIEndpoint.v1.users.get(
+                    parameters: .init(
+                        fieldsUsers: [
+                            .firstName, .lastName, .username,
+                            .roles, .allAppsVisible, .provisioningAllowed
+                        ],
+                        limit: 200
+                    )
                 )
             )
-        )
+        }
 
-        async let pendingResponse = provider.request(
-            APIEndpoint.v1.userInvitations.get(
-                parameters: .init(
-                    fieldsUserInvitations: [
-                        .firstName, .lastName, .email,
-                        .roles, .allAppsVisible, .provisioningAllowed,
-                        .expirationDate
-                    ],
-                    limit: 200
+        async let pendingResponse = perform("GET /v1/userInvitations (limit 200)") {
+            try await provider.request(
+                APIEndpoint.v1.userInvitations.get(
+                    parameters: .init(
+                        fieldsUserInvitations: [
+                            .firstName, .lastName, .email,
+                            .roles, .allAppsVisible, .provisioningAllowed,
+                            .expirationDate
+                        ],
+                        limit: 200
+                    )
                 )
             )
-        )
+        }
 
         let active = try await activeResponse
         let pending = try await pendingResponse
@@ -157,7 +194,12 @@ actor WindowsAppleConnection: AppleConnectionProtocol {
         // are pagination-ready; the concrete plumbing is the only gap.
         //
         // TODO(T-W02+): implement real cursor-based pagination.
-        let response: CustomerReviewsResponse = try await provider.request(endpoint)
+        let response: CustomerReviewsResponse = try await perform(
+            "GET /v1/apps/\(appId)/customerReviews (limit \(limit))"
+        ) {
+            try await provider.request(endpoint)
+        }
+        log("  customerReviews → \(response.data.count) reviews")
 
         let hasNext = response.links.next != nil
         let nextCursor = response.links.next
@@ -209,7 +251,9 @@ actor WindowsAppleConnection: AppleConnectionProtocol {
         if let existingResponseId {
             let deleteEndpoint = APIEndpoint.v1.customerReviewResponses
                 .id(existingResponseId).delete
-            _ = try await provider.request(deleteEndpoint)
+            _ = try await perform("DELETE /v1/customerReviewResponses/\(existingResponseId)") {
+                try await provider.request(deleteEndpoint)
+            }
         }
 
         let body = CustomerReviewResponseV1CreateRequest(
@@ -223,12 +267,16 @@ actor WindowsAppleConnection: AppleConnectionProtocol {
         )
 
         let endpoint = APIEndpoint.v1.customerReviewResponses.post(body)
-        _ = try await provider.request(endpoint)
+        _ = try await perform("POST /v1/customerReviewResponses (reviewId \(reviewId))") {
+            try await provider.request(endpoint)
+        }
     }
 
     func deleteReply(responseId: String) async throws {
         let provider = try ensureProvider()
         let endpoint = APIEndpoint.v1.customerReviewResponses.id(responseId).delete
-        _ = try await provider.request(endpoint)
+        _ = try await perform("DELETE /v1/customerReviewResponses/\(responseId)") {
+            try await provider.request(endpoint)
+        }
     }
 }
