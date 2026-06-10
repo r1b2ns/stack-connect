@@ -7,7 +7,7 @@ import WindowsAppCore
 import os
 #endif
 
-// Phase 4 · Block F · T-F16 / T-W03 / T-W06 / T-W07 / T-W08 / T-W12 / T-W14 / T-W19 — the window's root view + route switch.
+// Phase 4 · Block F · T-F16 / T-W03 / T-W06 / T-W07 / T-W08 / T-W12 / T-W14 / T-W19 / T-W23 — the window's root view + route switch.
 //
 // Owns the observed state (the core adapter and the navigation coordinator) and
 // renders the current screen: Home when the route stack is empty, otherwise the
@@ -17,7 +17,7 @@ import os
 // T-W03: the Apps & Reviews routes (appsList, archivedApps, appDetail,
 // comingSoon, ratingsAndReviews, reviewDetail, replyComposer,
 // deleteReplyConfirm) are now parameterized per §2.2. Until the real feature
-// views land (T-W23 etc.), remaining routes render a
+// views land (T-W24/T-W25 etc.), remaining routes render a
 // `WindowsPlaceholderView` with the route name/title. The switch remains
 // exhaustive (no `default`) so new routes are compile-safe.
 //
@@ -181,6 +181,31 @@ private final class RatingsReviewsModelCache {
     }
 }
 
+/// Reference-type holder for the shared `WindowsReviewDetailModel`. Mirrors
+/// `AppDetailModelCache` — the `@State` reference stays stable, and the class's
+/// `var model` is mutated freely (T-W23). The model is lazily created when the
+/// `.reviewDetail` route is first pushed and reused if the same review is
+/// navigated to again before the cache is invalidated.
+@MainActor
+private final class ReviewDetailModelCache {
+    private var cachedReviewId: String?
+    private var cachedAccountId: String?
+    var model: WindowsReviewDetailModel?
+
+    /// Returns the cached model if it matches the requested review+account ids;
+    /// otherwise creates a new one, caches it, and returns it.
+    func resolve(reviewId: String, accountId: String, storage: PersistentStorable) -> WindowsReviewDetailModel {
+        if let existing = model, cachedReviewId == reviewId, cachedAccountId == accountId {
+            return existing
+        }
+        let newModel = WindowsReviewDetailModel(storage: storage)
+        model = newModel
+        cachedReviewId = reviewId
+        cachedAccountId = accountId
+        return newModel
+    }
+}
+
 struct RootView: View {
     /// Observed core adapter (state + intents).
     @State private var model: WindowsHomeModel
@@ -210,6 +235,11 @@ struct RootView: View {
     /// Shared ratings & reviews model cache. The model is lazily created when
     /// the `.ratingsAndReviews` route is first pushed (T-W19).
     @State private var ratingsReviewsCache = RatingsReviewsModelCache()
+
+    /// Shared review detail model cache. The model is lazily created when the
+    /// `.reviewDetail` route is first pushed and reused if the same review is
+    /// navigated to again (T-W23).
+    @State private var reviewDetailCache = ReviewDetailModelCache()
 
     init(model: WindowsHomeModel) {
         _model = State(wrappedValue: model)
@@ -383,8 +413,22 @@ struct RootView: View {
                 )
             )
 
-        case .reviewDetail:
-            WindowsPlaceholderView(title: "Review Detail") { coordinator.pop() }
+        // T-W23: real Review Detail screen. The model is lazily created and
+        // cached in `reviewDetailCache` so navigating back and re-entering
+        // reuses the same model (preserving loaded state). No connection on
+        // Windows v1 (review data comes from cache only).
+        case .reviewDetail(let reviewId, let appId, let accountId):
+            WindowsReviewDetailView(
+                reviewId: reviewId,
+                appId: appId,
+                accountId: accountId,
+                coordinator: coordinator,
+                model: reviewDetailCache.resolve(
+                    reviewId: reviewId,
+                    accountId: accountId,
+                    storage: model.storage
+                )
+            )
 
         case .replyComposer:
             WindowsPlaceholderView(title: "Reply Composer") { coordinator.pop() }

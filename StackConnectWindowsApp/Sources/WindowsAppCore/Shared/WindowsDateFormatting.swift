@@ -1,9 +1,9 @@
 import Foundation
 
-// T-W04 — Pure-logic date formatting helpers for the Windows port.
+// T-W04 / T-W23 — Pure-logic date formatting helpers for the Windows port.
 //
-// Provides two formatters consumed by review rows, app detail, and any other
-// screen that needs human-readable dates:
+// Provides three formatters consumed by review rows, review detail, app detail,
+// and any other screen that needs human-readable dates:
 //
 //   1. `relativeDate(_:relativeTo:)` — time-ago string ("just now", "2h ago",
 //      "3d ago", etc.). The `relativeTo` parameter defaults to `Date()` but
@@ -11,7 +11,11 @@ import Foundation
 //
 //   2. `absoluteDate(_:)` — "d MMM yyyy" format (e.g. "21 May 2026").
 //
-// Both are Foundation-pure (no SwiftCrossUI, no UIKit) so they live in
+//   3. `absoluteDateTime(_:)` — "d MMM yyyy 'at' HH:mm" format
+//      (e.g. "21 May 2026 at 12:10"). Added by T-W23 for the Review Detail
+//      screen (AC-W12-1).
+//
+// All are Foundation-pure (no SwiftCrossUI, no UIKit) so they live in
 // `WindowsAppCore` and are fully unit-testable on the macOS host.
 //
 // Note: `RelativeDateTimeFormatter` is Darwin-only; the non-Darwin path uses
@@ -76,5 +80,34 @@ public enum WindowsDateFormatting {
     public static func absoluteDate(_ date: Date, timeZone: TimeZone = .current) -> String {
         absoluteDateFormatter.timeZone = timeZone
         return absoluteDateFormatter.string(from: date)
+    }
+
+    // MARK: - Absolute date + time ("d MMM yyyy 'at' HH:mm")
+
+    /// Cached formatter for `absoluteDateTime(_:timeZone:)`. Configured once
+    /// with `en_US_POSIX` locale and `"d MMM yyyy 'at' HH:mm"` format;
+    /// `timeZone` is set per-call (safe for a single-threaded renderer).
+    /// Added by T-W23 for the Review Detail screen (AC-W12-1).
+    private static let absoluteDateTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "d MMM yyyy 'at' HH:mm"
+        return f
+    }()
+
+    /// Formats a date as "d MMM yyyy at HH:mm" (e.g. "21 May 2026 at 12:10").
+    ///
+    /// Used by the Review Detail screen to display the full review date+time
+    /// (AC-W12-1) and the reply date+time (AC-W12-3).
+    ///
+    /// - Parameters:
+    ///   - date: The date to format.
+    ///   - timeZone: The time zone for formatting. Defaults to `.current`.
+    ///     Pass `TimeZone(identifier: "UTC")!` in tests for deterministic
+    ///     output when the input dates are expressed in UTC.
+    /// - Returns: A string in "d MMM yyyy at HH:mm" format.
+    public static func absoluteDateTime(_ date: Date, timeZone: TimeZone = .current) -> String {
+        absoluteDateTimeFormatter.timeZone = timeZone
+        return absoluteDateTimeFormatter.string(from: date)
     }
 }
