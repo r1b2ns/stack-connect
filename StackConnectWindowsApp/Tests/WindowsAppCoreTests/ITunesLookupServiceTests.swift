@@ -518,4 +518,193 @@ final class ITunesLookupServiceTests: XCTestCase {
         // Network was actually called
         XCTAssertGreaterThan(networking.fetchCallCount, 0)
     }
+
+    // MARK: - T-W20 Gap Coverage: URL Construction (AC-W10-3)
+
+    /// Verifies the service constructs the correct iTunes Lookup URL for each
+    /// storefront: scheme, host, path, and query parameters (bundleId + country).
+    func testURLConstructionContainsBundleIdAndCountry() async {
+        let sut = makeSUT()
+
+        // Seed a single storefront response so the request actually hits the mock
+        seedResponse(bundleId: "com.example.urltest", country: "us", averageRating: 4.0, ratingCount: 100)
+
+        _ = await sut.fetchAggregateRating(bundleId: "com.example.urltest")
+
+        // All fetched URLs should target itunes.apple.com/lookup with the right bundleId
+        let urls = networking.fetchedURLs
+        XCTAssertGreaterThan(urls.count, 0, "Should have made at least one network call")
+
+        for url in urls {
+            XCTAssertEqual(url.scheme, "https", "URL scheme must be https")
+            XCTAssertEqual(url.host, "itunes.apple.com", "URL host must be itunes.apple.com")
+            XCTAssertEqual(url.path, "/lookup", "URL path must be /lookup")
+            XCTAssertTrue(
+                url.absoluteString.contains("bundleId=com.example.urltest"),
+                "URL must contain the bundleId query param: \(url.absoluteString)"
+            )
+            XCTAssertTrue(
+                url.absoluteString.contains("country="),
+                "URL must contain a country query param: \(url.absoluteString)"
+            )
+        }
+
+        // Verify each storefront code appears exactly once in the fetched URLs
+        let fetchedCountries = urls.compactMap { url -> String? in
+            guard let query = url.query else { return nil }
+            let pairs = query.split(separator: "&").map { String($0) }
+            return pairs.first(where: { $0.hasPrefix("country=") })?.replacingOccurrences(of: "country=", with: "")
+        }
+        let uniqueCountries = Set(fetchedCountries)
+        XCTAssertEqual(uniqueCountries.count, ITunesLookupService.appStoreStorefronts.count,
+                       "Should query every storefront exactly once")
+    }
+
+    /// Verifies that the bundleId is percent-encoded when it contains special
+    /// characters, producing a valid URL.
+    func testBundleIdPercentEncodingProducesValidURL() async {
+        let sut = makeSUT()
+
+        // A bundleId with spaces or unusual chars (contrived but exercises the encoding path)
+        let weirdBundleId = "com.example.my app"
+        let encoded = weirdBundleId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? weirdBundleId
+
+        // Seed at least one storefront so we can inspect the URLs
+        let url = "https://itunes.apple.com/lookup?bundleId=\(encoded)&country=us"
+        networking.responses[url] = .success(makeLookupJSON(averageRating: 4.0, ratingCount: 50))
+
+        _ = await sut.fetchAggregateRating(bundleId: weirdBundleId)
+
+        let urls = networking.fetchedURLs
+        XCTAssertGreaterThan(urls.count, 0)
+
+        // Every URL should be parseable (no nil from URL(string:))
+        for fetchedURL in urls {
+            XCTAssertTrue(
+                fetchedURL.absoluteString.contains("bundleId=\(encoded)"),
+                "URL should contain the percent-encoded bundleId"
+            )
+        }
+    }
+
+    // MARK: - T-W20 Gap Coverage: Malformed JSON Handling
+
+    /// Verifies that a storefront returning malformed (non-JSON) data is treated
+    /// as a `.failed` outcome and does not crash the aggregation.
+    func testMalformedJSONDoesNotCrash() async {
+        let sut = makeSUT()
+
+        // Seed all storefronts with garbage data
+        for country in ITunesLookupService.appStoreStorefronts {
+            let url = "https://itunes.apple.com/lookup?bundleId=com.malformed.app&country=\(country)"
+            networking.responses[url] = .success(Data("this is not json".utf8))
+        }
+
+        // Should not crash; storefronts fail to decode and are treated as `.failed`.
+        // Since all requests return data (not throw), they count as HTTP successes
+        // but JSON-decode failures map to `.failed`. If ALL decode-fail => successCount==0
+        // => allStorefrontsFailed => nil result (stale-while-revalidate path, no cache => nil).
+        let result = await sut.fetchAggregateRating(bundleId: "com.malformed.app")
+
+        // The service should gracefully return nil (all storefronts failed to decode).
+        XCTAssertNil(result, "Malformed JSON across all storefronts should yield nil")
+    }
+
+    /// Verifies that a single storefront returning malformed JSON does not
+    /// poison the aggregation from other valid storefronts.
+    func testSingleMalformedStorefrontDoesNotPoisonOthers() async {
+        let sut = makeSUT()
+
+        // US returns valid data
+        seedResponse(bundleId: "com.partial.app", country: "us", averageRating: 4.5, ratingCount: 1000)
+
+        // GB returns malformed JSON
+        let gbURL = "https://itunes.apple.com/lookup?bundleId=com.partial.app&country=gb"
+        networking.responses[gbURL] = .success(Data("not valid json!!!".utf8))
+
+        let result = await sut.fetchAggregateRating(bundleId: "com.partial.app")
+
+        XCTAssertNotNil(result)
+        XCTAssertEqual(result?.storefrontCount, 1, "Only the valid US storefront should contribute")
+        XCTAssertEqual(result?.storefronts.first?.country, "us")
+        XCTAssertEqual(result?.totalCount, 1000)
+    }
+
+    // MARK: - T-W20 Gap Coverage: Partial JSON Fields
+
+    /// Verifies that a storefront response with averageUserRating but missing
+    /// userRatingCount is treated as `.notFound` (not `.found`).
+    func testMissingRatingCountTreatedAsNotFound() async {
+        let sut = makeSUT()
+
+        // Seed all storefronts with a response that has averageUserRating but no userRatingCount
+        for country in ITunesLookupService.appStoreStorefronts {
+            let url = "https://itunes.apple.com/lookup?bundleId=com.partial.fields&country=\(country)"
+            let json = """
+            {"resultCount": 1, "results": [{"averageUserRating": 4.5}]}
+            """
+            networking.responses[url] = .success(Data(json.utf8))
+        }
+
+        let result = await sut.fetchAggregateRating(bundleId: "com.partial.fields")
+
+        // averageUserRating is present but userRatingCount is nil => guard fails => .notFound
+        // All storefronts are .notFound => successCount > 0 but no StorefrontRating entries
+        // => computeWeightedAverage returns nil => zero-rating aggregate
+        XCTAssertNotNil(result, "Partial fields should not cause nil; storefronts responded successfully")
+        XCTAssertEqual(result?.averageRating, 0, "No valid rating data => zero average")
+        XCTAssertEqual(result?.totalCount, 0)
+    }
+
+    /// Verifies that a storefront response with userRatingCount but missing
+    /// averageUserRating is treated as `.notFound`.
+    func testMissingAverageRatingTreatedAsNotFound() async {
+        let sut = makeSUT()
+
+        for country in ITunesLookupService.appStoreStorefronts {
+            let url = "https://itunes.apple.com/lookup?bundleId=com.partial.avg&country=\(country)"
+            let json = """
+            {"resultCount": 1, "results": [{"userRatingCount": 500}]}
+            """
+            networking.responses[url] = .success(Data(json.utf8))
+        }
+
+        let result = await sut.fetchAggregateRating(bundleId: "com.partial.avg")
+
+        XCTAssertNotNil(result)
+        XCTAssertEqual(result?.averageRating, 0)
+        XCTAssertEqual(result?.totalCount, 0)
+    }
+
+    // MARK: - T-W20 Gap Coverage: BundleId Cache Isolation (AC-W10-3)
+
+    /// Verifies that different bundleIds produce independent cache entries,
+    /// confirming aggregate rating reflects the selected app (AC-W10-3).
+    func testDifferentBundleIdsHaveIndependentCaches() async {
+        let sut = makeSUT()
+
+        // App A: high rating
+        seedResponse(bundleId: "com.app.alpha", country: "us", averageRating: 4.9, ratingCount: 5000)
+        // App B: low rating
+        seedResponse(bundleId: "com.app.beta", country: "us", averageRating: 2.1, ratingCount: 300)
+
+        let resultA = await sut.fetchAggregateRating(bundleId: "com.app.alpha")
+        let resultB = await sut.fetchAggregateRating(bundleId: "com.app.beta")
+
+        XCTAssertNotNil(resultA)
+        XCTAssertNotNil(resultB)
+        XCTAssertEqual(resultA?.totalCount, 5000)
+        XCTAssertEqual(resultB?.totalCount, 300)
+
+        // Now fetch A again -- should come from cache, not network
+        let callCountBefore = networking.fetchCallCount
+        let resultA2 = await sut.fetchAggregateRating(bundleId: "com.app.alpha")
+        XCTAssertEqual(resultA2?.totalCount, 5000, "Cached App A result should be returned")
+        XCTAssertEqual(networking.fetchCallCount, callCountBefore,
+                       "App A should hit cache, not trigger new network calls")
+
+        // Fetch B again -- also from cache
+        let resultB2 = await sut.fetchAggregateRating(bundleId: "com.app.beta")
+        XCTAssertEqual(resultB2?.totalCount, 300, "Cached App B result should be independent from App A")
+    }
 }
