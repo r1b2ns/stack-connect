@@ -2,10 +2,10 @@ import Foundation
 import SwiftCrossUI
 import StackHomeCore
 
-// Phase 4 · B1b-2 · T-B4 / T-B5 — the Home content shell (design §2.4).
+// Phase 4 · B1b-2 · T-B4 / T-B5 / T-W29 — the Home content shell (design §2.4).
 //
 // A ScrollView + VStack (content capped ~860px) laying out, top to bottom:
-//   1. toolbar row (T-B3)
+//   1. toolbar row (T-B3, T-W29: + Refresh button for US-W17)
 //   2. sync banner slot (shown while syncing)
 //   3. provider cards grid (T-B5 — real radius-8 tinted cards in a manual
 //      2-column grid + the Settings cell; see WindowsProviderCardView.swift)
@@ -66,12 +66,22 @@ struct WindowsHomeView: View {
 
     /// The toolbar row, width-aware via a scoped reader that resolves the
     /// responsive tier driving the action-label length (design §2.9).
+    ///
+    /// T-W29 (US-W17 AC-W17-2): the `onRefresh` closure triggers a full
+    /// `loadDashboard()` reload. The async call is wrapped in a `Task` so the
+    /// button handler stays synchronous (matching the pattern in
+    /// `WindowsAppsListView`, `WindowsArchivedAppsView`, etc.). The core's
+    /// `isLoading` flag is flipped true/false by `loadDashboard()`, and the
+    /// existing `loadingSlot` (ProgressView + "Loading…") reacts to it
+    /// automatically — no additional state management needed.
     private var toolbarSlot: some View {
         GeometryReader { proxy in
             WindowsToolbarView(
                 title: "StackConnect",
                 tier: windowsLayoutTier(availableWidth: proxy.size.width),
                 onSync: { model.triggerSync() },
+                onRefresh: { Task { await model.loadDashboard() } },
+                isRefreshing: model.state.isLoading,
                 onCustomizeWidgets: { coordinator.push(.customizeWidgets) }
             )
         }
