@@ -2,20 +2,25 @@ import Foundation
 import SwiftCrossUI
 import StackHomeCore
 
-// Phase 4 · B1b-2 · T-C2 — the "Recent Reviews" Home widget view (US-007 AC-4,
-// design §2.5). Windows counterpart of the iOS `RecentReviewsWidgetView` in
-// `HomeWidgetViewFactory.swift`: same data (`RecentReviewsWidget.data`,
-// `RecentReviewsWidgetData`, capped at 5 by the core's `load()`), different UI
-// framework.
+// Phase 4 · B1b-2 · T-C2 / T-W28 — the "Recent Reviews" Home widget view
+// (US-007 AC-4, design §2.5). Windows counterpart of the iOS
+// `RecentReviewsWidgetView` in `HomeWidgetViewFactory.swift`: same data
+// (`RecentReviewsWidget.data`, `RecentReviewsWidgetData`, capped at 5 by the
+// core's `load()`), different UI framework.
 //
 // Renders, inside its own radius-8 card:
 //   • header: 💬 glyph + bold "Recent Reviews" + "(count)" + Spacer.
 //   • while loading → "Loading…" row (AC-5).
 //   • no reviews    → "Reviews will appear after the next sync" row.
 //   • reviews       → one tappable row per review (app name + ★/☆ rating string +
-//                     title + 2-line excerpt + relative date), tapping pushes
-//                     `.reviewDetail` (AC-6); followed by a "See more >" text
-//                     button that pushes `.allReviews` (AC-7).
+//                     title + 2-line excerpt + relative date + trailing ">"
+//                     chevron affordance), tapping pushes `.reviewDetail` (AC-6);
+//                     followed by a "See more >" text button that pushes
+//                     `.allReviews` (AC-7).
+//
+// T-W28: added trailing chevron glyph to each review row (AC-W15-2), consistent
+// with the `WindowsWidgetAppRow` used by the sibling In Review / Awaiting
+// Release widgets.
 //
 // The 5-cap is enforced by the core (`RecentReviewsWidget.maxReviews`); the view
 // renders whatever the data carries. Star glyphs come from the shared core
@@ -69,8 +74,9 @@ struct WindowsRecentReviewsWidgetView: View {
     }
 
     /// A single review row: a 36×36 gray placeholder icon (D4) on the left, then
-    /// the app name, the ★/☆ rating string, the relative date, the title, and a
-    /// 2-line body excerpt.
+    /// the app name, the ★/☆ rating string, the relative date, the title, a
+    /// 2-line body excerpt, and a trailing ">" chevron affordance (T-W28,
+    /// AC-W15-2) matching `WindowsWidgetAppRow`.
     private func reviewRow(_ item: HomeRecentReview) -> some View {
         HStack(spacing: 12) {
             WindowsWidgetPlaceholderIcon()
@@ -105,6 +111,12 @@ struct WindowsRecentReviewsWidgetView: View {
                     }
                 }
             }
+
+            // Trailing chevron affordance (T-W28, AC-W15-2): signals the row is
+            // tappable/navigates to Review Detail. Uses the same ">" glyph and
+            // style as `WindowsWidgetAppRow` (SwiftCrossUI has no SF Symbols).
+            Text(">")
+                .foregroundColor(.gray)
         }
     }
 
