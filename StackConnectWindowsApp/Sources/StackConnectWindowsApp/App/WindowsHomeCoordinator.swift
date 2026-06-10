@@ -55,8 +55,10 @@ enum WindowsRoute: Hashable {
     case reviewDetail(reviewId: String, appId: String, accountId: String)
 
     /// Compose or edit a developer response to a review. `existingReplyBody` is
-    /// non-nil when editing an already-published response.
-    case replyComposer(reviewId: String, accountId: String, existingReplyBody: String?)
+    /// non-nil when editing an already-published response. `existingResponseId`
+    /// carries the server-assigned response identifier in edit mode so the upsert
+    /// replaces the existing reply instead of creating a duplicate (AC-W13-3).
+    case replyComposer(reviewId: String, accountId: String, existingReplyBody: String?, existingResponseId: String?)
 
     /// Confirmation dialog before deleting a developer response.
     case deleteReplyConfirm(reviewId: String, responseId: String, accountId: String)

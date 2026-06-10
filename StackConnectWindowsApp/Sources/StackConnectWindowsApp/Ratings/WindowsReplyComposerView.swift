@@ -74,6 +74,12 @@ struct WindowsReplyComposerView: View {
     /// Whether the inline discard confirmation is showing.
     @State private var showDiscardConfirmation: Bool = false
 
+    /// Managed task for the submit operation. Storing the handle prevents
+    /// fire-and-forget leaks and allows cancellation if the view disappears
+    /// or the user navigates away. Matches the managed-Task pattern from
+    /// sibling views (SHOULD-FIX #4).
+    @State private var submitTask: Task<Void, Never>?
+
     init(
         reviewId: String,
         accountId: String,
@@ -111,17 +117,12 @@ struct WindowsReplyComposerView: View {
 
     // MARK: - Toolbar (back + title)
 
-    /// Header: "< Back" on the left, title below.
+    /// Header: shared "< Back" component on the left, title below.
     /// Back triggers dirty guard if editor has unsaved changes.
     @ViewBuilder
     private func buildToolbar() -> some View {
         VStack(spacing: 12) {
-            HStack {
-                Button("< Back") {
-                    handleBack()
-                }
-                Spacer()
-            }
+            WindowsBackButtonView(onBack: { handleBack() })
             HStack {
                 Text(existingReplyBody != nil ? "Edit Reply" : "Write a Reply")
                     .font(.title2)
@@ -224,12 +225,14 @@ struct WindowsReplyComposerView: View {
     // MARK: - Submit Section
 
     /// Submit button with loading indicator. Disabled when empty or pending
-    /// (AC-W13-1/2).
+    /// (AC-W13-1/2). The Task is stored in `submitTask` so it can be cancelled
+    /// and does not leak (SHOULD-FIX #4).
     @ViewBuilder
     private func buildSubmitSection() -> some View {
         HStack(spacing: 12) {
             Button("Submit") {
-                Task {
+                submitTask?.cancel()
+                submitTask = Task {
                     await model.submitReply(responseBody: model.text)
                 }
             }

@@ -231,12 +231,10 @@ final class WindowsReplyComposerModelTests: XCTestCase {
         XCTAssertTrue(sut.canSubmit, "Non-empty text should enable submit")
     }
 
-    /// canSubmit should be false while isPending is true, even if text is
-    /// non-empty (AC-W13-2 corollary).
-    func testCanSubmit_falseWhilePending() async throws {
-        // Arrange: seed review and use a suspendable approach by checking
-        // state after submit completes (the isPending toggle is synchronous
-        // in the model's flow).
+    /// After a successful submit completes, isPending is cleared and canSubmit
+    /// reflects the text state (non-empty -> true). This is a post-completion
+    /// check, not an in-flight check.
+    func testCanSubmit_trueAfterSuccessfulSubmitCompletes() async throws {
         try await seedReview(id: "review-001")
         let sut = makeSUTForCreate()
         sut.text = "Some reply"
@@ -249,6 +247,50 @@ final class WindowsReplyComposerModelTests: XCTestCase {
         await sut.submitReply(responseBody: sut.text)
         XCTAssertFalse(sut.isPending)
         XCTAssertTrue(sut.canSubmit, "canSubmit should be true after pending clears")
+    }
+
+    /// AC-W13-2: While submitReply is in flight, isPending must be true and
+    /// canSubmit must be false. Uses SuspendableAppleConnection to pause the
+    /// upsertReply call and inspect mid-flight state before resuming.
+    func testIsPendingTrueAndCanSubmitFalseWhileSubmitInFlight() async throws {
+        // Arrange: seed a review, use suspendable connection
+        try await seedReview(id: "review-001")
+        let suspendable = SuspendableAppleConnection()
+        addTeardownBlock { @MainActor [suspendable] in
+            suspendable.resumeIfPending()
+        }
+        let sut = WindowsReplyComposerModel(
+            reviewId: "review-001",
+            accountId: "account-001",
+            existingReplyBody: nil,
+            existingResponseId: nil,
+            storage: storage,
+            connection: suspendable
+        )
+        sut.text = "In-flight test reply"
+
+        // Pre-conditions
+        XCTAssertFalse(sut.isPending, "isPending should start false")
+        XCTAssertTrue(sut.canSubmit, "canSubmit should start true with non-empty text")
+
+        // Act: kick off submitReply concurrently
+        let submitTask = Task { await sut.submitReply(responseBody: sut.text) }
+
+        // Wait until upsertReply is actually in-flight
+        await suspendable.waitForUpsertReplyCall()
+
+        // Assert: mid-flight state
+        XCTAssertTrue(sut.isPending, "isPending must be true while submit is in flight")
+        XCTAssertFalse(sut.canSubmit, "canSubmit must be false while isPending is true")
+        XCTAssertFalse(sut.didSucceed, "didSucceed should still be false mid-flight")
+
+        // Resume the connection so submitReply completes
+        suspendable.resumeUpsertReply(with: .success(()))
+        await submitTask.value
+
+        // Post-completion: isPending cleared, didSucceed set
+        XCTAssertFalse(sut.isPending, "isPending should be false after completion")
+        XCTAssertTrue(sut.didSucceed, "didSucceed should be true after successful submit")
     }
 
     // MARK: - isDirty: Tracks Changes
@@ -358,5 +400,105 @@ final class WindowsReplyComposerModelTests: XCTestCase {
         XCTAssertEqual(connection.lastUpsertReplyExistingResponseId, "response-from-cache",
                        "Should use responseId resolved from cache")
         XCTAssertTrue(sut.didSucceed)
+    }
+
+    // MARK: - Explicit existingResponseId via init (AC-W13-3, Blocking #2)
+
+    /// Edit mode where the explicit existingResponseId is provided via init.
+    /// The upsert must be called with that exact responseId, closing the
+    /// duplicate-reply path (AC-W13-3).
+    func testEditWithExplicitResponseId_usesItForUpsert() async throws {
+        try await seedReview(id: "review-001")
+        let sut = WindowsReplyComposerModel(
+            reviewId: "review-001",
+            accountId: "account-001",
+            existingReplyBody: "Existing body",
+            existingResponseId: "explicit-response-id",
+            storage: storage,
+            connection: connection
+        )
+
+        await sut.submitReply(responseBody: "Updated reply")
+
+        XCTAssertEqual(connection.upsertReplyCallCount, 1)
+        XCTAssertEqual(connection.lastUpsertReplyExistingResponseId, "explicit-response-id",
+                       "Upsert should use the explicit responseId from init, not resolve from cache")
+        XCTAssertTrue(sut.didSucceed)
+    }
+
+    /// Edit mode where the explicit init existingResponseId is nil but the
+    /// storage cache HAS a responseId. The fallback should resolve and the
+    /// upsert should use the cached responseId.
+    func testEditWithNilExplicitId_fallsBackToCacheResponseId() async throws {
+        // Seed a review with a responseId in cache.
+        try await seedReview(
+            id: "review-001",
+            responseId: "cached-response-id",
+            responseBody: "Cached body"
+        )
+
+        // Create model WITHOUT explicit responseId.
+        let sut = WindowsReplyComposerModel(
+            reviewId: "review-001",
+            accountId: "account-001",
+            existingReplyBody: "Cached body",
+            existingResponseId: nil,
+            storage: storage,
+            connection: connection
+        )
+
+        await sut.submitReply(responseBody: "Edited via fallback")
+
+        XCTAssertEqual(connection.upsertReplyCallCount, 1)
+        XCTAssertEqual(connection.lastUpsertReplyExistingResponseId, "cached-response-id",
+                       "Upsert should fall back to cached responseId when init value is nil")
+        XCTAssertTrue(sut.didSucceed)
+    }
+
+    /// Create mode (no explicit id, no cached id). The upsert must be called
+    /// with nil existingResponseId.
+    func testCreateMode_upsertCalledWithNilResponseId() async throws {
+        // Seed a review WITHOUT a responseId.
+        try await seedReview(id: "review-001")
+
+        let sut = WindowsReplyComposerModel(
+            reviewId: "review-001",
+            accountId: "account-001",
+            existingReplyBody: nil,
+            existingResponseId: nil,
+            storage: storage,
+            connection: connection
+        )
+
+        await sut.submitReply(responseBody: "Brand new reply")
+
+        XCTAssertEqual(connection.upsertReplyCallCount, 1)
+        XCTAssertNil(connection.lastUpsertReplyExistingResponseId,
+                     "Create mode should pass nil existingResponseId to upsert")
+        XCTAssertTrue(sut.didSucceed)
+    }
+
+    /// When an explicit responseId is provided via init, resolveExistingResponseId
+    /// should return it directly without hitting storage.
+    func testResolveExistingResponseId_prefersExplicitOverCache() async throws {
+        // Seed a review with a DIFFERENT responseId in cache.
+        try await seedReview(
+            id: "review-001",
+            responseId: "cached-response-id",
+            responseBody: "Cached body"
+        )
+
+        let sut = WindowsReplyComposerModel(
+            reviewId: "review-001",
+            accountId: "account-001",
+            existingReplyBody: "Cached body",
+            existingResponseId: "explicit-response-id",
+            storage: storage,
+            connection: connection
+        )
+
+        let resolved = await sut.resolveExistingResponseId()
+        XCTAssertEqual(resolved, "explicit-response-id",
+                       "Explicit responseId should take precedence over cache")
     }
 }

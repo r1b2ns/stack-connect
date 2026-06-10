@@ -214,13 +214,17 @@ private final class ReviewDetailModelCache {
 /// `ReviewDetailModelCache` — the `@State` reference stays stable, and the
 /// class's `var model` is mutated freely (T-W24). The model is lazily created
 /// when the `.replyComposer` route is first pushed. A new model is created
-/// each time the route parameters change (different reviewId or existingBody),
-/// so each composer session starts fresh.
+/// each time the route parameters change (different reviewId, existingBody,
+/// or existingResponseId), so each composer session starts fresh. Including
+/// `existingResponseId` in the cache identity ensures a create-vs-edit (or
+/// different responseId) re-resolves a fresh model rather than reusing a stale
+/// one (AC-W13-3).
 @MainActor
 private final class ReplyComposerModelCache {
     private var cachedReviewId: String?
     private var cachedAccountId: String?
     private var cachedExistingBody: String?
+    private var cachedExistingResponseId: String?
     var model: WindowsReplyComposerModel?
 
     /// Returns the cached model if it matches the requested parameters;
@@ -229,24 +233,28 @@ private final class ReplyComposerModelCache {
         reviewId: String,
         accountId: String,
         existingReplyBody: String?,
+        existingResponseId: String?,
         storage: PersistentStorable
     ) -> WindowsReplyComposerModel {
         if let existing = model,
            cachedReviewId == reviewId,
            cachedAccountId == accountId,
-           cachedExistingBody == existingReplyBody {
+           cachedExistingBody == existingReplyBody,
+           cachedExistingResponseId == existingResponseId {
             return existing
         }
         let newModel = WindowsReplyComposerModel(
             reviewId: reviewId,
             accountId: accountId,
             existingReplyBody: existingReplyBody,
+            existingResponseId: existingResponseId,
             storage: storage
         )
         model = newModel
         cachedReviewId = reviewId
         cachedAccountId = accountId
         cachedExistingBody = existingReplyBody
+        cachedExistingResponseId = existingResponseId
         return newModel
     }
 }
@@ -484,8 +492,10 @@ struct RootView: View {
         // cached in `replyComposerCache`. Supports both create (nil
         // existingReplyBody) and edit (pre-populated) flows. No connection on
         // Windows v1 (reply submission requires a live connection, which will
-        // be wired when account-level sync lands).
-        case .replyComposer(let reviewId, let accountId, let existingReplyBody):
+        // be wired when account-level sync lands). The `existingResponseId` is
+        // threaded from the route so the model can upsert the correct response
+        // without relying solely on cache resolution (AC-W13-3).
+        case .replyComposer(let reviewId, let accountId, let existingReplyBody, let existingResponseId):
             WindowsReplyComposerView(
                 reviewId: reviewId,
                 accountId: accountId,
@@ -495,6 +505,7 @@ struct RootView: View {
                     reviewId: reviewId,
                     accountId: accountId,
                     existingReplyBody: existingReplyBody,
+                    existingResponseId: existingResponseId,
                     storage: model.storage
                 )
             )
