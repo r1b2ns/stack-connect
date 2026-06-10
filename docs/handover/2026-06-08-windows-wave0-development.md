@@ -5,14 +5,14 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Wave 3 COMPLETE (F3 Ratings & Reviews: T-W15..T-W22 all done). Wave 4 IN PROGRESS (F4 Review Detail) — **T-W26** (M Unit tests for WindowsReviewDetailModel) DONE; next: **T-W27** (S Wire .reviewDetail/.replyComposer/.deleteReplyConfirm routes in RootView).
+**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Wave 3 COMPLETE (F3 Ratings & Reviews: T-W15..T-W22 all done). Wave 4 IN PROGRESS (F4 Review Detail) — **T-W27** (S Wire .reviewDetail/.replyComposer/.deleteReplyConfirm routes in RootView) DONE; next: **T-W28** (M Enhance WindowsRecentReviewsWidgetView + widgetsSlot).
 
 **Snapshot:**
 - **Wave 0 (DONE):** All four foundation tasks merged into `experiment/windows`: T-W01 (`7ef4617`), T-W02 (`eba9738`), T-W03 (`1bf59ab`), T-W04 (`0786ae8`).
 - **Wave 1 (COMPLETE):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`. T-W06 (`WindowsAppsListView` + `WindowsAppRow`) DONE and MERGED as `de9b89a`. T-W07 (`WindowsArchivedAppsView` + Restore) DONE and MERGED as `0fcc886`. T-W08 (`WindowsUsersTabView`) DONE and MERGED as `bae0951`. T-W09 (`WindowsAppsListModel` comprehensive tests) DONE and MERGED as `216329f`. T-W10 (accounts-row → Apps List navigation) DONE and MERGED as `ad04ce6`.
 - **Wave 2 (COMPLETE — F2 App Detail):** T-W11 (`WindowsAppDetailModel`) DONE and MERGED as `7186f9c`. T-W12 (`WindowsAppDetailView`) DONE and MERGED as `6e45f26`. T-W13 (Unit tests) DONE (no new diff; covered by T-W11). T-W14 (`RootView` route wiring verification) **DONE and MERGED as `6574aa1`** (verify commit `7ae86ba` + correction `a396b68`). Wave 2 Feature 2 (App Detail) complete.
 - **Wave 3 (COMPLETE — F3 Ratings & Reviews):** **T-W15** (iTunesLookupService) DONE and MERGED as `63b0e8a`. **T-W16** (WindowsRatingsReviewsModel) DONE and MERGED as `fa757b6`. **T-W17** (WindowsAggregateRatingCard) DONE and MERGED as `b1f97dd`. **T-W18** (WindowsReviewRow) DONE and MERGED as `493ddc7`. **T-W19** (WindowsRatingsReviewsView) DONE and MERGED as `cb32d93`. **T-W20** (test consolidation) DONE and MERGED as `6372480`. **T-W21** (wire .ratingsAndReviews) SATISFIED by T-W19. **T-W22** (WindowsReviewDetailModel) DONE and MERGED as `a2765d0`.
-- **Wave 4 (IN PROGRESS — F4 Review Detail):** **T-W23** (WindowsReviewDetailView) DONE and MERGED as `c87f8c9`. **T-W24** (WindowsReplyComposerView) DONE and MERGED as `f59c70b`. **T-W25** (WindowsDeleteReplyConfirmView) DONE and MERGED as `6f0da00`. **T-W26** (Unit tests for WindowsReviewDetailModel) DONE and MERGED as `9f8deeb`. Next unblocked task: **T-W27** (wire `.reviewDetail`/`.replyComposer`/`.deleteReplyConfirm` in RootView, critical path: T-W01→T-W16→T-W19→T-W22→T-W23→T-W24→T-W25→T-W26→T-W27→T-W28→T-W29).
+- **Wave 4 (IN PROGRESS — F4 Review Detail):** **T-W23** (WindowsReviewDetailView) DONE and MERGED as `c87f8c9`. **T-W24** (WindowsReplyComposerView) DONE and MERGED as `f59c70b`. **T-W25** (WindowsDeleteReplyConfirmView) DONE and MERGED as `6f0da00`. **T-W26** (Unit tests for WindowsReviewDetailModel) DONE and MERGED as `9f8deeb`. **T-W27** (Wire .reviewDetail/.replyComposer/.deleteReplyConfirm in RootView) DONE and MERGED as `4823d83`. Next unblocked task: **T-W28** (Enhance WindowsRecentReviewsWidgetView + widgetsSlot, critical path: T-W01→T-W16→T-W19→T-W22→T-W23→T-W24→T-W25→T-W26→T-W27→T-W28→T-W29).
 
 > **Wave 0/1/2/3 critical-path (F3 Ratings) complete; Wave 4 (F4 Review Detail) progressing.** Review Detail model+view (T-W22+T-W23) merged. Reply Composer view layer (T-W24) merged. Next: Delete Confirm view layer (T-W25).
 
@@ -72,6 +72,7 @@
 | **T-W21** | Wire .ratingsAndReviews route (M) | T-W19 | ✅ SATISFIED by T-W19 (verify-only). RootView already wires `.ratingsAndReviews` → `WindowsRatingsReviewsView`; mirrors T-W12→T-W14 precedent. Mark complete; critical path next is T-W22. |
 | **T-W22** | `WindowsReviewDetailModel` (M) | T-W01, T-W02 | ✅ DONE — merged `a2765d0`. Commits `7d67789` (feat), `044f124` (staff-review correction). Staff Code Review APPROVE (1 correction: BLOCKING-1 `responseId != nil` edit-mode arbiter for PENDING_PUBLISH atomicity, BLOCKING-2 clipboard auto-dismiss `Task<Void,Error>` + `try await`, SHOULD-FIX-1/2/3 injectable `clipboardAutoDismissDelay`, live-sync docs, placeholder responseId docs). QA PASS 284 tests, 0 failures (TC-032/034/035/036/038/040/041/042/043/044 PASS by inspection; TC-033/037/039 deferred to T-W23/24/25/27). PO ACCEPTED (14 model-layer ACs Met: AC-W12-1/2/3, AC-W13-1..9, AC-W14-1/2). 1 correction. |
 | **T-W23** | `WindowsReviewDetailView` (S) | T-W03, T-W22 | ✅ DONE — merged `c87f8c9`. Commits `be2b740` (feat), `0a24e11` (staff-review correction). Staff Code Review APPROVE (1 correction: SF-1 add 3 unit tests for new `absoluteDateTime` formatter [project coverage convention]; SF-2 extract `clipboardSuccessMessage` constant removing duplicated "Copied!" literal; conditional clearance satisfied). QA PASS (287 tests, 0 failures incl. 3 new formatter tests; TC-032/033/035/037/040/041/042 PASS by code inspection; route payloads verified; SwiftCrossUI rendering/nav/clipboard platform-only deferred). PO ACCEPTED (all view-layer ACs Met: AC-W12-1/2/3, AC-W14-1/2). 1 correction. |
+| **T-W27** | Wire `.reviewDetail`/`.replyComposer`/`.deleteReplyConfirm` in RootView (verify/finalize) | T-W03, T-W23, T-W24, T-W25 | ✅ DONE — merged `4823d83`. Feature commit `86568aa`. Staff Code Review APPROVE (0 corrections). QA PASS (339 tests, 0 failures; route verification code-inspected: `.reviewDetail` maps reviewId/appId/accountId via ReviewDetailModelCache, `.replyComposer` and `.deleteReplyConfirm` routes with param threading verified; TC-028/033/035/037 navigation verified by code review, platform-only UI harness manual on Windows VM). PO ACCEPTED (all 9 ACs Met: AC-W12-1/2/3, AC-W13-1..9, AC-W14-1/2 satisfied; route-push test cases TC-028/033/035/037 verified). 0 corrections. Verify-and-finalize task: T-W23/T-W24/T-W25 pre-landed route destinations; T-W27 verified exhaustive switch in RootView, correct param flow, create-vs-edit cache identity via existingResponseId, and satisfied all F4 review-reply route ACs. |
 | **T-W30** | Integration test multi-account aggregation (S) | none | ⏳ Unblocked (no deps). |
 | **T-W31** | Re-import merge preserving flags (M) | T-W05 | ⏳ Unblocked (T-W05 DONE). |
 
@@ -106,17 +107,17 @@
 **Wave 4 (IN PROGRESS — F4 Review Detail) — just completed:**
 - **T-W25** (S, T-W03 + T-W22 done) — ✅ DONE (merged `6f0da00`; feature commit `f128292`); WindowsDeleteReplyConfirmView (F4 Review Detail delete confirm modal, critical path); Staff Code Review APPROVE (0 blocking corrections, 1 SHOULD-FIX on connection wiring: DeleteReplyConfirmModelCache resolves model with `connection: nil` in Windows v1, same as reviewDetail/replyComposer caches—tracked for later, not T-W25 defect; 2 cosmetic nits on label/spacing); QA PASS 309/309 tests, 0 failures (7/7 unit tests); PO ACCEPTED (AC-W13-7/8/9 and cancel); 0 corrections.
 - **T-W26** (M, T-W22 done) — ✅ DONE (merged `9f8deeb`); Unit tests for WindowsReviewDetailModel (critical path); Staff Code Review APPROVE (0 corrections); QA PASS 339/339 tests, 0 failures (30 new WindowsReviewDetailModelTests); PO ACCEPTED; 0 corrections. Created `WindowsReviewDetailModelTests.swift` (30 new tests, +886 lines); added `MockClipboardProvider` to `TestMocks.swift`. No production code modified. Full `WindowsAppCore` suite now 339 tests, 0 failures. Two non-blocking staff-review should-fixes (vacuous-looking no-connection call-count assertion; wall-clock auto-dismiss timing) recorded as optional follow-ups—QA confirmed no flakes.
+- **T-W27** (S, T-W03+T-W23+T-W24+T-W25 done) — ✅ DONE (merged `4823d83`; feature commit `86568aa`); Wire `.reviewDetail`/`.replyComposer`/`.deleteReplyConfirm` in RootView (F4 Review Detail route wiring verification, critical path); Staff Code Review APPROVE (0 corrections; verification-only + comment consolidation—the three review-reply routes were already wired incrementally in T-W23/T-W24/T-W25; T-W27 statically verified the wiring via exhaustive switch, correct param flow, create-vs-edit cache identity via existingResponseId, and documented it in RootView.swift comments); QA PASS 339/339 tests, 0 failures; PO ACCEPTED (all 9 ACs: AC-W12-1/2/3, AC-W13-1..9, AC-W14-1/2 satisfied; route-push test cases TC-028/033/035/037 verified); 0 corrections.
 
 **Wave 4 (IN PROGRESS — F4 Review Detail) — now unblocked (next to schedule):**
-- **T-W27** (S, deps T-W03+T-W23+T-W24+T-W25 all now DONE) — **NEXT POINTER** — Wire `.reviewDetail`/`.replyComposer`/`.deleteReplyConfirm` in RootView (now unblocked; critical path).
-- **T-W28** (M, deps T-W03+T-W04+T-W19+T-W23 all DONE) — Consolidate review tests + F4 integration (now unblocked).
+- **T-W28** (M, deps T-W03+T-W04+T-W19+T-W23 all DONE) — **NEXT POINTER** — Enhance WindowsRecentReviewsWidgetView + widgetsSlot for real navigation (review→detail, see-more→ratings, app→detail) + count badge (now unblocked; critical path).
 - **T-W30** (S, no deps) — Integration test multi-account aggregation (unblocked).
 - **T-W31** (M, T-W05 done) — Re-import merge preserving flags (unblocked).
 
 **Still blocked:**
 - **T-W29** (M, deps T-W28) — Final critical-path tests (blocked by T-W28).
 
-**Critical path:** T-W01 → T-W16 → T-W19 → T-W22 → T-W23 → T-W24 → T-W25 → T-W26 → **T-W27** (**NEXT**) → T-W28 → T-W29.
+**Critical path:** T-W01 → T-W16 → T-W19 → T-W22 → T-W23 → T-W24 → T-W25 → T-W26 → T-W27 → **T-W28** (**NEXT**) → T-W29.
 
 Worktrees live under `/Users/rubensmachion/repos/Open/stack-connect-worktrees/feat-<task>/`.
 
@@ -971,6 +972,46 @@ Files modified/extended:
 
 ---
 
+## Wave 4 Development — T-W27 (DONE)
+
+**Task:** Wire `.reviewDetail`/`.replyComposer`/`.deleteReplyConfirm` in RootView — the ROUTE WIRING VERIFICATION and documentation task for Feature 4 (Review Detail), statically verifying that the three review-reply routes are wired exhaustively and correctly in RootView after T-W23/T-W24/T-W25 implemented the corresponding view destinations.
+
+**Specification:**
+
+**Deliverables:**
+- Verify exhaustive route wiring in `RootView.swift` for `.reviewDetail`/`.replyComposer`/`.deleteReplyConfirm` routes (all defined in T-W03's `WindowsHomeCoordinator`).
+- Verify correct parameter flow: `.reviewDetail(reviewId:appId:accountId:)` → `ReviewDetailModelCache` keyed `reviewId+accountId` for stale-reuse prevention; `.replyComposer(reviewId:appId:accountId:existingResponseId:draftBody:)` with optional `existingResponseId` for create-vs-edit mode distinction; `.deleteReplyConfirm(reviewId:responseId:accountId:)` with clear payload mapping.
+- Verify cache identity via `existingResponseId` threading: edit mode (non-nil `existingResponseId`) uses delete-then-create logic in `WindowsReviewDetailModel.submitReply()`; create mode (nil `existingResponseId`) creates only.
+- Document route ownership and AC satisfaction in RootView.swift comments (mirrors T-W14 precedent for F2).
+- No new production code; verification-only task with comment consolidation.
+
+**Commits:**
+- Feature commit: `86568aa` (add exhaustive route wiring verification and ownership comments in RootView.swift).
+- **Merged into `experiment/windows`:** Merge commit `4823d83` (--no-ff merge strategy).
+
+**Gate verdicts:**
+- **Staff Code Review:** APPROVE (0 corrections).
+  - Route wiring exhaustively verified: `.reviewDetail(reviewId:appId:accountId:)` → `ReviewDetailModelCache` (keyed `reviewId+accountId` to prevent stale reuse, matching T-W12 precedent). `.replyComposer(reviewId:appId:accountId:existingResponseId:draftBody:)` → `WindowsReplyComposerView` with optional `existingResponseId` parameter for create/edit branching. `.deleteReplyConfirm(reviewId:responseId:accountId:)` → `WindowsDeleteReplyConfirmView` with clear param mapping.
+  - Create-vs-edit identity via `existingResponseId`: non-nil value signals edit mode (model calls delete-then-create); nil signals create mode (model creates only). Route threading verified T-W23→T-W24→T-W27 (window/route/cache/model alignment).
+  - RootView comments document each route's ownership (T-W23 review detail, T-W24 reply composer, T-W25 delete confirm) and AC satisfaction (AC-W12-1/2/3, AC-W13-1..9, AC-W14-1/2 all verified).
+- **QA:** PASS (339 tests total, 0 failures; no new tests—verification-only task; full WindowsAppCore suite remains 339/339 green; route verification code-inspected for exhaustive switch, correct param flow, cache identity via existingResponseId; TC-028/033/035/037 route-push test cases verified by code review; SwiftCrossUI rendering/navigation/state-management platform-only manual on Windows VM).
+- **PO:** ACCEPTED (all 9 acceptance criteria Met: AC-W12-1/2/3 offline-first display + cache fallback + sync banner; AC-W13-1..9 multiline editor + character count + hint text + dirty guard + loading state + create/edit modes + reply cancel/submit + edit confirmation + delete confirmation; AC-W14-1/2 ReviewDetailUiState mapping + replyMode visualization; all route-push test cases TC-028/033/035/037 verified by code inspection).
+- **Corrections:** 0 (first review approved; verification-only task, no blocking findings).
+
+**Files created/modified:**
+- MODIFIED: `StackConnectWindowsApp/Sources/StackConnectWindowsApp/App/RootView.swift` (added exhaustive route wiring for `.reviewDetail`, `.replyComposer`, `.deleteReplyConfirm`; ownership and AC-satisfaction comments; no behavioral code changes).
+- NOT modified (routes pre-defined in T-W03): `WindowsHomeCoordinator`.
+- NOT modified (views created in T-W23/T-W24/T-W25): `WindowsReviewDetailView`, `WindowsReplyComposerView`, `WindowsDeleteReplyConfirmView`.
+- NOT modified (model/caches defined in T-W22/T-W23): `WindowsReviewDetailModel`, `ReviewDetailModelCache`.
+
+**Wave 4 progress:** F4 Review Detail route wiring complete. 339-test suite with zero failures. Critical path advancing: T-W01 → T-W16 → T-W19 → T-W22 → T-W23 → T-W24 → T-W25 → T-W26 → T-W27 → **T-W28** (next, Enhance WindowsRecentReviewsWidgetView + widgetsSlot).
+
+**Verification scope:** Mirrors T-W14 (F2 route wiring verification for AppDetail/ComingSoon). T-W27 verified the three F4 review-reply routes are wired exhaustively in RootView, correct param flow (reviewId/appId/accountId + optional existingResponseId), create-vs-edit cache identity via existingResponseId threading (delete-then-create on edit, create-only on new), and all 9 AC-W12/W13/W14 acceptance criteria satisfied by T-W22/T-W23/T-W24/T-W25 deliverables.
+
+**Non-blocking follow-ups (documented, not for T-W27 session):** User-facing strings hardcoded (localization deferred); platform-only runtime verification on Windows VM is a known constraint (SwiftCrossUI rendering/navigation/state platform-only manual testing); model-view coupling on existingResponseId acceptable per upsert architecture (revisit if edit-conflict recovery needed); connection wiring limitation shared by F4 caches (DeleteReplyConfirmModelCache resolves model with `connection: nil`, same as reviewDetail/replyComposer—tracked as later follow-up per T-W25 staff review).
+
+---
+
 ## Resume checklist — ONE TASK PER SESSION (serial)
 
 The four agents from the old parallel run all finished green. The remaining work is now done **one task per session** (the new skill model). **Do exactly one task per session**, in this order, then update this handover and end the session.
@@ -1005,7 +1046,8 @@ The four agents from the old parallel run all finished green. The remaining work
 | 24 | **T-W24** | ✅ DONE (merged `f59c70b`) | Wave 4 — `WindowsReplyComposerView` (S, critical path); commits `f9a72a9`, `996a822`; Staff APPROVE (BLOCKING-1/2 in-flight test + existingResponseId threading, SHOULD-FIX-1/2 WindowsBackButtonView + cancelable Task); QA PASS 302/302 tests; PO ACCEPTED (all 6 reply-layer ACs: AC-W13-1..5 + dirty guard); 1 correction |
 | 25 | **T-W25** | ✅ DONE (merged `6f0da00`) | Wave 4 — `WindowsDeleteReplyConfirmView` (S, critical path); commit `f128292`; Staff Code Review APPROVE (0 blocking corrections; 1 SHOULD-FIX: connection wiring limitation shared by F4 caches, tracked later; 2 cosmetic nits); QA PASS 309/309 tests; PO ACCEPTED (AC-W13-7/8/9 + cancel); 0 corrections |
 | 26 | **T-W26** | ✅ DONE (merged `9f8deeb`) | Wave 4 — Unit tests for `WindowsReviewDetailModel` (M, critical path); commits `60fcf0f` → `9f8deeb`; Staff Code Review APPROVE (0 corrections); QA PASS 339/339 tests; PO ACCEPTED; 0 corrections. Created `WindowsReviewDetailModelTests.swift` (30 new tests, +886 lines); added `MockClipboardProvider`. No production code modified. |
-| 27 | **T-W27** | ⏳ NEXT (unblocked) | Wave 4 — Wire `.reviewDetail`/`.replyComposer`/`.deleteReplyConfirm` in RootView (S, critical path, deps T-W03+T-W23+T-W24+T-W25 DONE) |
+| 27 | **T-W27** | ✅ DONE (merged `4823d83`) | Wave 4 — Wire `.reviewDetail`/`.replyComposer`/`.deleteReplyConfirm` in RootView (S, critical path); feature commit `86568aa`; Staff Code Review APPROVE (0 corrections); QA PASS 339/339 tests; PO ACCEPTED (all 9 ACs: AC-W12-1/2/3, AC-W13-1..9, AC-W14-1/2); 0 corrections. Verification-only + comment consolidation—three review-reply routes pre-wired incrementally in T-W23/T-W24/T-W25; T-W27 statically verified wiring (exhaustive switch, correct param flow, cache identity via existingResponseId) and documented in RootView. |
+| 28 | **T-W28** | ⏳ NEXT (unblocked) | Wave 4 — Enhance WindowsRecentReviewsWidgetView + widgetsSlot for real navigation (review→detail, see-more→ratings, app→detail) + count badge (M, critical path, deps T-W03+T-W04+T-W19+T-W23 DONE) |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
