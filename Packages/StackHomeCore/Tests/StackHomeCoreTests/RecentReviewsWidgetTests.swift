@@ -105,16 +105,12 @@ final class RecentReviewsWidgetTests: XCTestCase {
         XCTAssertEqual(returnedIds, ["r7", "r6", "r5", "r4", "r3"],
                        "Must return the 5 most-recent reviews in date-descending order")
 
-        // The 3 oldest must NOT be present.
-        for oldId in ["r0", "r1", "r2"] {
-            XCTAssertFalse(returnedIds.contains(oldId),
-                           "Review \(oldId) is outside the top-5 and must be excluded")
-        }
+        // The 3 oldest (r0, r1, r2) are excluded — implied by the exact-id assertion above.
 
-        // Aggregation crosses accounts: the returned set must span more than one accountId.
+        // Aggregation crosses accounts: the top-5 must span all three seeded accounts.
         let returnedAccountIds = Set(widget.data.reviews.map(\.app.accountId))
-        XCTAssertGreaterThan(returnedAccountIds.count, 1,
-                             "Aggregation must span multiple accounts, got: \(returnedAccountIds)")
+        XCTAssertEqual(returnedAccountIds, ["acct-001", "acct-002", "acct-003"],
+                       "Top-5 reviews must span all three seeded accounts")
 
         XCTAssertFalse(widget.isLoading)
     }
@@ -153,7 +149,8 @@ final class RecentReviewsWidgetTests: XCTestCase {
         await widget.load()
 
         // All 5 returned (no capping needed), strictly newest-first.
-        XCTAssertEqual(widget.data.reviews.count, 5)
+        XCTAssertEqual(widget.data.reviews.count, 5,
+                       "No capping should occur with exactly 5 reviews")
         XCTAssertEqual(widget.data.reviews.map(\.review.id),
                        ["rx3", "ry1", "rx2", "rx1", "ry2"],
                        "Reviews must be sorted by createdDate descending: Jun 8, 7, 6, 5, 4")
@@ -192,6 +189,33 @@ final class RecentReviewsWidgetTests: XCTestCase {
                        "With only 3 reviews available, count must be 3 (not padded to 5)")
         XCTAssertEqual(widget.data.reviews.map(\.review.id), ["fr3", "fr2", "fr1"],
                        "Still sorted date-descending even when under the cap")
+        let returnedAccountIds = Set(widget.data.reviews.map(\.app.accountId))
+        XCTAssertEqual(returnedAccountIds, ["acct-one", "acct-two"],
+                       "Fewer-than-five result must still span both seeded accounts")
+        XCTAssertFalse(widget.isLoading)
+    }
+
+    /// Tie-breaking: two reviews sharing an identical createdDate must
+    /// produce a deterministic order (stable sort preserves insertion
+    /// order from storage). (AC-W15-1)
+    @MainActor
+    func testSortIsStableOnEqualDates() async {
+        let appA = AppModel(id: "ta", name: "A", bundleId: "com.a", accountId: "acct-x")
+        let appB = AppModel(id: "tb", name: "B", bundleId: "com.b", accountId: "acct-y")
+        let tied = Date(timeIntervalSince1970: 5_000_000)
+        let reviews = [
+            CustomerReviewModel(id: "t1", rating: 5, createdDate: tied, appId: "ta"),
+            CustomerReviewModel(id: "t2", rating: 4, createdDate: tied, appId: "tb"),
+        ]
+        let storage = InMemoryStorage(apps: [appA, appB], reviews: reviews)
+        let widget = RecentReviewsWidget(
+            configuration: HomeWidgetConfiguration(kind: .recentReviews),
+            storage: storage
+        )
+        await widget.load()
+        XCTAssertEqual(widget.data.reviews.count, 2)
+        XCTAssertEqual(widget.data.reviews.map(\.review.id), ["t1", "t2"],
+                       "Equal-date reviews must preserve insertion order (stable sort)")
         XCTAssertFalse(widget.isLoading)
     }
 
