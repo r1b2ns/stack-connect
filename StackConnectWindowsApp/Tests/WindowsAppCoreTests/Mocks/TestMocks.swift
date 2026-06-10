@@ -176,10 +176,10 @@ final class MockAppleConnection: AppleConnectionProtocol, @unchecked Sendable {
 
 // MARK: - Suspendable Apple Connection (T-W09)
 
-/// A mock connection that suspends `fetchApps()` or `upsertReply()` on a
-/// continuation, allowing tests to inspect mid-flight state (e.g.
-/// `isLoading == true`, `isPending == true`) before resuming the call.
-/// All other protocol methods delegate to a canned result or throw.
+/// A mock connection that suspends `fetchApps()`, `upsertReply()`, or
+/// `deleteReply()` on a continuation, allowing tests to inspect mid-flight
+/// state (e.g. `isLoading == true`, `isPending == true`) before resuming the
+/// call. All other protocol methods delegate to a canned result or throw.
 ///
 /// Usage (fetchApps):
 /// 1. Create the mock.
@@ -194,6 +194,13 @@ final class MockAppleConnection: AppleConnectionProtocol, @unchecked Sendable {
 /// 3. `await` the mock's `waitForUpsertReplyCall()` to know the call is in-flight.
 /// 4. Inspect the model's state (e.g. `isPending`, `canSubmit`).
 /// 5. Call `resumeUpsertReply(with:)` to let the call complete.
+///
+/// Usage (deleteReply — T-W25):
+/// 1. Create the mock.
+/// 2. Call the model's async method that triggers `deleteReply()`.
+/// 3. `await` the mock's `waitForDeleteReplyCall()` to know the call is in-flight.
+/// 4. Inspect the model's state (e.g. `isPending`).
+/// 5. Call `resumeDeleteReply(with:)` to let the call complete.
 final class SuspendableAppleConnection: AppleConnectionProtocol, @unchecked Sendable {
 
     // MARK: - fetchApps suspension
@@ -253,6 +260,18 @@ final class SuspendableAppleConnection: AppleConnectionProtocol, @unchecked Send
             calledContinuation.resume()
         }
         upsertReplyWasCalled = false
+
+        // Resume the deleteReply data continuation if pending.
+        if let continuation = deleteReplyContinuation {
+            deleteReplyContinuation = nil
+            continuation.resume()
+        }
+        // Resume the deleteReply "called" signal if pending.
+        if let calledContinuation = deleteReplyCalledContinuation {
+            deleteReplyCalledContinuation = nil
+            calledContinuation.resume()
+        }
+        deleteReplyWasCalled = false
     }
 
     /// Resumes the suspended `fetchApps()` with the given result.
@@ -320,6 +339,47 @@ final class SuspendableAppleConnection: AppleConnectionProtocol, @unchecked Send
         }
     }
 
+    // MARK: - deleteReply suspension (T-W25)
+
+    /// Continuation held while `deleteReply()` is suspended.
+    private var deleteReplyContinuation: CheckedContinuation<Void, Error>?
+
+    /// Fulfilled when `deleteReply()` has been called and is suspended.
+    private var deleteReplyCalledContinuation: CheckedContinuation<Void, Never>?
+
+    /// Buffered flag: set to `true` when `deleteReply()` is called, so that
+    /// `waitForDeleteReplyCall()` returns immediately if the call already
+    /// happened (eliminates the lost-wakeup race).
+    private var deleteReplyWasCalled = false
+
+    /// Awaitable signal that fires once `deleteReply()` is in-flight.
+    /// If `deleteReply()` was already called before this method runs, returns
+    /// immediately without creating a continuation (race-safe).
+    @MainActor
+    func waitForDeleteReplyCall() async {
+        if deleteReplyWasCalled {
+            deleteReplyWasCalled = false
+            return
+        }
+        await withCheckedContinuation { continuation in
+            deleteReplyCalledContinuation = continuation
+        }
+    }
+
+    /// Resumes the suspended `deleteReply()` with the given result.
+    /// Trips `assertionFailure` if called when no continuation is in-flight.
+    func resumeDeleteReply(with result: Result<Void, Error>) {
+        guard let continuation = deleteReplyContinuation else {
+            assertionFailure("resumeDeleteReply called with no in-flight deleteReply continuation")
+            return
+        }
+        deleteReplyContinuation = nil
+        switch result {
+        case .success: continuation.resume()
+        case .failure(let error): continuation.resume(throwing: error)
+        }
+    }
+
     // MARK: - Canned stubs for other protocol methods
 
     func validateCredentials() async throws {}
@@ -342,5 +402,13 @@ final class SuspendableAppleConnection: AppleConnectionProtocol, @unchecked Send
             upsertReplyCalledContinuation = nil
         }
     }
-    func deleteReply(responseId: String) async throws {}
+    @MainActor
+    func deleteReply(responseId: String) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            deleteReplyContinuation = continuation
+            deleteReplyWasCalled = true
+            deleteReplyCalledContinuation?.resume()
+            deleteReplyCalledContinuation = nil
+        }
+    }
 }

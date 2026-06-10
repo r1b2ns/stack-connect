@@ -7,7 +7,7 @@ import WindowsAppCore
 import os
 #endif
 
-// Phase 4 · Block F · T-F16 / T-W03 / T-W06 / T-W07 / T-W08 / T-W12 / T-W14 / T-W19 / T-W23 / T-W24 — the window's root view + route switch.
+// Phase 4 · Block F · T-F16 / T-W03 / T-W06 / T-W07 / T-W08 / T-W12 / T-W14 / T-W19 / T-W23 / T-W24 / T-W25 — the window's root view + route switch.
 //
 // Owns the observed state (the core adapter and the navigation coordinator) and
 // renders the current screen: Home when the route stack is empty, otherwise the
@@ -55,6 +55,10 @@ import os
 // T-W24: `.replyComposer` is now wired to the real
 // `WindowsReplyComposerView`, with a `ReplyComposerModelCache` that lazily
 // creates and caches the model per review+account pair.
+//
+// T-W25: `.deleteReplyConfirm` is now wired to the real
+// `WindowsDeleteReplyConfirmView`, with a `DeleteReplyConfirmModelCache` that
+// lazily creates and caches the model per review+response+account tuple.
 
 /// Reference-type holder for the shared `WindowsAppsListModel`. Using a class
 /// avoids mutating `@State` during the view body: the `@State` reference stays
@@ -259,6 +263,47 @@ private final class ReplyComposerModelCache {
     }
 }
 
+/// Reference-type holder for the `WindowsDeleteReplyConfirmModel`. Mirrors
+/// `ReplyComposerModelCache` — the `@State` reference stays stable, and the
+/// class's `var model` is mutated freely (T-W25). The model is lazily created
+/// when the `.deleteReplyConfirm` route is first pushed. A new model is created
+/// each time the route parameters change (different reviewId, responseId, or
+/// accountId), so each confirmation session starts fresh.
+@MainActor
+private final class DeleteReplyConfirmModelCache {
+    private var cachedReviewId: String?
+    private var cachedResponseId: String?
+    private var cachedAccountId: String?
+    var model: WindowsDeleteReplyConfirmModel?
+
+    /// Returns the cached model if it matches the requested parameters;
+    /// otherwise creates a new one, caches it, and returns it.
+    func resolve(
+        reviewId: String,
+        responseId: String,
+        accountId: String,
+        storage: PersistentStorable
+    ) -> WindowsDeleteReplyConfirmModel {
+        if let existing = model,
+           cachedReviewId == reviewId,
+           cachedResponseId == responseId,
+           cachedAccountId == accountId {
+            return existing
+        }
+        let newModel = WindowsDeleteReplyConfirmModel(
+            reviewId: reviewId,
+            responseId: responseId,
+            accountId: accountId,
+            storage: storage
+        )
+        model = newModel
+        cachedReviewId = reviewId
+        cachedResponseId = responseId
+        cachedAccountId = accountId
+        return newModel
+    }
+}
+
 struct RootView: View {
     /// Observed core adapter (state + intents).
     @State private var model: WindowsHomeModel
@@ -298,6 +343,11 @@ struct RootView: View {
     /// `.replyComposer` route is first pushed (T-W24). A new model is created
     /// each time the route parameters change.
     @State private var replyComposerCache = ReplyComposerModelCache()
+
+    /// Delete reply confirm model cache. The model is lazily created when the
+    /// `.deleteReplyConfirm` route is first pushed (T-W25). A new model is
+    /// created each time the route parameters change.
+    @State private var deleteReplyConfirmCache = DeleteReplyConfirmModelCache()
 
     init(model: WindowsHomeModel) {
         _model = State(wrappedValue: model)
@@ -510,8 +560,24 @@ struct RootView: View {
                 )
             )
 
-        case .deleteReplyConfirm:
-            WindowsPlaceholderView(title: "Delete Reply") { coordinator.pop() }
+        // T-W25: real Delete Reply Confirm screen. The model is lazily created
+        // and cached in `deleteReplyConfirmCache`. A new model is created each
+        // time the route parameters change (different reviewId, responseId, or
+        // accountId). No connection on Windows v1 (delete requires a live
+        // connection, which will be wired when account-level sync lands).
+        case .deleteReplyConfirm(let reviewId, let responseId, let accountId):
+            WindowsDeleteReplyConfirmView(
+                reviewId: reviewId,
+                responseId: responseId,
+                accountId: accountId,
+                coordinator: coordinator,
+                model: deleteReplyConfirmCache.resolve(
+                    reviewId: reviewId,
+                    responseId: responseId,
+                    accountId: accountId,
+                    storage: model.storage
+                )
+            )
 
         // T-W06: archive confirmation screen. Uses the shared `appsListCache`
         // so confirm/cancel mutate the same state as the apps list (TC-072:
