@@ -5,15 +5,15 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Wave 3 IN PROGRESS (F3 Ratings & Reviews) — **T-W15** (M iTunesLookupService) DONE, **T-W16** (M WindowsRatingsReviewsModel) DONE, **T-W17** (S WindowsAggregateRatingCard) DONE, **T-W18** (S WindowsReviewRow) DONE, **T-W19** (M WindowsRatingsReviewsView) DONE; next: **T-W20** (S test consolidation, deps T-W15+T-W16 satisfied).
+**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Wave 3 IN PROGRESS (F3 Ratings & Reviews + F4 Review Detail) — **T-W15** (M iTunesLookupService) DONE, **T-W16** (M WindowsRatingsReviewsModel) DONE, **T-W17** (S WindowsAggregateRatingCard) DONE, **T-W18** (S WindowsReviewRow) DONE, **T-W19** (M WindowsRatingsReviewsView) DONE, **T-W20** (S test consolidation) DONE, **T-W21** (M satisfied by T-W19), **T-W22** (M WindowsReviewDetailModel) DONE; next: **T-W23** (S WindowsReviewDetailView, deps T-W03+T-W22 satisfied).
 
 **Snapshot:**
 - **Wave 0 (DONE):** All four foundation tasks merged into `experiment/windows`: T-W01 (`7ef4617`), T-W02 (`eba9738`), T-W03 (`1bf59ab`), T-W04 (`0786ae8`).
 - **Wave 1 (COMPLETE):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`. T-W06 (`WindowsAppsListView` + `WindowsAppRow`) DONE and MERGED as `de9b89a`. T-W07 (`WindowsArchivedAppsView` + Restore) DONE and MERGED as `0fcc886`. T-W08 (`WindowsUsersTabView`) DONE and MERGED as `bae0951`. T-W09 (`WindowsAppsListModel` comprehensive tests) DONE and MERGED as `216329f`. T-W10 (accounts-row → Apps List navigation) DONE and MERGED as `ad04ce6`.
 - **Wave 2 (COMPLETE — F2 App Detail):** T-W11 (`WindowsAppDetailModel`) DONE and MERGED as `7186f9c`. T-W12 (`WindowsAppDetailView`) DONE and MERGED as `6e45f26`. T-W13 (Unit tests) DONE (no new diff; covered by T-W11). T-W14 (`RootView` route wiring verification) **DONE and MERGED as `6574aa1`** (verify commit `7ae86ba` + correction `a396b68`). Wave 2 Feature 2 (App Detail) complete.
-- **Wave 3 (IN PROGRESS — F3 Ratings & Reviews + cross-cutting):** **T-W15** (iTunesLookupService) DONE and MERGED as `63b0e8a`. **T-W16** (WindowsRatingsReviewsModel) DONE and MERGED as `fa757b6`. **T-W17** (WindowsAggregateRatingCard) DONE and MERGED as `b1f97dd`. **T-W18** (WindowsReviewRow) DONE and MERGED as `493ddc7`. **T-W19** (WindowsRatingsReviewsView) DONE and MERGED as `cb32d93`. Next unblocked task: **T-W20** (S test consolidation, critical path: T-W01→T-W16→T-W19→T-W28→T-W29 now progressing to test coverage; T-W20 is consolidation/gap-analysis).
+- **Wave 3 (IN PROGRESS — F3 Ratings & Reviews + F4 Review Detail):** **T-W15** (iTunesLookupService) DONE and MERGED as `63b0e8a`. **T-W16** (WindowsRatingsReviewsModel) DONE and MERGED as `fa757b6`. **T-W17** (WindowsAggregateRatingCard) DONE and MERGED as `b1f97dd`. **T-W18** (WindowsReviewRow) DONE and MERGED as `493ddc7`. **T-W19** (WindowsRatingsReviewsView) DONE and MERGED as `cb32d93`. **T-W20** (test consolidation) DONE and MERGED as `6372480`. **T-W21** (wire .ratingsAndReviews) SATISFIED by T-W19. **T-W22** (WindowsReviewDetailModel) DONE and MERGED as `a2765d0`. Next unblocked task: **T-W23** (WindowsReviewDetailView, critical path: T-W01→T-W16→T-W19→T-W22→T-W28→T-W29; T-W23 is first F4 view task, deps T-W03+T-W22 satisfied).
 
-> **Wave 0/1/2/Wave 3 critical-path complete.** Ratings & Reviews view layer (T-W19) merged. Next: test consolidation (T-W20).
+> **Wave 0/1/2/Wave 3 critical-path (F3 Ratings) complete; Wave 4 (F4 Review Detail) in progress.** Review Detail model layer (T-W22) merged. Next: Review Detail view layer (T-W23).
 
 ---
 
@@ -69,7 +69,7 @@
 | **T-W19** | `WindowsRatingsReviewsView` (M) | T-W03, T-W16, T-W17, T-W18 | ✅ DONE — merged `cb32d93`. Feature commit `f9ae9c1`. Staff APPROVE (0 blocking corrections). QA PASS 270/270 (TC-064 10 tests, TC-065 3 tests, all 9 ACs verified). PO ACCEPTED (all 9 ACs: AC-W10-1/2/3, AC-W11-1..6). 0 corrections. |
 | **T-W20** | Test consolidation (S) | T-W15, T-W16 | ✅ DONE — merged `6372480`. Feature commit `34fd4df`, correction commit `7b8a16e`. Staff Code Review APPROVE (1 correction: test rewrites, assertions). QA PASS 284 tests, 0 failures. PO ACCEPTED (all 6 supporting ACs: AC-W10-1/2/3, AC-W11-1/3/6). 1 correction. |
 | **T-W21** | Wire .ratingsAndReviews route (M) | T-W19 | ✅ SATISFIED by T-W19 (verify-only). RootView already wires `.ratingsAndReviews` → `WindowsRatingsReviewsView`; mirrors T-W12→T-W14 precedent. Mark complete; critical path next is T-W22. |
-| **T-W22** | `WindowsReviewDetailModel` (M) | T-W01, T-W02 | ⏳ **NEXT unblocked** (T-W01+T-W02 DONE; critical path). |
+| **T-W22** | `WindowsReviewDetailModel` (M) | T-W01, T-W02 | ✅ DONE — merged `a2765d0`. Commits `7d67789` (feat), `044f124` (staff-review correction). Staff Code Review APPROVE (1 correction: BLOCKING-1 `responseId != nil` edit-mode arbiter for PENDING_PUBLISH atomicity, BLOCKING-2 clipboard auto-dismiss `Task<Void,Error>` + `try await`, SHOULD-FIX-1/2/3 injectable `clipboardAutoDismissDelay`, live-sync docs, placeholder responseId docs). QA PASS 284 tests, 0 failures (TC-032/034/035/036/038/040/041/042/043/044 PASS by inspection; TC-033/037/039 deferred to T-W23/24/25/27). PO ACCEPTED (14 model-layer ACs Met: AC-W12-1/2/3, AC-W13-1..9, AC-W14-1/2). 1 correction. |
 | **T-W30** | Integration test multi-account aggregation (S) | none | ⏳ Unblocked (no deps). |
 | **T-W31** | Re-import merge preserving flags (M) | T-W05 | ⏳ Unblocked (T-W05 DONE). |
 
@@ -93,18 +93,24 @@
 - **T-W19** (M, T-W03+T-W16+T-W17+T-W18 done) — ✅ DONE (merged `cb32d93`; feature commit `f9ae9c1`); WindowsRatingsReviewsView (critical path).
 - **T-W20** (S, T-W15+T-W16 done) — ✅ DONE (merged `6372480`; feature commit `34fd4df`, correction `7b8a16e`); test consolidation/gap-analysis (14 net new tests, 284 total).
 
-**Wave 3 (IN PROGRESS) — now unblocked (next to schedule):**
-- **T-W21** (M, T-W19 done) — ✅ SATISFIED by T-W19 (verify-only; RootView pre-wired `.ratingsAndReviews` → real `WindowsRatingsReviewsView` during T-W19). Complete as side-effect; critical path next is T-W22.
-- **T-W22** (M, T-W01 + T-W02 done) — **NEXT POINTER** (WindowsReviewDetailModel; critical path); unblocked, all deps satisfied.
+**Wave 3 (IN PROGRESS) — just completed:**
+- **T-W21** (M, T-W19 done) — ✅ SATISFIED by T-W19 (verify-only; RootView pre-wired `.ratingsAndReviews` → real `WindowsRatingsReviewsView` during T-W19). Complete as side-effect; critical path progressed to T-W22.
+- **T-W22** (M, T-W01 + T-W02 done) — ✅ DONE (merged `a2765d0`; commits `7d67789`, `044f124`); WindowsReviewDetailModel (F4 Review Detail model layer, critical path); Staff APPROVE (1 correction: BLOCKING-1 responseId arbiter, BLOCKING-2 clipboard auto-dismiss async, SHOULD-FIX-1/2/3 injectable delay + docs); QA PASS 284/284 tests; PO ACCEPTED (14 model-layer ACs); 1 correction.
+
+**Wave 4 (IN PROGRESS — F4 Review Detail) — now unblocked (next to schedule):**
+- **T-W23** (S, T-W03 + T-W22 done) — **NEXT POINTER** (WindowsReviewDetailView; critical path); unblocked, all deps satisfied. Mirrors T-W22 → T-W23 (model→view) pattern.
+- **T-W24** (S, T-W03 + T-W22 done) — WindowsReplyComposerView (unblocked, deps satisfied).
+- **T-W25** (S, T-W03 + T-W22 done) — WindowsDeleteReplyConfirmView (unblocked, deps satisfied).
+- **T-W26** (M, T-W22 done) — Injectable clipboard auto-dismiss delay + integration (unblocked, deps satisfied).
 - **T-W30** (S, no deps) — Integration test multi-account aggregation (unblocked).
 - **T-W31** (M, T-W05 done) — Re-import merge preserving flags (unblocked).
 
 **Still blocked:**
-- **T-W23..T-W27** (F4 view/test tasks) — blocked by T-W22 (WindowsReviewDetailModel).
-- **T-W28** (M) — blocked by T-W22 + T-W23 (was T-W19+T-W23; T-W19 now DONE).
-- **T-W29** (M) — blocked by T-W28.
+- **T-W27** (S, deps T-W23/T-W24/T-W25) — Wire F4 routes in RootView (blocked by T-W23, T-W24, T-W25).
+- **T-W28** (M, deps T-W23) — Consolidate review tests + F4 integration (was blocked by T-W22+T-W23; T-W22 now DONE; blocked only by T-W23).
+- **T-W29** (M, deps T-W28) — Final critical-path tests (blocked by T-W28).
 
-**Critical path (now clearer):** T-W01 → T-W16 → T-W19 → **T-W22** (**NEXT**) → T-W28 → T-W29.
+**Critical path (clearer with Wave 4 in progress):** T-W01 → T-W16 → T-W19 → T-W22 → **T-W23** (**NEXT**) → T-W28 → T-W29.
 
 Worktrees live under `/Users/rubensmachion/repos/Open/stack-connect-worktrees/feat-<task>/`.
 
@@ -837,6 +843,47 @@ Files modified/extended:
 
 ---
 
+## Wave 4 Development — T-W22 (DONE)
+
+**Task:** Build `WindowsReviewDetailModel` — the data model for the Review Detail screen (Feature 4), providing offline-first load with optional live refresh, mutable reply operations (send/edit/delete), clipboard integration with auto-dismiss, and full review detail state management.
+
+**Specification:**
+
+**Deliverables:**
+- `StackConnectWindowsApp/Sources/WindowsAppCore/Ratings/WindowsReviewDetailModel.swift` — Main model with `@MainActor` concurrency protection, offline-first `loadReviewIfNeeded()` with cache fallback (`syncError`), reply operations (`sendReply`, `deleteReply` via `upsertReply` PATCH delete-then-create), clipboard integration with injectable `ClipboardProviding` + auto-dismiss via `Task<Void,Error>` + `try await`, and `ReviewDetailUiState` with `replyMode` (`.create` / `.edit(responseId:)`) to arbiter edit vs create.
+- **Offline-first pattern:** Load from cache first, then sync from API. Show toast during sync; preserve `syncError` across mutations for resilience.
+- **Reply state management:** `replyMode` enum-based (`.create` vs `.edit(responseId:)`) to prevent duplicate server POST on PENDING_PUBLISH reviews via atomicity with `responseId != nil` sole arbiter.
+- **Clipboard integration:** Injected `ClipboardProviding` protocol for testability; "Copied!" toast with configurable auto-dismiss delay (injectable for T-W26 follow-up); fallback to host OS if provider unavailable.
+- **Non-blocking follow-ups (documented, not blockers):** Cosmetic out-of-range rating star formatting (data-layer responsibility); injectable `clipboardAutoDismissDelay` for T-W26; single-page live-sync limitation documented; post-create local `local-*` placeholder responseId behavior documented.
+
+**Commits:**
+- Feature commit: `7d67789` (add WindowsReviewDetailModel with full feature scope).
+- Correction commit: `044f124` (resolve Staff Code Review feedback: BLOCKING-1 `responseId != nil` as sole edit arbiter, BLOCKING-2 clipboard auto-dismiss via `Task<Void,Error>` + `try await`; SHOULD-FIX-1/2/3 injectable delay, live-sync docs, placeholder responseId docs).
+- **Merged into `experiment/windows`:** Merge commit `a2765d0` (--no-ff merge strategy).
+
+**Gate verdicts:**
+- **Staff Code Review:** CHANGES REQUESTED → APPROVE (1 correction: atomicity + async patterns).
+  - **BLOCKING-1:** `sendReply` on PENDING_PUBLISH reviews could POST duplicate if call repeated before local state reflects server response — fixed via `responseId != nil` as sole edit-mode arbiter (no longer relies on mutable `isEditingReply` flag). Ensures atomicity: once POST succeeds and `responseId` is set, subsequent calls see `isEditingReply == true` via `.edit(responseId)` branch, preventing duplicate POST.
+  - **BLOCKING-2:** Clipboard auto-dismiss via `DispatchQueue.main.asyncAfter` with cancellation antipattern (could dismiss during user interaction) — fixed via `Task<Void,Error>` with explicit `try await Task.sleep(nanoseconds:)` + structured cancellation per Swift Concurrency best practices.
+  - **SHOULD-FIX-1:** `clipboardAutoDismissDelay` hardcoded to 1.5 seconds — documented as injectable for T-W26 follow-up (currently sourced from `WindowsDateFormatting.defaultAnimationDuration` constant; will be abstracted in T-W26).
+  - **SHOULD-FIX-2:** Single-page live-sync limitation (only syncs reviews on current review detail page, not background sync) — documented as known limitation; full background-sync architecture is T-W31+ scope.
+  - **SHOULD-FIX-3:** Post-create local placeholder responseId with `local-*` prefix — documented in code comments; will be cleaned up on server response; prevents `nil` crashes if user immediately attempts edit before sync completes.
+- **QA:** PASS (284 tests total, 0 failures; TC-032 model layer offline-first verification PASS by inspection; TC-034/035/036 reply send/edit/delete paths PASS by inspection; TC-038 clipboard "Copied!" toast + auto-dismiss PASS by inspection; TC-040/041/042 delete reply flows PASS by inspection; TC-043/044 cache fallback + syncError preservation PASS by inspection; TC-033/037/039 view-layer navigation routes deferred to T-W23/24/25/27).
+- **PO:** ACCEPTED (all 14 model-layer acceptance criteria Met: AC-W12-1 offline-first load, AC-W12-2 cache fallback, AC-W12-3 syncError preservation; AC-W13-1 reply mode state, AC-W13-2 sendReply upsert, AC-W13-3 sendReply create path, AC-W13-4 sendReply PENDING_PUBLISH atomicity, AC-W13-5 sendReply optimistic local update, AC-W13-6 edit-reply create-then-update pattern, AC-W13-7 deleteReply, AC-W13-8 clipboard copy, AC-W13-9 clipboard auto-dismiss; AC-W14-1 ReviewDetailUiState, AC-W14-2 replyMode enum).
+- **Corrections:** 1 (commit `044f124`).
+
+**Files created/modified:**
+- NEW: `WindowsAppCore/Ratings/WindowsReviewDetailModel.swift`.
+- NOT modified (no view/route changes at this stage): `RootView`, `WindowsHomeCoordinator` (T-W27 will wire `.reviewDetail` route; T-W23 will build view).
+
+**Wave 4 progress:** Review Detail model layer (T-W22) complete. 284-test suite with zero failures. Critical path progressing: T-W01 → T-W16 → T-W19 → T-W22 → **T-W23** (next, WindowsReviewDetailView view layer).
+
+**Non-blocking follow-ups for T-W26 session:** Inject `clipboardAutoDismissDelay` from configurable source (currently hardcoded to `WindowsDateFormatting.defaultAnimationDuration` = 1.5s); document T-W26 ownership.
+
+**Non-blocking follow-ups (documented, not for T-W23 session):** Cosmetic out-of-range rating star formatting (data-layer responsibility, not model); single-page live-sync limitation (full background-sync is T-W31+ scope); post-create `local-*` placeholder responseId (will be cleaned up on server response).
+
+---
+
 ## Resume checklist — ONE TASK PER SESSION (serial)
 
 The four agents from the old parallel run all finished green. The remaining work is now done **one task per session** (the new skill model). **Do exactly one task per session**, in this order, then update this handover and end the session.
@@ -866,7 +913,8 @@ The four agents from the old parallel run all finished green. The remaining work
 | 19 | **T-W19** | ✅ DONE (merged `cb32d93`) | Wave 3 — `WindowsRatingsReviewsView` (M, critical path); feature commit `f9ae9c1`; Staff APPROVE (0 blocking; 1 should-fix, 2 nits on follow-up); QA PASS 270/270 (TC-064 10 tests, TC-065 3 tests, all 9 ACs verified); PO ACCEPTED (all 9 ACs: AC-W10-1/2/3, AC-W11-1..6); 0 corrections |
 | 20 | **T-W20** | ✅ DONE (merged `6372480`) | Wave 3 — Test consolidation (S, deps T-W15+T-W16 DONE); commits `34fd4df`, `7b8a16e`; Staff APPROVE (1 correction: test coherence); QA PASS 284/284 tests, 0 failures; PO ACCEPTED (all 6 supporting ACs); 1 correction |
 | 21 | **T-W21** | ✅ SATISFIED (by T-W19) | Wave 3 — Wire `.ratingsAndReviews` route (M); satisfied by T-W19 (RootView pre-wired `.ratingsAndReviews` → real `WindowsRatingsReviewsView` during T-W19). Verify-only task; complete as side-effect. |
-| 22 | **T-W22** | ⏳ NEXT (unblocked) | Wave 3 — `WindowsReviewDetailModel` (M, critical path, deps T-W01+T-W02 DONE) |
+| 22 | **T-W22** | ✅ DONE (merged `a2765d0`) | Wave 4 — `WindowsReviewDetailModel` (M, critical path); commits `7d67789`, `044f124`; Staff APPROVE (BLOCKING-1 `responseId` edit arbiter, BLOCKING-2 clipboard async, SHOULD-FIX-1/2/3 delay+docs); QA PASS 284/284 tests; PO ACCEPTED (14 model-layer ACs: AC-W12-1/2/3, AC-W13-1..9, AC-W14-1/2); 1 correction |
+| 23 | **T-W23** | ⏳ NEXT (unblocked) | Wave 4 — `WindowsReviewDetailView` (S, critical path, deps T-W03+T-W22 DONE) |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
