@@ -157,4 +157,42 @@ final class WindowsDateFormattingTests: XCTestCase {
         let result = WindowsDateFormatting.absoluteDate(date, timeZone: utc)
         XCTAssertEqual(result, "31 Dec 2025")
     }
+
+    // MARK: - absoluteDateTime tests
+
+    func testAbsoluteDateTime_basicFormatUTC() {
+        // referenceDate is 2026-05-21 12:00:00 UTC
+        let result = WindowsDateFormatting.absoluteDateTime(referenceDate, timeZone: utc)
+        XCTAssertEqual(result, "21 May 2026 at 12:00")
+    }
+
+    func testAbsoluteDateTime_singleDigitDayZeroPaddedMinutes() {
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 1
+        components.day = 5
+        components.hour = 8
+        components.minute = 5
+        components.second = 0
+        components.timeZone = TimeZone(identifier: "UTC")
+        let date = Calendar.current.date(from: components)!
+
+        let result = WindowsDateFormatting.absoluteDateTime(date, timeZone: utc)
+        XCTAssertEqual(result, "5 Jan 2026 at 08:05")
+    }
+
+    func testAbsoluteDateTime_timezoneInjectionEffect() {
+        // Same date formatted with two different timezones must yield different output,
+        // documenting the per-call timeZone isolation contract.
+        let utcPlus5 = TimeZone(secondsFromGMT: 5 * 3600)!
+
+        let resultUTC = WindowsDateFormatting.absoluteDateTime(referenceDate, timeZone: utc)
+        let resultPlus5 = WindowsDateFormatting.absoluteDateTime(referenceDate, timeZone: utcPlus5)
+
+        // UTC: 12:00, UTC+5: 17:00 — different formatted strings
+        XCTAssertEqual(resultUTC, "21 May 2026 at 12:00")
+        XCTAssertEqual(resultPlus5, "21 May 2026 at 17:00")
+        XCTAssertNotEqual(resultUTC, resultPlus5,
+            "Same date with different injected timezones must produce different output")
+    }
 }
