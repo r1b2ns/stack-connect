@@ -6,12 +6,13 @@ import StackHomeCore
 // MARK: - Tests
 
 /// Comprehensive unit tests for `WindowsAppsListModel` (T-W05 baseline + T-W09
-/// extensions). Covers: offline-first load, live sync (merge, persistence,
-/// mid-flight loading, remote removal, name update, duplicate-ID safety),
-/// search filtering (whitespace trimming, bundleId, favorites/all independently),
-/// favorite toggle (on/off/persist/revert/unknown-id), archive flow
-/// (confirmation, cancel, persist, revert, unknown-id, clears-syncError),
-/// sort order, account filtering, cache-load failure, and empty states.
+/// extensions + T-W31 end-to-end merge-preserves-flags). Covers: offline-first
+/// load, live sync (merge, persistence, mid-flight loading, remote removal,
+/// name update, duplicate-ID safety), search filtering (whitespace trimming,
+/// bundleId, favorites/all independently), favorite toggle
+/// (on/off/persist/revert/unknown-id), archive flow (confirmation, cancel,
+/// persist, revert, unknown-id, clears-syncError), sort order, account
+/// filtering, cache-load failure, empty states, and re-sync flag preservation.
 @MainActor
 final class WindowsAppsListModelTests: XCTestCase {
 
@@ -1359,29 +1360,35 @@ final class WindowsAppsListModelTests: XCTestCase {
         // persisted correctly, this instance must see the same flags.
         let sut2 = makeSUT(withConnection: false)
         await sut2.loadApps()
+        XCTAssertNil(sut2.syncError,
+                     "AC-3: cache reload must not produce a syncError")
 
         XCTAssertEqual(sut2.apps.count, 4,
                        "AC-3: all 4 merged apps must be persisted and reloaded")
 
         let reloaded1 = sut2.apps.first(where: { $0.id == "app1" })
+        XCTAssertNotNil(reloaded1, "AC-3: app1 must be present after reload")
         XCTAssertTrue(reloaded1!.isFavorite,
                       "AC-3: app1's isFavorite=true must persist to storage")
         XCTAssertFalse(reloaded1!.isArchived,
                        "AC-3: app1's isArchived=false must persist to storage")
 
         let reloaded2 = sut2.apps.first(where: { $0.id == "app2" })
+        XCTAssertNotNil(reloaded2, "AC-3: app2 must be present after reload")
         XCTAssertFalse(reloaded2!.isFavorite,
                        "AC-3: app2's isFavorite=false must persist to storage")
         XCTAssertTrue(reloaded2!.isArchived,
                       "AC-3: app2's isArchived=true must persist to storage")
 
         let reloaded3 = sut2.apps.first(where: { $0.id == "app3" })
+        XCTAssertNotNil(reloaded3, "AC-3: app3 must be present after reload")
         XCTAssertFalse(reloaded3!.isFavorite,
                        "AC-3: app3's isFavorite=false must persist to storage")
         XCTAssertFalse(reloaded3!.isArchived,
                        "AC-3: app3's isArchived=false must persist to storage")
 
         let reloaded4 = sut2.apps.first(where: { $0.id == "app4" })
+        XCTAssertNotNil(reloaded4, "AC-3: app4 must be present after reload")
         XCTAssertFalse(reloaded4!.isFavorite,
                        "AC-3: app4's isFavorite=false must persist to storage")
         XCTAssertFalse(reloaded4!.isArchived,
