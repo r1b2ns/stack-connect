@@ -48,6 +48,19 @@ public enum WindowsDateFormatting {
 
     // MARK: - Absolute date ("d MMM yyyy")
 
+    /// Cached formatter for `absoluteDate(_:timeZone:)`. Configured once with
+    /// `en_US_POSIX` locale and `"d MMM yyyy"` format; `timeZone` is set per-call
+    /// (safe for a single-threaded renderer). Mirrors the `private static let`
+    /// caching pattern used by `AggregateRatingFormatter` (T-W17) to avoid
+    /// allocating a new `DateFormatter` per row in the reviews list (T-W18
+    /// Should-fix 1).
+    private static let absoluteDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "d MMM yyyy"
+        return f
+    }()
+
     /// Formats a date as "d MMM yyyy" (e.g. "21 May 2026").
     ///
     /// The formatter uses the `en_US_POSIX` locale to guarantee a stable,
@@ -61,10 +74,7 @@ public enum WindowsDateFormatting {
     ///     output when the input dates are expressed in UTC.
     /// - Returns: A string in "d MMM yyyy" format.
     public static func absoluteDate(_ date: Date, timeZone: TimeZone = .current) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = timeZone
-        formatter.dateFormat = "d MMM yyyy"
-        return formatter.string(from: date)
+        absoluteDateFormatter.timeZone = timeZone
+        return absoluteDateFormatter.string(from: date)
     }
 }
