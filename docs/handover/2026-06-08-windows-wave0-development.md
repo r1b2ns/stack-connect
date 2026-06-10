@@ -5,7 +5,7 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Wave 3 COMPLETE (F3 Ratings & Reviews: T-W15..T-W22 all done). Wave 4 COMPLETE (F4 Review Detail + F5 Home Refresh: T-W23..T-W29 all done). Wave 5 COMPLETE (F5 integration tests: T-W30 done). Critical path complete through T-W30. Next: **T-W31** (M Re-import merge preserving flags).
+**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Wave 3 COMPLETE (F3 Ratings & Reviews: T-W15..T-W22 all done). Wave 4 COMPLETE (F4 Review Detail + F5 Home Refresh: T-W23..T-W29 all done). Wave 5 COMPLETE (F5 integration tests: T-W30 done). Wave 6 COMPLETE (T-W31 re-import merge test done). All 31 critical-path tasks DONE — **board is complete**.
 
 **Snapshot:**
 - **Wave 0 (DONE):** All four foundation tasks merged into `experiment/windows`: T-W01 (`7ef4617`), T-W02 (`eba9738`), T-W03 (`1bf59ab`), T-W04 (`0786ae8`).
@@ -14,8 +14,9 @@
 - **Wave 3 (COMPLETE — F3 Ratings & Reviews):** **T-W15** (iTunesLookupService) DONE and MERGED as `63b0e8a`. **T-W16** (WindowsRatingsReviewsModel) DONE and MERGED as `fa757b6`. **T-W17** (WindowsAggregateRatingCard) DONE and MERGED as `b1f97dd`. **T-W18** (WindowsReviewRow) DONE and MERGED as `493ddc7`. **T-W19** (WindowsRatingsReviewsView) DONE and MERGED as `cb32d93`. **T-W20** (test consolidation) DONE and MERGED as `6372480`. **T-W21** (wire .ratingsAndReviews) SATISFIED by T-W19. **T-W22** (WindowsReviewDetailModel) DONE and MERGED as `a2765d0`.
 - **Wave 4 (COMPLETE — F4 Review Detail + F5 Home Refresh):** **T-W23** (WindowsReviewDetailView) DONE and MERGED as `c87f8c9`. **T-W24** (WindowsReplyComposerView) DONE and MERGED as `f59c70b`. **T-W25** (WindowsDeleteReplyConfirmView) DONE and MERGED as `6f0da00`. **T-W26** (Unit tests for WindowsReviewDetailModel) DONE and MERGED as `9f8deeb`. **T-W27** (Wire .reviewDetail/.replyComposer/.deleteReplyConfirm in RootView) DONE and MERGED as `4823d83`. **T-W28** (Enhance WindowsRecentReviewsWidgetView + widgetsSlot) DONE and MERGED as `c6e7ea8`. **T-W29** (Verify auto-refresh + add manual refresh button) DONE and MERGED as `1ed8431`. Critical path complete: T-W01→T-W16→T-W19→T-W22→T-W23→T-W24→T-W25→T-W26→T-W27→T-W28→T-W29.
 - **Wave 5 (COMPLETE — F5 Integration tests):** **T-W30** (Integration test: multi-account aggregation cap-5 + date-desc in RecentReviewsWidgetTests) DONE and MERGED as `98984d5`.
+- **Wave 6 (COMPLETE):** **T-W31** (Re-import merge preserving flags; test-only proving the WindowsAppsListModel live-sync merge preserves local isFavorite/isArchived) DONE and MERGED as `05e8c60`.
 
-> **Critical path COMPLETE through T-W30.** Wave 0/1/2/3 (Foundation + F1 Apps + F2 App Detail + F3 Ratings) + Wave 4 (F4 Review Detail + F5 Home Refresh) + Wave 5 (F5 Integration tests) all merged. All 30 critical-path milestones reached. Next unblocked: T-W31 (Re-import merge).
+> **ALL 31 CRITICAL-PATH TASKS COMPLETE.** Wave 0/1/2/3 (Foundation + F1 Apps + F2 App Detail + F3 Ratings) + Wave 4 (F4 Review Detail + F5 Home Refresh) + Wave 5 (F5 Integration tests) + Wave 6 (Re-import merge test) all merged. **No unblocked, not-done tasks remain on the board.**
 
 ---
 
@@ -117,8 +118,8 @@
 **Wave 5 (COMPLETE) — just completed:**
 - **T-W30** (S, no deps) — ✅ DONE (merged `98984d5`; commits `68b3c37`, `6dede76`); Integration test: multi-account aggregation cap-5 + date-desc in RecentReviewsWidgetTests (completes F5 Recent Reviews Card test coverage). Staff Code Review APPROVE (1 correction: strengthened cross-account assertions, added tie-break stability test, removed redundant/vacuous assertions). QA PASS (68 tests total in StackHomeCoreTests, 0 failures, 0 regressions. TC-053 and TC-054 PASS). PO ACCEPTED (AC-W15-1 and AC-W15-3 both Met). 1 correction.
 
-**Wave 6 (IN PROGRESS) — now unblocked:**
-- **T-W31** (M, T-W05 done) — **NEXT POINTER** — Re-import merge preserving flags (unblocked).
+**Wave 6 (COMPLETE) — just completed:**
+- **T-W31** (M, T-W05 done) — ✅ DONE (merged `05e8c60`; commits `4016170`, `7daad95`); Re-import merge preserving flags — TEST-ONLY proving the WindowsAppsListModel live-sync merge seam (in real `.scexport` re-import flow) preserves local isFavorite/isArchived flags. **Scope reinterpretation:** Original wording ("on `.scexport` re-import, merge app data preserving local isFavorite/isArchived") did NOT match codebase: `.scexport` format carries no app data (iOS exporter writes only id/name/providerType/createdAt/rules/expirationDate/credentials); re-import generates fresh account id (blocked on duplicate credentials). User approved reinterpreting T-W31 to TEST the REAL merge seam — `WindowsAppsListModel.loadApps()` live-sync path — which reads cached AppModels and carries isFavorite/isArchived forward before persisting. No production change needed (merge logic already exists); T-W31 delivered the proving test. Staff Code Review APPROVE (1 correction: XCTAssertNotNil guards in AC-3, XCTAssertNil(syncError), spacing, docblock). QA PASS (testReSyncMergePreservesLocalFlagsEndToEnd / TC-056 PASS; WindowsAppsListModelTests 59/59, 18 suites overall, 0 failures, no regressions). PO ACCEPTED (AC-1, AC-2, AC-3 all Met; reinterpretation confirmed faithful to design note D8). 1 correction. Test added: `testReSyncMergePreservesLocalFlagsEndToEnd` (TC-056) in `StackConnectWindowsApp/Tests/WindowsAppCoreTests/WindowsAppsListModelTests.swift` — end-to-end merge-preserves-flags with persistence round-trip.
 
 **Critical path:** T-W01 → T-W16 → T-W19 → T-W22 → T-W23 → T-W24 → T-W25 → T-W26 → T-W27 → T-W28 → T-W29 → T-W30 (**COMPLETE**).
 
@@ -1015,6 +1016,45 @@ Files modified/extended:
 
 ---
 
+## Wave 6 Development — T-W31 (DONE)
+
+### T-W31 (Re-import merge preserving flags — TEST-ONLY)
+
+**Task:** Prove that the `WindowsAppsListModel.loadApps()` live-sync merge seam preserves local isFavorite/isArchived flags across full refresh cycles with persistence round-trip. Test-only deliverable (no production changes).
+
+**Scope Reinterpretation (recorded per user approval):**
+
+The original T-W31 wording—"on `.scexport` re-import, merge app data preserving local isFavorite/isArchived"—did NOT match the actual codebase architecture:
+- `.scexport` format carries **no app data** (iOS exporter writes only id/name/providerType/createdAt/rules/expirationDate/credentials).
+- Re-import generates a **fresh account id** (blocked on duplicate credentials; full re-import is an architectural limitation, not a T-W31 gap).
+
+User approved reinterpreting T-W31 to **TEST the REAL merge seam**: the `WindowsAppsListModel.loadApps()` live-sync path, which reads cached AppModels from SwiftData and carries isFavorite/isArchived forward before persisting. This is the seam where local flag preservation actually happens in the codebase—and it was already implemented; T-W31 delivered the proving test. No production change was needed. Reinterpretation confirmed faithful to design note D8 (US-W15 flag-preserving merge behavior).
+
+**Deliverables:**
+- `testReSyncMergePreservesLocalFlagsEndToEnd` (TC-056) — new test case in `StackConnectWindowsApp/Tests/WindowsAppCoreTests/WindowsAppsListModelTests.swift`.
+- End-to-end verification: fetch initial app list, mutate isFavorite/isArchived in SwiftData cache, trigger live-sync merge via `loadApps()`, verify flags carried forward in merged result, persist to SwiftData, re-fetch and re-merge, verify flags remain stable through persistence round-trip.
+
+**Commits:**
+- `4016170` (feat) — New test `testReSyncMergePreservesLocalFlagsEndToEnd` with full end-to-end merge + persistence round-trip.
+- `7daad95` (fix) — Correction: XCTAssertNotNil guards in AC-3, XCTAssertNil(syncError), spacing, docblock improvements.
+
+**Gate verdicts:**
+- **Staff Code Review:** APPROVE (after 1 correction).
+  - **Correction (commit `7daad95`):** Added XCTAssertNotNil guards for optional unwraps in AC-3 (syncError assertion), clarified assertion logic (use `XCTAssertNil(syncError)` instead of implicit unwrap), fixed spacing/indentation, improved docblock clarity on test intent (end-to-end flag preservation through persistence round-trip).
+- **QA:** PASS (TC-056 PASS by inspection; WindowsAppsListModelTests 59/59 tests green; full Windows package 18 test suites, 0 failures, no regressions on merge logic or persistence).
+- **PO:** ACCEPTED (AC-1 verify merge seam preserves isFavorite, AC-2 verify merge seam preserves isArchived, AC-3 verify flags stable through persistence round-trip—all Met; reinterpretation confirmed faithful to design D8).
+- **Corrections:** 1 (commit `7daad95`).
+
+**Files created/modified:**
+- MODIFIED: `StackConnectWindowsApp/Tests/WindowsAppCoreTests/WindowsAppsListModelTests.swift` (added `testReSyncMergePreservesLocalFlagsEndToEnd` test case; +886 lines of end-to-end merge + persistence verification; no changes to existing tests).
+- NOT modified: `WindowsAppsListModel.swift` (merge logic already exists and is correct; T-W31 is proof-only).
+
+**Merged into `experiment/windows`:** Merge commit `05e8c60` (--no-ff merge strategy). Worktree removed, branch deleted after merge.
+
+**Wave 6 progress:** Re-import merge flags test complete. All 31 critical-path tasks delivered and merged. **No unblocked, not-done tasks remain on the board.** Next: None — board is COMPLETE.
+
+---
+
 ## Resume checklist — ONE TASK PER SESSION (serial)
 
 The four agents from the old parallel run all finished green. The remaining work is now done **one task per session** (the new skill model). **Do exactly one task per session**, in this order, then update this handover and end the session.
@@ -1053,7 +1093,7 @@ The four agents from the old parallel run all finished green. The remaining work
 | 28 | **T-W28** | ✅ DONE (merged `c6e7ea8`) | Wave 4 — Enhance WindowsRecentReviewsWidgetView + widgetsSlot (M, critical path); feature commit `50bf1f3`; Staff Code Review APPROVE (0 corrections); QA PASS 339/339 tests; PO ACCEPTED (all 7 ACs: AC-W15-1/2/3/4, AC-W16-1/2/3); 0 corrections. Most navigation and count badge already wired in T-W03/T-C2. T-W28's delta: trailing ">" chevron on each Recent Reviews row (AC-W15-2), consistent with WindowsWidgetAppRow style. Full WindowsAppCore suite remains 339 tests, 0 failures. No production logic changes beyond chevron; no new tests (executable-package UI has no unit-test surface). NOTE: multi-account aggregation/cap-5/date-desc integration tests scoped to T-W30. |
 | 29 | **T-W29** | ✅ DONE (merged `1ed8431`) | Wave 4 — Verify auto-refresh via HomeViewModel.loadDashboard() + add manual refresh button (M, critical path, deps T-W28 DONE); feature commits `6d8ebdc`, `605620d`; Staff Code Review APPROVE (1 correction: disable Refresh while loading via `.disabled(isRefreshing)`; add RecentReviewsWidget store-failure tests at StackHomeCore seam; reorder toolbar to `Sync \| Refresh \| Customize`); QA PASS (339/339 WindowsAppCoreTests, 64/64 StackHomeCoreTests incl. 2 new tests); PO ACCEPTED (AC-W17-1/2/3 all Met); 1 correction. AC-W17-1 (auto-refresh) pre-wired in RootView.task. AC-W17-2 delta: explicit Button("Refresh") in WindowsToolbarView (disabled while isLoading), wired to Task { await model.loadDashboard() }. AC-W17-3: RecentReviewsWidget.load() do/catch non-blocking + defer clears isLoading; +2 new tests for store-failure path. Architectural note: WindowsHomeModel adapter in executable target (no unit-test surface); coverage at importable StackHomeCore seam + HomeViewModelTests. |
 | 30 | **T-W30** | ✅ DONE (merged `98984d5`) | Wave 5 — Integration test: multi-account aggregation cap-5 + date-desc in RecentReviewsWidgetTests (S, no deps); commits `68b3c37`, `6dede76`; Staff Code Review APPROVE (1 correction: findings F1-F5 strengthened cross-account assertions, added tie-break stability test, removed redundant/vacuous assertions); QA PASS (68 tests total in StackHomeCoreTests, 0 failures, 0 regressions; TC-053 and TC-054 PASS); PO ACCEPTED (AC-W15-1 and AC-W15-3 both Met); 1 correction. Tests added to `Packages/StackHomeCore/Tests/StackHomeCoreTests/RecentReviewsWidgetTests.swift`: testMultiAccountAggregationCapsAtFiveMostRecent (TC-053), testSortByDateDescendingAcrossAccounts (TC-054), testFewerThanFiveAcrossAccountsReturnAll, testSortIsStableOnEqualDates. |
-| 31 | **T-W31** | ⏳ NEXT (unblocked) | Wave 6 — Re-import merge preserving flags (M, deps T-W05 DONE); On `.scexport` re-import, merge app data while preserving local isFavorite/isArchived. |
+| 31 | **T-W31** | ✅ DONE (merged `05e8c60`) | Wave 6 — Re-import merge preserving flags (M, deps T-W05 DONE); TEST-ONLY; commits `4016170`, `7daad95`; Staff Code Review APPROVE (1 correction: XCTAssertNotNil/XCTAssertNil guards, spacing, docblock); QA PASS (TC-056 PASS; WindowsAppsListModelTests 59/59, 18 suites, 0 failures); PO ACCEPTED (AC-1/2/3 all Met, reinterpretation faithful to design D8); 1 correction. **Scope reinterpretation:** Original wording did not match codebase (.scexport carries no app data; re-import generates fresh account id). T-W31 reinterpreted to TEST the REAL merge seam—`WindowsAppsListModel.loadApps()` live-sync path—which reads cached AppModels and carries isFavorite/isArchived forward before persisting. No production change needed (merge logic already exists). Test added: `testReSyncMergePreservesLocalFlagsEndToEnd` (TC-056, +886 lines) to `WindowsAppsListModelTests.swift`. |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
