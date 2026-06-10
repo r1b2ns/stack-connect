@@ -149,11 +149,15 @@ public final class WindowsReviewDetailModel: SwiftCrossUI.ObservableObject {
     private let storage: PersistentStorable
     private let connection: AppleConnectionProtocol?
     private let clipboard: ClipboardProviding
+    private let clipboardAutoDismissDelay: UInt64
 
     // MARK: - Clipboard Auto-Dismiss
 
     /// Cancellable task for the clipboard message auto-dismiss timer.
-    private var clipboardDismissTask: Task<Void, Never>?
+    /// Typed as `Task<Void, Error>` so that cancellation propagates via
+    /// `CancellationError` from `Task.sleep` and the clear-line is never
+    /// reached after cancellation (no anti-pattern `try?` + `guard`).
+    private var clipboardDismissTask: Task<Void, Error>?
 
     // MARK: - Init
 
@@ -165,14 +169,20 @@ public final class WindowsReviewDetailModel: SwiftCrossUI.ObservableObject {
     ///     mutations. When nil, only cached data is shown.
     ///   - clipboard: Clipboard provider for copy operations. Defaults to
     ///     `SystemClipboardProvider()` which delegates to `WindowsClipboard`.
+    ///   - clipboardAutoDismissDelay: Nanoseconds before the clipboard
+    ///     confirmation message auto-dismisses. Defaults to 2 seconds
+    ///     (2_000_000_000 ns). Injectable so T-W26 tests can pass a tiny
+    ///     or zero delay to assert deterministically.
     public init(
         storage: PersistentStorable,
         connection: AppleConnectionProtocol? = nil,
-        clipboard: ClipboardProviding = SystemClipboardProvider()
+        clipboard: ClipboardProviding = SystemClipboardProvider(),
+        clipboardAutoDismissDelay: UInt64 = 2_000_000_000
     ) {
         self.storage = storage
         self.connection = connection
         self.clipboard = clipboard
+        self.clipboardAutoDismissDelay = clipboardAutoDismissDelay
     }
 
     // MARK: - Load Review (Offline-First + Live Sync + Cache Fallback)
@@ -211,6 +221,13 @@ public final class WindowsReviewDetailModel: SwiftCrossUI.ObservableObject {
         }
 
         do {
+            // Known limitation: fetchReviews returns a single ReviewsPage
+            // (up to ~50 reviews). If the target review is not on this first
+            // page, live sync will not find it and the cached copy is shown
+            // indefinitely. This is acceptable because the detail view is
+            // always opened from an already-loaded list item, so the cache
+            // holds the correct data. Pagination for live-sync is out of
+            // scope for T-W22.
             let page = try await connection.fetchReviews(appId: appId)
             if let liveReview = page.reviews.first(where: { $0.id == reviewId }) {
                 uiState.review = liveReview
@@ -289,6 +306,14 @@ public final class WindowsReviewDetailModel: SwiftCrossUI.ObservableObject {
             if existingResponseId == nil {
                 // Create: assign a local placeholder ID until the next sync
                 // surfaces the real server-assigned ID.
+                //
+                // NOTE: If the user deletes this reply before the next
+                // successful sync, `deleteReply()` sends this "local-*" id
+                // to the API, which will fail because the server does not
+                // recognize it. That failure is handled gracefully via
+                // `replyError` (the user sees "Failed to delete reply" and
+                // the reply remains visible until the next sync reconciles
+                // state). Full sync-after-create is out of scope for T-W22.
                 updatedReview.responseId = "local-\(review.id)"
             }
             // Edit: responseId stays the same (existingResponseId).
@@ -387,11 +412,12 @@ public final class WindowsReviewDetailModel: SwiftCrossUI.ObservableObject {
             uiState.clipboardMessage = "Clipboard not available on this host"
         }
 
-        // Auto-dismiss the clipboard message after 2 seconds.
+        // Auto-dismiss the clipboard message after the configured delay.
+        // Cancellation propagates naturally: a cancelled Task.sleep throws
+        // CancellationError, so the clear-line is never reached.
         clipboardDismissTask?.cancel()
         clipboardDismissTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            guard !Task.isCancelled else { return }
+            try await Task.sleep(nanoseconds: self?.clipboardAutoDismissDelay ?? 2_000_000_000)
             self?.uiState.clipboardMessage = nil
         }
     }
@@ -409,8 +435,17 @@ public final class WindowsReviewDetailModel: SwiftCrossUI.ObservableObject {
     /// Derives the reply-related UI state from the review's response fields.
     /// Drives AC-W12-2 (no reply → create mode) and AC-W12-3 (existing reply
     /// → edit mode with body + date).
+    ///
+    /// The canonical "reply exists" arbiter is `responseId != nil` (the
+    /// persistent server identifier), NOT `hasResponse` (which checks
+    /// responseBody non-empty). A review can have a responseId with an empty
+    /// body during PENDING_PUBLISH transitions; gating on `hasResponse` would
+    /// wrongly enter `.create` mode and a subsequent `sendReply` would upsert
+    /// with `existingResponseId = nil`, creating a DUPLICATE on the server.
+    /// Any "should I show the reply text" gating on responseBody belongs in
+    /// the view layer.
     private func applyReplyState(from review: CustomerReviewModel) {
-        if let responseId = review.responseId, review.hasResponse {
+        if let responseId = review.responseId {
             uiState.replyMode = .edit(responseId: responseId)
             uiState.existingReplyBody = review.responseBody
             uiState.existingReplyDate = review.responseDate
