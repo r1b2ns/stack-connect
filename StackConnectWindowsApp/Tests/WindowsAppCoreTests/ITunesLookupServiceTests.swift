@@ -573,7 +573,12 @@ final class ITunesLookupServiceTests: XCTestCase {
         let url = "https://itunes.apple.com/lookup?bundleId=\(encoded)&country=us"
         networking.responses[url] = .success(makeLookupJSON(averageRating: 4.0, ratingCount: 50))
 
-        _ = await sut.fetchAggregateRating(bundleId: weirdBundleId)
+        let result = await sut.fetchAggregateRating(bundleId: weirdBundleId)
+
+        // End-to-end: the seeded US storefront should produce a valid aggregate
+        XCTAssertNotNil(result, "Percent-encoded bundleId should still produce a valid result")
+        XCTAssertEqual(result?.storefrontCount, 1, "Only the seeded US storefront should match")
+        XCTAssertEqual(result?.totalCount, 50)
 
         let urls = networking.fetchedURLs
         XCTAssertGreaterThan(urls.count, 0)
@@ -600,10 +605,11 @@ final class ITunesLookupServiceTests: XCTestCase {
             networking.responses[url] = .success(Data("this is not json".utf8))
         }
 
-        // Should not crash; storefronts fail to decode and are treated as `.failed`.
-        // Since all requests return data (not throw), they count as HTTP successes
-        // but JSON-decode failures map to `.failed`. If ALL decode-fail => successCount==0
-        // => allStorefrontsFailed => nil result (stale-while-revalidate path, no cache => nil).
+        // Should not crash. The mock returns data (no network-level throw), but
+        // JSONDecoder.decode fails for each storefront, which is caught and mapped
+        // to `.failed` — NOT counted in `successCount`. When ALL storefronts are
+        // `.failed`, successCount == 0 => throws `allStorefrontsFailed` => nil
+        // result (stale-while-revalidate path, no cache => nil).
         let result = await sut.fetchAggregateRating(bundleId: "com.malformed.app")
 
         // The service should gracefully return nil (all storefronts failed to decode).
@@ -618,7 +624,8 @@ final class ITunesLookupServiceTests: XCTestCase {
         // US returns valid data
         seedResponse(bundleId: "com.partial.app", country: "us", averageRating: 4.5, ratingCount: 1000)
 
-        // GB returns malformed JSON
+        // GB returns malformed JSON — decode fails, mapped to `.failed` (not
+        // counted in `successCount`), so it does not affect the US aggregate.
         let gbURL = "https://itunes.apple.com/lookup?bundleId=com.partial.app&country=gb"
         networking.responses[gbURL] = .success(Data("not valid json!!!".utf8))
 

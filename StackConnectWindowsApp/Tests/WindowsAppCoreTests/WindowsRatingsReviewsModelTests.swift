@@ -561,10 +561,11 @@ final class WindowsRatingsReviewsModelTests: XCTestCase {
 
     // MARK: - T-W20 Gap Coverage: Error Clearing on Retry (SF-1)
 
-    /// Verifies that calling loadRatingsIfNeeded clears stale ratingError
-    /// from a prior failure before the new load begins.
+    /// Verifies that `ratingError` transitions from non-nil (after a failed
+    /// lookup) back to `nil` (after a successful retry) on the SAME model
+    /// instance, mirroring `testReviewsErrorClearedOnRetryStart`.
     func testRatingErrorClearedOnRetry() async {
-        // Given: first call fails rating
+        // Given: first call fails rating (all storefronts throw)
         lookupNetworking.shouldThrowAll = true
         connection.fetchReviewsResult = .success(
             ReviewsPage(reviews: [], hasNextPage: false, cursor: nil)
@@ -572,48 +573,19 @@ final class WindowsRatingsReviewsModelTests: XCTestCase {
 
         let sut = makeSUT()
         await sut.loadRatingsIfNeeded(appId: "app-001", bundleId: "com.example.app", accountId: "acct-001")
-        XCTAssertEqual(sut.uiState.ratingError, "Rating unavailable", "Precondition: rating error set")
+        XCTAssertEqual(sut.uiState.ratingError, "Rating unavailable", "Precondition: rating error set after failure")
+        XCTAssertNil(sut.uiState.aggregateRating, "Precondition: aggregate nil after failure")
 
-        // When: second call succeeds (fresh networking mock without shouldThrowAll)
-        let freshNetworking = MockLookupNetworking()
-        let freshLookupService = ITunesLookupService(
-            networking: freshNetworking,
-            storage: storage,
-            cacheTTL: 3600
-        )
-        // Seed a successful response for the fresh networking
-        let url = "https://itunes.apple.com/lookup?bundleId=com.example.retry&country=us"
-        freshNetworking.responses[url] = .success(Data("""
-        {"resultCount": 1, "results": [{"averageUserRating": 4.5, "userRatingCount": 500}]}
-        """.utf8))
+        // When: flip the mock to succeed and seed a valid response, then retry
+        lookupNetworking.shouldThrowAll = false
+        seedLookupResponse(bundleId: "com.example.app", country: "us", averageRating: 4.5, ratingCount: 500)
 
-        let sut2 = WindowsRatingsReviewsModel(
-            storage: storage,
-            connection: connection,
-            lookupService: freshLookupService
-        )
-        // First, simulate the same failure to set ratingError
-        let failNetworking = MockLookupNetworking()
-        failNetworking.shouldThrowAll = true
-        let failService = ITunesLookupService(
-            networking: failNetworking,
-            storage: storage,
-            cacheTTL: 3600
-        )
-        let sut3 = WindowsRatingsReviewsModel(
-            storage: storage,
-            connection: connection,
-            lookupService: failService
-        )
-        await sut3.loadRatingsIfNeeded(appId: "app-001", bundleId: "com.example.retry", accountId: "acct-001")
-        XCTAssertNotNil(sut3.uiState.ratingError, "Precondition: ratingError should be set after failure")
+        await sut.loadRatingsIfNeeded(appId: "app-001", bundleId: "com.example.app", accountId: "acct-001")
 
-        // Now call again -- the loadRatingsIfNeeded code sets ratingError = nil at the start
-        await sut3.loadRatingsIfNeeded(appId: "app-001", bundleId: "com.example.retry", accountId: "acct-001")
-        // Even though it fails again, the important thing is the error was cleared before retry
-        // (SF-1 behavior). Since it fails again, ratingError will be re-set.
-        // We verify the error string is still "Rating unavailable" (not stale or doubled).
-        XCTAssertEqual(sut3.uiState.ratingError, "Rating unavailable")
+        // Then: ratingError is cleared and aggregate is populated
+        XCTAssertNil(sut.uiState.ratingError, "ratingError should be nil after successful retry")
+        XCTAssertNotNil(sut.uiState.aggregateRating, "aggregate should be populated after successful retry")
+        XCTAssertEqual(sut.uiState.aggregateRating?.totalCount, 500)
     }
 
     /// Verifies that reviewsError is cleared when loadRatingsIfNeeded is called
@@ -636,25 +608,6 @@ final class WindowsRatingsReviewsModelTests: XCTestCase {
         XCTAssertNil(sut.uiState.reviewsError, "reviewsError should be cleared after successful retry")
         XCTAssertEqual(sut.uiState.reviews.count, 1)
         XCTAssertEqual(sut.uiState.reviews[0].id, "retry-ok")
-    }
-
-    // MARK: - T-W20 Gap Coverage: loadNextPage with No Connection
-
-    /// Verifies that loadNextPage resets isLoadingMore when there is no
-    /// connection, even when a cursor exists from a prior session (defensive).
-    func testLoadNextPageNoConnectionResetsLoadingMore() async {
-        // To test this edge case, we need a model with no connection but with
-        // a cursor already set. We can achieve this by loading page 1 with a
-        // connection, then creating a new model without connection using the
-        // same state. However, since cursor is private and memory-only, the
-        // simplest way is to verify the guard path in loadNextPage directly:
-        // if nextPageCursor is nil (default), it returns immediately.
-        let sut = makeSUT(withConnection: false)
-
-        // No cursor => no-op (covered by existing test). But let's verify
-        // isLoadingMore stays false.
-        await sut.loadNextPage(appId: "app-001")
-        XCTAssertFalse(sut.uiState.isLoadingMore)
     }
 
     // MARK: - T-W20 Gap Coverage: Sort + Filter with Load More
