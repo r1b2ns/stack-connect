@@ -81,6 +81,7 @@ struct WindowsHomeView: View {
                 tier: windowsLayoutTier(availableWidth: proxy.size.width),
                 onSync: { model.triggerSync() },
                 onRefresh: { Task { await model.loadDashboard() } },
+                isRefreshing: model.state.isLoading,
                 onCustomizeWidgets: { coordinator.push(.customizeWidgets) }
             )
         }

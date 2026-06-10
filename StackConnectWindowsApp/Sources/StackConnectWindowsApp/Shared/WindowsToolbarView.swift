@@ -3,9 +3,9 @@ import SwiftCrossUI
 // Phase 4 · B1b-2 · T-B3 / T-W29 — in-content toolbar row (design §2.4 step 1).
 //
 // SwiftCrossUI has no menu/title bar in v1, so the global Home commands live in
-// a manual HStack at the top of the content: the app title on the left, "Sync"
-// (US-004), "Refresh" (US-W17 AC-W17-2), and "Customize Widgets" (US-009) on
-// the right.
+// a manual HStack at the top of the content: the app title on the left, then
+// "Sync" (US-004), "Refresh" (US-W17 AC-W17-2), and "Customize Widgets"
+// (US-009) on the right — in that order.
 //
 // T-D4 (design §2.9): the action labels adapt to the available width. The
 // toolbar does not read geometry itself — `WindowsHomeView` wraps it in a
@@ -30,6 +30,9 @@ struct WindowsToolbarView: View {
     /// via the caller's closure; the loading state is driven by the core's
     /// `isLoading` flag (shown/hidden by the parent's `loadingSlot`).
     let onRefresh: () -> Void
+    /// When `true`, the Refresh button is disabled to prevent re-entrant taps
+    /// while a `loadDashboard()` call is already in flight (Finding 1).
+    let isRefreshing: Bool
     let onCustomizeWidgets: () -> Void
 
     var body: some View {
@@ -38,8 +41,9 @@ struct WindowsToolbarView: View {
                 .font(.title2)
                 .fontWeight(.bold)
             Spacer()
-            Button("Refresh", action: onRefresh)
             Button("Sync", action: onSync)
+            Button("Refresh", action: onRefresh)
+                .disabled(isRefreshing)
             Button(customizeLabel, action: onCustomizeWidgets)
         }
     }
