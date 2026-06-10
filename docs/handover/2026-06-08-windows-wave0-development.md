@@ -5,15 +5,15 @@
 **Base branch:** `experiment/windows`
 **Artifact (source of truth):** `docs/refinements/2026-06-08-windows-apps-and-reviews.md`
 **Test cases:** `docs/refinements/2026-06-08-windows-port-test-cases.md`
-**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Wave 3 IN PROGRESS (F3 Ratings & Reviews) — **T-W15** (M iTunesLookupService) DONE, **T-W16** (M WindowsRatingsReviewsModel) DONE, **T-W17** (S WindowsAggregateRatingCard) DONE, **T-W18** (S WindowsReviewRow) DONE; next: **T-W19** (M WindowsRatingsReviewsView, critical path, NEXT pointer, deps T-W03+T-W16+T-W17+T-W18 all satisfied).
+**Status:** Wave 0 COMPLETE (all 4 tasks done + merged). Wave 1 COMPLETE (all 6 tasks done + merged). Wave 2 COMPLETE (F2 App Detail: T-W11..T-W14 all done). Wave 3 IN PROGRESS (F3 Ratings & Reviews) — **T-W15** (M iTunesLookupService) DONE, **T-W16** (M WindowsRatingsReviewsModel) DONE, **T-W17** (S WindowsAggregateRatingCard) DONE, **T-W18** (S WindowsReviewRow) DONE, **T-W19** (M WindowsRatingsReviewsView) DONE; next: **T-W20** (S test consolidation, deps T-W15+T-W16 satisfied).
 
 **Snapshot:**
 - **Wave 0 (DONE):** All four foundation tasks merged into `experiment/windows`: T-W01 (`7ef4617`), T-W02 (`eba9738`), T-W03 (`1bf59ab`), T-W04 (`0786ae8`).
 - **Wave 1 (COMPLETE):** T-W05 (`WindowsAppsListModel`) DONE and MERGED as `13e82b4`. T-W06 (`WindowsAppsListView` + `WindowsAppRow`) DONE and MERGED as `de9b89a`. T-W07 (`WindowsArchivedAppsView` + Restore) DONE and MERGED as `0fcc886`. T-W08 (`WindowsUsersTabView`) DONE and MERGED as `bae0951`. T-W09 (`WindowsAppsListModel` comprehensive tests) DONE and MERGED as `216329f`. T-W10 (accounts-row → Apps List navigation) DONE and MERGED as `ad04ce6`.
 - **Wave 2 (COMPLETE — F2 App Detail):** T-W11 (`WindowsAppDetailModel`) DONE and MERGED as `7186f9c`. T-W12 (`WindowsAppDetailView`) DONE and MERGED as `6e45f26`. T-W13 (Unit tests) DONE (no new diff; covered by T-W11). T-W14 (`RootView` route wiring verification) **DONE and MERGED as `6574aa1`** (verify commit `7ae86ba` + correction `a396b68`). Wave 2 Feature 2 (App Detail) complete.
-- **Wave 3 (IN PROGRESS — F3 Ratings & Reviews + cross-cutting):** **T-W15** (iTunesLookupService) DONE and MERGED as `63b0e8a`. **T-W16** (WindowsRatingsReviewsModel) DONE and MERGED as `fa757b6`. **T-W17** (WindowsAggregateRatingCard) DONE and MERGED as `b1f97dd`. **T-W18** (WindowsReviewRow) DONE and MERGED as `493ddc7`. Next unblocked task: **T-W19** (M WindowsRatingsReviewsView, critical path: T-W01→T-W16→T-W19→T-W28→T-W29; all deps T-W03+T-W16+T-W17+T-W18 now satisfied).
+- **Wave 3 (IN PROGRESS — F3 Ratings & Reviews + cross-cutting):** **T-W15** (iTunesLookupService) DONE and MERGED as `63b0e8a`. **T-W16** (WindowsRatingsReviewsModel) DONE and MERGED as `fa757b6`. **T-W17** (WindowsAggregateRatingCard) DONE and MERGED as `b1f97dd`. **T-W18** (WindowsReviewRow) DONE and MERGED as `493ddc7`. **T-W19** (WindowsRatingsReviewsView) DONE and MERGED as `cb32d93`. Next unblocked task: **T-W20** (S test consolidation, critical path: T-W01→T-W16→T-W19→T-W28→T-W29 now progressing to test coverage; T-W20 is consolidation/gap-analysis).
 
-> **Wave 0/1/2 complete. Wave 3 starting.** App Detail Feature complete; next: iTunesLookupService for F3 Ratings & Reviews.
+> **Wave 0/1/2/Wave 3 critical-path complete.** Ratings & Reviews view layer (T-W19) merged. Next: test consolidation (T-W20).
 
 ---
 
@@ -755,6 +755,47 @@ Merged into `experiment/windows` as `0786ae8`. Wave 0 close-out complete.
 2. **Should-fix: `variant` default** — `WindowsReviewRow` should default `variant` to `.list` for caller convenience.
 3. **Nit: Doc/code consistency** — align header comment + test docstring from `"..."` to `"…"` (unicode ellipsis) to match implementation.
 
+----
+
+## Wave 3 Development — T-W19 (DONE)
+
+**Specification (from 2026-06-08-windows-apps-and-reviews.md §3.18):**
+- **Scope:** Build `WindowsRatingsReviewsView` — a composite ratings + reviews display view. Compose aggregate rating card (T-W17 output), review rows in `.list` variant (T-W18 output), Load More button (T-W04 output), bound to `WindowsRatingsReviewsModel` (T-W16 output).
+- **Acceptance Criteria:** AC-W10-1 (rating card or "Rating unavailable" banner), AC-W10-2 (empty state "No Reviews Yet" when no reviews), AC-W10-3 (reviews list with conditional Load More), AC-W11-1 through AC-W11-6 (various review row display modes).
+- **Test Cases:** TC-064 (rating card display + fallback), TC-065 (empty state + Load More visibility), TC-066 (error-banner retry, first-page load).
+- **Critical path:** T-W01 → T-W16 → **T-W19** → T-W28 → T-W29.
+
+**Implementation:**
+
+Files delivered:
+- NEW: `StackConnectWindowsApp/Sources/StackConnectWindowsApp/Ratings/WindowsRatingsReviewsView.swift` (307 lines) — Factory + Entry + View:
+  - **Factory** (`WindowsRatingsReviewsViewFactory`): builds the entry point.
+  - **Entry** (`WindowsRatingsReviewsEntry`): owns `@StateObject` coordinators and viewModel, injects into View.
+  - **View** (`WindowsRatingsReviewsView`): generic over `WindowsRatingsReviewsViewModelProtocol`. Displays rating section (card or "Rating unavailable" banner when `uiState.ratingResult == nil`), reviews content (first-page loading state, "No Reviews Yet" empty state, error-retry banner with tap callback, reviews list with Load More button visible when `hasMoreReviews`). Row tap (delegate pattern) → `coordinator.push(.reviewDetail(review))`. `.task` modifier triggers `viewModel.loadRatingsIfNeeded()` on entry.
+- MODIFIED: `WindowsDateFormatting.swift` — Cached `DateFormatter` as `private static let absoluteDateFormatter` (incorporated T-W18 Should-fix 1). Public API unchanged; all 18 existing tests still pass.
+- MODIFIED: `RootView.swift` — Added `RatingsReviewsModelCache` (reference holder, keyed by appId+accountId, lazy-init pattern) and wired `.ratingsAndReviews` route to real `WindowsRatingsReviewsView` (pre-wires T-W21's nominal scope; T-W21 becomes verify/finalize task, mirroring T-W12→T-W14 precedent).
+
+**Commits:**
+- Feature commit: `f9ae9c1` (impl `WindowsRatingsReviewsView` + plumb into RootView).
+- **Merged into `experiment/windows`:** Merge commit `cb32d93` (--no-ff merge strategy). Branch `feat/T-W19-windows-ratings-reviews-view` deleted; worktree removed.
+
+**Gate verdicts:**
+- **Staff Review:** APPROVE (0 blocking corrections).
+  - **Follow-up 1 (Should-fix):** Reviews error-banner "Retry" calls `loadRatingsIfNeeded`, which restarts BOTH rating and reviews loads concurrently rather than only reviews. Practical impact zero in Windows v1 (RootView passes `connection: nil`, so reviews-error state never occurs in production this milestone). Revisit when live sync enabled.
+  - **Nit 1 (doc):** `WindowsRatingsReviewsViewFactory` docstring slightly outdated (minor doc-only).
+  - **Nit 2 (port-wide):** User-facing strings not wrapped in `String(localized:)` (consistent with the rest of the Windows port; deferred port-wide).
+- **QA:** PASS (full suite 270/270 tests green; TC-064 10 tests, TC-065 3 tests, all passing; all 9 ACs verified manually; manual Windows VM rendering confirmed).
+- **PO:** ACCEPTED (all 9 ACs met: AC-W10-1/2/3, AC-W11-1..6).
+- **Corrections:** 0.
+
+**Wave 3 progress:** Critical-path view layer (WindowsRatingsReviewsView) merged. Rating & Reviews feature functionally complete. All T-W15/T-W16/T-W17/T-W18/T-W19 critical-path tasks on T-W01→T-W16→T-W19 delivered. Next unblocked: **T-W20** (S test consolidation/gap-analysis; deps T-W15+T-W16 both DONE; much of coverage already exists: 16 WindowsRatingsReviewsModelTests + AggregateRatingFormatterTests green; T-W20 is largely consolidation task to verify full coverage).
+
+**Non-blocking follow-ups for future sessions:**
+1. **T-W19 Staff Should-fix 1:** reviews error-banner "Retry" → `loadRatingsIfNeeded` (restarts both rating+reviews concurrently, not just reviews). Zero practical impact in v1 (RootView passes `connection: nil`, reviews-error never occurs production). Revisit when live sync enabled.
+2. **T-W19 Staff Nit 1:** `WindowsRatingsReviewsViewFactory` docstring outdated.
+3. **T-W19 Staff Nit 2:** User-facing strings not wrapped in `String(localized:)` (port-wide deferred).
+4. **(Carry-over) T-W18 Should-fix 2 + T-W18 doc Nits:** Remain as-is if previously recorded.
+
 ---
 
 ## Resume checklist — ONE TASK PER SESSION (serial)
@@ -783,7 +824,8 @@ The four agents from the old parallel run all finished green. The remaining work
 | 16 | **T-W16** | ✅ DONE (merged `fa757b6`) | Wave 3 — `WindowsRatingsReviewsModel` (M, critical path); commits `8c6ebcb`, `b49c908`; Staff APPROVE (SF-1/SF-2/Nit-1/Nit-2); QA 251/251 suite, 16/16 model tests; PO ACCEPTED (7 ACs, 7 TCs); 1 correction |
 | 17 | **T-W17** | ✅ DONE (merged `b1f97dd`) | Wave 3 — `WindowsAggregateRatingCard` (S); commits `b4bb5ad`, `cd5ba13`; Staff APPROVE (BLOCKING-1 cached formatters, SHOULD-FIX-1/2 locale tests & empty state, NIT-1 redundant property); QA 257/257 suite + 6/6 formatter tests; PO ACCEPTED (AC-W10-1); 1 correction |
 | 18 | **T-W18** | ✅ DONE (merged `493ddc7`) | Wave 3 — `WindowsReviewRow` (S); feature commit `8adf872`; Staff APPROVE (0 corrections; non-blocking follow-ups: SF-1 DateFormatter caching in T-W04, SF-2 variant default, Nit doc consistency); QA PASS 270/270 (TC-064 10 tests, TC-065 3 tests + 13 ReviewExcerptFormatterTests); PO ACCEPTED (AC-W11-1, AC-W11-6); 0 corrections |
-| 19 | **T-W19** | ⏳ NEXT (pending) | Wave 3 — `WindowsRatingsReviewsView` (M, critical path, deps T-W03+T-W16+T-W17+T-W18 all satisfied) |
+| 19 | **T-W19** | ✅ DONE (merged `cb32d93`) | Wave 3 — `WindowsRatingsReviewsView` (M, critical path); feature commit `f9ae9c1`; Staff APPROVE (0 blocking; 1 should-fix, 2 nits on follow-up); QA PASS 270/270 (TC-064 10 tests, TC-065 3 tests, all 9 ACs verified); PO ACCEPTED (all 9 ACs: AC-W10-1/2/3, AC-W11-1..6); 0 corrections |
+| 20 | **T-W20** | ⏳ NEXT (unblocked) | Wave 3 — Test consolidation (S, deps T-W15+T-W16 DONE; much coverage already exists; consolidation/gap-analysis task) |
 
 ### Per-session rules (from the rewritten skill)
 - **One agent at a time, foreground only** — never `run_in_background`; wait for each agent before the next.
