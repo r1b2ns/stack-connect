@@ -412,3 +412,26 @@ final class SuspendableAppleConnection: AppleConnectionProtocol, @unchecked Send
         }
     }
 }
+
+// MARK: - Mock Clipboard Provider (T-W26)
+
+/// Configurable mock for `ClipboardProviding`. Captures the last text passed
+/// to `setText` and returns a canned success/failure result. Thread-safe
+/// enough for single-threaded test scenarios (no locking).
+final class MockClipboardProvider: ClipboardProviding, @unchecked Sendable {
+
+    /// Whether `setText` should report success (`true`) or failure (`false`).
+    var shouldSucceed: Bool = true
+
+    /// The last text passed to `setText`, captured for assertion.
+    private(set) var lastSetText: String?
+
+    /// How many times `setText` was called.
+    private(set) var setTextCallCount: Int = 0
+
+    func setText(_ text: String) -> Bool {
+        setTextCallCount += 1
+        lastSetText = text
+        return shouldSucceed
+    }
+}
