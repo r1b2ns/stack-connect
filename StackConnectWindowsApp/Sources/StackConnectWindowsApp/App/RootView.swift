@@ -7,7 +7,7 @@ import WindowsAppCore
 import os
 #endif
 
-// Phase 4 · Block F · T-F16 / T-W03 / T-W06 / T-W07 / T-W08 / T-W12 / T-W14 — the window's root view + route switch.
+// Phase 4 · Block F · T-F16 / T-W03 / T-W06 / T-W07 / T-W08 / T-W12 / T-W14 / T-W19 — the window's root view + route switch.
 //
 // Owns the observed state (the core adapter and the navigation coordinator) and
 // renders the current screen: Home when the route stack is empty, otherwise the
@@ -17,9 +17,13 @@ import os
 // T-W03: the Apps & Reviews routes (appsList, archivedApps, appDetail,
 // comingSoon, ratingsAndReviews, reviewDetail, replyComposer,
 // deleteReplyConfirm) are now parameterized per §2.2. Until the real feature
-// views land (T-W19, T-W23 etc.), every new route renders a
+// views land (T-W23 etc.), remaining routes render a
 // `WindowsPlaceholderView` with the route name/title. The switch remains
 // exhaustive (no `default`) so new routes are compile-safe.
+//
+// T-W19: `.ratingsAndReviews` is now wired to the real
+// `WindowsRatingsReviewsView`, with a `RatingsReviewsModelCache` that
+// lazily creates and caches the model per app+account pair.
 //
 // T-W06: `.appsList` and `.archiveAppConfirm` are wired to real views.
 // The apps list model is shared between the list and the archive confirmation
@@ -147,6 +151,36 @@ private final class AppDetailModelCache {
     }
 }
 
+/// Reference-type holder for the shared `WindowsRatingsReviewsModel`. Mirrors
+/// `AppDetailModelCache` — the `@State` reference stays stable, and the class's
+/// `var model` is mutated freely (T-W19). The model is lazily created when the
+/// `.ratingsAndReviews` route is first pushed and reused if the same app is
+/// navigated to again before the cache is invalidated.
+@MainActor
+private final class RatingsReviewsModelCache {
+    private var cachedAppId: String?
+    private var cachedAccountId: String?
+    var model: WindowsRatingsReviewsModel?
+
+    /// Returns the cached model if it matches the requested app+account ids;
+    /// otherwise creates a new one, caches it, and returns it.
+    func resolve(appId: String, accountId: String, storage: PersistentStorable) -> WindowsRatingsReviewsModel {
+        if let existing = model, cachedAppId == appId, cachedAccountId == accountId {
+            return existing
+        }
+        let lookupService = ITunesLookupService(storage: storage)
+        let newModel = WindowsRatingsReviewsModel(
+            storage: storage,
+            connection: nil,
+            lookupService: lookupService
+        )
+        model = newModel
+        cachedAppId = appId
+        cachedAccountId = accountId
+        return newModel
+    }
+}
+
 struct RootView: View {
     /// Observed core adapter (state + intents).
     @State private var model: WindowsHomeModel
@@ -172,6 +206,10 @@ struct RootView: View {
     /// `.appDetail` route is first pushed and reused by
     /// `.archiveAppDetailConfirm` so both views share the same state (T-W12).
     @State private var appDetailCache = AppDetailModelCache()
+
+    /// Shared ratings & reviews model cache. The model is lazily created when
+    /// the `.ratingsAndReviews` route is first pushed (T-W19).
+    @State private var ratingsReviewsCache = RatingsReviewsModelCache()
 
     init(model: WindowsHomeModel) {
         _model = State(wrappedValue: model)
@@ -327,8 +365,23 @@ struct RootView: View {
                 .frame(maxWidth: 860)
             }
 
-        case .ratingsAndReviews:
-            WindowsPlaceholderView(title: "Ratings & Reviews") { coordinator.pop() }
+        // T-W19: real Ratings & Reviews screen. The model is lazily created
+        // and cached in `ratingsReviewsCache` so navigating back and re-entering
+        // reuses the same model (preserving loaded state). No connection on
+        // Windows v1 (reviews come from cache only); the aggregate rating is
+        // fetched live via ITunesLookupService.
+        case .ratingsAndReviews(let appId, let bundleId, let accountId):
+            WindowsRatingsReviewsView(
+                appId: appId,
+                bundleId: bundleId,
+                accountId: accountId,
+                coordinator: coordinator,
+                model: ratingsReviewsCache.resolve(
+                    appId: appId,
+                    accountId: accountId,
+                    storage: model.storage
+                )
+            )
 
         case .reviewDetail:
             WindowsPlaceholderView(title: "Review Detail") { coordinator.pop() }
