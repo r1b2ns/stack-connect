@@ -7,7 +7,7 @@ import WindowsAppCore
 import os
 #endif
 
-// Phase 4 · Block F · T-F16 / T-W03 / T-W06 / T-W07 / T-W08 / T-W12 / T-W14 / T-W19 / T-W23 / T-W24 / T-W25 — the window's root view + route switch.
+// Phase 4 · Block F · T-F16 / T-W03 / T-W06 / T-W07 / T-W08 / T-W12 / T-W14 / T-W19 / T-W23 / T-W24 / T-W25 / T-W27 — the window's root view + route switch.
 //
 // Owns the observed state (the core adapter and the navigation coordinator) and
 // renders the current screen: Home when the route stack is empty, otherwise the
@@ -59,6 +59,14 @@ import os
 // T-W25: `.deleteReplyConfirm` is now wired to the real
 // `WindowsDeleteReplyConfirmView`, with a `DeleteReplyConfirmModelCache` that
 // lazily creates and caches the model per review+response+account tuple.
+//
+// T-W27: VERIFIED — all three review-reply routes (.reviewDetail,
+// .replyComposer, .deleteReplyConfirm) are correctly wired to their real
+// views with proper caches. The route switch is exhaustive (19 cases, no
+// default). Parameter flow confirmed against WindowsHomeCoordinator route
+// definitions and push sites in WindowsRatingsReviewsView (TC-028) and
+// WindowsReviewDetailView (TC-033/035/037). Satisfies AC-W12-1/2/3,
+// AC-W13-1..9, and AC-W14-1/2. No behavioral changes needed.
 
 /// Reference-type holder for the shared `WindowsAppsListModel`. Using a class
 /// avoids mutating `@State` during the view body: the `@State` reference stays
@@ -521,10 +529,11 @@ struct RootView: View {
                 )
             )
 
-        // T-W23: real Review Detail screen. The model is lazily created and
-        // cached in `reviewDetailCache` so navigating back and re-entering
-        // reuses the same model (preserving loaded state). No connection on
-        // Windows v1 (review data comes from cache only).
+        // T-W23 / T-W27 verified: real Review Detail screen. The model is
+        // lazily created and cached in `reviewDetailCache` so navigating back
+        // and re-entering reuses the same model (preserving loaded state). No
+        // connection on Windows v1 (review data comes from cache only).
+        // Satisfies AC-W12-1/2/3 and AC-W14-1/2 (TC-028).
         case .reviewDetail(let reviewId, let appId, let accountId):
             WindowsReviewDetailView(
                 reviewId: reviewId,
@@ -538,13 +547,15 @@ struct RootView: View {
                 )
             )
 
-        // T-W24: real Reply Composer screen. The model is lazily created and
-        // cached in `replyComposerCache`. Supports both create (nil
-        // existingReplyBody) and edit (pre-populated) flows. No connection on
-        // Windows v1 (reply submission requires a live connection, which will
-        // be wired when account-level sync lands). The `existingResponseId` is
-        // threaded from the route so the model can upsert the correct response
-        // without relying solely on cache resolution (AC-W13-3).
+        // T-W24 / T-W27 verified: real Reply Composer screen. The model is
+        // lazily created and cached in `replyComposerCache`. Supports both
+        // create (nil existingReplyBody/existingResponseId, AC-W13-1..4,
+        // TC-033) and edit (pre-populated, AC-W13-5/6, TC-035) flows. No
+        // connection on Windows v1 (reply submission requires a live
+        // connection, which will be wired when account-level sync lands).
+        // The `existingResponseId` is threaded from the route so the model
+        // can upsert the correct response without relying solely on cache
+        // resolution (AC-W13-3).
         case .replyComposer(let reviewId, let accountId, let existingReplyBody, let existingResponseId):
             WindowsReplyComposerView(
                 reviewId: reviewId,
@@ -560,10 +571,11 @@ struct RootView: View {
                 )
             )
 
-        // T-W25: real Delete Reply Confirm screen. The model is lazily created
-        // and cached in `deleteReplyConfirmCache`. A new model is created each
-        // time the route parameters change (different reviewId, responseId, or
-        // accountId). No connection on Windows v1 (delete requires a live
+        // T-W25 / T-W27 verified: real Delete Reply Confirm screen. The model
+        // is lazily created and cached in `deleteReplyConfirmCache`. A new
+        // model is created each time the route parameters change (different
+        // reviewId, responseId, or accountId). Satisfies AC-W13-7/8/9
+        // (TC-037). No connection on Windows v1 (delete requires a live
         // connection, which will be wired when account-level sync lands).
         case .deleteReplyConfirm(let reviewId, let responseId, let accountId):
             WindowsDeleteReplyConfirmView(
