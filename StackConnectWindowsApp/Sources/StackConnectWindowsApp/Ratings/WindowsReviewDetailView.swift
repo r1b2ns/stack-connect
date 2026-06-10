@@ -352,12 +352,13 @@ struct WindowsReviewDetailView: View {
 
             HStack {
                 Button(model.uiState.replyMode.buttonLabel) {
-                    // TC-033: push replyComposer with nil existingReplyBody
+                    // TC-033: push replyComposer with nil existingReplyBody (create mode)
                     coordinator.push(
                         .replyComposer(
                             reviewId: review.id,
                             accountId: accountId,
-                            existingReplyBody: nil
+                            existingReplyBody: nil,
+                            existingResponseId: nil
                         )
                     )
                 }
@@ -396,13 +397,14 @@ struct WindowsReviewDetailView: View {
 
             // Action buttons: Edit Reply + Delete Reply
             HStack(spacing: 12) {
-                // TC-035: push replyComposer with existing body
+                // TC-035: push replyComposer with existing body + responseId (edit mode)
                 Button(model.uiState.replyMode.buttonLabel) {
                     coordinator.push(
                         .replyComposer(
                             reviewId: review.id,
                             accountId: accountId,
-                            existingReplyBody: model.uiState.existingReplyBody
+                            existingReplyBody: model.uiState.existingReplyBody,
+                            existingResponseId: responseId
                         )
                     )
                 }

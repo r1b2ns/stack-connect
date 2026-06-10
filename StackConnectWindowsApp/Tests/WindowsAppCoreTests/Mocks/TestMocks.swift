@@ -176,16 +176,24 @@ final class MockAppleConnection: AppleConnectionProtocol, @unchecked Sendable {
 
 // MARK: - Suspendable Apple Connection (T-W09)
 
-/// A mock connection that suspends `fetchApps()` on a continuation, allowing
-/// tests to inspect mid-flight state (e.g. `isLoading == true`) before resuming
-/// the call. All other protocol methods delegate to a canned result or throw.
+/// A mock connection that suspends `fetchApps()` or `upsertReply()` on a
+/// continuation, allowing tests to inspect mid-flight state (e.g.
+/// `isLoading == true`, `isPending == true`) before resuming the call.
+/// All other protocol methods delegate to a canned result or throw.
 ///
-/// Usage:
+/// Usage (fetchApps):
 /// 1. Create the mock.
 /// 2. Call the model's async method that triggers `fetchApps()`.
-/// 3. `await` the mock's `fetchAppsCalled` to know the call is in-flight.
+/// 3. `await` the mock's `waitForFetchAppsCall()` to know the call is in-flight.
 /// 4. Inspect the model's state (e.g. `isLoading`).
 /// 5. Call `resumeFetchApps(with:)` to let the call complete.
+///
+/// Usage (upsertReply — T-W24):
+/// 1. Create the mock.
+/// 2. Call the model's async method that triggers `upsertReply()`.
+/// 3. `await` the mock's `waitForUpsertReplyCall()` to know the call is in-flight.
+/// 4. Inspect the model's state (e.g. `isPending`, `canSubmit`).
+/// 5. Call `resumeUpsertReply(with:)` to let the call complete.
 final class SuspendableAppleConnection: AppleConnectionProtocol, @unchecked Sendable {
 
     // MARK: - fetchApps suspension
@@ -216,9 +224,10 @@ final class SuspendableAppleConnection: AppleConnectionProtocol, @unchecked Send
         }
     }
 
-    /// Safe teardown helper: resumes BOTH continuations (fetchApps and
-    /// fetchAppsCalled) if they are still in-flight, otherwise silent no-op.
-    /// Also clears the buffered flag to leave the mock in a clean state.
+    /// Safe teardown helper: resumes ALL pending continuations (fetchApps,
+    /// upsertReply, and their "called" signals) if they are still in-flight,
+    /// otherwise silent no-op. Also clears buffered flags to leave the mock in
+    /// a clean state.
     @MainActor
     func resumeIfPending() {
         // Resume the fetchApps data continuation if pending.
@@ -232,6 +241,18 @@ final class SuspendableAppleConnection: AppleConnectionProtocol, @unchecked Send
             calledContinuation.resume()
         }
         fetchAppsWasCalled = false
+
+        // Resume the upsertReply data continuation if pending.
+        if let continuation = upsertReplyContinuation {
+            upsertReplyContinuation = nil
+            continuation.resume()
+        }
+        // Resume the upsertReply "called" signal if pending.
+        if let calledContinuation = upsertReplyCalledContinuation {
+            upsertReplyCalledContinuation = nil
+            calledContinuation.resume()
+        }
+        upsertReplyWasCalled = false
     }
 
     /// Resumes the suspended `fetchApps()` with the given result.
@@ -258,6 +279,47 @@ final class SuspendableAppleConnection: AppleConnectionProtocol, @unchecked Send
         }
     }
 
+    // MARK: - upsertReply suspension (T-W24)
+
+    /// Continuation held while `upsertReply()` is suspended.
+    private var upsertReplyContinuation: CheckedContinuation<Void, Error>?
+
+    /// Fulfilled when `upsertReply()` has been called and is suspended.
+    private var upsertReplyCalledContinuation: CheckedContinuation<Void, Never>?
+
+    /// Buffered flag: set to `true` when `upsertReply()` is called, so that
+    /// `waitForUpsertReplyCall()` returns immediately if the call already
+    /// happened (eliminates the lost-wakeup race).
+    private var upsertReplyWasCalled = false
+
+    /// Awaitable signal that fires once `upsertReply()` is in-flight.
+    /// If `upsertReply()` was already called before this method runs, returns
+    /// immediately without creating a continuation (race-safe).
+    @MainActor
+    func waitForUpsertReplyCall() async {
+        if upsertReplyWasCalled {
+            upsertReplyWasCalled = false
+            return
+        }
+        await withCheckedContinuation { continuation in
+            upsertReplyCalledContinuation = continuation
+        }
+    }
+
+    /// Resumes the suspended `upsertReply()` with the given result.
+    /// Trips `assertionFailure` if called when no continuation is in-flight.
+    func resumeUpsertReply(with result: Result<Void, Error>) {
+        guard let continuation = upsertReplyContinuation else {
+            assertionFailure("resumeUpsertReply called with no in-flight upsertReply continuation")
+            return
+        }
+        upsertReplyContinuation = nil
+        switch result {
+        case .success: continuation.resume()
+        case .failure(let error): continuation.resume(throwing: error)
+        }
+    }
+
     // MARK: - Canned stubs for other protocol methods
 
     func validateCredentials() async throws {}
@@ -271,6 +333,14 @@ final class SuspendableAppleConnection: AppleConnectionProtocol, @unchecked Send
     ) async throws -> ReviewsPage {
         ReviewsPage(reviews: [], hasNextPage: false, cursor: nil)
     }
-    func upsertReply(reviewId: String, existingResponseId: String?, responseBody: String) async throws {}
+    @MainActor
+    func upsertReply(reviewId: String, existingResponseId: String?, responseBody: String) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            upsertReplyContinuation = continuation
+            upsertReplyWasCalled = true
+            upsertReplyCalledContinuation?.resume()
+            upsertReplyCalledContinuation = nil
+        }
+    }
     func deleteReply(responseId: String) async throws {}
 }

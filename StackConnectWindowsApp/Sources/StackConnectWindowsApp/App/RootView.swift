@@ -7,7 +7,7 @@ import WindowsAppCore
 import os
 #endif
 
-// Phase 4 · Block F · T-F16 / T-W03 / T-W06 / T-W07 / T-W08 / T-W12 / T-W14 / T-W19 / T-W23 — the window's root view + route switch.
+// Phase 4 · Block F · T-F16 / T-W03 / T-W06 / T-W07 / T-W08 / T-W12 / T-W14 / T-W19 / T-W23 / T-W24 — the window's root view + route switch.
 //
 // Owns the observed state (the core adapter and the navigation coordinator) and
 // renders the current screen: Home when the route stack is empty, otherwise the
@@ -51,6 +51,10 @@ import os
 // T-W14: verified `.appDetail`, `.comingSoon`, and `.archiveAppDetailConfirm`
 // wiring satisfies AC-W07-1/2, AC-W08-1/2, and AC-W09-3. Updated ownership
 // comments; no behavioral changes needed.
+//
+// T-W24: `.replyComposer` is now wired to the real
+// `WindowsReplyComposerView`, with a `ReplyComposerModelCache` that lazily
+// creates and caches the model per review+account pair.
 
 /// Reference-type holder for the shared `WindowsAppsListModel`. Using a class
 /// avoids mutating `@State` during the view body: the `@State` reference stays
@@ -206,6 +210,55 @@ private final class ReviewDetailModelCache {
     }
 }
 
+/// Reference-type holder for the `WindowsReplyComposerModel`. Mirrors
+/// `ReviewDetailModelCache` — the `@State` reference stays stable, and the
+/// class's `var model` is mutated freely (T-W24). The model is lazily created
+/// when the `.replyComposer` route is first pushed. A new model is created
+/// each time the route parameters change (different reviewId, existingBody,
+/// or existingResponseId), so each composer session starts fresh. Including
+/// `existingResponseId` in the cache identity ensures a create-vs-edit (or
+/// different responseId) re-resolves a fresh model rather than reusing a stale
+/// one (AC-W13-3).
+@MainActor
+private final class ReplyComposerModelCache {
+    private var cachedReviewId: String?
+    private var cachedAccountId: String?
+    private var cachedExistingBody: String?
+    private var cachedExistingResponseId: String?
+    var model: WindowsReplyComposerModel?
+
+    /// Returns the cached model if it matches the requested parameters;
+    /// otherwise creates a new one, caches it, and returns it.
+    func resolve(
+        reviewId: String,
+        accountId: String,
+        existingReplyBody: String?,
+        existingResponseId: String?,
+        storage: PersistentStorable
+    ) -> WindowsReplyComposerModel {
+        if let existing = model,
+           cachedReviewId == reviewId,
+           cachedAccountId == accountId,
+           cachedExistingBody == existingReplyBody,
+           cachedExistingResponseId == existingResponseId {
+            return existing
+        }
+        let newModel = WindowsReplyComposerModel(
+            reviewId: reviewId,
+            accountId: accountId,
+            existingReplyBody: existingReplyBody,
+            existingResponseId: existingResponseId,
+            storage: storage
+        )
+        model = newModel
+        cachedReviewId = reviewId
+        cachedAccountId = accountId
+        cachedExistingBody = existingReplyBody
+        cachedExistingResponseId = existingResponseId
+        return newModel
+    }
+}
+
 struct RootView: View {
     /// Observed core adapter (state + intents).
     @State private var model: WindowsHomeModel
@@ -240,6 +293,11 @@ struct RootView: View {
     /// `.reviewDetail` route is first pushed and reused if the same review is
     /// navigated to again (T-W23).
     @State private var reviewDetailCache = ReviewDetailModelCache()
+
+    /// Reply composer model cache. The model is lazily created when the
+    /// `.replyComposer` route is first pushed (T-W24). A new model is created
+    /// each time the route parameters change.
+    @State private var replyComposerCache = ReplyComposerModelCache()
 
     init(model: WindowsHomeModel) {
         _model = State(wrappedValue: model)
@@ -430,8 +488,27 @@ struct RootView: View {
                 )
             )
 
-        case .replyComposer:
-            WindowsPlaceholderView(title: "Reply Composer") { coordinator.pop() }
+        // T-W24: real Reply Composer screen. The model is lazily created and
+        // cached in `replyComposerCache`. Supports both create (nil
+        // existingReplyBody) and edit (pre-populated) flows. No connection on
+        // Windows v1 (reply submission requires a live connection, which will
+        // be wired when account-level sync lands). The `existingResponseId` is
+        // threaded from the route so the model can upsert the correct response
+        // without relying solely on cache resolution (AC-W13-3).
+        case .replyComposer(let reviewId, let accountId, let existingReplyBody, let existingResponseId):
+            WindowsReplyComposerView(
+                reviewId: reviewId,
+                accountId: accountId,
+                existingReplyBody: existingReplyBody,
+                coordinator: coordinator,
+                model: replyComposerCache.resolve(
+                    reviewId: reviewId,
+                    accountId: accountId,
+                    existingReplyBody: existingReplyBody,
+                    existingResponseId: existingResponseId,
+                    storage: model.storage
+                )
+            )
 
         case .deleteReplyConfirm:
             WindowsPlaceholderView(title: "Delete Reply") { coordinator.pop() }
