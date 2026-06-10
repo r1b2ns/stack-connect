@@ -1265,4 +1265,126 @@ final class WindowsAppsListModelTests: XCTestCase {
         XCTAssertEqual(sut.apps.count, 1)
         XCTAssertEqual(sut.apps.first?.name, "App")
     }
+
+    // =========================================================================
+    // MARK: - T-W31 / TC-056: Re-sync merge preserves local flags end-to-end
+    // =========================================================================
+
+    /// Comprehensive test proving the full merge-preserves-flags contract
+    /// (TC-056, reinterpreted at the sync seam):
+    ///
+    /// Setup:
+    ///   - Cache has 3 apps for the account:
+    ///     "app1" with isFavorite=true,  isArchived=false
+    ///     "app2" with isFavorite=false, isArchived=true
+    ///     "app3" with isFavorite=false, isArchived=false  (no flags)
+    ///   - Remote returns 4 apps: "app1", "app2", "app3" (overlapping) + "app4" (new)
+    ///
+    /// Asserts (AC-1 through AC-3):
+    ///   AC-1: After sync, app1.isFavorite remains true and app2.isArchived
+    ///         remains true — remote refresh does NOT clobber local flags.
+    ///   AC-2: app4 (new, absent from cache) has isFavorite=false, isArchived=false.
+    ///   AC-3: A fresh model instance loading from the same storage sees the
+    ///         identical preserved flags — the merge was persisted, not just
+    ///         in-memory.
+    func testReSyncMergePreservesLocalFlagsEndToEnd() async {
+        // -- Arrange: seed 3 cached apps with deterministic flags ----------
+
+        let cachedApps = [
+            makeApp(id: "app1", name: "Favorited App",
+                    bundleId: "com.app1", isFavorite: true, isArchived: false),
+            makeApp(id: "app2", name: "Archived App",
+                    bundleId: "com.app2", isFavorite: false, isArchived: true),
+            makeApp(id: "app3", name: "Plain App",
+                    bundleId: "com.app3", isFavorite: false, isArchived: false),
+        ]
+        await seedApps(cachedApps)
+
+        // Remote returns the 3 existing apps (names may differ — simulates
+        // a real API response that knows nothing about local flags) PLUS one
+        // brand-new app ("app4") that has never been cached.
+        connection.fetchAppsResult = .success([
+            AppInfo(id: "app1", name: "Favorited App v2", bundleId: "com.app1"),
+            AppInfo(id: "app2", name: "Archived App v2",  bundleId: "com.app2"),
+            AppInfo(id: "app3", name: "Plain App v2",     bundleId: "com.app3"),
+            AppInfo(id: "app4", name: "Brand New App",    bundleId: "com.app4"),
+        ])
+
+        // -- Act: trigger a live sync ------------------------------------
+
+        let sut = makeSUT()
+        await sut.loadApps()
+
+        // -- Assert: AC-1 — existing apps keep their local flags ----------
+
+        let app1 = sut.apps.first(where: { $0.id == "app1" })
+        XCTAssertNotNil(app1, "app1 must be present after sync")
+        XCTAssertTrue(app1!.isFavorite,
+                      "AC-1: app1's isFavorite=true must survive the remote refresh")
+        XCTAssertFalse(app1!.isArchived,
+                       "AC-1: app1's isArchived=false must survive the remote refresh")
+
+        let app2 = sut.apps.first(where: { $0.id == "app2" })
+        XCTAssertNotNil(app2, "app2 must be present after sync")
+        XCTAssertFalse(app2!.isFavorite,
+                       "AC-1: app2's isFavorite=false must survive the remote refresh")
+        XCTAssertTrue(app2!.isArchived,
+                      "AC-1: app2's isArchived=true must survive the remote refresh")
+
+        let app3 = sut.apps.first(where: { $0.id == "app3" })
+        XCTAssertNotNil(app3, "app3 must be present after sync")
+        XCTAssertFalse(app3!.isFavorite,
+                       "AC-1: app3's isFavorite=false must survive the remote refresh")
+        XCTAssertFalse(app3!.isArchived,
+                       "AC-1: app3's isArchived=false must survive the remote refresh")
+
+        // Verify remote fields WERE updated (name changed from API)
+        XCTAssertEqual(app1!.name, "Favorited App v2",
+                       "Remote name should be applied despite local flag preservation")
+        XCTAssertEqual(app2!.name, "Archived App v2")
+
+        // -- Assert: AC-2 — new app defaults to false/false ---------------
+
+        let app4 = sut.apps.first(where: { $0.id == "app4" })
+        XCTAssertNotNil(app4, "app4 (new) must be present after sync")
+        XCTAssertFalse(app4!.isFavorite,
+                       "AC-2: new app must default to isFavorite=false")
+        XCTAssertFalse(app4!.isArchived,
+                       "AC-2: new app must default to isArchived=false")
+
+        // -- Assert: AC-3 — flags persisted (survive a fresh load) --------
+
+        // Create a second model instance with NO connection (cache-only)
+        // that reads from the SAME storage. If the merged flags were
+        // persisted correctly, this instance must see the same flags.
+        let sut2 = makeSUT(withConnection: false)
+        await sut2.loadApps()
+
+        XCTAssertEqual(sut2.apps.count, 4,
+                       "AC-3: all 4 merged apps must be persisted and reloaded")
+
+        let reloaded1 = sut2.apps.first(where: { $0.id == "app1" })
+        XCTAssertTrue(reloaded1!.isFavorite,
+                      "AC-3: app1's isFavorite=true must persist to storage")
+        XCTAssertFalse(reloaded1!.isArchived,
+                       "AC-3: app1's isArchived=false must persist to storage")
+
+        let reloaded2 = sut2.apps.first(where: { $0.id == "app2" })
+        XCTAssertFalse(reloaded2!.isFavorite,
+                       "AC-3: app2's isFavorite=false must persist to storage")
+        XCTAssertTrue(reloaded2!.isArchived,
+                      "AC-3: app2's isArchived=true must persist to storage")
+
+        let reloaded3 = sut2.apps.first(where: { $0.id == "app3" })
+        XCTAssertFalse(reloaded3!.isFavorite,
+                       "AC-3: app3's isFavorite=false must persist to storage")
+        XCTAssertFalse(reloaded3!.isArchived,
+                       "AC-3: app3's isArchived=false must persist to storage")
+
+        let reloaded4 = sut2.apps.first(where: { $0.id == "app4" })
+        XCTAssertFalse(reloaded4!.isFavorite,
+                       "AC-3: app4's isFavorite=false must persist to storage")
+        XCTAssertFalse(reloaded4!.isArchived,
+                       "AC-3: app4's isArchived=false must persist to storage")
+    }
 }
