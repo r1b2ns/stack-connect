@@ -66,6 +66,10 @@ enum WindowsReviewDetailViewFactory {
 
 struct WindowsReviewDetailView: View {
 
+    /// Success message returned by `copyReviewToClipboard()`. Used to pick
+    /// banner colour without duplicating the literal (SF-2).
+    private let clipboardSuccessMessage = "Copied!"
+
     /// The customer review identifier.
     let reviewId: String
     /// The App Store app identifier.
@@ -157,13 +161,13 @@ struct WindowsReviewDetailView: View {
         if let message = model.uiState.clipboardMessage {
             HStack(spacing: 0) {
                 Rectangle()
-                    .fill(message == "Copied!" ? Color.green : Color.orange)
+                    .fill(message == clipboardSuccessMessage ? Color.green : Color.orange)
                     .frame(width: 4)
                     .cornerRadius(8)
 
                 HStack(spacing: 8) {
                     Text(message)
-                        .foregroundColor(message == "Copied!" ? .green : .orange)
+                        .foregroundColor(message == clipboardSuccessMessage ? .green : .orange)
                     Spacer()
                 }
                 .padding(12)
