@@ -40,13 +40,22 @@ struct WindowsAccountsListView: View {
     /// navigating; tapping it again or tapping a different row clears it.
     @State private var expiredTappedId: String? = nil
 
+    /// When `false`, the "< Back" button is hidden. Pass `false` when the view
+    /// is embedded inline in the Home sidebar content panel (the sidebar item
+    /// acts as the navigation control instead). Defaults to `true` so all
+    /// existing call sites that push this view as a full-screen route are
+    /// unchanged.
+    let showBackButton: Bool
+
     init(
         provider: ProviderType,
         coordinator: WindowsHomeCoordinator,
         storage: PersistentStorable,
-        secrets: KeyStorable
+        secrets: KeyStorable,
+        showBackButton: Bool = true
     ) {
         self.provider = provider
+        self.showBackButton = showBackButton
         _coordinator = State(wrappedValue: coordinator)
         _model = State(wrappedValue: WindowsAccountsListModel(
             providerType: provider,
@@ -57,14 +66,17 @@ struct WindowsAccountsListView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                toolbar
-                errorBanner
-                content
+            HStack(spacing: 0) {
+                VStack(spacing: 16) {
+                    toolbar
+                    errorBanner
+                    content
+                    Spacer()
+                }
+                .padding(16)
+                .frame(maxWidth: 860)
                 Spacer()
             }
-            .padding(16)
-            .frame(maxWidth: 860)
         }
         .task {
             await model.loadAccounts()
@@ -73,13 +85,16 @@ struct WindowsAccountsListView: View {
 
     // MARK: - Toolbar (US-W01 AC-7 / AC-8)
 
-    /// Header row: "< Back" on the left, provider title centered, "+ Add" on the
-    /// right. Back pops to Home (AC-7); "+ Add" pushes the add-account options
-    /// screen for this provider (AC-8).
+    /// Header row: optional "< Back" on the left, provider title, "+ Add" on
+    /// the right. Back pops to Home (AC-7); "+ Add" pushes the add-account
+    /// options screen for this provider (AC-8). The back button is suppressed
+    /// when `showBackButton` is `false` (inline sidebar usage).
     private var toolbar: some View {
         VStack(spacing: 12) {
             HStack {
-                WindowsBackButtonView(onBack: { coordinator.pop() })
+                if showBackButton {
+                    WindowsBackButtonView(onBack: { coordinator.pop() })
+                }
                 Spacer()
                 Button("+ Add") {
                     coordinator.push(.addAccountOptions(provider))

@@ -2,6 +2,16 @@ import Foundation
 import SwiftCrossUI
 import StackHomeCore
 
+/// The section currently selected in the Home sidebar. `nil` means the
+/// dashboard (root) is shown. Stored on the coordinator so the selection
+/// survives view recreation during route push/pop cycles.
+enum HomeSection: Hashable {
+    case home
+    case appStoreConnect
+    case firebase
+    case settings
+}
+
 // Phase 4 · B1b-2 · T-B1 / T-W03 — Windows navigation foundation.
 //
 // SwiftCrossUI 0.7 has no NavigationStack/NavigationSplitView, so navigation is
@@ -90,6 +100,11 @@ final class WindowsHomeCoordinator: SwiftCrossUI.ObservableObject {
     // Foundation re-exports Combine's same-named symbols; on Windows there is no
     // Combine so the qualification is harmless.
     @SwiftCrossUI.Published private(set) var routeStack: [WindowsRoute] = []
+
+    /// The sidebar section currently selected on the Home screen. `nil` shows
+    /// the dashboard. Stored here so the selection persists across view
+    /// re-renders triggered by route pushes/pops.
+    @SwiftCrossUI.Published var sidebarSection: HomeSection? = .home
 
     /// The screen currently shown, or `nil` when at Home.
     var current: WindowsRoute? { routeStack.last }
