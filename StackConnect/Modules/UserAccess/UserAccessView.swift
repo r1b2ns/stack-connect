@@ -102,6 +102,21 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
                     Text(error)
                 }
             }
+            .alert(
+                String(localized: "Cannot Remove User"),
+                isPresented: Binding(
+                    get: { viewModel.uiState.deleteError != nil },
+                    set: { if !$0 { viewModel.uiState.deleteError = nil } }
+                )
+            ) {
+                Button(String(localized: "OK"), role: .cancel) {
+                    viewModel.uiState.deleteError = nil
+                }
+            } message: {
+                if let error = viewModel.uiState.deleteError {
+                    Text(error)
+                }
+            }
             .toast(message: $viewModel.uiState.toastMessage)
     }
 

@@ -72,4 +72,38 @@ final class AppleAPIErrorTranslatorTests: XCTestCase {
         struct Dummy: Error {}
         XCTAssertFalse(AppleAPIErrorTranslator.isPendingAgreement(Dummy()))
     }
+
+    // MARK: - isForbidden
+
+    func testForbidden403WithForbiddenCodeReturnsTrue() {
+        let error = makeError(
+            status: 403,
+            code: "FORBIDDEN_ERROR",
+            detail: "The API key in use does not allow this request."
+        )
+        XCTAssertTrue(AppleAPIErrorTranslator.isForbidden(error))
+    }
+
+    func testForbidden403WithOtherCodeReturnsFalse() {
+        let error = makeError(
+            status: 403,
+            code: "CONFLICT_ERROR",
+            detail: "An item with the same value already exists."
+        )
+        XCTAssertFalse(AppleAPIErrorTranslator.isForbidden(error))
+    }
+
+    func testForbidden401WithForbiddenCodeReturnsFalse() {
+        let error = makeError(
+            status: 401,
+            code: "FORBIDDEN_ERROR",
+            detail: "The API key in use does not allow this request."
+        )
+        XCTAssertFalse(AppleAPIErrorTranslator.isForbidden(error))
+    }
+
+    func testForbiddenNonProviderErrorReturnsFalse() {
+        let error = NSError(domain: "test", code: 403)
+        XCTAssertFalse(AppleAPIErrorTranslator.isForbidden(error))
+    }
 }
