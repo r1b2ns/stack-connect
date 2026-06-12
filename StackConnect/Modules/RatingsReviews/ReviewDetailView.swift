@@ -266,18 +266,21 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
                 }
 
                 // Metadata
-                HStack(spacing: 12) {
+                HStack(spacing: 4) {
                     if let nickname = viewModel.uiState.review.reviewerNickname {
-                        Label(nickname, systemImage: "person.fill")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        Group {
+                            Image(systemName: "person.fill")
+                            Text(nickname)
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     }
-
+                    Spacer().frame(width: 8)
                     if let territory = viewModel.uiState.review.territory {
-                        Label(
-                            Locale.current.localizedString(forRegionCode: territory) ?? territory,
-                            systemImage: "globe"
-                        )
+                        Group {
+                            Image(systemName: "globe")
+                            Text(Locale.current.localizedString(forRegionCode: territory) ?? territory)
+                        }
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     }
