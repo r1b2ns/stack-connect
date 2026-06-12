@@ -31,6 +31,7 @@ private struct UserAccessEntryView: View {
 struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
+    @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
     var body: some View {
         buildContent()
@@ -155,16 +156,21 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
     private func buildUserRows() -> some View {
         Section {
                 ForEach(viewModel.uiState.filteredUsers) { user in
-                    buildUserRow(user)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            if !user.roles.contains("ACCOUNT_HOLDER") {
-                                Button(role: .destructive) {
-                                    viewModel.uiState.confirmDeleteUser = user
-                                } label: {
-                                    Label(String(localized: "Delete"), systemImage: "trash")
-                                }
+                    Button {
+                        homeCoordinator.navigateToUserDetail(user: user, account: viewModel.uiState.account)
+                    } label: {
+                        buildUserRow(user)
+                    }
+                    .foregroundStyle(.primary)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        if !user.roles.contains("ACCOUNT_HOLDER") {
+                            Button(role: .destructive) {
+                                viewModel.uiState.confirmDeleteUser = user
+                            } label: {
+                                Label(String(localized: "Delete"), systemImage: "trash")
                             }
                         }
+                    }
                 }
             } header: {
                 HStack {
@@ -261,6 +267,10 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
                         .clipShape(Capsule())
                 }
             }
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
     }
 
