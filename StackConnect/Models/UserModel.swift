@@ -9,6 +9,7 @@ struct UserModel: Codable, Identifiable, Hashable {
     var allAppsVisible: Bool
     var provisioningAllowed: Bool
     var isPending: Bool
+    var expirationDate: Date?
 
     var displayName: String {
         let parts = [firstName, lastName].compactMap { $0 }.joined(separator: " ")
