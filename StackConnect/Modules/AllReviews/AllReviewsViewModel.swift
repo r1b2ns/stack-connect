@@ -62,7 +62,7 @@ final class AllReviewsViewModel: AllReviewsViewModelProtocol {
     private func reload() async {
         do {
             let apps: [AppModel] = try await storage.fetchAll(AppModel.self)
-            let appById = Dictionary(uniqueKeysWithValues: apps.map { ($0.id, $0) })
+            let appById = Dictionary(uniqueKeysWithValues: apps.filter { !$0.isArchived }.map { ($0.id, $0) })
             let reviews: [CustomerReviewModel] = try await storage.fetchAll(CustomerReviewModel.self)
             let accountsMap = await HomeWidgetDataLoader.loadAccounts(storage: storage)
 
