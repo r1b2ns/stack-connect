@@ -46,7 +46,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
     private var isMetadataEditable: Bool {
         guard let state = viewModel.uiState.version.appStoreState else { return false }
-        return [.prepareForSubmission, .rejected, .waitingForReview, .readyForReview, .invalidBinary].contains(state)
+        return [.prepareForSubmission, .rejected, .developerRejected, .waitingForReview, .readyForReview, .invalidBinary].contains(state)
     }
 
     /// Metadata editable by state AND user has version.edit permission

@@ -119,6 +119,13 @@ struct AccountModel: Codable, Identifiable, Hashable {
     var origin: AccountOrigin
     /// Optional expiration set on the export. When reached, the account must be removed.
     var expirationDate: Date?
+    /// True when ASC calls for this account started failing with a 403 "pending
+    /// agreements" error (Paid Apps / Program License Agreement). Detected
+    /// indirectly — Apple exposes no agreements API. Self-heals on a clean sync.
+    var hasPendingAgreements: Bool
+    /// Timestamp of the first time pending agreements were detected. Kept stable
+    /// across re-detections so the banner can show a consistent "since" date.
+    var pendingAgreementsDetectedAt: Date?
 
     init(
         id: String = UUID().uuidString,
@@ -127,7 +134,9 @@ struct AccountModel: Codable, Identifiable, Hashable {
         createdAt: Date = .now,
         rules: AccountRules = .allPermissions,
         origin: AccountOrigin = .created,
-        expirationDate: Date? = nil
+        expirationDate: Date? = nil,
+        hasPendingAgreements: Bool = false,
+        pendingAgreementsDetectedAt: Date? = nil
     ) {
         self.id = id
         self.name = name
@@ -136,6 +145,8 @@ struct AccountModel: Codable, Identifiable, Hashable {
         self.rules = rules
         self.origin = origin
         self.expirationDate = expirationDate
+        self.hasPendingAgreements = hasPendingAgreements
+        self.pendingAgreementsDetectedAt = pendingAgreementsDetectedAt
     }
 
     var isExportable: Bool {
@@ -196,9 +207,12 @@ struct AccountModel: Codable, Identifiable, Hashable {
         rules = try container.decodeIfPresent(AccountRules.self, forKey: .rules) ?? .allPermissions
         origin = try container.decodeIfPresent(AccountOrigin.self, forKey: .origin) ?? .created
         expirationDate = try container.decodeIfPresent(Date.self, forKey: .expirationDate)
+        hasPendingAgreements = try container.decodeIfPresent(Bool.self, forKey: .hasPendingAgreements) ?? false
+        pendingAgreementsDetectedAt = try container.decodeIfPresent(Date.self, forKey: .pendingAgreementsDetectedAt)
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, providerType, createdAt, rules, origin, expirationDate
+        case hasPendingAgreements, pendingAgreementsDetectedAt
     }
 }

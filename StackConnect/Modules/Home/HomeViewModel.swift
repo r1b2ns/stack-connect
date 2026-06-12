@@ -13,6 +13,7 @@ protocol HomeViewModelProtocol: ObservableObject {
     func removeWidget(id: UUID)
     func moveWidgets(from source: IndexSet, to destination: Int)
     func availableWidgetKinds() -> [HomeWidgetKind]
+    func dismissPendingAgreements(accountId: String)
 }
 
 // MARK: - UiState
@@ -26,6 +27,7 @@ struct HomeUiState {
     var showExpiredAlert = false
     var expiringSoonAccount: AccountModel?
     var showExpiringSoonAlert = false
+    var pendingAgreementsAccounts: [AccountModel] = []
 }
 
 // MARK: - Implementation
@@ -45,6 +47,9 @@ final class HomeViewModel: HomeViewModelProtocol {
 
     /// Accounts already warned about upcoming expiration this session (avoids repeat alerts).
     private var warnedAccountIds: Set<String> = []
+
+    /// Pending-agreements banners dismissed this session (re-appear next launch if still flagged).
+    private var dismissedAgreementAccountIds: Set<String> = []
 
     init(
         storage: PersistentStorable? = nil,
@@ -101,6 +106,20 @@ final class HomeViewModel: HomeViewModelProtocol {
             uiState.expiringSoonAccount = expiringSoon
             uiState.showExpiringSoonAlert = true
         }
+
+        // Reuse the same fetch — no extra round-trip — to surface pending-agreements banners.
+        uiState.pendingAgreementsAccounts = accounts.filter {
+            $0.providerType == .apple
+                && $0.hasPendingAgreements
+                && !dismissedAgreementAccountIds.contains($0.id)
+        }
+    }
+
+    // MARK: - Pending Agreements
+
+    func dismissPendingAgreements(accountId: String) {
+        dismissedAgreementAccountIds.insert(accountId)
+        uiState.pendingAgreementsAccounts.removeAll { $0.id == accountId }
     }
 
     // MARK: - Widgets

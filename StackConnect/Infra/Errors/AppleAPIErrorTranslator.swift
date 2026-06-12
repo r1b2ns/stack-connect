@@ -30,6 +30,50 @@ enum AppleAPIErrorTranslator {
         return error.localizedDescription
     }
 
+    // MARK: - Pending agreements detection
+
+    /// Likely ASC error codes for a missing/expired account agreement on a 403.
+    // TODO(#73): confirm exact ASC error code against a live 403 response and pin it.
+    private static let pendingAgreementCodes: Set<String> = [
+        "FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED",
+        "FORBIDDEN_REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED"
+    ]
+
+    private static let agreementRegex = try? NSRegularExpression(pattern: "agreement", options: .caseInsensitive)
+
+    /// Detects, indirectly, that Apple is blocking ASC calls for an account
+    /// because of pending or updated account agreements (Paid Apps / Program
+    /// License Agreement). Apple has no agreements API, so the only signal is a
+    /// 403 whose error payload references agreements.
+    static func isPendingAgreement(_ error: Error) -> Bool {
+        guard let providerError = error as? APIProvider.Error,
+              case .requestFailure(let status, let response, _) = providerError,
+              status == 403 else {
+            return false
+        }
+
+        let first = response?.errors?.first
+        let code = (first?.code ?? "").uppercased()
+        let detail = first?.detail ?? ""
+        let title = first?.title ?? ""
+
+        // Primary match: a known agreement error code.
+        if pendingAgreementCodes.contains(code) {
+            return true
+        }
+
+        // Defensive fallback: any "agreement" mention in the payload.
+        let haystack = "\(code) \(detail) \(title)".lowercased()
+        if let agreementRegex {
+            let range = NSRange(haystack.startIndex..., in: haystack)
+            if agreementRegex.firstMatch(in: haystack, range: range) != nil {
+                return true
+            }
+        }
+
+        return false
+    }
+
     // MARK: - Pattern matching
 
     private static func humanize(code: String, detail: String) -> String? {
