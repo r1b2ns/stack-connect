@@ -105,6 +105,27 @@ Added two `@Published` properties:
 
 ---
 
+## Navigation refactor (2026-06-12, later) — persistent sidebar + tap-to-open
+
+### Persistent sidebar shell
+- **Problem**: the sidebar lived inside `WindowsHomeView`; pushing any route replaced the whole screen (`RootView.currentScreen`), so the sidebar vanished on +Add / apps list / etc.
+- **Fix**: moved the shell (expiration banner + 200px sidebar + divider + right pane) into `RootView`. The right pane shows the pushed `destination(for:)` when `coordinator.current != nil`, else `WindowsHomeView`.
+  - New file `Home/WindowsSidebarView.swift` — extracted sidebar (Home/App Store Connect/Settings). Each item's `.onTapGesture` now does `coordinator.popToRoot()` THEN `coordinator.sidebarSection = section` (so selecting a section from inside a pushed route navigates back to that section's root instead of leaving the old route on screen).
+  - `WindowsHomeView` reduced to ONLY the right-pane content switch (dashboard / accounts / settings). Removed its outer VStack/HStack/`sidebarPanel`/`buildSidebarItem`/`expirationAlertSlot`.
+  - `RootView.body` = `VStack { WindowsAlertBannerView; HStack { WindowsSidebarView; Divider; rightContent } }.task { loadDashboard }`. `currentScreen` renamed `rightContent`. All `*ModelCache` types + `destination(for:)` switch unchanged.
+
+### Tap-to-open account (like "Open")
+- In `WindowsAccountsListView.accountCard`, the glyph+name+badges are wrapped in an inner `VStack` with `.onTapGesture { openAccount(account) }`. The `...` button stays in a SEPARATE sibling row OUTSIDE the tap region (the AppKit tap target swallows clicks to any Button beneath it — same hit-test issue as overlay strokes).
+- New `openAccount(_:)` helper: expired → toggle inline error; else clear it + push `.appsList`. Reused by both the card tap and the alert "Open" item so they behave identically.
+
+### Build note
+- Agent ran in a temp worktree; changes were copied into the main checkout (DesktopAlertView was identical/unchanged) and the temp worktree+branch removed. `swift build` succeeds.
+
+## Account card visuals (2026-06-12, later) — Apple logo + square cells
+
+- **Apple glyph**: `providerGlyph` `.apple` changed from `"ASC"` to `"\u{F8FF}"` (Apple-logo PUA char — renders the real Apple logo in the macOS system font on the AppKit backend; shows tofu on Windows since it's an Apple-specific codepoint. Phosphor has no Apple brand logo). Firebase 🔥 / Google Play ▶ unchanged. Glyph font bumped `.title2` → `.largeTitle`.
+- **Square cards**: card body uses `.frame(maxWidth: .infinity, maxHeight: .infinity)` + `.aspectRatio(1, contentMode: .fit)` (the responsive square-cell idiom — both compile/work in SwiftCrossUI 0.7; the fixed-190 fallback was not needed). Each card is a 1:1 square that scales with the half-column width. The expired inline error still appends below the square.
+
 ## Status
 
 - `swift build --package-path StackConnectWindowsApp` **succeeds** (no errors, only pre-existing warnings in RootView.swift)

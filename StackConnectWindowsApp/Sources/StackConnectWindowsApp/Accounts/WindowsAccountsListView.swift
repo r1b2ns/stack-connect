@@ -43,14 +43,14 @@ struct WindowsAccountsListView: View {
     var body: some View {
         ScrollView {
             HStack(spacing: 0) {
-                VStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 16) {
                     toolbar
                     errorBanner
                     content
                     Spacer()
                 }
                 .padding(16)
-                .frame(maxWidth: 860)
+                .frame(maxWidth: 860, alignment: .leading)
                 Spacer()
             }
         }
@@ -59,6 +59,7 @@ struct WindowsAccountsListView: View {
             if model.alertAccountId != nil {
                 DesktopAlertView(
                     title: alertTitle,
+                    subtitle: "O que gostaria de fazer com esta conta?",
                     options: [
                         DesktopAlertOption("Open", color: .blue),
                         DesktopAlertOption("Delete", color: .red),
@@ -115,20 +116,25 @@ struct WindowsAccountsListView: View {
 
         switch label {
         case "Open":
-            if account.isExpired {
-                model.expiredTappedId = (model.expiredTappedId == id) ? nil : id
-            } else {
-                model.expiredTappedId = nil
-                coordinator.push(.appsList(
-                    accountId: account.id,
-                    accountName: account.name
-                ))
-            }
+            openAccount(account)
         case "Delete":
             model.expiredTappedId = nil
             model.confirmDelete(id: id)
         default:
             break
+        }
+    }
+
+    /// Opens an account: navigates to its apps list, or — when the account has
+    /// expired — toggles the inline "expired" error instead of navigating.
+    /// Shared by the card tap (US-W06) and the "Open" menu item so both behave
+    /// identically.
+    private func openAccount(_ account: AccountModel) {
+        if account.isExpired {
+            model.expiredTappedId = (model.expiredTappedId == account.id) ? nil : account.id
+        } else {
+            model.expiredTappedId = nil
+            coordinator.push(.appsList(accountId: account.id, accountName: account.name))
         }
     }
 
@@ -229,21 +235,20 @@ struct WindowsAccountsListView: View {
     /// Iterates over `model.accounts` directly (proven ForEach pattern) and
     /// renders HStack pairs for even-indexed accounts to form a 2-column grid.
     private var populatedState: some View {
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
             ForEach(model.accounts, id: \.id) { account in
                 if isRowStart(account) {
                     HStack(alignment: .top, spacing: 12) {
                         accountCard(account)
                         if let pair = pairAccount(for: account) {
                             accountCard(pair)
-                        } else {
-                            Spacer()
-                                .frame(maxWidth: .infinity)
                         }
+                        Spacer()
                     }
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Returns `true` if this account is at an even index (start of a grid row).
@@ -269,7 +274,11 @@ struct WindowsAccountsListView: View {
     private func accountCard(_ account: AccountModel) -> some View {
         VStack(spacing: 0) {
             VStack(spacing: 8) {
-                // Top bar with ⋮ button
+                // Top bar with ⋮ button. This row is kept OUTSIDE the tap region
+                // below: on the AppKit backend an `.onTapGesture` inserts a
+                // transparent target covering its child's bounds that swallows
+                // clicks to any Button beneath it — so the ⋮ Button must not sit
+                // under the card-open tap region or it would stop receiving taps.
                 HStack {
                     Spacer()
                     Button("...") {
@@ -278,26 +287,33 @@ struct WindowsAccountsListView: View {
                     .fontWeight(.bold)
                 }
 
-                // Provider glyph (centered)
-                Text(providerGlyph)
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(providerColor)
-                    .frame(maxWidth: .infinity)
+                // Tappable content area: glyph + name + badges only (no Buttons),
+                // so attaching `.onTapGesture` here opens the account without
+                // swallowing any interactive child. Behaves identically to the
+                // "Open" menu item via the shared `openAccount(_:)` helper.
+                VStack(spacing: 8) {
+                    // Provider glyph (centered)
+                    Text(providerGlyph)
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundColor(providerColor)
+                        .frame(maxWidth: .infinity)
 
-                // Account name
-                Text(account.name)
-                    .fontWeight(.medium)
-                    .frame(maxWidth: .infinity)
+                    // Account name
+                    Text(account.name)
+                        .fontWeight(.medium)
+                        .frame(maxWidth: .infinity)
 
-                // Badges row
-                HStack(spacing: 4) {
-                    badgesView(for: account)
-                    Spacer()
+                    // Badges row
+                    HStack(spacing: 4) {
+                        badgesView(for: account)
+                        Spacer()
+                    }
                 }
+                .onTapGesture { openAccount(account) }
             }
-            .padding(16)
-            .frame(maxWidth: .infinity)
+            .padding(10)
+            .frame(width: 120, height: 120)
             .background(providerColor.opacity(0.08))
             .cornerRadius(8)
             // Stroke MUST live in `.background` (not `.overlay`): on the AppKit
@@ -362,7 +378,7 @@ struct WindowsAccountsListView: View {
 
     private var providerGlyph: String {
         switch provider {
-        case .apple:      return "ASC"
+        case .apple:      return "\u{F8FF}"
         case .firebase:   return "\u{1F525}"
         case .googlePlay: return "\u{25B6}"
         }

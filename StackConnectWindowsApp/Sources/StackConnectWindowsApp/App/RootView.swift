@@ -373,15 +373,30 @@ struct RootView: View {
     }
 
     var body: some View {
-        currentScreen
-            .task {
-                // Offline-first: load the dashboard from SQLite on first appear.
-                await model.loadDashboard()
+        // Persistent shell: the expiration banner and the 200px sidebar are
+        // always rendered, so they stay visible on every screen. Only the
+        // right-hand pane swaps between the pushed destination and the Home
+        // content (the banner view itself renders nothing when no alert is
+        // active).
+        VStack(spacing: 0) {
+            WindowsAlertBannerView(model: model, coordinator: coordinator)
+            HStack(spacing: 0) {
+                WindowsSidebarView(coordinator: coordinator)
+                Divider()
+                rightContent
             }
+        }
+        .task {
+            // Offline-first: load the dashboard from SQLite on first appear.
+            await model.loadDashboard()
+        }
     }
 
+    /// The right-hand pane: the pushed route's destination when the stack is
+    /// non-empty, otherwise the Home content (dashboard / accounts list /
+    /// settings, driven by `coordinator.sidebarSection`).
     @ViewBuilder
-    private var currentScreen: some View {
+    private var rightContent: some View {
         if let route = coordinator.current {
             destination(for: route)
         } else {

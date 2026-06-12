@@ -38,12 +38,28 @@ struct DesktopAlertOption {
 struct DesktopAlertView: View {
     /// The title shown at the top of the card.
     let title: String
+    /// An optional secondary line shown directly below the title.
+    let subtitle: String?
     /// The vertical list of option buttons.
     let options: [DesktopAlertOption]
     /// Called when the X close button is tapped.
     let onClose: () -> Void
     /// Called with the selected option's label when an option button is tapped.
     let onSelect: (String) -> Void
+
+    init(
+        title: String,
+        subtitle: String? = nil,
+        options: [DesktopAlertOption],
+        onClose: @escaping () -> Void,
+        onSelect: @escaping (String) -> Void
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.options = options
+        self.onClose = onClose
+        self.onSelect = onSelect
+    }
 
     var body: some View {
         // Full-area dimmed background + centered card
@@ -64,16 +80,27 @@ struct DesktopAlertView: View {
 
     private func buildCard() -> some View {
         VStack(spacing: 12) {
-            // Header: title + close button
-            HStack {
-                Text(title)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                Spacer()
-                Button("X") {
-                    onClose()
+            // Header: title + close button, with an optional subtitle below.
+            VStack(spacing: 4) {
+                HStack {
+                    Text(title)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                    Spacer()
+                    Button("X") {
+                        onClose()
+                    }
+                    .fontWeight(.bold)
                 }
-                .fontWeight(.bold)
+
+                if let subtitle, !subtitle.isEmpty {
+                    HStack {
+                        Text(subtitle)
+                            .font(.body)
+                            .foregroundColor(.gray)
+                        Spacer()
+                    }
+                }
             }
 
             Divider()
@@ -85,7 +112,7 @@ struct DesktopAlertView: View {
                         onSelect(option.label)
                     }
                     .foregroundColor(option.color)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 6)
                     .padding(.horizontal, 8)
                     .background(option.color.opacity(0.08))

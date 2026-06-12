@@ -2,122 +2,36 @@ import Foundation
 import SwiftCrossUI
 import StackHomeCore
 
-// Phase 4 · B1b-2 · T-B4 / T-B5 / T-W29 / T-W32 — Sidebar-style Home layout.
+// Phase 4 · B1b-2 · T-B4 / T-B5 / T-W29 / T-W32 — Home right-hand content.
 //
-// Replaced the central card-grid layout with a two-pane sidebar design:
+// This view is now ONLY the right-hand pane of the two-pane sidebar design.
+// The persistent shell (expiration banner + sidebar + divider) lives in
+// RootView so it stays visible on every screen, including pushed routes such
+// as "+ Add" and the apps list. WindowsHomeView simply renders the content
+// that corresponds to the currently selected sidebar section:
 //
-//   ┌─────────────────────────────────────────────┐
-//   │ [expiration alert — full width, conditional]│
-//   ├─────────────────────────────────────────────┤
-//   │  🏠 Home     │  Dashboard  [Sync][Refresh]  │
-//   │  ─────────   │  [Customize Widgets]         │
-//   │  App Store   │                              │
-//   │  Connect  ←  │  content panel               │
-//   │  ─────────   │  (dashboard / ASC list /     │
-//   │  🔥 Firebase │   Firebase list / Settings)  │
-//   │  ─────────   │                              │
-//   │  ⚙ Settings  │                              │
-//   │              │                              │
-//   └──────────────┴──────────────────────────────┘
-//    200px fixed     flexible
+//   │  content panel                  │
+//   │  (dashboard / ASC list /        │
+//   │   Firebase list / Settings)     │
 //
 // The selected sidebar section is persisted on the coordinator
 // (`coordinator.sidebarSection`) so it survives route push/pop cycles that
 // cause Home to be re-created (e.g. navigating to Customize Widgets and back).
 //
 // Sync and Refresh buttons live inside the Dashboard panel header alongside
-// "Customize Widgets". There is no top bar; the expiration alert sits above
-// the sidebar/content split.
+// "Customize Widgets".
 
 struct WindowsHomeView: View {
     let model: WindowsHomeModel
     let coordinator: WindowsHomeCoordinator
 
-    var body: some View {
-        VStack(spacing: 0) {
-            expirationAlertSlot
-            HStack(spacing: 0) {
-                sidebarPanel
-                Divider()
-                contentPanel
-            }
-        }
-    }
-
-    // MARK: - Expiration alert slot (US-005)
-
-    /// Full-width expiration banner rendered between the top bar and the
-    /// sidebar/content split. The banner view itself renders nothing when
-    /// no alert is active.
-    @ViewBuilder
-    private var expirationAlertSlot: some View {
-        WindowsAlertBannerView(model: model, coordinator: coordinator)
-    }
-
-    // MARK: - Sidebar panel (200px fixed)
-
-    private var sidebarPanel: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            buildSidebarItem(
-                section: .home,
-                glyph: "🏠",
-                title: "Home",
-                tint: .purple
-            )
-            Divider()
-                .padding(.vertical, 4)
-            buildSidebarItem(
-                section: .appStoreConnect,
-                glyph: "ASC",
-                title: "App Store Connect",
-                tint: .blue
-            )
-            Divider()
-                .padding(.vertical, 4)
-            buildSidebarItem(
-                section: .settings,
-                glyph: "⚙",
-                title: "Settings",
-                tint: .gray
-            )
-            Spacer()
-        }
-        .padding(8)
-        .frame(width: 200)
-        .background(Color.gray.opacity(0.04))
-    }
-
-    private func buildSidebarItem(
-        section: HomeSection,
-        glyph: String,
-        title: String,
-        tint: Color
-    ) -> some View {
-        let isSelected = coordinator.sidebarSection == section
-        return HStack(spacing: 8) {
-            Text(glyph)
-                .fontWeight(.bold)
-                .foregroundColor(tint)
-            Text(title)
-                .fontWeight(.medium)
-            Spacer()
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(isSelected ? tint.opacity(0.15) : Color.clear)
-        .cornerRadius(6)
-        .onTapGesture { coordinator.sidebarSection = section }
-    }
-
-    // MARK: - Content panel (flexible)
-
-    /// Renders the right-hand panel based on the current sidebar selection:
-    /// - `nil`               → dashboard (widgets + customize button)
+    /// Renders the right-hand content based on the current sidebar selection:
+    /// - `nil` / `.home`     → dashboard (widgets + customize button)
     /// - `.appStoreConnect`  → App Store Connect accounts list (inline, no back button)
     /// - `.firebase`         → Firebase accounts list (inline, no back button)
     /// - `.settings`         → Settings placeholder (back clears sidebar selection)
     @ViewBuilder
-    private var contentPanel: some View {
+    var body: some View {
         switch coordinator.sidebarSection {
         case .home, .none:
             dashboardPanel
