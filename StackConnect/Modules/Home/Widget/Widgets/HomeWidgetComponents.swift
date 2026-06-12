@@ -156,6 +156,7 @@ struct HomeAppRowView: View {
                         Text(state.displayName)
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.leading)
 
                         if let version = app.versionString {
                             Text("(\(version))")
@@ -287,6 +288,7 @@ struct HomeReviewRowView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
+                        .multilineTextAlignment(.leading)
                 }
             }
 
