@@ -84447,6 +84447,170 @@
           }
         }
       }
+    },
+    "Cannot Remove User": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "es-MX": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        }
+      }
+    },
+    "Your App Store Connect API key isn't allowed to remove users. Managing Users and Access requires a key with the Admin role. Update the key's permissions in App Store Connect (Users and Access → Integrations) and try again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "es-MX": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "new",
+            "value": ""
+          }
+        }
+      }
     }
   },
   "version": "1.1"

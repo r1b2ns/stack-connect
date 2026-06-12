@@ -62,6 +62,7 @@ struct UserAccessUiState {
     var showInviteUser = false
     var confirmDeleteUser: UserModel?
     var inviteError: String?
+    var deleteError: String?
 
     var filteredUsers: [UserModel] {
         var result = users
@@ -125,7 +126,11 @@ final class UserAccessViewModel: UserAccessViewModelProtocol {
                 : String(localized: "User removed")
             uiState.toastMessage = ToastMessage(message, icon: "person.badge.minus")
         } catch {
-            uiState.toastMessage = ToastMessage(String(localized: "Failed to remove user"), icon: "exclamationmark.triangle.fill")
+            if AppleAPIErrorTranslator.isForbidden(error) {
+                uiState.deleteError = String(localized: "Your App Store Connect API key isn't allowed to remove users. Managing Users and Access requires a key with the Admin role. Update the key's permissions in App Store Connect (Users and Access → Integrations) and try again.")
+            } else {
+                uiState.toastMessage = ToastMessage(String(localized: "Failed to remove user"), icon: "exclamationmark.triangle.fill")
+            }
             Log.print.error("[UserAccess] Delete failed: \(error.localizedDescription)")
         }
     }

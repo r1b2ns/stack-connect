@@ -74,6 +74,21 @@ enum AppleAPIErrorTranslator {
         return false
     }
 
+    // MARK: - Forbidden detection
+
+    /// True when Apple rejected the request with a 403 `FORBIDDEN_ERROR`.
+    /// For Users & Access operations this almost always means the API key lacks
+    /// the Admin role required to create or remove users.
+    static func isForbidden(_ error: Error) -> Bool {
+        guard let providerError = error as? APIProvider.Error,
+              case .requestFailure(let status, let response, _) = providerError,
+              status == 403 else {
+            return false
+        }
+        let code = (response?.errors?.first?.code ?? "").uppercased()
+        return code == "FORBIDDEN_ERROR"
+    }
+
     // MARK: - Pattern matching
 
     private static func humanize(code: String, detail: String) -> String? {
