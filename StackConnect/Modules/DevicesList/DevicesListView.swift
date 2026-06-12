@@ -193,89 +193,41 @@ private struct CreateDeviceSheet<ViewModel: DevicesListViewModelProtocol>: View 
 
     @ViewBuilder
     private func buildUDIDTutorialSection() -> some View {
-        Section {
-            buildTutorialBlock(
-                icon: "macbook.and.iphone",
-                title: String(localized: "From a Mac (Finder)"),
-                steps: [
-                    String(localized: "Connect the iPhone or iPad to a Mac with a cable and unlock it"),
-                    String(localized: "Open Finder and select the device in the sidebar"),
-                    String(localized: "Click the line under the device name (capacity / iOS version) — it cycles between Serial Number, UDID and ECID"),
-                    String(localized: "Right-click the UDID and choose Copy")
-                ]
-            )
-
-            buildTutorialBlock(
-                icon: "hammer",
-                title: String(localized: "From Xcode"),
-                steps: [
-                    String(localized: "Connect the device and open Xcode"),
-                    String(localized: "Menu Window → Devices and Simulators"),
-                    String(localized: "Select the device on the left and copy the Identifier field")
-                ]
-            )
-
-            buildTutorialBlock(
-                icon: "safari",
-                title: String(localized: "From the device itself"),
-                steps: [
-                    String(localized: "On the iPhone or iPad open Safari and go to a UDID provider you trust (e.g. udid.tech, get.udid.io)"),
-                    String(localized: "Install the configuration profile when prompted (Settings → Profile Downloaded)"),
-                    String(localized: "After the profile installs, the page reloads and shows the UDID for you to copy")
-                ]
-            )
-        } header: {
-            Text(String(localized: "How to find the UDID"))
-        } footer: {
-            Text(String(localized: "The UDID is a 25-character (modern devices) or 40-character hexadecimal identifier. iOS Settings no longer show it directly — one of the methods above is required."))
-                .font(.caption)
-        }
-    }
-
-    private func buildTutorialBlock(icon: String, title: String, steps: [String]) -> some View {
-        let shareText = Self.makeShareText(title: title, steps: steps)
-
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .foregroundStyle(.blue)
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                Spacer()
-                ShareLink(item: shareText) {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.subheadline)
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel(String(localized: "Share \(title)"))
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text("\(index + 1).")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 16, alignment: .trailing)
-                        Text(step)
-                            .font(.caption)
-                            .foregroundStyle(.primary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
-            .padding(.leading, 4)
-        }
-        .padding(.vertical, 4)
-    }
-
-    private static func makeShareText(title: String, steps: [String]) -> String {
-        var lines: [String] = [title, ""]
-        for (index, step) in steps.enumerated() {
-            lines.append("\(index + 1). \(step)")
-        }
-        return lines.joined(separator: "\n")
+        TutorialGuideView(
+            label: String(localized: "How to find the UDID"),
+            systemImage: "questionmark.circle",
+            blocks: [
+                TutorialBlock(
+                    icon: "macbook.and.iphone",
+                    title: String(localized: "From a Mac (Finder)"),
+                    steps: [
+                        TutorialStep(text: String(localized: "Connect the iPhone or iPad to a Mac with a cable and unlock it")),
+                        TutorialStep(text: String(localized: "Open Finder and select the device in the sidebar")),
+                        TutorialStep(text: String(localized: "Click the line under the device name (capacity / iOS version) — it cycles between Serial Number, UDID and ECID")),
+                        TutorialStep(text: String(localized: "Right-click the UDID and choose Copy"))
+                    ]
+                ),
+                TutorialBlock(
+                    icon: "hammer",
+                    title: String(localized: "From Xcode"),
+                    steps: [
+                        TutorialStep(text: String(localized: "Connect the device and open Xcode")),
+                        TutorialStep(text: String(localized: "Menu Window → Devices and Simulators")),
+                        TutorialStep(text: String(localized: "Select the device on the left and copy the Identifier field"))
+                    ]
+                ),
+                TutorialBlock(
+                    icon: "safari",
+                    title: String(localized: "From the device itself"),
+                    steps: [
+                        TutorialStep(text: String(localized: "On the iPhone or iPad open Safari and go to a UDID provider you trust (e.g. udid.tech, get.udid.io)")),
+                        TutorialStep(text: String(localized: "Install the configuration profile when prompted (Settings → Profile Downloaded)")),
+                        TutorialStep(text: String(localized: "After the profile installs, the page reloads and shows the UDID for you to copy"))
+                    ]
+                )
+            ],
+            caption: String(localized: "The UDID is a 25-character (modern devices) or 40-character hexadecimal identifier. iOS Settings no longer show it directly — one of the methods above is required.")
+        )
     }
 
     var body: some View {
