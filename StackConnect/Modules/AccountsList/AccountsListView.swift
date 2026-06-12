@@ -268,6 +268,7 @@ private struct AccountsListImportSheet: View {
     @State private var password = ""
     @State private var customName = ""
     @State private var selectedURL: URL?
+    @State private var showTutorial = false
 
     var body: some View {
         NavigationStack {
@@ -285,6 +286,14 @@ private struct AccountsListImportSheet: View {
                     .padding(.horizontal, 32)
 
                 Button {
+                    showTutorial = true
+                } label: {
+                    Label(String(localized: "How to import?"), systemImage: "questionmark.circle")
+                        .font(.subheadline)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
                     showFilePicker = true
                 } label: {
                     Label(String(localized: "Import File"), systemImage: "square.and.arrow.down")
@@ -294,6 +303,9 @@ private struct AccountsListImportSheet: View {
                 .padding(.horizontal, 32)
 
                 Spacer()
+            }
+            .sheet(isPresented: $showTutorial) {
+                ImportTutorialView()
             }
             .navigationTitle(String(localized: "Import"))
             .navigationBarTitleDisplayMode(.inline)

@@ -84327,6 +84327,126 @@
           }
         }
       }
+    },
+    "How to import?": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Como importar?"
+          }
+        }
+      }
+    },
+    "On the source device": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No dispositivo de origem"
+          }
+        }
+      }
+    },
+    "On the target device": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No dispositivo de destino"
+          }
+        }
+      }
+    },
+    "Open StackConnect on the source device": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abra o StackConnect no dispositivo de origem"
+          }
+        }
+      }
+    },
+    "Go to Settings → select the account → Export and set a password": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vá em Ajustes → selecione a conta → Exportar e defina uma senha"
+          }
+        }
+      }
+    },
+    "Share the generated .scexport file (AirDrop, Files, email, etc.)": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartilhe o arquivo .scexport gerado (AirDrop, Arquivos, e-mail, etc.)"
+          }
+        }
+      }
+    },
+    "Open StackConnect on the target device (iPhone, iPad, or the Windows app)": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abra o StackConnect no dispositivo de destino (iPhone, iPad ou o app para Windows)"
+          }
+        }
+      }
+    },
+    "Tap Add Account → Import": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toque em Adicionar Conta → Importar"
+          }
+        }
+      }
+    },
+    "Select the .scexport file and enter the password you set": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecione o arquivo .scexport e digite a senha que você definiu"
+          }
+        }
+      }
+    },
+    "How to import an account into StackConnect": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Como importar uma conta para o StackConnect"
+          }
+        }
+      }
+    },
+    "Use the share button to send these steps to whoever is importing the account.": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use o botão de compartilhar para enviar estes passos a quem for importar a conta."
+          }
+        }
+      }
+    },
+    "Share": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartilhar"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

@@ -349,6 +349,7 @@ private struct ImportAccountSheet: View {
     @State private var customName = ""
     @State private var selectedURL: URL?
     @State private var decryptedJSON: String?
+    @State private var showTutorial = false
 
     var body: some View {
         NavigationStack {
@@ -366,6 +367,14 @@ private struct ImportAccountSheet: View {
                     .padding(.horizontal, 32)
 
                 Button {
+                    showTutorial = true
+                } label: {
+                    Label(String(localized: "How to import?"), systemImage: "questionmark.circle")
+                        .font(.subheadline)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
                     showFilePicker = true
                 } label: {
                     Label(String(localized: "Import File"), systemImage: "square.and.arrow.down")
@@ -375,6 +384,9 @@ private struct ImportAccountSheet: View {
                 .padding(.horizontal, 32)
 
                 Spacer()
+            }
+            .sheet(isPresented: $showTutorial) {
+                ImportTutorialView()
             }
             .navigationTitle(String(localized: "Import"))
             .navigationBarTitleDisplayMode(.inline)
