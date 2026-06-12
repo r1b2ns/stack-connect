@@ -17,9 +17,9 @@ struct ScreenshotSetModel: Codable, Identifiable, Hashable {
         if displayType.hasPrefix("APP_IPAD") { return .iPad }
         if displayType.hasPrefix("APP_WATCH") { return .appleWatch }
         if displayType.hasPrefix("IMESSAGE_APP") { return .iMessage }
-        if displayType.hasPrefix("APP_APPLE_TV") { return nil }
-        if displayType.hasPrefix("APP_DESKTOP") { return nil }
-        if displayType.hasPrefix("APP_APPLE_VISION") { return nil }
+        if displayType.hasPrefix("APP_APPLE_TV") { return .appleTV }
+        if displayType.hasPrefix("APP_DESKTOP") { return .mac }
+        if displayType.hasPrefix("APP_APPLE_VISION") { return .visionPro }
         return nil
     }
 

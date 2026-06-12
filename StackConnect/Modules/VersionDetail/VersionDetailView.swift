@@ -259,7 +259,8 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             homeCoordinator.navigateToScreenshotPreview(
                 versionId: viewModel.uiState.version.id,
                 account: viewModel.uiState.account,
-                localizationId: localizationId
+                localizationId: localizationId,
+                platform: viewModel.uiState.version.platform
             )
         }
     }
@@ -279,7 +280,8 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 homeCoordinator.navigateToScreenshotPreview(
                     versionId: viewModel.uiState.version.id,
                     account: viewModel.uiState.account,
-                    localizationId: localization.id
+                    localizationId: localization.id,
+                    platform: viewModel.uiState.version.platform
                 )
             } else {
                 viewModel.selectLocalization(localization, for: field)

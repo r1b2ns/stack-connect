@@ -7,6 +7,9 @@ enum ScreenshotDeviceType: String, CaseIterable, Identifiable, Hashable {
     case iPhone
     case iPad
     case appleWatch
+    case appleTV
+    case mac
+    case visionPro
     case iMessage
 
     var id: String { rawValue }
@@ -16,6 +19,9 @@ enum ScreenshotDeviceType: String, CaseIterable, Identifiable, Hashable {
         case .iPhone:     return "iPhone"
         case .iPad:       return "iPad"
         case .appleWatch: return "Apple Watch"
+        case .appleTV:    return "Apple TV"
+        case .mac:        return "Mac"
+        case .visionPro:  return "Apple Vision Pro"
         case .iMessage:   return "iMessage App"
         }
     }
@@ -25,7 +31,20 @@ enum ScreenshotDeviceType: String, CaseIterable, Identifiable, Hashable {
         case .iPhone:     return "iphone"
         case .iPad:       return "ipad"
         case .appleWatch: return "applewatch"
+        case .appleTV:    return "appletv"
+        case .mac:        return "macbook"
+        case .visionPro:  return "visionpro"
         case .iMessage:   return "message.fill"
+        }
+    }
+
+    var platform: AppPlatform {
+        switch self {
+        case .iPhone, .iPad, .iMessage: return .ios
+        case .mac:                       return .macOs
+        case .appleTV:                   return .tvOs
+        case .visionPro:                 return .visionOs
+        case .appleWatch:                return .ios
         }
     }
 }
@@ -34,8 +53,8 @@ enum ScreenshotDeviceType: String, CaseIterable, Identifiable, Hashable {
 
 @MainActor
 struct ScreenshotPreviewViewFactory {
-    static func build(versionId: String, account: AccountModel, localizationId: String? = nil) -> some View {
-        ScreenshotPreviewEntry(versionId: versionId, account: account, localizationId: localizationId)
+    static func build(versionId: String, account: AccountModel, localizationId: String? = nil, platform: AppPlatform? = nil) -> some View {
+        ScreenshotPreviewEntry(versionId: versionId, account: account, localizationId: localizationId, platform: platform)
     }
 }
 
@@ -45,17 +64,20 @@ private struct ScreenshotPreviewEntry: View {
     let versionId: String
     let account: AccountModel
     let localizationId: String?
+    let platform: AppPlatform?
 
     @StateObject private var viewModel: ScreenshotPreviewViewModel
 
-    init(versionId: String, account: AccountModel, localizationId: String?) {
+    init(versionId: String, account: AccountModel, localizationId: String?, platform: AppPlatform?) {
         self.versionId = versionId
         self.account = account
         self.localizationId = localizationId
+        self.platform = platform
         _viewModel = StateObject(wrappedValue: ScreenshotPreviewViewModel(
             versionId: versionId,
             account: account,
-            localizationId: localizationId
+            localizationId: localizationId,
+            platform: platform
         ))
     }
 
@@ -84,20 +106,30 @@ final class ScreenshotPreviewViewModel: ObservableObject {
         screenshotSets.contains { !$0.screenshots.isEmpty }
     }
 
+    /// Device types relevant to this version's platform. When the platform is
+    /// unknown, fall back to showing every device type.
+    var availableDeviceTypes: [ScreenshotDeviceType] {
+        guard let platform else { return ScreenshotDeviceType.allCases }
+        return ScreenshotDeviceType.allCases.filter { $0.platform == platform }
+    }
+
     private let versionId: String
     private let account: AccountModel
     private let localizationId: String?
+    private let platform: AppPlatform?
     private let keychain: KeyStorable
 
     init(
         versionId: String,
         account: AccountModel,
         localizationId: String? = nil,
+        platform: AppPlatform? = nil,
         keychain: KeyStorable = KeychainStorable.shared
     ) {
         self.versionId = versionId
         self.account = account
         self.localizationId = localizationId
+        self.platform = platform
         self.keychain = keychain
     }
 
@@ -320,7 +352,7 @@ struct ScreenshotPreviewContentView: View {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            List(ScreenshotDeviceType.allCases) { device in
+            List(viewModel.availableDeviceTypes) { device in
                 let sets = viewModel.sets(for: device)
                 Button {
                     homeCoordinator.navigateToScreenshotResolution(

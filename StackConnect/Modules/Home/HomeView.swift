@@ -397,8 +397,8 @@ private extension View {
                 VersionDetailViewFactory.build(version: version, account: account)
             case .buildSelection(let versionId, let appId, let account):
                 BuildSelectionViewFactory.build(versionId: versionId, appId: appId, account: account)
-            case .screenshotPreview(let versionId, let localizationId, let account):
-                ScreenshotPreviewViewFactory.build(versionId: versionId, account: account, localizationId: localizationId)
+            case .screenshotPreview(let versionId, let localizationId, let platform, let account):
+                ScreenshotPreviewViewFactory.build(versionId: versionId, account: account, localizationId: localizationId, platform: platform)
             case .screenshotResolution(let device, let sets):
                 ScreenshotResolutionViewFactory.build(device: device, sets: sets)
             case .screenshotPage(let screenshots):
