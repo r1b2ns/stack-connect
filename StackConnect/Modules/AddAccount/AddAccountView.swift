@@ -164,47 +164,43 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
     }
 
     private func buildAppleTutorialSection() -> some View {
-        Section {
-            DisclosureGroup {
-                VStack(alignment: .leading, spacing: 12) {
-                    buildTutorialStep(
-                        number: 1,
-                        title: String(localized: "Open App Store Connect"),
-                        description: String(localized: "Go to appstoreconnect.apple.com and sign in with your Apple ID.")
-                    )
-                    buildTutorialStep(
-                        number: 2,
-                        title: String(localized: "Users and Access"),
-                        description: String(localized: "In the top navigation, go to Users and Access.")
-                    )
-                    buildTutorialStep(
-                        number: 3,
-                        title: String(localized: "Integrations > App Store Connect API"),
-                        description: String(localized: "Select the Integrations tab, then choose App Store Connect API. Make sure Team Keys is selected.")
-                    )
-                    buildTutorialStep(
-                        number: 4,
-                        title: String(localized: "Generate a new key"),
-                        description: String(localized: "Tap the + button, give the key a name, choose the desired access level, and confirm.")
-                    )
-                    buildTutorialStep(
-                        number: 5,
-                        title: String(localized: "Copy the Issuer ID and Key ID"),
-                        description: String(localized: "The Issuer ID appears at the top of the page. The Key ID is listed next to your newly created key.")
-                    )
-                    buildTutorialStep(
-                        number: 6,
-                        title: String(localized: "Download the .p8 file"),
-                        description: String(localized: "Tap \"Download API Key\" — this is the only time you can download it. Use \"Import .p8 file\" above to load it.")
-                    )
-                }
-                .padding(.vertical, 8)
-            } label: {
-                Label(String(localized: "How to generate the API key"), systemImage: "questionmark.circle")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-        }
+        TutorialGuideView(
+            label: String(localized: "How to generate the API key"),
+            systemImage: "questionmark.circle",
+            blocks: [
+                TutorialBlock(
+                    icon: "questionmark.circle",
+                    title: String(localized: "How to generate the API key"),
+                    steps: [
+                        TutorialStep(
+                            text: String(localized: "Open App Store Connect"),
+                            detail: String(localized: "Go to appstoreconnect.apple.com and sign in with your Apple ID.")
+                        ),
+                        TutorialStep(
+                            text: String(localized: "Users and Access"),
+                            detail: String(localized: "In the top navigation, go to Users and Access.")
+                        ),
+                        TutorialStep(
+                            text: String(localized: "Integrations > App Store Connect API"),
+                            detail: String(localized: "Select the Integrations tab, then choose App Store Connect API. Make sure Team Keys is selected.")
+                        ),
+                        TutorialStep(
+                            text: String(localized: "Generate a new key"),
+                            detail: String(localized: "Tap the + button, give the key a name, choose the desired access level, and confirm.")
+                        ),
+                        TutorialStep(
+                            text: String(localized: "Copy the Issuer ID and Key ID"),
+                            detail: String(localized: "The Issuer ID appears at the top of the page. The Key ID is listed next to your newly created key.")
+                        ),
+                        TutorialStep(
+                            text: String(localized: "Download the .p8 file"),
+                            detail: String(localized: "Tap \"Download API Key\" — this is the only time you can download it. Use \"Import .p8 file\" above to load it.")
+                        )
+                    ],
+                    isShareable: false
+                )
+            ]
+        )
     }
 
     private func buildFirebaseCredentialsSection() -> some View {
@@ -250,64 +246,39 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
     }
 
     private func buildFirebaseTutorialSection() -> some View {
-        Section {
-            DisclosureGroup {
-                VStack(alignment: .leading, spacing: 12) {
-                    buildTutorialStep(
-                        number: 1,
-                        title: String(localized: "Open Firebase Console"),
-                        description: String(localized: "Go to console.firebase.google.com and select your project.")
-                    )
-                    buildTutorialStep(
-                        number: 2,
-                        title: String(localized: "Project Settings"),
-                        description: String(localized: "Tap the gear icon next to \"Project Overview\" and select Project settings.")
-                    )
-                    buildTutorialStep(
-                        number: 3,
-                        title: String(localized: "Service Accounts tab"),
-                        description: String(localized: "Navigate to the \"Service accounts\" tab at the top of the page.")
-                    )
-                    buildTutorialStep(
-                        number: 4,
-                        title: String(localized: "Generate new private key"),
-                        description: String(localized: "Scroll down and tap \"Generate new private key\", then confirm.")
-                    )
-                    buildTutorialStep(
-                        number: 5,
-                        title: String(localized: "Import the .json file"),
-                        description: String(localized: "A .json file will be downloaded. Use \"Import .json file\" above to load it.")
-                    )
-                }
-                .padding(.vertical, 8)
-            } label: {
-                Label(String(localized: "How to generate the JSON key"), systemImage: "questionmark.circle")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private func buildTutorialStep(number: Int, title: String, description: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Text("\(number)")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.white)
-                .frame(width: 20, height: 20)
-                .background(Color.accentColor)
-                .clipShape(Circle())
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                Text(description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
+        TutorialGuideView(
+            label: String(localized: "How to generate the JSON key"),
+            systemImage: "questionmark.circle",
+            blocks: [
+                TutorialBlock(
+                    icon: "questionmark.circle",
+                    title: String(localized: "How to generate the JSON key"),
+                    steps: [
+                        TutorialStep(
+                            text: String(localized: "Open Firebase Console"),
+                            detail: String(localized: "Go to console.firebase.google.com and select your project.")
+                        ),
+                        TutorialStep(
+                            text: String(localized: "Project Settings"),
+                            detail: String(localized: "Tap the gear icon next to \"Project Overview\" and select Project settings.")
+                        ),
+                        TutorialStep(
+                            text: String(localized: "Service Accounts tab"),
+                            detail: String(localized: "Navigate to the \"Service accounts\" tab at the top of the page.")
+                        ),
+                        TutorialStep(
+                            text: String(localized: "Generate new private key"),
+                            detail: String(localized: "Scroll down and tap \"Generate new private key\", then confirm.")
+                        ),
+                        TutorialStep(
+                            text: String(localized: "Import the .json file"),
+                            detail: String(localized: "A .json file will be downloaded. Use \"Import .json file\" above to load it.")
+                        )
+                    ],
+                    isShareable: false
+                )
+            ]
+        )
     }
 
     private func buildGooglePlayCredentialsSection() -> some View {
