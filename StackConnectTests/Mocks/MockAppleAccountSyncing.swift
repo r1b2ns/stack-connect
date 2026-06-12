@@ -9,6 +9,8 @@ final class MockAppleAccountSyncing: AppleAccountSyncing, @unchecked Sendable {
     var versions: [String: [AppStoreVersionModel]] = [:]
     var reviews: [String: [CustomerReviewModel]] = [:]
     var phasedReleases: [String: PhasedReleaseModel] = [:]
+    /// When set, `fetchApps()` throws this instead of returning `apps`.
+    var fetchAppsError: Error?
 
     private(set) var fetchedAppListCount = 0
     private(set) var fetchedVersionsForAppIds: [String] = []
@@ -21,6 +23,7 @@ final class MockAppleAccountSyncing: AppleAccountSyncing, @unchecked Sendable {
     func fetchApps() async throws -> [StackProtocols.AppInfo] {
         lock.lock(); defer { lock.unlock() }
         fetchedAppListCount += 1
+        if let fetchAppsError { throw fetchAppsError }
         return apps
     }
 

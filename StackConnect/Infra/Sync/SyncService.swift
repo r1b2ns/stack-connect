@@ -1,5 +1,6 @@
 import Foundation
 import WidgetKit
+import AppStoreConnect_Swift_SDK
 #if DEBUG
 import UIKit
 import UserNotifications
@@ -292,6 +293,9 @@ final class SyncService: ObservableObject {
                 appsSynced: finalApps.count,
                 error: nil
             )
+            // Self-heal: a fully successful sync proves the agreements are no
+            // longer blocking, so clear any previously detected flag.
+            await setPendingAgreements(false, storage: storage, accountId: account.id)
             let modeLabel = mode == .lightweight ? "lightweight" : "full"
             Log.print.notice("[Sync] \(account.name): \(finalApps.count) apps, \(reviewResult.saved) reviews, \(phasedSaved) phased (\(modeLabel))")
             return change
@@ -302,9 +306,55 @@ final class SyncService: ObservableObject {
                 appsSynced: 0,
                 error: error.localizedDescription
             )
+            if AppleAPIErrorTranslator.isPendingAgreement(error) {
+                logAgreementProbe(error, accountName: account.name)
+                await setPendingAgreements(true, storage: storage, accountId: account.id)
+            }
+            // Offline-first contract: a transient/non-agreement error must NOT
+            // clear a previously-set flag, so we only clear on a clean sync.
             Log.print.error("[Sync] \(account.name) failed: \(error.localizedDescription)")
             return SyncChange()
         }
+    }
+
+    /// Logs the raw 403 fields so we can calibrate the exact ASC agreement code
+    /// against a live response (see TODO(#73) in AppleAPIErrorTranslator).
+    private nonisolated static func logAgreementProbe(_ error: Error, accountName: String) {
+        guard let providerError = error as? APIProvider.Error,
+              case .requestFailure(let status, let response, _) = providerError else {
+            return
+        }
+        let first = response?.errors?.first
+        let code = first?.code ?? "<none>"
+        let detail = first?.detail ?? "<none>"
+        Log.print.error("[Sync][AgreementProbe] \(accountName): status=\(status) code=\(code) detail=\(detail)")
+    }
+
+    /// Re-fetch-mutate-save the freshest `AccountModel` to flip the pending
+    /// agreements flag without clobbering concurrent expirationDate/rules writes.
+    /// Only stamps `pendingAgreementsDetectedAt` on a false→true transition so the
+    /// original detection time stays stable across re-detections.
+    private nonisolated static func setPendingAgreements(
+        _ value: Bool,
+        storage: PersistentStorable,
+        accountId: String
+    ) async {
+        guard var account: AccountModel = try? await storage.fetch(AccountModel.self, id: accountId) else {
+            return
+        }
+        // Nothing to do if the flag is already in the desired state.
+        guard account.hasPendingAgreements != value else { return }
+
+        account.hasPendingAgreements = value
+        if value {
+            // false→true: stamp the detection time only if not already set.
+            if account.pendingAgreementsDetectedAt == nil {
+                account.pendingAgreementsDetectedAt = .now
+            }
+        } else {
+            account.pendingAgreementsDetectedAt = nil
+        }
+        try? await storage.save(account, id: account.id)
     }
 
     private struct AppEnrichment: Sendable {

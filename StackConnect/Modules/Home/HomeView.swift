@@ -94,6 +94,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
         NavigationStack(path: $coordinator.path) {
             List {
                 buildSyncBanner()
+                buildAgreementsBanner()
                 buildAccountsSection()
                 buildWidgetsSection()
             }
@@ -179,6 +180,57 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
             return String(localized: "Syncing \(count) account(s)…")
         }
         return String(localized: "Syncing…")
+    }
+
+    // MARK: - Pending Agreements Banner
+
+    /// App Store Connect's agreements console. Force-unwrap is safe: this is a
+    /// fixed, compile-time-constant, well-formed URL that can never be nil.
+    /// (Computed, not stored, because `HomeView` is generic over its ViewModel.)
+    private static var agreementsURL: URL {
+        URL(string: "https://appstoreconnect.apple.com/agreements/")!
+    }
+
+    @ViewBuilder
+    private func buildAgreementsBanner() -> some View {
+        ForEach(viewModel.uiState.pendingAgreementsAccounts, id: \.id) { account in
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(String(localized: "Action Required: App Store Connect Agreements"))
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+
+                        Text("Apple reported pending or updated agreements for \"\(account.name)\". Some data may be unavailable until you review and accept them.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Button {
+                        viewModel.dismissPendingAgreements(accountId: account.id)
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(String(localized: "Dismiss"))
+                }
+
+                Link(destination: Self.agreementsURL) {
+                    Text(String(localized: "Review Agreements"))
+                        .font(.footnote)
+                        .fontWeight(.semibold)
+                }
+            }
+            .padding(.vertical, 8)
+            .listRowSeparator(.hidden)
+        }
     }
 
     // MARK: - Widgets Section

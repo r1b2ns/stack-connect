@@ -1,5 +1,6 @@
 import XCTest
 import StackProtocols
+import AppStoreConnect_Swift_SDK
 @testable import StackConnect
 
 @MainActor
@@ -288,7 +289,97 @@ final class SyncServiceTests: XCTestCase {
         XCTAssertNil(metadata?.lastError)
     }
 
+    // MARK: - Pending Agreements
+
+    func testAgreementErrorSetsPendingFlagAndTimestamp() async throws {
+        let account = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(account, id: account.id)
+        setCredentials(issuerID: "issuer-1", for: account)
+
+        let connection = MockAppleAccountSyncing()
+        connection.fetchAppsError = makeAgreementError()
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        let updated: AccountModel? = try await mockStorage.fetch(AccountModel.self, id: account.id)
+        XCTAssertEqual(updated?.hasPendingAgreements, true)
+        XCTAssertNotNil(updated?.pendingAgreementsDetectedAt)
+    }
+
+    func testNonAgreement403LeavesPendingFlagFalse() async throws {
+        let account = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(account, id: account.id)
+        setCredentials(issuerID: "issuer-1", for: account)
+
+        let connection = MockAppleAccountSyncing()
+        connection.fetchAppsError = makeError(status: 403, code: "FORBIDDEN_ERROR", detail: "Not permitted")
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        let updated: AccountModel? = try await mockStorage.fetch(AccountModel.self, id: account.id)
+        XCTAssertEqual(updated?.hasPendingAgreements, false)
+        XCTAssertNil(updated?.pendingAgreementsDetectedAt)
+    }
+
+    func testCleanSyncClearsPreviouslySetPendingFlag() async throws {
+        let account = AccountModel(
+            name: "Apple",
+            providerType: .apple,
+            hasPendingAgreements: true,
+            pendingAgreementsDetectedAt: Date(timeIntervalSince1970: 1_000)
+        )
+        try await mockStorage.save(account, id: account.id)
+        setCredentials(issuerID: "issuer-1", for: account)
+
+        let connection = MockAppleAccountSyncing()
+        connection.apps = [StackProtocols.AppInfo(id: "app-1", name: "App One", bundleId: "com.one", platform: nil)]
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        let updated: AccountModel? = try await mockStorage.fetch(AccountModel.self, id: account.id)
+        XCTAssertEqual(updated?.hasPendingAgreements, false)
+        XCTAssertNil(updated?.pendingAgreementsDetectedAt)
+    }
+
+    func testTransientErrorDoesNotClearPreviouslySetPendingFlag() async throws {
+        let detectedAt = Date(timeIntervalSince1970: 1_000)
+        let account = AccountModel(
+            name: "Apple",
+            providerType: .apple,
+            hasPendingAgreements: true,
+            pendingAgreementsDetectedAt: detectedAt
+        )
+        try await mockStorage.save(account, id: account.id)
+        setCredentials(issuerID: "issuer-1", for: account)
+
+        let connection = MockAppleAccountSyncing()
+        connection.fetchAppsError = makeError(status: 500, code: "INTERNAL_ERROR", detail: "Server down")
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        let updated: AccountModel? = try await mockStorage.fetch(AccountModel.self, id: account.id)
+        XCTAssertEqual(updated?.hasPendingAgreements, true)
+        XCTAssertEqual(updated?.pendingAgreementsDetectedAt, detectedAt)
+    }
+
     // MARK: - Helpers
+
+    private func makeAgreementError() -> Error {
+        makeError(
+            status: 403,
+            code: "FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED",
+            detail: "You must accept the latest agreements."
+        )
+    }
+
+    private func makeError(status: Int, code: String, detail: String?) -> Error {
+        let responseError = ResponseError(status: String(status), code: code, title: "", detail: detail)
+        return APIProvider.Error.requestFailure(status, ErrorResponse(errors: [responseError]), nil)
+    }
 
     private func setCredentials(issuerID: String, for account: AccountModel) {
         let creds = AppleCredentials(
