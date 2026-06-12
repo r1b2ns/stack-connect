@@ -881,7 +881,8 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
                 roles: user.attributes?.roles?.map(\.rawValue) ?? [],
                 allAppsVisible: user.attributes?.isAllAppsVisible ?? false,
                 provisioningAllowed: user.attributes?.isProvisioningAllowed ?? false,
-                isPending: false
+                isPending: false,
+                expirationDate: nil
             )
         }
 
@@ -894,7 +895,8 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
                 roles: inv.attributes?.roles?.map(\.rawValue) ?? [],
                 allAppsVisible: inv.attributes?.isAllAppsVisible ?? false,
                 provisioningAllowed: inv.attributes?.isProvisioningAllowed ?? false,
-                isPending: true
+                isPending: true,
+                expirationDate: inv.attributes?.expirationDate
             )
         }
 
