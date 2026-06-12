@@ -1,10 +1,10 @@
-• Startpanel med anpassningsbara widgetar: Under granskning, Väntar på lansering och Senaste recensioner
-• Inbyggda widgetar på hemskärmen (WidgetKit) som visar dina appars status offline
-• Hantera certifikat, identifierare, enheter och profiler: skapa, visa detaljer, återkalla och radera
-• Massimportera enheter från .deviceids- eller .txt-filer
-• Aviseringar vid statusändringar i App Store och nya recensioner
-• Kontoexport: generator för starka lösenord, valfritt utgångsdatum och återimport av utgångna konton
-• Under granskning delar nu upp appar för flera plattformar per plattform (iOS, tvOS, …)
-• Kopieringsknappar på versionens metadatafält och hämta alla skärmavbilder som en ZIP
-• macOS: knappar för favorit och arkivera direkt i applistan
+• Hantera flera konton per team, vart och ett märkt med sin roll
+• Ny detaljvy för användare som visar en teammedlems appar och åtkomst
+• Få en avisering när du har App Store Connect-avtal som väntar på granskning
+• Varning när din API-nyckel saknar behörighet att ta bort användare
+• Applistan visar nu binärstatus per plattform och behåller dina favoriter
+• Skärmavbilder och plattformsfilter stöder nu tvOS, macOS och visionOS
+• Dela en guidad handledning för att hjälpa andra att importera dina .scexport-filer
+• Arkiverade appar utesluts nu från listan Betyg och recensioner
+• Appen finns nu på 8 språk
 • Buggfixar och stabilitetsförbättringar

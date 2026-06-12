@@ -1,10 +1,10 @@
-• Painel inicial com widgets personalizáveis: Em análise, A aguardar publicação e Avaliações recentes
-• Widgets nativos no ecrã principal (WidgetKit) que mostram o estado das suas apps offline
-• Faça a gestão de certificados, identificadores, dispositivos e perfis: criar, ver detalhes, revogar e eliminar
-• Importação em massa de dispositivos a partir de ficheiros .deviceids ou .txt
-• Notificações de alterações de estado na App Store e novas avaliações
-• Exportação de conta: gerador de palavra-passe forte, data de expiração opcional e reimportação de contas expiradas
-• Em análise agora separa apps multiplataforma por plataforma (iOS, tvOS, …)
-• Botões de copiar nos campos de metadados da versão e transferência de todas as capturas num ZIP
-• macOS: botões de favorito e arquivar diretamente na lista de apps
+• Faça a gestão de várias contas por equipa, cada uma identificada com a sua função
+• Novo ecrã de detalhes do utilizador para ver as apps e os acessos de um membro da equipa
+• Receba um alerta quando existirem contratos pendentes da App Store Connect para rever
+• Aviso quando a sua chave de API não tem permissão para remover utilizadores
+• A lista de apps mostra agora o estado do binário por plataforma e mantém os seus favoritos assinalados
+• Capturas de ecrã e filtro por plataforma agora suportam tvOS, macOS e visionOS
+• Partilhe um tutorial guiado para ajudar outras pessoas a importar os seus ficheiros .scexport
+• As apps arquivadas ficam agora de fora da lista de Classificações e Críticas
+• A app está agora disponível em 8 idiomas
 • Correções de erros e melhorias de estabilidade

@@ -1,10 +1,10 @@
-• Home-dashboard met aanpasbare widgets: In beoordeling, Wacht op vrijgave en Recente reviews
-• Native widgets op het beginscherm (WidgetKit) die de status van je apps offline tonen
-• Beheer certificaten, identifiers, apparaten en profielen: aanmaken, details bekijken, intrekken en verwijderen
-• Apparaten in bulk importeren uit .deviceids- of .txt-bestanden
-• Meldingen bij statuswijzigingen in de App Store en nieuwe reviews
-• Account exporteren: generator voor sterke wachtwoorden, optionele vervaldatum en opnieuw importeren van verlopen accounts
-• In beoordeling splitst multiplatform-apps nu per platform (iOS, tvOS, …)
-• Kopieerknoppen bij versiemetadata en alle schermafbeeldingen als ZIP downloaden
-• macOS: favoriet- en archiveerknoppen direct in de apps-lijst
+• Beheer meerdere accounts per team, elk met een label voor de rol
+• Nieuw scherm met gebruikersdetails om de apps en toegang van een teamlid te bekijken
+• Ontvang een melding wanneer er App Store Connect-overeenkomsten klaarstaan om te bekijken
+• Waarschuwing wanneer je API-sleutel geen toestemming heeft om gebruikers te verwijderen
+• De apps-lijst toont nu de binaire status per platform en behoudt je favorieten
+• Schermafbeeldingen en het platformfilter ondersteunen nu tvOS, macOS en visionOS
+• Deel een begeleide handleiding om anderen te helpen je .scexport-bestanden te importeren
+• Gearchiveerde apps worden nu uitgesloten van de lijst Beoordelingen en reviews
+• De app is nu beschikbaar in 8 talen
 • Bugfixes en stabiliteitsverbeteringen

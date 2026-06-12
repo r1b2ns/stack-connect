@@ -1,10 +1,10 @@
-• Dashboard iniziale con widget personalizzabili: In revisione, In attesa di pubblicazione e Recensioni recenti
-• Widget nativi nella schermata Home (WidgetKit) che mostrano lo stato delle tue app offline
-• Gestisci certificati, identificatori, dispositivi e profili: crea, visualizza i dettagli, revoca ed elimina
-• Importazione in blocco dei dispositivi da file .deviceids o .txt
-• Notifiche per i cambi di stato su App Store e le nuove recensioni
-• Esportazione account: generatore di password sicure, data di scadenza opzionale e reimportazione degli account scaduti
-• In revisione ora separa le app multipiattaforma per piattaforma (iOS, tvOS, …)
-• Pulsanti di copia sui campi dei metadati della versione e download di tutti gli screenshot in un file ZIP
-• macOS: pulsanti preferito e archivia integrati nell'elenco delle app
+• Gestisci più account per team, ciascuno etichettato con il proprio ruolo
+• Nuova schermata di dettaglio utente per vedere le app e gli accessi di un membro del team
+• Ricevi un avviso quando hai contratti App Store Connect in attesa di revisione
+• Avviso quando la tua chiave API non ha l'autorizzazione per rimuovere utenti
+• L'elenco delle app ora mostra lo stato del binario per piattaforma e mantiene i tuoi preferiti
+• Gli screenshot e il filtro per piattaforma ora supportano tvOS, macOS e visionOS
+• Condividi un tutorial guidato per aiutare altri a importare i tuoi file .scexport
+• Le app archiviate ora sono escluse dall'elenco Valutazioni e recensioni
+• L'app ora è disponibile in 8 lingue
 • Correzioni di bug e miglioramenti della stabilità

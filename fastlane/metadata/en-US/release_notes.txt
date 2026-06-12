@@ -1,10 +1,10 @@
-• Home dashboard with customizable widgets: In Review, Awaiting Release, and Recent Reviews
-• Native Home Screen widgets (WidgetKit) that show your apps' status offline
-• Manage certificates, identifiers, devices, and profiles: create, view details, revoke, and delete
-• Bulk-import devices from .deviceids or .txt files
-• Notifications for App Store status changes and new reviews
-• Account export: strong-password generator, optional expiration date, and re-import for expired accounts
-• In Review now splits multi-platform apps by platform (iOS, tvOS, …)
-• Copy buttons on version metadata fields and download all screenshots as a ZIP
-• macOS: inline favorite and archive buttons in the app list
+• Manage multiple accounts per team, each labeled with its role
+• New user detail screen to see a team member's apps and access
+• Get alerted when you have pending App Store Connect agreements to review
+• Heads-up when your API key lacks permission to remove users
+• App list now shows binary status per platform and keeps your favorites starred
+• Screenshots and platform filtering now support tvOS, macOS, and visionOS
+• Share a guided tutorial to help others import your .scexport files
+• Archived apps are now excluded from the Rating & Reviews list
+• The app is now available in 8 languages
 • Bug fixes and stability improvements
