@@ -1,30 +1,12 @@
 {
-  "version": "2.0.0",
+  "version": "2.1.0",
   "title": "Nyheter",
   "highlights": [
     {
-      "icon": "square.grid.2x2.fill",
-      "color": "blue",
-      "title": "Nya Widgetar",
-      "description": "Nya widgetar för hemskärmen och iPhone."
-    },
-    {
-      "icon": "checkmark.seal.fill",
-      "color": "green",
-      "title": "Resurshantering",
-      "description": "Hantera certifikat, profiler, enheter och identifierare på ett ställe."
-    },
-    {
-      "icon": "lock.shield.fill",
-      "color": "orange",
-      "title": "Förbättrad Säkerhet",
-      "description": "Förbättrad säkerhet när du bjuder in personer till ditt team."
-    },
-    {
-      "icon": "arrow.triangle.2.circlepath",
-      "color": "purple",
-      "title": "Synkronisering i Bakgrunden",
-      "description": "Dina data synkroniseras automatiskt i bakgrunden."
+      "icon": "ladybug.fill",
+      "color": "red",
+      "title": "Buggfixar",
+      "description": "Flera buggar har åtgärdats för att förbättra stabilitet och prestanda."
     }
   ]
 }

@@ -1,30 +1,12 @@
 {
-  "version": "2.0.0",
+  "version": "2.1.0",
   "title": "Novidades",
   "highlights": [
     {
-      "icon": "square.grid.2x2.fill",
-      "color": "blue",
-      "title": "Novos Widgets",
-      "description": "Novos widgets para a tela inicial e para o iPhone."
-    },
-    {
-      "icon": "checkmark.seal.fill",
-      "color": "green",
-      "title": "Gerenciamento de Recursos",
-      "description": "Gerencie Certificados, Profiles, Devices e Identifiers em um só lugar."
-    },
-    {
-      "icon": "lock.shield.fill",
-      "color": "orange",
-      "title": "Segurança Aprimorada",
-      "description": "Melhorias na segurança ao convidar pessoas para o seu time."
-    },
-    {
-      "icon": "arrow.triangle.2.circlepath",
-      "color": "purple",
-      "title": "Sincronização em Background",
-      "description": "Seus dados são sincronizados automaticamente em segundo plano."
+      "icon": "ladybug.fill",
+      "color": "red",
+      "title": "Correções de Bugs",
+      "description": "Diversos bugs foram corrigidos para melhorar a estabilidade e o desempenho."
     }
   ]
 }

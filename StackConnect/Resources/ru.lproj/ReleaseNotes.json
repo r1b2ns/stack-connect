@@ -1,30 +1,12 @@
 {
-  "version": "2.0.0",
+  "version": "2.1.0",
   "title": "Что нового",
   "highlights": [
     {
-      "icon": "square.grid.2x2.fill",
-      "color": "blue",
-      "title": "Новые виджеты",
-      "description": "Новые виджеты для главного экрана и iPhone."
-    },
-    {
-      "icon": "checkmark.seal.fill",
-      "color": "green",
-      "title": "Управление ресурсами",
-      "description": "Управляйте сертификатами, профилями, устройствами и идентификаторами в одном месте."
-    },
-    {
-      "icon": "lock.shield.fill",
-      "color": "orange",
-      "title": "Улучшенная безопасность",
-      "description": "Повышенная безопасность при приглашении людей в вашу команду."
-    },
-    {
-      "icon": "arrow.triangle.2.circlepath",
-      "color": "purple",
-      "title": "Фоновая синхронизация",
-      "description": "Ваши данные автоматически синхронизируются в фоновом режиме."
+      "icon": "ladybug.fill",
+      "color": "red",
+      "title": "Исправление ошибок",
+      "description": "Исправлено несколько ошибок для повышения стабильности и производительности."
     }
   ]
 }
