@@ -4,6 +4,14 @@ A native iOS app to manage your **App Store Connect**, **Firebase**, and **Googl
 
 Built with SwiftUI for iOS 17+.
 
+## Download
+
+<a href="https://apps.apple.com/br/app/stackconnect/id6761390987">
+  <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="50" />
+</a>
+
+[Download StackConnect on the App Store](https://apps.apple.com/br/app/stackconnect/id6761390987)
+
 ## Running the app
 
 ### Requirements
