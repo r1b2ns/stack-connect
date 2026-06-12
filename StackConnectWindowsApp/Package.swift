@@ -36,6 +36,10 @@ let package = Package(
         .package(path: "../Packages/StackStorageSQLite"),
         .package(path: "../Packages/StackSecretsWindows"),
         .package(path: "../Packages/StackCrypto"),
+        // Phosphor Icons — curated PNG icons with runtime tinting for SwiftCrossUI.
+        // The original phosphor-icons/swift SPM depends on Apple's SwiftUI, so this
+        // local package bundles PNGs and tints via ImageFormats.Image<RGBA>.
+        .package(path: "../Packages/PhosphorIcons"),
         // App Store Connect SDK (windows-support branch). Added to the
         // executable target only — WindowsAppCore stays SDK-free so it
         // remains fully testable without the SDK's transitive graph.
@@ -67,6 +71,7 @@ let package = Package(
                 .product(name: "StackSecretsWindows", package: "StackSecretsWindows"),
                 .product(name: "StackCrypto", package: "StackCrypto"),
                 .product(name: "AppStoreConnect-Swift-SDK", package: "appstoreconnect-swift-sdk"),
+                .product(name: "PhosphorIcons", package: "PhosphorIcons"),
             ],
             path: "Sources/StackConnectWindowsApp"
         ),

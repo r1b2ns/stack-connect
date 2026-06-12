@@ -299,7 +299,11 @@ struct WindowsReviewDetailView: View {
         .padding(16)
         .background(Color(white: 0.97))
         .cornerRadius(8)
-        .overlay {
+        // Stroke MUST live in `.background` (not `.overlay`): on the AppKit
+        // backend an overlaid stroke becomes a sibling path view on top of the
+        // card that swallows clicks on any interactive child. Behind the
+        // translucent fill the border still shows through.
+        .background {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.gray.opacity(0.3), style: StrokeStyle(width: 1.0))
         }
@@ -368,7 +372,11 @@ struct WindowsReviewDetailView: View {
         .padding(16)
         .background(Color(white: 0.97))
         .cornerRadius(8)
-        .overlay {
+        // Stroke MUST live in `.background` (not `.overlay`): on the AppKit
+        // backend an overlaid stroke becomes a sibling path view on top of the
+        // card that swallows clicks on any interactive child. Behind the
+        // translucent fill the border still shows through.
+        .background {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.gray.opacity(0.3), style: StrokeStyle(width: 1.0))
         }
@@ -437,7 +445,11 @@ struct WindowsReviewDetailView: View {
         .padding(16)
         .background(Color(white: 0.97))
         .cornerRadius(8)
-        .overlay {
+        // Stroke MUST live in `.background` (not `.overlay`): on the AppKit
+        // backend an overlaid stroke becomes a sibling path view on top of the
+        // card that swallows clicks on any interactive child. Behind the
+        // translucent fill the border still shows through.
+        .background {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.gray.opacity(0.3), style: StrokeStyle(width: 1.0))
         }

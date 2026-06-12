@@ -37,12 +37,6 @@ import os
 // confirmation screen via the `ArchivedAppsModelCache` reference-type holder,
 // mirroring the `AppsListModelCache` pattern from T-W06.
 //
-// T-W08: the Users tab on the Apps List screen is wired to a real
-// `WindowsUsersListModel` + `WindowsUsersTabView`. The users model is lazily
-// created and cached in `UsersListModelCache`, mirroring the apps/archived
-// model caches. A live `connection` is now injected per account via
-// `makeConnection(accountId:)` so the Users tab fetches from the API.
-//
 // T-W12: `.appDetail` and `.archiveAppDetailConfirm` are wired to real views.
 // The app detail model is shared between the detail and the archive-from-detail
 // confirmation screen via the `AppDetailModelCache` reference-type holder,
@@ -115,32 +109,6 @@ private final class ArchivedAppsModelCache {
         let newModel = WindowsArchivedAppsModel(
             accountId: accountId,
             storage: storage,
-            connection: connection
-        )
-        model = newModel
-        return newModel
-    }
-}
-
-/// Reference-type holder for the shared `WindowsUsersListModel`. Mirrors
-/// `AppsListModelCache` — the `@State` reference stays stable, and the class's
-/// `var model` is mutated freely (T-W08). The users model is lazily created
-/// when the `.appsList` route is first pushed and reused across tab switches.
-@MainActor
-private final class UsersListModelCache {
-    var model: WindowsUsersListModel?
-
-    /// Returns the cached model if it matches the requested account id; otherwise
-    /// creates a new one, caches it, and returns it.
-    func resolve(
-        accountId: String,
-        connection: AppleConnectionProtocol?
-    ) -> WindowsUsersListModel {
-        if let existing = model, existing.accountId == accountId {
-            return existing
-        }
-        let newModel = WindowsUsersListModel(
-            accountId: accountId,
             connection: connection
         )
         model = newModel
@@ -361,11 +329,6 @@ struct RootView: View {
     /// by `.restoreAppConfirm` via the same reference-type holder (T-W07).
     @State private var archivedAppsCache = ArchivedAppsModelCache()
 
-    /// Shared users list model cache. The model is lazily created when the
-    /// `.appsList` route is first pushed and shared with the Users tab inside
-    /// `WindowsAppsListView` so tab switches preserve state (T-W08).
-    @State private var usersListCache = UsersListModelCache()
-
     /// Shared app detail model cache. The model is lazily created when the
     /// `.appDetail` route is first pushed and reused by
     /// `.archiveAppDetailConfirm` so both views share the same state (T-W12).
@@ -487,8 +450,7 @@ struct RootView: View {
 
         // T-W06 / T-W08: real apps list screen. The apps model is lazily created
         // and cached in `appsListCache` so the archive confirmation view (pushed
-        // on top) shares the same instance. The users model is lazily created and
-        // cached in `usersListCache` so tab switches preserve state (AC-W05-3).
+        // on top) shares the same instance.
         case .appsList(let accountId, let accountName):
             WindowsAppsListView(
                 accountId: accountId,
@@ -497,10 +459,6 @@ struct RootView: View {
                 model: appsListCache.resolve(
                     accountId: accountId,
                     storage: model.storage,
-                    connection: makeConnection(accountId: accountId)
-                ),
-                usersModel: usersListCache.resolve(
-                    accountId: accountId,
                     connection: makeConnection(accountId: accountId)
                 )
             )

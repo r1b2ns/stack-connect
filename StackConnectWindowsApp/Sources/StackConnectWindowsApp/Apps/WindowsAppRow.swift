@@ -65,9 +65,13 @@ struct WindowsAppRow: View {
                 .foregroundColor(.gray)
         }
         .padding(12)
-        .background(Color(white: 0.97))
+        .background(Color.gray.opacity(0.08))
         .cornerRadius(8)
-        .overlay {
+        // Stroke MUST live in `.background` (not `.overlay`): on the AppKit
+        // backend an overlaid stroke becomes a sibling path view on top of the
+        // row that swallows clicks, blocking the .onTapGesture. Behind the
+        // translucent fill the border still shows through.
+        .background {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.gray.opacity(0.3), style: StrokeStyle(width: 1.0))
         }

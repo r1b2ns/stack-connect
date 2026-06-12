@@ -78,8 +78,12 @@ struct WindowsProviderCardView: View {
         .frame(height: cardHeight)
         .background(tint.opacity(0.08))
         .cornerRadius(cardRadius)
-        .overlay {
-            // 1px tinted border distinguishing the cards (design §2.4 step 3).
+        // 1px tinted border distinguishing the cards (design §2.4 step 3).
+        // Stroke MUST live in `.background` (not `.overlay`): on the AppKit
+        // backend an overlaid stroke becomes a sibling path view on top of the
+        // card that swallows clicks, blocking the .onTapGesture. Behind the
+        // translucent fill the border still shows through.
+        .background {
             RoundedRectangle(cornerRadius: Double(cardRadius))
                 .stroke(tint.opacity(0.4), style: StrokeStyle(width: 1.0))
         }

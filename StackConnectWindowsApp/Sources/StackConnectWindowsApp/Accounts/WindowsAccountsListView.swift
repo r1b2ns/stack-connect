@@ -7,44 +7,20 @@ import WindowsAppCore
 // Phase 4 · Block F · T-F07 — the accounts list screen (US-W01 / US-W06).
 //
 // Renders the full account list for a single provider: toolbar with back/title/
-// add button, loading/empty/populated states, card rows with badges (imported,
-// expired), and an inline delete-confirmation banner.
+// add button, loading/empty/populated states, and a 2-column grid of vertical
+// cards. Each card has a ⋮ button that opens a DesktopAlertView modal with
+// "Open" and "Delete" actions.
 //
 // The view binds to `WindowsAccountsListModel` (T-F06) which owns the accounts
-// array, loading/error state, and the delete confirmation flow. The view is
-// purely declarative — all mutations go through the model's intents.
-//
-// Layout follows the Windows app convention: content capped at 860px, padded
-// 16px, with a `ScrollView` + `VStack`. The toolbar uses `WindowsBackButtonView`
-// for the "< Back" action (pops to Home) and a "+ Add" button that pushes the
-// `.addAccountOptions(provider)` route.
-//
-// Delete flow (US-W06): each row has an inline "Delete" button. Tapping it
-// calls `model.confirmDelete(id:)` which shows the confirmation banner below
-// the row. Confirm executes the cascade delete (account + apps + versions +
-// credentials); Cancel dismisses the banner.
+// array, loading/error state, and the delete confirmation flow.
 
 struct WindowsAccountsListView: View {
 
-    /// The provider this list displays — drives the title and "+ Add" route.
     let provider: ProviderType
-    /// Navigation coordinator — Back pops, "+ Add" pushes the add-account route.
     @State private var coordinator: WindowsHomeCoordinator
-
-    /// The accounts list model. Observed via `@State` so the view redraws when
-    /// the model's `@Published` properties change.
     @State private var model: WindowsAccountsListModel
 
-    /// When non-nil, the expired-account inline error is shown for this account
-    /// id (US-W01 AC-6 / TC-F014). Tapping an expired row sets this instead of
-    /// navigating; tapping it again or tapping a different row clears it.
-    @State private var expiredTappedId: String? = nil
-
-    /// When `false`, the "< Back" button is hidden. Pass `false` when the view
-    /// is embedded inline in the Home sidebar content panel (the sidebar item
-    /// acts as the navigation control instead). Defaults to `true` so all
-    /// existing call sites that push this view as a full-screen route are
-    /// unchanged.
+    /// When `false`, the "< Back" button is hidden (inline sidebar usage).
     let showBackButton: Bool
 
     init(
@@ -78,17 +54,95 @@ struct WindowsAccountsListView: View {
                 Spacer()
             }
         }
+        .overlay {
+            // ⋮ actions modal
+            if model.alertAccountId != nil {
+                DesktopAlertView(
+                    title: alertTitle,
+                    options: [
+                        DesktopAlertOption("Open", color: .blue),
+                        DesktopAlertOption("Delete", color: .red),
+                    ],
+                    onClose: { model.alertAccountId = nil },
+                    onSelect: { label in handleAlertSelection(label) }
+                )
+            }
+        }
+        .overlay {
+            // Delete confirmation modal
+            if model.deleteConfirmingId != nil {
+                DesktopAlertView(
+                    title: deleteAlertTitle,
+                    options: [
+                        DesktopAlertOption("Delete", color: .red),
+                        DesktopAlertOption("Cancel", color: .gray),
+                    ],
+                    onClose: { model.cancelDelete() },
+                    onSelect: { label in handleDeleteConfirmation(label) }
+                )
+            }
+        }
         .task {
             await model.loadAccounts()
         }
     }
 
-    // MARK: - Toolbar (US-W01 AC-7 / AC-8)
+    // MARK: - Alert helpers
 
-    /// Header row: optional "< Back" on the left, provider title, "+ Add" on
-    /// the right. Back pops to Home (AC-7); "+ Add" pushes the add-account
-    /// options screen for this provider (AC-8). The back button is suppressed
-    /// when `showBackButton` is `false` (inline sidebar usage).
+    private var alertTitle: String {
+        guard let id = model.alertAccountId,
+              let account = model.accounts.first(where: { $0.id == id }) else {
+            return "Options"
+        }
+        return account.name
+    }
+
+    private var deleteAlertTitle: String {
+        guard let id = model.deleteConfirmingId,
+              let account = model.accounts.first(where: { $0.id == id }) else {
+            return "Delete account?"
+        }
+        return "Delete \"\(account.name)\"? This cannot be undone."
+    }
+
+    private func handleAlertSelection(_ label: String) {
+        guard let id = model.alertAccountId,
+              let account = model.accounts.first(where: { $0.id == id }) else {
+            model.alertAccountId = nil
+            return
+        }
+        model.alertAccountId = nil
+
+        switch label {
+        case "Open":
+            if account.isExpired {
+                model.expiredTappedId = (model.expiredTappedId == id) ? nil : id
+            } else {
+                model.expiredTappedId = nil
+                coordinator.push(.appsList(
+                    accountId: account.id,
+                    accountName: account.name
+                ))
+            }
+        case "Delete":
+            model.expiredTappedId = nil
+            model.confirmDelete(id: id)
+        default:
+            break
+        }
+    }
+
+    private func handleDeleteConfirmation(_ label: String) {
+        switch label {
+        case "Delete":
+            Task { await model.executeDelete() }
+        default:
+            model.cancelDelete()
+        }
+    }
+
+    // MARK: - Toolbar
+
     private var toolbar: some View {
         VStack(spacing: 12) {
             HStack {
@@ -109,9 +163,8 @@ struct WindowsAccountsListView: View {
         }
     }
 
-    // MARK: - Error banner (US-W06 AC-5)
+    // MARK: - Error banner
 
-    /// Inline error banner shown when an operation (load or delete) fails.
     @ViewBuilder
     private var errorBanner: some View {
         if let message = model.errorMessage {
@@ -128,12 +181,12 @@ struct WindowsAccountsListView: View {
                 }
                 .padding(12)
             }
-            .background(Color(white: 0.94))
+            .background(Color.gray.opacity(0.15))
             .cornerRadius(8)
         }
     }
 
-    // MARK: - Content: loading / empty / populated (US-W01 AC-2 / AC-3 / AC-4)
+    // MARK: - Content states
 
     @ViewBuilder
     private var content: some View {
@@ -146,9 +199,6 @@ struct WindowsAccountsListView: View {
         }
     }
 
-    // MARK: - Loading state (US-W01 AC-4)
-
-    /// An inline loading indicator shown while the model fetches accounts.
     private var loadingState: some View {
         HStack(spacing: 8) {
             ProgressView()
@@ -158,9 +208,6 @@ struct WindowsAccountsListView: View {
         }
     }
 
-    // MARK: - Empty state (US-W01 AC-3)
-
-    /// Centered empty-state message when no accounts exist for this provider.
     private var emptyState: some View {
         VStack(spacing: 12) {
             Spacer()
@@ -177,95 +224,101 @@ struct WindowsAccountsListView: View {
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Populated state (US-W01 AC-2 / AC-5 / AC-6, US-W06)
+    // MARK: - Populated state — 2-column grid
 
-    /// The scrollable list of account rows, each with badges and delete controls.
+    /// Iterates over `model.accounts` directly (proven ForEach pattern) and
+    /// renders HStack pairs for even-indexed accounts to form a 2-column grid.
     private var populatedState: some View {
         VStack(spacing: 12) {
             ForEach(model.accounts, id: \.id) { account in
-                accountCard(account)
+                if isRowStart(account) {
+                    HStack(alignment: .top, spacing: 12) {
+                        accountCard(account)
+                        if let pair = pairAccount(for: account) {
+                            accountCard(pair)
+                        } else {
+                            Spacer()
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                }
             }
         }
     }
 
-    /// A single account row: glyph + name + badges + disclosure chevron + Delete.
-    /// If this account is in the delete-confirming state, the confirmation banner
-    /// appears directly below the card. If the account is expired and was tapped,
-    /// an inline error is shown instead of navigating (US-W01 AC-6).
+    /// Returns `true` if this account is at an even index (start of a grid row).
+    private func isRowStart(_ account: AccountModel) -> Bool {
+        guard let index = model.accounts.firstIndex(where: { $0.id == account.id }) else {
+            return false
+        }
+        return index % 2 == 0
+    }
+
+    /// Returns the next account in the array (the right-side pair), or nil
+    /// if this is the last account.
+    private func pairAccount(for account: AccountModel) -> AccountModel? {
+        guard let index = model.accounts.firstIndex(where: { $0.id == account.id }),
+              index + 1 < model.accounts.count else {
+            return nil
+        }
+        return model.accounts[index + 1]
+    }
+
+    /// A single account card: vertical layout with provider glyph (centered),
+    /// account name, badges, and a ⋮ button that opens the DesktopAlertView.
     private func accountCard(_ account: AccountModel) -> some View {
         VStack(spacing: 0) {
-            // Main row
-            HStack(spacing: 12) {
-                // Provider glyph
+            VStack(spacing: 8) {
+                // Top bar with ⋮ button
+                HStack {
+                    Spacer()
+                    Button("...") {
+                        model.alertAccountId = account.id
+                    }
+                    .fontWeight(.bold)
+                }
+
+                // Provider glyph (centered)
                 Text(providerGlyph)
+                    .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(providerColor)
+                    .frame(maxWidth: .infinity)
 
                 // Account name
                 Text(account.name)
                     .fontWeight(.medium)
+                    .frame(maxWidth: .infinity)
 
-                Spacer()
-
-                // Badges (US-W01 AC-5 / AC-6)
-                badgesView(for: account)
-
-                // Disclosure chevron
-                Text(">")
-                    .foregroundColor(.gray)
-
-                // Inline Delete button (US-W06 AC-1)
-                Button("Delete") {
-                    expiredTappedId = nil
-                    model.confirmDelete(id: account.id)
+                // Badges row
+                HStack(spacing: 4) {
+                    badgesView(for: account)
+                    Spacer()
                 }
-                .foregroundColor(.red)
             }
             .padding(16)
+            .frame(maxWidth: .infinity)
             .background(providerColor.opacity(0.08))
             .cornerRadius(8)
-            .overlay {
+            // Stroke MUST live in `.background` (not `.overlay`): on the AppKit
+            // backend an overlaid stroke becomes a sibling path view on top of the
+            // card that swallows clicks, blocking the ⋮ button. Behind the
+            // translucent fill the border still shows through.
+            .background {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(providerColor.opacity(0.4), style: StrokeStyle(width: 1.0))
             }
-            .onTapGesture {
-                if account.isExpired {
-                    // US-W01 AC-6 / TC-F014: tapping an expired row shows an
-                    // inline error instead of navigating. If a delete
-                    // confirmation is showing for this row, dismiss it first.
-                    if model.deleteConfirmingId == account.id {
-                        model.cancelDelete()
-                    }
-                    expiredTappedId = (expiredTappedId == account.id) ? nil : account.id
-                } else {
-                    // T-W10: non-expired account — navigate to the Apps List
-                    // for this account (design §2.3: Accounts list → appsList).
-                    // Nit-2: clear any lingering expired-account error banner
-                    // before navigating, so it does not persist on back.
-                    expiredTappedId = nil
-                    coordinator.push(.appsList(
-                        accountId: account.id,
-                        accountName: account.name
-                    ))
-                }
-            }
 
-            // Expired inline error (US-W01 AC-6)
-            if expiredTappedId == account.id {
+            // Expired inline error
+            if model.expiredTappedId == account.id {
                 expiredInlineError(for: account)
             }
-
-            // Delete confirmation banner (US-W06 AC-2 / AC-3 / AC-4)
-            if model.deleteConfirmingId == account.id {
-                deleteConfirmationBanner(for: account)
-            }
         }
+        .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Expired inline error (US-W01 AC-6)
+    // MARK: - Expired inline error
 
-    /// An inline error banner shown below the row when an expired account is
-    /// tapped, instead of navigating (TC-F014).
     private func expiredInlineError(for account: AccountModel) -> some View {
         HStack(spacing: 0) {
             Rectangle()
@@ -280,11 +333,11 @@ struct WindowsAccountsListView: View {
             }
             .padding(12)
         }
-        .background(Color(white: 0.94))
+        .background(Color.gray.opacity(0.15))
         .cornerRadius(8)
     }
 
-    // MARK: - Badges (US-W01 AC-5 / AC-6)
+    // MARK: - Badges
 
     @ViewBuilder
     private func badgesView(for account: AccountModel) -> some View {
@@ -296,7 +349,6 @@ struct WindowsAccountsListView: View {
         }
     }
 
-    /// A small colored pill badge with text.
     private func badgePill(text: String, color: Color) -> some View {
         Text(text)
             .foregroundColor(color)
@@ -306,54 +358,16 @@ struct WindowsAccountsListView: View {
             .cornerRadius(4)
     }
 
-    // MARK: - Delete confirmation banner (US-W06 AC-2 / AC-3 / AC-4)
+    // MARK: - Provider glyph/color
 
-    /// The inline confirmation banner: warning icon + message + Cancel/Delete
-    /// buttons. Confirm executes the cascade delete; Cancel dismisses.
-    private func deleteConfirmationBanner(for account: AccountModel) -> some View {
-        HStack(spacing: 0) {
-            Rectangle()
-                .fill(Color.orange)
-                .frame(width: 4)
-                .cornerRadius(8)
-
-            VStack(spacing: 8) {
-                HStack {
-                    Text("Delete \"\(account.name)\"? This cannot be undone.")
-                        .fontWeight(.medium)
-                    Spacer()
-                }
-                HStack(spacing: 8) {
-                    Spacer()
-                    Button("Cancel") {
-                        model.cancelDelete()
-                    }
-                    Button("Delete") {
-                        Task {
-                            await model.executeDelete()
-                        }
-                    }
-                    .foregroundColor(.red)
-                }
-            }
-            .padding(12)
-        }
-        .background(Color(white: 0.94))
-        .cornerRadius(8)
-    }
-
-    // MARK: - Provider glyph/color (consistent with WindowsProviderCardView)
-
-    /// The text glyph for this provider, matching the Home card convention.
     private var providerGlyph: String {
         switch provider {
         case .apple:      return "ASC"
-        case .firebase:   return "\u{1F525}" // fire emoji
-        case .googlePlay: return "\u{25B6}" // play triangle
+        case .firebase:   return "\u{1F525}"
+        case .googlePlay: return "\u{25B6}"
         }
     }
 
-    /// The tint color for this provider, matching the Home card convention.
     private var providerColor: Color {
         HomeGridCell.color(named: provider.colorName)
     }

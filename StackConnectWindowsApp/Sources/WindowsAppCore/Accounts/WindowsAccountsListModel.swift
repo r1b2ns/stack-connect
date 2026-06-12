@@ -33,6 +33,12 @@ public final class WindowsAccountsListModel: SwiftCrossUI.ObservableObject {
     /// When non-nil, an inline error banner is shown with this message.
     @SwiftCrossUI.Published public var errorMessage: String? = nil
 
+    /// When non-nil, the expired-account inline error is shown for this account id.
+    @SwiftCrossUI.Published public var expiredTappedId: String? = nil
+
+    /// The account id for which the ⋮ actions alert is being shown.
+    @SwiftCrossUI.Published public var alertAccountId: String? = nil
+
     // MARK: - Configuration
 
     /// The provider type this list displays.

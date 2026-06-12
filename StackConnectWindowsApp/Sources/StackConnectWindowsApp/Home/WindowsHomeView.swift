@@ -72,12 +72,6 @@ struct WindowsHomeView: View {
                 title: "App Store Connect",
                 tint: .blue
             )
-            buildSidebarItem(
-                section: .firebase,
-                glyph: "🔥",
-                title: "Firebase",
-                tint: .orange
-            )
             Divider()
                 .padding(.vertical, 4)
             buildSidebarItem(

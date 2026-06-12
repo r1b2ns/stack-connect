@@ -25,7 +25,11 @@ extension View {
             .padding(16)
             .background(Color(white: 0.92).opacity(0.08))
             .cornerRadius(WindowsWidgetMetrics.cardRadius)
-            .overlay {
+            // Stroke MUST live in `.background` (not `.overlay`): on the AppKit
+            // backend an overlaid stroke becomes a sibling path view on top of the
+            // card that swallows clicks on any interactive child. Behind the
+            // translucent fill the border still shows through.
+            .background {
                 RoundedRectangle(cornerRadius: Double(WindowsWidgetMetrics.cardRadius))
                     .stroke(Color.gray.opacity(0.3), style: StrokeStyle(width: 1.0))
             }

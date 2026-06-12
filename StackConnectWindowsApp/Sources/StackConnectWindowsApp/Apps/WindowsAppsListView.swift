@@ -4,11 +4,11 @@ import StackHomeCore
 import StackProtocols
 import WindowsAppCore
 
-// T-W06 / T-W08 — Apps List screen for the Windows GUI.
+// T-W06 — Apps List screen for the Windows GUI.
 //
 // Displays the apps belonging to a single Apple account, with a toolbar (back,
-// account title, Archived button, Refresh button), an Apps/Users tab strip,
-// a search field, Favorites/All Apps sections, and archive-with-confirmation.
+// account title, Archived button, Refresh button), a search field,
+// Favorites/All Apps sections, and archive-with-confirmation.
 //
 // The view binds to `WindowsAppsListModel` (T-W05) which owns the apps array,
 // loading/error/search/archive state, and computed groupings. The view is
@@ -25,13 +25,6 @@ import WindowsAppCore
 // stored in RootView and shared between both routes). On cancel/back, calls
 // `model.cancelArchive` and pops. This uses a PUSHED ROUTE (TC-072), not an
 // alert/sheet.
-//
-// Users tab (AC-W05-1 / T-W08): Apps selected by default. Switching to the
-// Users tab shows team members via `WindowsUsersTabView` backed by
-// `WindowsUsersListModel`. The users model is held as `@State` so switching
-// tabs back and forth does NOT lose state (AC-W05-3: apps state preserved;
-// users state preserved). The users model loads lazily on first Users-tab
-// appearance (`.task` inside `WindowsUsersTabView`), not eagerly on screen load.
 
 struct WindowsAppsListView: View {
 
@@ -45,25 +38,17 @@ struct WindowsAppsListView: View {
     /// model's `@Published` properties change. The same instance is shared with
     /// the archive confirmation view via the RootView's `AppsListModelCache`.
     @State private var model: WindowsAppsListModel
-    /// The users list model. Held as `@State` so switching tabs back and forth
-    /// preserves the users state (AC-W05-3). Loads lazily on first Users-tab
-    /// appearance. Created from the same `accountId` and optional connection.
-    @State private var usersModel: WindowsUsersListModel
-    /// The currently selected tab index (0 = Apps, 1 = Users).
-    @State private var selectedTab: Int = 0
 
     init(
         accountId: String,
         accountName: String,
         coordinator: WindowsHomeCoordinator,
-        model: WindowsAppsListModel,
-        usersModel: WindowsUsersListModel
+        model: WindowsAppsListModel
     ) {
         self.accountId = accountId
         self.accountName = accountName
         _coordinator = State(wrappedValue: coordinator)
         _model = State(wrappedValue: model)
-        _usersModel = State(wrappedValue: usersModel)
     }
 
     var body: some View {
@@ -71,8 +56,7 @@ struct WindowsAppsListView: View {
             VStack(spacing: 16) {
                 toolbar
                 syncErrorBanner
-                tabStrip
-                tabContent
+                appsTabContent
                 Spacer()
             }
             .padding(16)
@@ -133,55 +117,8 @@ struct WindowsAppsListView: View {
                 }
                 .padding(12)
             }
-            .background(Color(white: 0.94))
+            .background(Color.gray.opacity(0.15))
             .cornerRadius(8)
-        }
-    }
-
-    // MARK: - Tab Strip (AC-W05-1: Apps/Users)
-
-    /// Custom HStack of buttons simulating a segmented control with an accent
-    /// underline on the selected tab. Apps is selected by default (index 0).
-    /// Users tab content is provided by `WindowsUsersTabView` (T-W08).
-    private var tabStrip: some View {
-        HStack(spacing: 0) {
-            tabButton(title: "Apps", index: 0)
-            tabButton(title: "Users", index: 1)
-            Spacer()
-        }
-    }
-
-    /// A single tab button with accent underline when selected. SwiftCrossUI
-    /// buttons only accept a String title (no view-builder label), so the
-    /// underline is a separate `Rectangle` below the button.
-    private func tabButton(title: String, index: Int) -> some View {
-        VStack(spacing: 4) {
-            Button(title) {
-                selectedTab = index
-            }
-            .fontWeight(selectedTab == index ? .bold : .regular)
-            .foregroundColor(selectedTab == index ? .blue : .gray)
-
-            Rectangle()
-                .fill(selectedTab == index ? Color.blue : Color.clear)
-                .frame(height: 2)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 4)
-    }
-
-    // MARK: - Tab Content
-
-    @ViewBuilder
-    private var tabContent: some View {
-        if selectedTab == 0 {
-            appsTabContent
-        } else {
-            // T-W08: real Users tab content, backed by WindowsUsersListModel.
-            // The model is held as @State so tab switches do NOT lose state.
-            // loadUsers() is triggered lazily inside WindowsUsersTabView's
-            // .task on first appearance.
-            WindowsUsersTabView(model: usersModel)
         }
     }
 
@@ -218,7 +155,7 @@ struct WindowsAppsListView: View {
             TextField("Search apps...", text: $model.searchQuery)
         }
         .padding(8)
-        .background(Color(white: 0.94))
+        .background(Color.gray.opacity(0.15))
         .cornerRadius(8)
     }
 
