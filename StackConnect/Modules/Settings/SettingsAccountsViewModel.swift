@@ -80,7 +80,13 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             id: existing.id,
             name: trimmed,
             providerType: existing.providerType,
-            createdAt: existing.createdAt
+            createdAt: existing.createdAt,
+            rules: existing.rules,
+            origin: existing.origin,
+            role: existing.role,
+            expirationDate: existing.expirationDate,
+            hasPendingAgreements: existing.hasPendingAgreements,
+            pendingAgreementsDetectedAt: existing.pendingAgreementsDetectedAt
         )
 
         do {
@@ -134,6 +140,8 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             "analytics": rules.analytics.map(\.rawValue),
             "provisioning": rules.provisioning.map(\.rawValue)
         ]
+
+        exportDict["role"] = account.role.rawValue
 
         if let expirationDate {
             exportDict["expirationDate"] = ISO8601DateFormatter().string(from: expirationDate)
@@ -229,6 +237,9 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             expirationDate = ISO8601DateFormatter().date(from: expirationRaw)
         }
 
+        // 4c. Parse optional role (backward compatible: absent → .unspecified)
+        let role = (dict["role"] as? String).flatMap(AccountRole.init(rawValue:)) ?? .unspecified
+
         // 5. Validate and store credentials
         guard let credsDict = dict["credentials"] as? [String: String] else {
             return String(localized: "Missing or invalid 'credentials' field.")
@@ -241,6 +252,11 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
         // Generate new ID for the imported account
         let accountId = UUID().uuidString
 
+        // Effective name used both for the duplicate check and the saved account.
+        let accountName = (customName?.trimmingCharacters(in: .whitespaces).isEmpty == false)
+            ? customName!.trimmingCharacters(in: .whitespaces)
+            : name
+
         switch providerType {
         case .apple:
             guard let issuerID = credsDict["issuerID"], !issuerID.isEmpty,
@@ -248,10 +264,11 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
                   let privateKey = credsDict["privateKey"], !privateKey.isEmpty else {
                 return String(localized: "Invalid Apple credentials. Required: issuerID, privateKeyID, privateKey.")
             }
-            // Duplicate check
+            // Same team key may be re-registered under a different name/role.
+            // Only block an EXACT duplicate: same private key AND same account name.
             for existing in sameTypeAccounts {
                 if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(existing.id)"),
-                   creds.privateKey == privateKey {
+                   creds.privateKey == privateKey, existing.name == accountName {
                     return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
                 }
             }
@@ -290,15 +307,13 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
         }
 
         // 6. Create and save account
-        let accountName = (customName?.trimmingCharacters(in: .whitespaces).isEmpty == false)
-            ? customName!.trimmingCharacters(in: .whitespaces)
-            : name
         let account = AccountModel(
             id: accountId,
             name: accountName,
             providerType: providerType,
             rules: rules,
             origin: .imported,
+            role: role,
             expirationDate: expirationDate
         )
 

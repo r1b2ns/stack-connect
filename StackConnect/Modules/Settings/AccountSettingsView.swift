@@ -40,6 +40,7 @@ protocol AccountSettingsViewModelProtocol: ObservableObject {
 struct AccountSettingsUiState {
     var account: AccountModel
     var editingName: String
+    var editingRole: AccountRole
     var toastMessage: ToastMessage?
 }
 
@@ -60,7 +61,8 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
     ) {
         self.uiState = AccountSettingsUiState(
             account: account,
-            editingName: account.name
+            editingName: account.name,
+            editingRole: account.role
         )
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
@@ -76,7 +78,11 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
             providerType: uiState.account.providerType,
             createdAt: uiState.account.createdAt,
             rules: uiState.account.rules,
-            origin: uiState.account.origin
+            origin: uiState.account.origin,
+            role: uiState.editingRole,
+            expirationDate: uiState.account.expirationDate,
+            hasPendingAgreements: uiState.account.hasPendingAgreements,
+            pendingAgreementsDetectedAt: uiState.account.pendingAgreementsDetectedAt
         )
 
         do {
@@ -106,6 +112,8 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
             "analytics": rules.analytics.map(\.rawValue),
             "provisioning": rules.provisioning.map(\.rawValue)
         ]
+
+        exportDict["role"] = uiState.account.role.rawValue
 
         if let expirationDate {
             exportDict["expirationDate"] = ISO8601DateFormatter().string(from: expirationDate)
@@ -226,6 +234,19 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text(viewModel.uiState.account.providerType.displayName)
+            }
+
+            Picker(
+                String(localized: "Role"),
+                selection: $viewModel.uiState.editingRole
+            ) {
+                ForEach(AccountRole.allCases, id: \.self) { role in
+                    Text(role.displayName).tag(role)
+                }
+            }
+            .pickerStyle(.menu)
+            .onChange(of: viewModel.uiState.editingRole) { _, _ in
+                Task { await viewModel.save() }
             }
 
             HStack {

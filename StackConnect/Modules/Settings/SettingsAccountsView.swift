@@ -219,6 +219,17 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                             .font(.body)
                             .foregroundStyle(.primary)
 
+                        if account.role != .unspecified {
+                            Text(account.role.displayName)
+                                .font(.caption2)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.blue)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.blue.opacity(0.15))
+                                .clipShape(Capsule())
+                        }
+
                         if account.origin == .imported {
                             Text(String(localized: "imported"))
                                 .font(.caption2)

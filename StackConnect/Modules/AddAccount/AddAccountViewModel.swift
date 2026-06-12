@@ -24,6 +24,7 @@ struct AddAccountUiState {
     var validationError: String?
     var isSaved = false
     var providerType: ProviderType
+    var role: AccountRole = .unspecified
 }
 
 // MARK: - Implementation
@@ -65,7 +66,8 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
 
             let account = AccountModel(
                 name: uiState.accountName.trimmingCharacters(in: .whitespaces),
-                providerType: uiState.providerType
+                providerType: uiState.providerType,
+                role: uiState.role
             )
 
             switch uiState.providerType {
@@ -149,13 +151,16 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
     private func checkDuplicateCredentials() async -> String? {
         guard let allAccounts = try? await storage.fetchAll(AccountModel.self) else { return nil }
         let sameTypeAccounts = allAccounts.filter { $0.providerType == uiState.providerType }
+        let newName = uiState.accountName.trimmingCharacters(in: .whitespaces)
 
         for existing in sameTypeAccounts {
             switch uiState.providerType {
             case .apple:
+                // Same team key may be registered again under a different name/role.
+                // Only block an EXACT duplicate: same private key AND same account name.
                 if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(existing.id)") {
                     let newKey = sanitizedPrivateKey(uiState.privateKey)
-                    if creds.privateKey == newKey {
+                    if creds.privateKey == newKey && existing.name == newName {
                         return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
                     }
                 }

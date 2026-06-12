@@ -108,6 +108,35 @@ enum AccountOrigin: String, Codable, Hashable {
     case imported
 }
 
+// MARK: - Account Role
+
+/// App Store Connect role associated with the API key backing this account.
+/// `.unspecified` is the default/none case for accounts created before roles
+/// existed or when the user chooses not to set one.
+enum AccountRole: String, Codable, CaseIterable, Hashable {
+    case unspecified
+    case admin
+    case appManager
+    case developer
+    case marketing
+    case sales
+    case finance
+    case customerSupport
+
+    var displayName: String {
+        switch self {
+        case .unspecified:     return String(localized: "Unspecified")
+        case .admin:           return String(localized: "Admin")
+        case .appManager:      return String(localized: "App Manager")
+        case .developer:       return String(localized: "Developer")
+        case .marketing:       return String(localized: "Marketing")
+        case .sales:           return String(localized: "Sales")
+        case .finance:         return String(localized: "Finance")
+        case .customerSupport: return String(localized: "Customer Support")
+        }
+    }
+}
+
 // MARK: - Account Model
 
 struct AccountModel: Codable, Identifiable, Hashable {
@@ -117,6 +146,9 @@ struct AccountModel: Codable, Identifiable, Hashable {
     let createdAt: Date
     var rules: AccountRules
     var origin: AccountOrigin
+    /// Optional App Store Connect role/label for this account. Lets the same team
+    /// (same issuerID) be registered multiple times with different API key roles.
+    var role: AccountRole
     /// Optional expiration set on the export. When reached, the account must be removed.
     var expirationDate: Date?
     /// True when ASC calls for this account started failing with a 403 "pending
@@ -134,6 +166,7 @@ struct AccountModel: Codable, Identifiable, Hashable {
         createdAt: Date = .now,
         rules: AccountRules = .allPermissions,
         origin: AccountOrigin = .created,
+        role: AccountRole = .unspecified,
         expirationDate: Date? = nil,
         hasPendingAgreements: Bool = false,
         pendingAgreementsDetectedAt: Date? = nil
@@ -144,6 +177,7 @@ struct AccountModel: Codable, Identifiable, Hashable {
         self.createdAt = createdAt
         self.rules = rules
         self.origin = origin
+        self.role = role
         self.expirationDate = expirationDate
         self.hasPendingAgreements = hasPendingAgreements
         self.pendingAgreementsDetectedAt = pendingAgreementsDetectedAt
@@ -206,13 +240,14 @@ struct AccountModel: Codable, Identifiable, Hashable {
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         rules = try container.decodeIfPresent(AccountRules.self, forKey: .rules) ?? .allPermissions
         origin = try container.decodeIfPresent(AccountOrigin.self, forKey: .origin) ?? .created
+        role = try container.decodeIfPresent(AccountRole.self, forKey: .role) ?? .unspecified
         expirationDate = try container.decodeIfPresent(Date.self, forKey: .expirationDate)
         hasPendingAgreements = try container.decodeIfPresent(Bool.self, forKey: .hasPendingAgreements) ?? false
         pendingAgreementsDetectedAt = try container.decodeIfPresent(Date.self, forKey: .pendingAgreementsDetectedAt)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, providerType, createdAt, rules, origin, expirationDate
+        case id, name, providerType, createdAt, rules, origin, role, expirationDate
         case hasPendingAgreements, pendingAgreementsDetectedAt
     }
 }

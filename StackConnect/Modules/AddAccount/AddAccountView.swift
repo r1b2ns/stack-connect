@@ -92,6 +92,16 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                 text: $viewModel.uiState.accountName
             )
             .textContentType(.name)
+
+            Picker(
+                String(localized: "Role"),
+                selection: $viewModel.uiState.role
+            ) {
+                ForEach(AccountRole.allCases, id: \.self) { role in
+                    Text(role.displayName).tag(role)
+                }
+            }
+            .pickerStyle(.menu)
         } header: {
             Text("General")
         }

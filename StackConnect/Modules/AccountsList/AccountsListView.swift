@@ -115,14 +115,48 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
         }
     }
 
+    @ViewBuilder
     private func buildList() -> some View {
         List {
-            ForEach(viewModel.uiState.accounts) { account in
-                buildAccountRow(account)
+            if viewModel.uiState.showsTeamGroups {
+                ForEach(viewModel.uiState.groups) { group in
+                    Section {
+                        ForEach(group.accounts) { account in
+                            buildSwipeableRow(account)
+                        }
+                    } header: {
+                        buildGroupHeader(group)
+                    }
+                }
+            } else {
+                ForEach(viewModel.uiState.groups.flatMap(\.accounts)) { account in
+                    buildSwipeableRow(account)
+                }
             }
-            .onDelete { offsets in
-                Task { await viewModel.deleteAccount(at: offsets) }
+        }
+    }
+
+    private func buildSwipeableRow(_ account: AccountModel) -> some View {
+        buildAccountRow(account)
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                Button(role: .destructive) {
+                    Task { await viewModel.deleteAccount(account) }
+                } label: {
+                    Label(String(localized: "Delete"), systemImage: "trash")
+                }
             }
+    }
+
+    @ViewBuilder
+    private func buildGroupHeader(_ group: AccountGroup) -> some View {
+        if let issuerID = group.issuerID {
+            // Mask the issuerID: show only a short suffix to avoid leaking the full id.
+            Label(
+                String(localized: "Team ••••\(String(issuerID.suffix(6)))"),
+                systemImage: "person.2"
+            )
+        } else {
+            EmptyView()
         }
     }
 
@@ -151,6 +185,17 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                     .font(.body)
                     .fontWeight(.medium)
                     .foregroundStyle(.primary)
+
+                if account.role != .unspecified {
+                    Text(account.role.displayName)
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.blue)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.blue.opacity(0.15))
+                        .clipShape(Capsule())
+                }
 
                 if account.origin == .imported {
                     Text(String(localized: "imported"))
