@@ -44,7 +44,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
 
     private var isAppEditable: Bool {
         guard let state = viewModel.uiState.app.appStoreState else { return true }
-        return [.prepareForSubmission, .rejected, .readyForReview, .waitingForReview, .waitingForExportCompliance].contains(state)
+        return [.prepareForSubmission, .rejected, .developerRejected, .readyForReview, .waitingForReview, .waitingForExportCompliance].contains(state)
     }
 
     var body: some View {
@@ -132,14 +132,43 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
-                    if let state = viewModel.uiState.app.appStoreState {
-                        buildStatusBadge(state: state, version: viewModel.uiState.app.versionString)
-                            .padding(.top, 2)
-                    }
+                    buildPlatformIcons()
                 }
             }
             .padding(.vertical, 4)
         }
+    }
+
+    private func buildPlatformIcons() -> some View {
+        let supported = supportedPlatforms
+        return HStack(spacing: 12) {
+            ForEach(AppPlatform.allCases) { platform in
+                Image(systemName: platform.icon)
+                    .font(.caption)
+                    .foregroundStyle(supported.contains(platform) ? Color.blue : Color.gray.opacity(0.4))
+                    .help(platform.displayName)
+            }
+        }
+        .padding(.top, 2)
+    }
+
+    /// Platforms this app actually ships a binary for, derived from
+    /// `platformVersions` (falling back to the single `platform` field).
+    private var supportedPlatforms: Set<AppPlatform> {
+        let app = viewModel.uiState.app
+        var platforms = Set<AppPlatform>()
+
+        for entry in app.platformVersions ?? [] {
+            if let platform = AppPlatform.from(entry.platform) {
+                platforms.insert(platform)
+            }
+        }
+
+        if platforms.isEmpty, let raw = app.platform, let platform = AppPlatform.from(raw) {
+            platforms.insert(platform)
+        }
+
+        return platforms
     }
 
     // MARK: - Platform Sections

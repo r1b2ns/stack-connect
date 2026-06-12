@@ -8,6 +8,19 @@ enum AppPlatform: String, Codable, CaseIterable, Hashable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Builds an `AppPlatform` from a raw platform string, tolerating the
+    /// alias spellings the App Store Connect API can return
+    /// (e.g. `TVOS`/`TV_OS`, `MACOS`/`MAC_OS`, `XROS`/`VISION_OS`).
+    static func from(_ raw: String) -> AppPlatform? {
+        switch raw.uppercased() {
+        case "IOS":                 return .ios
+        case "MAC_OS", "MACOS":     return .macOs
+        case "TV_OS", "TVOS":       return .tvOs
+        case "VISION_OS", "XROS":   return .visionOs
+        default:                    return nil
+        }
+    }
+
     var displayName: String {
         switch self {
         case .ios:      return "iOS"
