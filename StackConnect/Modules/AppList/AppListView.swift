@@ -246,20 +246,10 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
                         .fontWeight(.medium)
                         .foregroundStyle(.primary)
 
-                    if app.isFavorite {
-                        Image(systemName: "star.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.yellow)
-                    }
+                    Spacer(minLength: 0)
                 }
 
-                if let state = app.appStoreState {
-                    buildStatusBadge(state: state, version: app.versionString)
-                } else {
-                    Text(app.bundleId)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                buildStatusLines(app)
             }
 
             Spacer()
@@ -268,6 +258,8 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
                 buildInlineActions(app)
             }
 
+            buildFavoriteStar(app)
+            
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
@@ -276,15 +268,6 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
 
     private func buildInlineActions(_ app: AppModel) -> some View {
         HStack(spacing: 12) {
-            Button {
-                Task { await viewModel.toggleFavorite(app: app) }
-            } label: {
-                Image(systemName: app.isFavorite ? "star.slash.fill" : "star.fill")
-                    .foregroundStyle(.yellow)
-            }
-            .buttonStyle(.borderless)
-            .help(app.isFavorite ? String(localized: "Unfavorite") : String(localized: "Favorite"))
-
             Button {
                 Task { await viewModel.toggleArchive(app: app) }
             } label: {
@@ -296,6 +279,20 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
         }
     }
 
+    // MARK: - Favorite Star
+
+    private func buildFavoriteStar(_ app: AppModel) -> some View {
+        Button {
+            Task { await viewModel.toggleFavorite(app: app) }
+        } label: {
+            Image(systemName: app.isFavorite ? "star.fill" : "star")
+                .font(.caption)
+                .foregroundStyle(app.isFavorite ? AnyShapeStyle(.yellow) : AnyShapeStyle(.tertiary))
+        }
+        .buttonStyle(.borderless)
+        .help(app.isFavorite ? String(localized: "Unfavorite") : String(localized: "Favorite"))
+    }
+
     private func buildStatusBadge(state: AppStoreState, version: String?) -> some View {
         HStack(spacing: 4) {
             Circle()
@@ -305,6 +302,7 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
             Text(state.displayName)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
 
             if let version {
                 Text("(\(version))")
@@ -312,6 +310,93 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
                     .foregroundStyle(.tertiary)
             }
         }
+    }
+
+    // MARK: - Status Lines
+
+    @ViewBuilder
+    private func buildStatusLines(_ app: AppModel) -> some View {
+        if let platformVersions = app.platformVersions, !platformVersions.isEmpty {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(sortedPlatformVersions(platformVersions), id: \.self) { entry in
+                    buildStatusLine(entry)
+                }
+            }
+        } else if let state = app.appStoreState {
+            buildStatusBadge(state: state, version: app.versionString)
+        } else {
+            Text(app.bundleId)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func buildStatusLine(_ entry: AppPlatformVersion) -> some View {
+        HStack(spacing: 4) {
+            if let state = entry.appStoreState {
+                Circle()
+                    .fill(statusColor(state.color))
+                    .frame(width: 6, height: 6)
+
+                Text(state.displayName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            if let version = entry.versionString {
+                Text("(\(version))")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+
+            buildPlatformIcon(entry.platform)
+        }
+    }
+
+    private func buildPlatformIcon(_ platform: String) -> some View {
+        let symbol: String
+        switch platform.uppercased() {
+        case "IOS":
+            symbol = "iphone"
+        case "TV_OS", "TVOS":
+            symbol = "appletv"
+        case "MAC_OS", "MACOS":
+            symbol = "desktopcomputer"
+        case "VISION_OS", "XROS":
+            symbol = "visionpro"
+        default:
+            symbol = "questionmark.square.dashed"
+        }
+
+        return Image(systemName: symbol)
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
+    }
+
+    /// Sorts platform entries in canonical order: iOS, tvOS, macOS, visionOS,
+    /// then any others (stable for unknowns).
+    private func sortedPlatformVersions(_ versions: [AppPlatformVersion]) -> [AppPlatformVersion] {
+        func rank(_ platform: String) -> Int {
+            switch platform.uppercased() {
+            case "IOS":                 return 0
+            case "TV_OS", "TVOS":       return 1
+            case "MAC_OS", "MACOS":     return 2
+            case "VISION_OS", "XROS":   return 3
+            default:                    return Int.max
+            }
+        }
+
+        return versions.enumerated()
+            .sorted { lhs, rhs in
+                let lRank = rank(lhs.element.platform)
+                let rRank = rank(rhs.element.platform)
+                if lRank == rRank {
+                    return lhs.offset < rhs.offset // stable for equal ranks
+                }
+                return lRank < rRank
+            }
+            .map(\.element)
     }
 
     private func statusColor(_ color: AppStoreStateColor) -> Color {

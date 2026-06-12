@@ -118,7 +118,8 @@ final class AppListViewModel: AppListViewModelProtocol {
                     versionString: cached?.versionString,
                     lastModifiedDate: cached?.lastModifiedDate,
                     isArchived: cached?.isArchived ?? false,
-                    isFavorite: cached?.isFavorite ?? false
+                    isFavorite: cached?.isFavorite ?? false,
+                    platformVersions: cached?.platformVersions
                 )
             }.sorted { a, b in
                 switch (a.lastModifiedDate, b.lastModifiedDate) {
@@ -202,6 +203,7 @@ final class AppListViewModel: AppListViewModelProtocol {
         let appStoreState: AppStoreState?
         let versionString: String?
         let lastModifiedDate: Date?
+        let platformVersions: [AppPlatformVersion]
     }
 
     private func enrichApps(_ apps: [AppModel], using connection: AppleAccountConnection) async -> [AppModel] {
@@ -211,8 +213,25 @@ final class AppListViewModel: AppListViewModelProtocol {
                 let hasIcon = app.iconUrl != nil
                 group.addTask {
                     async let iconUrl = hasIcon ? nil : connection.fetchIconUrl(appId: appId)
-                    let versions = (try? await connection.fetchAppStoreVersions(appId: appId, limit: 1)) ?? []
-                    let latestVersion = versions.first
+                    let versions = (try? await connection.fetchAppStoreVersions(appId: appId, limit: 20)) ?? []
+                    // Most recent first, so the overall "latest" and the per-platform
+                    // latest both come out correctly.
+                    let sorted = versions.sorted { ($0.createdDate ?? .distantPast) > ($1.createdDate ?? .distantPast) }
+                    let latestVersion = sorted.first
+
+                    var platformVersions: [AppPlatformVersion] = []
+                    var seenPlatforms = Set<String>()
+                    for version in sorted {
+                        guard let platform = version.platform?.rawValue, !seenPlatforms.contains(platform) else { continue }
+                        seenPlatforms.insert(platform)
+                        platformVersions.append(
+                            AppPlatformVersion(
+                                platform: platform,
+                                appStoreState: version.appStoreState,
+                                versionString: version.versionString
+                            )
+                        )
+                    }
 
                     let icon = await iconUrl
 
@@ -221,7 +240,8 @@ final class AppListViewModel: AppListViewModelProtocol {
                         iconUrl: icon,
                         appStoreState: latestVersion?.appStoreState,
                         versionString: latestVersion?.versionString,
-                        lastModifiedDate: latestVersion?.createdDate
+                        lastModifiedDate: latestVersion?.createdDate,
+                        platformVersions: platformVersions
                     )
                 }
             }
@@ -242,6 +262,7 @@ final class AppListViewModel: AppListViewModelProtocol {
                 if let state = e.appStoreState { enriched.appStoreState = state }
                 if let ver = e.versionString { enriched.versionString = ver }
                 if let date = e.lastModifiedDate { enriched.lastModifiedDate = date }
+                if !e.platformVersions.isEmpty { enriched.platformVersions = e.platformVersions }
                 enriched.hasReviewPending = enriched.appStoreState?.isReviewPending ?? false
             }
             return enriched
