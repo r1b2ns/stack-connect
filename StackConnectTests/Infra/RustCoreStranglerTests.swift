@@ -113,7 +113,7 @@ final class RustCoreStranglerTests: XCTestCase {
             // Any StackError confirms the call crossed into the Rust core. The
             // malformed private key surfaces as .invalidCredentials.
             switch error {
-            case .InvalidCredentials, .Auth, .Network, .Http, .Decode, .Unsupported:
+            case .InvalidCredentials, .Auth, .PendingAgreements, .Network, .Http, .Decode, .Unsupported:
                 break
             }
         } catch {
@@ -464,6 +464,117 @@ final class RustCoreStranglerTests: XCTestCase {
             submittedByName: nil, submittedByEmail: nil
         )
         XCTAssertNil(AppleAccountConnection.mapReviewSubmission(invalid).submittedDate)
+    }
+
+    // MARK: - Customer reviews paging (ON path)
+
+    /// With the flag ON, `fetchCustomerReviewsPage(...)` must fail via the Rust core
+    /// for invalid credentials, proving the paged read never reaches the Swift-SDK
+    /// provider. Because `fetchCustomerReviews(...)` and `fetchRecentReviews(...)`
+    /// both delegate to this method, routing it covers all three.
+    func testFetchCustomerReviewsPageRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchCustomerReviewsPage(
+                appId: "123",
+                sort: "-createdDate",
+                filterRating: nil,
+                limit: 10,
+                pageAfterResponse: nil
+            )
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    // MARK: - Customer review mapping (Rust core -> app model)
+
+    /// The core `CustomerReview` must map field-for-field onto the app's
+    /// `CustomerReviewModel`, including ISO8601 date parsing of `createdDate`/response
+    /// date, `Int32 -> Int` rating conversion, and flattening of the developer response.
+    func testMapCustomerReviewMapsAllFieldsParsesDatesAndFlattensResponse() {
+        let core = StackCoreRust.CustomerReview(
+            id: "rev-1",
+            rating: 5,
+            title: "Great app",
+            body: "Love it.",
+            reviewerNickname: "Jane",
+            createdDate: "2024-01-15T10:30:00Z",
+            territory: "USA",
+            response: StackCoreRust.ReviewResponse(
+                id: "resp-1",
+                body: "Thanks!",
+                state: "PUBLISHED",
+                lastModifiedDate: "2024-02-20T08:00:00.123Z"
+            )
+        )
+
+        let model = AppleAccountConnection.mapCustomerReview(core)
+
+        XCTAssertEqual(model.id, "rev-1")
+        XCTAssertEqual(model.rating, 5)
+        XCTAssertEqual(model.title, "Great app")
+        XCTAssertEqual(model.body, "Love it.")
+        XCTAssertEqual(model.reviewerNickname, "Jane")
+        XCTAssertEqual(model.territory, "USA")
+        XCTAssertEqual(model.responseId, "resp-1")
+        XCTAssertEqual(model.responseBody, "Thanks!")
+        XCTAssertEqual(model.responseState, "PUBLISHED")
+
+        let expectedCreated = ISO8601DateFormatter().date(from: "2024-01-15T10:30:00Z")
+        XCTAssertEqual(model.createdDate, expectedCreated)
+
+        let withFractional = ISO8601DateFormatter()
+        withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        XCTAssertEqual(model.responseDate, withFractional.date(from: "2024-02-20T08:00:00.123Z"))
+    }
+
+    /// A review with no developer response and nil dates must map cleanly: nil
+    /// response fields and nil `Date?`s, with the rating still converted.
+    func testMapCustomerReviewHandlesMissingResponseAndDates() {
+        let core = StackCoreRust.CustomerReview(
+            id: "rev-2",
+            rating: 1,
+            title: nil,
+            body: nil,
+            reviewerNickname: nil,
+            createdDate: nil,
+            territory: nil,
+            response: nil
+        )
+
+        let model = AppleAccountConnection.mapCustomerReview(core)
+
+        XCTAssertEqual(model.id, "rev-2")
+        XCTAssertEqual(model.rating, 1)
+        XCTAssertNil(model.createdDate)
+        XCTAssertNil(model.responseId)
+        XCTAssertNil(model.responseBody)
+        XCTAssertNil(model.responseState)
+        XCTAssertNil(model.responseDate)
+        XCTAssertFalse(model.hasResponse)
+    }
+
+    // MARK: - Pending agreements detection (Rust core typed error)
+
+    /// The translator must recognize the core's typed `StackError.PendingAgreements`
+    /// so `SyncService`'s catch flags pending agreements on the Rust path too.
+    func testIsPendingAgreementRecognizesRustCorePendingAgreementsError() {
+        let error = StackCoreRust.StackError.PendingAgreements(message: "x")
+        XCTAssertTrue(AppleAPIErrorTranslator.isPendingAgreement(error))
+    }
+
+    /// A different core error must NOT be treated as pending agreements.
+    func testIsPendingAgreementIgnoresOtherRustCoreErrors() {
+        let error = StackCoreRust.StackError.Auth(message: "nope")
+        XCTAssertFalse(AppleAPIErrorTranslator.isPendingAgreement(error))
     }
 }
 

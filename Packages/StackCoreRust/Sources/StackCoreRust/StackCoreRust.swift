@@ -1729,6 +1729,24 @@ public protocol ReviewsProtocol: AnyObject, Sendable {
     func fetchCustomerReviews(appId: String) async throws  -> [CustomerReview]
     
     /**
+     * Fetches a single page of customer reviews for incremental (load-more)
+     * paging, returning the page's reviews plus an opaque `next_token`.
+     *
+     * `sort` is the raw ASC sort value (`-createdDate` | `createdDate` |
+     * `-rating` | `rating`), passed through unchanged. `filter_rating` is empty
+     * for no filter, else the ratings to include. `page_token` is `None` for the
+     * first page; otherwise pass back a previous call's `next_token` verbatim.
+     * `next_token` is `None` once the last page has been reached.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchCustomerReviewsPage(appId: String, sort: String, filterRating: [String], limit: UInt32, pageToken: String?) async throws  -> CustomerReviewsPage
+    
+    /**
      * Lists the review submissions for `app_id`, with resolved version and
      * submitter where available.
      *
@@ -1853,6 +1871,39 @@ open func fetchCustomerReviews(appId: String)async throws  -> [CustomerReview]  
             completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeCustomerReview.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Fetches a single page of customer reviews for incremental (load-more)
+     * paging, returning the page's reviews plus an opaque `next_token`.
+     *
+     * `sort` is the raw ASC sort value (`-createdDate` | `createdDate` |
+     * `-rating` | `rating`), passed through unchanged. `filter_rating` is empty
+     * for no filter, else the ratings to include. `page_token` is `None` for the
+     * first page; otherwise pass back a previous call's `next_token` verbatim.
+     * `next_token` is `None` once the last page has been reached.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchCustomerReviewsPage(appId: String, sort: String, filterRating: [String], limit: UInt32, pageToken: String?)async throws  -> CustomerReviewsPage  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_reviews_fetch_customer_reviews_page(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId),FfiConverterString.lower(sort),FfiConverterSequenceString.lower(filterRating),FfiConverterUInt32.lower(limit),FfiConverterOptionString.lower(pageToken)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeCustomerReviewsPage_lift,
             errorHandler: FfiConverterTypeStackError_lift
         )
 }
@@ -2430,6 +2481,65 @@ public func FfiConverterTypeCustomerReview_lower(_ value: CustomerReview) -> Rus
 
 
 /**
+ * One page of customer reviews plus an opaque token to fetch the next page.
+ * `next_token` is `None` on the last page; otherwise pass it back verbatim as
+ * the next call's `page_token` (it is the JSON:API `links.next` URL).
+ */
+public struct CustomerReviewsPage: Equatable, Hashable {
+    public var reviews: [CustomerReview]
+    public var nextToken: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(reviews: [CustomerReview], nextToken: String?) {
+        self.reviews = reviews
+        self.nextToken = nextToken
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CustomerReviewsPage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCustomerReviewsPage: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CustomerReviewsPage {
+        return
+            try CustomerReviewsPage(
+                reviews: FfiConverterSequenceTypeCustomerReview.read(from: &buf), 
+                nextToken: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CustomerReviewsPage, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeCustomerReview.write(value.reviews, into: &buf)
+        FfiConverterOptionString.write(value.nextToken, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCustomerReviewsPage_lift(_ buf: RustBuffer) throws -> CustomerReviewsPage {
+    return try FfiConverterTypeCustomerReviewsPage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCustomerReviewsPage_lower(_ value: CustomerReviewsPage) -> RustBuffer {
+    return FfiConverterTypeCustomerReviewsPage.lower(value)
+}
+
+
+/**
  * The developer's response attached to a [`CustomerReview`]. Dates are raw
  * ISO8601 strings; the core does no date parsing (the host owns that).
  */
@@ -2738,6 +2848,8 @@ public enum StackError: Swift.Error, Equatable, Hashable, Foundation.LocalizedEr
     )
     case Auth(message: String
     )
+    case PendingAgreements(message: String
+    )
     case Http(status: UInt16, message: String
     )
     case Decode(message: String
@@ -2781,17 +2893,20 @@ public struct FfiConverterTypeStackError: FfiConverterRustBuffer {
         case 2: return .Auth(
             message: try FfiConverterString.read(from: &buf)
             )
-        case 3: return .Http(
+        case 3: return .PendingAgreements(
+            message: try FfiConverterString.read(from: &buf)
+            )
+        case 4: return .Http(
             status: try FfiConverterUInt16.read(from: &buf), 
             message: try FfiConverterString.read(from: &buf)
             )
-        case 4: return .Decode(
+        case 5: return .Decode(
             message: try FfiConverterString.read(from: &buf)
             )
-        case 5: return .Network(
+        case 6: return .Network(
             message: try FfiConverterString.read(from: &buf)
             )
-        case 6: return .Unsupported(
+        case 7: return .Unsupported(
             message: try FfiConverterString.read(from: &buf)
             )
 
@@ -2816,24 +2931,29 @@ public struct FfiConverterTypeStackError: FfiConverterRustBuffer {
             FfiConverterString.write(message, into: &buf)
             
         
-        case let .Http(status,message):
+        case let .PendingAgreements(message):
             writeInt(&buf, Int32(3))
+            FfiConverterString.write(message, into: &buf)
+            
+        
+        case let .Http(status,message):
+            writeInt(&buf, Int32(4))
             FfiConverterUInt16.write(status, into: &buf)
             FfiConverterString.write(message, into: &buf)
             
         
         case let .Decode(message):
-            writeInt(&buf, Int32(4))
-            FfiConverterString.write(message, into: &buf)
-            
-        
-        case let .Network(message):
             writeInt(&buf, Int32(5))
             FfiConverterString.write(message, into: &buf)
             
         
-        case let .Unsupported(message):
+        case let .Network(message):
             writeInt(&buf, Int32(6))
+            FfiConverterString.write(message, into: &buf)
+            
+        
+        case let .Unsupported(message):
+            writeInt(&buf, Int32(7))
             FfiConverterString.write(message, into: &buf)
             
         }
@@ -3319,6 +3439,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_reviews_fetch_customer_reviews() != 48520) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_reviews_fetch_customer_reviews_page() != 20859) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_reviews_fetch_review_submissions() != 6715) {

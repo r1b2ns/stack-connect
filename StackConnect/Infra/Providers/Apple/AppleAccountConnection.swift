@@ -1296,6 +1296,29 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         limit: Int = 50,
         pageAfterResponse: Any?
     ) async throws -> CustomerReviewsPage {
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let reviews = provider.reviews() else {
+                throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
+            }
+            // Our opaque paging token IS the core's nextToken (a String). When the flag is
+            // OFF the token is the SDK response; the flag state is consistent within a
+            // session, so the `as? String` downcast is correct here.
+            let pageToken = pageAfterResponse as? String
+            let core = try await callRustCore {
+                try await reviews.fetchCustomerReviewsPage(
+                    appId: appId,
+                    sort: sort,
+                    filterRating: filterRating ?? [],
+                    limit: UInt32(limit),
+                    pageToken: pageToken
+                )
+            }
+            let models = core.reviews.map { Self.mapCustomerReview($0) }
+            Log.print.info("[Apple] Fetched \(models.count) customer reviews (Rust core)")
+            return CustomerReviewsPage(reviews: models, hasNextPage: core.nextToken != nil, rawResponse: core.nextToken)
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchCustomerReviewsPage(appId: appId, sort: sort, filterRating: filterRating, limit: limit, pageAfterResponse: pageAfterResponse)
@@ -3068,6 +3091,25 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             versionId: submission.versionId,
             submittedByName: submission.submittedByName,
             submittedByEmail: submission.submittedByEmail
+        )
+    }
+
+    /// Maps a Rust-core `CustomerReview` to the app's `CustomerReviewModel`.
+    /// The core does no date logic, so `createdDate`/response date (raw ISO8601)
+    /// are parsed here; the developer response is flattened into the model fields.
+    static func mapCustomerReview(_ review: StackCoreRust.CustomerReview) -> CustomerReviewModel {
+        CustomerReviewModel(
+            id: review.id,
+            rating: Int(review.rating),
+            title: review.title,
+            body: review.body,
+            reviewerNickname: review.reviewerNickname,
+            createdDate: review.createdDate.flatMap(parseISO8601Date),
+            territory: review.territory,
+            responseId: review.response?.id,
+            responseBody: review.response?.body,
+            responseState: review.response?.state,
+            responseDate: review.response?.lastModifiedDate.flatMap(parseISO8601Date)
         )
     }
 

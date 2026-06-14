@@ -1,5 +1,6 @@
 import Foundation
 import AppStoreConnect_Swift_SDK
+import StackCoreRust
 
 /// Turns SDK errors and raw Apple error payloads into short, user-facing messages.
 /// Falls back to Apple's `detail` field (or `error.localizedDescription`) so we
@@ -46,6 +47,11 @@ enum AppleAPIErrorTranslator {
     /// License Agreement). Apple has no agreements API, so the only signal is a
     /// 403 whose error payload references agreements.
     static func isPendingAgreement(_ error: Error) -> Bool {
+        // Rust-core path: the core surfaces a typed pending-agreements error.
+        if case StackCoreRust.StackError.PendingAgreements = error {
+            return true
+        }
+
         guard let providerError = error as? APIProvider.Error,
               case .requestFailure(let status, let response, _) = providerError,
               status == 403 else {
