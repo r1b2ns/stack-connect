@@ -1262,6 +1262,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func replyToReview(reviewId: String, responseBody: String) async throws {
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let reviews = provider.reviews() else {
+                throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
+            }
+            // Rust core returns the created/replaced ReviewResponse; this method's contract
+            // is Void, so we discard it (callers re-fetch the review list to see the reply).
+            _ = try await callRustCore {
+                try await reviews.replyToReview(reviewId: reviewId, body: responseBody)
+            }
+            Log.print.info("[Apple] Replied to review \(reviewId) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await replyToReview(reviewId: reviewId, responseBody: responseBody)
@@ -1283,6 +1297,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deleteReviewResponse(responseId: String) async throws {
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let reviews = provider.reviews() else {
+                throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
+            }
+            try await callRustCore {
+                try await reviews.deleteReviewResponse(responseId: responseId)
+            }
+            Log.print.info("[Apple] Deleted review response \(responseId) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await deleteReviewResponse(responseId: responseId)

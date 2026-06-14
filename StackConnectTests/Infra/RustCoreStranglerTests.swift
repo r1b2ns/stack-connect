@@ -156,6 +156,42 @@ final class RustCoreStranglerTests: XCTestCase {
         }
     }
 
+    /// With the flag ON, `replyToReview(reviewId:responseBody:)` must fail via the Rust
+    /// core for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testReplyToReviewRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.replyToReview(reviewId: "123", responseBody: "thanks")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `deleteReviewResponse(responseId:)` must fail via the Rust
+    /// core for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testDeleteReviewResponseRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.deleteReviewResponse(responseId: "resp-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
     // MARK: - Re-validation storm regression (issue #84)
 
     /// Regression guard for issue #84: with the flag ON, the Rust-core

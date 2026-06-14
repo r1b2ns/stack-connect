@@ -1065,6 +1065,15 @@ public func FfiConverterTypeProvider_lower(_ value: Provider) -> UInt64 {
 public protocol ReviewsProtocol: AnyObject, Sendable {
     
     /**
+     * Deletes the developer response identified by `response_id`.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx response or [`StackError::Network`] on
+     * transport failure.
+     */
+    func deleteReviewResponse(responseId: String) async throws 
+    
+    /**
      * Lists the end-user reviews for `app_id`, newest first, including any
      * developer responses.
      *
@@ -1083,6 +1092,17 @@ public protocol ReviewsProtocol: AnyObject, Sendable {
      * JSON, or [`StackError::Network`] on transport failure.
      */
     func fetchReviewSubmissions(appId: String) async throws  -> [ReviewSubmission]
+    
+    /**
+     * Creates or replaces the developer response for `review_id` with `body`,
+     * returning the resulting response. Posting again for the same review
+     * replaces the existing response (upsert).
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx response, [`StackError::Decode`] on
+     * malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+    func replyToReview(reviewId: String, body: String) async throws  -> ReviewResponse
     
 }
 /**
@@ -1144,6 +1164,30 @@ open class Reviews: ReviewsProtocol, @unchecked Sendable {
 
     
     /**
+     * Deletes the developer response identified by `response_id`.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx response or [`StackError::Network`] on
+     * transport failure.
+     */
+open func deleteReviewResponse(responseId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_reviews_delete_review_response(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(responseId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
      * Lists the end-user reviews for `app_id`, newest first, including any
      * developer responses.
      *
@@ -1189,6 +1233,32 @@ open func fetchReviewSubmissions(appId: String)async throws  -> [ReviewSubmissio
             completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeReviewSubmission.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Creates or replaces the developer response for `review_id` with `body`,
+     * returning the resulting response. Posting again for the same review
+     * replaces the existing response (upsert).
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx response, [`StackError::Decode`] on
+     * malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+open func replyToReview(reviewId: String, body: String)async throws  -> ReviewResponse  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_reviews_reply_to_review(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(reviewId),FfiConverterString.lower(body)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeReviewResponse_lift,
             errorHandler: FfiConverterTypeStackError_lift
         )
 }
@@ -2217,10 +2287,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_credentialstore_delete() != 36020) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_reviews_delete_review_response() != 19863) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_reviews_fetch_customer_reviews() != 48520) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_reviews_fetch_review_submissions() != 6715) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_reviews_reply_to_review() != 20931) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_capabilities() != 53465) {
