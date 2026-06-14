@@ -441,6 +441,22 @@ fileprivate struct FfiConverterUInt16: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterInt32: FfiConverterPrimitive {
+    typealias FfiType = Int32
+    typealias SwiftType = Int32
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Int32 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: Int32, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterBool : FfiConverter {
     typealias FfiType = Int8
     typealias SwiftType = Bool
@@ -833,6 +849,13 @@ public protocol ProviderProtocol: AnyObject, Sendable {
     func kind()  -> ServiceKind
     
     /**
+     * The Reviews capability handle, or `None` when this provider does not
+     * expose [`Capability::Reviews`]. This is the discovery mechanism: the host
+     * calls `provider.reviews()` and gets `None` when reviews are unsupported.
+     */
+    func reviews()  -> Reviews?
+    
+    /**
      * Verifies the stored credentials against the live service.
      *
      * # Errors
@@ -948,6 +971,19 @@ open func kind() -> ServiceKind  {
 }
     
     /**
+     * The Reviews capability handle, or `None` when this provider does not
+     * expose [`Capability::Reviews`]. This is the discovery mechanism: the host
+     * calls `provider.reviews()` and gets `None` when reviews are unsupported.
+     */
+open func reviews() -> Reviews?  {
+    return try!  FfiConverterOptionTypeReviews.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_reviews(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
      * Verifies the stored credentials against the live service.
      *
      * # Errors
@@ -1014,6 +1050,192 @@ public func FfiConverterTypeProvider_lift(_ handle: UInt64) throws -> Provider {
 #endif
 public func FfiConverterTypeProvider_lower(_ value: Provider) -> UInt64 {
     return FfiConverterTypeProvider.lower(value)
+}
+
+
+
+
+
+
+/**
+ * UniFFI-exported Reviews capability handle. A thin, binding-friendly wrapper
+ * around a boxed [`ReviewsImpl`]; async work runs on the tokio runtime. Reached
+ * via [`crate::service::provider::Provider::reviews`].
+ */
+public protocol ReviewsProtocol: AnyObject, Sendable {
+    
+    /**
+     * Lists the end-user reviews for `app_id`, newest first, including any
+     * developer responses.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+     * JSON, or [`StackError::Network`] on transport failure.
+     */
+    func fetchCustomerReviews(appId: String) async throws  -> [CustomerReview]
+    
+    /**
+     * Lists the review submissions for `app_id`, with resolved version and
+     * submitter where available.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+     * JSON, or [`StackError::Network`] on transport failure.
+     */
+    func fetchReviewSubmissions(appId: String) async throws  -> [ReviewSubmission]
+    
+}
+/**
+ * UniFFI-exported Reviews capability handle. A thin, binding-friendly wrapper
+ * around a boxed [`ReviewsImpl`]; async work runs on the tokio runtime. Reached
+ * via [`crate::service::provider::Provider::reviews`].
+ */
+open class Reviews: ReviewsProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_reviews(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_reviews(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Lists the end-user reviews for `app_id`, newest first, including any
+     * developer responses.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+     * JSON, or [`StackError::Network`] on transport failure.
+     */
+open func fetchCustomerReviews(appId: String)async throws  -> [CustomerReview]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_reviews_fetch_customer_reviews(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeCustomerReview.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists the review submissions for `app_id`, with resolved version and
+     * submitter where available.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+     * JSON, or [`StackError::Network`] on transport failure.
+     */
+open func fetchReviewSubmissions(appId: String)async throws  -> [ReviewSubmission]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_reviews_fetch_review_submissions(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeReviewSubmission.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeReviews: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Reviews
+
+    public static func lift(_ handle: UInt64) throws -> Reviews {
+        return Reviews(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Reviews) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Reviews {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Reviews, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReviews_lift(_ handle: UInt64) throws -> Reviews {
+    return try FfiConverterTypeReviews.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReviews_lower(_ value: Reviews) -> UInt64 {
+    return FfiConverterTypeReviews.lower(value)
 }
 
 
@@ -1151,17 +1373,254 @@ public func FfiConverterTypeCredentialField_lower(_ value: CredentialField) -> R
     return FfiConverterTypeCredentialField.lower(value)
 }
 
+
+/**
+ * A single end-user App Store review, optionally with the developer's response.
+ * Dates are raw ISO8601 strings; the core does no date parsing.
+ */
+public struct CustomerReview: Equatable, Hashable {
+    public var id: String
+    public var rating: Int32
+    public var title: String?
+    public var body: String?
+    public var reviewerNickname: String?
+    public var createdDate: String?
+    public var territory: String?
+    public var response: ReviewResponse?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, rating: Int32, title: String?, body: String?, reviewerNickname: String?, createdDate: String?, territory: String?, response: ReviewResponse?) {
+        self.id = id
+        self.rating = rating
+        self.title = title
+        self.body = body
+        self.reviewerNickname = reviewerNickname
+        self.createdDate = createdDate
+        self.territory = territory
+        self.response = response
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CustomerReview: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCustomerReview: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CustomerReview {
+        return
+            try CustomerReview(
+                id: FfiConverterString.read(from: &buf), 
+                rating: FfiConverterInt32.read(from: &buf), 
+                title: FfiConverterOptionString.read(from: &buf), 
+                body: FfiConverterOptionString.read(from: &buf), 
+                reviewerNickname: FfiConverterOptionString.read(from: &buf), 
+                createdDate: FfiConverterOptionString.read(from: &buf), 
+                territory: FfiConverterOptionString.read(from: &buf), 
+                response: FfiConverterOptionTypeReviewResponse.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CustomerReview, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterInt32.write(value.rating, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.body, into: &buf)
+        FfiConverterOptionString.write(value.reviewerNickname, into: &buf)
+        FfiConverterOptionString.write(value.createdDate, into: &buf)
+        FfiConverterOptionString.write(value.territory, into: &buf)
+        FfiConverterOptionTypeReviewResponse.write(value.response, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCustomerReview_lift(_ buf: RustBuffer) throws -> CustomerReview {
+    return try FfiConverterTypeCustomerReview.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCustomerReview_lower(_ value: CustomerReview) -> RustBuffer {
+    return FfiConverterTypeCustomerReview.lower(value)
+}
+
+
+/**
+ * The developer's response attached to a [`CustomerReview`]. Dates are raw
+ * ISO8601 strings; the core does no date parsing (the host owns that).
+ */
+public struct ReviewResponse: Equatable, Hashable {
+    public var id: String
+    public var body: String?
+    public var state: String?
+    public var lastModifiedDate: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, body: String?, state: String?, lastModifiedDate: String?) {
+        self.id = id
+        self.body = body
+        self.state = state
+        self.lastModifiedDate = lastModifiedDate
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ReviewResponse: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeReviewResponse: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ReviewResponse {
+        return
+            try ReviewResponse(
+                id: FfiConverterString.read(from: &buf), 
+                body: FfiConverterOptionString.read(from: &buf), 
+                state: FfiConverterOptionString.read(from: &buf), 
+                lastModifiedDate: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ReviewResponse, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.body, into: &buf)
+        FfiConverterOptionString.write(value.state, into: &buf)
+        FfiConverterOptionString.write(value.lastModifiedDate, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReviewResponse_lift(_ buf: RustBuffer) throws -> ReviewResponse {
+    return try FfiConverterTypeReviewResponse.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReviewResponse_lower(_ value: ReviewResponse) -> RustBuffer {
+    return FfiConverterTypeReviewResponse.lower(value)
+}
+
+
+/**
+ * A review submission to App Store review (the act of submitting an app version
+ * for review), with the resolved version and submitter where available. Dates
+ * are raw ISO8601 strings; the core does no date parsing.
+ */
+public struct ReviewSubmission: Equatable, Hashable {
+    public var id: String
+    public var appId: String
+    public var platform: String?
+    public var submittedDate: String?
+    public var state: String?
+    public var versionString: String?
+    public var versionId: String?
+    public var submittedByName: String?
+    public var submittedByEmail: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, appId: String, platform: String?, submittedDate: String?, state: String?, versionString: String?, versionId: String?, submittedByName: String?, submittedByEmail: String?) {
+        self.id = id
+        self.appId = appId
+        self.platform = platform
+        self.submittedDate = submittedDate
+        self.state = state
+        self.versionString = versionString
+        self.versionId = versionId
+        self.submittedByName = submittedByName
+        self.submittedByEmail = submittedByEmail
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ReviewSubmission: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeReviewSubmission: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ReviewSubmission {
+        return
+            try ReviewSubmission(
+                id: FfiConverterString.read(from: &buf), 
+                appId: FfiConverterString.read(from: &buf), 
+                platform: FfiConverterOptionString.read(from: &buf), 
+                submittedDate: FfiConverterOptionString.read(from: &buf), 
+                state: FfiConverterOptionString.read(from: &buf), 
+                versionString: FfiConverterOptionString.read(from: &buf), 
+                versionId: FfiConverterOptionString.read(from: &buf), 
+                submittedByName: FfiConverterOptionString.read(from: &buf), 
+                submittedByEmail: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ReviewSubmission, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.appId, into: &buf)
+        FfiConverterOptionString.write(value.platform, into: &buf)
+        FfiConverterOptionString.write(value.submittedDate, into: &buf)
+        FfiConverterOptionString.write(value.state, into: &buf)
+        FfiConverterOptionString.write(value.versionString, into: &buf)
+        FfiConverterOptionString.write(value.versionId, into: &buf)
+        FfiConverterOptionString.write(value.submittedByName, into: &buf)
+        FfiConverterOptionString.write(value.submittedByEmail, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReviewSubmission_lift(_ buf: RustBuffer) throws -> ReviewSubmission {
+    return try FfiConverterTypeReviewSubmission.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReviewSubmission_lower(_ value: ReviewSubmission) -> RustBuffer {
+    return FfiConverterTypeReviewSubmission.lower(value)
+}
+
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
  * A capability a provider may expose. The host calls [`Provider::capabilities`]
  * to learn what a connected account can do; capabilities a provider lacks make
- * the corresponding methods return [`StackError::Unsupported`]. Grows over time.
+ * the corresponding accessor (e.g. [`Provider::reviews`]) return `None`. Grows
+ * over time.
  */
 
 public enum Capability: Equatable, Hashable {
     
     case apps
+    case reviews
 
 
 
@@ -1185,6 +1644,8 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case 1: return .apps
         
+        case 2: return .reviews
+        
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
@@ -1195,6 +1656,10 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case .apps:
             writeInt(&buf, Int32(1))
+        
+        
+        case .reviews:
+            writeInt(&buf, Int32(2))
         
         }
     }
@@ -1437,6 +1902,54 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeReviews: FfiConverterRustBuffer {
+    typealias SwiftType = Reviews?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeReviews.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeReviews.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeReviewResponse: FfiConverterRustBuffer {
+    typealias SwiftType = ReviewResponse?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeReviewResponse.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeReviewResponse.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeAppInfo: FfiConverterRustBuffer {
     typealias SwiftType = [AppInfo]
 
@@ -1479,6 +1992,56 @@ fileprivate struct FfiConverterSequenceTypeCredentialField: FfiConverterRustBuff
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeCredentialField.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCustomerReview: FfiConverterRustBuffer {
+    typealias SwiftType = [CustomerReview]
+
+    public static func write(_ value: [CustomerReview], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCustomerReview.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CustomerReview] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CustomerReview]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCustomerReview.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeReviewSubmission: FfiConverterRustBuffer {
+    typealias SwiftType = [ReviewSubmission]
+
+    public static func write(_ value: [ReviewSubmission], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeReviewSubmission.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ReviewSubmission] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ReviewSubmission]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeReviewSubmission.read(from: &buf))
         }
         return seq
     }
@@ -1654,6 +2217,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_credentialstore_delete() != 36020) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_reviews_fetch_customer_reviews() != 48520) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_reviews_fetch_review_submissions() != 6715) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_provider_capabilities() != 53465) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1661,6 +2230,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_kind() != 47339) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_reviews() != 31339) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_validate() != 51064) {

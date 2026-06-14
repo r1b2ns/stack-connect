@@ -584,6 +584,31 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - Review Submissions
 
     func fetchReviewSubmissions(appId: String) async throws -> [ReviewSubmissionModel] {
+        // Strangler-fig migration: route ONLY this read through the shared Rust core
+        // when the flag is ON. Everything else (customer-reviews paging, submit/cancel)
+        // stays on the Swift SDK.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+
+            // App Store Connect always exposes the Reviews capability today, so a nil
+            // here means the core genuinely cannot serve it for this provider kind.
+            // We surface a clear `.Unsupported` StackError (consistent with how the
+            // core signals unsupported capabilities) rather than silently falling back
+            // to the Swift SDK — falling back would mask a real configuration problem
+            // and defeat the purpose of the flag being ON.
+            guard let reviews = provider.reviews() else {
+                throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
+            }
+
+            let coreSubmissions = try await callRustCore {
+                try await reviews.fetchReviewSubmissions(appId: appId)
+            }
+
+            let models = coreSubmissions.map { Self.mapReviewSubmission($0) }
+            Log.print.info("[Apple] Fetched \(models.count) review submissions (Rust core)")
+            return models.sorted { ($0.submittedDate ?? .distantPast) > ($1.submittedDate ?? .distantPast) }
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchReviewSubmissions(appId: appId)
@@ -2873,6 +2898,40 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             createdDate: version.attributes?.createdDate,
             appId: appId
         )
+    }
+
+    /// Maps a Rust-core `ReviewSubmission` to the app's `ReviewSubmissionModel`.
+    /// The core does no date logic, so the raw ISO8601 `submittedDate` string is
+    /// parsed here. `appId` comes straight from the core value (it is set to the
+    /// requested appId by the core).
+    static func mapReviewSubmission(_ submission: StackCoreRust.ReviewSubmission) -> ReviewSubmissionModel {
+        ReviewSubmissionModel(
+            id: submission.id,
+            appId: submission.appId,
+            platform: submission.platform,
+            submittedDate: submission.submittedDate.flatMap(parseISO8601Date),
+            state: submission.state,
+            versionString: submission.versionString,
+            versionId: submission.versionId,
+            submittedByName: submission.submittedByName,
+            submittedByEmail: submission.submittedByEmail
+        )
+    }
+
+    /// App Store Connect timestamps may or may not include fractional seconds
+    /// (e.g. `2024-01-15T10:30:00Z` vs `2024-01-15T10:30:00.123Z`). A single
+    /// `ISO8601DateFormatter` cannot tolerate both, so we try with fractional
+    /// seconds first, then fall back to the plain internet date-time format.
+    static func parseISO8601Date(_ string: String) -> Date? {
+        let withFractional = ISO8601DateFormatter()
+        withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = withFractional.date(from: string) {
+            return date
+        }
+
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        return plain.date(from: string)
     }
 
     private func createProvider() throws -> APIProvider {

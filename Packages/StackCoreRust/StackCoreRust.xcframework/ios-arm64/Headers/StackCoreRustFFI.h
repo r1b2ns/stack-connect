@@ -305,6 +305,26 @@ void uniffi_stack_core_fn_method_credentialstore_set_secret(uint64_t ptr, RustBu
 void uniffi_stack_core_fn_method_credentialstore_delete(uint64_t ptr, RustBuffer account_id, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_REVIEWS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_REVIEWS
+uint64_t uniffi_stack_core_fn_clone_reviews(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FREE_REVIEWS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FREE_REVIEWS
+void uniffi_stack_core_fn_free_reviews(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_REVIEWS_FETCH_CUSTOMER_REVIEWS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_REVIEWS_FETCH_CUSTOMER_REVIEWS
+uint64_t uniffi_stack_core_fn_method_reviews_fetch_customer_reviews(uint64_t ptr, RustBuffer app_id
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_REVIEWS_FETCH_REVIEW_SUBMISSIONS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_REVIEWS_FETCH_REVIEW_SUBMISSIONS
+uint64_t uniffi_stack_core_fn_method_reviews_fetch_review_submissions(uint64_t ptr, RustBuffer app_id
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_PROVIDER
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_PROVIDER
 uint64_t uniffi_stack_core_fn_clone_provider(uint64_t handle, RustCallStatus *_Nonnull out_status
@@ -328,6 +348,11 @@ uint64_t uniffi_stack_core_fn_method_provider_fetch_apps(uint64_t ptr
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_PROVIDER_KIND
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_PROVIDER_KIND
 RustBuffer uniffi_stack_core_fn_method_provider_kind(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_PROVIDER_REVIEWS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_PROVIDER_REVIEWS
+RustBuffer uniffi_stack_core_fn_method_provider_reviews(uint64_t ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_PROVIDER_VALIDATE
@@ -647,6 +672,18 @@ uint16_t uniffi_stack_core_checksum_method_credentialstore_delete(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_REVIEWS_FETCH_CUSTOMER_REVIEWS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_REVIEWS_FETCH_CUSTOMER_REVIEWS
+uint16_t uniffi_stack_core_checksum_method_reviews_fetch_customer_reviews(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_REVIEWS_FETCH_REVIEW_SUBMISSIONS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_REVIEWS_FETCH_REVIEW_SUBMISSIONS
+uint16_t uniffi_stack_core_checksum_method_reviews_fetch_review_submissions(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_PROVIDER_CAPABILITIES
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_PROVIDER_CAPABILITIES
 uint16_t uniffi_stack_core_checksum_method_provider_capabilities(void
@@ -662,6 +699,12 @@ uint16_t uniffi_stack_core_checksum_method_provider_fetch_apps(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_PROVIDER_KIND
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_PROVIDER_KIND
 uint16_t uniffi_stack_core_checksum_method_provider_kind(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_PROVIDER_REVIEWS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_PROVIDER_REVIEWS
+uint16_t uniffi_stack_core_checksum_method_provider_reviews(void
     
 );
 #endif
