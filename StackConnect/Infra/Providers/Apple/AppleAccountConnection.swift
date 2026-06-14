@@ -8,6 +8,11 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     private let credentials: AppleCredentials
     private var provider: APIProvider?
 
+    /// Test-only window onto whether the Swift SDK provider has been established.
+    /// Used by `RustCoreStranglerTests` to assert the Rust-core validate path seeds
+    /// `self.provider` (issue #84) without exposing the provider itself.
+    var hasSwiftProviderForTesting: Bool { provider != nil }
+
     /// Resolves the `useRustCoreForAppleApps` flag. Injected for testability so the
     /// strangler path can be exercised in BOTH states.
     private let featureFlags: FeatureFlags
@@ -36,6 +41,12 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         if featureFlags.isEnabled(.useRustCoreForAppleApps) {
             let provider = try rustCoreProvider()
             try await callRustCore { try await provider.validate() }
+            // The ~87 not-yet-migrated Swift-only fetch methods still depend on
+            // `self.provider` and re-call `validateCredentials()` whenever it is nil.
+            // Seed it here (no network) so those methods reuse it instead of
+            // recursing/re-validating on every call — the runaway validate storm
+            // that was triggering the 429 (issue #84).
+            try establishSwiftProvider()
             Log.print.info("[Apple] Credentials validated successfully (Rust core)")
             return
         }
@@ -2941,6 +2952,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             privateKey: credentials.privateKey
         )
         return APIProvider(configuration: config)
+    }
+
+    /// Builds the Swift SDK `APIProvider` from the stored credentials and assigns it
+    /// to `self.provider`. Network-free (`createProvider()` only constructs the
+    /// `APIConfiguration`/`APIProvider`). Called by the Rust-core `validateCredentials()`
+    /// path so the not-yet-migrated Swift-only fetch methods find a non-nil provider
+    /// and stop recursing into `validateCredentials()` (issue #84).
+    ///
+    /// Internal (not private) purely so `RustCoreStranglerTests` can drive it in
+    /// isolation from the network `Provider.validate()` call.
+    func establishSwiftProvider() throws {
+        self.provider = try createProvider()
     }
 
     // MARK: - Rust core (strangler path)

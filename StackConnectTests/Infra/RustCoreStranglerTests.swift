@@ -26,6 +26,16 @@ final class RustCoreStranglerTests: XCTestCase {
         privateKey: "not-a-real-key"
     )
 
+    /// Throwaway EC P-256 PKCS#8 private key (bare base64, no PEM armor — the form
+    /// the app stores). It is *well-formed* so the Swift SDK's `APIConfiguration`
+    /// parses it successfully, letting `createProvider()` build an `APIProvider`
+    /// locally with no network. NOT a real Apple key.
+    private let wellFormedCredentials = AppleCredentials(
+        issuerID: "00000000-0000-0000-0000-000000000000",
+        privateKeyID: "ABCD1234EF",
+        privateKey: "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgNq00FIJGPS2dceTavvHniKrgQspy39Pn2k6vij01BZihRANCAAQw1YrXLyOyKjU4AUwTI5dWduXQSG78mWjW0PRzM3m29SKWZ2/n5YaFoKx3akDno+SdY6/AYY88UWOPgS9bobWM"
+    )
+
     // MARK: - FeatureFlags
 
     func testFlagDefaultsOffWhenUnset() {
@@ -144,6 +154,59 @@ final class RustCoreStranglerTests: XCTestCase {
         } catch {
             XCTFail("Expected a StackError from the Rust core, got: \(error)")
         }
+    }
+
+    // MARK: - Re-validation storm regression (issue #84)
+
+    /// Regression guard for issue #84: with the flag ON, the Rust-core
+    /// `validateCredentials()` path must SEED the Swift SDK `self.provider`.
+    ///
+    /// Why this matters: ~87 not-yet-migrated Swift-only methods begin with
+    /// `guard let provider else { try await validateCredentials(); return try await <same>() }`.
+    /// Before the fix the Rust path returned without setting `self.provider`, so
+    /// every such method re-entered `validateCredentials()` (a network call) and
+    /// retried into the same nil guard — a runaway storm of ~752 validate calls per
+    /// sync that got the account rate-limited (HTTP 429).
+    ///
+    /// `establishSwiftProvider()` is exactly the seeding step the Rust validate path
+    /// runs after a successful `provider.validate()`. We invoke it in isolation from
+    /// the network `validate()` (which can't succeed against fake credentials in a
+    /// unit test) and prove it flips `provider` nil -> non-nil with no network. With
+    /// `provider` non-nil, the `guard let provider else { ... }` in every Swift-only
+    /// method short-circuits, so none of them can re-enter `validateCredentials()`.
+    func testRustCorePathSeedsSwiftProviderToPreventReValidationStorm() throws {
+        let connection = AppleAccountConnection(
+            credentials: wellFormedCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        XCTAssertFalse(
+            connection.hasSwiftProviderForTesting,
+            "Precondition: no Swift provider before validation — this nil is what made the Swift-only methods recurse."
+        )
+
+        // The seeding step the Rust validate path performs after `provider.validate()`.
+        // Network-free: builds APIConfiguration/APIProvider from the stored key.
+        try connection.establishSwiftProvider()
+
+        XCTAssertTrue(
+            connection.hasSwiftProviderForTesting,
+            "After the Rust validate path seeds it, self.provider must be non-nil so the ~87 Swift-only methods' `guard let provider else { validateCredentials() }` short-circuits instead of re-validating (issue #84)."
+        )
+    }
+
+    /// Seeding is safe to repeat: a second call (e.g. another sync on the same reused
+    /// connection) keeps `provider` non-nil and does not throw or hit the network.
+    func testEstablishSwiftProviderIsRepeatableAndNetworkFree() throws {
+        let connection = AppleAccountConnection(
+            credentials: wellFormedCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        try connection.establishSwiftProvider()
+        try connection.establishSwiftProvider()
+
+        XCTAssertTrue(connection.hasSwiftProviderForTesting)
     }
 
     // MARK: - Review submission mapping (Rust core -> app model)
