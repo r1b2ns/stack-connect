@@ -24,6 +24,7 @@ new flag ships **OFF** by default (the safe, fully-reversible value) unless note
 - **Read at:** `StackConnect/Infra/Providers/Apple/AppleAccountConnection.swift`
   - `validateCredentials()` — when ON, calls the Rust core `Provider.validate()`.
   - `fetchApps()` — when ON, calls the Rust core `Provider.fetchApps()` and maps `StackCoreRust.AppInfo` → `StackProtocols.AppInfo`.
+  - `fetchBuilds(appId:limit:)` — when ON, calls the Rust core `Builds.fetchBuilds(appId:limit:)` and maps `StackCoreRust.BuildInfo` → `BuildModel` via `mapBuildInfo`. Eager list only; `fetchBuildsPage(...)` stays on the Swift SDK (core lacks platform/processingState filtering and page cursors). Known degradation: relationship-sourced fields (`marketingVersion`, `iconUrl`, `platform`, beta/internal states, etc.) come back empty on the Rust path.
 - **Supporting types:**
   - `StackConnect/Infra/Providers/Apple/AppleCredentialStore.swift` — bridges `AppleCredentials` to the Rust core's `CredentialStore` (`issuerId` / `keyId` / `privateKeyP8`).
   - Package: `Packages/StackCoreRust` (vendored `StackCoreRust.xcframework` + generated UniFFI wrapper).

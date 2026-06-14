@@ -1146,6 +1146,157 @@ public func FfiConverterTypeBlobStore_lower(_ value: BlobStore) -> UInt64 {
 
 
 /**
+ * UniFFI-exported Builds capability handle. A thin, binding-friendly wrapper
+ * around a boxed [`BuildsImpl`]; async work runs on the tokio runtime. Reached
+ * via [`crate::service::provider::Provider::builds`].
+ */
+public protocol BuildsProtocol: AnyObject, Sendable {
+    
+    /**
+     * Lists the builds for `app_id`, newest first (by upload date), up to
+     * `limit`.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+     * JSON, or [`StackError::Network`] on transport failure.
+     */
+    func fetchBuilds(appId: String, limit: UInt32) async throws  -> [BuildInfo]
+    
+}
+/**
+ * UniFFI-exported Builds capability handle. A thin, binding-friendly wrapper
+ * around a boxed [`BuildsImpl`]; async work runs on the tokio runtime. Reached
+ * via [`crate::service::provider::Provider::builds`].
+ */
+open class Builds: BuildsProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_builds(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_builds(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Lists the builds for `app_id`, newest first (by upload date), up to
+     * `limit`.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+     * JSON, or [`StackError::Network`] on transport failure.
+     */
+open func fetchBuilds(appId: String, limit: UInt32)async throws  -> [BuildInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_builds_fetch_builds(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeBuildInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBuilds: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Builds
+
+    public static func lift(_ handle: UInt64) throws -> Builds {
+        return Builds(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Builds) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Builds {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Builds, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBuilds_lift(_ handle: UInt64) throws -> Builds {
+    return try FfiConverterTypeBuilds.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBuilds_lower(_ value: Builds) -> UInt64 {
+    return FfiConverterTypeBuilds.lower(value)
+}
+
+
+
+
+
+
+/**
  * Secure-credential storage implemented natively (Keychain on iOS) and injected
  * across the FFI boundary as a foreign trait. Each provider declares the keys it
  * reads via its `credential_schema` (see `service::registry`).
@@ -1461,6 +1612,13 @@ public protocol ProviderProtocol: AnyObject, Sendable {
     func appStoreVersions()  -> AppStoreVersions?
     
     /**
+     * The Builds capability handle, or `None` when this provider does not expose
+     * [`Capability::Builds`]. This is the discovery mechanism: the host calls
+     * `provider.builds()` and gets `None` when builds are unsupported.
+     */
+    func builds()  -> Builds?
+    
+    /**
      * The capabilities exposed for the connected account.
      */
     func capabilities()  -> [Capability]
@@ -1564,6 +1722,19 @@ open class Provider: ProviderProtocol, @unchecked Sendable {
 open func appStoreVersions() -> AppStoreVersions?  {
     return try!  FfiConverterOptionTypeAppStoreVersions.lift(try! rustCall() {
     uniffi_stack_core_fn_method_provider_app_store_versions(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The Builds capability handle, or `None` when this provider does not expose
+     * [`Capability::Builds`]. This is the discovery mechanism: the host calls
+     * `provider.builds()` and gets `None` when builds are unsupported.
+     */
+open func builds() -> Builds?  {
+    return try!  FfiConverterOptionTypeBuilds.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_builds(
             self.uniffiCloneHandle(),$0
     )
 })
@@ -2332,6 +2503,89 @@ public func FfiConverterTypeAppStoreVersionInfo_lower(_ value: AppStoreVersionIn
 
 
 /**
+ * A build (TestFlight / App Store Connect) of an app. `version` is the build
+ * number (the ASC `version` attribute, distinct from a version string). Dates
+ * are raw ISO8601 strings; the core does no date parsing (the host owns that).
+ */
+public struct BuildInfo: Equatable, Hashable {
+    public var id: String
+    public var appId: String
+    public var version: String?
+    public var uploadedDate: String?
+    public var expired: Bool?
+    public var processingState: String?
+    public var minOsVersion: String?
+    public var expirationDate: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, appId: String, version: String?, uploadedDate: String?, expired: Bool?, processingState: String?, minOsVersion: String?, expirationDate: String?) {
+        self.id = id
+        self.appId = appId
+        self.version = version
+        self.uploadedDate = uploadedDate
+        self.expired = expired
+        self.processingState = processingState
+        self.minOsVersion = minOsVersion
+        self.expirationDate = expirationDate
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BuildInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBuildInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BuildInfo {
+        return
+            try BuildInfo(
+                id: FfiConverterString.read(from: &buf), 
+                appId: FfiConverterString.read(from: &buf), 
+                version: FfiConverterOptionString.read(from: &buf), 
+                uploadedDate: FfiConverterOptionString.read(from: &buf), 
+                expired: FfiConverterOptionBool.read(from: &buf), 
+                processingState: FfiConverterOptionString.read(from: &buf), 
+                minOsVersion: FfiConverterOptionString.read(from: &buf), 
+                expirationDate: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BuildInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.appId, into: &buf)
+        FfiConverterOptionString.write(value.version, into: &buf)
+        FfiConverterOptionString.write(value.uploadedDate, into: &buf)
+        FfiConverterOptionBool.write(value.expired, into: &buf)
+        FfiConverterOptionString.write(value.processingState, into: &buf)
+        FfiConverterOptionString.write(value.minOsVersion, into: &buf)
+        FfiConverterOptionString.write(value.expirationDate, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBuildInfo_lift(_ buf: RustBuffer) throws -> BuildInfo {
+    return try FfiConverterTypeBuildInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBuildInfo_lower(_ value: BuildInfo) -> RustBuffer {
+    return FfiConverterTypeBuildInfo.lower(value)
+}
+
+
+/**
  * A single credential field a service requires. Drives the host's "connect
  * account" form: `label` is shown to the user, `secret` hides the input, and
  * `multiline` signals a textarea (e.g. a PEM-encoded private key).
@@ -2705,6 +2959,7 @@ public enum Capability: Equatable, Hashable {
     case apps
     case reviews
     case appStoreVersions
+    case builds
 
 
 
@@ -2732,6 +2987,8 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case 3: return .appStoreVersions
         
+        case 4: return .builds
+        
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
@@ -2750,6 +3007,10 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case .appStoreVersions:
             writeInt(&buf, Int32(3))
+        
+        
+        case .builds:
+            writeInt(&buf, Int32(4))
         
         }
     }
@@ -2978,6 +3239,30 @@ public func FfiConverterTypeStackError_lower(_ value: StackError) -> RustBuffer 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionBool: FfiConverterRustBuffer {
+    typealias SwiftType = Bool?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterBool.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterBool.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
     typealias SwiftType = String?
 
@@ -3018,6 +3303,30 @@ fileprivate struct FfiConverterOptionTypeAppStoreVersions: FfiConverterRustBuffe
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeAppStoreVersions.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeBuilds: FfiConverterRustBuffer {
+    typealias SwiftType = Builds?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeBuilds.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeBuilds.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -3141,6 +3450,31 @@ fileprivate struct FfiConverterSequenceTypeAppStoreVersionInfo: FfiConverterRust
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeAppStoreVersionInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeBuildInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [BuildInfo]
+
+    public static func write(_ value: [BuildInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeBuildInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [BuildInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [BuildInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeBuildInfo.read(from: &buf))
         }
         return seq
     }
@@ -3435,6 +3769,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_appstoreversions_update_version() != 58000) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_builds_fetch_builds() != 166) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_reviews_delete_review_response() != 19863) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3451,6 +3788,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_app_store_versions() != 28764) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_builds() != 22996) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_capabilities() != 53465) {

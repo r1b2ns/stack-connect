@@ -410,6 +410,21 @@ uint64_t uniffi_stack_core_fn_method_appstoreversions_fetch_versions(uint64_t pt
 uint64_t uniffi_stack_core_fn_method_appstoreversions_update_version(uint64_t ptr, RustBuffer id, RustBuffer version_string, RustBuffer copyright, RustBuffer release_type, RustBuffer earliest_release_date
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_BUILDS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_BUILDS
+uint64_t uniffi_stack_core_fn_clone_builds(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FREE_BUILDS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FREE_BUILDS
+void uniffi_stack_core_fn_free_builds(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BUILDS_FETCH_BUILDS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BUILDS_FETCH_BUILDS
+uint64_t uniffi_stack_core_fn_method_builds_fetch_builds(uint64_t ptr, RustBuffer app_id, uint32_t limit
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_REVIEWS
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_REVIEWS
 uint64_t uniffi_stack_core_fn_clone_reviews(uint64_t handle, RustCallStatus *_Nonnull out_status
@@ -458,6 +473,11 @@ void uniffi_stack_core_fn_free_provider(uint64_t handle, RustCallStatus *_Nonnul
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_PROVIDER_APP_STORE_VERSIONS
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_PROVIDER_APP_STORE_VERSIONS
 RustBuffer uniffi_stack_core_fn_method_provider_app_store_versions(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_PROVIDER_BUILDS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_PROVIDER_BUILDS
+RustBuffer uniffi_stack_core_fn_method_provider_builds(uint64_t ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_PROVIDER_CAPABILITIES
@@ -871,6 +891,12 @@ uint16_t uniffi_stack_core_checksum_method_appstoreversions_update_version(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BUILDS_FETCH_BUILDS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BUILDS_FETCH_BUILDS
+uint16_t uniffi_stack_core_checksum_method_builds_fetch_builds(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_REVIEWS_DELETE_REVIEW_RESPONSE
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_REVIEWS_DELETE_REVIEW_RESPONSE
 uint16_t uniffi_stack_core_checksum_method_reviews_delete_review_response(void
@@ -904,6 +930,12 @@ uint16_t uniffi_stack_core_checksum_method_reviews_reply_to_review(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_PROVIDER_APP_STORE_VERSIONS
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_PROVIDER_APP_STORE_VERSIONS
 uint16_t uniffi_stack_core_checksum_method_provider_app_store_versions(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_PROVIDER_BUILDS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_PROVIDER_BUILDS
+uint16_t uniffi_stack_core_checksum_method_provider_builds(void
     
 );
 #endif

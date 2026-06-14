@@ -562,6 +562,98 @@ final class RustCoreStranglerTests: XCTestCase {
         XCTAssertFalse(model.hasResponse)
     }
 
+    // MARK: - Builds eager list (ON path)
+
+    /// With the flag ON, `fetchBuilds(appId:limit:)` must fail via the Rust core for
+    /// invalid credentials, proving the eager-list read never reaches the Swift-SDK
+    /// provider. `fetchBuildsPage(...)` intentionally stays on the Swift SDK and is not
+    /// covered here.
+    func testFetchBuildsRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchBuilds(appId: "123", limit: 50)
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    // MARK: - Build mapping (Rust core -> app model)
+
+    /// The core `BuildInfo` must map onto the app's `BuildModel` for the fields the
+    /// core fetches, including ISO8601 parsing of `uploadedDate`/`expirationDate` and
+    /// `expired? -> isExpired` defaulting. Fields sourced from `included` relationships
+    /// the core does not request must stay at their defaults (known Rust-path degradation).
+    func testMapBuildInfoMapsCoreFieldsParsesDatesAndDefaultsTheRest() {
+        let core = StackCoreRust.BuildInfo(
+            id: "build-1",
+            appId: "123456789",
+            version: "1232",
+            uploadedDate: "2024-01-15T10:30:00Z",
+            expired: true,
+            processingState: "VALID",
+            minOsVersion: "17.0",
+            expirationDate: "2024-04-15T10:30:00.123Z"
+        )
+
+        let model = AppleAccountConnection.mapBuildInfo(core)
+
+        XCTAssertEqual(model.id, "build-1")
+        XCTAssertEqual(model.version, "1232")
+        XCTAssertEqual(model.processingState, "VALID")
+        XCTAssertEqual(model.minOsVersion, "17.0")
+        XCTAssertTrue(model.isExpired)
+
+        let expectedUploaded = ISO8601DateFormatter().date(from: "2024-01-15T10:30:00Z")
+        XCTAssertEqual(model.uploadedDate, expectedUploaded)
+
+        let withFractional = ISO8601DateFormatter()
+        withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        XCTAssertEqual(model.expirationDate, withFractional.date(from: "2024-04-15T10:30:00.123Z"))
+
+        // Known Rust-path degradation: relationship-sourced fields stay at defaults.
+        XCTAssertNil(model.marketingVersion)
+        XCTAssertNil(model.iconUrl)
+        XCTAssertNil(model.platform)
+        XCTAssertNil(model.externalBuildState)
+        XCTAssertNil(model.betaReviewState)
+        XCTAssertNil(model.submittedDate)
+        XCTAssertNil(model.computedMinMacOsVersion)
+        XCTAssertNil(model.computedMinVisionOsVersion)
+        XCTAssertNil(model.buildAudienceType)
+        XCTAssertNil(model.usesNonExemptEncryption)
+        XCTAssertNil(model.internalBuildState)
+        XCTAssertNil(model.autoNotifyEnabled)
+    }
+
+    /// A nil `expired` must default `isExpired` to `false`, and nil/unparseable dates
+    /// must yield nil `Date?`s without crashing.
+    func testMapBuildInfoHandlesNilExpiredAndMissingDates() {
+        let core = StackCoreRust.BuildInfo(
+            id: "build-2",
+            appId: "1",
+            version: nil,
+            uploadedDate: nil,
+            expired: nil,
+            processingState: nil,
+            minOsVersion: nil,
+            expirationDate: "not-a-date"
+        )
+
+        let model = AppleAccountConnection.mapBuildInfo(core)
+
+        XCTAssertEqual(model.id, "build-2")
+        XCTAssertFalse(model.isExpired, "Nil `expired` must default to false.")
+        XCTAssertNil(model.uploadedDate)
+        XCTAssertNil(model.expirationDate, "Unparseable date must map to nil, not crash.")
+    }
+
     // MARK: - Pending agreements detection (Rust core typed error)
 
     /// The translator must recognize the core's typed `StackError.PendingAgreements`
