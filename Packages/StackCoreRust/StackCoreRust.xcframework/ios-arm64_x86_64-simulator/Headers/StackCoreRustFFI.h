@@ -243,6 +243,34 @@ typedef void (*UniffiForeignFutureCompleteVoid)(uint64_t, UniffiForeignFutureRes
     );
 
 #endif
+#ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_BLOB_STORE_METHOD0
+#define UNIFFI_FFIDEF_CALLBACK_INTERFACE_BLOB_STORE_METHOD0
+typedef void (*UniffiCallbackInterfaceBlobStoreMethod0)(uint64_t, RustBuffer, RustBuffer, RustBuffer, void* _Nonnull, 
+        RustCallStatus *_Nonnull uniffiCallStatus
+    );
+
+#endif
+#ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_BLOB_STORE_METHOD1
+#define UNIFFI_FFIDEF_CALLBACK_INTERFACE_BLOB_STORE_METHOD1
+typedef void (*UniffiCallbackInterfaceBlobStoreMethod1)(uint64_t, RustBuffer, RustBuffer, RustBuffer* _Nonnull, 
+        RustCallStatus *_Nonnull uniffiCallStatus
+    );
+
+#endif
+#ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_BLOB_STORE_METHOD2
+#define UNIFFI_FFIDEF_CALLBACK_INTERFACE_BLOB_STORE_METHOD2
+typedef void (*UniffiCallbackInterfaceBlobStoreMethod2)(uint64_t, RustBuffer, RustBuffer* _Nonnull, 
+        RustCallStatus *_Nonnull uniffiCallStatus
+    );
+
+#endif
+#ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_BLOB_STORE_METHOD3
+#define UNIFFI_FFIDEF_CALLBACK_INTERFACE_BLOB_STORE_METHOD3
+typedef void (*UniffiCallbackInterfaceBlobStoreMethod3)(uint64_t, RustBuffer, RustBuffer, void* _Nonnull, 
+        RustCallStatus *_Nonnull uniffiCallStatus
+    );
+
+#endif
 #ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_CREDENTIAL_STORE_METHOD0
 #define UNIFFI_FFIDEF_CALLBACK_INTERFACE_CREDENTIAL_STORE_METHOD0
 typedef void (*UniffiCallbackInterfaceCredentialStoreMethod0)(uint64_t, RustBuffer, RustBuffer, RustBuffer* _Nonnull, 
@@ -264,6 +292,18 @@ typedef void (*UniffiCallbackInterfaceCredentialStoreMethod2)(uint64_t, RustBuff
     );
 
 #endif
+#ifndef UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_BLOB_STORE
+#define UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_BLOB_STORE
+typedef struct UniffiVTableCallbackInterfaceBlobStore {
+    UniffiCallbackInterfaceFree _Nonnull uniffiFree;
+    UniffiCallbackInterfaceClone _Nonnull uniffiClone;
+    UniffiCallbackInterfaceBlobStoreMethod0 _Nonnull save;
+    UniffiCallbackInterfaceBlobStoreMethod1 _Nonnull fetch;
+    UniffiCallbackInterfaceBlobStoreMethod2 _Nonnull fetchAll;
+    UniffiCallbackInterfaceBlobStoreMethod3 _Nonnull delete;
+} UniffiVTableCallbackInterfaceBlobStore;
+
+#endif
 #ifndef UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_CREDENTIAL_STORE
 #define UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_CREDENTIAL_STORE
 typedef struct UniffiVTableCallbackInterfaceCredentialStore {
@@ -274,6 +314,41 @@ typedef struct UniffiVTableCallbackInterfaceCredentialStore {
     UniffiCallbackInterfaceCredentialStoreMethod2 _Nonnull delete;
 } UniffiVTableCallbackInterfaceCredentialStore;
 
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_BLOBSTORE
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_BLOBSTORE
+uint64_t uniffi_stack_core_fn_clone_blobstore(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FREE_BLOBSTORE
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FREE_BLOBSTORE
+void uniffi_stack_core_fn_free_blobstore(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_INIT_CALLBACK_VTABLE_BLOBSTORE
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_INIT_CALLBACK_VTABLE_BLOBSTORE
+void uniffi_stack_core_fn_init_callback_vtable_blobstore(const UniffiVTableCallbackInterfaceBlobStore* _Nonnull vtable
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BLOBSTORE_SAVE
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BLOBSTORE_SAVE
+void uniffi_stack_core_fn_method_blobstore_save(uint64_t ptr, RustBuffer type_name, RustBuffer id, RustBuffer json, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BLOBSTORE_FETCH
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BLOBSTORE_FETCH
+RustBuffer uniffi_stack_core_fn_method_blobstore_fetch(uint64_t ptr, RustBuffer type_name, RustBuffer id, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BLOBSTORE_FETCH_ALL
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BLOBSTORE_FETCH_ALL
+RustBuffer uniffi_stack_core_fn_method_blobstore_fetch_all(uint64_t ptr, RustBuffer type_name, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BLOBSTORE_DELETE
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BLOBSTORE_DELETE
+void uniffi_stack_core_fn_method_blobstore_delete(uint64_t ptr, RustBuffer type_name, RustBuffer id, RustCallStatus *_Nonnull out_status
+);
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_CREDENTIALSTORE
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_CREDENTIALSTORE
@@ -370,6 +445,21 @@ RustBuffer uniffi_stack_core_fn_method_provider_reviews(uint64_t ptr, RustCallSt
 uint64_t uniffi_stack_core_fn_method_provider_validate(uint64_t ptr
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_SYNCSERVICE
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_SYNCSERVICE
+uint64_t uniffi_stack_core_fn_clone_syncservice(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FREE_SYNCSERVICE
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FREE_SYNCSERVICE
+void uniffi_stack_core_fn_free_syncservice(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_SYNCSERVICE_SYNC_APPS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_SYNCSERVICE_SYNC_APPS
+uint64_t uniffi_stack_core_fn_method_syncservice_sync_apps(uint64_t ptr
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FUNC_AVAILABLE_SERVICES
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FUNC_AVAILABLE_SERVICES
 RustBuffer uniffi_stack_core_fn_func_available_services(RustCallStatus *_Nonnull out_status
@@ -384,6 +474,11 @@ uint64_t uniffi_stack_core_fn_func_connect(RustBuffer kind, RustBuffer account_i
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FUNC_CREDENTIAL_SCHEMA
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FUNC_CREDENTIAL_SCHEMA
 RustBuffer uniffi_stack_core_fn_func_credential_schema(RustBuffer kind, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FUNC_MAKE_SYNC_SERVICE
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FUNC_MAKE_SYNC_SERVICE
+uint64_t uniffi_stack_core_fn_func_make_sync_service(uint64_t provider, uint64_t store, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_FFI_STACK_CORE_RUSTBUFFER_ALLOC
@@ -664,6 +759,36 @@ uint16_t uniffi_stack_core_checksum_func_credential_schema(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_FUNC_MAKE_SYNC_SERVICE
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_FUNC_MAKE_SYNC_SERVICE
+uint16_t uniffi_stack_core_checksum_func_make_sync_service(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BLOBSTORE_SAVE
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BLOBSTORE_SAVE
+uint16_t uniffi_stack_core_checksum_method_blobstore_save(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BLOBSTORE_FETCH
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BLOBSTORE_FETCH
+uint16_t uniffi_stack_core_checksum_method_blobstore_fetch(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BLOBSTORE_FETCH_ALL
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BLOBSTORE_FETCH_ALL
+uint16_t uniffi_stack_core_checksum_method_blobstore_fetch_all(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BLOBSTORE_DELETE
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BLOBSTORE_DELETE
+uint16_t uniffi_stack_core_checksum_method_blobstore_delete(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_CREDENTIALSTORE_SECRET
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_CREDENTIALSTORE_SECRET
 uint16_t uniffi_stack_core_checksum_method_credentialstore_secret(void
@@ -733,6 +858,12 @@ uint16_t uniffi_stack_core_checksum_method_provider_reviews(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_PROVIDER_VALIDATE
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_PROVIDER_VALIDATE
 uint16_t uniffi_stack_core_checksum_method_provider_validate(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_SYNCSERVICE_SYNC_APPS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_SYNCSERVICE_SYNC_APPS
+uint16_t uniffi_stack_core_checksum_method_syncservice_sync_apps(void
     
 );
 #endif

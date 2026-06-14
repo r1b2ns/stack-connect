@@ -441,6 +441,22 @@ fileprivate struct FfiConverterUInt16: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
+    typealias FfiType = UInt32
+    typealias SwiftType = UInt32
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt32 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterInt32: FfiConverterPrimitive {
     typealias FfiType = Int32
     typealias SwiftType = Int32
@@ -518,6 +534,357 @@ fileprivate struct FfiConverterString: FfiConverter {
         writeBytes(&buf, value.utf8)
     }
 }
+
+
+
+
+/**
+ * Durable blob storage implemented natively (SwiftData on iOS, mirroring the
+ * host's `PersistentStorable`) and injected across the FFI boundary as a foreign
+ * trait. The core stays stateless: [`crate::service::sync::SyncService`] pulls
+ * entities from a [`crate::service::provider::Provider`] and persists each as an
+ * opaque JSON blob keyed by `(type_name, id)` — the host owns where and how those
+ * blobs live. `type_name` is a stable, core-defined string (e.g.
+ * [`crate::service::sync::BLOB_TYPE_APP`]) that the host maps to its own entity.
+ */
+public protocol BlobStore: AnyObject, Sendable {
+    
+    /**
+     * Inserts or replaces the JSON blob for `(type_name, id)`.
+     */
+    func save(typeName: String, id: String, json: String) 
+    
+    /**
+     * Returns the JSON blob for `(type_name, id)`, if present.
+     */
+    func fetch(typeName: String, id: String)  -> String?
+    
+    /**
+     * Returns every stored JSON blob of `type_name`.
+     */
+    func fetchAll(typeName: String)  -> [String]
+    
+    /**
+     * Removes the blob for `(type_name, id)`.
+     */
+    func delete(typeName: String, id: String) 
+    
+}
+/**
+ * Durable blob storage implemented natively (SwiftData on iOS, mirroring the
+ * host's `PersistentStorable`) and injected across the FFI boundary as a foreign
+ * trait. The core stays stateless: [`crate::service::sync::SyncService`] pulls
+ * entities from a [`crate::service::provider::Provider`] and persists each as an
+ * opaque JSON blob keyed by `(type_name, id)` — the host owns where and how those
+ * blobs live. `type_name` is a stable, core-defined string (e.g.
+ * [`crate::service::sync::BLOB_TYPE_APP`]) that the host maps to its own entity.
+ */
+open class BlobStoreImpl: BlobStore, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_blobstore(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_blobstore(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Inserts or replaces the JSON blob for `(type_name, id)`.
+     */
+open func save(typeName: String, id: String, json: String)  {try! rustCall() {
+    uniffi_stack_core_fn_method_blobstore_save(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(typeName),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(json),$0
+    )
+}
+}
+    
+    /**
+     * Returns the JSON blob for `(type_name, id)`, if present.
+     */
+open func fetch(typeName: String, id: String) -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_blobstore_fetch(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(typeName),
+        FfiConverterString.lower(id),$0
+    )
+})
+}
+    
+    /**
+     * Returns every stored JSON blob of `type_name`.
+     */
+open func fetchAll(typeName: String) -> [String]  {
+    return try!  FfiConverterSequenceString.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_blobstore_fetch_all(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(typeName),$0
+    )
+})
+}
+    
+    /**
+     * Removes the blob for `(type_name, id)`.
+     */
+open func delete(typeName: String, id: String)  {try! rustCall() {
+    uniffi_stack_core_fn_method_blobstore_delete(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(typeName),
+        FfiConverterString.lower(id),$0
+    )
+}
+}
+    
+
+    
+}
+
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceBlobStore {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    //
+    // Store the vtable directly.
+    static let vtable: UniffiVTableCallbackInterfaceBlobStore = UniffiVTableCallbackInterfaceBlobStore(
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            do {
+                try FfiConverterTypeBlobStore.handleMap.remove(handle: uniffiHandle)
+            } catch {
+                print("Uniffi callback interface BlobStore: handle missing in uniffiFree")
+            }
+        },
+        uniffiClone: { (uniffiHandle: UInt64) -> UInt64 in
+            do {
+                return try FfiConverterTypeBlobStore.handleMap.clone(handle: uniffiHandle)
+            } catch {
+                fatalError("Uniffi callback interface BlobStore: handle missing in uniffiClone")
+            }
+        },
+        save: { (
+            uniffiHandle: UInt64,
+            typeName: RustBuffer,
+            id: RustBuffer,
+            json: RustBuffer,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterTypeBlobStore.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.save(
+                     typeName: try FfiConverterString.lift(typeName),
+                     id: try FfiConverterString.lift(id),
+                     json: try FfiConverterString.lift(json)
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        fetch: { (
+            uniffiHandle: UInt64,
+            typeName: RustBuffer,
+            id: RustBuffer,
+            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> String? in
+                guard let uniffiObj = try? FfiConverterTypeBlobStore.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.fetch(
+                     typeName: try FfiConverterString.lift(typeName),
+                     id: try FfiConverterString.lift(id)
+                )
+            }
+
+            
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterOptionString.lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        fetchAll: { (
+            uniffiHandle: UInt64,
+            typeName: RustBuffer,
+            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> [String] in
+                guard let uniffiObj = try? FfiConverterTypeBlobStore.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.fetchAll(
+                     typeName: try FfiConverterString.lift(typeName)
+                )
+            }
+
+            
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterSequenceString.lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        delete: { (
+            uniffiHandle: UInt64,
+            typeName: RustBuffer,
+            id: RustBuffer,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterTypeBlobStore.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.delete(
+                     typeName: try FfiConverterString.lift(typeName),
+                     id: try FfiConverterString.lift(id)
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        }
+    )
+
+    // Rust stores this pointer for future callback invocations, so it must live
+    // for the process lifetime (not just for the init function call).
+    static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfaceBlobStore> = {
+        let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfaceBlobStore>.allocate(capacity: 1)
+        ptr.initialize(to: vtable)
+        return UnsafePointer(ptr)
+    }()
+}
+
+private func uniffiCallbackInitBlobStore() {
+    uniffi_stack_core_fn_init_callback_vtable_blobstore(UniffiCallbackInterfaceBlobStore.vtablePtr)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBlobStore: FfiConverter {
+    fileprivate static let handleMap = UniffiHandleMap<BlobStore>()
+
+    typealias FfiType = UInt64
+    typealias SwiftType = BlobStore
+
+    public static func lift(_ handle: UInt64) throws -> BlobStore {
+        if ((handle & 1) == 0) {
+            // Rust-generated handle, construct a new class that uses the handle to implement the
+            // interface
+            return BlobStoreImpl(unsafeFromHandle: handle)
+        } else {
+            // Swift-generated handle, get the object from the handle map
+            return try handleMap.remove(handle: handle)
+        }
+    }
+
+    public static func lower(_ value: BlobStore) -> UInt64 {
+         if let rustImpl = value as? BlobStoreImpl {
+             // Rust-implemented object.  Clone the handle and return it
+            return rustImpl.uniffiCloneHandle()
+         } else {
+            // Swift object, generate a new vtable handle and return that.
+            return handleMap.insert(obj: value)
+         }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BlobStore {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: BlobStore, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlobStore_lift(_ handle: UInt64) throws -> BlobStore {
+    return try FfiConverterTypeBlobStore.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBlobStore_lower(_ value: BlobStore) -> UInt64 {
+    return FfiConverterTypeBlobStore.lower(value)
+}
+
+
 
 
 
@@ -1311,9 +1678,167 @@ public func FfiConverterTypeReviews_lower(_ value: Reviews) -> UInt64 {
 
 
 
+
+
+/**
+ * Generic sync orchestrator: pulls from a connected [`Provider`] and persists
+ * each entity as a JSON blob through the host [`BlobStore`]. The core stays
+ * stateless — all persistence lives behind the foreign trait.
+ *
+ * Reached from Swift via [`crate::facade::make_sync_service`].
+ */
+public protocol SyncServiceProtocol: AnyObject, Sendable {
+    
+    /**
+     * Fetches every visible app and upserts each as a JSON blob under
+     * [`BLOB_TYPE_APP`], keyed by app id. Returns how many were persisted.
+     *
+     * # Errors
+     * Propagates whatever [`Provider::fetch_apps`] returns (HTTP/Decode/Network),
+     * or [`StackError::Decode`] if an app fails to serialize.
+     */
+    func syncApps() async throws  -> SyncSummary
+    
+}
+/**
+ * Generic sync orchestrator: pulls from a connected [`Provider`] and persists
+ * each entity as a JSON blob through the host [`BlobStore`]. The core stays
+ * stateless — all persistence lives behind the foreign trait.
+ *
+ * Reached from Swift via [`crate::facade::make_sync_service`].
+ */
+open class SyncService: SyncServiceProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_syncservice(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_syncservice(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Fetches every visible app and upserts each as a JSON blob under
+     * [`BLOB_TYPE_APP`], keyed by app id. Returns how many were persisted.
+     *
+     * # Errors
+     * Propagates whatever [`Provider::fetch_apps`] returns (HTTP/Decode/Network),
+     * or [`StackError::Decode`] if an app fails to serialize.
+     */
+open func syncApps()async throws  -> SyncSummary  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_syncservice_sync_apps(
+                    self.uniffiCloneHandle()
+                    
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeSyncSummary_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSyncService: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = SyncService
+
+    public static func lift(_ handle: UInt64) throws -> SyncService {
+        return SyncService(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: SyncService) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyncService {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: SyncService, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncService_lift(_ handle: UInt64) throws -> SyncService {
+    return try FfiConverterTypeSyncService.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncService_lower(_ value: SyncService) -> UInt64 {
+    return FfiConverterTypeSyncService.lower(value)
+}
+
+
+
+
 /**
  * Cross-provider app metadata. Mirrors the Swift `AppInfo` from `StackProtocols`,
  * which is dissolved into the core (see RUST_CORE_PLAN.md §4).
+ *
+ * Serializes camelCase (`bundleId`, not `bundle_id`) so persisted blobs match the
+ * iOS-facing contract — see [`crate::service::sync::SyncService`].
  */
 public struct AppInfo: Equatable, Hashable {
     public var id: String
@@ -1678,6 +2203,65 @@ public func FfiConverterTypeReviewSubmission_lower(_ value: ReviewSubmission) ->
     return FfiConverterTypeReviewSubmission.lower(value)
 }
 
+
+/**
+ * Outcome of a sync pass. Grows as more capabilities are synced.
+ */
+public struct SyncSummary: Equatable, Hashable {
+    /**
+     * How many apps were upserted into the store.
+     */
+    public var appsSynced: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * How many apps were upserted into the store.
+         */appsSynced: UInt32) {
+        self.appsSynced = appsSynced
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension SyncSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSyncSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyncSummary {
+        return
+            try SyncSummary(
+                appsSynced: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SyncSummary, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.appsSynced, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncSummary_lift(_ buf: RustBuffer) throws -> SyncSummary {
+    return try FfiConverterTypeSyncSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyncSummary_lower(_ value: SyncSummary) -> RustBuffer {
+    return FfiConverterTypeSyncSummary.lower(value)
+}
+
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
@@ -2020,6 +2604,31 @@ fileprivate struct FfiConverterOptionTypeReviewResponse: FfiConverterRustBuffer 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
+    typealias SwiftType = [String]
+
+    public static func write(_ value: [String], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterString.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [String] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [String]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterString.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeAppInfo: FfiConverterRustBuffer {
     typealias SwiftType = [AppInfo]
 
@@ -2253,6 +2862,20 @@ public func credentialSchema(kind: ServiceKind) -> [CredentialField]  {
     )
 })
 }
+/**
+ * Builds a [`SyncService`] that syncs `provider` into the host `store`.
+ *
+ * Synchronous on purpose: it only wires the two handles together. The returned
+ * object does the async work (`sync_apps`).
+ */
+public func makeSyncService(provider: Provider, store: BlobStore) -> SyncService  {
+    return try!  FfiConverterTypeSyncService_lift(try! rustCall() {
+    uniffi_stack_core_fn_func_make_sync_service(
+        FfiConverterTypeProvider_lower(provider),
+        FfiConverterTypeBlobStore_lower(store),$0
+    )
+})
+}
 
 private enum InitializationResult {
     case ok
@@ -2276,6 +2899,21 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_func_credential_schema() != 9978) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_func_make_sync_service() != 28979) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_blobstore_save() != 62593) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_blobstore_fetch() != 54429) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_blobstore_fetch_all() != 11289) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_blobstore_delete() != 21501) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_credentialstore_secret() != 28669) {
@@ -2314,7 +2952,11 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_provider_validate() != 51064) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_syncservice_sync_apps() != 16715) {
+        return InitializationResult.apiChecksumMismatch
+    }
 
+    uniffiCallbackInitBlobStore()
     uniffiCallbackInitCredentialStore()
     return InitializationResult.ok
 }()
