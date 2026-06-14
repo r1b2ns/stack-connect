@@ -1,0 +1,46 @@
+# Feature Flags
+
+This document tracks every feature flag in the StackConnect iOS app.
+
+Flags are defined in `FeatureFlag` and resolved through `FeatureFlags`
+(`StackConnect/Infra/FeatureFlags/FeatureFlags.swift`). They are backed by
+`UserDefaults` (keys are namespaced under `featureFlag.`), so a flag can be toggled
+at runtime — e.g. via a debug menu or a launch argument — without rebuilding. Every
+new flag ships **OFF** by default (the safe, fully-reversible value) unless noted.
+
+**Total feature flags: 1**
+
+## Flags
+
+| Flag (`FeatureFlag` case) | UserDefaults key | Default | Description |
+| --- | --- | --- | --- |
+| `useRustCoreForAppleApps` | `featureFlag.useRustCoreForAppleApps` | OFF | Routes **only** the Apple connection's `validateCredentials()` and `fetchApps()` through the shared Rust core (UniFFI `Provider`) instead of the Swift App Store Connect SDK. All other Apple methods stay on the Swift SDK. Fully reversible — turning it OFF restores the original Swift-SDK behaviour. |
+
+## Usage sites
+
+### `useRustCoreForAppleApps`
+
+- **Definition:** `StackConnect/Infra/FeatureFlags/FeatureFlags.swift` — `FeatureFlag.useRustCoreForAppleApps` (default `false`).
+- **Read at:** `StackConnect/Infra/Providers/Apple/AppleAccountConnection.swift`
+  - `validateCredentials()` — when ON, calls the Rust core `Provider.validate()`.
+  - `fetchApps()` — when ON, calls the Rust core `Provider.fetchApps()` and maps `StackCoreRust.AppInfo` → `StackProtocols.AppInfo`.
+- **Supporting types:**
+  - `StackConnect/Infra/Providers/Apple/AppleCredentialStore.swift` — bridges `AppleCredentials` to the Rust core's `CredentialStore` (`issuerId` / `keyId` / `privateKeyP8`).
+  - Package: `Packages/StackCoreRust` (vendored `StackCoreRust.xcframework` + generated UniFFI wrapper).
+
+## How to toggle (debug / testing)
+
+The flag reads from `UserDefaults.standard`, so it can be flipped without a rebuild:
+
+```swift
+// Turn ON
+FeatureFlags.shared.setEnabled(true, for: .useRustCoreForAppleApps)
+
+// Turn OFF (restore Swift-SDK behaviour)
+FeatureFlags.shared.setEnabled(false, for: .useRustCoreForAppleApps)
+```
+
+Or via a launch argument / scheme environment override on the `featureFlag.useRustCoreForAppleApps` key.
+
+In tests, inject a custom `UserDefaults` into `FeatureFlags(defaults:)` and then into
+`AppleAccountConnection(credentials:featureFlags:)` to exercise both states.

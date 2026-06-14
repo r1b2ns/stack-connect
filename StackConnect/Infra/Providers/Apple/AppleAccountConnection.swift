@@ -1,19 +1,45 @@
 import Foundation
 import AppStoreConnect_Swift_SDK
 import StackProtocols
+import StackCoreRust
 
 final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendable {
 
     private let credentials: AppleCredentials
     private var provider: APIProvider?
 
-    init(credentials: AppleCredentials) {
+    /// Resolves the `useRustCoreForAppleApps` flag. Injected for testability so the
+    /// strangler path can be exercised in BOTH states.
+    private let featureFlags: FeatureFlags
+
+    /// Lazily-built Rust core provider, reused across `validateCredentials()` and
+    /// `fetchApps()` within a single connection. Only created when the flag is ON.
+    private var rustProvider: StackCoreRust.Provider?
+
+    /// Backs the Rust core's `CredentialStore` callback. Read-only bridge to
+    /// `AppleCredentials`. Constructed once per connection.
+    private lazy var rustCredentialStore = AppleCredentialStore(credentials: credentials)
+
+    init(
+        credentials: AppleCredentials,
+        featureFlags: FeatureFlags = .shared
+    ) {
         self.credentials = credentials
+        self.featureFlags = featureFlags
     }
 
     // MARK: - AccountConnectionProtocol
 
     func validateCredentials() async throws {
+        // Strangler-fig migration: route ONLY this call through the shared Rust core
+        // when the flag is ON. Everything else stays on the Swift SDK.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            try await callRustCore { try await provider.validate() }
+            Log.print.info("[Apple] Credentials validated successfully (Rust core)")
+            return
+        }
+
         let provider = try createProvider()
         self.provider = provider
 
@@ -27,6 +53,23 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func fetchApps() async throws -> [StackProtocols.AppInfo] {
+        // Strangler-fig migration: route ONLY this call through the shared Rust core
+        // when the flag is ON. Everything else stays on the Swift SDK.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            let coreApps = try await callRustCore { try await provider.fetchApps() }
+            let apps = coreApps.map { app in
+                StackProtocols.AppInfo(
+                    id: app.id,
+                    name: app.name,
+                    bundleId: app.bundleId,
+                    platform: app.platform
+                )
+            }
+            Log.print.info("[Apple] Fetched \(apps.count) apps (Rust core)")
+            return apps
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchApps()
@@ -2839,6 +2882,55 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             privateKey: credentials.privateKey
         )
         return APIProvider(configuration: config)
+    }
+
+    // MARK: - Rust core (strangler path)
+
+    /// Lazily builds and caches the Rust core `Provider` for App Store Connect,
+    /// reusing it across `validateCredentials()` and `fetchApps()` within this
+    /// connection. `connect(...)` reads credentials synchronously via the
+    /// `AppleCredentialStore` callback. The `accountId` is the issuer ID — a stable
+    /// per-connection identifier (the store is built per connection).
+    private func rustCoreProvider() throws -> StackCoreRust.Provider {
+        if let rustProvider {
+            return rustProvider
+        }
+        do {
+            let provider = try connect(
+                kind: .appStoreConnect,
+                accountId: credentials.issuerID,
+                store: rustCredentialStore
+            )
+            rustProvider = provider
+            return provider
+        } catch let error as StackError {
+            throw translate(error)
+        }
+    }
+
+    /// Runs a Rust core async call, translating `StackError` into the app's error
+    /// handling so callers behave the same as with the Swift SDK path.
+    private func callRustCore<T>(
+        _ operation: () async throws -> T
+    ) async throws -> T {
+        do {
+            return try await operation()
+        } catch let error as StackError {
+            throw translate(error)
+        }
+    }
+
+    /// Translates a Rust-core `StackError` for the app.
+    ///
+    /// `StackError` already conforms to `LocalizedError`, and every existing Apple
+    /// call site surfaces failures via `error.localizedDescription` / generic
+    /// `catch`. We therefore preserve the typed error (so `errorDescription` flows
+    /// through unchanged) while logging it at the boundary. This keeps caller
+    /// behaviour identical to the Swift SDK path and gives us a single place to add
+    /// richer mapping (e.g. pending-agreement handling) if the migration expands.
+    private func translate(_ error: StackError) -> Error {
+        Log.print.error("[Apple] Rust core error: \(error.localizedDescription)")
+        return error
     }
 }
 

@@ -98,6 +98,8 @@ packages:
     branch: develop
   StackCore:
     path: Packages/StackCore
+  StackCoreRust:
+    path: Packages/StackCoreRust
   StackProtocols:
     path: Packages/StackProtocols
   APIProviderFirebase:
@@ -167,6 +169,8 @@ targets:
       - package: appstoreconnect-swift-sdk
         product: AppStoreConnect-Swift-SDK
       - package: StackCore
+      - package: StackCoreRust
+        product: StackCoreRust
       - package: StackProtocols
       - package: APIProviderFirebase
       - package: APIProviderPlay
