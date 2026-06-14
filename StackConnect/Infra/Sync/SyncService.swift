@@ -210,6 +210,14 @@ final class SyncService: ObservableObject {
         }
 
         do {
+            // Validate once up front so the connection seeds `self.provider` before
+            // the concurrent `enrichApps` task group runs. Without this, each
+            // parallel Swift-only fetch sees a nil provider and lazily re-validates,
+            // racing ~1 validate per app (the residual storm from #84). One validate
+            // here keeps the count at exactly 1 per account per sync in both flag
+            // states. A thrown error is handled by the surrounding catch, which
+            // already persists metadata with the error.
+            try await connection.validateCredentials()
             let remoteApps = try await connection.fetchApps()
             let allCached: [AppModel] = (try? await storage.fetchAll(AppModel.self)) ?? []
             let cachedMap = Dictionary(uniqueKeysWithValues:
