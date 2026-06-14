@@ -441,22 +441,6 @@ fileprivate struct FfiConverterUInt16: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
-    typealias FfiType = UInt32
-    typealias SwiftType = UInt32
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt32 {
-        return try lift(readInt(&buf))
-    }
-
-    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
-        writeInt(&buf, lower(value))
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
 fileprivate struct FfiConverterInt32: FfiConverterPrimitive {
     typealias FfiType = Int32
     typealias SwiftType = Int32
@@ -1690,14 +1674,21 @@ public func FfiConverterTypeReviews_lower(_ value: Reviews) -> UInt64 {
 public protocol SyncServiceProtocol: AnyObject, Sendable {
     
     /**
-     * Fetches every visible app and upserts each as a JSON blob under
-     * [`BLOB_TYPE_APP`], keyed by app id. Returns how many were persisted.
+     * Fetches every visible app and persists each as an AppModel-compatible base
+     * blob under [`BLOB_TYPE_APP`], keyed by the bare app id (never a composite
+     * key). Each blob carries `{id,name,bundleId,platform,accountId}` — the base
+     * fields the core owns plus this service's `account_id`. Returns the fetched
+     * apps so the host can drive post-sync enrichment without re-fetching.
+     *
+     * The Swift side merges these base fields into its rich `AppModel`, preserving
+     * enrichment/user-owned fields, and derives the iOS composite key
+     * `"<accountId>.<appId>"` from the `accountId` carried in the JSON.
      *
      * # Errors
      * Propagates whatever [`Provider::fetch_apps`] returns (HTTP/Decode/Network),
      * or [`StackError::Decode`] if an app fails to serialize.
      */
-    func syncApps() async throws  -> SyncSummary
+    func syncApps() async throws  -> [AppInfo]
     
 }
 /**
@@ -1761,14 +1752,21 @@ open class SyncService: SyncServiceProtocol, @unchecked Sendable {
 
     
     /**
-     * Fetches every visible app and upserts each as a JSON blob under
-     * [`BLOB_TYPE_APP`], keyed by app id. Returns how many were persisted.
+     * Fetches every visible app and persists each as an AppModel-compatible base
+     * blob under [`BLOB_TYPE_APP`], keyed by the bare app id (never a composite
+     * key). Each blob carries `{id,name,bundleId,platform,accountId}` — the base
+     * fields the core owns plus this service's `account_id`. Returns the fetched
+     * apps so the host can drive post-sync enrichment without re-fetching.
+     *
+     * The Swift side merges these base fields into its rich `AppModel`, preserving
+     * enrichment/user-owned fields, and derives the iOS composite key
+     * `"<accountId>.<appId>"` from the `accountId` carried in the JSON.
      *
      * # Errors
      * Propagates whatever [`Provider::fetch_apps`] returns (HTTP/Decode/Network),
      * or [`StackError::Decode`] if an app fails to serialize.
      */
-open func syncApps()async throws  -> SyncSummary  {
+open func syncApps()async throws  -> [AppInfo]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1780,7 +1778,7 @@ open func syncApps()async throws  -> SyncSummary  {
             pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
             completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeSyncSummary_lift,
+            liftFunc: FfiConverterSequenceTypeAppInfo.lift,
             errorHandler: FfiConverterTypeStackError_lift
         )
 }
@@ -2201,65 +2199,6 @@ public func FfiConverterTypeReviewSubmission_lift(_ buf: RustBuffer) throws -> R
 #endif
 public func FfiConverterTypeReviewSubmission_lower(_ value: ReviewSubmission) -> RustBuffer {
     return FfiConverterTypeReviewSubmission.lower(value)
-}
-
-
-/**
- * Outcome of a sync pass. Grows as more capabilities are synced.
- */
-public struct SyncSummary: Equatable, Hashable {
-    /**
-     * How many apps were upserted into the store.
-     */
-    public var appsSynced: UInt32
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(
-        /**
-         * How many apps were upserted into the store.
-         */appsSynced: UInt32) {
-        self.appsSynced = appsSynced
-    }
-
-    
-
-    
-}
-
-#if compiler(>=6)
-extension SyncSummary: Sendable {}
-#endif
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeSyncSummary: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyncSummary {
-        return
-            try SyncSummary(
-                appsSynced: FfiConverterUInt32.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: SyncSummary, into buf: inout [UInt8]) {
-        FfiConverterUInt32.write(value.appsSynced, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeSyncSummary_lift(_ buf: RustBuffer) throws -> SyncSummary {
-    return try FfiConverterTypeSyncSummary.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeSyncSummary_lower(_ value: SyncSummary) -> RustBuffer {
-    return FfiConverterTypeSyncSummary.lower(value)
 }
 
 // Note that we don't yet support `indirect` for enums.
@@ -2863,16 +2802,19 @@ public func credentialSchema(kind: ServiceKind) -> [CredentialField]  {
 })
 }
 /**
- * Builds a [`SyncService`] that syncs `provider` into the host `store`.
+ * Builds a [`SyncService`] that syncs `provider` into the host `store` for
+ * `account_id`. The account id is stamped into every persisted app blob
+ * (`accountId`) so the host can derive its composite key and attribute apps.
  *
- * Synchronous on purpose: it only wires the two handles together. The returned
+ * Synchronous on purpose: it only wires the handles together. The returned
  * object does the async work (`sync_apps`).
  */
-public func makeSyncService(provider: Provider, store: BlobStore) -> SyncService  {
+public func makeSyncService(provider: Provider, store: BlobStore, accountId: String) -> SyncService  {
     return try!  FfiConverterTypeSyncService_lift(try! rustCall() {
     uniffi_stack_core_fn_func_make_sync_service(
         FfiConverterTypeProvider_lower(provider),
-        FfiConverterTypeBlobStore_lower(store),$0
+        FfiConverterTypeBlobStore_lower(store),
+        FfiConverterString.lower(accountId),$0
     )
 })
 }
@@ -2901,7 +2843,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_func_credential_schema() != 9978) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_stack_core_checksum_func_make_sync_service() != 28979) {
+    if (uniffi_stack_core_checksum_func_make_sync_service() != 17430) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_blobstore_save() != 62593) {
@@ -2952,7 +2894,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_provider_validate() != 51064) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_stack_core_checksum_method_syncservice_sync_apps() != 16715) {
+    if (uniffi_stack_core_checksum_method_syncservice_sync_apps() != 30671) {
         return InitializationResult.apiChecksumMismatch
     }
 

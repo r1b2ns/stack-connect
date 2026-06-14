@@ -218,7 +218,7 @@ final class SyncService: ObservableObject {
             // states. A thrown error is handled by the surrounding catch, which
             // already persists metadata with the error.
             try await connection.validateCredentials()
-            let remoteApps = try await connection.fetchApps()
+            let remoteApps = try await connection.syncApps(accountId: account.id, store: SwiftDataBlobStore(storage: storage))
             let allCached: [AppModel] = (try? await storage.fetchAll(AppModel.self)) ?? []
             let cachedMap = Dictionary(uniqueKeysWithValues:
                 allCached.filter { $0.accountId == account.id }.map { ($0.id, $0) }

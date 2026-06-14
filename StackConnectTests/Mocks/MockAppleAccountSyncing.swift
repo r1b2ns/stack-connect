@@ -1,5 +1,6 @@
 import Foundation
 import StackProtocols
+import StackCoreRust    // BlobStore
 @testable import StackConnect
 
 final class MockAppleAccountSyncing: AppleAccountSyncing, @unchecked Sendable {
@@ -34,6 +35,12 @@ final class MockAppleAccountSyncing: AppleAccountSyncing, @unchecked Sendable {
         fetchedAppListCount += 1
         if let fetchAppsError { throw fetchAppsError }
         return apps
+    }
+
+    /// Mirrors flag-OFF parity: ignores `store` and returns the canned apps
+    /// exactly like `fetchApps()` (same error + counter behavior).
+    func syncApps(accountId: String, store: BlobStore) async throws -> [StackProtocols.AppInfo] {
+        try await fetchApps()
     }
 
     func fetchIconUrl(appId: String) async -> String? {

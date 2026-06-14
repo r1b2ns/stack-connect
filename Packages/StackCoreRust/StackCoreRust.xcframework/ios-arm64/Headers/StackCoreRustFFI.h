@@ -478,7 +478,7 @@ RustBuffer uniffi_stack_core_fn_func_credential_schema(RustBuffer kind, RustCall
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FUNC_MAKE_SYNC_SERVICE
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FUNC_MAKE_SYNC_SERVICE
-uint64_t uniffi_stack_core_fn_func_make_sync_service(uint64_t provider, uint64_t store, RustCallStatus *_Nonnull out_status
+uint64_t uniffi_stack_core_fn_func_make_sync_service(uint64_t provider, uint64_t store, RustBuffer account_id, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_FFI_STACK_CORE_RUSTBUFFER_ALLOC

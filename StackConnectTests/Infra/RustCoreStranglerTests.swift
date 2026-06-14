@@ -1,4 +1,5 @@
 import XCTest
+import StackCore        // PersistentStorable
 import StackCoreRust
 @testable import StackConnect
 
@@ -130,6 +131,26 @@ final class RustCoreStranglerTests: XCTestCase {
 
         do {
             _ = try await connection.fetchApps()
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `syncApps(accountId:store:)` must also fail via the Rust
+    /// core for invalid credentials, proving it crossed into the core's `SyncService`
+    /// (it can never reach the Swift-SDK provider, which is never built).
+    func testSyncAppsRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+        let store = SwiftDataBlobStore(storage: InMemoryStorable())
+
+        do {
+            _ = try await connection.syncApps(accountId: "acct", store: store)
             XCTFail("Expected the Rust core to reject the invalid credentials.")
         } catch is StackError {
             // Crossed into the Rust core as expected.
@@ -314,5 +335,42 @@ final class RustCoreStranglerTests: XCTestCase {
             submittedByName: nil, submittedByEmail: nil
         )
         XCTAssertNil(AppleAccountConnection.mapReviewSubmission(invalid).submittedDate)
+    }
+}
+
+// MARK: - Minimal in-memory PersistentStorable for the BlobStore-backed test
+
+/// Minimal `PersistentStorable` so `syncApps(accountId:store:)` can be given a
+/// concrete `SwiftDataBlobStore` without a real SwiftData `ModelContainer`. The
+/// invalid-credentials test never reaches a successful core save, so a no-op-ish
+/// in-memory store is sufficient here.
+private actor InMemoryStorable: PersistentStorable {
+    private var store: [String: [String: Data]] = [:]
+    private let encoder = JSONEncoder()
+    private let decoder = JSONDecoder()
+
+    private func typeName<T>(for type: T.Type) -> String { String(describing: type) }
+
+    func save<T: Codable>(_ item: T, id: String) async throws {
+        guard let payload = try? encoder.encode(item) else { throw PersistentStorableError.encodingFailed }
+        store[typeName(for: T.self), default: [:]][id] = payload
+    }
+
+    func fetch<T: Codable>(_ type: T.Type, id: String) async throws -> T? {
+        guard let payload = store[typeName(for: type)]?[id] else { return nil }
+        return try? decoder.decode(T.self, from: payload)
+    }
+
+    func fetchAll<T: Codable>(_ type: T.Type) async throws -> [T] {
+        guard let bucket = store[typeName(for: type)] else { return [] }
+        return bucket.values.compactMap { try? decoder.decode(T.self, from: $0) }
+    }
+
+    func delete<T: Codable>(_ type: T.Type, id: String) async throws {
+        store[typeName(for: type)]?[id] = nil
+    }
+
+    func deleteAll<T: Codable>(_ type: T.Type) async throws {
+        store[typeName(for: type)] = nil
     }
 }

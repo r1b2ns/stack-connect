@@ -1,16 +1,18 @@
 import Foundation
 
 /// Thin `Codable` mirror of the Rust core's "app" blob, matching the exact JSON
-/// the core emits in `SyncService.sync_apps()`: `{"id","name","bundleId","platform"}`.
+/// the core emits in `SyncService.sync_apps()`:
+/// `{"id","name","bundleId","platform","accountId"}` (camelCase; `platform` may be null).
 ///
-/// This is intentionally NOT the rich `AppModel`. It exists solely so the
-/// `BlobStore` adapter can round-trip the core's blob through `PersistentStorable`
-/// without colliding with the app's own `AppModel` persistence (different type
-/// name + composite keys). It is persisted under its own derived type name
-/// `"CoreAppBlob"` (`String(describing:)`), which is correct and intended.
+/// This is intentionally NOT the rich `AppModel`. It is the decode target for the
+/// core's "app" blob and the encode shape the adapter re-emits on `fetch`/`fetchAll`.
+/// The adapter uses `accountId` + `id` to build the composite key `"<accountId>.<id>"`
+/// under which the real `AppModel` is persisted, then merges the base fields into
+/// that `AppModel` (preserving enrichment/user fields).
 struct CoreAppBlob: Codable, Equatable {
     let id: String
     let name: String
     let bundleId: String
     let platform: String?
+    let accountId: String
 }

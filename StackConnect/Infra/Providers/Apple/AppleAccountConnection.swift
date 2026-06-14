@@ -106,6 +106,31 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         return apps
     }
 
+    func syncApps(accountId: String, store: BlobStore) async throws -> [StackProtocols.AppInfo] {
+        // Strangler-fig migration: when the flag is ON, route through the shared
+        // Rust core `SyncService`, which fetches the apps AND persists each as a
+        // base AppModel blob into `store` (the adapter merges to preserve
+        // enrichment/user fields). When OFF this is byte-identical to `fetchApps()`
+        // and `store` is unused.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            let syncService = makeSyncService(provider: provider, store: store, accountId: accountId)
+            let coreApps = try await callRustCore { try await syncService.syncApps() }
+            let apps = coreApps.map { app in
+                StackProtocols.AppInfo(
+                    id: app.id,
+                    name: app.name,
+                    bundleId: app.bundleId,
+                    platform: app.platform
+                )
+            }
+            Log.print.info("[Apple] Synced \(apps.count) apps into store (Rust core)")
+            return apps
+        }
+
+        return try await fetchApps()
+    }
+
     func fetchIconUrl(appId: String) async -> String? {
         guard let provider else { return nil }
 
