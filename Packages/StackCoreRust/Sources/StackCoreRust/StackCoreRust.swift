@@ -441,6 +441,22 @@ fileprivate struct FfiConverterUInt16: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
+    typealias FfiType = UInt32
+    typealias SwiftType = UInt32
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt32 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterInt32: FfiConverterPrimitive {
     typealias FfiType = Int32
     typealias SwiftType = Int32
@@ -518,6 +534,262 @@ fileprivate struct FfiConverterString: FfiConverter {
         writeBytes(&buf, value.utf8)
     }
 }
+
+
+
+
+/**
+ * UniFFI-exported App Store Versions capability handle. A thin, binding-friendly
+ * wrapper around a boxed [`AppStoreVersionsImpl`]; async work runs on the tokio
+ * runtime. Reached via [`crate::service::provider::Provider::app_store_versions`].
+ */
+public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
+    
+    /**
+     * Creates a new App Store version for `app_id` on `platform` with
+     * `version_string`, returning the created version. `platform` is the raw ASC
+     * value (`IOS` / `MAC_OS` / `TV_OS` / `VISION_OS`).
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx response, [`StackError::Decode`] on
+     * malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+    func createVersion(appId: String, platform: String, versionString: String) async throws  -> AppStoreVersionInfo
+    
+    /**
+     * Deletes the version identified by `id`.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx response or [`StackError::Network`] on
+     * transport failure.
+     */
+    func deleteVersion(id: String) async throws 
+    
+    /**
+     * Lists the App Store versions for `app_id`, up to `limit`.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+     * JSON, or [`StackError::Network`] on transport failure.
+     */
+    func fetchVersions(appId: String, limit: UInt32) async throws  -> [AppStoreVersionInfo]
+    
+    /**
+     * Updates the version identified by `id`, sending only the provided
+     * attributes. `earliest_release_date` is a raw ISO8601 string passed through
+     * verbatim — the core does no date parsing.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx response or [`StackError::Network`] on
+     * transport failure.
+     */
+    func updateVersion(id: String, versionString: String?, copyright: String?, releaseType: String?, earliestReleaseDate: String?) async throws 
+    
+}
+/**
+ * UniFFI-exported App Store Versions capability handle. A thin, binding-friendly
+ * wrapper around a boxed [`AppStoreVersionsImpl`]; async work runs on the tokio
+ * runtime. Reached via [`crate::service::provider::Provider::app_store_versions`].
+ */
+open class AppStoreVersions: AppStoreVersionsProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_appstoreversions(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_appstoreversions(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Creates a new App Store version for `app_id` on `platform` with
+     * `version_string`, returning the created version. `platform` is the raw ASC
+     * value (`IOS` / `MAC_OS` / `TV_OS` / `VISION_OS`).
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx response, [`StackError::Decode`] on
+     * malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+open func createVersion(appId: String, platform: String, versionString: String)async throws  -> AppStoreVersionInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_create_version(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId),FfiConverterString.lower(platform),FfiConverterString.lower(versionString)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAppStoreVersionInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Deletes the version identified by `id`.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx response or [`StackError::Network`] on
+     * transport failure.
+     */
+open func deleteVersion(id: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_delete_version(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists the App Store versions for `app_id`, up to `limit`.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+     * JSON, or [`StackError::Network`] on transport failure.
+     */
+open func fetchVersions(appId: String, limit: UInt32)async throws  -> [AppStoreVersionInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_fetch_versions(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeAppStoreVersionInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Updates the version identified by `id`, sending only the provided
+     * attributes. `earliest_release_date` is a raw ISO8601 string passed through
+     * verbatim — the core does no date parsing.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx response or [`StackError::Network`] on
+     * transport failure.
+     */
+open func updateVersion(id: String, versionString: String?, copyright: String?, releaseType: String?, earliestReleaseDate: String?)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_update_version(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id),FfiConverterOptionString.lower(versionString),FfiConverterOptionString.lower(copyright),FfiConverterOptionString.lower(releaseType),FfiConverterOptionString.lower(earliestReleaseDate)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppStoreVersions: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = AppStoreVersions
+
+    public static func lift(_ handle: UInt64) throws -> AppStoreVersions {
+        return AppStoreVersions(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: AppStoreVersions) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppStoreVersions {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: AppStoreVersions, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppStoreVersions_lift(_ handle: UInt64) throws -> AppStoreVersions {
+    return try FfiConverterTypeAppStoreVersions.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppStoreVersions_lower(_ value: AppStoreVersions) -> UInt64 {
+    return FfiConverterTypeAppStoreVersions.lower(value)
+}
+
+
 
 
 
@@ -1181,6 +1453,14 @@ public func FfiConverterTypeCredentialStore_lower(_ value: CredentialStore) -> U
 public protocol ProviderProtocol: AnyObject, Sendable {
     
     /**
+     * The App Store Versions capability handle, or `None` when this provider does
+     * not expose [`Capability::AppStoreVersions`]. This is the discovery
+     * mechanism: the host calls `provider.app_store_versions()` and gets `None`
+     * when versions are unsupported.
+     */
+    func appStoreVersions()  -> AppStoreVersions?
+    
+    /**
      * The capabilities exposed for the connected account.
      */
     func capabilities()  -> [Capability]
@@ -1274,6 +1554,20 @@ open class Provider: ProviderProtocol, @unchecked Sendable {
 
     
 
+    
+    /**
+     * The App Store Versions capability handle, or `None` when this provider does
+     * not expose [`Capability::AppStoreVersions`]. This is the discovery
+     * mechanism: the host calls `provider.app_store_versions()` and gets `None`
+     * when versions are unsupported.
+     */
+open func appStoreVersions() -> AppStoreVersions?  {
+    return try!  FfiConverterOptionTypeAppStoreVersions.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_app_store_versions(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
     
     /**
      * The capabilities exposed for the connected account.
@@ -1901,6 +2195,92 @@ public func FfiConverterTypeAppInfo_lower(_ value: AppInfo) -> RustBuffer {
 
 
 /**
+ * An App Store version of an app. Dates are raw ISO8601 strings; the core does
+ * no date parsing (the host owns that).
+ */
+public struct AppStoreVersionInfo: Equatable, Hashable {
+    public var id: String
+    public var appId: String
+    public var platform: String?
+    public var appStoreState: String?
+    public var appVersionState: String?
+    public var versionString: String?
+    public var copyright: String?
+    public var releaseType: String?
+    public var createdDate: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, appId: String, platform: String?, appStoreState: String?, appVersionState: String?, versionString: String?, copyright: String?, releaseType: String?, createdDate: String?) {
+        self.id = id
+        self.appId = appId
+        self.platform = platform
+        self.appStoreState = appStoreState
+        self.appVersionState = appVersionState
+        self.versionString = versionString
+        self.copyright = copyright
+        self.releaseType = releaseType
+        self.createdDate = createdDate
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AppStoreVersionInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppStoreVersionInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppStoreVersionInfo {
+        return
+            try AppStoreVersionInfo(
+                id: FfiConverterString.read(from: &buf), 
+                appId: FfiConverterString.read(from: &buf), 
+                platform: FfiConverterOptionString.read(from: &buf), 
+                appStoreState: FfiConverterOptionString.read(from: &buf), 
+                appVersionState: FfiConverterOptionString.read(from: &buf), 
+                versionString: FfiConverterOptionString.read(from: &buf), 
+                copyright: FfiConverterOptionString.read(from: &buf), 
+                releaseType: FfiConverterOptionString.read(from: &buf), 
+                createdDate: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AppStoreVersionInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.appId, into: &buf)
+        FfiConverterOptionString.write(value.platform, into: &buf)
+        FfiConverterOptionString.write(value.appStoreState, into: &buf)
+        FfiConverterOptionString.write(value.appVersionState, into: &buf)
+        FfiConverterOptionString.write(value.versionString, into: &buf)
+        FfiConverterOptionString.write(value.copyright, into: &buf)
+        FfiConverterOptionString.write(value.releaseType, into: &buf)
+        FfiConverterOptionString.write(value.createdDate, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppStoreVersionInfo_lift(_ buf: RustBuffer) throws -> AppStoreVersionInfo {
+    return try FfiConverterTypeAppStoreVersionInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppStoreVersionInfo_lower(_ value: AppStoreVersionInfo) -> RustBuffer {
+    return FfiConverterTypeAppStoreVersionInfo.lower(value)
+}
+
+
+/**
  * A single credential field a service requires. Drives the host's "connect
  * account" form: `label` is shown to the user, `secret` hides the input, and
  * `multiline` signals a textarea (e.g. a PEM-encoded private key).
@@ -2214,6 +2594,7 @@ public enum Capability: Equatable, Hashable {
     
     case apps
     case reviews
+    case appStoreVersions
 
 
 
@@ -2239,6 +2620,8 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case 2: return .reviews
         
+        case 3: return .appStoreVersions
+        
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
@@ -2253,6 +2636,10 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case .reviews:
             writeInt(&buf, Int32(2))
+        
+        
+        case .appStoreVersions:
+            writeInt(&buf, Int32(3))
         
         }
     }
@@ -2495,6 +2882,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeAppStoreVersions: FfiConverterRustBuffer {
+    typealias SwiftType = AppStoreVersions?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAppStoreVersions.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAppStoreVersions.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeReviews: FfiConverterRustBuffer {
     typealias SwiftType = Reviews?
 
@@ -2585,6 +2996,31 @@ fileprivate struct FfiConverterSequenceTypeAppInfo: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeAppInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAppStoreVersionInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [AppStoreVersionInfo]
+
+    public static func write(_ value: [AppStoreVersionInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAppStoreVersionInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AppStoreVersionInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AppStoreVersionInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAppStoreVersionInfo.read(from: &buf))
         }
         return seq
     }
@@ -2867,6 +3303,18 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_credentialstore_delete() != 36020) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_appstoreversions_create_version() != 3970) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appstoreversions_delete_version() != 49312) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appstoreversions_fetch_versions() != 49788) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appstoreversions_update_version() != 58000) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_reviews_delete_review_response() != 19863) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -2877,6 +3325,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_reviews_reply_to_review() != 20931) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_app_store_versions() != 28764) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_capabilities() != 53465) {

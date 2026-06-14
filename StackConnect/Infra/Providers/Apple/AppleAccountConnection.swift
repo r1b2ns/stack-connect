@@ -156,6 +156,19 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func fetchAppStoreVersions(appId: String, limit: Int = 20) async throws -> [AppStoreVersionModel] {
+        // Strangler-fig migration: route this read through the shared Rust core when
+        // the flag is ON. The Swift-SDK body below is left untouched for the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            let core = try await callRustCore { try await versions.fetchVersions(appId: appId, limit: UInt32(limit)) }
+            let models = core.map { Self.mapVersionInfo($0) }
+            Log.print.info("[Apple] Fetched \(models.count) versions (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchAppStoreVersions(appId: appId, limit: limit)
@@ -176,6 +189,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func createAppStoreVersion(request: CreateAppVersionRequest) async throws -> AppStoreVersionModel {
+        // Strangler-fig migration: route this write through the shared Rust core when
+        // the flag is ON. The Swift-SDK body below is left untouched for the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            let core = try await callRustCore {
+                try await versions.createVersion(appId: request.appId, platform: request.platform.rawValue, versionString: request.version)
+            }
+            Log.print.info("[Apple] Created version \(request.version) (Rust core)")
+            return Self.mapVersionInfo(core)
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await createAppStoreVersion(request: request)
@@ -187,7 +214,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         return Self.mapVersion(response.data, appId: request.appId)
     }
 
-    func fetchAppStoreVersion(appId: String) async -> (state: String?, version: String?) {
+    func fetchAppStoreVersion(appId: String) async throws -> (state: String?, version: String?) {
+        // Strangler-fig migration: route this read through the shared Rust core when
+        // the flag is ON. The core returns raw state/version strings — exactly what
+        // this lightweight accessor wants. The Swift-SDK body below is the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            let core = try await callRustCore { try await versions.fetchVersions(appId: appId, limit: 1) }
+            guard let first = core.first else { return (nil, nil) }
+            return (first.appStoreState, first.versionString)
+        }
+
         guard let provider else { return (nil, nil) }
 
         do {
@@ -213,6 +253,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - Delete Version
 
     func deleteAppStoreVersion(id: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core when
+        // the flag is ON. The Swift-SDK body below is left untouched for the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            try await callRustCore { try await versions.deleteVersion(id: id) }
+            Log.print.info("[Apple] Deleted version \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await deleteAppStoreVersion(id: id)
@@ -232,6 +284,28 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         releaseType: AppStoreVersionUpdateRequest.Data.Attributes.ReleaseType? = nil,
         earliestReleaseDate: Date? = nil
     ) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core when
+        // the flag is ON. The core passes `earliestReleaseDate` through verbatim, so we
+        // format the `Date?` as ISO8601 here. The Swift-SDK body below is the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            let earliestISO = earliestReleaseDate.map { ISO8601DateFormatter().string(from: $0) }
+            try await callRustCore {
+                try await versions.updateVersion(
+                    id: id,
+                    versionString: versionString,
+                    copyright: copyright,
+                    releaseType: releaseType?.rawValue,
+                    earliestReleaseDate: earliestISO
+                )
+            }
+            Log.print.info("[Apple] Updated version \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await updateAppStoreVersion(id: id, versionString: versionString, copyright: copyright, releaseType: releaseType, earliestReleaseDate: earliestReleaseDate)
@@ -2959,6 +3033,23 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             releaseType: version.attributes?.releaseType?.rawValue,
             createdDate: version.attributes?.createdDate,
             appId: appId
+        )
+    }
+
+    /// Maps a Rust-core `AppStoreVersionInfo` to the app's `AppStoreVersionModel`.
+    /// The core does no date logic, so `createdDate` (raw ISO8601) is parsed here;
+    /// `platform`/`appStoreState` raw strings map back to the app enums.
+    static func mapVersionInfo(_ info: StackCoreRust.AppStoreVersionInfo) -> AppStoreVersionModel {
+        AppStoreVersionModel(
+            id: info.id,
+            platform: info.platform.flatMap { AppPlatform(rawValue: $0) },
+            appStoreState: info.appStoreState.flatMap { AppStoreState(rawValue: $0) },
+            appVersionState: info.appVersionState,
+            versionString: info.versionString,
+            copyright: info.copyright,
+            releaseType: info.releaseType,
+            createdDate: info.createdDate.flatMap(parseISO8601Date),
+            appId: info.appId
         )
     }
 

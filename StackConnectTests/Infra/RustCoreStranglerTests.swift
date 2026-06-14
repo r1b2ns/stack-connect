@@ -213,6 +213,135 @@ final class RustCoreStranglerTests: XCTestCase {
         }
     }
 
+    /// With the flag ON, `fetchAppStoreVersions(appId:limit:)` must fail via the Rust
+    /// core for invalid credentials, proving the read never reaches the Swift-SDK provider.
+    func testFetchAppStoreVersionsRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchAppStoreVersions(appId: "123", limit: 20)
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `createAppStoreVersion(request:)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testCreateAppStoreVersionRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+        let request = CreateAppVersionRequest(appId: "123", platform: .ios, version: "1.0")
+
+        do {
+            _ = try await connection.createAppStoreVersion(request: request)
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `deleteAppStoreVersion(id:)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testDeleteAppStoreVersionRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.deleteAppStoreVersion(id: "v1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `updateAppStoreVersion(id:versionString:)` must fail via the
+    /// Rust core for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testUpdateAppStoreVersionRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.updateAppStoreVersion(id: "v1", versionString: "1.1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    // MARK: - App Store version mapping (Rust core -> app model)
+
+    /// The core `AppStoreVersionInfo` must map field-for-field onto the app's
+    /// `AppStoreVersionModel`, including ISO8601 date parsing of `createdDate` and
+    /// raw-string -> enum mapping for `platform`/`appStoreState`.
+    func testMapVersionInfoMapsAllFieldsParsesDateAndEnums() {
+        let core = StackCoreRust.AppStoreVersionInfo(
+            id: "ver-1",
+            appId: "123456789",
+            platform: "IOS",
+            appStoreState: "READY_FOR_SALE",
+            appVersionState: "ACCEPTED",
+            versionString: "2.1.0",
+            copyright: "2024 Acme",
+            releaseType: "MANUAL",
+            createdDate: "2024-01-15T10:30:00Z"
+        )
+
+        let model = AppleAccountConnection.mapVersionInfo(core)
+
+        XCTAssertEqual(model.id, "ver-1")
+        XCTAssertEqual(model.appId, "123456789")
+        XCTAssertEqual(model.platform, .ios)
+        XCTAssertEqual(model.appStoreState, AppStoreState(rawValue: "READY_FOR_SALE"))
+        XCTAssertEqual(model.appVersionState, "ACCEPTED")
+        XCTAssertEqual(model.versionString, "2.1.0")
+        XCTAssertEqual(model.copyright, "2024 Acme")
+        XCTAssertEqual(model.releaseType, "MANUAL")
+
+        let expected = ISO8601DateFormatter().date(from: "2024-01-15T10:30:00Z")
+        XCTAssertEqual(model.createdDate, expected)
+    }
+
+    /// Nil/unknown raw strings must yield nil enums and a nil `createdDate` without crashing.
+    func testMapVersionInfoHandlesNilAndUnknownRawValues() {
+        let core = StackCoreRust.AppStoreVersionInfo(
+            id: "ver-2",
+            appId: "1",
+            platform: "NOT_A_PLATFORM",
+            appStoreState: nil,
+            appVersionState: nil,
+            versionString: nil,
+            copyright: nil,
+            releaseType: nil,
+            createdDate: nil
+        )
+
+        let model = AppleAccountConnection.mapVersionInfo(core)
+
+        XCTAssertEqual(model.id, "ver-2")
+        XCTAssertEqual(model.appId, "1")
+        XCTAssertNil(model.platform, "Unknown platform raw value must map to nil, not crash.")
+        XCTAssertNil(model.appStoreState)
+        XCTAssertNil(model.createdDate)
+    }
+
     // MARK: - Re-validation storm regression (issue #84)
 
     /// Regression guard for issue #84: with the flag ON, the Rust-core
