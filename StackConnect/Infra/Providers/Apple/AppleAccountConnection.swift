@@ -800,6 +800,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - TestFlight: Beta Groups
 
     func fetchBetaGroups(appId: String) async throws -> [BetaGroupModel] {
+        // Strangler-fig migration: route ONLY this read through the shared Rust core
+        // when the flag is ON. The create/update/delete and tester management below
+        // stay on the Swift SDK this batch.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let bg = provider.betaGroups() else {
+                throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
+            }
+            let core = try await callRustCore { try await bg.fetchBetaGroups(appId: appId, limit: 50) }
+            let models = core.map { Self.mapBetaGroupInfo($0) }
+            Log.print.info("[Apple] Fetched \(models.count) beta groups (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchBetaGroups(appId: appId)
@@ -932,6 +946,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func fetchBetaTestersForGroup(groupId: String) async throws -> [BetaTesterModel] {
+        // Strangler-fig migration: route ONLY this read through the shared Rust core
+        // when the flag is ON. Add/remove tester and the tester count below stay on
+        // the Swift SDK this batch.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let bg = provider.betaGroups() else {
+                throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
+            }
+            let core = try await callRustCore { try await bg.fetchBetaTesters(groupId: groupId, limit: 200) }
+            let models = core.map { Self.mapBetaTesterInfo($0) }
+            Log.print.info("[Apple] Fetched \(models.count) beta testers (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchBetaTestersForGroup(groupId: groupId)
@@ -3149,6 +3177,47 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             expirationDate: info.expirationDate.flatMap(parseISO8601Date),
             isExpired: info.expired ?? false,
             minOsVersion: info.minOsVersion
+        )
+    }
+
+    /// Maps a Rust-core `BetaGroupInfo` to the app's `BetaGroupModel`.
+    ///
+    /// The core does no date logic, so the raw ISO8601 `createdDate` string is parsed
+    /// here, and the optional core flags are defaulted to match the Swift-SDK path
+    /// (`?? false` / `?? ""`).
+    ///
+    /// Known Rust-path degradation: the core does not expose `publicLinkId`,
+    /// `publicLinkLimit`, `isPublicLinkLimitEnabled`, `testerCount` or `buildCount`
+    /// (the last two come from ASC relationship paging meta the core does not request),
+    /// so those are left at sensible defaults (`nil`/`false`) on the Rust path.
+    static func mapBetaGroupInfo(_ info: StackCoreRust.BetaGroupInfo) -> BetaGroupModel {
+        BetaGroupModel(
+            id: info.id,
+            name: info.name ?? "",
+            isInternalGroup: info.isInternalGroup ?? false,
+            createdDate: info.createdDate.flatMap(parseISO8601Date),
+            hasAccessToAllBuilds: info.hasAccessToAllBuilds ?? false,
+            isPublicLinkEnabled: info.publicLinkEnabled ?? false,
+            publicLink: info.publicLink,
+            publicLinkId: nil,                  // degraded: core does not provide
+            publicLinkLimit: nil,               // degraded: core does not provide
+            isPublicLinkLimitEnabled: false,    // degraded: core does not provide
+            isFeedbackEnabled: info.feedbackEnabled ?? false,
+            testerCount: nil,                   // degraded: core does not provide
+            buildCount: nil                     // degraded: core does not provide
+        )
+    }
+
+    /// Maps a Rust-core `BetaTesterInfo` to the app's `BetaTesterModel`. Full fidelity:
+    /// the core provides every field this model needs, so they map 1:1.
+    static func mapBetaTesterInfo(_ info: StackCoreRust.BetaTesterInfo) -> BetaTesterModel {
+        BetaTesterModel(
+            id: info.id,
+            firstName: info.firstName,
+            lastName: info.lastName,
+            email: info.email,
+            inviteType: info.inviteType,
+            state: info.state
         )
     }
 

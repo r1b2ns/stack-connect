@@ -410,6 +410,26 @@ uint64_t uniffi_stack_core_fn_method_appstoreversions_fetch_versions(uint64_t pt
 uint64_t uniffi_stack_core_fn_method_appstoreversions_update_version(uint64_t ptr, RustBuffer id, RustBuffer version_string, RustBuffer copyright, RustBuffer release_type, RustBuffer earliest_release_date
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_BETAGROUPS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_BETAGROUPS
+uint64_t uniffi_stack_core_fn_clone_betagroups(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FREE_BETAGROUPS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_FREE_BETAGROUPS
+void uniffi_stack_core_fn_free_betagroups(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BETAGROUPS_FETCH_BETA_GROUPS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BETAGROUPS_FETCH_BETA_GROUPS
+uint64_t uniffi_stack_core_fn_method_betagroups_fetch_beta_groups(uint64_t ptr, RustBuffer app_id, uint32_t limit
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BETAGROUPS_FETCH_BETA_TESTERS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BETAGROUPS_FETCH_BETA_TESTERS
+uint64_t uniffi_stack_core_fn_method_betagroups_fetch_beta_testers(uint64_t ptr, RustBuffer group_id, uint32_t limit
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_BUILDS
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_BUILDS
 uint64_t uniffi_stack_core_fn_clone_builds(uint64_t handle, RustCallStatus *_Nonnull out_status
@@ -473,6 +493,11 @@ void uniffi_stack_core_fn_free_provider(uint64_t handle, RustCallStatus *_Nonnul
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_PROVIDER_APP_STORE_VERSIONS
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_PROVIDER_APP_STORE_VERSIONS
 RustBuffer uniffi_stack_core_fn_method_provider_app_store_versions(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_PROVIDER_BETA_GROUPS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_PROVIDER_BETA_GROUPS
+RustBuffer uniffi_stack_core_fn_method_provider_beta_groups(uint64_t ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_PROVIDER_BUILDS
@@ -891,6 +916,18 @@ uint16_t uniffi_stack_core_checksum_method_appstoreversions_update_version(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BETAGROUPS_FETCH_BETA_GROUPS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BETAGROUPS_FETCH_BETA_GROUPS
+uint16_t uniffi_stack_core_checksum_method_betagroups_fetch_beta_groups(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BETAGROUPS_FETCH_BETA_TESTERS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BETAGROUPS_FETCH_BETA_TESTERS
+uint16_t uniffi_stack_core_checksum_method_betagroups_fetch_beta_testers(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BUILDS_FETCH_BUILDS
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BUILDS_FETCH_BUILDS
 uint16_t uniffi_stack_core_checksum_method_builds_fetch_builds(void
@@ -930,6 +967,12 @@ uint16_t uniffi_stack_core_checksum_method_reviews_reply_to_review(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_PROVIDER_APP_STORE_VERSIONS
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_PROVIDER_APP_STORE_VERSIONS
 uint16_t uniffi_stack_core_checksum_method_provider_app_store_versions(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_PROVIDER_BETA_GROUPS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_PROVIDER_BETA_GROUPS
+uint16_t uniffi_stack_core_checksum_method_provider_beta_groups(void
     
 );
 #endif

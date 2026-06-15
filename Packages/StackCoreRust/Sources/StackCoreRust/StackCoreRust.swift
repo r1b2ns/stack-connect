@@ -795,6 +795,188 @@ public func FfiConverterTypeAppStoreVersions_lower(_ value: AppStoreVersions) ->
 
 
 /**
+ * UniFFI-exported Beta Groups capability handle. A thin, binding-friendly
+ * wrapper around a boxed [`BetaGroupsImpl`]; async work runs on the tokio
+ * runtime. Reached via [`crate::service::provider::Provider::beta_groups`].
+ */
+public protocol BetaGroupsProtocol: AnyObject, Sendable {
+    
+    /**
+     * Lists the beta groups for `app_id`, up to `limit`.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+     * JSON, or [`StackError::Network`] on transport failure.
+     */
+    func fetchBetaGroups(appId: String, limit: UInt32) async throws  -> [BetaGroupInfo]
+    
+    /**
+     * Lists the beta testers belonging to `group_id`, up to `limit`.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+     * JSON, or [`StackError::Network`] on transport failure.
+     */
+    func fetchBetaTesters(groupId: String, limit: UInt32) async throws  -> [BetaTesterInfo]
+    
+}
+/**
+ * UniFFI-exported Beta Groups capability handle. A thin, binding-friendly
+ * wrapper around a boxed [`BetaGroupsImpl`]; async work runs on the tokio
+ * runtime. Reached via [`crate::service::provider::Provider::beta_groups`].
+ */
+open class BetaGroups: BetaGroupsProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_betagroups(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_betagroups(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Lists the beta groups for `app_id`, up to `limit`.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+     * JSON, or [`StackError::Network`] on transport failure.
+     */
+open func fetchBetaGroups(appId: String, limit: UInt32)async throws  -> [BetaGroupInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_betagroups_fetch_beta_groups(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeBetaGroupInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists the beta testers belonging to `group_id`, up to `limit`.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+     * JSON, or [`StackError::Network`] on transport failure.
+     */
+open func fetchBetaTesters(groupId: String, limit: UInt32)async throws  -> [BetaTesterInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_betagroups_fetch_beta_testers(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(groupId),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeBetaTesterInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBetaGroups: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = BetaGroups
+
+    public static func lift(_ handle: UInt64) throws -> BetaGroups {
+        return BetaGroups(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: BetaGroups) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BetaGroups {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: BetaGroups, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBetaGroups_lift(_ handle: UInt64) throws -> BetaGroups {
+    return try FfiConverterTypeBetaGroups.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBetaGroups_lower(_ value: BetaGroups) -> UInt64 {
+    return FfiConverterTypeBetaGroups.lower(value)
+}
+
+
+
+
+
+
+/**
  * Durable blob storage implemented natively (SwiftData on iOS, mirroring the
  * host's `PersistentStorable`) and injected across the FFI boundary as a foreign
  * trait. The core stays stateless: [`crate::service::sync::SyncService`] pulls
@@ -1612,6 +1794,14 @@ public protocol ProviderProtocol: AnyObject, Sendable {
     func appStoreVersions()  -> AppStoreVersions?
     
     /**
+     * The Beta Groups capability handle, or `None` when this provider does not
+     * expose [`Capability::BetaGroups`]. This is the discovery mechanism: the
+     * host calls `provider.beta_groups()` and gets `None` when beta groups are
+     * unsupported.
+     */
+    func betaGroups()  -> BetaGroups?
+    
+    /**
      * The Builds capability handle, or `None` when this provider does not expose
      * [`Capability::Builds`]. This is the discovery mechanism: the host calls
      * `provider.builds()` and gets `None` when builds are unsupported.
@@ -1722,6 +1912,20 @@ open class Provider: ProviderProtocol, @unchecked Sendable {
 open func appStoreVersions() -> AppStoreVersions?  {
     return try!  FfiConverterOptionTypeAppStoreVersions.lift(try! rustCall() {
     uniffi_stack_core_fn_method_provider_app_store_versions(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The Beta Groups capability handle, or `None` when this provider does not
+     * expose [`Capability::BetaGroups`]. This is the discovery mechanism: the
+     * host calls `provider.beta_groups()` and gets `None` when beta groups are
+     * unsupported.
+     */
+open func betaGroups() -> BetaGroups?  {
+    return try!  FfiConverterOptionTypeBetaGroups.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_beta_groups(
             self.uniffiCloneHandle(),$0
     )
 })
@@ -2503,6 +2707,166 @@ public func FfiConverterTypeAppStoreVersionInfo_lower(_ value: AppStoreVersionIn
 
 
 /**
+ * A TestFlight beta group (internal or external) of an app. Dates are raw
+ * ISO8601 strings; the core does no date parsing (the host owns that).
+ */
+public struct BetaGroupInfo: Equatable, Hashable {
+    public var id: String
+    public var appId: String
+    public var name: String?
+    public var createdDate: String?
+    public var isInternalGroup: Bool?
+    public var hasAccessToAllBuilds: Bool?
+    public var publicLinkEnabled: Bool?
+    public var publicLink: String?
+    public var feedbackEnabled: Bool?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, appId: String, name: String?, createdDate: String?, isInternalGroup: Bool?, hasAccessToAllBuilds: Bool?, publicLinkEnabled: Bool?, publicLink: String?, feedbackEnabled: Bool?) {
+        self.id = id
+        self.appId = appId
+        self.name = name
+        self.createdDate = createdDate
+        self.isInternalGroup = isInternalGroup
+        self.hasAccessToAllBuilds = hasAccessToAllBuilds
+        self.publicLinkEnabled = publicLinkEnabled
+        self.publicLink = publicLink
+        self.feedbackEnabled = feedbackEnabled
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BetaGroupInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBetaGroupInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BetaGroupInfo {
+        return
+            try BetaGroupInfo(
+                id: FfiConverterString.read(from: &buf), 
+                appId: FfiConverterString.read(from: &buf), 
+                name: FfiConverterOptionString.read(from: &buf), 
+                createdDate: FfiConverterOptionString.read(from: &buf), 
+                isInternalGroup: FfiConverterOptionBool.read(from: &buf), 
+                hasAccessToAllBuilds: FfiConverterOptionBool.read(from: &buf), 
+                publicLinkEnabled: FfiConverterOptionBool.read(from: &buf), 
+                publicLink: FfiConverterOptionString.read(from: &buf), 
+                feedbackEnabled: FfiConverterOptionBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BetaGroupInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.appId, into: &buf)
+        FfiConverterOptionString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.createdDate, into: &buf)
+        FfiConverterOptionBool.write(value.isInternalGroup, into: &buf)
+        FfiConverterOptionBool.write(value.hasAccessToAllBuilds, into: &buf)
+        FfiConverterOptionBool.write(value.publicLinkEnabled, into: &buf)
+        FfiConverterOptionString.write(value.publicLink, into: &buf)
+        FfiConverterOptionBool.write(value.feedbackEnabled, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBetaGroupInfo_lift(_ buf: RustBuffer) throws -> BetaGroupInfo {
+    return try FfiConverterTypeBetaGroupInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBetaGroupInfo_lower(_ value: BetaGroupInfo) -> RustBuffer {
+    return FfiConverterTypeBetaGroupInfo.lower(value)
+}
+
+
+/**
+ * A TestFlight beta tester. `invite_type` and `state` are the raw ASC values
+ * passed through verbatim; the core does no remapping.
+ */
+public struct BetaTesterInfo: Equatable, Hashable {
+    public var id: String
+    public var firstName: String?
+    public var lastName: String?
+    public var email: String?
+    public var inviteType: String?
+    public var state: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, firstName: String?, lastName: String?, email: String?, inviteType: String?, state: String?) {
+        self.id = id
+        self.firstName = firstName
+        self.lastName = lastName
+        self.email = email
+        self.inviteType = inviteType
+        self.state = state
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BetaTesterInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBetaTesterInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BetaTesterInfo {
+        return
+            try BetaTesterInfo(
+                id: FfiConverterString.read(from: &buf), 
+                firstName: FfiConverterOptionString.read(from: &buf), 
+                lastName: FfiConverterOptionString.read(from: &buf), 
+                email: FfiConverterOptionString.read(from: &buf), 
+                inviteType: FfiConverterOptionString.read(from: &buf), 
+                state: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BetaTesterInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.firstName, into: &buf)
+        FfiConverterOptionString.write(value.lastName, into: &buf)
+        FfiConverterOptionString.write(value.email, into: &buf)
+        FfiConverterOptionString.write(value.inviteType, into: &buf)
+        FfiConverterOptionString.write(value.state, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBetaTesterInfo_lift(_ buf: RustBuffer) throws -> BetaTesterInfo {
+    return try FfiConverterTypeBetaTesterInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBetaTesterInfo_lower(_ value: BetaTesterInfo) -> RustBuffer {
+    return FfiConverterTypeBetaTesterInfo.lower(value)
+}
+
+
+/**
  * A build (TestFlight / App Store Connect) of an app. `version` is the build
  * number (the ASC `version` attribute, distinct from a version string). Dates
  * are raw ISO8601 strings; the core does no date parsing (the host owns that).
@@ -2960,6 +3324,7 @@ public enum Capability: Equatable, Hashable {
     case reviews
     case appStoreVersions
     case builds
+    case betaGroups
 
 
 
@@ -2989,6 +3354,8 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case 4: return .builds
         
+        case 5: return .betaGroups
+        
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
@@ -3011,6 +3378,10 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case .builds:
             writeInt(&buf, Int32(4))
+        
+        
+        case .betaGroups:
+            writeInt(&buf, Int32(5))
         
         }
     }
@@ -3311,6 +3682,30 @@ fileprivate struct FfiConverterOptionTypeAppStoreVersions: FfiConverterRustBuffe
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeBetaGroups: FfiConverterRustBuffer {
+    typealias SwiftType = BetaGroups?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeBetaGroups.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeBetaGroups.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeBuilds: FfiConverterRustBuffer {
     typealias SwiftType = Builds?
 
@@ -3450,6 +3845,56 @@ fileprivate struct FfiConverterSequenceTypeAppStoreVersionInfo: FfiConverterRust
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeAppStoreVersionInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeBetaGroupInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [BetaGroupInfo]
+
+    public static func write(_ value: [BetaGroupInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeBetaGroupInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [BetaGroupInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [BetaGroupInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeBetaGroupInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeBetaTesterInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [BetaTesterInfo]
+
+    public static func write(_ value: [BetaTesterInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeBetaTesterInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [BetaTesterInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [BetaTesterInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeBetaTesterInfo.read(from: &buf))
         }
         return seq
     }
@@ -3769,6 +4214,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_appstoreversions_update_version() != 58000) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_betagroups_fetch_beta_groups() != 37909) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_betagroups_fetch_beta_testers() != 28179) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_builds_fetch_builds() != 166) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3788,6 +4239,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_app_store_versions() != 28764) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_beta_groups() != 58422) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_builds() != 22996) {

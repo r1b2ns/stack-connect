@@ -654,6 +654,157 @@ final class RustCoreStranglerTests: XCTestCase {
         XCTAssertNil(model.expirationDate, "Unparseable date must map to nil, not crash.")
     }
 
+    // MARK: - Beta groups / testers (ON path)
+
+    /// With the flag ON, `fetchBetaGroups(appId:)` must fail via the Rust core for
+    /// invalid credentials, proving the read never reaches the Swift-SDK provider.
+    /// The create/update/delete + tester management intentionally stay on the Swift
+    /// SDK this batch and are not covered here.
+    func testFetchBetaGroupsRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchBetaGroups(appId: "123")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `fetchBetaTestersForGroup(groupId:)` must fail via the Rust
+    /// core for invalid credentials, proving the read never reaches the Swift-SDK provider.
+    func testFetchBetaTestersForGroupRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchBetaTestersForGroup(groupId: "group-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    // MARK: - Beta group mapping (Rust core -> app model)
+
+    /// The core `BetaGroupInfo` must map onto the app's `BetaGroupModel` for the fields
+    /// the core provides, including ISO8601 parsing of `createdDate` and optional-flag
+    /// defaulting. Fields the core does not expose must stay at their degraded defaults.
+    func testMapBetaGroupInfoMapsCoreFieldsParsesDateAndDegradesTheRest() {
+        let core = StackCoreRust.BetaGroupInfo(
+            id: "group-1",
+            appId: "123456789",
+            name: "External Testers",
+            createdDate: "2024-01-15T10:30:00Z",
+            isInternalGroup: false,
+            hasAccessToAllBuilds: true,
+            publicLinkEnabled: true,
+            publicLink: "https://testflight.apple.com/join/abc123",
+            feedbackEnabled: true
+        )
+
+        let model = AppleAccountConnection.mapBetaGroupInfo(core)
+
+        XCTAssertEqual(model.id, "group-1")
+        XCTAssertEqual(model.name, "External Testers")
+        XCTAssertFalse(model.isInternalGroup)
+        XCTAssertTrue(model.hasAccessToAllBuilds)
+        XCTAssertTrue(model.isPublicLinkEnabled)
+        XCTAssertEqual(model.publicLink, "https://testflight.apple.com/join/abc123")
+        XCTAssertTrue(model.isFeedbackEnabled)
+
+        let expected = ISO8601DateFormatter().date(from: "2024-01-15T10:30:00Z")
+        XCTAssertEqual(model.createdDate, expected)
+
+        // Known Rust-path degradation: fields the core does not provide stay defaulted.
+        XCTAssertNil(model.publicLinkId)
+        XCTAssertNil(model.publicLinkLimit)
+        XCTAssertFalse(model.isPublicLinkLimitEnabled)
+        XCTAssertNil(model.testerCount)
+        XCTAssertNil(model.buildCount)
+    }
+
+    /// Nil optional flags must default (`name -> ""`, bools -> false), and a nil/
+    /// unparseable `createdDate` must yield a nil `Date?` without crashing.
+    func testMapBetaGroupInfoHandlesNilFlagsAndMissingDate() {
+        let core = StackCoreRust.BetaGroupInfo(
+            id: "group-2",
+            appId: "1",
+            name: nil,
+            createdDate: nil,
+            isInternalGroup: nil,
+            hasAccessToAllBuilds: nil,
+            publicLinkEnabled: nil,
+            publicLink: nil,
+            feedbackEnabled: nil
+        )
+
+        let model = AppleAccountConnection.mapBetaGroupInfo(core)
+
+        XCTAssertEqual(model.id, "group-2")
+        XCTAssertEqual(model.name, "", "Nil name must default to empty string.")
+        XCTAssertFalse(model.isInternalGroup)
+        XCTAssertFalse(model.hasAccessToAllBuilds)
+        XCTAssertFalse(model.isPublicLinkEnabled)
+        XCTAssertNil(model.publicLink)
+        XCTAssertFalse(model.isFeedbackEnabled)
+        XCTAssertNil(model.createdDate)
+    }
+
+    // MARK: - Beta tester mapping (Rust core -> app model)
+
+    /// The core `BetaTesterInfo` provides every field the app's `BetaTesterModel`
+    /// needs, so the mapping is full fidelity (1:1, no defaulting).
+    func testMapBetaTesterInfoMapsAllFields() {
+        let core = StackCoreRust.BetaTesterInfo(
+            id: "tester-1",
+            firstName: "Jane",
+            lastName: "Doe",
+            email: "jane@example.com",
+            inviteType: "EMAIL",
+            state: "INSTALLED"
+        )
+
+        let model = AppleAccountConnection.mapBetaTesterInfo(core)
+
+        XCTAssertEqual(model.id, "tester-1")
+        XCTAssertEqual(model.firstName, "Jane")
+        XCTAssertEqual(model.lastName, "Doe")
+        XCTAssertEqual(model.email, "jane@example.com")
+        XCTAssertEqual(model.inviteType, "EMAIL")
+        XCTAssertEqual(model.state, "INSTALLED")
+    }
+
+    /// Optional core fields left nil must pass through as nil (no fabricated defaults).
+    func testMapBetaTesterInfoPassesNilOptionalsThrough() {
+        let core = StackCoreRust.BetaTesterInfo(
+            id: "tester-2",
+            firstName: nil,
+            lastName: nil,
+            email: nil,
+            inviteType: nil,
+            state: nil
+        )
+
+        let model = AppleAccountConnection.mapBetaTesterInfo(core)
+
+        XCTAssertEqual(model.id, "tester-2")
+        XCTAssertNil(model.firstName)
+        XCTAssertNil(model.lastName)
+        XCTAssertNil(model.email)
+        XCTAssertNil(model.inviteType)
+        XCTAssertNil(model.state)
+    }
+
     // MARK: - Pending agreements detection (Rust core typed error)
 
     /// The translator must recognize the core's typed `StackError.PendingAgreements`
