@@ -848,6 +848,27 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         isPublicLinkEnabled: Bool = false,
         hasAccessToAllBuilds: Bool = false
     ) async throws -> BetaGroupModel {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let bg = provider.betaGroups() else {
+                throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
+            }
+            let core = try await callRustCore {
+                try await bg.createBetaGroup(
+                    appId: appId,
+                    name: name,
+                    isInternal: isInternal,
+                    publicLinkEnabled: isPublicLinkEnabled,
+                    hasAccessToAllBuilds: hasAccessToAllBuilds
+                )
+            }
+            let model = Self.mapBetaGroupInfo(core)
+            Log.print.info("[Apple] Created beta group: \(name) (Rust core)")
+            return model
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await createBetaGroup(
@@ -898,6 +919,26 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateBetaGroup(id: String, name: String?, isPublicLinkEnabled: Bool?, publicLinkLimit: Int?, isFeedbackEnabled: Bool?) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let bg = provider.betaGroups() else {
+                throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
+            }
+            _ = try await callRustCore {
+                try await bg.updateBetaGroup(
+                    groupId: id,
+                    name: name,
+                    publicLinkEnabled: isPublicLinkEnabled,
+                    publicLinkLimit: publicLinkLimit.map(Int32.init),
+                    feedbackEnabled: isFeedbackEnabled
+                )
+            }
+            Log.print.info("[Apple] Updated beta group \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await updateBetaGroup(id: id, name: name, isPublicLinkEnabled: isPublicLinkEnabled, publicLinkLimit: publicLinkLimit, isFeedbackEnabled: isFeedbackEnabled)
@@ -922,6 +963,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deleteBetaGroup(id: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let bg = provider.betaGroups() else {
+                throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
+            }
+            try await callRustCore { try await bg.deleteBetaGroup(groupId: id) }
+            Log.print.info("[Apple] Deleted beta group \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await deleteBetaGroup(id: id)
@@ -981,6 +1034,25 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func addTesterToGroup(email: String, firstName: String?, lastName: String?, groupId: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let bg = provider.betaGroups() else {
+                throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
+            }
+            _ = try await callRustCore {
+                try await bg.addBetaTester(
+                    groupId: groupId,
+                    email: email,
+                    firstName: firstName,
+                    lastName: lastName
+                )
+            }
+            Log.print.info("[Apple] Added tester \(email) to group \(groupId) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await addTesterToGroup(email: email, firstName: firstName, lastName: lastName, groupId: groupId)
@@ -1002,6 +1074,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func removeTesterFromGroup(testerId: String, groupId: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let bg = provider.betaGroups() else {
+                throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
+            }
+            try await callRustCore { try await bg.removeBetaTester(groupId: groupId, testerId: testerId) }
+            Log.print.info("[Apple] Removed tester \(testerId) from group \(groupId) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await removeTesterFromGroup(testerId: testerId, groupId: groupId)

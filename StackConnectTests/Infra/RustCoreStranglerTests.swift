@@ -694,6 +694,113 @@ final class RustCoreStranglerTests: XCTestCase {
         }
     }
 
+    /// With the flag ON, `createBetaGroup(...)` must fail via the Rust core for
+    /// invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testCreateBetaGroupRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.createBetaGroup(
+                appId: "123",
+                name: "External Testers",
+                isInternal: false,
+                isPublicLinkEnabled: false,
+                hasAccessToAllBuilds: false
+            )
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `updateBetaGroup(...)` must fail via the Rust core for
+    /// invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testUpdateBetaGroupRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.updateBetaGroup(
+                id: "group-1",
+                name: "Renamed",
+                isPublicLinkEnabled: true,
+                publicLinkLimit: 100,
+                isFeedbackEnabled: false
+            )
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `deleteBetaGroup(id:)` must fail via the Rust core for
+    /// invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testDeleteBetaGroupRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.deleteBetaGroup(id: "group-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `addTesterToGroup(...)` must fail via the Rust core for
+    /// invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testAddTesterToGroupRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.addTesterToGroup(
+                email: "jane@example.com",
+                firstName: "Jane",
+                lastName: "Doe",
+                groupId: "group-1"
+            )
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `removeTesterFromGroup(...)` must fail via the Rust core for
+    /// invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testRemoveTesterFromGroupRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.removeTesterFromGroup(testerId: "tester-1", groupId: "group-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
     // MARK: - Beta group mapping (Rust core -> app model)
 
     /// The core `BetaGroupInfo` must map onto the app's `BetaGroupModel` for the fields
