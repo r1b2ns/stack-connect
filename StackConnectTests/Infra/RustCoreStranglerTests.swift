@@ -801,6 +801,42 @@ final class RustCoreStranglerTests: XCTestCase {
         }
     }
 
+    /// With the flag ON, `fetchTesterCount(groupId:)` must fail via the Rust core for
+    /// invalid credentials, proving the read never reaches the Swift-SDK provider.
+    func testFetchTesterCountRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchTesterCount(groupId: "group-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `resendInvite(...)` must fail via the Rust core for
+    /// invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testResendInviteRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.resendInvite(testerId: "tester-1", appId: "123")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
     // MARK: - Builds WRITE (strangler routing)
 
     /// With the flag ON, `expireBuild(...)` must fail via the Rust core for

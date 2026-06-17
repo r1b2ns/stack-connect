@@ -1012,6 +1012,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - TestFlight: Beta Testers
 
     func fetchTesterCount(groupId: String) async throws -> Int {
+        // Strangler-fig migration: route this read through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let bg = provider.betaGroups() else {
+                throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
+            }
+            let count = try await callRustCore { try await bg.fetchTesterCount(groupId: groupId) }
+            Log.print.info("[Apple] Fetched tester count \(count) for group \(groupId) (Rust core)")
+            return Int(count)
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchTesterCount(groupId: groupId)
@@ -1125,6 +1137,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func resendInvite(testerId: String, appId: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let bg = provider.betaGroups() else {
+                throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
+            }
+            try await callRustCore { try await bg.resendInvite(testerId: testerId, appId: appId) }
+            Log.print.info("[Apple] Resent invite to tester \(testerId) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await resendInvite(testerId: testerId, appId: appId)

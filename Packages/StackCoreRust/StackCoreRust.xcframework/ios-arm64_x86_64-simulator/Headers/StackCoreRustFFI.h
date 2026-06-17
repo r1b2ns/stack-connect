@@ -515,9 +515,19 @@ uint64_t uniffi_stack_core_fn_method_betagroups_fetch_beta_groups(uint64_t ptr, 
 uint64_t uniffi_stack_core_fn_method_betagroups_fetch_beta_testers(uint64_t ptr, RustBuffer group_id, uint32_t limit
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BETAGROUPS_FETCH_TESTER_COUNT
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BETAGROUPS_FETCH_TESTER_COUNT
+uint64_t uniffi_stack_core_fn_method_betagroups_fetch_tester_count(uint64_t ptr, RustBuffer group_id
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BETAGROUPS_REMOVE_BETA_TESTER
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BETAGROUPS_REMOVE_BETA_TESTER
 uint64_t uniffi_stack_core_fn_method_betagroups_remove_beta_tester(uint64_t ptr, RustBuffer group_id, RustBuffer tester_id
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BETAGROUPS_RESEND_INVITE
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BETAGROUPS_RESEND_INVITE
+uint64_t uniffi_stack_core_fn_method_betagroups_resend_invite(uint64_t ptr, RustBuffer tester_id, RustBuffer app_id
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BETAGROUPS_UPDATE_BETA_GROUP
@@ -1129,9 +1139,21 @@ uint16_t uniffi_stack_core_checksum_method_betagroups_fetch_beta_testers(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BETAGROUPS_FETCH_TESTER_COUNT
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BETAGROUPS_FETCH_TESTER_COUNT
+uint16_t uniffi_stack_core_checksum_method_betagroups_fetch_tester_count(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BETAGROUPS_REMOVE_BETA_TESTER
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BETAGROUPS_REMOVE_BETA_TESTER
 uint16_t uniffi_stack_core_checksum_method_betagroups_remove_beta_tester(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BETAGROUPS_RESEND_INVITE
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BETAGROUPS_RESEND_INVITE
+uint16_t uniffi_stack_core_checksum_method_betagroups_resend_invite(void
     
 );
 #endif

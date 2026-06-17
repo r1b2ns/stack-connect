@@ -1527,6 +1527,19 @@ public protocol BetaGroupsProtocol: AnyObject, Sendable {
     func fetchBetaTesters(groupId: String, limit: UInt32) async throws  -> [BetaTesterInfo]
     
     /**
+     * Returns the number of beta testers belonging to `group_id`. Reads the
+     * total from App Store Connect's paging metadata without materializing the
+     * full tester list.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchTesterCount(groupId: String) async throws  -> UInt32
+    
+    /**
      * Removes the beta tester `tester_id` from `group_id` (unlinks the tester
      * from the group; the tester itself is not deleted).
      *
@@ -1536,6 +1549,16 @@ public protocol BetaGroupsProtocol: AnyObject, Sendable {
      * [`StackError::Network`] on transport failure.
      */
     func removeBetaTester(groupId: String, testerId: String) async throws 
+    
+    /**
+     * Resends the TestFlight invite for the beta tester `tester_id` on `app_id`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func resendInvite(testerId: String, appId: String) async throws 
     
     /**
      * Updates the beta group `group_id`, applying only the fields that are
@@ -1740,6 +1763,34 @@ open func fetchBetaTesters(groupId: String, limit: UInt32)async throws  -> [Beta
 }
     
     /**
+     * Returns the number of beta testers belonging to `group_id`. Reads the
+     * total from App Store Connect's paging metadata without materializing the
+     * full tester list.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchTesterCount(groupId: String)async throws  -> UInt32  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_betagroups_fetch_tester_count(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(groupId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_u32,
+            completeFunc: ffi_stack_core_rust_future_complete_u32,
+            freeFunc: ffi_stack_core_rust_future_free_u32,
+            liftFunc: FfiConverterUInt32.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
      * Removes the beta tester `tester_id` from `group_id` (unlinks the tester
      * from the group; the tester itself is not deleted).
      *
@@ -1755,6 +1806,31 @@ open func removeBetaTester(groupId: String, testerId: String)async throws   {
                 uniffi_stack_core_fn_method_betagroups_remove_beta_tester(
                     self.uniffiCloneHandle(),
                     FfiConverterString.lower(groupId),FfiConverterString.lower(testerId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Resends the TestFlight invite for the beta tester `tester_id` on `app_id`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func resendInvite(testerId: String, appId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_betagroups_resend_invite(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(testerId),FfiConverterString.lower(appId)
                 )
             },
             pollFunc: ffi_stack_core_rust_future_poll_void,
@@ -5759,7 +5835,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_betagroups_fetch_beta_testers() != 28179) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_betagroups_fetch_tester_count() != 8322) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_betagroups_remove_beta_tester() != 13860) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_betagroups_resend_invite() != 3868) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_betagroups_update_beta_group() != 45727) {
