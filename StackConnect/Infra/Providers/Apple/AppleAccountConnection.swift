@@ -1310,6 +1310,21 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func fetchBetaBuildLocalizations(buildId: String) async throws -> [BetaBuildLocalizationModel] {
+        // Strangler-fig migration: route this read through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let bbl = provider.betaBuildLocalizations() else {
+                throw translate(.Unsupported(message: "Beta Build Localizations capability is not available for this provider."))
+            }
+            let models = try await callRustCore {
+                let infos = try await bbl.fetchBetaBuildLocalizations(buildId: buildId, limit: 50)
+                return infos.map { Self.mapBetaBuildLocalizationInfo($0) }
+            }
+            Log.print.info("[TestFlight] Fetched \(models.count) beta localizations for build \(buildId) (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchBetaBuildLocalizations(buildId: buildId)
@@ -1330,6 +1345,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func createBetaBuildLocalization(buildId: String, locale: String, whatsNew: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let bbl = provider.betaBuildLocalizations() else {
+                throw translate(.Unsupported(message: "Beta Build Localizations capability is not available for this provider."))
+            }
+            try await callRustCore {
+                _ = try await bbl.createBetaBuildLocalization(buildId: buildId, locale: locale, whatsNew: whatsNew)
+            }
+            Log.print.info("[TestFlight] Created beta localization (\(locale)) for build \(buildId) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await createBetaBuildLocalization(buildId: buildId, locale: locale, whatsNew: whatsNew)
@@ -1348,6 +1377,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateBetaBuildLocalization(id: String, whatsNew: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let bbl = provider.betaBuildLocalizations() else {
+                throw translate(.Unsupported(message: "Beta Build Localizations capability is not available for this provider."))
+            }
+            try await callRustCore {
+                _ = try await bbl.updateBetaBuildLocalization(id: id, whatsNew: whatsNew)
+            }
+            Log.print.info("[TestFlight] Updated beta localization \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await updateBetaBuildLocalization(id: id, whatsNew: whatsNew)
@@ -3289,6 +3332,16 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             isFeedbackEnabled: info.feedbackEnabled ?? false,
             testerCount: nil,                   // degraded: core does not provide
             buildCount: nil                     // degraded: core does not provide
+        )
+    }
+
+    /// Maps a Rust-core `BetaBuildLocalizationInfo` to the app's `BetaBuildLocalizationModel`.
+    /// Full fidelity: the core provides every field this model needs, so they map 1:1.
+    static func mapBetaBuildLocalizationInfo(_ info: StackCoreRust.BetaBuildLocalizationInfo) -> BetaBuildLocalizationModel {
+        BetaBuildLocalizationModel(
+            id: info.id,
+            locale: info.locale,
+            whatsNew: info.whatsNew
         )
     }
 

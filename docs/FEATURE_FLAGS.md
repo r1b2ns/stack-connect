@@ -32,6 +32,9 @@ new flag ships **OFF** by default (the safe, fully-reversible value) unless note
   - `deleteBetaGroup(id:)` — when ON, calls the Rust core `BetaGroups.deleteBetaGroup(groupId:)`.
   - `addTesterToGroup(email:firstName:lastName:groupId:)` — when ON, calls the Rust core `BetaGroups.addBetaTester(groupId:email:firstName:lastName:)`; the returned `BetaTesterInfo` is discarded (method is `Void`).
   - `removeTesterFromGroup(testerId:groupId:)` — when ON, calls the Rust core `BetaGroups.removeBetaTester(groupId:testerId:)`.
+  - `fetchBetaBuildLocalizations(buildId:)` — when ON, calls the Rust core `BetaBuildLocalizations.fetchBetaBuildLocalizations(buildId:limit:50)` and maps `StackCoreRust.BetaBuildLocalizationInfo` → `BetaBuildLocalizationModel` via `mapBetaBuildLocalizationInfo` (full fidelity, all fields map 1:1). Read only.
+  - `createBetaBuildLocalization(buildId:locale:whatsNew:)` — when ON, calls the Rust core `BetaBuildLocalizations.createBetaBuildLocalization(buildId:locale:whatsNew:)`; the returned `BetaBuildLocalizationInfo` is discarded (method is `Void`).
+  - `updateBetaBuildLocalization(id:whatsNew:)` — when ON, calls the Rust core `BetaBuildLocalizations.updateBetaBuildLocalization(id:whatsNew:)`; the returned `BetaBuildLocalizationInfo` is discarded (method is `Void`).
 - **Supporting types:**
   - `StackConnect/Infra/Providers/Apple/AppleCredentialStore.swift` — bridges `AppleCredentials` to the Rust core's `CredentialStore` (`issuerId` / `keyId` / `privateKeyP8`).
   - Package: `Packages/StackCoreRust` (vendored `StackCoreRust.xcframework` + generated UniFFI wrapper).

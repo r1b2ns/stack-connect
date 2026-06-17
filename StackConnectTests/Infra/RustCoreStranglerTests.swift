@@ -801,6 +801,81 @@ final class RustCoreStranglerTests: XCTestCase {
         }
     }
 
+    // MARK: - Beta build localizations (strangler routing)
+
+    /// With the flag ON, `createBetaBuildLocalization(...)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testCreateBetaBuildLocalizationRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.createBetaBuildLocalization(
+                buildId: "build-1",
+                locale: "en-US",
+                whatsNew: "Bug fixes and improvements."
+            )
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `updateBetaBuildLocalization(...)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testUpdateBetaBuildLocalizationRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.updateBetaBuildLocalization(
+                id: "loc-1",
+                whatsNew: "Updated release notes."
+            )
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    // MARK: - Beta build localization mapping (Rust core -> app model)
+
+    /// The core `BetaBuildLocalizationInfo` provides every field the app's
+    /// `BetaBuildLocalizationModel` needs, so the mapping is full fidelity (1:1),
+    /// including passing an optional `whatsNew` straight through.
+    func testMapBetaBuildLocalizationInfoMapsAllFields() {
+        let core = StackCoreRust.BetaBuildLocalizationInfo(
+            id: "loc-1",
+            locale: "en-US",
+            whatsNew: "Bug fixes and improvements."
+        )
+
+        let model = AppleAccountConnection.mapBetaBuildLocalizationInfo(core)
+
+        XCTAssertEqual(model.id, "loc-1")
+        XCTAssertEqual(model.locale, "en-US")
+        XCTAssertEqual(model.whatsNew, "Bug fixes and improvements.")
+
+        // A nil `whatsNew` must pass straight through as nil.
+        let coreNoNotes = StackCoreRust.BetaBuildLocalizationInfo(
+            id: "loc-2",
+            locale: "pt-BR",
+            whatsNew: nil
+        )
+        let modelNoNotes = AppleAccountConnection.mapBetaBuildLocalizationInfo(coreNoNotes)
+        XCTAssertEqual(modelNoNotes.id, "loc-2")
+        XCTAssertEqual(modelNoNotes.locale, "pt-BR")
+        XCTAssertNil(modelNoNotes.whatsNew)
+    }
+
     // MARK: - Beta group mapping (Rust core -> app model)
 
     /// The core `BetaGroupInfo` must map onto the app's `BetaGroupModel` for the fields
