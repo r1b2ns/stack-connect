@@ -1852,6 +1852,21 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - Beta App Localizations (TestFlight description / feedback email)
 
     func fetchBetaAppLocalizations(appId: String) async throws -> [BetaAppLocalizationModel] {
+        // Strangler-fig migration: route this read through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let bal = provider.betaAppLocalizations() else {
+                throw translate(.Unsupported(message: "Beta App Localizations capability is not available for this provider."))
+            }
+            let models = try await callRustCore {
+                let infos = try await bal.fetchBetaAppLocalizations(appId: appId, limit: 50)
+                return infos.map { Self.mapBetaAppLocalizationInfo($0) }
+            }
+            Log.print.info("[Apple] Fetched \(models.count) beta app localizations for app \(appId) (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchBetaAppLocalizations(appId: appId)
@@ -1876,6 +1891,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateBetaAppLocalization(id: String, feedbackEmail: String?, description: String?) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let bal = provider.betaAppLocalizations() else {
+                throw translate(.Unsupported(message: "Beta App Localizations capability is not available for this provider."))
+            }
+            try await callRustCore {
+                _ = try await bal.updateBetaAppLocalization(id: id, feedbackEmail: feedbackEmail, description: description)
+            }
+            Log.print.info("[Apple] Updated beta app localization \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await updateBetaAppLocalization(id: id, feedbackEmail: feedbackEmail, description: description)
@@ -1903,6 +1932,21 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         feedbackEmail: String?,
         description: String?
     ) async throws -> BetaAppLocalizationModel {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let bal = provider.betaAppLocalizations() else {
+                throw translate(.Unsupported(message: "Beta App Localizations capability is not available for this provider."))
+            }
+            let model = try await callRustCore {
+                let info = try await bal.createBetaAppLocalization(appId: appId, locale: locale, feedbackEmail: feedbackEmail, description: description)
+                return Self.mapBetaAppLocalizationInfo(info)
+            }
+            Log.print.info("[Apple] Created beta app localization \(model.id) (Rust core)")
+            return model
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await createBetaAppLocalization(
@@ -3342,6 +3386,17 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             id: info.id,
             locale: info.locale,
             whatsNew: info.whatsNew
+        )
+    }
+
+    /// Maps a Rust-core `BetaAppLocalizationInfo` to the app's `BetaAppLocalizationModel`.
+    /// Full fidelity: the core provides every field this model needs, so they map 1:1.
+    static func mapBetaAppLocalizationInfo(_ info: StackCoreRust.BetaAppLocalizationInfo) -> BetaAppLocalizationModel {
+        BetaAppLocalizationModel(
+            id: info.id,
+            locale: info.locale,
+            feedbackEmail: info.feedbackEmail,
+            description: info.description
         )
     }
 

@@ -795,6 +795,241 @@ public func FfiConverterTypeAppStoreVersions_lower(_ value: AppStoreVersions) ->
 
 
 /**
+ * UniFFI-exported Beta App Localizations capability handle. A thin,
+ * binding-friendly wrapper around a boxed [`BetaAppLocalizationsImpl`]; async
+ * work runs on the tokio runtime. Reached via
+ * [`crate::service::provider::Provider::beta_app_localizations`].
+ */
+public protocol BetaAppLocalizationsProtocol: AnyObject, Sendable {
+    
+    /**
+     * Creates a beta app localization for `app_id` in `locale`, returning the
+     * created localization. `feedback_email` is the per-locale address testers'
+     * feedback is sent to, and `description` is the per-locale TestFlight test
+     * description shown to testers; both are optional.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func createBetaAppLocalization(appId: String, locale: String, feedbackEmail: String?, description: String?) async throws  -> BetaAppLocalizationInfo
+    
+    /**
+     * Lists the beta app localizations for `app_id`, up to `limit`.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+     * JSON, or [`StackError::Network`] on transport failure.
+     */
+    func fetchBetaAppLocalizations(appId: String, limit: UInt32) async throws  -> [BetaAppLocalizationInfo]
+    
+    /**
+     * Updates the beta app localization `id`, replacing only the provided
+     * `feedback_email` and/or `description` attributes, and returns the updated
+     * localization.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func updateBetaAppLocalization(id: String, feedbackEmail: String?, description: String?) async throws  -> BetaAppLocalizationInfo
+    
+}
+/**
+ * UniFFI-exported Beta App Localizations capability handle. A thin,
+ * binding-friendly wrapper around a boxed [`BetaAppLocalizationsImpl`]; async
+ * work runs on the tokio runtime. Reached via
+ * [`crate::service::provider::Provider::beta_app_localizations`].
+ */
+open class BetaAppLocalizations: BetaAppLocalizationsProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_betaapplocalizations(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_betaapplocalizations(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Creates a beta app localization for `app_id` in `locale`, returning the
+     * created localization. `feedback_email` is the per-locale address testers'
+     * feedback is sent to, and `description` is the per-locale TestFlight test
+     * description shown to testers; both are optional.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func createBetaAppLocalization(appId: String, locale: String, feedbackEmail: String?, description: String?)async throws  -> BetaAppLocalizationInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_betaapplocalizations_create_beta_app_localization(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId),FfiConverterString.lower(locale),FfiConverterOptionString.lower(feedbackEmail),FfiConverterOptionString.lower(description)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeBetaAppLocalizationInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists the beta app localizations for `app_id`, up to `limit`.
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+     * JSON, or [`StackError::Network`] on transport failure.
+     */
+open func fetchBetaAppLocalizations(appId: String, limit: UInt32)async throws  -> [BetaAppLocalizationInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_betaapplocalizations_fetch_beta_app_localizations(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeBetaAppLocalizationInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Updates the beta app localization `id`, replacing only the provided
+     * `feedback_email` and/or `description` attributes, and returns the updated
+     * localization.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func updateBetaAppLocalization(id: String, feedbackEmail: String?, description: String?)async throws  -> BetaAppLocalizationInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_betaapplocalizations_update_beta_app_localization(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id),FfiConverterOptionString.lower(feedbackEmail),FfiConverterOptionString.lower(description)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeBetaAppLocalizationInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBetaAppLocalizations: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = BetaAppLocalizations
+
+    public static func lift(_ handle: UInt64) throws -> BetaAppLocalizations {
+        return BetaAppLocalizations(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: BetaAppLocalizations) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BetaAppLocalizations {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: BetaAppLocalizations, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBetaAppLocalizations_lift(_ handle: UInt64) throws -> BetaAppLocalizations {
+    return try FfiConverterTypeBetaAppLocalizations.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBetaAppLocalizations_lower(_ value: BetaAppLocalizations) -> UInt64 {
+    return FfiConverterTypeBetaAppLocalizations.lower(value)
+}
+
+
+
+
+
+
+/**
  * UniFFI-exported Beta Build Localizations capability handle. A thin,
  * binding-friendly wrapper around a boxed [`BetaBuildLocalizationsImpl`]; async
  * work runs on the tokio runtime. Reached via
@@ -2222,6 +2457,14 @@ public protocol ProviderProtocol: AnyObject, Sendable {
     func appStoreVersions()  -> AppStoreVersions?
     
     /**
+     * The Beta App Localizations capability handle, or `None` when this provider
+     * does not expose [`Capability::BetaAppLocalizations`]. This is the discovery
+     * mechanism: the host calls `provider.beta_app_localizations()` and gets
+     * `None` when beta app localizations are unsupported.
+     */
+    func betaAppLocalizations()  -> BetaAppLocalizations?
+    
+    /**
      * The Beta Build Localizations capability handle, or `None` when this
      * provider does not expose [`Capability::BetaBuildLocalizations`]. This is
      * the discovery mechanism: the host calls
@@ -2349,6 +2592,20 @@ open class Provider: ProviderProtocol, @unchecked Sendable {
 open func appStoreVersions() -> AppStoreVersions?  {
     return try!  FfiConverterOptionTypeAppStoreVersions.lift(try! rustCall() {
     uniffi_stack_core_fn_method_provider_app_store_versions(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The Beta App Localizations capability handle, or `None` when this provider
+     * does not expose [`Capability::BetaAppLocalizations`]. This is the discovery
+     * mechanism: the host calls `provider.beta_app_localizations()` and gets
+     * `None` when beta app localizations are unsupported.
+     */
+open func betaAppLocalizations() -> BetaAppLocalizations?  {
+    return try!  FfiConverterOptionTypeBetaAppLocalizations.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_beta_app_localizations(
             self.uniffiCloneHandle(),$0
     )
 })
@@ -3159,6 +3416,73 @@ public func FfiConverterTypeAppStoreVersionInfo_lower(_ value: AppStoreVersionIn
 
 
 /**
+ * A TestFlight app-level localization, keyed by `locale`. `feedback_email` is
+ * the per-locale address testers' feedback is sent to, and `description` is the
+ * per-locale TestFlight test description shown to testers.
+ */
+public struct BetaAppLocalizationInfo: Equatable, Hashable {
+    public var id: String
+    public var locale: String
+    public var feedbackEmail: String?
+    public var description: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, locale: String, feedbackEmail: String?, description: String?) {
+        self.id = id
+        self.locale = locale
+        self.feedbackEmail = feedbackEmail
+        self.description = description
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BetaAppLocalizationInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBetaAppLocalizationInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BetaAppLocalizationInfo {
+        return
+            try BetaAppLocalizationInfo(
+                id: FfiConverterString.read(from: &buf), 
+                locale: FfiConverterString.read(from: &buf), 
+                feedbackEmail: FfiConverterOptionString.read(from: &buf), 
+                description: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BetaAppLocalizationInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.locale, into: &buf)
+        FfiConverterOptionString.write(value.feedbackEmail, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBetaAppLocalizationInfo_lift(_ buf: RustBuffer) throws -> BetaAppLocalizationInfo {
+    return try FfiConverterTypeBetaAppLocalizationInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBetaAppLocalizationInfo_lower(_ value: BetaAppLocalizationInfo) -> RustBuffer {
+    return FfiConverterTypeBetaAppLocalizationInfo.lower(value)
+}
+
+
+/**
  * A TestFlight "What to Test" localization for a single build, keyed by
  * `locale`. `whats_new` carries the per-locale testing notes shown to testers.
  */
@@ -3840,6 +4164,7 @@ public enum Capability: Equatable, Hashable {
     case builds
     case betaGroups
     case betaBuildLocalizations
+    case betaAppLocalizations
 
 
 
@@ -3873,6 +4198,8 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case 6: return .betaBuildLocalizations
         
+        case 7: return .betaAppLocalizations
+        
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
@@ -3903,6 +4230,10 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case .betaBuildLocalizations:
             writeInt(&buf, Int32(6))
+        
+        
+        case .betaAppLocalizations:
+            writeInt(&buf, Int32(7))
         
         }
     }
@@ -4227,6 +4558,30 @@ fileprivate struct FfiConverterOptionTypeAppStoreVersions: FfiConverterRustBuffe
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeBetaAppLocalizations: FfiConverterRustBuffer {
+    typealias SwiftType = BetaAppLocalizations?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeBetaAppLocalizations.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeBetaAppLocalizations.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeBetaBuildLocalizations: FfiConverterRustBuffer {
     typealias SwiftType = BetaBuildLocalizations?
 
@@ -4414,6 +4769,31 @@ fileprivate struct FfiConverterSequenceTypeAppStoreVersionInfo: FfiConverterRust
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeAppStoreVersionInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeBetaAppLocalizationInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [BetaAppLocalizationInfo]
+
+    public static func write(_ value: [BetaAppLocalizationInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeBetaAppLocalizationInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [BetaAppLocalizationInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [BetaAppLocalizationInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeBetaAppLocalizationInfo.read(from: &buf))
         }
         return seq
     }
@@ -4808,6 +5188,15 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_appstoreversions_update_version() != 58000) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_betaapplocalizations_create_beta_app_localization() != 47633) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_betaapplocalizations_fetch_beta_app_localizations() != 11496) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_betaapplocalizations_update_beta_app_localization() != 15854) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_betabuildlocalizations_create_beta_build_localization() != 11203) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -4857,6 +5246,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_app_store_versions() != 28764) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_beta_app_localizations() != 34207) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_beta_build_localizations() != 53224) {
