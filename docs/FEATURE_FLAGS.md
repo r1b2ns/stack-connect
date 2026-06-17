@@ -38,6 +38,8 @@ new flag ships **OFF** by default (the safe, fully-reversible value) unless note
   - `fetchBetaAppLocalizations(appId:)` — when ON, calls the Rust core `BetaAppLocalizations.fetchBetaAppLocalizations(appId:limit:50)` and maps `StackCoreRust.BetaAppLocalizationInfo` → `BetaAppLocalizationModel` via `mapBetaAppLocalizationInfo` (full fidelity, all fields map 1:1). Read only.
   - `createBetaAppLocalization(appId:locale:feedbackEmail:description:)` — when ON, calls the Rust core `BetaAppLocalizations.createBetaAppLocalization(appId:locale:feedbackEmail:description:)` and maps the returned `BetaAppLocalizationInfo` → `BetaAppLocalizationModel` (the method returns the created model).
   - `updateBetaAppLocalization(id:feedbackEmail:description:)` — when ON, calls the Rust core `BetaAppLocalizations.updateBetaAppLocalization(id:feedbackEmail:description:)`; the returned `BetaAppLocalizationInfo` is discarded (method is `Void`).
+  - `AppleAccountConnection.fetchBetaAppReviewDetail(appId:)` — routes the TestFlight beta app review detail (Test Information) read through the Rust core when ON.
+  - `AppleAccountConnection.updateBetaAppReviewDetail(model:)` — routes the beta app review detail update through the Rust core when ON.
 - **Supporting types:**
   - `StackConnect/Infra/Providers/Apple/AppleCredentialStore.swift` — bridges `AppleCredentials` to the Rust core's `CredentialStore` (`issuerId` / `keyId` / `privateKeyP8`).
   - Package: `Packages/StackCoreRust` (vendored `StackCoreRust.xcframework` + generated UniFFI wrapper).

@@ -1030,6 +1030,210 @@ public func FfiConverterTypeBetaAppLocalizations_lower(_ value: BetaAppLocalizat
 
 
 /**
+ * UniFFI-exported Beta App Review Detail capability handle. A thin,
+ * binding-friendly wrapper around a boxed [`BetaAppReviewDetailImpl`]; async
+ * work runs on the tokio runtime. Reached via
+ * [`crate::service::provider::Provider::beta_app_review_detail`].
+ */
+public protocol BetaAppReviewDetailProtocol: AnyObject, Sendable {
+    
+    /**
+     * Fetches the single beta app review detail for `app_id` — the TestFlight
+     * "Test Information" containing the beta review contact and optional demo
+     * account credentials.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchBetaAppReviewDetail(appId: String) async throws  -> BetaAppReviewDetailInfo
+    
+    /**
+     * Updates the beta app review detail `detail_id`, replacing only the
+     * provided attributes, and returns the updated detail. Every attribute is
+     * optional: `contact_*` set the beta review contact, `demo_account_*` set
+     * the demo account credentials, `is_demo_account_required` toggles whether a
+     * demo account is needed, and `notes` are the reviewer notes.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func updateBetaAppReviewDetail(detailId: String, contactFirstName: String?, contactLastName: String?, contactEmail: String?, contactPhone: String?, demoAccountName: String?, demoAccountPassword: String?, isDemoAccountRequired: Bool?, notes: String?) async throws  -> BetaAppReviewDetailInfo
+    
+}
+/**
+ * UniFFI-exported Beta App Review Detail capability handle. A thin,
+ * binding-friendly wrapper around a boxed [`BetaAppReviewDetailImpl`]; async
+ * work runs on the tokio runtime. Reached via
+ * [`crate::service::provider::Provider::beta_app_review_detail`].
+ */
+open class BetaAppReviewDetail: BetaAppReviewDetailProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_betaappreviewdetail(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_betaappreviewdetail(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Fetches the single beta app review detail for `app_id` — the TestFlight
+     * "Test Information" containing the beta review contact and optional demo
+     * account credentials.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchBetaAppReviewDetail(appId: String)async throws  -> BetaAppReviewDetailInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_betaappreviewdetail_fetch_beta_app_review_detail(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeBetaAppReviewDetailInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Updates the beta app review detail `detail_id`, replacing only the
+     * provided attributes, and returns the updated detail. Every attribute is
+     * optional: `contact_*` set the beta review contact, `demo_account_*` set
+     * the demo account credentials, `is_demo_account_required` toggles whether a
+     * demo account is needed, and `notes` are the reviewer notes.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func updateBetaAppReviewDetail(detailId: String, contactFirstName: String?, contactLastName: String?, contactEmail: String?, contactPhone: String?, demoAccountName: String?, demoAccountPassword: String?, isDemoAccountRequired: Bool?, notes: String?)async throws  -> BetaAppReviewDetailInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_betaappreviewdetail_update_beta_app_review_detail(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(detailId),FfiConverterOptionString.lower(contactFirstName),FfiConverterOptionString.lower(contactLastName),FfiConverterOptionString.lower(contactEmail),FfiConverterOptionString.lower(contactPhone),FfiConverterOptionString.lower(demoAccountName),FfiConverterOptionString.lower(demoAccountPassword),FfiConverterOptionBool.lower(isDemoAccountRequired),FfiConverterOptionString.lower(notes)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeBetaAppReviewDetailInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBetaAppReviewDetail: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = BetaAppReviewDetail
+
+    public static func lift(_ handle: UInt64) throws -> BetaAppReviewDetail {
+        return BetaAppReviewDetail(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: BetaAppReviewDetail) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BetaAppReviewDetail {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: BetaAppReviewDetail, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBetaAppReviewDetail_lift(_ handle: UInt64) throws -> BetaAppReviewDetail {
+    return try FfiConverterTypeBetaAppReviewDetail.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBetaAppReviewDetail_lower(_ value: BetaAppReviewDetail) -> UInt64 {
+    return FfiConverterTypeBetaAppReviewDetail.lower(value)
+}
+
+
+
+
+
+
+/**
  * UniFFI-exported Beta Build Localizations capability handle. A thin,
  * binding-friendly wrapper around a boxed [`BetaBuildLocalizationsImpl`]; async
  * work runs on the tokio runtime. Reached via
@@ -2465,6 +2669,14 @@ public protocol ProviderProtocol: AnyObject, Sendable {
     func betaAppLocalizations()  -> BetaAppLocalizations?
     
     /**
+     * The Beta App Review Detail capability handle, or `None` when this provider
+     * does not expose [`Capability::BetaAppReviewDetail`]. This is the discovery
+     * mechanism: the host calls `provider.beta_app_review_detail()` and gets
+     * `None` when the beta app review detail is unsupported.
+     */
+    func betaAppReviewDetail()  -> BetaAppReviewDetail?
+    
+    /**
      * The Beta Build Localizations capability handle, or `None` when this
      * provider does not expose [`Capability::BetaBuildLocalizations`]. This is
      * the discovery mechanism: the host calls
@@ -2606,6 +2818,20 @@ open func appStoreVersions() -> AppStoreVersions?  {
 open func betaAppLocalizations() -> BetaAppLocalizations?  {
     return try!  FfiConverterOptionTypeBetaAppLocalizations.lift(try! rustCall() {
     uniffi_stack_core_fn_method_provider_beta_app_localizations(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The Beta App Review Detail capability handle, or `None` when this provider
+     * does not expose [`Capability::BetaAppReviewDetail`]. This is the discovery
+     * mechanism: the host calls `provider.beta_app_review_detail()` and gets
+     * `None` when the beta app review detail is unsupported.
+     */
+open func betaAppReviewDetail() -> BetaAppReviewDetail?  {
+    return try!  FfiConverterOptionTypeBetaAppReviewDetail.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_beta_app_review_detail(
             self.uniffiCloneHandle(),$0
     )
 })
@@ -3483,6 +3709,94 @@ public func FfiConverterTypeBetaAppLocalizationInfo_lower(_ value: BetaAppLocali
 
 
 /**
+ * The TestFlight "Test Information" beta review detail for an app: the beta
+ * review contact (name, email, phone), optional demo account credentials, and
+ * reviewer notes. App Store Connect exposes exactly one per app (the singular
+ * `betaAppReviewDetail` relationship). All attributes are optional.
+ */
+public struct BetaAppReviewDetailInfo: Equatable, Hashable {
+    public var id: String
+    public var contactFirstName: String?
+    public var contactLastName: String?
+    public var contactEmail: String?
+    public var contactPhone: String?
+    public var demoAccountName: String?
+    public var demoAccountPassword: String?
+    public var isDemoAccountRequired: Bool?
+    public var notes: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, contactFirstName: String?, contactLastName: String?, contactEmail: String?, contactPhone: String?, demoAccountName: String?, demoAccountPassword: String?, isDemoAccountRequired: Bool?, notes: String?) {
+        self.id = id
+        self.contactFirstName = contactFirstName
+        self.contactLastName = contactLastName
+        self.contactEmail = contactEmail
+        self.contactPhone = contactPhone
+        self.demoAccountName = demoAccountName
+        self.demoAccountPassword = demoAccountPassword
+        self.isDemoAccountRequired = isDemoAccountRequired
+        self.notes = notes
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BetaAppReviewDetailInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBetaAppReviewDetailInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BetaAppReviewDetailInfo {
+        return
+            try BetaAppReviewDetailInfo(
+                id: FfiConverterString.read(from: &buf), 
+                contactFirstName: FfiConverterOptionString.read(from: &buf), 
+                contactLastName: FfiConverterOptionString.read(from: &buf), 
+                contactEmail: FfiConverterOptionString.read(from: &buf), 
+                contactPhone: FfiConverterOptionString.read(from: &buf), 
+                demoAccountName: FfiConverterOptionString.read(from: &buf), 
+                demoAccountPassword: FfiConverterOptionString.read(from: &buf), 
+                isDemoAccountRequired: FfiConverterOptionBool.read(from: &buf), 
+                notes: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BetaAppReviewDetailInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.contactFirstName, into: &buf)
+        FfiConverterOptionString.write(value.contactLastName, into: &buf)
+        FfiConverterOptionString.write(value.contactEmail, into: &buf)
+        FfiConverterOptionString.write(value.contactPhone, into: &buf)
+        FfiConverterOptionString.write(value.demoAccountName, into: &buf)
+        FfiConverterOptionString.write(value.demoAccountPassword, into: &buf)
+        FfiConverterOptionBool.write(value.isDemoAccountRequired, into: &buf)
+        FfiConverterOptionString.write(value.notes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBetaAppReviewDetailInfo_lift(_ buf: RustBuffer) throws -> BetaAppReviewDetailInfo {
+    return try FfiConverterTypeBetaAppReviewDetailInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBetaAppReviewDetailInfo_lower(_ value: BetaAppReviewDetailInfo) -> RustBuffer {
+    return FfiConverterTypeBetaAppReviewDetailInfo.lower(value)
+}
+
+
+/**
  * A TestFlight "What to Test" localization for a single build, keyed by
  * `locale`. `whats_new` carries the per-locale testing notes shown to testers.
  */
@@ -4165,6 +4479,7 @@ public enum Capability: Equatable, Hashable {
     case betaGroups
     case betaBuildLocalizations
     case betaAppLocalizations
+    case betaAppReviewDetail
 
 
 
@@ -4200,6 +4515,8 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case 7: return .betaAppLocalizations
         
+        case 8: return .betaAppReviewDetail
+        
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
@@ -4234,6 +4551,10 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case .betaAppLocalizations:
             writeInt(&buf, Int32(7))
+        
+        
+        case .betaAppReviewDetail:
+            writeInt(&buf, Int32(8))
         
         }
     }
@@ -4574,6 +4895,30 @@ fileprivate struct FfiConverterOptionTypeBetaAppLocalizations: FfiConverterRustB
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeBetaAppLocalizations.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeBetaAppReviewDetail: FfiConverterRustBuffer {
+    typealias SwiftType = BetaAppReviewDetail?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeBetaAppReviewDetail.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeBetaAppReviewDetail.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -5197,6 +5542,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_betaapplocalizations_update_beta_app_localization() != 15854) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_betaappreviewdetail_fetch_beta_app_review_detail() != 55311) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_betaappreviewdetail_update_beta_app_review_detail() != 8959) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_betabuildlocalizations_create_beta_build_localization() != 11203) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -5249,6 +5600,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_beta_app_localizations() != 34207) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_beta_app_review_detail() != 65261) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_beta_build_localizations() != 53224) {
