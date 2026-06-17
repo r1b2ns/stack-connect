@@ -639,6 +639,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func expireBuild(buildId: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let builds = provider.builds() else {
+                throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
+            }
+            try await callRustCore { try await builds.expireBuild(buildId: buildId) }
+            Log.print.info("[Apple] Expired build \(buildId) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await expireBuild(buildId: buildId)
@@ -685,6 +697,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func attachBuild(versionId: String, buildId: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let builds = provider.builds() else {
+                throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
+            }
+            try await callRustCore { try await builds.attachBuild(versionId: versionId, buildId: buildId) }
+            Log.print.info("[Apple] Attached build \(buildId) to version \(versionId) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await attachBuild(versionId: versionId, buildId: buildId)
@@ -1290,6 +1314,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - TestFlight: Beta Review Submission
 
     func submitBuildForBetaReview(buildId: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let builds = provider.builds() else {
+                throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
+            }
+            try await callRustCore { try await builds.submitBuildForBetaReview(buildId: buildId) }
+            Log.print.info("[TestFlight] Submitted build \(buildId) for beta review (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await submitBuildForBetaReview(buildId: buildId)
@@ -1411,6 +1447,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - TestFlight: Builds for Group (continued)
 
     func removeBuildFromGroup(buildId: String, groupId: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let builds = provider.builds() else {
+                throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
+            }
+            try await callRustCore { try await builds.removeBuildFromGroup(buildId: buildId, groupId: groupId) }
+            Log.print.info("[TestFlight] Removed build \(buildId) from group \(groupId) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await removeBuildFromGroup(buildId: buildId, groupId: groupId)
@@ -1426,6 +1474,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func addBuildToGroups(buildId: String, groupIds: [String]) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let builds = provider.builds() else {
+                throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
+            }
+            try await callRustCore { try await builds.addBuildToGroups(buildId: buildId, groupIds: groupIds) }
+            Log.print.info("[TestFlight] Added build \(buildId) to \(groupIds.count) groups (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await addBuildToGroups(buildId: buildId, groupIds: groupIds)

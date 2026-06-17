@@ -2202,6 +2202,40 @@ public func FfiConverterTypeBlobStore_lower(_ value: BlobStore) -> UInt64 {
 public protocol BuildsProtocol: AnyObject, Sendable {
     
     /**
+     * Adds the build `build_id` to each beta group in `group_ids` (appends to the
+     * build's `betaGroups` to-many relationship). An empty `group_ids` issues the
+     * request with an empty linkage array.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func addBuildToGroups(buildId: String, groupIds: [String]) async throws 
+    
+    /**
+     * Attaches the build `build_id` to the App Store version `version_id` (sets
+     * the version's `build` to-one relationship).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func attachBuild(versionId: String, buildId: String) async throws 
+    
+    /**
+     * Marks the build `build_id` as expired (sets its `expired` attribute to
+     * `true`).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func expireBuild(buildId: String) async throws 
+    
+    /**
      * Lists the builds for `app_id`, newest first (by upload date), up to
      * `limit`.
      *
@@ -2210,6 +2244,28 @@ public protocol BuildsProtocol: AnyObject, Sendable {
      * JSON, or [`StackError::Network`] on transport failure.
      */
     func fetchBuilds(appId: String, limit: UInt32) async throws  -> [BuildInfo]
+    
+    /**
+     * Removes the build `build_id` from the beta group `group_id` (deletes the
+     * build from the group's `builds` to-many relationship).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func removeBuildFromGroup(buildId: String, groupId: String) async throws 
+    
+    /**
+     * Submits the build `build_id` for beta (TestFlight) review by creating a
+     * beta app review submission.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func submitBuildForBetaReview(buildId: String) async throws 
     
 }
 /**
@@ -2271,6 +2327,85 @@ open class Builds: BuildsProtocol, @unchecked Sendable {
 
     
     /**
+     * Adds the build `build_id` to each beta group in `group_ids` (appends to the
+     * build's `betaGroups` to-many relationship). An empty `group_ids` issues the
+     * request with an empty linkage array.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func addBuildToGroups(buildId: String, groupIds: [String])async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_builds_add_build_to_groups(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(buildId),FfiConverterSequenceString.lower(groupIds)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Attaches the build `build_id` to the App Store version `version_id` (sets
+     * the version's `build` to-one relationship).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func attachBuild(versionId: String, buildId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_builds_attach_build(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(versionId),FfiConverterString.lower(buildId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Marks the build `build_id` as expired (sets its `expired` attribute to
+     * `true`).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func expireBuild(buildId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_builds_expire_build(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(buildId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
      * Lists the builds for `app_id`, newest first (by upload date), up to
      * `limit`.
      *
@@ -2291,6 +2426,58 @@ open func fetchBuilds(appId: String, limit: UInt32)async throws  -> [BuildInfo] 
             completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeBuildInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Removes the build `build_id` from the beta group `group_id` (deletes the
+     * build from the group's `builds` to-many relationship).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func removeBuildFromGroup(buildId: String, groupId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_builds_remove_build_from_group(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(buildId),FfiConverterString.lower(groupId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Submits the build `build_id` for beta (TestFlight) review by creating a
+     * beta app review submission.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func submitBuildForBetaReview(buildId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_builds_submit_build_for_beta_review(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(buildId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
             errorHandler: FfiConverterTypeStackError_lift
         )
 }
@@ -5578,7 +5765,22 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_betagroups_update_beta_group() != 45727) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_builds_add_build_to_groups() != 35469) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_builds_attach_build() != 36151) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_builds_expire_build() != 574) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_builds_fetch_builds() != 166) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_builds_remove_build_from_group() != 5368) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_builds_submit_build_for_beta_review() != 34430) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_reviews_delete_review_response() != 19863) {

@@ -801,6 +801,98 @@ final class RustCoreStranglerTests: XCTestCase {
         }
     }
 
+    // MARK: - Builds WRITE (strangler routing)
+
+    /// With the flag ON, `expireBuild(...)` must fail via the Rust core for
+    /// invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testExpireBuildRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.expireBuild(buildId: "build-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `attachBuild(...)` must fail via the Rust core for
+    /// invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testAttachBuildRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.attachBuild(versionId: "version-1", buildId: "build-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `submitBuildForBetaReview(...)` must fail via the Rust core for
+    /// invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testSubmitBuildForBetaReviewRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.submitBuildForBetaReview(buildId: "build-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `removeBuildFromGroup(...)` must fail via the Rust core for
+    /// invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testRemoveBuildFromGroupRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.removeBuildFromGroup(buildId: "build-1", groupId: "group-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `addBuildToGroups(...)` must fail via the Rust core for
+    /// invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testAddBuildToGroupsRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.addBuildToGroups(buildId: "build-1", groupIds: ["group-1", "group-2"])
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
     // MARK: - Beta build localizations (strangler routing)
 
     /// With the flag ON, `createBetaBuildLocalization(...)` must fail via the Rust core

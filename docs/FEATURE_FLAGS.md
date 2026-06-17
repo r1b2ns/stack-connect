@@ -40,6 +40,11 @@ new flag ships **OFF** by default (the safe, fully-reversible value) unless note
   - `updateBetaAppLocalization(id:feedbackEmail:description:)` — when ON, calls the Rust core `BetaAppLocalizations.updateBetaAppLocalization(id:feedbackEmail:description:)`; the returned `BetaAppLocalizationInfo` is discarded (method is `Void`).
   - `AppleAccountConnection.fetchBetaAppReviewDetail(appId:)` — routes the TestFlight beta app review detail (Test Information) read through the Rust core when ON.
   - `AppleAccountConnection.updateBetaAppReviewDetail(model:)` — routes the beta app review detail update through the Rust core when ON.
+  - `expireBuild(buildId:)` — when ON, calls the Rust core `Builds.expireBuild(buildId:)` (method is `Void`).
+  - `attachBuild(versionId:buildId:)` — when ON, calls the Rust core `Builds.attachBuild(versionId:buildId:)` (method is `Void`).
+  - `submitBuildForBetaReview(buildId:)` — when ON, calls the Rust core `Builds.submitBuildForBetaReview(buildId:)` (method is `Void`).
+  - `removeBuildFromGroup(buildId:groupId:)` — when ON, calls the Rust core `Builds.removeBuildFromGroup(buildId:groupId:)` (method is `Void`).
+  - `addBuildToGroups(buildId:groupIds:)` — when ON, calls the Rust core `Builds.addBuildToGroups(buildId:groupIds:)` (`[String]` bridged to the core; method is `Void`).
 - **Supporting types:**
   - `StackConnect/Infra/Providers/Apple/AppleCredentialStore.swift` — bridges `AppleCredentials` to the Rust core's `CredentialStore` (`issuerId` / `keyId` / `privateKeyP8`).
   - Package: `Packages/StackCoreRust` (vendored `StackCoreRust.xcframework` + generated UniFFI wrapper).

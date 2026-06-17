@@ -535,9 +535,34 @@ uint64_t uniffi_stack_core_fn_clone_builds(uint64_t handle, RustCallStatus *_Non
 void uniffi_stack_core_fn_free_builds(uint64_t handle, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BUILDS_ADD_BUILD_TO_GROUPS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BUILDS_ADD_BUILD_TO_GROUPS
+uint64_t uniffi_stack_core_fn_method_builds_add_build_to_groups(uint64_t ptr, RustBuffer build_id, RustBuffer group_ids
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BUILDS_ATTACH_BUILD
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BUILDS_ATTACH_BUILD
+uint64_t uniffi_stack_core_fn_method_builds_attach_build(uint64_t ptr, RustBuffer version_id, RustBuffer build_id
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BUILDS_EXPIRE_BUILD
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BUILDS_EXPIRE_BUILD
+uint64_t uniffi_stack_core_fn_method_builds_expire_build(uint64_t ptr, RustBuffer build_id
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BUILDS_FETCH_BUILDS
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BUILDS_FETCH_BUILDS
 uint64_t uniffi_stack_core_fn_method_builds_fetch_builds(uint64_t ptr, RustBuffer app_id, uint32_t limit
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BUILDS_REMOVE_BUILD_FROM_GROUP
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BUILDS_REMOVE_BUILD_FROM_GROUP
+uint64_t uniffi_stack_core_fn_method_builds_remove_build_from_group(uint64_t ptr, RustBuffer build_id, RustBuffer group_id
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BUILDS_SUBMIT_BUILD_FOR_BETA_REVIEW
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_METHOD_BUILDS_SUBMIT_BUILD_FOR_BETA_REVIEW
+uint64_t uniffi_stack_core_fn_method_builds_submit_build_for_beta_review(uint64_t ptr, RustBuffer build_id
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_FN_CLONE_REVIEWS
@@ -1116,9 +1141,39 @@ uint16_t uniffi_stack_core_checksum_method_betagroups_update_beta_group(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BUILDS_ADD_BUILD_TO_GROUPS
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BUILDS_ADD_BUILD_TO_GROUPS
+uint16_t uniffi_stack_core_checksum_method_builds_add_build_to_groups(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BUILDS_ATTACH_BUILD
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BUILDS_ATTACH_BUILD
+uint16_t uniffi_stack_core_checksum_method_builds_attach_build(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BUILDS_EXPIRE_BUILD
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BUILDS_EXPIRE_BUILD
+uint16_t uniffi_stack_core_checksum_method_builds_expire_build(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BUILDS_FETCH_BUILDS
 #define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BUILDS_FETCH_BUILDS
 uint16_t uniffi_stack_core_checksum_method_builds_fetch_builds(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BUILDS_REMOVE_BUILD_FROM_GROUP
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BUILDS_REMOVE_BUILD_FROM_GROUP
+uint16_t uniffi_stack_core_checksum_method_builds_remove_build_from_group(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BUILDS_SUBMIT_BUILD_FOR_BETA_REVIEW
+#define UNIFFI_FFIDEF_UNIFFI_STACK_CORE_CHECKSUM_METHOD_BUILDS_SUBMIT_BUILD_FOR_BETA_REVIEW
+uint16_t uniffi_stack_core_checksum_method_builds_submit_build_for_beta_review(void
     
 );
 #endif
