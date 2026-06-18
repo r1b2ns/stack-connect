@@ -1753,7 +1753,9 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         let responsesById: [String: CustomerReviewResponseV1] = {
             var dict: [String: CustomerReviewResponseV1] = [:]
             for item in response.included ?? [] {
-                dict[item.id] = item
+                if case let .customerReviewResponseV1(response) = item {
+                    dict[response.id] = response
+                }
             }
             return dict
         }()
