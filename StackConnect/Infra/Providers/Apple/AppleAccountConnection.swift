@@ -2913,6 +2913,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - Review Submissions
 
     func submitForReview(appId: String, versionId: String, platform: AppPlatform?) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core when
+        // the flag is ON. The Swift-SDK body below is left untouched for the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            try await callRustCore { try await versions.submitForReview(appId: appId, versionId: versionId, platform: platform?.rawValue) }
+            Log.print.info("[Apple] Submitted version \(versionId) for review (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await submitForReview(appId: appId, versionId: versionId, platform: platform)
@@ -2964,6 +2976,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func cancelReview(appId: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core when
+        // the flag is ON. The Swift-SDK body below is left untouched for the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            try await callRustCore { try await versions.cancelReview(appId: appId) }
+            Log.print.info("[Apple] Cancelled review for app \(appId) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await cancelReview(appId: appId)
@@ -2999,6 +3023,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func releaseVersion(versionId: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core when
+        // the flag is ON. The Swift-SDK body below is left untouched for the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            try await callRustCore { try await versions.releaseVersion(versionId: versionId) }
+            Log.print.info("[Apple] Released version \(versionId) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await releaseVersion(versionId: versionId)
@@ -3024,6 +3060,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func rejectVersion(appId: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core when
+        // the flag is ON. The Swift-SDK body below is left untouched for the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            try await callRustCore { try await versions.rejectVersion(appId: appId) }
+            Log.print.info("[Apple] Rejected/cancelled review for app \(appId) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await rejectVersion(appId: appId)

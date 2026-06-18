@@ -62,6 +62,10 @@ new flag ships **OFF** by default (the safe, fully-reversible value) unless note
   - `updateApp(id:contentRightsDeclaration:primaryLocale:)` — when ON, calls the Rust core `AppMetadata.updateApp(id:contentRightsDeclaration:primaryLocale:)` (method is `Void`).
   - `updateAgeRating(id:...)` — when ON, calls the Rust core `AppMetadata.updateAgeRating(id:...)` (all 18 declaration params bridged 1:1; method is `Void`).
   - `fetchIconUrl(appId:)` — when ON, calls the Rust core `AppMetadata.fetchIconUrl(appId:)`; NON-throwing best-effort: any Rust-core failure is swallowed to `nil` inside the branch's `do/catch`.
+  - `submitForReview(appId:versionId:platform:)` — when ON, calls the Rust core `AppStoreVersions.submitForReview(appId:versionId:platform:)` (the Swift `AppPlatform?` is bridged via `platform?.rawValue` → the core's `String?`; method is `Void`).
+  - `cancelReview(appId:)` — when ON, calls the Rust core `AppStoreVersions.cancelReview(appId:)` (method is `Void`).
+  - `releaseVersion(versionId:)` — when ON, calls the Rust core `AppStoreVersions.releaseVersion(versionId:)` (method is `Void`).
+  - `rejectVersion(appId:)` — when ON, calls the Rust core `AppStoreVersions.rejectVersion(appId:)` (method is `Void`).
 - **Supporting types:**
   - `StackConnect/Infra/Providers/Apple/AppleCredentialStore.swift` — bridges `AppleCredentials` to the Rust core's `CredentialStore` (`issuerId` / `keyId` / `privateKeyP8`).
   - Package: `Packages/StackCoreRust` (vendored `StackCoreRust.xcframework` + generated UniFFI wrapper).

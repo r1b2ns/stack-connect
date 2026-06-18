@@ -286,6 +286,78 @@ final class RustCoreStranglerTests: XCTestCase {
         }
     }
 
+    /// With the flag ON, `submitForReview(appId:versionId:platform:)` must fail via the
+    /// Rust core for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testSubmitForReviewRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.submitForReview(appId: "123", versionId: "v1", platform: .ios)
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `cancelReview(appId:)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testCancelReviewRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.cancelReview(appId: "123")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `releaseVersion(versionId:)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testReleaseVersionRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.releaseVersion(versionId: "v1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `rejectVersion(appId:)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testRejectVersionRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.rejectVersion(appId: "123")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
     // MARK: - App Store version mapping (Rust core -> app model)
 
     /// The core `AppStoreVersionInfo` must map field-for-field onto the app's

@@ -1095,6 +1095,20 @@ public func FfiConverterTypeAppMetadata_lower(_ value: AppMetadata) -> UInt64 {
 public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
     
     /**
+     * Cancels the active submission for `app_id`.
+     *
+     * Looks up the first submission in the `WAITING_FOR_REVIEW` or `IN_REVIEW`
+     * state for `app_id` and marks it canceled. When no such submission exists
+     * this is a no-op that returns `Ok(())`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * on malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+    func cancelReview(appId: String) async throws 
+    
+    /**
      * Creates a new App Store version for `app_id` on `platform` with
      * `version_string`, returning the created version. `platform` is the raw ASC
      * value (`IOS` / `MAC_OS` / `TV_OS` / `VISION_OS`).
@@ -1122,6 +1136,49 @@ public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
      * JSON, or [`StackError::Network`] on transport failure.
      */
     func fetchVersions(appId: String, limit: UInt32) async throws  -> [AppStoreVersionInfo]
+    
+    /**
+     * Rejects the most recent submission for `app_id`.
+     *
+     * Looks up the first submission for `app_id` (regardless of state) and
+     * marks it canceled. When no submission exists this is a no-op that returns
+     * `Ok(())`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * on malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+    func rejectVersion(appId: String) async throws 
+    
+    /**
+     * Manually releases the approved version identified by `version_id`.
+     *
+     * Issues a single App Store Connect release request for the version. Any
+     * 2xx is treated as success.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func releaseVersion(versionId: String) async throws 
+    
+    /**
+     * Submits the version `version_id` of `app_id` for App Store review.
+     *
+     * When `platform` is `Some`, the review submission is scoped to that raw
+     * ASC platform value (`IOS` / `MAC_OS` / `TV_OS` / `VISION_OS`); when
+     * `None`, the submission carries no platform attribute. This drives three
+     * sequential App Store Connect requests (create submission, attach the
+     * version as a submission item, then mark the submission submitted).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * on malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+    func submitForReview(appId: String, versionId: String, platform: String?) async throws 
     
     /**
      * Updates the version identified by `id`, sending only the provided
@@ -1194,6 +1251,35 @@ open class AppStoreVersions: AppStoreVersionsProtocol, @unchecked Sendable {
 
     
     /**
+     * Cancels the active submission for `app_id`.
+     *
+     * Looks up the first submission in the `WAITING_FOR_REVIEW` or `IN_REVIEW`
+     * state for `app_id` and marks it canceled. When no such submission exists
+     * this is a no-op that returns `Ok(())`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * on malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+open func cancelReview(appId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_cancel_review(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
      * Creates a new App Store version for `app_id` on `platform` with
      * `version_string`, returning the created version. `platform` is the raw ASC
      * value (`IOS` / `MAC_OS` / `TV_OS` / `VISION_OS`).
@@ -1263,6 +1349,94 @@ open func fetchVersions(appId: String, limit: UInt32)async throws  -> [AppStoreV
             completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeAppStoreVersionInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Rejects the most recent submission for `app_id`.
+     *
+     * Looks up the first submission for `app_id` (regardless of state) and
+     * marks it canceled. When no submission exists this is a no-op that returns
+     * `Ok(())`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * on malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+open func rejectVersion(appId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_reject_version(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Manually releases the approved version identified by `version_id`.
+     *
+     * Issues a single App Store Connect release request for the version. Any
+     * 2xx is treated as success.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func releaseVersion(versionId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_release_version(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(versionId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Submits the version `version_id` of `app_id` for App Store review.
+     *
+     * When `platform` is `Some`, the review submission is scoped to that raw
+     * ASC platform value (`IOS` / `MAC_OS` / `TV_OS` / `VISION_OS`); when
+     * `None`, the submission carries no platform attribute. This drives three
+     * sequential App Store Connect requests (create submission, attach the
+     * version as a submission item, then mark the submission submitted).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * on malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+open func submitForReview(appId: String, versionId: String, platform: String?)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_submit_for_review(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId),FfiConverterString.lower(versionId),FfiConverterOptionString.lower(platform)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
             errorHandler: FfiConverterTypeStackError_lift
         )
 }
@@ -7312,6 +7486,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_appmetadata_update_app_info_localization_privacy() != 49104) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_appstoreversions_cancel_review() != 9516) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_appstoreversions_create_version() != 3970) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7319,6 +7496,15 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appstoreversions_fetch_versions() != 49788) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appstoreversions_reject_version() != 61243) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appstoreversions_release_version() != 60767) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appstoreversions_submit_for_review() != 45511) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appstoreversions_update_version() != 58000) {
