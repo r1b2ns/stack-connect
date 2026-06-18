@@ -347,6 +347,19 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - Localizations
 
     func fetchLocalizations(versionId: String) async throws -> [AppStoreLocalizationModel] {
+        // Strangler-fig migration: route this read through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            let infos = try await callRustCore { try await versions.fetchLocalizations(versionId: versionId) }
+            let models = infos.map { Self.mapAppStoreLocalizationInfo($0) }
+            Log.print.info("[Apple] Fetched \(models.count) localizations for version \(versionId) (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchLocalizations(versionId: versionId)
@@ -384,6 +397,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         marketingUrl: String? = nil,
         whatsNew: String? = nil
     ) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            try await callRustCore { try await versions.updateLocalization(id: id, description: description, keywords: keywords, promotionalText: promotionalText, supportUrl: supportUrl, marketingUrl: marketingUrl, whatsNew: whatsNew) }
+            Log.print.info("[Apple] Updated localization \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await updateLocalization(id: id, description: description, keywords: keywords, promotionalText: promotionalText, supportUrl: supportUrl, marketingUrl: marketingUrl, whatsNew: whatsNew)
@@ -2176,6 +2201,19 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - Screenshot Sets
 
     func fetchScreenshotSets(localizationId: String) async throws -> [ScreenshotSetModel] {
+        // Strangler-fig migration: route this read through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            let sets = try await callRustCore { try await versions.fetchScreenshotSets(localizationId: localizationId) }
+            let models = sets.map { Self.mapScreenshotSetInfo($0) }
+            Log.print.info("[Apple] Fetched \(models.count) screenshot sets for localization \(localizationId) (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchScreenshotSets(localizationId: localizationId)
@@ -3866,6 +3904,44 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             locale: info.locale,
             feedbackEmail: info.feedbackEmail,
             description: info.description
+        )
+    }
+
+    /// Maps a Rust-core `AppStoreLocalizationInfo` to the app's `AppStoreLocalizationModel`.
+    /// Full fidelity: every field (id + 7 optional strings) maps 1:1.
+    static func mapAppStoreLocalizationInfo(_ info: StackCoreRust.AppStoreLocalizationInfo) -> AppStoreLocalizationModel {
+        AppStoreLocalizationModel(
+            id: info.id,
+            locale: info.locale,
+            description: info.description,
+            keywords: info.keywords,
+            promotionalText: info.promotionalText,
+            supportUrl: info.supportUrl,
+            marketingUrl: info.marketingUrl,
+            whatsNew: info.whatsNew
+        )
+    }
+
+    /// Maps a Rust-core `ScreenshotInfo` to the app's `ScreenshotModel`.
+    /// The numeric dimensions arrive as `Int32?` over FFI and are widened to `Int?`.
+    static func mapScreenshotInfo(_ s: StackCoreRust.ScreenshotInfo) -> ScreenshotModel {
+        ScreenshotModel(
+            id: s.id,
+            imageUrl: s.imageUrl,
+            fileName: s.fileName,
+            fileSize: s.fileSize.map(Int.init),
+            width: s.width.map(Int.init),
+            height: s.height.map(Int.init)
+        )
+    }
+
+    /// Maps a Rust-core `ScreenshotSetInfo` to the app's `ScreenshotSetModel`,
+    /// recursively mapping each nested screenshot.
+    static func mapScreenshotSetInfo(_ info: StackCoreRust.ScreenshotSetInfo) -> ScreenshotSetModel {
+        ScreenshotSetModel(
+            id: info.id,
+            displayType: info.displayType,
+            screenshots: info.screenshots.map { Self.mapScreenshotInfo($0) }
         )
     }
 

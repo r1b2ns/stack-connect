@@ -1152,6 +1152,21 @@ public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
     func deleteVersion(id: String) async throws 
     
     /**
+     * Lists the version localizations for `version_id`.
+     *
+     * Resolves the version's `appStoreVersionLocalizations` relationship,
+     * following `links.next` pagination until exhausted. Each localization
+     * carries the per-locale product-page metadata (`description`, `keywords`,
+     * `promotional_text`, `support_url`, `marketing_url`, `whats_new`).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx page, [`StackError::Decode`] on
+     * malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+    func fetchLocalizations(versionId: String) async throws  -> [AppStoreLocalizationInfo]
+    
+    /**
      * Fetches the phased (staged) release for `version_id`.
      *
      * Resolves the singular `appStoreVersionPhasedRelease` relationship of the
@@ -1164,6 +1179,24 @@ public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
      * on malformed JSON, or [`StackError::Network`] on transport failure.
      */
     func fetchPhasedRelease(versionId: String) async throws  -> PhasedReleaseInfo?
+    
+    /**
+     * Lists the screenshot sets (with their screenshots) for the version
+     * localization identified by `localization_id`.
+     *
+     * Resolves the localization's `appScreenshotSets` relationship with the
+     * `appScreenshots` resources included, following `links.next` pagination
+     * until exhausted. Each set carries its `display_type` and its screenshots
+     * (resolved from the JSON:API `included` section, preserving relationship
+     * order). Each screenshot's `image_url` is computed from its `imageAsset`
+     * template exactly as the build icon URL is.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx page, [`StackError::Decode`] on
+     * malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+    func fetchScreenshotSets(localizationId: String) async throws  -> [ScreenshotSetInfo]
     
     /**
      * Lists the App Store versions for `app_id`, up to `limit`.
@@ -1216,6 +1249,21 @@ public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
      * on malformed JSON, or [`StackError::Network`] on transport failure.
      */
     func submitForReview(appId: String, versionId: String, platform: String?) async throws 
+    
+    /**
+     * Updates the version localization identified by `id`, sending only the
+     * provided attributes.
+     *
+     * Only the `Some` attributes are sent in the PATCH body; `None` attributes
+     * are omitted entirely (and so left untouched on App Store Connect). Any
+     * 2xx is treated as success.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func updateLocalization(id: String, description: String?, keywords: String?, promotionalText: String?, supportUrl: String?, marketingUrl: String?, whatsNew: String?) async throws 
     
     /**
      * Updates the `state` of the phased release identified by `id`, returning
@@ -1432,6 +1480,36 @@ open func deleteVersion(id: String)async throws   {
 }
     
     /**
+     * Lists the version localizations for `version_id`.
+     *
+     * Resolves the version's `appStoreVersionLocalizations` relationship,
+     * following `links.next` pagination until exhausted. Each localization
+     * carries the per-locale product-page metadata (`description`, `keywords`,
+     * `promotional_text`, `support_url`, `marketing_url`, `whats_new`).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx page, [`StackError::Decode`] on
+     * malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+open func fetchLocalizations(versionId: String)async throws  -> [AppStoreLocalizationInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_fetch_localizations(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(versionId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeAppStoreLocalizationInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
      * Fetches the phased (staged) release for `version_id`.
      *
      * Resolves the singular `appStoreVersionPhasedRelease` relationship of the
@@ -1456,6 +1534,39 @@ open func fetchPhasedRelease(versionId: String)async throws  -> PhasedReleaseInf
             completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterOptionTypePhasedReleaseInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists the screenshot sets (with their screenshots) for the version
+     * localization identified by `localization_id`.
+     *
+     * Resolves the localization's `appScreenshotSets` relationship with the
+     * `appScreenshots` resources included, following `links.next` pagination
+     * until exhausted. Each set carries its `display_type` and its screenshots
+     * (resolved from the JSON:API `included` section, preserving relationship
+     * order). Each screenshot's `image_url` is computed from its `imageAsset`
+     * template exactly as the build icon URL is.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx page, [`StackError::Decode`] on
+     * malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+open func fetchScreenshotSets(localizationId: String)async throws  -> [ScreenshotSetInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_fetch_screenshot_sets(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(localizationId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeScreenshotSetInfo.lift,
             errorHandler: FfiConverterTypeStackError_lift
         )
 }
@@ -1562,6 +1673,36 @@ open func submitForReview(appId: String, versionId: String, platform: String?)as
                 uniffi_stack_core_fn_method_appstoreversions_submit_for_review(
                     self.uniffiCloneHandle(),
                     FfiConverterString.lower(appId),FfiConverterString.lower(versionId),FfiConverterOptionString.lower(platform)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Updates the version localization identified by `id`, sending only the
+     * provided attributes.
+     *
+     * Only the `Some` attributes are sent in the PATCH body; `None` attributes
+     * are omitted entirely (and so left untouched on App Store Connect). Any
+     * 2xx is treated as success.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func updateLocalization(id: String, description: String?, keywords: String?, promotionalText: String?, supportUrl: String?, marketingUrl: String?, whatsNew: String?)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_update_localization(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id),FfiConverterOptionString.lower(description),FfiConverterOptionString.lower(keywords),FfiConverterOptionString.lower(promotionalText),FfiConverterOptionString.lower(supportUrl),FfiConverterOptionString.lower(marketingUrl),FfiConverterOptionString.lower(whatsNew)
                 )
             },
             pollFunc: ffi_stack_core_rust_future_poll_void,
@@ -5263,6 +5404,93 @@ public func FfiConverterTypeAppInfoLocalizationInfo_lower(_ value: AppInfoLocali
 
 
 /**
+ * An App Store version localization, keyed by `locale`. Carries the per-locale
+ * version listing metadata shown on the product page: `description`, `keywords`,
+ * `promotional_text`, the `support_url`/`marketing_url` links, and the
+ * `whats_new` release notes. App Store Connect serializes the URL/notes
+ * attributes camelCase (`promotionalText`, `supportUrl`, `marketingUrl`,
+ * `whatsNew`), which `rename_all = "camelCase"` maps without any per-field
+ * rename. All attributes are optional and are `None` when absent.
+ */
+public struct AppStoreLocalizationInfo: Equatable, Hashable {
+    public var id: String
+    public var locale: String?
+    public var description: String?
+    public var keywords: String?
+    public var promotionalText: String?
+    public var supportUrl: String?
+    public var marketingUrl: String?
+    public var whatsNew: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, locale: String?, description: String?, keywords: String?, promotionalText: String?, supportUrl: String?, marketingUrl: String?, whatsNew: String?) {
+        self.id = id
+        self.locale = locale
+        self.description = description
+        self.keywords = keywords
+        self.promotionalText = promotionalText
+        self.supportUrl = supportUrl
+        self.marketingUrl = marketingUrl
+        self.whatsNew = whatsNew
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AppStoreLocalizationInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppStoreLocalizationInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppStoreLocalizationInfo {
+        return
+            try AppStoreLocalizationInfo(
+                id: FfiConverterString.read(from: &buf), 
+                locale: FfiConverterOptionString.read(from: &buf), 
+                description: FfiConverterOptionString.read(from: &buf), 
+                keywords: FfiConverterOptionString.read(from: &buf), 
+                promotionalText: FfiConverterOptionString.read(from: &buf), 
+                supportUrl: FfiConverterOptionString.read(from: &buf), 
+                marketingUrl: FfiConverterOptionString.read(from: &buf), 
+                whatsNew: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AppStoreLocalizationInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.locale, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterOptionString.write(value.keywords, into: &buf)
+        FfiConverterOptionString.write(value.promotionalText, into: &buf)
+        FfiConverterOptionString.write(value.supportUrl, into: &buf)
+        FfiConverterOptionString.write(value.marketingUrl, into: &buf)
+        FfiConverterOptionString.write(value.whatsNew, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppStoreLocalizationInfo_lift(_ buf: RustBuffer) throws -> AppStoreLocalizationInfo {
+    return try FfiConverterTypeAppStoreLocalizationInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppStoreLocalizationInfo_lower(_ value: AppStoreLocalizationInfo) -> RustBuffer {
+    return FfiConverterTypeAppStoreLocalizationInfo.lower(value)
+}
+
+
+/**
  * An App Store version of an app. Dates are raw ISO8601 strings; the core does
  * no date parsing (the host owns that).
  */
@@ -6497,6 +6725,149 @@ public func FfiConverterTypeReviewSubmission_lower(_ value: ReviewSubmission) ->
     return FfiConverterTypeReviewSubmission.lower(value)
 }
 
+
+/**
+ * A single App Store screenshot. `image_url` is computed from the screenshot's
+ * `imageAsset` template (`{w}`/`{h}`/`{f}` substituted, defaulting to 512/512/png),
+ * exactly as the build icon URL is; it is `None` when no template URL is present.
+ * `width`/`height` come from the `imageAsset` dimensions, and `file_name` /
+ * `file_size` from the screenshot's own attributes. All optional fields are
+ * `None` when the corresponding attribute is absent.
+ */
+public struct ScreenshotInfo: Equatable, Hashable {
+    public var id: String
+    public var imageUrl: String?
+    public var fileName: String?
+    public var fileSize: Int32?
+    public var width: Int32?
+    public var height: Int32?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, imageUrl: String?, fileName: String?, fileSize: Int32?, width: Int32?, height: Int32?) {
+        self.id = id
+        self.imageUrl = imageUrl
+        self.fileName = fileName
+        self.fileSize = fileSize
+        self.width = width
+        self.height = height
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ScreenshotInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScreenshotInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScreenshotInfo {
+        return
+            try ScreenshotInfo(
+                id: FfiConverterString.read(from: &buf), 
+                imageUrl: FfiConverterOptionString.read(from: &buf), 
+                fileName: FfiConverterOptionString.read(from: &buf), 
+                fileSize: FfiConverterOptionInt32.read(from: &buf), 
+                width: FfiConverterOptionInt32.read(from: &buf), 
+                height: FfiConverterOptionInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ScreenshotInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.imageUrl, into: &buf)
+        FfiConverterOptionString.write(value.fileName, into: &buf)
+        FfiConverterOptionInt32.write(value.fileSize, into: &buf)
+        FfiConverterOptionInt32.write(value.width, into: &buf)
+        FfiConverterOptionInt32.write(value.height, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScreenshotInfo_lift(_ buf: RustBuffer) throws -> ScreenshotInfo {
+    return try FfiConverterTypeScreenshotInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScreenshotInfo_lower(_ value: ScreenshotInfo) -> RustBuffer {
+    return FfiConverterTypeScreenshotInfo.lower(value)
+}
+
+
+/**
+ * A set of App Store screenshots for a single device display type within a
+ * version localization. `display_type` carries the raw ASC
+ * `screenshotDisplayType` value (e.g. `APP_IPHONE_67`) passed through verbatim,
+ * and `screenshots` lists the set's screenshots in the relationship order
+ * reported by App Store Connect.
+ */
+public struct ScreenshotSetInfo: Equatable, Hashable {
+    public var id: String
+    public var displayType: String?
+    public var screenshots: [ScreenshotInfo]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, displayType: String?, screenshots: [ScreenshotInfo]) {
+        self.id = id
+        self.displayType = displayType
+        self.screenshots = screenshots
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ScreenshotSetInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScreenshotSetInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScreenshotSetInfo {
+        return
+            try ScreenshotSetInfo(
+                id: FfiConverterString.read(from: &buf), 
+                displayType: FfiConverterOptionString.read(from: &buf), 
+                screenshots: FfiConverterSequenceTypeScreenshotInfo.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ScreenshotSetInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.displayType, into: &buf)
+        FfiConverterSequenceTypeScreenshotInfo.write(value.screenshots, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScreenshotSetInfo_lift(_ buf: RustBuffer) throws -> ScreenshotSetInfo {
+    return try FfiConverterTypeScreenshotSetInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScreenshotSetInfo_lower(_ value: ScreenshotSetInfo) -> RustBuffer {
+    return FfiConverterTypeScreenshotSetInfo.lower(value)
+}
+
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
@@ -7286,6 +7657,31 @@ fileprivate struct FfiConverterSequenceTypeAppInfoLocalizationInfo: FfiConverter
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeAppStoreLocalizationInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [AppStoreLocalizationInfo]
+
+    public static func write(_ value: [AppStoreLocalizationInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAppStoreLocalizationInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AppStoreLocalizationInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AppStoreLocalizationInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAppStoreLocalizationInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeAppStoreVersionInfo: FfiConverterRustBuffer {
     typealias SwiftType = [AppStoreVersionInfo]
 
@@ -7503,6 +7899,56 @@ fileprivate struct FfiConverterSequenceTypeReviewSubmission: FfiConverterRustBuf
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeReviewSubmission.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeScreenshotInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [ScreenshotInfo]
+
+    public static func write(_ value: [ScreenshotInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeScreenshotInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ScreenshotInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ScreenshotInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeScreenshotInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeScreenshotSetInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [ScreenshotSetInfo]
+
+    public static func write(_ value: [ScreenshotSetInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeScreenshotSetInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ScreenshotSetInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ScreenshotSetInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeScreenshotSetInfo.read(from: &buf))
         }
         return seq
     }
@@ -7758,7 +8204,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_appstoreversions_delete_version() != 49312) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_appstoreversions_fetch_localizations() != 63754) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_appstoreversions_fetch_phased_release() != 1212) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appstoreversions_fetch_screenshot_sets() != 30081) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appstoreversions_fetch_versions() != 49788) {
@@ -7771,6 +8223,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appstoreversions_submit_for_review() != 45511) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appstoreversions_update_localization() != 3721) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appstoreversions_update_phased_release_state() != 62883) {

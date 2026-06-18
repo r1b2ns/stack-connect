@@ -2093,6 +2093,178 @@ final class RustCoreStranglerTests: XCTestCase {
             XCTFail("Expected a StackError from the Rust core, got: \(error)")
         }
     }
+
+    // MARK: - App Store version localization mapping (Rust core -> app model)
+
+    /// The core `AppStoreLocalizationInfo` provides every field the app's
+    /// `AppStoreLocalizationModel` needs, so the mapping is full fidelity (1:1),
+    /// including passing all optional strings straight through.
+    func testMapAppStoreLocalizationInfoMapsAllFields() {
+        let core = StackCoreRust.AppStoreLocalizationInfo(
+            id: "loc-1",
+            locale: "en-US",
+            description: "An awesome app.",
+            keywords: "fast,reliable",
+            promotionalText: "Now even better!",
+            supportUrl: "https://example.com/support",
+            marketingUrl: "https://example.com",
+            whatsNew: "Bug fixes and improvements."
+        )
+
+        let model = AppleAccountConnection.mapAppStoreLocalizationInfo(core)
+
+        XCTAssertEqual(model.id, "loc-1")
+        XCTAssertEqual(model.locale, "en-US")
+        XCTAssertEqual(model.description, "An awesome app.")
+        XCTAssertEqual(model.keywords, "fast,reliable")
+        XCTAssertEqual(model.promotionalText, "Now even better!")
+        XCTAssertEqual(model.supportUrl, "https://example.com/support")
+        XCTAssertEqual(model.marketingUrl, "https://example.com")
+        XCTAssertEqual(model.whatsNew, "Bug fixes and improvements.")
+
+        // With every optional nil, each field must pass straight through as nil.
+        let coreNils = StackCoreRust.AppStoreLocalizationInfo(
+            id: "loc-2",
+            locale: nil,
+            description: nil,
+            keywords: nil,
+            promotionalText: nil,
+            supportUrl: nil,
+            marketingUrl: nil,
+            whatsNew: nil
+        )
+        let modelNils = AppleAccountConnection.mapAppStoreLocalizationInfo(coreNils)
+        XCTAssertEqual(modelNils.id, "loc-2")
+        XCTAssertNil(modelNils.locale)
+        XCTAssertNil(modelNils.description)
+        XCTAssertNil(modelNils.keywords)
+        XCTAssertNil(modelNils.promotionalText)
+        XCTAssertNil(modelNils.supportUrl)
+        XCTAssertNil(modelNils.marketingUrl)
+        XCTAssertNil(modelNils.whatsNew)
+    }
+
+    /// `mapScreenshotSetInfo` must carry id/displayType and recursively map every
+    /// nested `ScreenshotInfo`, widening the FFI `Int32?` dimensions to `Int?`.
+    func testMapScreenshotSetInfoMapsNestedScreenshots() {
+        let core = StackCoreRust.ScreenshotSetInfo(
+            id: "set-1",
+            displayType: "APP_IPHONE_67",
+            screenshots: [
+                StackCoreRust.ScreenshotInfo(
+                    id: "shot-1",
+                    imageUrl: "https://example.com/1.png",
+                    fileName: "first.png",
+                    fileSize: 1_024,
+                    width: 1290,
+                    height: 2796
+                ),
+                StackCoreRust.ScreenshotInfo(
+                    id: "shot-2",
+                    imageUrl: "https://example.com/2.png",
+                    fileName: "second.png",
+                    fileSize: 2_048,
+                    width: 1290,
+                    height: 2796
+                )
+            ]
+        )
+
+        let model = AppleAccountConnection.mapScreenshotSetInfo(core)
+
+        XCTAssertEqual(model.id, "set-1")
+        XCTAssertEqual(model.displayType, "APP_IPHONE_67")
+        XCTAssertEqual(model.screenshots.count, 2)
+
+        let first = model.screenshots[0]
+        XCTAssertEqual(first.id, "shot-1")
+        XCTAssertEqual(first.imageUrl, "https://example.com/1.png")
+        XCTAssertEqual(first.fileName, "first.png")
+        XCTAssertEqual(first.fileSize, 1_024)
+        XCTAssertEqual(first.width, 1290)
+        XCTAssertEqual(first.height, 2796)
+
+        let second = model.screenshots[1]
+        XCTAssertEqual(second.id, "shot-2")
+        XCTAssertEqual(second.imageUrl, "https://example.com/2.png")
+        XCTAssertEqual(second.fileName, "second.png")
+        XCTAssertEqual(second.fileSize, 2_048)
+
+        // An empty screenshot set must yield an empty array, not nil.
+        let emptyCore = StackCoreRust.ScreenshotSetInfo(
+            id: "set-2",
+            displayType: nil,
+            screenshots: []
+        )
+        let emptyModel = AppleAccountConnection.mapScreenshotSetInfo(emptyCore)
+        XCTAssertEqual(emptyModel.id, "set-2")
+        XCTAssertNil(emptyModel.displayType)
+        XCTAssertTrue(emptyModel.screenshots.isEmpty)
+    }
+
+    // MARK: - App Store version localization & screenshot routing (strangler)
+
+    /// With the flag ON, `fetchLocalizations(versionId:)` must fail via the Rust core
+    /// for invalid credentials, proving the read never reaches the Swift-SDK provider.
+    func testFetchLocalizationsRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchLocalizations(versionId: "v-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `updateLocalization(...)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testUpdateLocalizationRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.updateLocalization(
+                id: "loc-1",
+                description: "d",
+                keywords: nil,
+                promotionalText: nil,
+                supportUrl: nil,
+                marketingUrl: nil,
+                whatsNew: nil
+            )
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `fetchScreenshotSets(localizationId:)` must fail via the Rust
+    /// core for invalid credentials, proving the read never reaches the Swift-SDK provider.
+    func testFetchScreenshotSetsRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchScreenshotSets(localizationId: "loc-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
 }
 
 // MARK: - Minimal in-memory PersistentStorable for the BlobStore-backed test
