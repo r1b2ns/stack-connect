@@ -1752,10 +1752,11 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
 
         let responsesById: [String: CustomerReviewResponseV1] = {
             var dict: [String: CustomerReviewResponseV1] = [:]
+            // SDK drift: `CustomerReviewsResponse.included` is `[CustomerReviewResponseV1]`
+            // (a concrete array), not an enum-wrapped `[IncludedItem]`. Each element is
+            // already a `CustomerReviewResponseV1`, so index it directly by id.
             for item in response.included ?? [] {
-                if case let .customerReviewResponseV1(response) = item {
-                    dict[response.id] = response
-                }
+                dict[item.id] = item
             }
             return dict
         }()
