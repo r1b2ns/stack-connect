@@ -66,6 +66,10 @@ new flag ships **OFF** by default (the safe, fully-reversible value) unless note
   - `cancelReview(appId:)` — when ON, calls the Rust core `AppStoreVersions.cancelReview(appId:)` (method is `Void`).
   - `releaseVersion(versionId:)` — when ON, calls the Rust core `AppStoreVersions.releaseVersion(versionId:)` (method is `Void`).
   - `rejectVersion(appId:)` — when ON, calls the Rust core `AppStoreVersions.rejectVersion(appId:)` (method is `Void`).
+  - `fetchPhasedRelease(versionId:)` — when ON, calls the Rust core `AppStoreVersions.fetchPhasedRelease(versionId:)` and maps the optional `StackCoreRust.PhasedReleaseInfo?` → `PhasedReleaseModel?` via `mapPhasedReleaseInfo`. The capability guard runs before the graceful do/catch, so a missing phased release is swallowed to `nil` while a misconfigured provider still throws. Read only.
+  - `createPhasedRelease(versionId:state:)` — when ON, calls the Rust core `AppStoreVersions.createPhasedRelease(versionId:state:)` (the SDK `PhasedReleaseState` is bridged via `state.rawValue` → the core's `String`) and maps the returned `StackCoreRust.PhasedReleaseInfo` → `PhasedReleaseModel` via `mapPhasedReleaseInfo`.
+  - `deletePhasedRelease(id:)` — when ON, calls the Rust core `AppStoreVersions.deletePhasedRelease(id:)` (method is `Void`).
+  - `updatePhasedReleaseState(id:state:)` — when ON, calls the Rust core `AppStoreVersions.updatePhasedReleaseState(id:state:)` (`PhasedReleaseState` bridged via `state.rawValue` → the core's `String`) and maps the returned `StackCoreRust.PhasedReleaseInfo` → `PhasedReleaseModel` via `mapPhasedReleaseInfo`.
 - **Supporting types:**
   - `StackConnect/Infra/Providers/Apple/AppleCredentialStore.swift` — bridges `AppleCredentials` to the Rust core's `CredentialStore` (`issuerId` / `keyId` / `privateKeyP8`).
   - Package: `Packages/StackCoreRust` (vendored `StackCoreRust.xcframework` + generated UniFFI wrapper).

@@ -1970,6 +1970,129 @@ final class RustCoreStranglerTests: XCTestCase {
         XCTAssertEqual(model.id, "UTILITIES")
         XCTAssertTrue(model.subcategories.isEmpty)
     }
+
+    // MARK: - Phased release
+
+    /// The core `PhasedReleaseInfo` must map onto the app's `PhasedReleaseModel`:
+    /// the raw `state` string parses into `PhasedReleaseStatus`, the raw ISO8601
+    /// `startDate` parses into `Date`, the `Int32` counters widen to `Int`, and the
+    /// id passes through unchanged.
+    func testMapPhasedReleaseInfoMapsStateDateAndCounters() {
+        let core = StackCoreRust.PhasedReleaseInfo(
+            id: "pr-1",
+            state: "ACTIVE",
+            startDate: "2024-01-15T10:30:00Z",
+            totalPauseDuration: 3,
+            currentDayNumber: 2
+        )
+
+        let model = AppleAccountConnection.mapPhasedReleaseInfo(core)
+
+        XCTAssertEqual(model.id, "pr-1")
+        XCTAssertEqual(model.state, .active)
+        XCTAssertEqual(model.startDate, ISO8601DateFormatter().date(from: "2024-01-15T10:30:00Z"))
+        XCTAssertEqual(model.totalPauseDuration, 3)
+        XCTAssertEqual(model.currentDayNumber, 2)
+    }
+
+    /// Absent optionals must collapse to nil, and an unknown raw `state` string must
+    /// yield a nil `PhasedReleaseStatus` without crashing.
+    func testMapPhasedReleaseInfoHandlesNilAndUnknownState() {
+        let allNil = StackCoreRust.PhasedReleaseInfo(
+            id: "pr-2",
+            state: nil,
+            startDate: nil,
+            totalPauseDuration: nil,
+            currentDayNumber: nil
+        )
+
+        let nilModel = AppleAccountConnection.mapPhasedReleaseInfo(allNil)
+        XCTAssertNil(nilModel.state)
+        XCTAssertNil(nilModel.startDate)
+        XCTAssertNil(nilModel.totalPauseDuration)
+        XCTAssertNil(nilModel.currentDayNumber)
+
+        let bogusState = StackCoreRust.PhasedReleaseInfo(
+            id: "pr-3",
+            state: "BOGUS",
+            startDate: nil,
+            totalPauseDuration: nil,
+            currentDayNumber: nil
+        )
+
+        let bogusModel = AppleAccountConnection.mapPhasedReleaseInfo(bogusState)
+        XCTAssertNil(bogusModel.state)
+    }
+
+    /// With the flag ON, `fetchPhasedRelease(versionId:)` routes through the Rust core and
+    /// preserves the graceful nil-on-error contract: the `callRustCore` lookup runs inside a
+    /// `do/catch` that swallows any failure to `nil` (matching the Swift-SDK body, where a
+    /// version with no phased release also yields `nil`). `rustCoreProvider()` connects lazily,
+    /// so the invalid-credentials rejection surfaces from within the lookup and is swallowed —
+    /// the call must therefore return `nil` (not throw) without crashing.
+    func testFetchPhasedReleaseRoutesThroughRustCoreWhenFlagOn() async throws {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        let result = try await connection.fetchPhasedRelease(versionId: "version-1")
+        XCTAssertNil(result, "The Rust-core lookup error must be swallowed to nil, preserving the graceful nil-on-error contract.")
+    }
+
+    /// With the flag ON, `createPhasedRelease(versionId:state:)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testCreatePhasedReleaseRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.createPhasedRelease(versionId: "v1", state: .active)
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `deletePhasedRelease(id:)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testDeletePhasedReleaseRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.deletePhasedRelease(id: "pr-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `updatePhasedReleaseState(id:state:)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testUpdatePhasedReleaseStateRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.updatePhasedReleaseState(id: "pr-1", state: .active)
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
 }
 
 // MARK: - Minimal in-memory PersistentStorable for the BlobStore-backed test

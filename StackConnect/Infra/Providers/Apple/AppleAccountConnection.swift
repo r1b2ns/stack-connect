@@ -2218,6 +2218,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - Phased Release
 
     func fetchPhasedRelease(versionId: String) async throws -> PhasedReleaseModel? {
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            do {
+                let info = try await callRustCore { try await versions.fetchPhasedRelease(versionId: versionId) }
+                return info.map { Self.mapPhasedReleaseInfo($0) }
+            } catch {
+                Log.print.info("[Apple] No phased release for version \(versionId) (Rust core)")
+                return nil
+            }
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchPhasedRelease(versionId: versionId)
@@ -2246,6 +2260,19 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func createPhasedRelease(versionId: String, state: PhasedReleaseState) async throws -> PhasedReleaseModel {
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            let model = try await callRustCore {
+                let info = try await versions.createPhasedRelease(versionId: versionId, state: state.rawValue)
+                return Self.mapPhasedReleaseInfo(info)
+            }
+            Log.print.info("[Apple] Created phased release for version \(versionId) (Rust core)")
+            return model
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await createPhasedRelease(versionId: versionId, state: state)
@@ -2276,6 +2303,16 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deletePhasedRelease(id: String) async throws {
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            try await callRustCore { try await versions.deletePhasedRelease(id: id) }
+            Log.print.info("[Apple] Deleted phased release \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await deletePhasedRelease(id: id)
@@ -2288,6 +2325,19 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
 
     @discardableResult
     func updatePhasedReleaseState(id: String, state: PhasedReleaseState) async throws -> PhasedReleaseModel {
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            let model = try await callRustCore {
+                let info = try await versions.updatePhasedReleaseState(id: id, state: state.rawValue)
+                return Self.mapPhasedReleaseInfo(info)
+            }
+            Log.print.info("[Apple] Updated phased release \(id) to state \(state.rawValue) (Rust core)")
+            return model
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await updatePhasedReleaseState(id: id, state: state)
@@ -3921,6 +3971,21 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             email: info.email,
             inviteType: info.inviteType,
             state: info.state
+        )
+    }
+
+    /// Maps a Rust-core `PhasedReleaseInfo` to the app's `PhasedReleaseModel`.
+    /// The core hands back the phased-release state and start date as raw strings,
+    /// so we parse the state into `PhasedReleaseStatus` and the ISO8601 start date
+    /// into `Date`, and widen the `Int32` counters to `Int`. Any unparseable /
+    /// absent optional collapses to `nil`.
+    static func mapPhasedReleaseInfo(_ info: StackCoreRust.PhasedReleaseInfo) -> PhasedReleaseModel {
+        PhasedReleaseModel(
+            id: info.id,
+            state: info.state.flatMap { PhasedReleaseStatus(rawValue: $0) },
+            startDate: info.startDate.flatMap(parseISO8601Date),
+            totalPauseDuration: info.totalPauseDuration.map(Int.init),
+            currentDayNumber: info.currentDayNumber.map(Int.init)
         )
     }
 

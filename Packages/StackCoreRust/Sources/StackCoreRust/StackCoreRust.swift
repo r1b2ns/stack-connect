@@ -1109,6 +1109,19 @@ public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
     func cancelReview(appId: String) async throws 
     
     /**
+     * Creates a phased (staged) release for `version_id` with the initial
+     * `state`, returning the created phased release. `state` is the raw ASC
+     * `phasedReleaseState` value (`INACTIVE` / `ACTIVE` / `PAUSED` /
+     * `COMPLETE`).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * on malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+    func createPhasedRelease(versionId: String, state: String) async throws  -> PhasedReleaseInfo
+    
+    /**
      * Creates a new App Store version for `app_id` on `platform` with
      * `version_string`, returning the created version. `platform` is the raw ASC
      * value (`IOS` / `MAC_OS` / `TV_OS` / `VISION_OS`).
@@ -1120,6 +1133,16 @@ public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
     func createVersion(appId: String, platform: String, versionString: String) async throws  -> AppStoreVersionInfo
     
     /**
+     * Deletes the phased release identified by `id`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func deletePhasedRelease(id: String) async throws 
+    
+    /**
      * Deletes the version identified by `id`.
      *
      * # Errors
@@ -1127,6 +1150,20 @@ public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
      * transport failure.
      */
     func deleteVersion(id: String) async throws 
+    
+    /**
+     * Fetches the phased (staged) release for `version_id`.
+     *
+     * Resolves the singular `appStoreVersionPhasedRelease` relationship of the
+     * version. Returns `Ok(None)` when no phased release exists (the document's
+     * `data` is null/absent, or the relationship endpoint answers 404).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * on malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+    func fetchPhasedRelease(versionId: String) async throws  -> PhasedReleaseInfo?
     
     /**
      * Lists the App Store versions for `app_id`, up to `limit`.
@@ -1179,6 +1216,18 @@ public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
      * on malformed JSON, or [`StackError::Network`] on transport failure.
      */
     func submitForReview(appId: String, versionId: String, platform: String?) async throws 
+    
+    /**
+     * Updates the `state` of the phased release identified by `id`, returning
+     * the updated phased release. `state` is the raw ASC `phasedReleaseState`
+     * value (`INACTIVE` / `ACTIVE` / `PAUSED` / `COMPLETE`).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * on malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+    func updatePhasedReleaseState(id: String, state: String) async throws  -> PhasedReleaseInfo
     
     /**
      * Updates the version identified by `id`, sending only the provided
@@ -1280,6 +1329,34 @@ open func cancelReview(appId: String)async throws   {
 }
     
     /**
+     * Creates a phased (staged) release for `version_id` with the initial
+     * `state`, returning the created phased release. `state` is the raw ASC
+     * `phasedReleaseState` value (`INACTIVE` / `ACTIVE` / `PAUSED` /
+     * `COMPLETE`).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * on malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+open func createPhasedRelease(versionId: String, state: String)async throws  -> PhasedReleaseInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_create_phased_release(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(versionId),FfiConverterString.lower(state)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypePhasedReleaseInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
      * Creates a new App Store version for `app_id` on `platform` with
      * `version_string`, returning the created version. `platform` is the raw ASC
      * value (`IOS` / `MAC_OS` / `TV_OS` / `VISION_OS`).
@@ -1306,6 +1383,31 @@ open func createVersion(appId: String, platform: String, versionString: String)a
 }
     
     /**
+     * Deletes the phased release identified by `id`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func deletePhasedRelease(id: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_delete_phased_release(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
      * Deletes the version identified by `id`.
      *
      * # Errors
@@ -1325,6 +1427,35 @@ open func deleteVersion(id: String)async throws   {
             completeFunc: ffi_stack_core_rust_future_complete_void,
             freeFunc: ffi_stack_core_rust_future_free_void,
             liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Fetches the phased (staged) release for `version_id`.
+     *
+     * Resolves the singular `appStoreVersionPhasedRelease` relationship of the
+     * version. Returns `Ok(None)` when no phased release exists (the document's
+     * `data` is null/absent, or the relationship endpoint answers 404).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * on malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+open func fetchPhasedRelease(versionId: String)async throws  -> PhasedReleaseInfo?  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_fetch_phased_release(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(versionId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionTypePhasedReleaseInfo.lift,
             errorHandler: FfiConverterTypeStackError_lift
         )
 }
@@ -1437,6 +1568,33 @@ open func submitForReview(appId: String, versionId: String, platform: String?)as
             completeFunc: ffi_stack_core_rust_future_complete_void,
             freeFunc: ffi_stack_core_rust_future_free_void,
             liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Updates the `state` of the phased release identified by `id`, returning
+     * the updated phased release. `state` is the raw ASC `phasedReleaseState`
+     * value (`INACTIVE` / `ACTIVE` / `PAUSED` / `COMPLETE`).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * on malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+open func updatePhasedReleaseState(id: String, state: String)async throws  -> PhasedReleaseInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_update_phased_release_state(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id),FfiConverterString.lower(state)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypePhasedReleaseInfo_lift,
             errorHandler: FfiConverterTypeStackError_lift
         )
 }
@@ -6113,6 +6271,81 @@ public func FfiConverterTypeCustomerReviewsPage_lower(_ value: CustomerReviewsPa
 
 
 /**
+ * An App Store version's phased (staged) release. App Store Connect exposes
+ * exactly one per version via the singular `appStoreVersionPhasedRelease`
+ * relationship. `state` carries the raw ASC `phasedReleaseState` value
+ * (`INACTIVE` / `ACTIVE` / `PAUSED` / `COMPLETE`) — the record field is named
+ * `state` even though the attribute is `phasedReleaseState`. `start_date` is a
+ * raw ISO8601 string; the core does no date parsing (the host owns that). All
+ * optional fields are `None` when the corresponding attribute is absent.
+ */
+public struct PhasedReleaseInfo: Equatable, Hashable {
+    public var id: String
+    public var state: String?
+    public var startDate: String?
+    public var totalPauseDuration: Int32?
+    public var currentDayNumber: Int32?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, state: String?, startDate: String?, totalPauseDuration: Int32?, currentDayNumber: Int32?) {
+        self.id = id
+        self.state = state
+        self.startDate = startDate
+        self.totalPauseDuration = totalPauseDuration
+        self.currentDayNumber = currentDayNumber
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension PhasedReleaseInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePhasedReleaseInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PhasedReleaseInfo {
+        return
+            try PhasedReleaseInfo(
+                id: FfiConverterString.read(from: &buf), 
+                state: FfiConverterOptionString.read(from: &buf), 
+                startDate: FfiConverterOptionString.read(from: &buf), 
+                totalPauseDuration: FfiConverterOptionInt32.read(from: &buf), 
+                currentDayNumber: FfiConverterOptionInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PhasedReleaseInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.state, into: &buf)
+        FfiConverterOptionString.write(value.startDate, into: &buf)
+        FfiConverterOptionInt32.write(value.totalPauseDuration, into: &buf)
+        FfiConverterOptionInt32.write(value.currentDayNumber, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePhasedReleaseInfo_lift(_ buf: RustBuffer) throws -> PhasedReleaseInfo {
+    return try FfiConverterTypePhasedReleaseInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePhasedReleaseInfo_lower(_ value: PhasedReleaseInfo) -> RustBuffer {
+    return FfiConverterTypePhasedReleaseInfo.lower(value)
+}
+
+
+/**
  * The developer's response attached to a [`CustomerReview`]. Dates are raw
  * ISO8601 strings; the core does no date parsing (the host owns that).
  */
@@ -6905,6 +7138,30 @@ fileprivate struct FfiConverterOptionTypeBuildInfo: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypePhasedReleaseInfo: FfiConverterRustBuffer {
+    typealias SwiftType = PhasedReleaseInfo?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypePhasedReleaseInfo.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypePhasedReleaseInfo.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeReviewResponse: FfiConverterRustBuffer {
     typealias SwiftType = ReviewResponse?
 
@@ -7489,10 +7746,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_appstoreversions_cancel_review() != 9516) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_appstoreversions_create_phased_release() != 55326) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_appstoreversions_create_version() != 3970) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_appstoreversions_delete_phased_release() != 29412) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_appstoreversions_delete_version() != 49312) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appstoreversions_fetch_phased_release() != 1212) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appstoreversions_fetch_versions() != 49788) {
@@ -7505,6 +7771,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appstoreversions_submit_for_review() != 45511) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appstoreversions_update_phased_release_state() != 62883) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appstoreversions_update_version() != 58000) {
