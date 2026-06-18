@@ -459,7 +459,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         let state = viewModel.uiState.version.appStoreState
 
         switch state {
-        case .prepareForSubmission:
+        case .prepareForSubmission, .developerRejected:
             if account.canEdit(.version) {
                 buildActionBar {
                     buildActionButton(
