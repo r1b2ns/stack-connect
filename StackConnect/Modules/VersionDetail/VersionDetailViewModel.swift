@@ -17,6 +17,7 @@ protocol VersionDetailViewModelProtocol: ObservableObject {
     func setPhasedReleasePaused(_ paused: Bool) async
     func submitForReview() async
     func cancelReview() async
+    func cancelSubmission() async
     func releaseVersion() async
     func rejectVersion() async
     func completePhasedRelease() async
@@ -147,6 +148,7 @@ enum VersionReleaseType: String, CaseIterable, Identifiable {
 enum VersionDetailAction: Identifiable {
     case submitForReview
     case cancelReview
+    case cancelSubmission
     case release
     case reject
     case completePhasedRelease
@@ -155,6 +157,7 @@ enum VersionDetailAction: Identifiable {
         switch self {
         case .submitForReview:       return "submit"
         case .cancelReview:          return "cancel"
+        case .cancelSubmission:      return "cancelSubmission"
         case .release:               return "release"
         case .reject:                return "reject"
         case .completePhasedRelease: return "completePhasedRelease"
@@ -165,6 +168,7 @@ enum VersionDetailAction: Identifiable {
         switch self {
         case .submitForReview:       return String(localized: "Submit for Review")
         case .cancelReview:          return String(localized: "Cancel Review")
+        case .cancelSubmission:      return String(localized: "Cancel Submission")
         case .release:               return String(localized: "Release Version")
         case .reject:                return String(localized: "Reject Version")
         case .completePhasedRelease: return String(localized: "Release to All Users")
@@ -178,6 +182,8 @@ enum VersionDetailAction: Identifiable {
             return String(localized: "Are you sure you want to submit version \(v) for review?")
         case .cancelReview:
             return String(localized: "Are you sure you want to cancel the review for version \(v)?")
+        case .cancelSubmission:
+            return String(localized: "Are you sure you want to cancel the submission for version \(v)? The version will return to “Prepare for Submission”.")
         case .release:
             return String(localized: "Are you sure you want to release version \(v) to the App Store?")
         case .reject:
@@ -191,6 +197,7 @@ enum VersionDetailAction: Identifiable {
         switch self {
         case .submitForReview:       return String(localized: "Submit")
         case .cancelReview:          return String(localized: "Cancel Review")
+        case .cancelSubmission:      return String(localized: "Cancel Submission")
         case .release:               return String(localized: "Release")
         case .reject:                return String(localized: "Reject")
         case .completePhasedRelease: return String(localized: "Release to All")
@@ -200,7 +207,7 @@ enum VersionDetailAction: Identifiable {
     var isDestructive: Bool {
         switch self {
         case .submitForReview, .release, .completePhasedRelease: return false
-        case .cancelReview, .reject: return true
+        case .cancelReview, .cancelSubmission, .reject: return true
         }
     }
 }
@@ -552,6 +559,24 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         } catch {
             uiState.actionError = error.localizedDescription
             Log.print.error("[VersionDetail] Cancel review failed: \(error.localizedDescription)")
+        }
+
+        uiState.isPerformingAction = false
+    }
+
+    func cancelSubmission() async {
+        uiState.isPerformingAction = true
+        uiState.actionError = nil
+
+        do {
+            guard let connection = createConnection() else { return }
+            try await connection.rejectVersion(appId: uiState.version.appId)
+            uiState.toastMessage = ToastMessage(String(localized: "Submission cancelled"), icon: "xmark.circle.fill")
+            Log.print.info("[VersionDetail] Cancelled submission")
+            await refresh()
+        } catch {
+            uiState.actionError = error.localizedDescription
+            Log.print.error("[VersionDetail] Cancel submission failed: \(error.localizedDescription)")
         }
 
         uiState.isPerformingAction = false

@@ -510,6 +510,19 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 }
             }
 
+        case .readyForReview:
+            if account.canEdit(.version) {
+                buildActionBar {
+                    buildActionButton(
+                        title: String(localized: "Cancel Submission"),
+                        icon: "xmark.circle.fill",
+                        color: .red
+                    ) {
+                        viewModel.uiState.confirmAction = .cancelSubmission
+                    }
+                }
+            }
+
         case .readyForSale:
             if canCompletePhasedRelease && account.canEdit(.version) {
                 buildActionBar {
@@ -594,6 +607,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         switch action {
         case .submitForReview:       await viewModel.submitForReview()
         case .cancelReview:          await viewModel.cancelReview()
+        case .cancelSubmission:      await viewModel.cancelSubmission()
         case .release:               await viewModel.releaseVersion()
         case .reject:                await viewModel.rejectVersion()
         case .completePhasedRelease: await viewModel.completePhasedRelease()
