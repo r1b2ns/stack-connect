@@ -473,6 +473,22 @@ fileprivate struct FfiConverterInt32: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterInt64: FfiConverterPrimitive {
+    typealias FfiType = Int64
+    typealias SwiftType = Int64
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Int64 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: Int64, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterBool : FfiConverter {
     typealias FfiType = Int8
     typealias SwiftType = Bool
@@ -534,6 +550,286 @@ fileprivate struct FfiConverterString: FfiConverter {
         writeBytes(&buf, value.utf8)
     }
 }
+
+
+
+
+/**
+ * UniFFI-exported Accessibility Declarations capability handle. A thin,
+ * binding-friendly wrapper around a boxed [`AccessibilityDeclarationsImpl`];
+ * async work runs on the tokio runtime. Reached via
+ * [`crate::service::provider::Provider::accessibility_declarations`].
+ */
+public protocol AccessibilityDeclarationsProtocol: AnyObject, Sendable {
+    
+    /**
+     * Creates an accessibility declaration for `app_id` targeting
+     * `device_family` (an App Store Connect device-family value such as
+     * `IPHONE`, `IPAD`, `APPLE_TV`, `APPLE_WATCH`, `MAC`, or `VISION`), returning
+     * the created declaration. The core forwards `device_family` verbatim; App
+     * Store Connect rejects unknown values with an HTTP error.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func createAccessibilityDeclaration(appId: String, deviceFamily: String) async throws  -> AccessibilityDeclarationInfo
+    
+    /**
+     * Deletes the accessibility declaration `id`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func deleteAccessibilityDeclaration(id: String) async throws 
+    
+    /**
+     * Lists the accessibility declarations for `app_id`, up to `limit` per page,
+     * following pagination until exhausted.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchAccessibilityDeclarations(appId: String, limit: Int64) async throws  -> [AccessibilityDeclarationInfo]
+    
+    /**
+     * Updates the accessibility declaration `id`, setting all nine supported
+     * feature flags and, when `publish` is `true`, publishing the declaration
+     * (the `publish` attribute is omitted entirely when `publish` is `false`).
+     * Returns the updated declaration.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func updateAccessibilityDeclaration(id: String, publish: Bool, supportsAudioDescriptions: Bool, supportsCaptions: Bool, supportsDarkInterface: Bool, supportsDifferentiateWithoutColor: Bool, supportsLargerText: Bool, supportsReducedMotion: Bool, supportsSufficientContrast: Bool, supportsVoiceControl: Bool, supportsVoiceover: Bool) async throws  -> AccessibilityDeclarationInfo
+    
+}
+/**
+ * UniFFI-exported Accessibility Declarations capability handle. A thin,
+ * binding-friendly wrapper around a boxed [`AccessibilityDeclarationsImpl`];
+ * async work runs on the tokio runtime. Reached via
+ * [`crate::service::provider::Provider::accessibility_declarations`].
+ */
+open class AccessibilityDeclarations: AccessibilityDeclarationsProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_accessibilitydeclarations(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_accessibilitydeclarations(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Creates an accessibility declaration for `app_id` targeting
+     * `device_family` (an App Store Connect device-family value such as
+     * `IPHONE`, `IPAD`, `APPLE_TV`, `APPLE_WATCH`, `MAC`, or `VISION`), returning
+     * the created declaration. The core forwards `device_family` verbatim; App
+     * Store Connect rejects unknown values with an HTTP error.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func createAccessibilityDeclaration(appId: String, deviceFamily: String)async throws  -> AccessibilityDeclarationInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_accessibilitydeclarations_create_accessibility_declaration(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId),FfiConverterString.lower(deviceFamily)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAccessibilityDeclarationInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Deletes the accessibility declaration `id`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func deleteAccessibilityDeclaration(id: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_accessibilitydeclarations_delete_accessibility_declaration(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists the accessibility declarations for `app_id`, up to `limit` per page,
+     * following pagination until exhausted.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchAccessibilityDeclarations(appId: String, limit: Int64)async throws  -> [AccessibilityDeclarationInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_accessibilitydeclarations_fetch_accessibility_declarations(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId),FfiConverterInt64.lower(limit)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeAccessibilityDeclarationInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Updates the accessibility declaration `id`, setting all nine supported
+     * feature flags and, when `publish` is `true`, publishing the declaration
+     * (the `publish` attribute is omitted entirely when `publish` is `false`).
+     * Returns the updated declaration.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func updateAccessibilityDeclaration(id: String, publish: Bool, supportsAudioDescriptions: Bool, supportsCaptions: Bool, supportsDarkInterface: Bool, supportsDifferentiateWithoutColor: Bool, supportsLargerText: Bool, supportsReducedMotion: Bool, supportsSufficientContrast: Bool, supportsVoiceControl: Bool, supportsVoiceover: Bool)async throws  -> AccessibilityDeclarationInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_accessibilitydeclarations_update_accessibility_declaration(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id),FfiConverterBool.lower(publish),FfiConverterBool.lower(supportsAudioDescriptions),FfiConverterBool.lower(supportsCaptions),FfiConverterBool.lower(supportsDarkInterface),FfiConverterBool.lower(supportsDifferentiateWithoutColor),FfiConverterBool.lower(supportsLargerText),FfiConverterBool.lower(supportsReducedMotion),FfiConverterBool.lower(supportsSufficientContrast),FfiConverterBool.lower(supportsVoiceControl),FfiConverterBool.lower(supportsVoiceover)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAccessibilityDeclarationInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAccessibilityDeclarations: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = AccessibilityDeclarations
+
+    public static func lift(_ handle: UInt64) throws -> AccessibilityDeclarations {
+        return AccessibilityDeclarations(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: AccessibilityDeclarations) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AccessibilityDeclarations {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: AccessibilityDeclarations, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAccessibilityDeclarations_lift(_ handle: UInt64) throws -> AccessibilityDeclarations {
+    return try FfiConverterTypeAccessibilityDeclarations.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAccessibilityDeclarations_lower(_ value: AccessibilityDeclarations) -> UInt64 {
+    return FfiConverterTypeAccessibilityDeclarations.lower(value)
+}
+
+
 
 
 
@@ -4190,12 +4486,236 @@ public func FfiConverterTypeCredentialStore_lower(_ value: CredentialStore) -> U
 
 
 /**
+ * Optional debug sink for HTTP tracing. When the host injects one (via
+ * `connect`), the App Store Connect client logs every request as a runnable
+ * cURL (headers + pretty-printed JSON body) and the response (status line +
+ * pretty-printed JSON). Off by default — the host only passes a logger when its
+ * debug launch flag is set. Implemented natively (the iOS app prints to the
+ * Xcode console) and injected across the FFI as a foreign trait.
+ */
+public protocol DebugLogger: AnyObject, Sendable {
+    
+    /**
+     * Emits one already-formatted, possibly multi-line debug message.
+     */
+    func log(message: String) 
+    
+}
+/**
+ * Optional debug sink for HTTP tracing. When the host injects one (via
+ * `connect`), the App Store Connect client logs every request as a runnable
+ * cURL (headers + pretty-printed JSON body) and the response (status line +
+ * pretty-printed JSON). Off by default — the host only passes a logger when its
+ * debug launch flag is set. Implemented natively (the iOS app prints to the
+ * Xcode console) and injected across the FFI as a foreign trait.
+ */
+open class DebugLoggerImpl: DebugLogger, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_debuglogger(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_debuglogger(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Emits one already-formatted, possibly multi-line debug message.
+     */
+open func log(message: String)  {try! rustCall() {
+    uniffi_stack_core_fn_method_debuglogger_log(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(message),$0
+    )
+}
+}
+    
+
+    
+}
+
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceDebugLogger {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    //
+    // Store the vtable directly.
+    static let vtable: UniffiVTableCallbackInterfaceDebugLogger = UniffiVTableCallbackInterfaceDebugLogger(
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            do {
+                try FfiConverterTypeDebugLogger.handleMap.remove(handle: uniffiHandle)
+            } catch {
+                print("Uniffi callback interface DebugLogger: handle missing in uniffiFree")
+            }
+        },
+        uniffiClone: { (uniffiHandle: UInt64) -> UInt64 in
+            do {
+                return try FfiConverterTypeDebugLogger.handleMap.clone(handle: uniffiHandle)
+            } catch {
+                fatalError("Uniffi callback interface DebugLogger: handle missing in uniffiClone")
+            }
+        },
+        log: { (
+            uniffiHandle: UInt64,
+            message: RustBuffer,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterTypeDebugLogger.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.log(
+                     message: try FfiConverterString.lift(message)
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        }
+    )
+
+    // Rust stores this pointer for future callback invocations, so it must live
+    // for the process lifetime (not just for the init function call).
+    static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfaceDebugLogger> = {
+        let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfaceDebugLogger>.allocate(capacity: 1)
+        ptr.initialize(to: vtable)
+        return UnsafePointer(ptr)
+    }()
+}
+
+private func uniffiCallbackInitDebugLogger() {
+    uniffi_stack_core_fn_init_callback_vtable_debuglogger(UniffiCallbackInterfaceDebugLogger.vtablePtr)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDebugLogger: FfiConverter {
+    fileprivate static let handleMap = UniffiHandleMap<DebugLogger>()
+
+    typealias FfiType = UInt64
+    typealias SwiftType = DebugLogger
+
+    public static func lift(_ handle: UInt64) throws -> DebugLogger {
+        if ((handle & 1) == 0) {
+            // Rust-generated handle, construct a new class that uses the handle to implement the
+            // interface
+            return DebugLoggerImpl(unsafeFromHandle: handle)
+        } else {
+            // Swift-generated handle, get the object from the handle map
+            return try handleMap.remove(handle: handle)
+        }
+    }
+
+    public static func lower(_ value: DebugLogger) -> UInt64 {
+         if let rustImpl = value as? DebugLoggerImpl {
+             // Rust-implemented object.  Clone the handle and return it
+            return rustImpl.uniffiCloneHandle()
+         } else {
+            // Swift object, generate a new vtable handle and return that.
+            return handleMap.insert(obj: value)
+         }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DebugLogger {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: DebugLogger, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDebugLogger_lift(_ handle: UInt64) throws -> DebugLogger {
+    return try FfiConverterTypeDebugLogger.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDebugLogger_lower(_ value: DebugLogger) -> UInt64 {
+    return FfiConverterTypeDebugLogger.lower(value)
+}
+
+
+
+
+
+
+/**
  * UniFFI-exported provider handle. A thin, binding-friendly wrapper around a
  * boxed [`ProviderImpl`]: synchronous metadata is exported directly, async work
  * runs on the tokio runtime. Adding a *service* never changes this surface —
  * only adding a *capability* would add a method here.
  */
 public protocol ProviderProtocol: AnyObject, Sendable {
+    
+    /**
+     * The Accessibility Declarations capability handle, or `None` when this
+     * provider does not expose [`Capability::AccessibilityDeclarations`]. This is
+     * the discovery mechanism: the host calls
+     * `provider.accessibility_declarations()` and gets `None` when accessibility
+     * declarations are unsupported.
+     */
+    func accessibilityDeclarations()  -> AccessibilityDeclarations?
     
     /**
      * The App Metadata capability handle, or `None` when this provider does not
@@ -4280,6 +4800,13 @@ public protocol ProviderProtocol: AnyObject, Sendable {
     func reviews()  -> Reviews?
     
     /**
+     * The Users capability handle, or `None` when this provider does not expose
+     * [`Capability::Users`]. This is the discovery mechanism: the host calls
+     * `provider.users()` and gets `None` when user management is unsupported.
+     */
+    func users()  -> Users?
+    
+    /**
      * Verifies the stored credentials against the live service.
      *
      * # Errors
@@ -4347,6 +4874,21 @@ open class Provider: ProviderProtocol, @unchecked Sendable {
 
     
 
+    
+    /**
+     * The Accessibility Declarations capability handle, or `None` when this
+     * provider does not expose [`Capability::AccessibilityDeclarations`]. This is
+     * the discovery mechanism: the host calls
+     * `provider.accessibility_declarations()` and gets `None` when accessibility
+     * declarations are unsupported.
+     */
+open func accessibilityDeclarations() -> AccessibilityDeclarations?  {
+    return try!  FfiConverterOptionTypeAccessibilityDeclarations.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_accessibility_declarations(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
     
     /**
      * The App Metadata capability handle, or `None` when this provider does not
@@ -4500,6 +5042,19 @@ open func kind() -> ServiceKind  {
 open func reviews() -> Reviews?  {
     return try!  FfiConverterOptionTypeReviews.lift(try! rustCall() {
     uniffi_stack_core_fn_method_provider_reviews(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The Users capability handle, or `None` when this provider does not expose
+     * [`Capability::Users`]. This is the discovery mechanism: the host calls
+     * `provider.users()` and gets `None` when user management is unsupported.
+     */
+open func users() -> Users?  {
+    return try!  FfiConverterOptionTypeUsers.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_users(
             self.uniffiCloneHandle(),$0
     )
 })
@@ -5051,6 +5606,396 @@ public func FfiConverterTypeSyncService_lower(_ value: SyncService) -> UInt64 {
 }
 
 
+
+
+
+
+/**
+ * UniFFI-exported Users capability handle. A thin, binding-friendly wrapper
+ * around a boxed [`UsersImpl`]; async work runs on the tokio runtime. Reached
+ * via [`crate::service::provider::Provider::users`].
+ */
+public protocol UsersProtocol: AnyObject, Sendable {
+    
+    /**
+     * Deletes the user `id`. When `is_pending` is `true` the id is an
+     * outstanding `userInvitations` resource and the invitation is cancelled;
+     * otherwise the id is an active `users` resource and the member is removed.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func deleteUser(id: String, isPending: Bool) async throws 
+    
+    /**
+     * Lists the team members of the connected account — the lightweight
+     * projection of the active `users` resources (no pending invitations),
+     * carrying only `first_name`/`last_name`/`username` and the raw ASC `roles`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchTeamMembers() async throws  -> [TeamMemberInfo]
+    
+    /**
+     * Lists every user of the connected account: the active members (`users`)
+     * followed by the outstanding invitations (`userInvitations`), unified into
+     * one list and discriminated by `is_pending`. For active members `email` is
+     * taken from the `username` attribute; pending invitations carry their own
+     * `email` and `expiration_date`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchUsers() async throws  -> [UserInfo]
+    
+    /**
+     * Invites a new user to the connected account, granting the raw ASC `roles`
+     * (e.g. `"ADMIN"`, `"DEVELOPER"`, `"APP_MANAGER"`), passed through verbatim.
+     * `all_apps_visible` and `provisioning_allowed` set the corresponding
+     * invitation flags. App Store Connect emails the invitation; nothing
+     * meaningful is returned.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func inviteUser(email: String, firstName: String, lastName: String, roles: [String], allAppsVisible: Bool, provisioningAllowed: Bool) async throws 
+    
+}
+/**
+ * UniFFI-exported Users capability handle. A thin, binding-friendly wrapper
+ * around a boxed [`UsersImpl`]; async work runs on the tokio runtime. Reached
+ * via [`crate::service::provider::Provider::users`].
+ */
+open class Users: UsersProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_users(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_users(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Deletes the user `id`. When `is_pending` is `true` the id is an
+     * outstanding `userInvitations` resource and the invitation is cancelled;
+     * otherwise the id is an active `users` resource and the member is removed.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func deleteUser(id: String, isPending: Bool)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_users_delete_user(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id),FfiConverterBool.lower(isPending)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists the team members of the connected account — the lightweight
+     * projection of the active `users` resources (no pending invitations),
+     * carrying only `first_name`/`last_name`/`username` and the raw ASC `roles`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchTeamMembers()async throws  -> [TeamMemberInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_users_fetch_team_members(
+                    self.uniffiCloneHandle()
+                    
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeTeamMemberInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists every user of the connected account: the active members (`users`)
+     * followed by the outstanding invitations (`userInvitations`), unified into
+     * one list and discriminated by `is_pending`. For active members `email` is
+     * taken from the `username` attribute; pending invitations carry their own
+     * `email` and `expiration_date`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchUsers()async throws  -> [UserInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_users_fetch_users(
+                    self.uniffiCloneHandle()
+                    
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeUserInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Invites a new user to the connected account, granting the raw ASC `roles`
+     * (e.g. `"ADMIN"`, `"DEVELOPER"`, `"APP_MANAGER"`), passed through verbatim.
+     * `all_apps_visible` and `provisioning_allowed` set the corresponding
+     * invitation flags. App Store Connect emails the invitation; nothing
+     * meaningful is returned.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func inviteUser(email: String, firstName: String, lastName: String, roles: [String], allAppsVisible: Bool, provisioningAllowed: Bool)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_users_invite_user(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(email),FfiConverterString.lower(firstName),FfiConverterString.lower(lastName),FfiConverterSequenceString.lower(roles),FfiConverterBool.lower(allAppsVisible),FfiConverterBool.lower(provisioningAllowed)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUsers: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Users
+
+    public static func lift(_ handle: UInt64) throws -> Users {
+        return Users(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Users) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Users {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Users, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUsers_lift(_ handle: UInt64) throws -> Users {
+    return try FfiConverterTypeUsers.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUsers_lower(_ value: Users) -> UInt64 {
+    return FfiConverterTypeUsers.lower(value)
+}
+
+
+
+
+/**
+ * An App Store Connect accessibility declaration for a single device family of
+ * an app. `device_family` is the ASC device-family value (e.g. `IPHONE`,
+ * `IPAD`, `MAC`); `state` is the publication state (`DRAFT`, `PUBLISHED`,
+ * `REPLACED`) when present. The nine `supports_*` flags declare which
+ * accessibility features the app supports for that device family.
+ *
+ * Note: the App Store Connect wire attribute for
+ * [`Self::supports_differentiate_without_color`] is
+ * `supportsDifferentiateWithoutColorAlone` (with an `Alone` suffix); the field
+ * is named without the suffix here for the host's benefit.
+ */
+public struct AccessibilityDeclarationInfo: Equatable, Hashable {
+    public var id: String
+    public var deviceFamily: String
+    public var state: String?
+    public var supportsAudioDescriptions: Bool
+    public var supportsCaptions: Bool
+    public var supportsDarkInterface: Bool
+    public var supportsDifferentiateWithoutColor: Bool
+    public var supportsLargerText: Bool
+    public var supportsReducedMotion: Bool
+    public var supportsSufficientContrast: Bool
+    public var supportsVoiceControl: Bool
+    public var supportsVoiceover: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, deviceFamily: String, state: String?, supportsAudioDescriptions: Bool, supportsCaptions: Bool, supportsDarkInterface: Bool, supportsDifferentiateWithoutColor: Bool, supportsLargerText: Bool, supportsReducedMotion: Bool, supportsSufficientContrast: Bool, supportsVoiceControl: Bool, supportsVoiceover: Bool) {
+        self.id = id
+        self.deviceFamily = deviceFamily
+        self.state = state
+        self.supportsAudioDescriptions = supportsAudioDescriptions
+        self.supportsCaptions = supportsCaptions
+        self.supportsDarkInterface = supportsDarkInterface
+        self.supportsDifferentiateWithoutColor = supportsDifferentiateWithoutColor
+        self.supportsLargerText = supportsLargerText
+        self.supportsReducedMotion = supportsReducedMotion
+        self.supportsSufficientContrast = supportsSufficientContrast
+        self.supportsVoiceControl = supportsVoiceControl
+        self.supportsVoiceover = supportsVoiceover
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AccessibilityDeclarationInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAccessibilityDeclarationInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AccessibilityDeclarationInfo {
+        return
+            try AccessibilityDeclarationInfo(
+                id: FfiConverterString.read(from: &buf), 
+                deviceFamily: FfiConverterString.read(from: &buf), 
+                state: FfiConverterOptionString.read(from: &buf), 
+                supportsAudioDescriptions: FfiConverterBool.read(from: &buf), 
+                supportsCaptions: FfiConverterBool.read(from: &buf), 
+                supportsDarkInterface: FfiConverterBool.read(from: &buf), 
+                supportsDifferentiateWithoutColor: FfiConverterBool.read(from: &buf), 
+                supportsLargerText: FfiConverterBool.read(from: &buf), 
+                supportsReducedMotion: FfiConverterBool.read(from: &buf), 
+                supportsSufficientContrast: FfiConverterBool.read(from: &buf), 
+                supportsVoiceControl: FfiConverterBool.read(from: &buf), 
+                supportsVoiceover: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AccessibilityDeclarationInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.deviceFamily, into: &buf)
+        FfiConverterOptionString.write(value.state, into: &buf)
+        FfiConverterBool.write(value.supportsAudioDescriptions, into: &buf)
+        FfiConverterBool.write(value.supportsCaptions, into: &buf)
+        FfiConverterBool.write(value.supportsDarkInterface, into: &buf)
+        FfiConverterBool.write(value.supportsDifferentiateWithoutColor, into: &buf)
+        FfiConverterBool.write(value.supportsLargerText, into: &buf)
+        FfiConverterBool.write(value.supportsReducedMotion, into: &buf)
+        FfiConverterBool.write(value.supportsSufficientContrast, into: &buf)
+        FfiConverterBool.write(value.supportsVoiceControl, into: &buf)
+        FfiConverterBool.write(value.supportsVoiceover, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAccessibilityDeclarationInfo_lift(_ buf: RustBuffer) throws -> AccessibilityDeclarationInfo {
+    return try FfiConverterTypeAccessibilityDeclarationInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAccessibilityDeclarationInfo_lower(_ value: AccessibilityDeclarationInfo) -> RustBuffer {
+    return FfiConverterTypeAccessibilityDeclarationInfo.lower(value)
+}
 
 
 /**
@@ -7056,6 +8001,174 @@ public func FfiConverterTypeScreenshotSetInfo_lower(_ value: ScreenshotSetInfo) 
     return FfiConverterTypeScreenshotSetInfo.lower(value)
 }
 
+
+/**
+ * A team member of the connected App Store Connect account: the lightweight
+ * projection of a `users` resource carrying only `first_name`/`last_name`, the
+ * `username` (App Store Connect stores the member's login email here), and the
+ * raw ASC `roles` strings (e.g. `"ADMIN"`, `"DEVELOPER"`, `"APP_MANAGER"`),
+ * passed through verbatim without remapping. `first_name`/`last_name`/
+ * `username` are optional; `roles` is empty when absent.
+ */
+public struct TeamMemberInfo: Equatable, Hashable {
+    public var id: String
+    public var firstName: String?
+    public var lastName: String?
+    public var username: String?
+    public var roles: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, firstName: String?, lastName: String?, username: String?, roles: [String]) {
+        self.id = id
+        self.firstName = firstName
+        self.lastName = lastName
+        self.username = username
+        self.roles = roles
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TeamMemberInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTeamMemberInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TeamMemberInfo {
+        return
+            try TeamMemberInfo(
+                id: FfiConverterString.read(from: &buf), 
+                firstName: FfiConverterOptionString.read(from: &buf), 
+                lastName: FfiConverterOptionString.read(from: &buf), 
+                username: FfiConverterOptionString.read(from: &buf), 
+                roles: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TeamMemberInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.firstName, into: &buf)
+        FfiConverterOptionString.write(value.lastName, into: &buf)
+        FfiConverterOptionString.write(value.username, into: &buf)
+        FfiConverterSequenceString.write(value.roles, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTeamMemberInfo_lift(_ buf: RustBuffer) throws -> TeamMemberInfo {
+    return try FfiConverterTypeTeamMemberInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTeamMemberInfo_lower(_ value: TeamMemberInfo) -> RustBuffer {
+    return FfiConverterTypeTeamMemberInfo.lower(value)
+}
+
+
+/**
+ * A user of the connected App Store Connect account, unifying two ASC
+ * resources: active members (`users`) and outstanding invitations
+ * (`userInvitations`). `is_pending` discriminates the source — `false` for an
+ * active member, `true` for a pending invitation. For active members `email`
+ * is taken from the `username` attribute (App Store Connect stores the login
+ * email there) and `expiration_date` is always `None`; for pending invitations
+ * `email` is the invitation's own `email` and `expiration_date` is the raw
+ * ISO8601 expiry (host owns parsing). `roles` carries the raw ASC role strings
+ * verbatim; `all_apps_visible` and `provisioning_allowed` default to `false`
+ * when the attribute is absent.
+ */
+public struct UserInfo: Equatable, Hashable {
+    public var id: String
+    public var firstName: String?
+    public var lastName: String?
+    public var email: String?
+    public var roles: [String]
+    public var allAppsVisible: Bool
+    public var provisioningAllowed: Bool
+    public var isPending: Bool
+    public var expirationDate: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, firstName: String?, lastName: String?, email: String?, roles: [String], allAppsVisible: Bool, provisioningAllowed: Bool, isPending: Bool, expirationDate: String?) {
+        self.id = id
+        self.firstName = firstName
+        self.lastName = lastName
+        self.email = email
+        self.roles = roles
+        self.allAppsVisible = allAppsVisible
+        self.provisioningAllowed = provisioningAllowed
+        self.isPending = isPending
+        self.expirationDate = expirationDate
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension UserInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeUserInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UserInfo {
+        return
+            try UserInfo(
+                id: FfiConverterString.read(from: &buf), 
+                firstName: FfiConverterOptionString.read(from: &buf), 
+                lastName: FfiConverterOptionString.read(from: &buf), 
+                email: FfiConverterOptionString.read(from: &buf), 
+                roles: FfiConverterSequenceString.read(from: &buf), 
+                allAppsVisible: FfiConverterBool.read(from: &buf), 
+                provisioningAllowed: FfiConverterBool.read(from: &buf), 
+                isPending: FfiConverterBool.read(from: &buf), 
+                expirationDate: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: UserInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.firstName, into: &buf)
+        FfiConverterOptionString.write(value.lastName, into: &buf)
+        FfiConverterOptionString.write(value.email, into: &buf)
+        FfiConverterSequenceString.write(value.roles, into: &buf)
+        FfiConverterBool.write(value.allAppsVisible, into: &buf)
+        FfiConverterBool.write(value.provisioningAllowed, into: &buf)
+        FfiConverterBool.write(value.isPending, into: &buf)
+        FfiConverterOptionString.write(value.expirationDate, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUserInfo_lift(_ buf: RustBuffer) throws -> UserInfo {
+    return try FfiConverterTypeUserInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeUserInfo_lower(_ value: UserInfo) -> RustBuffer {
+    return FfiConverterTypeUserInfo.lower(value)
+}
+
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
@@ -7076,6 +8189,8 @@ public enum Capability: Equatable, Hashable {
     case betaAppLocalizations
     case betaAppReviewDetail
     case appMetadata
+    case accessibilityDeclarations
+    case users
 
 
 
@@ -7114,6 +8229,10 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         case 8: return .betaAppReviewDetail
         
         case 9: return .appMetadata
+        
+        case 10: return .accessibilityDeclarations
+        
+        case 11: return .users
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -7157,6 +8276,14 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case .appMetadata:
             writeInt(&buf, Int32(9))
+        
+        
+        case .accessibilityDeclarations:
+            writeInt(&buf, Int32(10))
+        
+        
+        case .users:
+            writeInt(&buf, Int32(11))
         
         }
     }
@@ -7457,6 +8584,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeAccessibilityDeclarations: FfiConverterRustBuffer {
+    typealias SwiftType = AccessibilityDeclarations?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAccessibilityDeclarations.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAccessibilityDeclarations.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeAppMetadata: FfiConverterRustBuffer {
     typealias SwiftType = AppMetadata?
 
@@ -7625,6 +8776,30 @@ fileprivate struct FfiConverterOptionTypeBuilds: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeDebugLogger: FfiConverterRustBuffer {
+    typealias SwiftType = DebugLogger?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeDebugLogger.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeDebugLogger.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeReviews: FfiConverterRustBuffer {
     typealias SwiftType = Reviews?
 
@@ -7641,6 +8816,30 @@ fileprivate struct FfiConverterOptionTypeReviews: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeReviews.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeUsers: FfiConverterRustBuffer {
+    typealias SwiftType = Users?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeUsers.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeUsers.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -7786,6 +8985,31 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterString.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAccessibilityDeclarationInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [AccessibilityDeclarationInfo]
+
+    public static func write(_ value: [AccessibilityDeclarationInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAccessibilityDeclarationInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AccessibilityDeclarationInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AccessibilityDeclarationInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAccessibilityDeclarationInfo.read(from: &buf))
         }
         return seq
     }
@@ -8169,6 +9393,56 @@ fileprivate struct FfiConverterSequenceTypeScreenshotSetInfo: FfiConverterRustBu
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeTeamMemberInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [TeamMemberInfo]
+
+    public static func write(_ value: [TeamMemberInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTeamMemberInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TeamMemberInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TeamMemberInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTeamMemberInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeUserInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [UserInfo]
+
+    public static func write(_ value: [UserInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeUserInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [UserInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [UserInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeUserInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeCapability: FfiConverterRustBuffer {
     typealias SwiftType = [Capability]
 
@@ -8280,15 +9554,21 @@ public func availableServices() -> [ServiceKind]  {
  * callback and parses the key material — no network. The returned provider does
  * the async work (`validate`, `fetch_apps`).
  *
+ * When `debug_logger` is `Some`, every App Store Connect HTTP request the
+ * provider issues is logged as a runnable cURL (with pretty-printed JSON body)
+ * and its response (status + pretty-printed JSON). The host passes `None` in
+ * release builds and a native logger only when its debug launch flag is set.
+ *
  * # Errors
  * [`StackError::InvalidCredentials`] if a required secret is missing.
  */
-public func connect(kind: ServiceKind, accountId: String, store: CredentialStore)throws  -> Provider  {
+public func connect(kind: ServiceKind, accountId: String, store: CredentialStore, debugLogger: DebugLogger?)throws  -> Provider  {
     return try  FfiConverterTypeProvider_lift(try rustCallWithError(FfiConverterTypeStackError_lift) {
     uniffi_stack_core_fn_func_connect(
         FfiConverterTypeServiceKind_lower(kind),
         FfiConverterString.lower(accountId),
-        FfiConverterTypeCredentialStore_lower(store),$0
+        FfiConverterTypeCredentialStore_lower(store),
+        FfiConverterOptionTypeDebugLogger.lower(debugLogger),$0
     )
 })
 }
@@ -8338,7 +9618,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_func_available_services() != 22553) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_stack_core_checksum_func_connect() != 14672) {
+    if (uniffi_stack_core_checksum_func_connect() != 59121) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_func_credential_schema() != 9978) {
@@ -8366,6 +9646,21 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_credentialstore_delete() != 36020) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_debuglogger_log() != 63302) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_accessibilitydeclarations_create_accessibility_declaration() != 27936) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_accessibilitydeclarations_delete_accessibility_declaration() != 33406) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_accessibilitydeclarations_fetch_accessibility_declarations() != 29174) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_accessibilitydeclarations_update_accessibility_declaration() != 19542) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appmetadata_create_app_info_localization() != 54393) {
@@ -8548,6 +9843,21 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_reviews_reply_to_review() != 20931) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_users_delete_user() != 44147) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_users_fetch_team_members() != 22425) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_users_fetch_users() != 21183) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_users_invite_user() != 24749) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_accessibility_declarations() != 36559) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_provider_app_metadata() != 46670) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -8581,6 +9891,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_provider_reviews() != 31339) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_provider_users() != 16539) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_provider_validate() != 51064) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -8590,6 +9903,7 @@ private let initializationResult: InitializationResult = {
 
     uniffiCallbackInitBlobStore()
     uniffiCallbackInitCredentialStore()
+    uniffiCallbackInitDebugLogger()
     return InitializationResult.ok
 }()
 

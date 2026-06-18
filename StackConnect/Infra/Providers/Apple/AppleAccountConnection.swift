@@ -1253,6 +1253,17 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - Team Members
 
     func fetchTeamMembers() async throws -> [TeamMemberModel] {
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.users() else {
+                throw translate(.Unsupported(message: "Users capability is not available for this provider."))
+            }
+            let core = try await callRustCore { try await cap.fetchTeamMembers() }
+            let models = core.map { Self.mapTeamMemberInfo($0) }
+            Log.print.info("[Apple] Fetched \(models.count) team members (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchTeamMembers()
@@ -1280,6 +1291,17 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - User Management
 
     func fetchUsers() async throws -> [UserModel] {
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.users() else {
+                throw translate(.Unsupported(message: "Users capability is not available for this provider."))
+            }
+            let core = try await callRustCore { try await cap.fetchUsers() }
+            let models = core.map { Self.mapUserInfo($0) }
+            Log.print.info("[Apple] Fetched \(models.count) users (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchUsers()
@@ -1346,6 +1368,25 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         allAppsVisible: Bool,
         provisioningAllowed: Bool
     ) async throws {
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.users() else {
+                throw translate(.Unsupported(message: "Users capability is not available for this provider."))
+            }
+            try await callRustCore {
+                try await cap.inviteUser(
+                    email: email,
+                    firstName: firstName,
+                    lastName: lastName,
+                    roles: roles,
+                    allAppsVisible: allAppsVisible,
+                    provisioningAllowed: provisioningAllowed
+                )
+            }
+            Log.print.info("[Apple] Invited user \(email) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await inviteUser(
@@ -1376,6 +1417,16 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deleteUser(id: String, isPending: Bool) async throws {
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.users() else {
+                throw translate(.Unsupported(message: "Users capability is not available for this provider."))
+            }
+            try await callRustCore { try await cap.deleteUser(id: id, isPending: isPending) }
+            Log.print.info("[Apple] Deleted user \(id) (isPending: \(isPending)) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await deleteUser(id: id, isPending: isPending)
@@ -1790,6 +1841,21 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - Accessibility Declarations
 
     func fetchAccessibilityDeclarations(appId: String) async throws -> [AccessibilityDeclarationModel] {
+        // Strangler-fig migration: route this read through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.accessibilityDeclarations() else {
+                throw translate(.Unsupported(message: "Accessibility Declarations capability is not available for this provider."))
+            }
+            let models = try await callRustCore {
+                let infos = try await cap.fetchAccessibilityDeclarations(appId: appId, limit: 20)
+                return infos.map { Self.mapAccessibilityDeclarationInfo($0) }
+            }
+            Log.print.info("[Apple] Fetched \(models.count) accessibility declarations for app \(appId) (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchAccessibilityDeclarations(appId: appId)
@@ -1820,6 +1886,32 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateAccessibilityDeclaration(_ model: AccessibilityDeclarationModel, publish: Bool = false) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.accessibilityDeclarations() else {
+                throw translate(.Unsupported(message: "Accessibility Declarations capability is not available for this provider."))
+            }
+            _ = try await callRustCore {
+                try await cap.updateAccessibilityDeclaration(
+                    id: model.id,
+                    publish: publish,
+                    supportsAudioDescriptions: model.supportsAudioDescriptions,
+                    supportsCaptions: model.supportsCaptions,
+                    supportsDarkInterface: model.supportsDarkInterface,
+                    supportsDifferentiateWithoutColor: model.supportsDifferentiateWithoutColor,
+                    supportsLargerText: model.supportsLargerText,
+                    supportsReducedMotion: model.supportsReducedMotion,
+                    supportsSufficientContrast: model.supportsSufficientContrast,
+                    supportsVoiceControl: model.supportsVoiceControl,
+                    supportsVoiceover: model.supportsVoiceover
+                )
+            }
+            Log.print.info("[Apple] Updated accessibility declaration \(model.id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await updateAccessibilityDeclaration(model, publish: publish)
@@ -1850,13 +1942,30 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func createAccessibilityDeclaration(appId: String, deviceFamily: String) async throws -> AccessibilityDeclarationModel {
+        // Validate the device family up front so BOTH the Rust-core and the
+        // Swift-SDK paths reject an invalid value identically.
+        guard let family = DeviceFamily(rawValue: deviceFamily) else {
+            throw NSError(domain: "Accessibility", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid device family"])
+        }
+
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.accessibilityDeclarations() else {
+                throw translate(.Unsupported(message: "Accessibility Declarations capability is not available for this provider."))
+            }
+            let model = try await callRustCore {
+                let info = try await cap.createAccessibilityDeclaration(appId: appId, deviceFamily: deviceFamily)
+                return Self.mapAccessibilityDeclarationInfo(info)
+            }
+            Log.print.info("[Apple] Created accessibility declaration for \(deviceFamily) (Rust core)")
+            return model
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await createAccessibilityDeclaration(appId: appId, deviceFamily: deviceFamily)
-        }
-
-        guard let family = DeviceFamily(rawValue: deviceFamily) else {
-            throw NSError(domain: "Accessibility", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid device family"])
         }
 
         let body = AccessibilityDeclarationCreateRequest(
@@ -1891,6 +2000,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deleteAccessibilityDeclaration(id: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.accessibilityDeclarations() else {
+                throw translate(.Unsupported(message: "Accessibility Declarations capability is not available for this provider."))
+            }
+            try await callRustCore { try await cap.deleteAccessibilityDeclaration(id: id) }
+            Log.print.info("[Apple] Deleted accessibility declaration \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await deleteAccessibilityDeclaration(id: id)
@@ -3926,6 +4047,35 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         )
     }
 
+    /// Maps a Rust-core `TeamMemberInfo` to the app's `TeamMemberModel`.
+    /// Full fidelity: every field maps 1:1 (no date logic needed).
+    static func mapTeamMemberInfo(_ info: StackCoreRust.TeamMemberInfo) -> TeamMemberModel {
+        TeamMemberModel(
+            id: info.id,
+            firstName: info.firstName,
+            lastName: info.lastName,
+            username: info.username,
+            roles: info.roles
+        )
+    }
+
+    /// Maps a Rust-core `UserInfo` to the app's `UserModel`.
+    /// The core does no date logic, so the raw ISO8601 `expirationDate` string is
+    /// parsed here via `parseISO8601Date`; every other field maps 1:1.
+    static func mapUserInfo(_ info: StackCoreRust.UserInfo) -> UserModel {
+        UserModel(
+            id: info.id,
+            firstName: info.firstName,
+            lastName: info.lastName,
+            email: info.email,
+            roles: info.roles,
+            allAppsVisible: info.allAppsVisible,
+            provisioningAllowed: info.provisioningAllowed,
+            isPending: info.isPending,
+            expirationDate: info.expirationDate.flatMap(parseISO8601Date)
+        )
+    }
+
     /// Maps a Rust-core `BetaBuildLocalizationInfo` to the app's `BetaBuildLocalizationModel`.
     /// Full fidelity: the core provides every field this model needs, so they map 1:1.
     static func mapBetaBuildLocalizationInfo(_ info: StackCoreRust.BetaBuildLocalizationInfo) -> BetaBuildLocalizationModel {
@@ -3944,6 +4094,26 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             locale: info.locale,
             feedbackEmail: info.feedbackEmail,
             description: info.description
+        )
+    }
+
+    /// Maps a Rust-core `AccessibilityDeclarationInfo` to the app's
+    /// `AccessibilityDeclarationModel`. Full fidelity: every field (id +
+    /// deviceFamily + optional state + the 9 support booleans) maps 1:1.
+    static func mapAccessibilityDeclarationInfo(_ info: StackCoreRust.AccessibilityDeclarationInfo) -> AccessibilityDeclarationModel {
+        AccessibilityDeclarationModel(
+            id: info.id,
+            deviceFamily: info.deviceFamily,
+            state: info.state,
+            supportsAudioDescriptions: info.supportsAudioDescriptions,
+            supportsCaptions: info.supportsCaptions,
+            supportsDarkInterface: info.supportsDarkInterface,
+            supportsDifferentiateWithoutColor: info.supportsDifferentiateWithoutColor,
+            supportsLargerText: info.supportsLargerText,
+            supportsReducedMotion: info.supportsReducedMotion,
+            supportsSufficientContrast: info.supportsSufficientContrast,
+            supportsVoiceControl: info.supportsVoiceControl,
+            supportsVoiceover: info.supportsVoiceover
         )
     }
 
@@ -4174,7 +4344,8 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             let provider = try connect(
                 kind: .appStoreConnect,
                 accountId: credentials.issuerID,
-                store: rustCredentialStore
+                store: rustCredentialStore,
+                debugLogger: featureFlags.isEnabled(.useRustCoreDebugLogging) ? RustCoreDebugLogger() : nil
             )
             rustProvider = provider
             return provider

@@ -18,11 +18,22 @@ enum FeatureFlag: String, CaseIterable {
     /// Connect SDK. All other Apple methods stay on the Swift SDK. Default: OFF.
     case useRustCoreForAppleApps = "featureFlag.useRustCoreForAppleApps"
 
+    /// Debug-only tracer: when ON, the Rust core logs every App Store Connect HTTP
+    /// call it makes as a runnable cURL command (with pretty-printed JSON
+    /// request/response) straight to the Xcode console. Intended purely for
+    /// diagnosing the Rust-core ASC integration during development; it has no
+    /// behavioural effect on the app and zero overhead when OFF. Toggle at launch
+    /// via the launch argument `-featureFlag.useRustCoreDebugLogging YES`.
+    /// Default: OFF.
+    case useRustCoreDebugLogging = "featureFlag.useRustCoreDebugLogging"
+
     /// The compiled-in default used when no value is stored in `UserDefaults`.
     /// New flags ship OFF by default — the safe, fully-reversible value.
     var defaultValue: Bool {
         switch self {
         case .useRustCoreForAppleApps:
+            return false
+        case .useRustCoreDebugLogging:
             return false
         }
     }

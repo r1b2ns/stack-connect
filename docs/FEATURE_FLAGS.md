@@ -8,13 +8,14 @@ Flags are defined in `FeatureFlag` and resolved through `FeatureFlags`
 at runtime — e.g. via a debug menu or a launch argument — without rebuilding. Every
 new flag ships **OFF** by default (the safe, fully-reversible value) unless noted.
 
-**Total feature flags: 1**
+**Total feature flags: 2**
 
 ## Flags
 
 | Flag (`FeatureFlag` case) | UserDefaults key | Default | Description |
 | --- | --- | --- | --- |
 | `useRustCoreForAppleApps` | `featureFlag.useRustCoreForAppleApps` | OFF | Routes **only** the Apple connection's `validateCredentials()` and `fetchApps()` through the shared Rust core (UniFFI `Provider`) instead of the Swift App Store Connect SDK. All other Apple methods stay on the Swift SDK. Fully reversible — turning it OFF restores the original Swift-SDK behaviour. |
+| `useRustCoreDebugLogging` | `featureFlag.useRustCoreDebugLogging` | OFF | Debug-only HTTP tracer: logs every Rust-core App Store Connect request/response as a runnable cURL command (with pretty-printed JSON) to the Xcode console. Intended purely for diagnosing the Rust-core ASC integration during development. No effect when OFF (zero overhead). |
 
 ## Usage sites
 
@@ -75,9 +76,26 @@ new flag ships **OFF** by default (the safe, fully-reversible value) unless note
   - `fetchLocalizations(versionId:)` — when ON, calls the Rust core `AppStoreVersions.fetchLocalizations(versionId:)` and maps `StackCoreRust.AppStoreLocalizationInfo` → `AppStoreLocalizationModel` via `mapAppStoreLocalizationInfo`. Read only.
   - `updateLocalization(id:description:keywords:promotionalText:supportUrl:marketingUrl:whatsNew:)` — when ON, calls the Rust core `AppStoreVersions.updateLocalization(id:description:keywords:promotionalText:supportUrl:marketingUrl:whatsNew:)` (method is `Void`).
   - `fetchScreenshotSets(localizationId:)` — when ON, calls the Rust core `AppStoreVersions.fetchScreenshotSets(localizationId:)` and maps `StackCoreRust.ScreenshotSetInfo` → `ScreenshotSetModel` via `mapScreenshotSetInfo` (each nested `ScreenshotInfo` mapped via `mapScreenshotInfo`, widening `Int32?` dimensions to `Int?`). Read only.
+  - `fetchTeamMembers()` — when ON, calls the Rust core `Users.fetchTeamMembers()` and maps `StackCoreRust.TeamMemberInfo` → `TeamMemberModel` via `mapTeamMemberInfo` (full fidelity, all fields map 1:1). Read only.
+  - `fetchUsers()` — when ON, calls the Rust core `Users.fetchUsers()` and maps `StackCoreRust.UserInfo` → `UserModel` via `mapUserInfo` (the core unifies active members + pending invitations into one list; the raw ISO8601 `expirationDate` is parsed via `parseISO8601Date`). Read only.
+  - `inviteUser(email:firstName:lastName:roles:allAppsVisible:provisioningAllowed:)` — when ON, calls the Rust core `Users.inviteUser(...)` (`roles` passed straight through as `[String]`; method is `Void`).
+  - `deleteUser(id:isPending:)` — when ON, calls the Rust core `Users.deleteUser(id:isPending:)` (`isPending` selects the invitation-cancel vs user-delete path inside the core; method is `Void`).
+  - `fetchAccessibilityDeclarations(appId:)` — when ON, calls the Rust core `AccessibilityDeclarations.fetchAccessibilityDeclarations(appId:limit:20)` and maps `StackCoreRust.AccessibilityDeclarationInfo` → `AccessibilityDeclarationModel` via `mapAccessibilityDeclarationInfo` (full fidelity, all 11 fields map 1:1). Read only.
+  - `createAccessibilityDeclaration(appId:deviceFamily:)` — when ON, validates `deviceFamily` up front (shared by both paths), then calls the Rust core `AccessibilityDeclarations.createAccessibilityDeclaration(appId:deviceFamily:)` and maps the returned `AccessibilityDeclarationInfo` → `AccessibilityDeclarationModel` (the method returns the created model).
+  - `updateAccessibilityDeclaration(_:publish:)` — when ON, calls the Rust core `AccessibilityDeclarations.updateAccessibilityDeclaration(id:publish:supports…)` passing the 9 support booleans; the returned `AccessibilityDeclarationInfo` is discarded (method is `Void`).
+  - `deleteAccessibilityDeclaration(id:)` — when ON, calls the Rust core `AccessibilityDeclarations.deleteAccessibilityDeclaration(id:)` (method is `Void`).
 - **Supporting types:**
   - `StackConnect/Infra/Providers/Apple/AppleCredentialStore.swift` — bridges `AppleCredentials` to the Rust core's `CredentialStore` (`issuerId` / `keyId` / `privateKeyP8`).
   - Package: `Packages/StackCoreRust` (vendored `StackCoreRust.xcframework` + generated UniFFI wrapper).
+
+### `useRustCoreDebugLogging`
+
+- **Definition:** `StackConnect/Infra/FeatureFlags/FeatureFlags.swift` — `FeatureFlag.useRustCoreDebugLogging` (default `false`).
+- **Read at:** `StackConnect/Infra/Providers/Apple/AppleAccountConnection.swift`
+  - `rustCoreProvider()` — when ON, passes a `RustCoreDebugLogger()` as the `debugLogger:` argument to the Rust core's `connect(...)`, so the core logs every App Store Connect HTTP call it makes as a runnable cURL (pretty JSON request/response) to the Xcode console. When OFF, passes `nil` (no logging, zero overhead).
+- **Supporting types:**
+  - `StackConnect/Infra/Providers/Apple/RustCoreDebugLogger.swift` — a stateless `DebugLogger` that forwards the core's traces straight to the Xcode console via `print` (not `Log.print`, which truncates long messages).
+- **Runtime usage:** enable at launch via the launch argument `-featureFlag.useRustCoreDebugLogging YES` (Xcode scheme → Run → Arguments → *Arguments Passed On Launch*), or programmatically with `FeatureFlags.shared.setEnabled(true, for: .useRustCoreDebugLogging)`.
 
 ## How to toggle (debug / testing)
 

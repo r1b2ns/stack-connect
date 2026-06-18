@@ -59,6 +59,27 @@ final class RustCoreStranglerTests: XCTestCase {
         XCTAssertFalse(flags.isEnabled(.useRustCoreForAppleApps))
     }
 
+    func testDebugLoggingFlagDefaultsOffWhenUnset() {
+        let suiteName = "RustCoreStranglerTests.debugLogging.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        let flags = FeatureFlags(defaults: defaults)
+
+        XCTAssertFalse(
+            flags.isEnabled(.useRustCoreDebugLogging),
+            "Debug-logging flag must default to OFF (zero overhead, opt-in only)."
+        )
+    }
+
+    func testRustCoreDebugLoggerConformsAndDoesNotCrash() {
+        // Smoke test only — the real cURL/JSON tracing behaviour lives in the Rust
+        // core. Here we just prove the Swift adapter conforms to `DebugLogger` and
+        // can be invoked with a multi-line message without crashing.
+        let logger: DebugLogger = RustCoreDebugLogger()
+        logger.log(message: "first line\nsecond line\nthird line")
+        logger.log(message: "test")
+    }
+
     // MARK: - AppleCredentialStore bridge
 
     func testCredentialStoreMapsRustKeysToAppleCredentials() {
@@ -2368,6 +2389,339 @@ final class RustCoreStranglerTests: XCTestCase {
         } catch {
             XCTFail("Expected a StackError from the Rust core, got: \(error)")
         }
+    }
+
+    // MARK: - Users (strangler routing)
+
+    /// With the flag ON, `fetchTeamMembers()` must fail via the Rust core for invalid
+    /// credentials, proving the read never reaches the Swift-SDK provider.
+    func testFetchTeamMembersRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchTeamMembers()
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `fetchUsers()` must fail via the Rust core for invalid
+    /// credentials, proving the read never reaches the Swift-SDK provider.
+    func testFetchUsersRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchUsers()
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `inviteUser(...)` must fail via the Rust core for invalid
+    /// credentials, proving the write never reaches the Swift-SDK provider.
+    func testInviteUserRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.inviteUser(
+                email: "a@b.com",
+                firstName: "First",
+                lastName: "Last",
+                roles: ["DEVELOPER"],
+                allAppsVisible: true,
+                provisioningAllowed: false
+            )
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `deleteUser(id:isPending:)` must fail via the Rust core for
+    /// invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testDeleteUserRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.deleteUser(id: "user-1", isPending: false)
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    // MARK: - Users mapping (Rust core -> app model)
+
+    /// `mapTeamMemberInfo` is full fidelity: every field maps 1:1, including nils.
+    func testMapTeamMemberInfoMapsAllFields() {
+        let core = StackCoreRust.TeamMemberInfo(
+            id: "tm-1",
+            firstName: "Ada",
+            lastName: "Lovelace",
+            username: "ada@example.com",
+            roles: ["ADMIN", "DEVELOPER"]
+        )
+
+        let model = AppleAccountConnection.mapTeamMemberInfo(core)
+
+        XCTAssertEqual(model.id, "tm-1")
+        XCTAssertEqual(model.firstName, "Ada")
+        XCTAssertEqual(model.lastName, "Lovelace")
+        XCTAssertEqual(model.username, "ada@example.com")
+        XCTAssertEqual(model.roles, ["ADMIN", "DEVELOPER"])
+
+        let sparse = StackCoreRust.TeamMemberInfo(
+            id: "tm-2",
+            firstName: nil,
+            lastName: nil,
+            username: nil,
+            roles: []
+        )
+        let sparseModel = AppleAccountConnection.mapTeamMemberInfo(sparse)
+        XCTAssertEqual(sparseModel.id, "tm-2")
+        XCTAssertNil(sparseModel.firstName)
+        XCTAssertNil(sparseModel.lastName)
+        XCTAssertNil(sparseModel.username)
+        XCTAssertEqual(sparseModel.roles, [])
+    }
+
+    /// `mapUserInfo` maps every field 1:1 and parses the raw ISO8601 `expirationDate`
+    /// (including fractional seconds) via `parseISO8601Date`; nil/invalid dates yield nil.
+    func testMapUserInfoMapsAllFieldsAndParsesExpirationDate() {
+        let core = StackCoreRust.UserInfo(
+            id: "u-1",
+            firstName: "Grace",
+            lastName: "Hopper",
+            email: "grace@example.com",
+            roles: ["FINANCE"],
+            allAppsVisible: true,
+            provisioningAllowed: false,
+            isPending: true,
+            expirationDate: "2025-01-15T10:30:00.123Z"
+        )
+
+        let model = AppleAccountConnection.mapUserInfo(core)
+
+        XCTAssertEqual(model.id, "u-1")
+        XCTAssertEqual(model.firstName, "Grace")
+        XCTAssertEqual(model.lastName, "Hopper")
+        XCTAssertEqual(model.email, "grace@example.com")
+        XCTAssertEqual(model.roles, ["FINANCE"])
+        XCTAssertTrue(model.allAppsVisible)
+        XCTAssertFalse(model.provisioningAllowed)
+        XCTAssertTrue(model.isPending)
+
+        let withFractional = ISO8601DateFormatter()
+        withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        XCTAssertEqual(model.expirationDate, withFractional.date(from: "2025-01-15T10:30:00.123Z"))
+
+        let nilDate = StackCoreRust.UserInfo(
+            id: "u-2",
+            firstName: nil,
+            lastName: nil,
+            email: nil,
+            roles: [],
+            allAppsVisible: false,
+            provisioningAllowed: false,
+            isPending: false,
+            expirationDate: nil
+        )
+        XCTAssertNil(AppleAccountConnection.mapUserInfo(nilDate).expirationDate)
+
+        let invalidDate = StackCoreRust.UserInfo(
+            id: "u-3",
+            firstName: nil,
+            lastName: nil,
+            email: nil,
+            roles: [],
+            allAppsVisible: false,
+            provisioningAllowed: false,
+            isPending: false,
+            expirationDate: "not-a-date"
+        )
+        XCTAssertNil(AppleAccountConnection.mapUserInfo(invalidDate).expirationDate)
+    }
+
+    // MARK: - Accessibility declarations (strangler routing)
+
+    /// With the flag ON, `fetchAccessibilityDeclarations(appId:)` must fail via the
+    /// Rust core for invalid credentials, proving the read never reaches the
+    /// Swift-SDK provider. The result is discarded via `_ = try await ...`.
+    func testFetchAccessibilityDeclarationsRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchAccessibilityDeclarations(appId: "app-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `updateAccessibilityDeclaration(_:publish:)` must fail via the
+    /// Rust core for invalid credentials, proving the write never reaches the
+    /// Swift-SDK provider.
+    func testUpdateAccessibilityDeclarationRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        let model = AccessibilityDeclarationModel(
+            id: "decl-1",
+            deviceFamily: "IPHONE",
+            state: "DRAFT",
+            supportsAudioDescriptions: true,
+            supportsCaptions: false,
+            supportsDarkInterface: true,
+            supportsDifferentiateWithoutColor: false,
+            supportsLargerText: true,
+            supportsReducedMotion: false,
+            supportsSufficientContrast: true,
+            supportsVoiceControl: false,
+            supportsVoiceover: true
+        )
+
+        do {
+            try await connection.updateAccessibilityDeclaration(model, publish: true)
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `createAccessibilityDeclaration(appId:deviceFamily:)` must fail
+    /// via the Rust core for invalid credentials (with a valid device family), proving
+    /// the write never reaches the Swift-SDK provider. The method returns a model, so the
+    /// result is discarded via `_ = try await ...`.
+    func testCreateAccessibilityDeclarationRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.createAccessibilityDeclaration(appId: "app-1", deviceFamily: "IPHONE")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `deleteAccessibilityDeclaration(id:)` must fail via the
+    /// Rust core for invalid credentials, proving the write never reaches the
+    /// Swift-SDK provider.
+    func testDeleteAccessibilityDeclarationRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.deleteAccessibilityDeclaration(id: "decl-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    // MARK: - Accessibility declaration mapping (Rust core -> app model)
+
+    /// The core `AccessibilityDeclarationInfo` provides every field the app's
+    /// `AccessibilityDeclarationModel` needs, so the mapping is full fidelity (1:1):
+    /// id + deviceFamily + optional state + the 9 support booleans pass straight through.
+    func testMapAccessibilityDeclarationInfoMapsAllFields() {
+        let core = StackCoreRust.AccessibilityDeclarationInfo(
+            id: "decl-1",
+            deviceFamily: "IPHONE",
+            state: "PUBLISHED",
+            supportsAudioDescriptions: true,
+            supportsCaptions: false,
+            supportsDarkInterface: true,
+            supportsDifferentiateWithoutColor: false,
+            supportsLargerText: true,
+            supportsReducedMotion: false,
+            supportsSufficientContrast: true,
+            supportsVoiceControl: false,
+            supportsVoiceover: true
+        )
+
+        let model = AppleAccountConnection.mapAccessibilityDeclarationInfo(core)
+
+        XCTAssertEqual(model.id, "decl-1")
+        XCTAssertEqual(model.deviceFamily, "IPHONE")
+        XCTAssertEqual(model.state, "PUBLISHED")
+        XCTAssertTrue(model.supportsAudioDescriptions)
+        XCTAssertFalse(model.supportsCaptions)
+        XCTAssertTrue(model.supportsDarkInterface)
+        XCTAssertFalse(model.supportsDifferentiateWithoutColor)
+        XCTAssertTrue(model.supportsLargerText)
+        XCTAssertFalse(model.supportsReducedMotion)
+        XCTAssertTrue(model.supportsSufficientContrast)
+        XCTAssertFalse(model.supportsVoiceControl)
+        XCTAssertTrue(model.supportsVoiceover)
+
+        // Optional `state` must pass straight through as nil.
+        let coreNilState = StackCoreRust.AccessibilityDeclarationInfo(
+            id: "decl-2",
+            deviceFamily: "IPAD",
+            state: nil,
+            supportsAudioDescriptions: false,
+            supportsCaptions: true,
+            supportsDarkInterface: false,
+            supportsDifferentiateWithoutColor: true,
+            supportsLargerText: false,
+            supportsReducedMotion: true,
+            supportsSufficientContrast: false,
+            supportsVoiceControl: true,
+            supportsVoiceover: false
+        )
+        let modelNilState = AppleAccountConnection.mapAccessibilityDeclarationInfo(coreNilState)
+        XCTAssertEqual(modelNilState.id, "decl-2")
+        XCTAssertEqual(modelNilState.deviceFamily, "IPAD")
+        XCTAssertNil(modelNilState.state)
+        XCTAssertFalse(modelNilState.supportsAudioDescriptions)
+        XCTAssertTrue(modelNilState.supportsCaptions)
+        XCTAssertFalse(modelNilState.supportsDarkInterface)
+        XCTAssertTrue(modelNilState.supportsDifferentiateWithoutColor)
+        XCTAssertFalse(modelNilState.supportsLargerText)
+        XCTAssertTrue(modelNilState.supportsReducedMotion)
+        XCTAssertFalse(modelNilState.supportsSufficientContrast)
+        XCTAssertTrue(modelNilState.supportsVoiceControl)
+        XCTAssertFalse(modelNilState.supportsVoiceover)
     }
 }
 
