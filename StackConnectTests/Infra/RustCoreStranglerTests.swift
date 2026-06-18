@@ -1177,6 +1177,160 @@ final class RustCoreStranglerTests: XCTestCase {
         XCTAssertNil(modelNoOptionals.description)
     }
 
+    // MARK: - App info localizations (strangler routing)
+
+    /// With the flag ON, `fetchAppInfoLocalizations(appInfoId:)` must fail via the
+    /// Rust core for invalid credentials, proving the read never reaches the
+    /// Swift-SDK provider. The result is discarded via `_ = try await ...`.
+    func testFetchAppInfoLocalizationsRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchAppInfoLocalizations(appInfoId: "appinfo-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `createAppInfoLocalization(...)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    /// The method returns a model, so the result is discarded via `_ = try await ...`.
+    func testCreateAppInfoLocalizationRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.createAppInfoLocalization(
+                appInfoId: "appinfo-1",
+                locale: "en-US",
+                name: "My App",
+                subtitle: "A great app"
+            )
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `updateAppInfoLocalization(...)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testUpdateAppInfoLocalizationRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.updateAppInfoLocalization(
+                id: "loc-1",
+                name: "My App",
+                subtitle: "A great app"
+            )
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `updateAppInfoLocalizationPrivacy(...)` must fail via the Rust
+    /// core for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testUpdateAppInfoLocalizationPrivacyRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.updateAppInfoLocalizationPrivacy(
+                id: "loc-1",
+                privacyPolicyUrl: "https://example.com/privacy",
+                privacyChoicesUrl: "https://example.com/choices",
+                privacyPolicyText: "Privacy policy text."
+            )
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `deleteAppInfoLocalization(id:)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testDeleteAppInfoLocalizationRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.deleteAppInfoLocalization(id: "loc-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    // MARK: - App info localization mapping (Rust core -> app model)
+
+    /// The core `AppInfoLocalizationInfo` provides every field the app's
+    /// `AppInfoLocalizationModel` needs, so the mapping is full fidelity (1:1),
+    /// including passing all five optionals straight through.
+    func testMapAppInfoLocalizationInfoMapsAllFields() {
+        let core = StackCoreRust.AppInfoLocalizationInfo(
+            id: "loc-1",
+            locale: "en-US",
+            name: "My App",
+            subtitle: "A great app",
+            privacyPolicyUrl: "https://example.com/privacy",
+            privacyChoicesUrl: "https://example.com/choices",
+            privacyPolicyText: "Privacy policy text."
+        )
+
+        let model = AppleAccountConnection.mapAppInfoLocalizationInfo(core)
+
+        XCTAssertEqual(model.id, "loc-1")
+        XCTAssertEqual(model.locale, "en-US")
+        XCTAssertEqual(model.name, "My App")
+        XCTAssertEqual(model.subtitle, "A great app")
+        XCTAssertEqual(model.privacyPolicyUrl, "https://example.com/privacy")
+        XCTAssertEqual(model.privacyChoicesUrl, "https://example.com/choices")
+        XCTAssertEqual(model.privacyPolicyText, "Privacy policy text.")
+
+        // All five optionals must pass straight through as nil.
+        let coreNoOptionals = StackCoreRust.AppInfoLocalizationInfo(
+            id: "loc-2",
+            locale: "pt-BR",
+            name: nil,
+            subtitle: nil,
+            privacyPolicyUrl: nil,
+            privacyChoicesUrl: nil,
+            privacyPolicyText: nil
+        )
+        let modelNoOptionals = AppleAccountConnection.mapAppInfoLocalizationInfo(coreNoOptionals)
+        XCTAssertEqual(modelNoOptionals.id, "loc-2")
+        XCTAssertEqual(modelNoOptionals.locale, "pt-BR")
+        XCTAssertNil(modelNoOptionals.name)
+        XCTAssertNil(modelNoOptionals.subtitle)
+        XCTAssertNil(modelNoOptionals.privacyPolicyUrl)
+        XCTAssertNil(modelNoOptionals.privacyChoicesUrl)
+        XCTAssertNil(modelNoOptionals.privacyPolicyText)
+    }
+
     // MARK: - Beta app review detail (strangler routing)
 
     /// With the flag ON, `fetchBetaAppReviewDetail(appId:)` routes through the Rust core.

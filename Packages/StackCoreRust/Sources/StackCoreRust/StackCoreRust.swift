@@ -539,6 +539,321 @@ fileprivate struct FfiConverterString: FfiConverter {
 
 
 /**
+ * UniFFI-exported App Metadata capability handle. A thin, binding-friendly
+ * wrapper around a boxed [`AppMetadataImpl`]; async work runs on the tokio
+ * runtime. Reached via [`crate::service::provider::Provider::app_metadata`].
+ */
+public protocol AppMetadataProtocol: AnyObject, Sendable {
+    
+    /**
+     * Creates an app-info localization for `app_info_id` in `locale`, returning
+     * the created localization. `name` is always set; `subtitle` is set only
+     * when `Some`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func createAppInfoLocalization(appInfoId: String, locale: String, name: String, subtitle: String?) async throws  -> AppInfoLocalizationInfo
+    
+    /**
+     * Deletes the app-info localization `id`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func deleteAppInfoLocalization(id: String) async throws 
+    
+    /**
+     * Lists the app-info localizations for `app_info_id`. Each carries the
+     * per-locale product-page `name`/`subtitle` and the three privacy
+     * links/text.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchAppInfoLocalizations(appInfoId: String) async throws  -> [AppInfoLocalizationInfo]
+    
+    /**
+     * Updates the app-info localization `id`, returning the updated
+     * localization. `name` is always sent; `subtitle` is sent only when `Some`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func updateAppInfoLocalization(id: String, name: String, subtitle: String?) async throws  -> AppInfoLocalizationInfo
+    
+    /**
+     * Updates the privacy attributes of the app-info localization `id`,
+     * replacing only the provided `privacy_policy_url`, `privacy_choices_url`,
+     * and/or `privacy_policy_text` attributes, and returns the updated
+     * localization.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func updateAppInfoLocalizationPrivacy(id: String, privacyPolicyUrl: String?, privacyChoicesUrl: String?, privacyPolicyText: String?) async throws  -> AppInfoLocalizationInfo
+    
+}
+/**
+ * UniFFI-exported App Metadata capability handle. A thin, binding-friendly
+ * wrapper around a boxed [`AppMetadataImpl`]; async work runs on the tokio
+ * runtime. Reached via [`crate::service::provider::Provider::app_metadata`].
+ */
+open class AppMetadata: AppMetadataProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_appmetadata(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_appmetadata(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Creates an app-info localization for `app_info_id` in `locale`, returning
+     * the created localization. `name` is always set; `subtitle` is set only
+     * when `Some`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func createAppInfoLocalization(appInfoId: String, locale: String, name: String, subtitle: String?)async throws  -> AppInfoLocalizationInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appmetadata_create_app_info_localization(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appInfoId),FfiConverterString.lower(locale),FfiConverterString.lower(name),FfiConverterOptionString.lower(subtitle)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAppInfoLocalizationInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Deletes the app-info localization `id`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func deleteAppInfoLocalization(id: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appmetadata_delete_app_info_localization(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists the app-info localizations for `app_info_id`. Each carries the
+     * per-locale product-page `name`/`subtitle` and the three privacy
+     * links/text.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchAppInfoLocalizations(appInfoId: String)async throws  -> [AppInfoLocalizationInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appmetadata_fetch_app_info_localizations(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appInfoId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeAppInfoLocalizationInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Updates the app-info localization `id`, returning the updated
+     * localization. `name` is always sent; `subtitle` is sent only when `Some`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func updateAppInfoLocalization(id: String, name: String, subtitle: String?)async throws  -> AppInfoLocalizationInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appmetadata_update_app_info_localization(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id),FfiConverterString.lower(name),FfiConverterOptionString.lower(subtitle)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAppInfoLocalizationInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Updates the privacy attributes of the app-info localization `id`,
+     * replacing only the provided `privacy_policy_url`, `privacy_choices_url`,
+     * and/or `privacy_policy_text` attributes, and returns the updated
+     * localization.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func updateAppInfoLocalizationPrivacy(id: String, privacyPolicyUrl: String?, privacyChoicesUrl: String?, privacyPolicyText: String?)async throws  -> AppInfoLocalizationInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appmetadata_update_app_info_localization_privacy(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id),FfiConverterOptionString.lower(privacyPolicyUrl),FfiConverterOptionString.lower(privacyChoicesUrl),FfiConverterOptionString.lower(privacyPolicyText)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAppInfoLocalizationInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppMetadata: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = AppMetadata
+
+    public static func lift(_ handle: UInt64) throws -> AppMetadata {
+        return AppMetadata(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: AppMetadata) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppMetadata {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: AppMetadata, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppMetadata_lift(_ handle: UInt64) throws -> AppMetadata {
+    return try FfiConverterTypeAppMetadata.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppMetadata_lower(_ value: AppMetadata) -> UInt64 {
+    return FfiConverterTypeAppMetadata.lower(value)
+}
+
+
+
+
+
+
+/**
  * UniFFI-exported App Store Versions capability handle. A thin, binding-friendly
  * wrapper around a boxed [`AppStoreVersionsImpl`]; async work runs on the tokio
  * runtime. Reached via [`crate::service::provider::Provider::app_store_versions`].
@@ -3078,6 +3393,14 @@ public func FfiConverterTypeCredentialStore_lower(_ value: CredentialStore) -> U
 public protocol ProviderProtocol: AnyObject, Sendable {
     
     /**
+     * The App Metadata capability handle, or `None` when this provider does not
+     * expose [`Capability::AppMetadata`]. This is the discovery mechanism: the
+     * host calls `provider.app_metadata()` and gets `None` when app metadata is
+     * unsupported.
+     */
+    func appMetadata()  -> AppMetadata?
+    
+    /**
      * The App Store Versions capability handle, or `None` when this provider does
      * not expose [`Capability::AppStoreVersions`]. This is the discovery
      * mechanism: the host calls `provider.app_store_versions()` and gets `None`
@@ -3219,6 +3542,20 @@ open class Provider: ProviderProtocol, @unchecked Sendable {
 
     
 
+    
+    /**
+     * The App Metadata capability handle, or `None` when this provider does not
+     * expose [`Capability::AppMetadata`]. This is the discovery mechanism: the
+     * host calls `provider.app_metadata()` and gets `None` when app metadata is
+     * unsupported.
+     */
+open func appMetadata() -> AppMetadata?  {
+    return try!  FfiConverterOptionTypeAppMetadata.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_app_metadata(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
     
     /**
      * The App Store Versions capability handle, or `None` when this provider does
@@ -3977,6 +4314,89 @@ public func FfiConverterTypeAppInfo_lift(_ buf: RustBuffer) throws -> AppInfo {
 #endif
 public func FfiConverterTypeAppInfo_lower(_ value: AppInfo) -> RustBuffer {
     return FfiConverterTypeAppInfo.lower(value)
+}
+
+
+/**
+ * An App Store app-info localization, keyed by `locale`. Carries the per-locale
+ * App Store listing metadata: the `name` and `subtitle` shown on the product
+ * page, plus the three privacy links/text (`privacy_policy_url`,
+ * `privacy_choices_url`, `privacy_policy_text`). All attributes are optional;
+ * App Store Connect serializes them camelCase (`privacyPolicyUrl`,
+ * `privacyChoicesUrl`, `privacyPolicyText`), which `rename_all = "camelCase"`
+ * maps without any per-field rename.
+ */
+public struct AppInfoLocalizationInfo: Equatable, Hashable {
+    public var id: String
+    public var locale: String
+    public var name: String?
+    public var subtitle: String?
+    public var privacyPolicyUrl: String?
+    public var privacyChoicesUrl: String?
+    public var privacyPolicyText: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, locale: String, name: String?, subtitle: String?, privacyPolicyUrl: String?, privacyChoicesUrl: String?, privacyPolicyText: String?) {
+        self.id = id
+        self.locale = locale
+        self.name = name
+        self.subtitle = subtitle
+        self.privacyPolicyUrl = privacyPolicyUrl
+        self.privacyChoicesUrl = privacyChoicesUrl
+        self.privacyPolicyText = privacyPolicyText
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AppInfoLocalizationInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppInfoLocalizationInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppInfoLocalizationInfo {
+        return
+            try AppInfoLocalizationInfo(
+                id: FfiConverterString.read(from: &buf), 
+                locale: FfiConverterString.read(from: &buf), 
+                name: FfiConverterOptionString.read(from: &buf), 
+                subtitle: FfiConverterOptionString.read(from: &buf), 
+                privacyPolicyUrl: FfiConverterOptionString.read(from: &buf), 
+                privacyChoicesUrl: FfiConverterOptionString.read(from: &buf), 
+                privacyPolicyText: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AppInfoLocalizationInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.locale, into: &buf)
+        FfiConverterOptionString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.subtitle, into: &buf)
+        FfiConverterOptionString.write(value.privacyPolicyUrl, into: &buf)
+        FfiConverterOptionString.write(value.privacyChoicesUrl, into: &buf)
+        FfiConverterOptionString.write(value.privacyPolicyText, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppInfoLocalizationInfo_lift(_ buf: RustBuffer) throws -> AppInfoLocalizationInfo {
+    return try FfiConverterTypeAppInfoLocalizationInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppInfoLocalizationInfo_lower(_ value: AppInfoLocalizationInfo) -> RustBuffer {
+    return FfiConverterTypeAppInfoLocalizationInfo.lower(value)
 }
 
 
@@ -5159,6 +5579,7 @@ public enum Capability: Equatable, Hashable {
     case betaBuildLocalizations
     case betaAppLocalizations
     case betaAppReviewDetail
+    case appMetadata
 
 
 
@@ -5195,6 +5616,8 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         case 7: return .betaAppLocalizations
         
         case 8: return .betaAppReviewDetail
+        
+        case 9: return .appMetadata
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -5234,6 +5657,10 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case .betaAppReviewDetail:
             writeInt(&buf, Int32(8))
+        
+        
+        case .appMetadata:
+            writeInt(&buf, Int32(9))
         
         }
     }
@@ -5534,6 +5961,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeAppMetadata: FfiConverterRustBuffer {
+    typealias SwiftType = AppMetadata?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAppMetadata.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAppMetadata.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeAppStoreVersions: FfiConverterRustBuffer {
     typealias SwiftType = AppStoreVersions?
 
@@ -5792,6 +6243,31 @@ fileprivate struct FfiConverterSequenceTypeAppInfo: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeAppInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAppInfoLocalizationInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [AppInfoLocalizationInfo]
+
+    public static func write(_ value: [AppInfoLocalizationInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAppInfoLocalizationInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AppInfoLocalizationInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AppInfoLocalizationInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAppInfoLocalizationInfo.read(from: &buf))
         }
         return seq
     }
@@ -6224,6 +6700,21 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_credentialstore_delete() != 36020) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_appmetadata_create_app_info_localization() != 54393) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appmetadata_delete_app_info_localization() != 58330) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appmetadata_fetch_app_info_localizations() != 17126) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appmetadata_update_app_info_localization() != 40247) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appmetadata_update_app_info_localization_privacy() != 49104) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_appstoreversions_create_version() != 3970) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -6330,6 +6821,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_reviews_reply_to_review() != 20931) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_app_metadata() != 46670) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_app_store_versions() != 28764) {

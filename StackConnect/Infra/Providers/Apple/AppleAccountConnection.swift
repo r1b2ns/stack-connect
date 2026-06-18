@@ -2425,6 +2425,21 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - App Info Localizations
 
     func fetchAppInfoLocalizations(appInfoId: String) async throws -> [AppInfoLocalizationModel] {
+        // Strangler-fig migration: route this read through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let meta = provider.appMetadata() else {
+                throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
+            }
+            let models = try await callRustCore {
+                let infos = try await meta.fetchAppInfoLocalizations(appInfoId: appInfoId)
+                return infos.map { Self.mapAppInfoLocalizationInfo($0) }
+            }
+            Log.print.info("[Apple] Fetched \(models.count) app info localizations for \(appInfoId) (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchAppInfoLocalizations(appInfoId: appInfoId)
@@ -2447,6 +2462,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateAppInfoLocalization(id: String, name: String, subtitle: String?) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let meta = provider.appMetadata() else {
+                throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
+            }
+            try await callRustCore {
+                _ = try await meta.updateAppInfoLocalization(id: id, name: name, subtitle: subtitle)
+            }
+            Log.print.info("[Apple] Updated app info localization \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await updateAppInfoLocalization(id: id, name: name, subtitle: subtitle)
@@ -2471,6 +2500,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         privacyChoicesUrl: String?,
         privacyPolicyText: String?
     ) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let meta = provider.appMetadata() else {
+                throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
+            }
+            try await callRustCore {
+                _ = try await meta.updateAppInfoLocalizationPrivacy(id: id, privacyPolicyUrl: privacyPolicyUrl, privacyChoicesUrl: privacyChoicesUrl, privacyPolicyText: privacyPolicyText)
+            }
+            Log.print.info("[Apple] Updated privacy for localization \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await updateAppInfoLocalizationPrivacy(
@@ -2504,6 +2547,21 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         name: String,
         subtitle: String?
     ) async throws -> AppInfoLocalizationModel {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let meta = provider.appMetadata() else {
+                throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
+            }
+            let model = try await callRustCore {
+                let info = try await meta.createAppInfoLocalization(appInfoId: appInfoId, locale: locale, name: name, subtitle: subtitle)
+                return Self.mapAppInfoLocalizationInfo(info)
+            }
+            Log.print.info("[Apple] Created app info localization for \(locale) (Rust core)")
+            return model
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await createAppInfoLocalization(appInfoId: appInfoId, locale: locale, name: name, subtitle: subtitle)
@@ -2530,6 +2588,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deleteAppInfoLocalization(id: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let meta = provider.appMetadata() else {
+                throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
+            }
+            try await callRustCore {
+                try await meta.deleteAppInfoLocalization(id: id)
+            }
+            Log.print.info("[Apple] Deleted app info localization \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await deleteAppInfoLocalization(id: id)
@@ -3584,6 +3656,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             locale: info.locale,
             feedbackEmail: info.feedbackEmail,
             description: info.description
+        )
+    }
+
+    /// Maps a Rust-core `AppInfoLocalizationInfo` to the app's `AppInfoLocalizationModel`.
+    /// Full fidelity: the core provides every field this model needs, so they map 1:1.
+    static func mapAppInfoLocalizationInfo(_ info: StackCoreRust.AppInfoLocalizationInfo) -> AppInfoLocalizationModel {
+        AppInfoLocalizationModel(
+            id: info.id,
+            locale: info.locale,
+            name: info.name,
+            subtitle: info.subtitle,
+            privacyPolicyUrl: info.privacyPolicyUrl,
+            privacyChoicesUrl: info.privacyChoicesUrl,
+            privacyPolicyText: info.privacyPolicyText
         )
     }
 
