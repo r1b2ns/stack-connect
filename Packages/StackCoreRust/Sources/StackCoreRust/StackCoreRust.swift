@@ -569,6 +569,31 @@ public protocol AppMetadataProtocol: AnyObject, Sendable {
     func deleteAppInfoLocalization(id: String) async throws 
     
     /**
+     * Lists the top-level App Store categories (iOS), each with the ids of its
+     * subcategories.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchAppCategories() async throws  -> [AppCategoryInfo]
+    
+    /**
+     * Fetches the full App Info detail for `app_id`: the app-info ids,
+     * category/age-rating wiring, and per-locale localizations, merged with the
+     * owning app's `sku`/`primary_locale`/`content_rights_declaration`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchAppInfo(appId: String) async throws  -> AppInfoDetails
+    
+    /**
      * Lists the app-info localizations for `app_info_id`. Each carries the
      * per-locale product-page `name`/`subtitle` and the three privacy
      * links/text.
@@ -580,6 +605,53 @@ public protocol AppMetadataProtocol: AnyObject, Sendable {
      * transport failure.
      */
     func fetchAppInfoLocalizations(appInfoId: String) async throws  -> [AppInfoLocalizationInfo]
+    
+    /**
+     * Resolves the icon URL for `app_id` from its most recent build, or `None`
+     * when there is no build / no icon token.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchIconUrl(appId: String) async throws  -> String?
+    
+    /**
+     * Updates the age-rating declaration `id`, sending all 18 attributes (all
+     * required from the host).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func updateAgeRating(id: String, alcoholTobacco: String, contests: String, gamblingSimulated: String, gunsOrOtherWeapons: String, medicalInformation: String, profanity: String, sexualContentGraphic: String, sexualContentOrNudity: String, horrorOrFear: String, matureOrSuggestive: String, violenceCartoon: String, violenceRealistic: String, violenceGraphic: String, isAdvertising: Bool, isGambling: Bool, isUnrestrictedWebAccess: Bool, isUserGeneratedContent: Bool, ageRatingOverride: String) async throws 
+    
+    /**
+     * Updates the app `id`, sending `content_rights_declaration` and/or
+     * `primary_locale` only when `Some`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func updateApp(id: String, contentRightsDeclaration: String?, primaryLocale: String?) async throws 
+    
+    /**
+     * Updates the category relationships of the app-info `app_info_id`. Each of
+     * `primary_category_id`, `subcategory_one_id`, `secondary_category_id`, and
+     * `secondary_subcategory_one_id` is wired only when `Some`; the others are
+     * omitted (not sent as `null`).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func updateAppInfoCategory(appInfoId: String, primaryCategoryId: String?, subcategoryOneId: String?, secondaryCategoryId: String?, secondarySubcategoryOneId: String?) async throws 
     
     /**
      * Updates the app-info localization `id`, returning the updated
@@ -720,6 +792,61 @@ open func deleteAppInfoLocalization(id: String)async throws   {
 }
     
     /**
+     * Lists the top-level App Store categories (iOS), each with the ids of its
+     * subcategories.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchAppCategories()async throws  -> [AppCategoryInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appmetadata_fetch_app_categories(
+                    self.uniffiCloneHandle()
+                    
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeAppCategoryInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Fetches the full App Info detail for `app_id`: the app-info ids,
+     * category/age-rating wiring, and per-locale localizations, merged with the
+     * owning app's `sku`/`primary_locale`/`content_rights_declaration`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchAppInfo(appId: String)async throws  -> AppInfoDetails  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appmetadata_fetch_app_info(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAppInfoDetails_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
      * Lists the app-info localizations for `app_info_id`. Each carries the
      * per-locale product-page `name`/`subtitle` and the three privacy
      * links/text.
@@ -743,6 +870,113 @@ open func fetchAppInfoLocalizations(appInfoId: String)async throws  -> [AppInfoL
             completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeAppInfoLocalizationInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Resolves the icon URL for `app_id` from its most recent build, or `None`
+     * when there is no build / no icon token.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchIconUrl(appId: String)async throws  -> String?  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appmetadata_fetch_icon_url(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionString.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Updates the age-rating declaration `id`, sending all 18 attributes (all
+     * required from the host).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func updateAgeRating(id: String, alcoholTobacco: String, contests: String, gamblingSimulated: String, gunsOrOtherWeapons: String, medicalInformation: String, profanity: String, sexualContentGraphic: String, sexualContentOrNudity: String, horrorOrFear: String, matureOrSuggestive: String, violenceCartoon: String, violenceRealistic: String, violenceGraphic: String, isAdvertising: Bool, isGambling: Bool, isUnrestrictedWebAccess: Bool, isUserGeneratedContent: Bool, ageRatingOverride: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appmetadata_update_age_rating(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id),FfiConverterString.lower(alcoholTobacco),FfiConverterString.lower(contests),FfiConverterString.lower(gamblingSimulated),FfiConverterString.lower(gunsOrOtherWeapons),FfiConverterString.lower(medicalInformation),FfiConverterString.lower(profanity),FfiConverterString.lower(sexualContentGraphic),FfiConverterString.lower(sexualContentOrNudity),FfiConverterString.lower(horrorOrFear),FfiConverterString.lower(matureOrSuggestive),FfiConverterString.lower(violenceCartoon),FfiConverterString.lower(violenceRealistic),FfiConverterString.lower(violenceGraphic),FfiConverterBool.lower(isAdvertising),FfiConverterBool.lower(isGambling),FfiConverterBool.lower(isUnrestrictedWebAccess),FfiConverterBool.lower(isUserGeneratedContent),FfiConverterString.lower(ageRatingOverride)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Updates the app `id`, sending `content_rights_declaration` and/or
+     * `primary_locale` only when `Some`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func updateApp(id: String, contentRightsDeclaration: String?, primaryLocale: String?)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appmetadata_update_app(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id),FfiConverterOptionString.lower(contentRightsDeclaration),FfiConverterOptionString.lower(primaryLocale)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Updates the category relationships of the app-info `app_info_id`. Each of
+     * `primary_category_id`, `subcategory_one_id`, `secondary_category_id`, and
+     * `secondary_subcategory_one_id` is wired only when `Some`; the others are
+     * omitted (not sent as `null`).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func updateAppInfoCategory(appInfoId: String, primaryCategoryId: String?, subcategoryOneId: String?, secondaryCategoryId: String?, secondarySubcategoryOneId: String?)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appmetadata_update_app_info_category(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appInfoId),FfiConverterOptionString.lower(primaryCategoryId),FfiConverterOptionString.lower(subcategoryOneId),FfiConverterOptionString.lower(secondaryCategoryId),FfiConverterOptionString.lower(secondarySubcategoryOneId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
             errorHandler: FfiConverterTypeStackError_lift
         )
 }
@@ -4249,6 +4483,194 @@ public func FfiConverterTypeSyncService_lower(_ value: SyncService) -> UInt64 {
 
 
 /**
+ * An App Store age-rating declaration. Every content attribute is a raw ASC
+ * enum string (e.g. `NONE` / `INFREQUENT_OR_MILD` / `FREQUENT_OR_INTENSE`)
+ * passed through verbatim; the four `is_*` flags are booleans. All attributes
+ * are optional and are `None` when absent from the response.
+ */
+public struct AgeRatingDeclarationInfo: Equatable, Hashable {
+    public var id: String
+    public var alcoholTobaccoOrDrugUseOrReferences: String?
+    public var contests: String?
+    public var gamblingSimulated: String?
+    public var gunsOrOtherWeapons: String?
+    public var medicalOrTreatmentInformation: String?
+    public var profanityOrCrudeHumor: String?
+    public var sexualContentGraphicAndNudity: String?
+    public var sexualContentOrNudity: String?
+    public var horrorOrFearThemes: String?
+    public var matureOrSuggestiveThemes: String?
+    public var violenceCartoonOrFantasy: String?
+    public var violenceRealistic: String?
+    public var violenceRealisticProlongedGraphicOrSadistic: String?
+    public var isAdvertising: Bool?
+    public var isGambling: Bool?
+    public var isUnrestrictedWebAccess: Bool?
+    public var isUserGeneratedContent: Bool?
+    public var ageRatingOverrideV2: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, alcoholTobaccoOrDrugUseOrReferences: String?, contests: String?, gamblingSimulated: String?, gunsOrOtherWeapons: String?, medicalOrTreatmentInformation: String?, profanityOrCrudeHumor: String?, sexualContentGraphicAndNudity: String?, sexualContentOrNudity: String?, horrorOrFearThemes: String?, matureOrSuggestiveThemes: String?, violenceCartoonOrFantasy: String?, violenceRealistic: String?, violenceRealisticProlongedGraphicOrSadistic: String?, isAdvertising: Bool?, isGambling: Bool?, isUnrestrictedWebAccess: Bool?, isUserGeneratedContent: Bool?, ageRatingOverrideV2: String?) {
+        self.id = id
+        self.alcoholTobaccoOrDrugUseOrReferences = alcoholTobaccoOrDrugUseOrReferences
+        self.contests = contests
+        self.gamblingSimulated = gamblingSimulated
+        self.gunsOrOtherWeapons = gunsOrOtherWeapons
+        self.medicalOrTreatmentInformation = medicalOrTreatmentInformation
+        self.profanityOrCrudeHumor = profanityOrCrudeHumor
+        self.sexualContentGraphicAndNudity = sexualContentGraphicAndNudity
+        self.sexualContentOrNudity = sexualContentOrNudity
+        self.horrorOrFearThemes = horrorOrFearThemes
+        self.matureOrSuggestiveThemes = matureOrSuggestiveThemes
+        self.violenceCartoonOrFantasy = violenceCartoonOrFantasy
+        self.violenceRealistic = violenceRealistic
+        self.violenceRealisticProlongedGraphicOrSadistic = violenceRealisticProlongedGraphicOrSadistic
+        self.isAdvertising = isAdvertising
+        self.isGambling = isGambling
+        self.isUnrestrictedWebAccess = isUnrestrictedWebAccess
+        self.isUserGeneratedContent = isUserGeneratedContent
+        self.ageRatingOverrideV2 = ageRatingOverrideV2
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AgeRatingDeclarationInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAgeRatingDeclarationInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AgeRatingDeclarationInfo {
+        return
+            try AgeRatingDeclarationInfo(
+                id: FfiConverterString.read(from: &buf), 
+                alcoholTobaccoOrDrugUseOrReferences: FfiConverterOptionString.read(from: &buf), 
+                contests: FfiConverterOptionString.read(from: &buf), 
+                gamblingSimulated: FfiConverterOptionString.read(from: &buf), 
+                gunsOrOtherWeapons: FfiConverterOptionString.read(from: &buf), 
+                medicalOrTreatmentInformation: FfiConverterOptionString.read(from: &buf), 
+                profanityOrCrudeHumor: FfiConverterOptionString.read(from: &buf), 
+                sexualContentGraphicAndNudity: FfiConverterOptionString.read(from: &buf), 
+                sexualContentOrNudity: FfiConverterOptionString.read(from: &buf), 
+                horrorOrFearThemes: FfiConverterOptionString.read(from: &buf), 
+                matureOrSuggestiveThemes: FfiConverterOptionString.read(from: &buf), 
+                violenceCartoonOrFantasy: FfiConverterOptionString.read(from: &buf), 
+                violenceRealistic: FfiConverterOptionString.read(from: &buf), 
+                violenceRealisticProlongedGraphicOrSadistic: FfiConverterOptionString.read(from: &buf), 
+                isAdvertising: FfiConverterOptionBool.read(from: &buf), 
+                isGambling: FfiConverterOptionBool.read(from: &buf), 
+                isUnrestrictedWebAccess: FfiConverterOptionBool.read(from: &buf), 
+                isUserGeneratedContent: FfiConverterOptionBool.read(from: &buf), 
+                ageRatingOverrideV2: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AgeRatingDeclarationInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.alcoholTobaccoOrDrugUseOrReferences, into: &buf)
+        FfiConverterOptionString.write(value.contests, into: &buf)
+        FfiConverterOptionString.write(value.gamblingSimulated, into: &buf)
+        FfiConverterOptionString.write(value.gunsOrOtherWeapons, into: &buf)
+        FfiConverterOptionString.write(value.medicalOrTreatmentInformation, into: &buf)
+        FfiConverterOptionString.write(value.profanityOrCrudeHumor, into: &buf)
+        FfiConverterOptionString.write(value.sexualContentGraphicAndNudity, into: &buf)
+        FfiConverterOptionString.write(value.sexualContentOrNudity, into: &buf)
+        FfiConverterOptionString.write(value.horrorOrFearThemes, into: &buf)
+        FfiConverterOptionString.write(value.matureOrSuggestiveThemes, into: &buf)
+        FfiConverterOptionString.write(value.violenceCartoonOrFantasy, into: &buf)
+        FfiConverterOptionString.write(value.violenceRealistic, into: &buf)
+        FfiConverterOptionString.write(value.violenceRealisticProlongedGraphicOrSadistic, into: &buf)
+        FfiConverterOptionBool.write(value.isAdvertising, into: &buf)
+        FfiConverterOptionBool.write(value.isGambling, into: &buf)
+        FfiConverterOptionBool.write(value.isUnrestrictedWebAccess, into: &buf)
+        FfiConverterOptionBool.write(value.isUserGeneratedContent, into: &buf)
+        FfiConverterOptionString.write(value.ageRatingOverrideV2, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgeRatingDeclarationInfo_lift(_ buf: RustBuffer) throws -> AgeRatingDeclarationInfo {
+    return try FfiConverterTypeAgeRatingDeclarationInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAgeRatingDeclarationInfo_lower(_ value: AgeRatingDeclarationInfo) -> RustBuffer {
+    return FfiConverterTypeAgeRatingDeclarationInfo.lower(value)
+}
+
+
+/**
+ * An App Store app category, with the ids of its subcategories. Deliberately
+ * NON-recursive (UniFFI-friendly): `subcategory_ids` carries only the ids of the
+ * nested subcategories, leaving the host to materialize the tree from a flat
+ * list of [`AppCategoryInfo`] values if it needs the nesting.
+ */
+public struct AppCategoryInfo: Equatable, Hashable {
+    public var id: String
+    public var subcategoryIds: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, subcategoryIds: [String]) {
+        self.id = id
+        self.subcategoryIds = subcategoryIds
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AppCategoryInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppCategoryInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppCategoryInfo {
+        return
+            try AppCategoryInfo(
+                id: FfiConverterString.read(from: &buf), 
+                subcategoryIds: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AppCategoryInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterSequenceString.write(value.subcategoryIds, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppCategoryInfo_lift(_ buf: RustBuffer) throws -> AppCategoryInfo {
+    return try FfiConverterTypeAppCategoryInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppCategoryInfo_lower(_ value: AppCategoryInfo) -> RustBuffer {
+    return FfiConverterTypeAppCategoryInfo.lower(value)
+}
+
+
+/**
  * Cross-provider app metadata. Mirrors the Swift `AppInfo` from `StackProtocols`,
  * which is dissolved into the core (see RUST_CORE_PLAN.md §4).
  *
@@ -4314,6 +4736,114 @@ public func FfiConverterTypeAppInfo_lift(_ buf: RustBuffer) throws -> AppInfo {
 #endif
 public func FfiConverterTypeAppInfo_lower(_ value: AppInfo) -> RustBuffer {
     return FfiConverterTypeAppInfo.lower(value)
+}
+
+
+/**
+ * The full App Info detail for an app: the app-info resource's own ids and
+ * category/age-rating wiring, merged with the owning app's `sku`,
+ * `primary_locale`, and `content_rights_declaration`. `localizations` reuses the
+ * sibling [`AppInfoLocalizationInfo`] record, and `age_rating` carries the
+ * resolved [`AgeRatingDeclarationInfo`] when present in the JSON:API `included`
+ * section. The category ids are resolved from the app-info resource's
+ * relationships (not its attributes). All optional fields are `None` when the
+ * corresponding attribute / relationship is absent.
+ */
+public struct AppInfoDetails: Equatable, Hashable {
+    public var appInfoId: String
+    public var appId: String
+    public var sku: String?
+    public var primaryLocale: String?
+    public var contentRightsDeclaration: String?
+    public var primaryCategoryId: String?
+    public var primarySubcategoryOneId: String?
+    public var secondaryCategoryId: String?
+    public var secondarySubcategoryOneId: String?
+    public var ageRatingDeclarationId: String?
+    public var appStoreAgeRating: String?
+    public var localizations: [AppInfoLocalizationInfo]
+    public var ageRating: AgeRatingDeclarationInfo?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(appInfoId: String, appId: String, sku: String?, primaryLocale: String?, contentRightsDeclaration: String?, primaryCategoryId: String?, primarySubcategoryOneId: String?, secondaryCategoryId: String?, secondarySubcategoryOneId: String?, ageRatingDeclarationId: String?, appStoreAgeRating: String?, localizations: [AppInfoLocalizationInfo], ageRating: AgeRatingDeclarationInfo?) {
+        self.appInfoId = appInfoId
+        self.appId = appId
+        self.sku = sku
+        self.primaryLocale = primaryLocale
+        self.contentRightsDeclaration = contentRightsDeclaration
+        self.primaryCategoryId = primaryCategoryId
+        self.primarySubcategoryOneId = primarySubcategoryOneId
+        self.secondaryCategoryId = secondaryCategoryId
+        self.secondarySubcategoryOneId = secondarySubcategoryOneId
+        self.ageRatingDeclarationId = ageRatingDeclarationId
+        self.appStoreAgeRating = appStoreAgeRating
+        self.localizations = localizations
+        self.ageRating = ageRating
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AppInfoDetails: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppInfoDetails: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppInfoDetails {
+        return
+            try AppInfoDetails(
+                appInfoId: FfiConverterString.read(from: &buf), 
+                appId: FfiConverterString.read(from: &buf), 
+                sku: FfiConverterOptionString.read(from: &buf), 
+                primaryLocale: FfiConverterOptionString.read(from: &buf), 
+                contentRightsDeclaration: FfiConverterOptionString.read(from: &buf), 
+                primaryCategoryId: FfiConverterOptionString.read(from: &buf), 
+                primarySubcategoryOneId: FfiConverterOptionString.read(from: &buf), 
+                secondaryCategoryId: FfiConverterOptionString.read(from: &buf), 
+                secondarySubcategoryOneId: FfiConverterOptionString.read(from: &buf), 
+                ageRatingDeclarationId: FfiConverterOptionString.read(from: &buf), 
+                appStoreAgeRating: FfiConverterOptionString.read(from: &buf), 
+                localizations: FfiConverterSequenceTypeAppInfoLocalizationInfo.read(from: &buf), 
+                ageRating: FfiConverterOptionTypeAgeRatingDeclarationInfo.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AppInfoDetails, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.appInfoId, into: &buf)
+        FfiConverterString.write(value.appId, into: &buf)
+        FfiConverterOptionString.write(value.sku, into: &buf)
+        FfiConverterOptionString.write(value.primaryLocale, into: &buf)
+        FfiConverterOptionString.write(value.contentRightsDeclaration, into: &buf)
+        FfiConverterOptionString.write(value.primaryCategoryId, into: &buf)
+        FfiConverterOptionString.write(value.primarySubcategoryOneId, into: &buf)
+        FfiConverterOptionString.write(value.secondaryCategoryId, into: &buf)
+        FfiConverterOptionString.write(value.secondarySubcategoryOneId, into: &buf)
+        FfiConverterOptionString.write(value.ageRatingDeclarationId, into: &buf)
+        FfiConverterOptionString.write(value.appStoreAgeRating, into: &buf)
+        FfiConverterSequenceTypeAppInfoLocalizationInfo.write(value.localizations, into: &buf)
+        FfiConverterOptionTypeAgeRatingDeclarationInfo.write(value.ageRating, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppInfoDetails_lift(_ buf: RustBuffer) throws -> AppInfoDetails {
+    return try FfiConverterTypeAppInfoDetails.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppInfoDetails_lower(_ value: AppInfoDetails) -> RustBuffer {
+    return FfiConverterTypeAppInfoDetails.lower(value)
 }
 
 
@@ -6153,6 +6683,30 @@ fileprivate struct FfiConverterOptionTypeReviews: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeAgeRatingDeclarationInfo: FfiConverterRustBuffer {
+    typealias SwiftType = AgeRatingDeclarationInfo?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAgeRatingDeclarationInfo.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAgeRatingDeclarationInfo.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeBuildInfo: FfiConverterRustBuffer {
     typealias SwiftType = BuildInfo?
 
@@ -6218,6 +6772,31 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterString.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAppCategoryInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [AppCategoryInfo]
+
+    public static func write(_ value: [AppCategoryInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAppCategoryInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AppCategoryInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AppCategoryInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAppCategoryInfo.read(from: &buf))
         }
         return seq
     }
@@ -6706,7 +7285,25 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_appmetadata_delete_app_info_localization() != 58330) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_appmetadata_fetch_app_categories() != 23769) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appmetadata_fetch_app_info() != 2676) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_appmetadata_fetch_app_info_localizations() != 17126) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appmetadata_fetch_icon_url() != 3724) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appmetadata_update_age_rating() != 28) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appmetadata_update_app() != 21094) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appmetadata_update_app_info_category() != 33322) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appmetadata_update_app_info_localization() != 40247) {

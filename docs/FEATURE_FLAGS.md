@@ -56,6 +56,12 @@ new flag ships **OFF** by default (the safe, fully-reversible value) unless note
   - `submitBuildForBetaReview(buildId:)` — when ON, calls the Rust core `Builds.submitBuildForBetaReview(buildId:)` (method is `Void`).
   - `removeBuildFromGroup(buildId:groupId:)` — when ON, calls the Rust core `Builds.removeBuildFromGroup(buildId:groupId:)` (method is `Void`).
   - `addBuildToGroups(buildId:groupIds:)` — when ON, calls the Rust core `Builds.addBuildToGroups(buildId:groupIds:)` (`[String]` bridged to the core; method is `Void`).
+  - `fetchAppInfo(appId:)` — when ON, calls the Rust core `AppMetadata.fetchAppInfo(appId:)` and maps `StackCoreRust.AppInfoDetails` → `AppInfoModel` (via `mapAppInfoDetails`, computing category/subcategory display names from IDs) plus its `AgeRatingDeclarationInfo` → `AgeRatingDeclarationModel` (via `mapAgeRatingDeclarationInfo`). Read only.
+  - `fetchAppCategories()` — when ON, calls the Rust core `AppMetadata.fetchAppCategories()` and maps each `StackCoreRust.AppCategoryInfo` → `AppCategoryModel` via `mapAppCategoryInfo` (subcategory IDs nested as leaf models). Read only.
+  - `updateAppInfoCategory(appInfoId:primaryCategoryId:subcategoryOneId:secondaryCategoryId:secondarySubcategoryOneId:)` — when ON, calls the Rust core `AppMetadata.updateAppInfoCategory(...)` (method is `Void`).
+  - `updateApp(id:contentRightsDeclaration:primaryLocale:)` — when ON, calls the Rust core `AppMetadata.updateApp(id:contentRightsDeclaration:primaryLocale:)` (method is `Void`).
+  - `updateAgeRating(id:...)` — when ON, calls the Rust core `AppMetadata.updateAgeRating(id:...)` (all 18 declaration params bridged 1:1; method is `Void`).
+  - `fetchIconUrl(appId:)` — when ON, calls the Rust core `AppMetadata.fetchIconUrl(appId:)`; NON-throwing best-effort: any Rust-core failure is swallowed to `nil` inside the branch's `do/catch`.
 - **Supporting types:**
   - `StackConnect/Infra/Providers/Apple/AppleCredentialStore.swift` — bridges `AppleCredentials` to the Rust core's `CredentialStore` (`issuerId` / `keyId` / `privateKeyP8`).
   - Package: `Packages/StackCoreRust` (vendored `StackCoreRust.xcframework` + generated UniFFI wrapper).

@@ -1560,6 +1560,344 @@ final class RustCoreStranglerTests: XCTestCase {
         let error = StackCoreRust.StackError.Auth(message: "nope")
         XCTAssertFalse(AppleAPIErrorTranslator.isPendingAgreement(error))
     }
+
+    // MARK: - App metadata (strangler routing)
+
+    /// With the flag ON, `fetchAppInfo(appId:)` must fail via the Rust core for invalid
+    /// credentials, proving the read never reaches the Swift-SDK provider.
+    func testFetchAppInfoRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchAppInfo(appId: "123")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `fetchAppCategories()` must fail via the Rust core for invalid
+    /// credentials, proving the read never reaches the Swift-SDK provider.
+    func testFetchAppCategoriesRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchAppCategories()
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `updateAppInfoCategory(...)` must fail via the Rust core for
+    /// invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testUpdateAppInfoCategoryRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.updateAppInfoCategory(
+                appInfoId: "appinfo-1",
+                primaryCategoryId: "GAMES",
+                subcategoryOneId: "GAMES_ACTION",
+                secondaryCategoryId: nil,
+                secondarySubcategoryOneId: nil
+            )
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `updateApp(...)` must fail via the Rust core for invalid
+    /// credentials, proving the write never reaches the Swift-SDK provider.
+    func testUpdateAppRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.updateApp(
+                id: "app-1",
+                contentRightsDeclaration: "DOES_NOT_USE_THIRD_PARTY_CONTENT",
+                primaryLocale: "en-US"
+            )
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `updateAgeRating(...)` must fail via the Rust core for invalid
+    /// credentials, proving the write never reaches the Swift-SDK provider.
+    func testUpdateAgeRatingRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.updateAgeRating(
+                id: "rating-1",
+                alcoholTobacco: "NONE",
+                contests: "NONE",
+                gamblingSimulated: "NONE",
+                gunsOrOtherWeapons: "NONE",
+                medicalInformation: "NONE",
+                profanity: "NONE",
+                sexualContentGraphic: "NONE",
+                sexualContentOrNudity: "NONE",
+                horrorOrFear: "NONE",
+                matureOrSuggestive: "NONE",
+                violenceCartoon: "NONE",
+                violenceRealistic: "NONE",
+                violenceGraphic: "NONE",
+                isAdvertising: false,
+                isGambling: false,
+                isUnrestrictedWebAccess: false,
+                isUserGeneratedContent: false,
+                ageRatingOverride: "NONE"
+            )
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `fetchIconUrl(appId:)` routes through the Rust core but is
+    /// NON-throwing (best-effort): the invalid-credential rejection surfaces inside the
+    /// branch's `do/catch`, which swallows every error to nil. So the call must RETURN
+    /// nil (not throw) — reaching the graceful-nil path proves the Rust routing.
+    func testFetchIconUrlReturnsNilWhenProviderCannotServeItWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        let result = await connection.fetchIconUrl(appId: "123")
+        XCTAssertNil(result, "Best-effort contract: any Rust-core failure must be swallowed to nil, never thrown.")
+    }
+
+    // MARK: - App info mapping (Rust core -> app model)
+
+    /// `mapAppInfoDetails` must compute category/subcategory display NAMES from their
+    /// IDs (the core supplies only IDs), map localizations via the shared mapper, and
+    /// pass the age-rating declaration id through. `AppInfoModel` has no
+    /// `secondarySubcategoryOneName`, so only the id is carried for that field.
+    func testMapAppInfoDetailsComputesCategoryNamesAndMapsLocalizations() {
+        let core = StackCoreRust.AppInfoDetails(
+            appInfoId: "appinfo-1",
+            appId: "123456789",
+            sku: "ACME-SKU",
+            primaryLocale: "en-US",
+            contentRightsDeclaration: "USES_THIRD_PARTY_CONTENT",
+            primaryCategoryId: "GAMES",
+            primarySubcategoryOneId: "GAMES_ACTION",
+            secondaryCategoryId: "PHOTO_AND_VIDEO",
+            secondarySubcategoryOneId: "GAMES_PUZZLE",
+            ageRatingDeclarationId: "rating-1",
+            appStoreAgeRating: "FOUR_PLUS",
+            localizations: [
+                StackCoreRust.AppInfoLocalizationInfo(
+                    id: "loc-1",
+                    locale: "en-US",
+                    name: "My App",
+                    subtitle: "A great app",
+                    privacyPolicyUrl: "https://example.com/privacy",
+                    privacyChoicesUrl: nil,
+                    privacyPolicyText: nil
+                )
+            ],
+            ageRating: nil
+        )
+
+        let model = AppleAccountConnection.mapAppInfoDetails(core)
+
+        XCTAssertEqual(model.id, "appinfo-1")
+        XCTAssertEqual(model.appId, "123456789")
+        XCTAssertEqual(model.sku, "ACME-SKU")
+        XCTAssertEqual(model.primaryLocale, "en-US")
+        XCTAssertEqual(model.contentRightsDeclaration, "USES_THIRD_PARTY_CONTENT")
+        XCTAssertEqual(model.primaryCategoryId, "GAMES")
+        XCTAssertEqual(model.primaryCategoryName, "Games", "Category name must be computed from the id.")
+        XCTAssertEqual(model.primarySubcategoryOneId, "GAMES_ACTION")
+        XCTAssertEqual(model.primarySubcategoryOneName, "Action", "Subcategory name must strip the parent prefix.")
+        XCTAssertEqual(model.secondaryCategoryId, "PHOTO_AND_VIDEO")
+        XCTAssertEqual(model.secondaryCategoryName, "Photo And Video", "Secondary category name must be computed from the id.")
+        XCTAssertEqual(model.secondarySubcategoryOneId, "GAMES_PUZZLE")
+        XCTAssertEqual(model.ageRatingDeclarationId, "rating-1", "Age-rating declaration id must pass through.")
+        XCTAssertEqual(model.appStoreAgeRating, "FOUR_PLUS")
+
+        XCTAssertEqual(model.localizations.count, 1)
+        XCTAssertEqual(model.localizations.first?.id, "loc-1")
+        XCTAssertEqual(model.localizations.first?.name, "My App")
+        XCTAssertEqual(model.localizations.first?.subtitle, "A great app")
+    }
+
+    /// Nil category IDs must yield nil names (no formatting attempted) and an empty
+    /// localizations list must map to an empty array, all without crashing.
+    func testMapAppInfoDetailsHandlesNilCategoriesAndEmptyLocalizations() {
+        let core = StackCoreRust.AppInfoDetails(
+            appInfoId: "appinfo-2",
+            appId: "1",
+            sku: nil,
+            primaryLocale: nil,
+            contentRightsDeclaration: nil,
+            primaryCategoryId: nil,
+            primarySubcategoryOneId: nil,
+            secondaryCategoryId: nil,
+            secondarySubcategoryOneId: nil,
+            ageRatingDeclarationId: nil,
+            appStoreAgeRating: nil,
+            localizations: [],
+            ageRating: nil
+        )
+
+        let model = AppleAccountConnection.mapAppInfoDetails(core)
+
+        XCTAssertEqual(model.id, "appinfo-2")
+        XCTAssertNil(model.primaryCategoryId)
+        XCTAssertNil(model.primaryCategoryName, "Nil category id must yield nil name, not crash.")
+        XCTAssertNil(model.primarySubcategoryOneName)
+        XCTAssertNil(model.secondaryCategoryName)
+        XCTAssertNil(model.ageRatingDeclarationId)
+        XCTAssertTrue(model.localizations.isEmpty)
+    }
+
+    // MARK: - Age rating declaration mapping (Rust core -> app model)
+
+    /// The core `AgeRatingDeclarationInfo` provides every field the app's
+    /// `AgeRatingDeclarationModel` needs, so the mapping is full fidelity (1:1):
+    /// the 13 string ratings, 4 bool flags and the override all map straight through.
+    func testMapAgeRatingDeclarationInfoMapsAllFields() {
+        let core = StackCoreRust.AgeRatingDeclarationInfo(
+            id: "rating-1",
+            alcoholTobaccoOrDrugUseOrReferences: "INFREQUENT_OR_MILD",
+            contests: "FREQUENT_OR_INTENSE",
+            gamblingSimulated: "NONE",
+            gunsOrOtherWeapons: "INFREQUENT_OR_MILD",
+            medicalOrTreatmentInformation: "NONE",
+            profanityOrCrudeHumor: "FREQUENT_OR_INTENSE",
+            sexualContentGraphicAndNudity: "NONE",
+            sexualContentOrNudity: "INFREQUENT_OR_MILD",
+            horrorOrFearThemes: "FREQUENT_OR_INTENSE",
+            matureOrSuggestiveThemes: "NONE",
+            violenceCartoonOrFantasy: "INFREQUENT_OR_MILD",
+            violenceRealistic: "NONE",
+            violenceRealisticProlongedGraphicOrSadistic: "FREQUENT_OR_INTENSE",
+            isAdvertising: true,
+            isGambling: false,
+            isUnrestrictedWebAccess: true,
+            isUserGeneratedContent: false,
+            ageRatingOverrideV2: "16PLUS"
+        )
+
+        let model = AppleAccountConnection.mapAgeRatingDeclarationInfo(core)
+
+        XCTAssertEqual(model.id, "rating-1")
+        XCTAssertEqual(model.alcoholTobaccoOrDrugUseOrReferences, "INFREQUENT_OR_MILD")
+        XCTAssertEqual(model.contests, "FREQUENT_OR_INTENSE")
+        XCTAssertEqual(model.gamblingSimulated, "NONE")
+        XCTAssertEqual(model.gunsOrOtherWeapons, "INFREQUENT_OR_MILD")
+        XCTAssertEqual(model.medicalOrTreatmentInformation, "NONE")
+        XCTAssertEqual(model.profanityOrCrudeHumor, "FREQUENT_OR_INTENSE")
+        XCTAssertEqual(model.sexualContentGraphicAndNudity, "NONE")
+        XCTAssertEqual(model.sexualContentOrNudity, "INFREQUENT_OR_MILD")
+        XCTAssertEqual(model.horrorOrFearThemes, "FREQUENT_OR_INTENSE")
+        XCTAssertEqual(model.matureOrSuggestiveThemes, "NONE")
+        XCTAssertEqual(model.violenceCartoonOrFantasy, "INFREQUENT_OR_MILD")
+        XCTAssertEqual(model.violenceRealistic, "NONE")
+        XCTAssertEqual(model.violenceRealisticProlongedGraphicOrSadistic, "FREQUENT_OR_INTENSE")
+        XCTAssertEqual(model.isAdvertising, true)
+        XCTAssertEqual(model.isGambling, false)
+        XCTAssertEqual(model.isUnrestrictedWebAccess, true)
+        XCTAssertEqual(model.isUserGeneratedContent, false)
+        XCTAssertEqual(model.ageRatingOverrideV2, "16PLUS")
+    }
+
+    /// Nil optionals (including the bool flags and override) must pass straight through
+    /// as nil without fabricating defaults.
+    func testMapAgeRatingDeclarationInfoPassesNilOptionalsThrough() {
+        let core = StackCoreRust.AgeRatingDeclarationInfo(
+            id: "rating-2",
+            alcoholTobaccoOrDrugUseOrReferences: nil,
+            contests: nil,
+            gamblingSimulated: nil,
+            gunsOrOtherWeapons: nil,
+            medicalOrTreatmentInformation: nil,
+            profanityOrCrudeHumor: nil,
+            sexualContentGraphicAndNudity: nil,
+            sexualContentOrNudity: nil,
+            horrorOrFearThemes: nil,
+            matureOrSuggestiveThemes: nil,
+            violenceCartoonOrFantasy: nil,
+            violenceRealistic: nil,
+            violenceRealisticProlongedGraphicOrSadistic: nil,
+            isAdvertising: nil,
+            isGambling: nil,
+            isUnrestrictedWebAccess: nil,
+            isUserGeneratedContent: nil,
+            ageRatingOverrideV2: nil
+        )
+
+        let model = AppleAccountConnection.mapAgeRatingDeclarationInfo(core)
+
+        XCTAssertEqual(model.id, "rating-2")
+        XCTAssertNil(model.alcoholTobaccoOrDrugUseOrReferences)
+        XCTAssertNil(model.violenceRealisticProlongedGraphicOrSadistic)
+        XCTAssertNil(model.isAdvertising)
+        XCTAssertNil(model.isGambling)
+        XCTAssertNil(model.isUnrestrictedWebAccess)
+        XCTAssertNil(model.isUserGeneratedContent)
+        XCTAssertNil(model.ageRatingOverrideV2)
+    }
+
+    // MARK: - App category mapping (Rust core -> app model)
+
+    /// The core `AppCategoryInfo` exposes the category id plus a flat list of
+    /// subcategory ids; `mapAppCategoryInfo` must nest each subcategory id as a leaf
+    /// `AppCategoryModel`.
+    func testMapAppCategoryInfoNestsSubcategoryIdsAsModels() {
+        let core = StackCoreRust.AppCategoryInfo(
+            id: "GAMES",
+            subcategoryIds: ["GAMES_ACTION", "GAMES_PUZZLE", "GAMES_RACING"]
+        )
+
+        let model = AppleAccountConnection.mapAppCategoryInfo(core)
+
+        XCTAssertEqual(model.id, "GAMES")
+        XCTAssertEqual(model.subcategories.map(\.id), ["GAMES_ACTION", "GAMES_PUZZLE", "GAMES_RACING"])
+        XCTAssertTrue(model.subcategories.allSatisfy { $0.subcategories.isEmpty }, "Subcategories must be leaf models.")
+    }
+
+    /// An empty subcategory list must map to a category with no nested subcategories.
+    func testMapAppCategoryInfoHandlesEmptySubcategories() {
+        let core = StackCoreRust.AppCategoryInfo(id: "UTILITIES", subcategoryIds: [])
+
+        let model = AppleAccountConnection.mapAppCategoryInfo(core)
+
+        XCTAssertEqual(model.id, "UTILITIES")
+        XCTAssertTrue(model.subcategories.isEmpty)
+    }
 }
 
 // MARK: - Minimal in-memory PersistentStorable for the BlobStore-backed test

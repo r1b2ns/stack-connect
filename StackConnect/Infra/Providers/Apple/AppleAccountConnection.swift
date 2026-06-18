@@ -132,6 +132,21 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func fetchIconUrl(appId: String) async -> String? {
+        // Strangler-fig migration: route this best-effort read through the shared
+        // Rust core when the flag is ON. This method is NON-throwing (returns nil on
+        // any failure), so the Rust branch must NOT propagate throws — it swallows
+        // every error to nil, matching the Swift-SDK contract below.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            do {
+                let provider = try rustCoreProvider()
+                guard let meta = provider.appMetadata() else { return nil }
+                return try await callRustCore { try await meta.fetchIconUrl(appId: appId) }
+            } catch {
+                Log.print.info("[Apple] Icon fetch failed for app \(appId) (Rust core): \(error.localizedDescription)")
+                return nil
+            }
+        }
+
         guard let provider else { return nil }
 
         do {
@@ -2301,6 +2316,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - App Info
 
     func fetchAppInfo(appId: String) async throws -> (AppInfoModel, AgeRatingDeclarationModel?) {
+        // Strangler-fig migration: route this read through the shared Rust core when
+        // the flag is ON. The Swift-SDK body below is left untouched for the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let meta = provider.appMetadata() else {
+                throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
+            }
+            let details = try await callRustCore { try await meta.fetchAppInfo(appId: appId) }
+            let ageRating = details.ageRating.map { Self.mapAgeRatingDeclarationInfo($0) }
+            let appInfo = Self.mapAppInfoDetails(details)
+            Log.print.info("[Apple] Fetched app info for \(appId) (Rust core)")
+            return (appInfo, ageRating)
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchAppInfo(appId: appId)
@@ -2615,6 +2644,21 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - App Categories
 
     func fetchAppCategories() async throws -> [AppCategoryModel] {
+        // Strangler-fig migration: route this read through the shared Rust core when
+        // the flag is ON. The Swift-SDK body below is left untouched for the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let meta = provider.appMetadata() else {
+                throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
+            }
+            let models = try await callRustCore {
+                let cats = try await meta.fetchAppCategories()
+                return cats.map { Self.mapAppCategoryInfo($0) }
+            }
+            Log.print.info("[Apple] Fetched \(models.count) app categories (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchAppCategories()
@@ -2649,6 +2693,26 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         secondaryCategoryId: String?,
         secondarySubcategoryOneId: String?
     ) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core when
+        // the flag is ON. The Swift-SDK body below is left untouched for the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let meta = provider.appMetadata() else {
+                throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
+            }
+            try await callRustCore {
+                try await meta.updateAppInfoCategory(
+                    appInfoId: appInfoId,
+                    primaryCategoryId: primaryCategoryId,
+                    subcategoryOneId: subcategoryOneId,
+                    secondaryCategoryId: secondaryCategoryId,
+                    secondarySubcategoryOneId: secondarySubcategoryOneId
+                )
+            }
+            Log.print.info("[Apple] Updated app info category for \(appInfoId) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await updateAppInfoCategory(
@@ -2693,6 +2757,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateApp(id: String, contentRightsDeclaration: String? = nil, primaryLocale: String? = nil) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core when
+        // the flag is ON. The Swift-SDK body below is left untouched for the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let meta = provider.appMetadata() else {
+                throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
+            }
+            try await callRustCore {
+                try await meta.updateApp(id: id, contentRightsDeclaration: contentRightsDeclaration, primaryLocale: primaryLocale)
+            }
+            Log.print.info("[Apple] Updated app \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await updateApp(id: id, contentRightsDeclaration: contentRightsDeclaration, primaryLocale: primaryLocale)
@@ -2739,6 +2817,40 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         isUserGeneratedContent: Bool,
         ageRatingOverride: String
     ) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core when
+        // the flag is ON. The Swift-SDK body below is left untouched for the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let meta = provider.appMetadata() else {
+                throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
+            }
+            try await callRustCore {
+                try await meta.updateAgeRating(
+                    id: id,
+                    alcoholTobacco: alcoholTobacco,
+                    contests: contests,
+                    gamblingSimulated: gamblingSimulated,
+                    gunsOrOtherWeapons: gunsOrOtherWeapons,
+                    medicalInformation: medicalInformation,
+                    profanity: profanity,
+                    sexualContentGraphic: sexualContentGraphic,
+                    sexualContentOrNudity: sexualContentOrNudity,
+                    horrorOrFear: horrorOrFear,
+                    matureOrSuggestive: matureOrSuggestive,
+                    violenceCartoon: violenceCartoon,
+                    violenceRealistic: violenceRealistic,
+                    violenceGraphic: violenceGraphic,
+                    isAdvertising: isAdvertising,
+                    isGambling: isGambling,
+                    isUnrestrictedWebAccess: isUnrestrictedWebAccess,
+                    isUserGeneratedContent: isUserGeneratedContent,
+                    ageRatingOverride: ageRatingOverride
+                )
+            }
+            Log.print.info("[Apple] Updated age rating \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await updateAgeRating(
@@ -3670,6 +3782,67 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             privacyPolicyUrl: info.privacyPolicyUrl,
             privacyChoicesUrl: info.privacyChoicesUrl,
             privacyPolicyText: info.privacyPolicyText
+        )
+    }
+
+    /// Maps a Rust-core `AgeRatingDeclarationInfo` to the app's `AgeRatingDeclarationModel`.
+    /// Full fidelity: every field (id + 13 string ratings + 4 bool flags + override)
+    /// maps 1:1 — the Rust field names match the model's exactly.
+    static func mapAgeRatingDeclarationInfo(_ info: StackCoreRust.AgeRatingDeclarationInfo) -> AgeRatingDeclarationModel {
+        AgeRatingDeclarationModel(
+            id: info.id,
+            alcoholTobaccoOrDrugUseOrReferences: info.alcoholTobaccoOrDrugUseOrReferences,
+            contests: info.contests,
+            gamblingSimulated: info.gamblingSimulated,
+            gunsOrOtherWeapons: info.gunsOrOtherWeapons,
+            medicalOrTreatmentInformation: info.medicalOrTreatmentInformation,
+            profanityOrCrudeHumor: info.profanityOrCrudeHumor,
+            sexualContentGraphicAndNudity: info.sexualContentGraphicAndNudity,
+            sexualContentOrNudity: info.sexualContentOrNudity,
+            horrorOrFearThemes: info.horrorOrFearThemes,
+            matureOrSuggestiveThemes: info.matureOrSuggestiveThemes,
+            violenceCartoonOrFantasy: info.violenceCartoonOrFantasy,
+            violenceRealistic: info.violenceRealistic,
+            violenceRealisticProlongedGraphicOrSadistic: info.violenceRealisticProlongedGraphicOrSadistic,
+            isAdvertising: info.isAdvertising,
+            isGambling: info.isGambling,
+            isUnrestrictedWebAccess: info.isUnrestrictedWebAccess,
+            isUserGeneratedContent: info.isUserGeneratedContent,
+            ageRatingOverrideV2: info.ageRatingOverrideV2
+        )
+    }
+
+    /// Maps a Rust-core `AppInfoDetails` to the app's `AppInfoModel`. The core does no
+    /// display formatting, so category/subcategory *names* are computed here from their
+    /// IDs via the existing `formatCategoryId`/`formatSubcategoryId` helpers — mirroring
+    /// exactly what the Swift-SDK body builds. Localizations are mapped via the shared
+    /// `mapAppInfoLocalizationInfo`. (`AppInfoModel` has no `secondarySubcategoryOneName`.)
+    static func mapAppInfoDetails(_ d: StackCoreRust.AppInfoDetails) -> AppInfoModel {
+        AppInfoModel(
+            id: d.appInfoId,
+            appId: d.appId,
+            sku: d.sku,
+            primaryLocale: d.primaryLocale,
+            contentRightsDeclaration: d.contentRightsDeclaration,
+            primaryCategoryId: d.primaryCategoryId,
+            primaryCategoryName: d.primaryCategoryId.map { Self.formatCategoryId($0) },
+            primarySubcategoryOneId: d.primarySubcategoryOneId,
+            primarySubcategoryOneName: d.primarySubcategoryOneId.map { Self.formatSubcategoryId($0, parentId: d.primaryCategoryId) },
+            secondaryCategoryId: d.secondaryCategoryId,
+            secondaryCategoryName: d.secondaryCategoryId.map { Self.formatCategoryId($0) },
+            secondarySubcategoryOneId: d.secondarySubcategoryOneId,
+            ageRatingDeclarationId: d.ageRatingDeclarationId,
+            appStoreAgeRating: d.appStoreAgeRating,
+            localizations: d.localizations.map { Self.mapAppInfoLocalizationInfo($0) }
+        )
+    }
+
+    /// Maps a Rust-core `AppCategoryInfo` to the app's `AppCategoryModel`, nesting each
+    /// subcategory id as a leaf `AppCategoryModel`. Mirrors the Swift-SDK body.
+    static func mapAppCategoryInfo(_ info: StackCoreRust.AppCategoryInfo) -> AppCategoryModel {
+        AppCategoryModel(
+            id: info.id,
+            subcategories: info.subcategoryIds.map { AppCategoryModel(id: $0) }
         )
     }
 
