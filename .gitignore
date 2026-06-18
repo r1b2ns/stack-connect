@@ -40,3 +40,6 @@ fastlane/test_output
 
 # Gemfile
 Gemfile.lock
+
+# Xcode frameworks
+Packages/StackCoreRust/StackCoreRust.xcframework/
