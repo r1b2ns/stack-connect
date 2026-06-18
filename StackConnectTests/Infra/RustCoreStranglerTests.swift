@@ -566,8 +566,7 @@ final class RustCoreStranglerTests: XCTestCase {
 
     /// With the flag ON, `fetchBuilds(appId:limit:)` must fail via the Rust core for
     /// invalid credentials, proving the eager-list read never reaches the Swift-SDK
-    /// provider. `fetchBuildsPage(...)` intentionally stays on the Swift SDK and is not
-    /// covered here.
+    /// provider.
     func testFetchBuildsRoutesThroughRustCoreWhenFlagOn() async {
         let connection = AppleAccountConnection(
             credentials: invalidCredentials,
@@ -584,13 +583,83 @@ final class RustCoreStranglerTests: XCTestCase {
         }
     }
 
+    /// With the flag ON, `fetchBuildsPage(...)` must fail via the Rust core for invalid
+    /// credentials, proving the paged read crosses into the core (opaque String token path).
+    func testFetchBuildsPageRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchBuildsPage(appId: "123", platform: nil, processingStates: nil, limit: 25, pageAfterResponse: nil)
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `fetchBuildsForGroup(groupId:)` must fail via the Rust core for invalid credentials.
+    func testFetchBuildsForGroupRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchBuildsForGroup(groupId: "group-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `fetchBuildDetail(buildId:)` must fail via the Rust core for invalid credentials.
+    func testFetchBuildDetailRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchBuildDetail(buildId: "build-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `fetchCurrentBuild(versionId:)` routes through the Rust core and
+    /// preserves the graceful nil-on-error contract: the `callRustCore` lookup runs inside a
+    /// `do/catch` that swallows any failure to `nil` (matching the Swift-SDK body, where a
+    /// version with no attached build also yields `nil`). `rustCoreProvider()` connects lazily,
+    /// so the invalid-credentials rejection surfaces from within the lookup and is swallowed —
+    /// the call must therefore return `nil` (not throw) without crashing.
+    func testFetchCurrentBuildRoutesThroughRustCoreWhenFlagOn() async throws {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        let result = try await connection.fetchCurrentBuild(versionId: "version-1")
+        XCTAssertNil(result, "The Rust-core lookup error must be swallowed to nil, preserving the graceful nil-on-error contract.")
+    }
+
     // MARK: - Build mapping (Rust core -> app model)
 
-    /// The core `BuildInfo` must map onto the app's `BuildModel` for the fields the
-    /// core fetches, including ISO8601 parsing of `uploadedDate`/`expirationDate` and
-    /// `expired? -> isExpired` defaulting. Fields sourced from `included` relationships
-    /// the core does not request must stay at their defaults (known Rust-path degradation).
-    func testMapBuildInfoMapsCoreFieldsParsesDatesAndDefaultsTheRest() {
+    /// The core `BuildInfo` must map onto the app's `BuildModel` with full enrichment:
+    /// every relationship-sourced field (marketingVersion, platform, external/internal
+    /// build state, autoNotifyEnabled, betaReviewState, submittedDate, computed min-OS
+    /// versions, buildAudienceType, usesNonExemptEncryption) now flows through, the three
+    /// ISO8601 dates (uploadedDate/expirationDate/submittedDate) are parsed, and `iconUrl`
+    /// passes through unchanged because the core already computed it from the icon template.
+    func testMapBuildInfoMapsAllEnrichedFieldsParsesDatesAndPassesIconUrlThrough() {
         let core = StackCoreRust.BuildInfo(
             id: "build-1",
             appId: "123456789",
@@ -599,16 +668,39 @@ final class RustCoreStranglerTests: XCTestCase {
             expired: true,
             processingState: "VALID",
             minOsVersion: "17.0",
-            expirationDate: "2024-04-15T10:30:00.123Z"
+            expirationDate: "2024-04-15T10:30:00.123Z",
+            marketingVersion: "3.0.0",
+            platform: "IOS",
+            externalBuildState: "READY_FOR_BETA_SUBMISSION",
+            internalBuildState: "IN_BETA_TESTING",
+            autoNotifyEnabled: true,
+            betaReviewState: "APPROVED",
+            submittedDate: "2024-02-20T08:00:00.123Z",
+            computedMinMacOsVersion: "14.0",
+            computedMinVisionOsVersion: "1.0",
+            buildAudienceType: "APP_STORE_ELIGIBLE",
+            usesNonExemptEncryption: false,
+            iconUrl: "https://example.com/icon/512x512.png"
         )
 
         let model = AppleAccountConnection.mapBuildInfo(core)
 
         XCTAssertEqual(model.id, "build-1")
         XCTAssertEqual(model.version, "1232")
+        XCTAssertEqual(model.marketingVersion, "3.0.0")
         XCTAssertEqual(model.processingState, "VALID")
         XCTAssertEqual(model.minOsVersion, "17.0")
         XCTAssertTrue(model.isExpired)
+        XCTAssertEqual(model.platform, "IOS")
+        XCTAssertEqual(model.iconUrl, "https://example.com/icon/512x512.png", "iconUrl must pass through unchanged (core already computed it).")
+        XCTAssertEqual(model.externalBuildState, "READY_FOR_BETA_SUBMISSION")
+        XCTAssertEqual(model.internalBuildState, "IN_BETA_TESTING")
+        XCTAssertEqual(model.autoNotifyEnabled, true)
+        XCTAssertEqual(model.betaReviewState, "APPROVED")
+        XCTAssertEqual(model.computedMinMacOsVersion, "14.0")
+        XCTAssertEqual(model.computedMinVisionOsVersion, "1.0")
+        XCTAssertEqual(model.buildAudienceType, "APP_STORE_ELIGIBLE")
+        XCTAssertEqual(model.usesNonExemptEncryption, false)
 
         let expectedUploaded = ISO8601DateFormatter().date(from: "2024-01-15T10:30:00Z")
         XCTAssertEqual(model.uploadedDate, expectedUploaded)
@@ -616,20 +708,7 @@ final class RustCoreStranglerTests: XCTestCase {
         let withFractional = ISO8601DateFormatter()
         withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         XCTAssertEqual(model.expirationDate, withFractional.date(from: "2024-04-15T10:30:00.123Z"))
-
-        // Known Rust-path degradation: relationship-sourced fields stay at defaults.
-        XCTAssertNil(model.marketingVersion)
-        XCTAssertNil(model.iconUrl)
-        XCTAssertNil(model.platform)
-        XCTAssertNil(model.externalBuildState)
-        XCTAssertNil(model.betaReviewState)
-        XCTAssertNil(model.submittedDate)
-        XCTAssertNil(model.computedMinMacOsVersion)
-        XCTAssertNil(model.computedMinVisionOsVersion)
-        XCTAssertNil(model.buildAudienceType)
-        XCTAssertNil(model.usesNonExemptEncryption)
-        XCTAssertNil(model.internalBuildState)
-        XCTAssertNil(model.autoNotifyEnabled)
+        XCTAssertEqual(model.submittedDate, withFractional.date(from: "2024-02-20T08:00:00.123Z"))
     }
 
     /// A nil `expired` must default `isExpired` to `false`, and nil/unparseable dates
@@ -643,7 +722,19 @@ final class RustCoreStranglerTests: XCTestCase {
             expired: nil,
             processingState: nil,
             minOsVersion: nil,
-            expirationDate: "not-a-date"
+            expirationDate: "not-a-date",
+            marketingVersion: nil,
+            platform: nil,
+            externalBuildState: nil,
+            internalBuildState: nil,
+            autoNotifyEnabled: nil,
+            betaReviewState: nil,
+            submittedDate: nil,
+            computedMinMacOsVersion: nil,
+            computedMinVisionOsVersion: nil,
+            buildAudienceType: nil,
+            usesNonExemptEncryption: nil,
+            iconUrl: nil
         )
 
         let model = AppleAccountConnection.mapBuildInfo(core)

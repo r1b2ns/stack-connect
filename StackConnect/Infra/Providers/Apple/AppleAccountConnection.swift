@@ -399,8 +399,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     func fetchBuilds(appId: String, limit: Int = 50) async throws -> [BuildModel] {
         // Strangler-fig migration: route this eager-list read through the shared Rust
         // core when the flag is ON. The Swift-SDK body below is left untouched for the
-        // OFF path. Note: `fetchBuildsPage(...)` stays 100% on the Swift SDK — the core
-        // does not yet support platform/processingState filtering nor page cursors.
+        // OFF path.
         if featureFlags.isEnabled(.useRustCoreForAppleApps) {
             let provider = try rustCoreProvider()
             guard let builds = provider.builds() else {
@@ -447,6 +446,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         limit: Int = 25,
         pageAfterResponse: Any?
     ) async throws -> BuildsPage {
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let builds = provider.builds() else {
+                throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
+            }
+            let token = pageAfterResponse as? String
+            let page = try await callRustCore {
+                try await builds.fetchBuildsPage(appId: appId, platform: platform, processingStates: processingStates ?? [], limit: UInt32(limit), pageToken: token)
+            }
+            let models = page.builds.map { Self.mapBuildInfo($0) }
+            Log.print.info("[Apple] Fetched \(models.count) builds page (Rust core)")
+            return BuildsPage(builds: models, hasNextPage: page.nextToken != nil, rawResponse: page.nextToken)
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchBuildsPage(appId: appId, platform: platform, processingStates: processingStates, limit: limit, pageAfterResponse: pageAfterResponse)
@@ -551,6 +564,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func fetchBuildDetail(buildId: String) async throws -> BuildDetailData {
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let builds = provider.builds() else {
+                throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
+            }
+            let detail = try await callRustCore { try await builds.fetchBuildDetail(buildId: buildId) }
+            Log.print.info("[Apple] Fetched build detail \(buildId) (Rust core)")
+            return BuildDetailData(
+                build: Self.mapBuildInfo(detail.build),
+                betaGroups: detail.betaGroups.map { Self.mapBetaGroupInfo($0) },
+                localizations: detail.localizations.map { Self.mapBetaBuildLocalizationInfo($0) }
+            )
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchBuildDetail(buildId: buildId)
@@ -669,6 +696,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func fetchCurrentBuild(versionId: String) async throws -> BuildModel? {
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let builds = provider.builds() else {
+                throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
+            }
+            do {
+                let info = try await callRustCore { try await builds.fetchCurrentBuild(versionId: versionId) }
+                return info.map { Self.mapBuildInfo($0) }
+            } catch {
+                Log.print.info("[Apple] No build attached to version \(versionId) (Rust core)")
+                return nil
+            }
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchCurrentBuild(versionId: versionId)
@@ -1314,6 +1355,17 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - TestFlight: Builds for Group
 
     func fetchBuildsForGroup(groupId: String) async throws -> [BuildModel] {
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let builds = provider.builds() else {
+                throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
+            }
+            let core = try await callRustCore { try await builds.fetchBuildsForGroup(groupId: groupId, limit: 200) }
+            let models = core.map { Self.mapBuildInfo($0) }
+            Log.print.info("[TestFlight] Fetched \(models.count) builds for group \(groupId) (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchBuildsForGroup(groupId: groupId)
@@ -3453,25 +3505,36 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
 
     /// Maps a Rust-core `BuildInfo` to the app's `BuildModel`.
     ///
-    /// The core does no date logic, so the raw ISO8601 `uploadedDate`/`expirationDate`
-    /// strings are parsed here. Only the fields the core currently fetches are mapped;
-    /// every other `BuildModel` field stays at its default (`nil`/`false`).
-    ///
-    /// Known Rust-path degradation: `marketingVersion`, `iconUrl`, `platform`,
-    /// `externalBuildState`, `betaReviewState`, `submittedDate`, the computed min-OS
-    /// versions, `buildAudienceType`, `usesNonExemptEncryption`, `internalBuildState`
-    /// and `autoNotifyEnabled` come from `included` relationships
-    /// (preReleaseVersion / buildBetaDetail / betaAppReviewSubmission) that the core
-    /// does not yet request, so they are left at their defaults on the Rust path.
+    /// The core does no date logic, so the raw ISO8601 `uploadedDate`/`expirationDate`/
+    /// `submittedDate` strings are parsed here. Every `BuildModel` field is now fully
+    /// mapped: the enrichment fields (`marketingVersion`, `platform`,
+    /// `externalBuildState`, `internalBuildState`, `autoNotifyEnabled`,
+    /// `betaReviewState`, `submittedDate`, the computed min-OS versions,
+    /// `buildAudienceType`, `usesNonExemptEncryption`) come from the `included`
+    /// relationships the core now requests (preReleaseVersion / buildBetaDetail /
+    /// betaAppReviewSubmission), and `iconUrl` is passed through unchanged because the
+    /// core already computed it from the build's `iconAssetToken` template.
     static func mapBuildInfo(_ info: StackCoreRust.BuildInfo) -> BuildModel {
         BuildModel(
             id: info.id,
             version: info.version,
+            marketingVersion: info.marketingVersion,
             processingState: info.processingState,
             uploadedDate: info.uploadedDate.flatMap(parseISO8601Date),
+            iconUrl: info.iconUrl,
+            platform: info.platform,
+            externalBuildState: info.externalBuildState,
+            betaReviewState: info.betaReviewState,
+            submittedDate: info.submittedDate.flatMap(parseISO8601Date),
             expirationDate: info.expirationDate.flatMap(parseISO8601Date),
             isExpired: info.expired ?? false,
-            minOsVersion: info.minOsVersion
+            minOsVersion: info.minOsVersion,
+            computedMinMacOsVersion: info.computedMinMacOsVersion,
+            computedMinVisionOsVersion: info.computedMinVisionOsVersion,
+            buildAudienceType: info.buildAudienceType,
+            usesNonExemptEncryption: info.usesNonExemptEncryption,
+            internalBuildState: info.internalBuildState,
+            autoNotifyEnabled: info.autoNotifyEnabled
         )
     }
 

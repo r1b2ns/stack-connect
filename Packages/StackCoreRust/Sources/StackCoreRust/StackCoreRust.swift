@@ -2312,6 +2312,18 @@ public protocol BuildsProtocol: AnyObject, Sendable {
     func expireBuild(buildId: String) async throws 
     
     /**
+     * Fetches the full detail of the build `build_id`: the enriched build plus
+     * its associated beta groups and per-locale "What to Test" localizations.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchBuildDetail(buildId: String) async throws  -> BuildDetailInfo
+    
+    /**
      * Lists the builds for `app_id`, newest first (by upload date), up to
      * `limit`.
      *
@@ -2320,6 +2332,45 @@ public protocol BuildsProtocol: AnyObject, Sendable {
      * JSON, or [`StackError::Network`] on transport failure.
      */
     func fetchBuilds(appId: String, limit: UInt32) async throws  -> [BuildInfo]
+    
+    /**
+     * Lists the builds belonging to the beta group `group_id`, newest first (by
+     * upload date), up to `limit`, following pagination to the end.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchBuildsForGroup(groupId: String, limit: UInt32) async throws  -> [BuildInfo]
+    
+    /**
+     * Fetches a single page of builds for `app_id`, newest first (by upload
+     * date), up to `limit`. When `platform` is `Some`, only builds for that
+     * platform are returned; when `processing_states` is non-empty, only builds
+     * in those states are returned. Pass a prior call's `next_token` back as
+     * `page_token` to load the next page.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchBuildsPage(appId: String, platform: String?, processingStates: [String], limit: UInt32, pageToken: String?) async throws  -> BuildsPage
+    
+    /**
+     * Fetches the build currently attached to the App Store version `version_id`,
+     * or `None` when no build is attached.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchCurrentBuild(versionId: String) async throws  -> BuildInfo?
     
     /**
      * Removes the build `build_id` from the beta group `group_id` (deletes the
@@ -2482,6 +2533,33 @@ open func expireBuild(buildId: String)async throws   {
 }
     
     /**
+     * Fetches the full detail of the build `build_id`: the enriched build plus
+     * its associated beta groups and per-locale "What to Test" localizations.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchBuildDetail(buildId: String)async throws  -> BuildDetailInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_builds_fetch_build_detail(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(buildId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeBuildDetailInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
      * Lists the builds for `app_id`, newest first (by upload date), up to
      * `limit`.
      *
@@ -2502,6 +2580,90 @@ open func fetchBuilds(appId: String, limit: UInt32)async throws  -> [BuildInfo] 
             completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeBuildInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists the builds belonging to the beta group `group_id`, newest first (by
+     * upload date), up to `limit`, following pagination to the end.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchBuildsForGroup(groupId: String, limit: UInt32)async throws  -> [BuildInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_builds_fetch_builds_for_group(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(groupId),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeBuildInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Fetches a single page of builds for `app_id`, newest first (by upload
+     * date), up to `limit`. When `platform` is `Some`, only builds for that
+     * platform are returned; when `processing_states` is non-empty, only builds
+     * in those states are returned. Pass a prior call's `next_token` back as
+     * `page_token` to load the next page.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchBuildsPage(appId: String, platform: String?, processingStates: [String], limit: UInt32, pageToken: String?)async throws  -> BuildsPage  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_builds_fetch_builds_page(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId),FfiConverterOptionString.lower(platform),FfiConverterSequenceString.lower(processingStates),FfiConverterUInt32.lower(limit),FfiConverterOptionString.lower(pageToken)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeBuildsPage_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Fetches the build currently attached to the App Store version `version_id`,
+     * or `None` when no build is attached.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchCurrentBuild(versionId: String)async throws  -> BuildInfo?  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_builds_fetch_current_build(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(versionId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionTypeBuildInfo.lift,
             errorHandler: FfiConverterTypeStackError_lift
         )
 }
@@ -4282,9 +4444,81 @@ public func FfiConverterTypeBetaTesterInfo_lower(_ value: BetaTesterInfo) -> Rus
 
 
 /**
+ * The full detail of a single build: the enriched [`BuildInfo`] plus its
+ * associated beta groups and per-locale "What to Test" localizations, all
+ * resolved from the JSON:API `included` section of the build document.
+ */
+public struct BuildDetailInfo: Equatable, Hashable {
+    public var build: BuildInfo
+    public var betaGroups: [BetaGroupInfo]
+    public var localizations: [BetaBuildLocalizationInfo]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(build: BuildInfo, betaGroups: [BetaGroupInfo], localizations: [BetaBuildLocalizationInfo]) {
+        self.build = build
+        self.betaGroups = betaGroups
+        self.localizations = localizations
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BuildDetailInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBuildDetailInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BuildDetailInfo {
+        return
+            try BuildDetailInfo(
+                build: FfiConverterTypeBuildInfo.read(from: &buf), 
+                betaGroups: FfiConverterSequenceTypeBetaGroupInfo.read(from: &buf), 
+                localizations: FfiConverterSequenceTypeBetaBuildLocalizationInfo.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BuildDetailInfo, into buf: inout [UInt8]) {
+        FfiConverterTypeBuildInfo.write(value.build, into: &buf)
+        FfiConverterSequenceTypeBetaGroupInfo.write(value.betaGroups, into: &buf)
+        FfiConverterSequenceTypeBetaBuildLocalizationInfo.write(value.localizations, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBuildDetailInfo_lift(_ buf: RustBuffer) throws -> BuildDetailInfo {
+    return try FfiConverterTypeBuildDetailInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBuildDetailInfo_lower(_ value: BuildDetailInfo) -> RustBuffer {
+    return FfiConverterTypeBuildDetailInfo.lower(value)
+}
+
+
+/**
  * A build (TestFlight / App Store Connect) of an app. `version` is the build
  * number (the ASC `version` attribute, distinct from a version string). Dates
  * are raw ISO8601 strings; the core does no date parsing (the host owns that).
+ *
+ * Beyond the build's own attributes this record also carries enrichment
+ * resolved from JSON:API `included` related resources — the marketing version
+ * and platform (from `preReleaseVersion`), the external/internal build states
+ * and auto-notify flag (from `buildBetaDetail`), and the beta review state and
+ * submission date (from `betaAppReviewSubmission`). These enrichment fields are
+ * only populated when the corresponding relationship is requested via `include`
+ * (and present); they are `None` otherwise. `icon_url` is computed from the
+ * build's `iconAssetToken` template.
  */
 public struct BuildInfo: Equatable, Hashable {
     public var id: String
@@ -4295,10 +4529,96 @@ public struct BuildInfo: Equatable, Hashable {
     public var processingState: String?
     public var minOsVersion: String?
     public var expirationDate: String?
+    /**
+     * From included `preReleaseVersion.attributes.version`.
+     */
+    public var marketingVersion: String?
+    /**
+     * From included `preReleaseVersion.attributes.platform`.
+     */
+    public var platform: String?
+    /**
+     * From included `buildBetaDetail.attributes.externalBuildState`.
+     */
+    public var externalBuildState: String?
+    /**
+     * From included `buildBetaDetail.attributes.internalBuildState`.
+     */
+    public var internalBuildState: String?
+    /**
+     * From included `buildBetaDetail.attributes.autoNotifyEnabled`.
+     */
+    public var autoNotifyEnabled: Bool?
+    /**
+     * From included `betaAppReviewSubmission.attributes.betaReviewState`.
+     */
+    public var betaReviewState: String?
+    /**
+     * From included `betaAppReviewSubmission.attributes.submittedDate` (raw ISO8601).
+     */
+    public var submittedDate: String?
+    /**
+     * Build attribute `computedMinMacOsVersion`.
+     */
+    public var computedMinMacOsVersion: String?
+    /**
+     * Build attribute `computedMinVisionOsVersion`.
+     */
+    public var computedMinVisionOsVersion: String?
+    /**
+     * Build attribute `buildAudienceType`.
+     */
+    public var buildAudienceType: String?
+    /**
+     * Build attribute `usesNonExemptEncryption`.
+     */
+    public var usesNonExemptEncryption: Bool?
+    /**
+     * Computed from the build's `iconAssetToken` template (`{w}`/`{h}`/`{f}`
+     * substituted). `None` when no template URL is present.
+     */
+    public var iconUrl: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(id: String, appId: String, version: String?, uploadedDate: String?, expired: Bool?, processingState: String?, minOsVersion: String?, expirationDate: String?) {
+    public init(id: String, appId: String, version: String?, uploadedDate: String?, expired: Bool?, processingState: String?, minOsVersion: String?, expirationDate: String?, 
+        /**
+         * From included `preReleaseVersion.attributes.version`.
+         */marketingVersion: String?, 
+        /**
+         * From included `preReleaseVersion.attributes.platform`.
+         */platform: String?, 
+        /**
+         * From included `buildBetaDetail.attributes.externalBuildState`.
+         */externalBuildState: String?, 
+        /**
+         * From included `buildBetaDetail.attributes.internalBuildState`.
+         */internalBuildState: String?, 
+        /**
+         * From included `buildBetaDetail.attributes.autoNotifyEnabled`.
+         */autoNotifyEnabled: Bool?, 
+        /**
+         * From included `betaAppReviewSubmission.attributes.betaReviewState`.
+         */betaReviewState: String?, 
+        /**
+         * From included `betaAppReviewSubmission.attributes.submittedDate` (raw ISO8601).
+         */submittedDate: String?, 
+        /**
+         * Build attribute `computedMinMacOsVersion`.
+         */computedMinMacOsVersion: String?, 
+        /**
+         * Build attribute `computedMinVisionOsVersion`.
+         */computedMinVisionOsVersion: String?, 
+        /**
+         * Build attribute `buildAudienceType`.
+         */buildAudienceType: String?, 
+        /**
+         * Build attribute `usesNonExemptEncryption`.
+         */usesNonExemptEncryption: Bool?, 
+        /**
+         * Computed from the build's `iconAssetToken` template (`{w}`/`{h}`/`{f}`
+         * substituted). `None` when no template URL is present.
+         */iconUrl: String?) {
         self.id = id
         self.appId = appId
         self.version = version
@@ -4307,6 +4627,18 @@ public struct BuildInfo: Equatable, Hashable {
         self.processingState = processingState
         self.minOsVersion = minOsVersion
         self.expirationDate = expirationDate
+        self.marketingVersion = marketingVersion
+        self.platform = platform
+        self.externalBuildState = externalBuildState
+        self.internalBuildState = internalBuildState
+        self.autoNotifyEnabled = autoNotifyEnabled
+        self.betaReviewState = betaReviewState
+        self.submittedDate = submittedDate
+        self.computedMinMacOsVersion = computedMinMacOsVersion
+        self.computedMinVisionOsVersion = computedMinVisionOsVersion
+        self.buildAudienceType = buildAudienceType
+        self.usesNonExemptEncryption = usesNonExemptEncryption
+        self.iconUrl = iconUrl
     }
 
     
@@ -4332,7 +4664,19 @@ public struct FfiConverterTypeBuildInfo: FfiConverterRustBuffer {
                 expired: FfiConverterOptionBool.read(from: &buf), 
                 processingState: FfiConverterOptionString.read(from: &buf), 
                 minOsVersion: FfiConverterOptionString.read(from: &buf), 
-                expirationDate: FfiConverterOptionString.read(from: &buf)
+                expirationDate: FfiConverterOptionString.read(from: &buf), 
+                marketingVersion: FfiConverterOptionString.read(from: &buf), 
+                platform: FfiConverterOptionString.read(from: &buf), 
+                externalBuildState: FfiConverterOptionString.read(from: &buf), 
+                internalBuildState: FfiConverterOptionString.read(from: &buf), 
+                autoNotifyEnabled: FfiConverterOptionBool.read(from: &buf), 
+                betaReviewState: FfiConverterOptionString.read(from: &buf), 
+                submittedDate: FfiConverterOptionString.read(from: &buf), 
+                computedMinMacOsVersion: FfiConverterOptionString.read(from: &buf), 
+                computedMinVisionOsVersion: FfiConverterOptionString.read(from: &buf), 
+                buildAudienceType: FfiConverterOptionString.read(from: &buf), 
+                usesNonExemptEncryption: FfiConverterOptionBool.read(from: &buf), 
+                iconUrl: FfiConverterOptionString.read(from: &buf)
         )
     }
 
@@ -4345,6 +4689,18 @@ public struct FfiConverterTypeBuildInfo: FfiConverterRustBuffer {
         FfiConverterOptionString.write(value.processingState, into: &buf)
         FfiConverterOptionString.write(value.minOsVersion, into: &buf)
         FfiConverterOptionString.write(value.expirationDate, into: &buf)
+        FfiConverterOptionString.write(value.marketingVersion, into: &buf)
+        FfiConverterOptionString.write(value.platform, into: &buf)
+        FfiConverterOptionString.write(value.externalBuildState, into: &buf)
+        FfiConverterOptionString.write(value.internalBuildState, into: &buf)
+        FfiConverterOptionBool.write(value.autoNotifyEnabled, into: &buf)
+        FfiConverterOptionString.write(value.betaReviewState, into: &buf)
+        FfiConverterOptionString.write(value.submittedDate, into: &buf)
+        FfiConverterOptionString.write(value.computedMinMacOsVersion, into: &buf)
+        FfiConverterOptionString.write(value.computedMinVisionOsVersion, into: &buf)
+        FfiConverterOptionString.write(value.buildAudienceType, into: &buf)
+        FfiConverterOptionBool.write(value.usesNonExemptEncryption, into: &buf)
+        FfiConverterOptionString.write(value.iconUrl, into: &buf)
     }
 }
 
@@ -4361,6 +4717,66 @@ public func FfiConverterTypeBuildInfo_lift(_ buf: RustBuffer) throws -> BuildInf
 #endif
 public func FfiConverterTypeBuildInfo_lower(_ value: BuildInfo) -> RustBuffer {
     return FfiConverterTypeBuildInfo.lower(value)
+}
+
+
+/**
+ * One page of builds plus an opaque token to fetch the next page. `next_token`
+ * is `None` on the last page; otherwise pass it back verbatim as the next call's
+ * `page_token` (it is the JSON:API `links.next` URL). Mirrors
+ * [`CustomerReviewsPage`].
+ */
+public struct BuildsPage: Equatable, Hashable {
+    public var builds: [BuildInfo]
+    public var nextToken: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(builds: [BuildInfo], nextToken: String?) {
+        self.builds = builds
+        self.nextToken = nextToken
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BuildsPage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBuildsPage: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BuildsPage {
+        return
+            try BuildsPage(
+                builds: FfiConverterSequenceTypeBuildInfo.read(from: &buf), 
+                nextToken: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BuildsPage, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeBuildInfo.write(value.builds, into: &buf)
+        FfiConverterOptionString.write(value.nextToken, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBuildsPage_lift(_ buf: RustBuffer) throws -> BuildsPage {
+    return try FfiConverterTypeBuildsPage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBuildsPage_lower(_ value: BuildsPage) -> RustBuffer {
+    return FfiConverterTypeBuildsPage.lower(value)
 }
 
 
@@ -5286,6 +5702,30 @@ fileprivate struct FfiConverterOptionTypeReviews: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeBuildInfo: FfiConverterRustBuffer {
+    typealias SwiftType = BuildInfo?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeBuildInfo.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeBuildInfo.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeReviewResponse: FfiConverterRustBuffer {
     typealias SwiftType = ReviewResponse?
 
@@ -5856,7 +6296,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_builds_expire_build() != 574) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_builds_fetch_build_detail() != 49084) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_builds_fetch_builds() != 166) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_builds_fetch_builds_for_group() != 60366) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_builds_fetch_builds_page() != 55387) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_builds_fetch_current_build() != 10731) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_builds_remove_build_from_group() != 5368) {
