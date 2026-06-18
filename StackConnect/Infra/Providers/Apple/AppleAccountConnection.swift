@@ -1904,6 +1904,22 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - App Review Detail
 
     func fetchAppReviewDetail(versionId: String) async throws -> AppReviewDetailModel? {
+        // Strangler-fig migration: route this read through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            do {
+                let info = try await callRustCore { try await versions.fetchAppReviewDetail(versionId: versionId) }
+                return info.map { Self.mapAppReviewDetailInfo($0) }
+            } catch {
+                Log.print.info("[Apple] No review detail for version \(versionId) (Rust core)")
+                return nil
+            }
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchAppReviewDetail(versionId: versionId)
@@ -1936,6 +1952,30 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateAppReviewDetail(model: AppReviewDetailModel) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            try await callRustCore {
+                _ = try await versions.updateAppReviewDetail(
+                    detailId: model.id,
+                    contactFirstName: model.contactFirstName,
+                    contactLastName: model.contactLastName,
+                    contactEmail: model.contactEmail,
+                    contactPhone: model.contactPhone,
+                    notes: model.notes,
+                    demoAccountName: model.demoAccountName,
+                    demoAccountPassword: model.demoAccountPassword,
+                    isDemoAccountRequired: model.isDemoAccountRequired
+                )
+            }
+            Log.print.info("[Apple] Updated review detail \(model.id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await updateAppReviewDetail(model: model)
@@ -4034,6 +4074,23 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             demoAccountPassword: info.demoAccountPassword,
             isDemoAccountRequired: info.isDemoAccountRequired,
             notes: info.notes
+        )
+    }
+
+    /// Maps a Rust-core `AppReviewDetailInfo` to the app's `AppReviewDetailModel`.
+    /// Full fidelity: the core provides every field this model needs, so they map 1:1,
+    /// passing all eight optional fields straight through.
+    static func mapAppReviewDetailInfo(_ info: StackCoreRust.AppReviewDetailInfo) -> AppReviewDetailModel {
+        AppReviewDetailModel(
+            id: info.id,
+            contactFirstName: info.contactFirstName,
+            contactLastName: info.contactLastName,
+            contactEmail: info.contactEmail,
+            contactPhone: info.contactPhone,
+            notes: info.notes,
+            demoAccountName: info.demoAccountName,
+            demoAccountPassword: info.demoAccountPassword,
+            isDemoAccountRequired: info.isDemoAccountRequired
         )
     }
 

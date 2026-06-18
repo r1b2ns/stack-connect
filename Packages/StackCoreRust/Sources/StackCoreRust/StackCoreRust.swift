@@ -1152,6 +1152,23 @@ public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
     func deleteVersion(id: String) async throws 
     
     /**
+     * Fetches the single app review detail for `version_id` — the version's
+     * "App Review Information": the app-review contact and optional demo account
+     * credentials shown at submission time.
+     *
+     * Resolves the singular `appStoreReviewDetail` relationship of the version.
+     * Returns `Ok(None)` when no app review detail exists (the document's `data`
+     * is null/absent, or the relationship endpoint answers 404).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchAppReviewDetail(versionId: String) async throws  -> AppReviewDetailInfo?
+    
+    /**
      * Lists the version localizations for `version_id`.
      *
      * Resolves the version's `appStoreVersionLocalizations` relationship,
@@ -1249,6 +1266,23 @@ public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
      * on malformed JSON, or [`StackError::Network`] on transport failure.
      */
     func submitForReview(appId: String, versionId: String, platform: String?) async throws 
+    
+    /**
+     * Updates the app review detail `detail_id`, replacing only the provided
+     * attributes, and returns the updated detail. Every attribute is optional:
+     * `contact_*` set the app-review contact, `notes` are the reviewer notes,
+     * `demo_account_*` set the demo account credentials, and
+     * `is_demo_account_required` toggles whether a demo account is needed. Only
+     * the `Some` attributes are sent in the PATCH body; `None` attributes are
+     * omitted entirely (and so left untouched on App Store Connect).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func updateAppReviewDetail(detailId: String, contactFirstName: String?, contactLastName: String?, contactEmail: String?, contactPhone: String?, notes: String?, demoAccountName: String?, demoAccountPassword: String?, isDemoAccountRequired: Bool?) async throws  -> AppReviewDetailInfo
     
     /**
      * Updates the version localization identified by `id`, sending only the
@@ -1480,6 +1514,38 @@ open func deleteVersion(id: String)async throws   {
 }
     
     /**
+     * Fetches the single app review detail for `version_id` — the version's
+     * "App Review Information": the app-review contact and optional demo account
+     * credentials shown at submission time.
+     *
+     * Resolves the singular `appStoreReviewDetail` relationship of the version.
+     * Returns `Ok(None)` when no app review detail exists (the document's `data`
+     * is null/absent, or the relationship endpoint answers 404).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchAppReviewDetail(versionId: String)async throws  -> AppReviewDetailInfo?  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_fetch_app_review_detail(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(versionId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionTypeAppReviewDetailInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
      * Lists the version localizations for `version_id`.
      *
      * Resolves the version's `appStoreVersionLocalizations` relationship,
@@ -1679,6 +1745,38 @@ open func submitForReview(appId: String, versionId: String, platform: String?)as
             completeFunc: ffi_stack_core_rust_future_complete_void,
             freeFunc: ffi_stack_core_rust_future_free_void,
             liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Updates the app review detail `detail_id`, replacing only the provided
+     * attributes, and returns the updated detail. Every attribute is optional:
+     * `contact_*` set the app-review contact, `notes` are the reviewer notes,
+     * `demo_account_*` set the demo account credentials, and
+     * `is_demo_account_required` toggles whether a demo account is needed. Only
+     * the `Some` attributes are sent in the PATCH body; `None` attributes are
+     * omitted entirely (and so left untouched on App Store Connect).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func updateAppReviewDetail(detailId: String, contactFirstName: String?, contactLastName: String?, contactEmail: String?, contactPhone: String?, notes: String?, demoAccountName: String?, demoAccountPassword: String?, isDemoAccountRequired: Bool?)async throws  -> AppReviewDetailInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_update_app_review_detail(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(detailId),FfiConverterOptionString.lower(contactFirstName),FfiConverterOptionString.lower(contactLastName),FfiConverterOptionString.lower(contactEmail),FfiConverterOptionString.lower(contactPhone),FfiConverterOptionString.lower(notes),FfiConverterOptionString.lower(demoAccountName),FfiConverterOptionString.lower(demoAccountPassword),FfiConverterOptionBool.lower(isDemoAccountRequired)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAppReviewDetailInfo_lift,
             errorHandler: FfiConverterTypeStackError_lift
         )
 }
@@ -5404,6 +5502,96 @@ public func FfiConverterTypeAppInfoLocalizationInfo_lower(_ value: AppInfoLocali
 
 
 /**
+ * The App Store version "App Review Information" detail: the app-review contact
+ * (name, email, phone), optional demo account credentials, and reviewer notes
+ * surfaced at submission time. App Store Connect exposes exactly one per version
+ * (the singular `appStoreReviewDetail` relationship). All attributes are
+ * optional. This is version-scoped, distinct from [`BetaAppReviewDetailInfo`]
+ * (which is the TestFlight/app-scoped beta review detail).
+ */
+public struct AppReviewDetailInfo: Equatable, Hashable {
+    public var id: String
+    public var contactFirstName: String?
+    public var contactLastName: String?
+    public var contactEmail: String?
+    public var contactPhone: String?
+    public var notes: String?
+    public var demoAccountName: String?
+    public var demoAccountPassword: String?
+    public var isDemoAccountRequired: Bool?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, contactFirstName: String?, contactLastName: String?, contactEmail: String?, contactPhone: String?, notes: String?, demoAccountName: String?, demoAccountPassword: String?, isDemoAccountRequired: Bool?) {
+        self.id = id
+        self.contactFirstName = contactFirstName
+        self.contactLastName = contactLastName
+        self.contactEmail = contactEmail
+        self.contactPhone = contactPhone
+        self.notes = notes
+        self.demoAccountName = demoAccountName
+        self.demoAccountPassword = demoAccountPassword
+        self.isDemoAccountRequired = isDemoAccountRequired
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AppReviewDetailInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppReviewDetailInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppReviewDetailInfo {
+        return
+            try AppReviewDetailInfo(
+                id: FfiConverterString.read(from: &buf), 
+                contactFirstName: FfiConverterOptionString.read(from: &buf), 
+                contactLastName: FfiConverterOptionString.read(from: &buf), 
+                contactEmail: FfiConverterOptionString.read(from: &buf), 
+                contactPhone: FfiConverterOptionString.read(from: &buf), 
+                notes: FfiConverterOptionString.read(from: &buf), 
+                demoAccountName: FfiConverterOptionString.read(from: &buf), 
+                demoAccountPassword: FfiConverterOptionString.read(from: &buf), 
+                isDemoAccountRequired: FfiConverterOptionBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AppReviewDetailInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterOptionString.write(value.contactFirstName, into: &buf)
+        FfiConverterOptionString.write(value.contactLastName, into: &buf)
+        FfiConverterOptionString.write(value.contactEmail, into: &buf)
+        FfiConverterOptionString.write(value.contactPhone, into: &buf)
+        FfiConverterOptionString.write(value.notes, into: &buf)
+        FfiConverterOptionString.write(value.demoAccountName, into: &buf)
+        FfiConverterOptionString.write(value.demoAccountPassword, into: &buf)
+        FfiConverterOptionBool.write(value.isDemoAccountRequired, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppReviewDetailInfo_lift(_ buf: RustBuffer) throws -> AppReviewDetailInfo {
+    return try FfiConverterTypeAppReviewDetailInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppReviewDetailInfo_lower(_ value: AppReviewDetailInfo) -> RustBuffer {
+    return FfiConverterTypeAppReviewDetailInfo.lower(value)
+}
+
+
+/**
  * An App Store version localization, keyed by `locale`. Carries the per-locale
  * version listing metadata shown on the product page: `description`, `keywords`,
  * `promotional_text`, the `support_url`/`marketing_url` links, and the
@@ -7485,6 +7673,30 @@ fileprivate struct FfiConverterOptionTypeAgeRatingDeclarationInfo: FfiConverterR
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeAppReviewDetailInfo: FfiConverterRustBuffer {
+    typealias SwiftType = AppReviewDetailInfo?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAppReviewDetailInfo.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAppReviewDetailInfo.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeBuildInfo: FfiConverterRustBuffer {
     typealias SwiftType = BuildInfo?
 
@@ -8204,6 +8416,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_appstoreversions_delete_version() != 49312) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_appstoreversions_fetch_app_review_detail() != 60619) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_appstoreversions_fetch_localizations() != 63754) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -8223,6 +8438,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appstoreversions_submit_for_review() != 45511) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appstoreversions_update_app_review_detail() != 37947) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appstoreversions_update_localization() != 3721) {

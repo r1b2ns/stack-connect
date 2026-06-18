@@ -1507,6 +1507,110 @@ final class RustCoreStranglerTests: XCTestCase {
         XCTAssertNil(modelNoOptionals.notes)
     }
 
+    // MARK: - App review detail (strangler routing)
+
+    /// With the flag ON, `fetchAppReviewDetail(versionId:)` routes through the Rust core.
+    /// `rustCoreProvider()` and the capability guard sit OUTSIDE the `do/catch`, but the
+    /// invalid-credential rejection happens inside `callRustCore`, which is INSIDE the
+    /// `do/catch -> return nil`. So the malformed-credential error is swallowed to nil:
+    /// a nil result still proves the call was routed through the Rust core (the Swift-SDK
+    /// provider is never reached).
+    func testFetchAppReviewDetailReturnsNilWhenProviderCannotServeItWhenFlagOn() async throws {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        let result = try await connection.fetchAppReviewDetail(versionId: "version-1")
+        // The Rust-core fetch swallows the credential error inside its do/catch and
+        // returns nil; reaching the graceful-nil path proves Rust routing.
+        XCTAssertNil(result)
+    }
+
+    /// With the flag ON, `updateAppReviewDetail(model:)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testUpdateAppReviewDetailRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        let model = AppReviewDetailModel(
+            id: "detail-1",
+            contactFirstName: "Ada",
+            contactLastName: "Lovelace",
+            contactEmail: "ada@example.com",
+            contactPhone: "+15551234567",
+            notes: "Reviewer notes.",
+            demoAccountName: "demo",
+            demoAccountPassword: "secret",
+            isDemoAccountRequired: true
+        )
+
+        do {
+            try await connection.updateAppReviewDetail(model: model)
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    // MARK: - App review detail mapping (Rust core -> app model)
+
+    /// The core `AppReviewDetailInfo` provides every field the app's
+    /// `AppReviewDetailModel` needs, so the mapping is full fidelity (1:1),
+    /// passing all eight optional fields straight through.
+    func testMapAppReviewDetailInfoMapsAllFields() {
+        let core = StackCoreRust.AppReviewDetailInfo(
+            id: "detail-1",
+            contactFirstName: "Ada",
+            contactLastName: "Lovelace",
+            contactEmail: "ada@example.com",
+            contactPhone: "+15551234567",
+            notes: "Reviewer notes.",
+            demoAccountName: "demo",
+            demoAccountPassword: "secret",
+            isDemoAccountRequired: true
+        )
+
+        let model = AppleAccountConnection.mapAppReviewDetailInfo(core)
+
+        XCTAssertEqual(model.id, "detail-1")
+        XCTAssertEqual(model.contactFirstName, "Ada")
+        XCTAssertEqual(model.contactLastName, "Lovelace")
+        XCTAssertEqual(model.contactEmail, "ada@example.com")
+        XCTAssertEqual(model.contactPhone, "+15551234567")
+        XCTAssertEqual(model.notes, "Reviewer notes.")
+        XCTAssertEqual(model.demoAccountName, "demo")
+        XCTAssertEqual(model.demoAccountPassword, "secret")
+        XCTAssertEqual(model.isDemoAccountRequired, true)
+
+        // All eight optional fields must pass straight through as nil.
+        let coreNoOptionals = StackCoreRust.AppReviewDetailInfo(
+            id: "detail-2",
+            contactFirstName: nil,
+            contactLastName: nil,
+            contactEmail: nil,
+            contactPhone: nil,
+            notes: nil,
+            demoAccountName: nil,
+            demoAccountPassword: nil,
+            isDemoAccountRequired: nil
+        )
+        let modelNoOptionals = AppleAccountConnection.mapAppReviewDetailInfo(coreNoOptionals)
+        XCTAssertEqual(modelNoOptionals.id, "detail-2")
+        XCTAssertNil(modelNoOptionals.contactFirstName)
+        XCTAssertNil(modelNoOptionals.contactLastName)
+        XCTAssertNil(modelNoOptionals.contactEmail)
+        XCTAssertNil(modelNoOptionals.contactPhone)
+        XCTAssertNil(modelNoOptionals.notes)
+        XCTAssertNil(modelNoOptionals.demoAccountName)
+        XCTAssertNil(modelNoOptionals.demoAccountPassword)
+        XCTAssertNil(modelNoOptionals.isDemoAccountRequired)
+    }
+
     // MARK: - Beta group mapping (Rust core -> app model)
 
     /// The core `BetaGroupInfo` must map onto the app's `BetaGroupModel` for the fields

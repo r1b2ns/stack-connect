@@ -51,6 +51,8 @@ new flag ships **OFF** by default (the safe, fully-reversible value) unless note
   - `deleteAppInfoLocalization(id:)` — when ON, calls the Rust core `AppMetadata.deleteAppInfoLocalization(id:)` (method is `Void`).
   - `AppleAccountConnection.fetchBetaAppReviewDetail(appId:)` — routes the TestFlight beta app review detail (Test Information) read through the Rust core when ON.
   - `AppleAccountConnection.updateBetaAppReviewDetail(model:)` — routes the beta app review detail update through the Rust core when ON.
+  - `AppleAccountConnection.fetchAppReviewDetail(versionId:)` — routes the App Store version review detail (App Review Information) read through the Rust core when ON; maps the optional `StackCoreRust.AppReviewDetailInfo?` → `AppReviewDetailModel?` via `mapAppReviewDetailInfo`. The capability guard runs before the graceful do/catch, so a missing-detail lookup failure is swallowed to `nil` while a misconfigured provider still throws.
+  - `AppleAccountConnection.updateAppReviewDetail(model:)` — routes the App Store version review detail update through the Rust core when ON.
   - `expireBuild(buildId:)` — when ON, calls the Rust core `Builds.expireBuild(buildId:)` (method is `Void`).
   - `attachBuild(versionId:buildId:)` — when ON, calls the Rust core `Builds.attachBuild(versionId:buildId:)` (method is `Void`).
   - `submitBuildForBetaReview(buildId:)` — when ON, calls the Rust core `Builds.submitBuildForBetaReview(buildId:)` (method is `Void`).
