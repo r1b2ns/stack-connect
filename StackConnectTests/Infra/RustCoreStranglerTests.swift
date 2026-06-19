@@ -3257,6 +3257,172 @@ final class RustCoreStranglerTests: XCTestCase {
         )
         XCTAssertNil(AppleAccountConnection.mapCertificateInfo(badDate).expirationDate)
     }
+
+    // MARK: - Provisioning Profiles (strangler routing)
+
+    /// With the flag ON, `fetchProfiles()` must fail via the Rust core for invalid
+    /// credentials, proving the read never reaches the Swift-SDK provider.
+    func testFetchProfilesRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchProfiles()
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `createProfile(...)` must fail via the Rust core for invalid
+    /// credentials, proving the write never reaches the Swift-SDK provider.
+    func testCreateProfileRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.createProfile(name: "Dev Profile", profileTypeRaw: "IOS_APP_DEVELOPMENT", bundleIdId: "bundle-1", certificateIds: ["cert-1"], deviceIds: ["device-1"])
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// On the flag-ON (Rust) path, `createProfile` does NOT perform the SDK's
+    /// `ProfileType` enum validation — a raw type the SDK enum rejects is passed
+    /// STRAIGHT to the core, so the error is a StackError from the core, not the plain
+    /// NSError the SDK path would throw for an unsupported profile type.
+    func testCreateProfilePassesUnknownTypeToRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            // NOT_A_REAL_TYPE is a type the SDK's ProfileType enum rejects.
+            _ = try await connection.createProfile(name: "Dev Profile", profileTypeRaw: "NOT_A_REAL_TYPE", bundleIdId: "bundle-1", certificateIds: ["cert-1"], deviceIds: ["device-1"])
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Reached the core (no SDK enum validation), as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, not the SDK enum NSError, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `deleteProfile(id:)` must fail via the Rust core for invalid
+    /// credentials, proving the write never reaches the Swift-SDK provider.
+    func testDeleteProfileRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.deleteProfile(id: "profile-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `fetchProfileContent(id:)` must fail via the Rust core for
+    /// invalid credentials, proving the read never reaches the Swift-SDK provider.
+    func testFetchProfileContentRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchProfileContent(id: "profile-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    // MARK: - Provisioning Profile mapping (Rust core -> app model)
+
+    /// `mapProvisioningProfileInfo` maps every field 1:1 and parses the raw ISO8601
+    /// `createdDate`/`expirationDate` via `parseISO8601Date`. The `profileContent` is not
+    /// a field on `ProvisioningProfileModel`, so it is intentionally not asserted here.
+    func testMapProvisioningProfileInfoMapsAllFieldsAndParsesDates() {
+        let core = StackCoreRust.ProvisioningProfileInfo(
+            id: "profile-1",
+            name: "Dev Profile",
+            profileType: "IOS_APP_DEVELOPMENT",
+            profileState: "ACTIVE",
+            platform: "IOS",
+            uuid: "UUID-1234",
+            bundleId: "com.example.app",
+            createdDate: "2024-01-15T10:30:00Z",
+            expirationDate: "2025-01-15T10:30:00Z",
+            profileContent: "MIID...base64..."
+        )
+
+        let model = AppleAccountConnection.mapProvisioningProfileInfo(core)
+
+        XCTAssertEqual(model.id, "profile-1")
+        XCTAssertEqual(model.name, "Dev Profile")
+        XCTAssertEqual(model.profileType, "IOS_APP_DEVELOPMENT")
+        XCTAssertEqual(model.profileState, "ACTIVE")
+        XCTAssertEqual(model.platform, "IOS")
+        XCTAssertEqual(model.uuid, "UUID-1234")
+        XCTAssertEqual(model.bundleId, "com.example.app")
+        XCTAssertEqual(model.createdDate, ISO8601DateFormatter().date(from: "2024-01-15T10:30:00Z"))
+        XCTAssertEqual(model.expirationDate, ISO8601DateFormatter().date(from: "2025-01-15T10:30:00Z"))
+    }
+
+    /// Nil `platform`/`uuid`/`bundleId`/`createdDate`/`expirationDate`/`profileContent`
+    /// pass straight through (dates -> nil) while the required string fields still map;
+    /// an unparseable date also yields nil.
+    func testMapProvisioningProfileInfoHandlesNilDatesAndContent() {
+        let core = StackCoreRust.ProvisioningProfileInfo(
+            id: "profile-2",
+            name: "No-Detail Profile",
+            profileType: "IOS_APP_STORE",
+            profileState: "INVALID",
+            platform: nil,
+            uuid: nil,
+            bundleId: nil,
+            createdDate: nil,
+            expirationDate: nil,
+            profileContent: nil
+        )
+
+        let model = AppleAccountConnection.mapProvisioningProfileInfo(core)
+
+        XCTAssertEqual(model.id, "profile-2")
+        XCTAssertEqual(model.name, "No-Detail Profile")
+        XCTAssertEqual(model.profileType, "IOS_APP_STORE")
+        XCTAssertEqual(model.profileState, "INVALID")
+        XCTAssertNil(model.platform)
+        XCTAssertNil(model.uuid)
+        XCTAssertNil(model.bundleId)
+        XCTAssertNil(model.createdDate)
+        XCTAssertNil(model.expirationDate)
+
+        // Unparseable dates -> nil.
+        let badDate = StackCoreRust.ProvisioningProfileInfo(
+            id: "profile-3", name: "X", profileType: "IOS_APP_STORE", profileState: "ACTIVE",
+            platform: nil, uuid: nil, bundleId: nil, createdDate: "not-a-date",
+            expirationDate: "not-a-date", profileContent: nil
+        )
+        XCTAssertNil(AppleAccountConnection.mapProvisioningProfileInfo(badDate).createdDate)
+        XCTAssertNil(AppleAccountConnection.mapProvisioningProfileInfo(badDate).expirationDate)
+    }
 }
 
 // MARK: - Minimal in-memory PersistentStorable for the BlobStore-backed test

@@ -3972,6 +3972,21 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - Provisioning Profiles
 
     func fetchProfiles() async throws -> [ProvisioningProfileModel] {
+        // Strangler-fig migration: route this read through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.profiles() else {
+                throw translate(.Unsupported(message: "Profiles capability is not available for this provider."))
+            }
+            let models = try await callRustCore {
+                let infos = try await cap.fetchProfiles()
+                return infos.map { Self.mapProvisioningProfileInfo($0) }
+            }
+            Log.print.info("[Apple] Fetched \(models.count) provisioning profiles (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchProfiles()
@@ -4028,6 +4043,27 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         certificateIds: [String],
         deviceIds: [String]
     ) async throws -> CreatedProfile {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.profiles() else {
+                throw translate(.Unsupported(message: "Profiles capability is not available for this provider."))
+            }
+            let created = try await callRustCore {
+                let info = try await cap.createProfile(
+                    name: name,
+                    profileType: profileTypeRaw,
+                    bundleIdId: bundleIdId,
+                    certificateIds: certificateIds,
+                    deviceIds: deviceIds
+                )
+                return CreatedProfile(profile: Self.mapProvisioningProfileInfo(info), content: info.profileContent)
+            }
+            Log.print.info("[Apple] Created profile \(created.profile.id) (\(profileTypeRaw)) (Rust core)")
+            return created
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await createProfile(
@@ -4080,6 +4116,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deleteProfile(id: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.profiles() else {
+                throw translate(.Unsupported(message: "Profiles capability is not available for this provider."))
+            }
+            try await callRustCore { try await cap.deleteProfile(id: id) }
+            Log.print.info("[Apple] Deleted profile \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await deleteProfile(id: id)
@@ -4091,6 +4139,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func fetchProfileContent(id: String) async throws -> String? {
+        // Strangler-fig migration: route this read through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.profiles() else {
+                throw translate(.Unsupported(message: "Profiles capability is not available for this provider."))
+            }
+            let content = try await callRustCore { try await cap.fetchProfileContent(id: id) }
+            Log.print.info("[Apple] Fetched profile content for \(id) (Rust core)")
+            return content
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchProfileContent(id: id)
@@ -4333,6 +4393,24 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             serialNumber: info.serialNumber,
             expirationDate: info.expirationDate.flatMap { Self.parseISO8601Date($0) },
             isActivated: info.isActivated
+        )
+    }
+
+    /// Maps a Rust-core `ProvisioningProfileInfo` to the app's `ProvisioningProfileModel`.
+    /// Mirrors the inline SDK mapping in `fetchProfiles`/`createProfile`. The raw ISO8601
+    /// `createdDate`/`expirationDate` strings are parsed via `parseISO8601Date` (both model
+    /// fields are `Date?`); `profileContent` is not a field on the model so it is omitted here.
+    static func mapProvisioningProfileInfo(_ info: StackCoreRust.ProvisioningProfileInfo) -> ProvisioningProfileModel {
+        ProvisioningProfileModel(
+            id: info.id,
+            name: info.name,
+            profileType: info.profileType,
+            profileState: info.profileState,
+            platform: info.platform,
+            uuid: info.uuid,
+            bundleId: info.bundleId,
+            createdDate: info.createdDate.flatMap { Self.parseISO8601Date($0) },
+            expirationDate: info.expirationDate.flatMap { Self.parseISO8601Date($0) }
         )
     }
 

@@ -5605,6 +5605,298 @@ public func FfiConverterTypeDevices_lower(_ value: Devices) -> UInt64 {
 
 
 /**
+ * UniFFI-exported Profiles capability handle. A thin, binding-friendly wrapper
+ * around a boxed [`ProfilesImpl`]; async work runs on the tokio runtime.
+ * Reached via [`crate::service::provider::Provider::profiles`].
+ */
+public protocol ProfilesProtocol: AnyObject, Sendable {
+    
+    /**
+     * Creates a provisioning profile named `name` of `profile_type` (a raw ASC
+     * `ProfileType` value such as `IOS_APP_DEVELOPMENT`, `IOS_APP_STORE`, or
+     * `MAC_APP_STORE`, forwarded verbatim — App Store Connect rejects unknown
+     * values with an HTTP error), related to the bundle ID `bundle_id_id` and
+     * the signing certificates `certificate_ids`. When `device_ids` is non-empty
+     * the `devices` relationship is attached; when empty it is omitted entirely
+     * (App Store Connect rejects an empty `devices` array for App Store
+     * profiles). The `certificates` relationship is always sent, even when
+     * `certificate_ids` is empty. The returned profile includes its
+     * `profile_content`; its `bundle_id` is `None` (not resolved on create).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func createProfile(name: String, profileType: String, bundleIdId: String, certificateIds: [String], deviceIds: [String]) async throws  -> ProvisioningProfileInfo
+    
+    /**
+     * Deletes the profile `id`. Any 2xx → `Ok(())`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func deleteProfile(id: String) async throws 
+    
+    /**
+     * Fetches the base64-encoded `profileContent` of the profile `id`, returning
+     * `None` when App Store Connect omits the attribute.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchProfileContent(id: String) async throws  -> String?
+    
+    /**
+     * Lists every provisioning profile of the connected account, sorted by
+     * name, following pagination until exhausted. Each profile's `bundle_id` is
+     * resolved to the referenced bundle ID's `identifier` string via the
+     * response's `included[]` bundleIds (or `None` when the relationship is
+     * missing or the bundle ID is absent from `included[]`). The list does not
+     * include profile content, so every entry's `profile_content` is `None`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchProfiles() async throws  -> [ProvisioningProfileInfo]
+    
+}
+/**
+ * UniFFI-exported Profiles capability handle. A thin, binding-friendly wrapper
+ * around a boxed [`ProfilesImpl`]; async work runs on the tokio runtime.
+ * Reached via [`crate::service::provider::Provider::profiles`].
+ */
+open class Profiles: ProfilesProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_profiles(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_profiles(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Creates a provisioning profile named `name` of `profile_type` (a raw ASC
+     * `ProfileType` value such as `IOS_APP_DEVELOPMENT`, `IOS_APP_STORE`, or
+     * `MAC_APP_STORE`, forwarded verbatim — App Store Connect rejects unknown
+     * values with an HTTP error), related to the bundle ID `bundle_id_id` and
+     * the signing certificates `certificate_ids`. When `device_ids` is non-empty
+     * the `devices` relationship is attached; when empty it is omitted entirely
+     * (App Store Connect rejects an empty `devices` array for App Store
+     * profiles). The `certificates` relationship is always sent, even when
+     * `certificate_ids` is empty. The returned profile includes its
+     * `profile_content`; its `bundle_id` is `None` (not resolved on create).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func createProfile(name: String, profileType: String, bundleIdId: String, certificateIds: [String], deviceIds: [String])async throws  -> ProvisioningProfileInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_profiles_create_profile(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(name),FfiConverterString.lower(profileType),FfiConverterString.lower(bundleIdId),FfiConverterSequenceString.lower(certificateIds),FfiConverterSequenceString.lower(deviceIds)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeProvisioningProfileInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Deletes the profile `id`. Any 2xx → `Ok(())`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func deleteProfile(id: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_profiles_delete_profile(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Fetches the base64-encoded `profileContent` of the profile `id`, returning
+     * `None` when App Store Connect omits the attribute.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchProfileContent(id: String)async throws  -> String?  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_profiles_fetch_profile_content(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionString.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists every provisioning profile of the connected account, sorted by
+     * name, following pagination until exhausted. Each profile's `bundle_id` is
+     * resolved to the referenced bundle ID's `identifier` string via the
+     * response's `included[]` bundleIds (or `None` when the relationship is
+     * missing or the bundle ID is absent from `included[]`). The list does not
+     * include profile content, so every entry's `profile_content` is `None`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchProfiles()async throws  -> [ProvisioningProfileInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_profiles_fetch_profiles(
+                    self.uniffiCloneHandle()
+                    
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeProvisioningProfileInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeProfiles: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Profiles
+
+    public static func lift(_ handle: UInt64) throws -> Profiles {
+        return Profiles(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Profiles) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Profiles {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Profiles, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProfiles_lift(_ handle: UInt64) throws -> Profiles {
+    return try FfiConverterTypeProfiles.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProfiles_lower(_ value: Profiles) -> UInt64 {
+    return FfiConverterTypeProfiles.lower(value)
+}
+
+
+
+
+
+
+/**
  * UniFFI-exported provider handle. A thin, binding-friendly wrapper around a
  * boxed [`ProviderImpl`]: synchronous metadata is exported directly, async work
  * runs on the tokio runtime. Adding a *service* never changes this surface —
@@ -5719,6 +6011,14 @@ public protocol ProviderProtocol: AnyObject, Sendable {
      * Which service this provider speaks to.
      */
     func kind()  -> ServiceKind
+    
+    /**
+     * The Profiles capability handle, or `None` when this provider does not
+     * expose [`Capability::Profiles`]. This is the discovery mechanism: the host
+     * calls `provider.profiles()` and gets `None` when provisioning profile
+     * management is unsupported.
+     */
+    func profiles()  -> Profiles?
     
     /**
      * The Reviews capability handle, or `None` when this provider does not
@@ -5999,6 +6299,20 @@ open func fetchApps()async throws  -> [AppInfo]  {
 open func kind() -> ServiceKind  {
     return try!  FfiConverterTypeServiceKind_lift(try! rustCall() {
     uniffi_stack_core_fn_method_provider_kind(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The Profiles capability handle, or `None` when this provider does not
+     * expose [`Capability::Profiles`]. This is the discovery mechanism: the host
+     * calls `provider.profiles()` and gets `None` when provisioning profile
+     * management is unsupported.
+     */
+open func profiles() -> Profiles?  {
+    return try!  FfiConverterOptionTypeProfiles.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_profiles(
             self.uniffiCloneHandle(),$0
     )
 })
@@ -9005,6 +9319,117 @@ public func FfiConverterTypePhasedReleaseInfo_lower(_ value: PhasedReleaseInfo) 
 
 
 /**
+ * A provisioning profile registered for the connected App Store Connect
+ * account, pairing a bundle ID with the certificates (and, for development
+ * profiles, the devices) it authorizes.
+ *
+ * `name`, `profile_type`, and `profile_state` are non-optional with an
+ * empty-string fallback applied at the wire-mapping boundary when the attribute
+ * is absent; `platform`, `uuid`, `bundle_id`, `created_date`, and
+ * `expiration_date` are optional. `profile_type` is the raw ASC `profileType`
+ * value (e.g. `IOS_APP_DEVELOPMENT`, `IOS_APP_STORE`, `MAC_APP_STORE`),
+ * forwarded without remapping; `profile_state` is the raw `profileState` value
+ * (e.g. `ACTIVE`, `INVALID`).
+ *
+ * `bundle_id` is the RESOLVED bundle identifier string (e.g. `com.acme.app`),
+ * looked up from the JSON:API `included[]` bundleIds by the profile's
+ * `bundleId` relationship id — not the relationship id itself. It is `None` when
+ * the profile carries no `bundleId` relationship, when the referenced bundle ID
+ * is absent from `included[]`, or on the create path (the host does not resolve
+ * it there).
+ *
+ * `created_date` and `expiration_date` are raw ISO8601 strings passed through
+ * verbatim — the core does no date parsing. `profile_content` is the base64-
+ * encoded `.mobileprovision` payload: it is `None` for list results (the list
+ * omits it) and `Some` after a create or single-resource content fetch.
+ */
+public struct ProvisioningProfileInfo: Equatable, Hashable {
+    public var id: String
+    public var name: String
+    public var profileType: String
+    public var profileState: String
+    public var platform: String?
+    public var uuid: String?
+    public var bundleId: String?
+    public var createdDate: String?
+    public var expirationDate: String?
+    public var profileContent: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, name: String, profileType: String, profileState: String, platform: String?, uuid: String?, bundleId: String?, createdDate: String?, expirationDate: String?, profileContent: String?) {
+        self.id = id
+        self.name = name
+        self.profileType = profileType
+        self.profileState = profileState
+        self.platform = platform
+        self.uuid = uuid
+        self.bundleId = bundleId
+        self.createdDate = createdDate
+        self.expirationDate = expirationDate
+        self.profileContent = profileContent
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ProvisioningProfileInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeProvisioningProfileInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ProvisioningProfileInfo {
+        return
+            try ProvisioningProfileInfo(
+                id: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                profileType: FfiConverterString.read(from: &buf), 
+                profileState: FfiConverterString.read(from: &buf), 
+                platform: FfiConverterOptionString.read(from: &buf), 
+                uuid: FfiConverterOptionString.read(from: &buf), 
+                bundleId: FfiConverterOptionString.read(from: &buf), 
+                createdDate: FfiConverterOptionString.read(from: &buf), 
+                expirationDate: FfiConverterOptionString.read(from: &buf), 
+                profileContent: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ProvisioningProfileInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.profileType, into: &buf)
+        FfiConverterString.write(value.profileState, into: &buf)
+        FfiConverterOptionString.write(value.platform, into: &buf)
+        FfiConverterOptionString.write(value.uuid, into: &buf)
+        FfiConverterOptionString.write(value.bundleId, into: &buf)
+        FfiConverterOptionString.write(value.createdDate, into: &buf)
+        FfiConverterOptionString.write(value.expirationDate, into: &buf)
+        FfiConverterOptionString.write(value.profileContent, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProvisioningProfileInfo_lift(_ buf: RustBuffer) throws -> ProvisioningProfileInfo {
+    return try FfiConverterTypeProvisioningProfileInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeProvisioningProfileInfo_lower(_ value: ProvisioningProfileInfo) -> RustBuffer {
+    return FfiConverterTypeProvisioningProfileInfo.lower(value)
+}
+
+
+/**
  * The developer's response attached to a [`CustomerReview`]. Dates are raw
  * ISO8601 strings; the core does no date parsing (the host owns that).
  */
@@ -9492,6 +9917,7 @@ public enum Capability: Equatable, Hashable {
     case devices
     case bundleIds
     case certificates
+    case profiles
 
 
 
@@ -9540,6 +9966,8 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         case 13: return .bundleIds
         
         case 14: return .certificates
+        
+        case 15: return .profiles
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -9603,6 +10031,10 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case .certificates:
             writeInt(&buf, Int32(14))
+        
+        
+        case .profiles:
+            writeInt(&buf, Int32(15))
         
         }
     }
@@ -10183,6 +10615,30 @@ fileprivate struct FfiConverterOptionTypeDevices: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeDevices.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeProfiles: FfiConverterRustBuffer {
+    typealias SwiftType = Profiles?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeProfiles.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeProfiles.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -10809,6 +11265,31 @@ fileprivate struct FfiConverterSequenceTypeDeviceInfo: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeProvisioningProfileInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [ProvisioningProfileInfo]
+
+    public static func write(_ value: [ProvisioningProfileInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeProvisioningProfileInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ProvisioningProfileInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ProvisioningProfileInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeProvisioningProfileInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeReviewSubmission: FfiConverterRustBuffer {
     typealias SwiftType = [ReviewSubmission]
 
@@ -11361,6 +11842,18 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_devices_update_device() != 7570) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_profiles_create_profile() != 3058) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_profiles_delete_profile() != 14808) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_profiles_fetch_profile_content() != 24805) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_profiles_fetch_profiles() != 33455) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_reviews_delete_review_response() != 19863) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -11428,6 +11921,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_kind() != 47339) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_profiles() != 1805) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_reviews() != 31339) {
