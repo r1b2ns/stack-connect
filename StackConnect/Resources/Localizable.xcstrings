@@ -53777,6 +53777,17 @@
         }
       }
     },
+    "One or more builds were rejected by App Review. Open the Resolution Center on the web to review the issues and respond." : {
+      "comment" : "Tip shown on the app detail screen when one or more builds were rejected by App Review.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "One or more builds were rejected by App Review. Open the Resolution Center on the web to review the issues and respond."
+          }
+        }
+      }
+    },
     "Open Resolution Center" : {
       "localizations" : {
         "de" : {
