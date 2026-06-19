@@ -2874,6 +2874,229 @@ final class RustCoreStranglerTests: XCTestCase {
         )
         XCTAssertNil(AppleAccountConnection.mapDeviceInfo(nilDate).addedDate)
     }
+
+    // MARK: - Bundle Identifiers (strangler routing)
+
+    /// With the flag ON, `fetchBundleIds()` must fail via the Rust core for invalid
+    /// credentials, proving the read never reaches the Swift-SDK provider.
+    func testFetchBundleIdsRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchBundleIds()
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `createBundleId(identifier:name:platformRaw:)` must fail via
+    /// the Rust core for invalid credentials, proving the write never reaches the
+    /// Swift-SDK provider. (A VALID platform is passed so we get past the shared
+    /// up-front platform validation and exercise the core path.)
+    func testCreateBundleIdRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.createBundleId(identifier: "com.example.app", name: "Example", platformRaw: "IOS")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// An invalid platform must be rejected up front (shared validation) BEFORE the
+    /// Rust core is reached — so the error is the plain NSError, not a StackError.
+    func testCreateBundleIdRejectsInvalidPlatformBeforeRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.createBundleId(identifier: "com.example.app", name: "Example", platformRaw: "NOT_A_PLATFORM")
+            XCTFail("Expected the up-front platform validation to reject the value.")
+        } catch is StackError {
+            XCTFail("Expected the platform NSError, not a StackError from the core.")
+        } catch {
+            // Plain NSError from the shared up-front validation, as expected.
+        }
+    }
+
+    /// With the flag ON, `updateBundleId(id:name:)` must fail via the Rust core for
+    /// invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testUpdateBundleIdRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.updateBundleId(id: "bundle-1", name: "Renamed")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `deleteBundleId(id:)` must fail via the Rust core for invalid
+    /// credentials, proving the write never reaches the Swift-SDK provider.
+    func testDeleteBundleIdRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.deleteBundleId(id: "bundle-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `fetchBundleIdCapabilities(bundleId:)` must fail via the Rust
+    /// core for invalid credentials, proving the read never reaches the Swift-SDK provider.
+    func testFetchBundleIdCapabilitiesRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchBundleIdCapabilities(bundleId: "bundle-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `enableCapability(bundleId:capabilityTypeRaw:)` must fail via
+    /// the Rust core for invalid credentials, proving the write never reaches the
+    /// Swift-SDK provider.
+    func testEnableCapabilityRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.enableCapability(bundleId: "bundle-1", capabilityTypeRaw: "ICLOUD")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// On the flag-ON (Rust) path, `enableCapability` does NOT perform the SDK's
+    /// `CapabilityType` enum validation — a newer raw type (which the SDK enum rejects)
+    /// is passed STRAIGHT to the core, so the error is a StackError from the core, not
+    /// the plain NSError the SDK path would throw for an unknown capability.
+    func testEnableCapabilityPassesUnknownCapabilityToRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            // FONT_INSTALLATION is a newer type the SDK's CapabilityType enum rejects.
+            _ = try await connection.enableCapability(bundleId: "bundle-1", capabilityTypeRaw: "FONT_INSTALLATION")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Reached the core (no SDK enum validation), as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, not the SDK enum NSError, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `disableCapability(capabilityId:)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testDisableCapabilityRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.disableCapability(capabilityId: "cap-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    // MARK: - Bundle Identifiers mapping (Rust core -> app model)
+
+    /// `mapBundleIdInfo` maps every field 1:1, including the optional `seedId`.
+    func testMapBundleIdInfoMapsAllFields() {
+        let core = StackCoreRust.BundleIdInfo(
+            id: "bundle-1",
+            identifier: "com.example.app",
+            name: "Example App",
+            platform: "IOS",
+            seedId: "ABCDE12345"
+        )
+
+        let model = AppleAccountConnection.mapBundleIdInfo(core)
+
+        XCTAssertEqual(model.id, "bundle-1")
+        XCTAssertEqual(model.identifier, "com.example.app")
+        XCTAssertEqual(model.name, "Example App")
+        XCTAssertEqual(model.platform, "IOS")
+        XCTAssertEqual(model.seedId, "ABCDE12345")
+    }
+
+    /// `mapBundleIdInfo` passes a nil `seedId` straight through.
+    func testMapBundleIdInfoPassesNilSeedIdThrough() {
+        let core = StackCoreRust.BundleIdInfo(
+            id: "bundle-2",
+            identifier: "com.example.other",
+            name: "Other",
+            platform: "MAC_OS",
+            seedId: nil
+        )
+
+        let model = AppleAccountConnection.mapBundleIdInfo(core)
+
+        XCTAssertEqual(model.id, "bundle-2")
+        XCTAssertEqual(model.identifier, "com.example.other")
+        XCTAssertEqual(model.name, "Other")
+        XCTAssertEqual(model.platform, "MAC_OS")
+        XCTAssertNil(model.seedId)
+    }
+
+    /// `mapBundleIdCapabilityInfo` maps both fields 1:1.
+    func testMapBundleIdCapabilityInfoMapsAllFields() {
+        let core = StackCoreRust.BundleIdCapabilityInfo(
+            id: "cap-1",
+            capabilityType: "FONT_INSTALLATION"
+        )
+
+        let model = AppleAccountConnection.mapBundleIdCapabilityInfo(core)
+
+        XCTAssertEqual(model.id, "cap-1")
+        XCTAssertEqual(model.capabilityType, "FONT_INSTALLATION")
+    }
 }
 
 // MARK: - Minimal in-memory PersistentStorable for the BlobStore-backed test

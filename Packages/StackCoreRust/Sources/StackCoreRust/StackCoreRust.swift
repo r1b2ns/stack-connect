@@ -4187,6 +4187,391 @@ public func FfiConverterTypeBuilds_lower(_ value: Builds) -> UInt64 {
 
 
 /**
+ * UniFFI-exported BundleIds capability handle. A thin, binding-friendly wrapper
+ * around a boxed [`BundleIdsImpl`]; async work runs on the tokio runtime.
+ * Reached via [`crate::service::provider::Provider::bundle_ids`].
+ */
+public protocol BundleIdsProtocol: AnyObject, Sendable {
+    
+    /**
+     * Registers a new bundle ID with `identifier`, `name`, and ASC `platform` (a
+     * raw `BundleIdPlatform` value such as `IOS`, `MAC_OS`, or `UNIVERSAL`,
+     * forwarded verbatim — App Store Connect rejects unknown values with an HTTP
+     * error), returning the created bundle ID.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func createBundleId(identifier: String, name: String, platform: String) async throws  -> BundleIdInfo
+    
+    /**
+     * Deletes the bundle ID `id`. Any 2xx → `Ok(())`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func deleteBundleId(id: String) async throws 
+    
+    /**
+     * Disables the capability `capability_id`. Any 2xx → `Ok(())`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func disableCapability(capabilityId: String) async throws 
+    
+    /**
+     * Enables `capability_type` (a raw ASC `capabilityType` string, forwarded
+     * verbatim) on `bundle_id`, returning the created capability.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func enableCapability(bundleId: String, capabilityType: String) async throws  -> BundleIdCapabilityInfo
+    
+    /**
+     * Lists the capabilities enabled on `bundle_id`, following pagination until
+     * exhausted. Entries whose `capabilityType` is missing or empty are skipped.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchBundleIdCapabilities(bundleId: String) async throws  -> [BundleIdCapabilityInfo]
+    
+    /**
+     * Lists every bundle ID of the connected account, sorted by name, following
+     * pagination until exhausted.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchBundleIds() async throws  -> [BundleIdInfo]
+    
+    /**
+     * Renames the bundle ID `id`. Only the `name` is mutable; the identifier and
+     * platform are fixed at creation. Any 2xx → `Ok(())` (the response is
+     * discarded).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func updateBundleId(id: String, name: String) async throws 
+    
+}
+/**
+ * UniFFI-exported BundleIds capability handle. A thin, binding-friendly wrapper
+ * around a boxed [`BundleIdsImpl`]; async work runs on the tokio runtime.
+ * Reached via [`crate::service::provider::Provider::bundle_ids`].
+ */
+open class BundleIds: BundleIdsProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_bundleids(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_bundleids(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Registers a new bundle ID with `identifier`, `name`, and ASC `platform` (a
+     * raw `BundleIdPlatform` value such as `IOS`, `MAC_OS`, or `UNIVERSAL`,
+     * forwarded verbatim — App Store Connect rejects unknown values with an HTTP
+     * error), returning the created bundle ID.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func createBundleId(identifier: String, name: String, platform: String)async throws  -> BundleIdInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_bundleids_create_bundle_id(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(identifier),FfiConverterString.lower(name),FfiConverterString.lower(platform)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeBundleIdInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Deletes the bundle ID `id`. Any 2xx → `Ok(())`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func deleteBundleId(id: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_bundleids_delete_bundle_id(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Disables the capability `capability_id`. Any 2xx → `Ok(())`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func disableCapability(capabilityId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_bundleids_disable_capability(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(capabilityId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Enables `capability_type` (a raw ASC `capabilityType` string, forwarded
+     * verbatim) on `bundle_id`, returning the created capability.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func enableCapability(bundleId: String, capabilityType: String)async throws  -> BundleIdCapabilityInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_bundleids_enable_capability(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(bundleId),FfiConverterString.lower(capabilityType)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeBundleIdCapabilityInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists the capabilities enabled on `bundle_id`, following pagination until
+     * exhausted. Entries whose `capabilityType` is missing or empty are skipped.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchBundleIdCapabilities(bundleId: String)async throws  -> [BundleIdCapabilityInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_bundleids_fetch_bundle_id_capabilities(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(bundleId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeBundleIdCapabilityInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists every bundle ID of the connected account, sorted by name, following
+     * pagination until exhausted.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchBundleIds()async throws  -> [BundleIdInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_bundleids_fetch_bundle_ids(
+                    self.uniffiCloneHandle()
+                    
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeBundleIdInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Renames the bundle ID `id`. Only the `name` is mutable; the identifier and
+     * platform are fixed at creation. Any 2xx → `Ok(())` (the response is
+     * discarded).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func updateBundleId(id: String, name: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_bundleids_update_bundle_id(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id),FfiConverterString.lower(name)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBundleIds: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = BundleIds
+
+    public static func lift(_ handle: UInt64) throws -> BundleIds {
+        return BundleIds(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: BundleIds) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BundleIds {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: BundleIds, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBundleIds_lift(_ handle: UInt64) throws -> BundleIds {
+    return try FfiConverterTypeBundleIds.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBundleIds_lower(_ value: BundleIds) -> UInt64 {
+    return FfiConverterTypeBundleIds.lower(value)
+}
+
+
+
+
+
+
+/**
  * Secure-credential storage implemented natively (Keychain on iOS) and injected
  * across the FFI boundary as a foreign trait. Each provider declares the keys it
  * reads via its `credential_schema` (see `service::registry`).
@@ -5013,6 +5398,14 @@ public protocol ProviderProtocol: AnyObject, Sendable {
     func builds()  -> Builds?
     
     /**
+     * The BundleIds capability handle, or `None` when this provider does not
+     * expose [`Capability::BundleIds`]. This is the discovery mechanism: the host
+     * calls `provider.bundle_ids()` and gets `None` when bundle ID management is
+     * unsupported.
+     */
+    func bundleIds()  -> BundleIds?
+    
+    /**
      * The capabilities exposed for the connected account.
      */
     func capabilities()  -> [Capability]
@@ -5230,6 +5623,20 @@ open func betaGroups() -> BetaGroups?  {
 open func builds() -> Builds?  {
     return try!  FfiConverterOptionTypeBuilds.lift(try! rustCall() {
     uniffi_stack_core_fn_method_provider_builds(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The BundleIds capability handle, or `None` when this provider does not
+     * expose [`Capability::BundleIds`]. This is the discovery mechanism: the host
+     * calls `provider.bundle_ids()` and gets `None` when bundle ID management is
+     * unsupported.
+     */
+open func bundleIds() -> BundleIds?  {
+    return try!  FfiConverterOptionTypeBundleIds.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_bundle_ids(
             self.uniffiCloneHandle(),$0
     )
 })
@@ -7685,6 +8092,144 @@ public func FfiConverterTypeBuildsPage_lower(_ value: BuildsPage) -> RustBuffer 
 
 
 /**
+ * A capability enabled on a bundle ID (e.g. `PUSH_NOTIFICATIONS`,
+ * `FONT_INSTALLATION`, `CARPLAY_CHARGING`).
+ *
+ * `capability_type` is the raw ASC `capabilityType` string, forwarded verbatim:
+ * App Store Connect keeps adding values, so the core never models it as a closed
+ * enum. The wire-mapping boundary skips resources whose `capabilityType` is
+ * missing or empty.
+ */
+public struct BundleIdCapabilityInfo: Equatable, Hashable {
+    public var id: String
+    public var capabilityType: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, capabilityType: String) {
+        self.id = id
+        self.capabilityType = capabilityType
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BundleIdCapabilityInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBundleIdCapabilityInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BundleIdCapabilityInfo {
+        return
+            try BundleIdCapabilityInfo(
+                id: FfiConverterString.read(from: &buf), 
+                capabilityType: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BundleIdCapabilityInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.capabilityType, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBundleIdCapabilityInfo_lift(_ buf: RustBuffer) throws -> BundleIdCapabilityInfo {
+    return try FfiConverterTypeBundleIdCapabilityInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBundleIdCapabilityInfo_lower(_ value: BundleIdCapabilityInfo) -> RustBuffer {
+    return FfiConverterTypeBundleIdCapabilityInfo.lower(value)
+}
+
+
+/**
+ * A bundle ID (App ID) registered for the connected App Store Connect account.
+ *
+ * `identifier`, `name`, and `platform` are non-optional with an empty-string
+ * fallback applied at the wire-mapping boundary when the attribute is absent;
+ * `seed_id` is optional (the ASC `seedId` attribute). `platform` is the raw ASC
+ * `BundleIdPlatform` value (`IOS`, `MAC_OS`, or `UNIVERSAL`), forwarded without
+ * remapping.
+ */
+public struct BundleIdInfo: Equatable, Hashable {
+    public var id: String
+    public var identifier: String
+    public var name: String
+    public var platform: String
+    public var seedId: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, identifier: String, name: String, platform: String, seedId: String?) {
+        self.id = id
+        self.identifier = identifier
+        self.name = name
+        self.platform = platform
+        self.seedId = seedId
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BundleIdInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBundleIdInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BundleIdInfo {
+        return
+            try BundleIdInfo(
+                id: FfiConverterString.read(from: &buf), 
+                identifier: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                platform: FfiConverterString.read(from: &buf), 
+                seedId: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BundleIdInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.identifier, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.platform, into: &buf)
+        FfiConverterOptionString.write(value.seedId, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBundleIdInfo_lift(_ buf: RustBuffer) throws -> BundleIdInfo {
+    return try FfiConverterTypeBundleIdInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBundleIdInfo_lower(_ value: BundleIdInfo) -> RustBuffer {
+    return FfiConverterTypeBundleIdInfo.lower(value)
+}
+
+
+/**
  * A single credential field a service requires. Drives the host's "connect
  * account" form: `label` is shown to the user, `secret` hides the input, and
  * `multiline` signals a textarea (e.g. a PEM-encoded private key).
@@ -8543,6 +9088,7 @@ public enum Capability: Equatable, Hashable {
     case accessibilityDeclarations
     case users
     case devices
+    case bundleIds
 
 
 
@@ -8587,6 +9133,8 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         case 11: return .users
         
         case 12: return .devices
+        
+        case 13: return .bundleIds
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -8642,6 +9190,10 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case .devices:
             writeInt(&buf, Int32(12))
+        
+        
+        case .bundleIds:
+            writeInt(&buf, Int32(13))
         
         }
     }
@@ -9126,6 +9678,30 @@ fileprivate struct FfiConverterOptionTypeBuilds: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeBuilds.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeBundleIds: FfiConverterRustBuffer {
+    typealias SwiftType = BundleIds?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeBundleIds.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeBundleIds.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -9642,6 +10218,56 @@ fileprivate struct FfiConverterSequenceTypeBuildInfo: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeBuildInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeBundleIdCapabilityInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [BundleIdCapabilityInfo]
+
+    public static func write(_ value: [BundleIdCapabilityInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeBundleIdCapabilityInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [BundleIdCapabilityInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [BundleIdCapabilityInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeBundleIdCapabilityInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeBundleIdInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [BundleIdInfo]
+
+    public static func write(_ value: [BundleIdInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeBundleIdInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [BundleIdInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [BundleIdInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeBundleIdInfo.read(from: &buf))
         }
         return seq
     }
@@ -10235,6 +10861,27 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_builds_submit_build_for_beta_review() != 34430) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_bundleids_create_bundle_id() != 27908) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_bundleids_delete_bundle_id() != 31554) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_bundleids_disable_capability() != 39773) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_bundleids_enable_capability() != 10564) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_bundleids_fetch_bundle_id_capabilities() != 43745) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_bundleids_fetch_bundle_ids() != 23573) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_bundleids_update_bundle_id() != 47058) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_devices_create_device() != 47764) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -10293,6 +10940,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_builds() != 22996) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_bundle_ids() != 50215) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_capabilities() != 53465) {

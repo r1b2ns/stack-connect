@@ -3501,6 +3501,21 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - Bundle Identifiers
 
     func fetchBundleIds() async throws -> [BundleIdentifierModel] {
+        // Strangler-fig migration: route this read through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.bundleIds() else {
+                throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
+            }
+            let models = try await callRustCore {
+                let infos = try await cap.fetchBundleIds()
+                return infos.map { Self.mapBundleIdInfo($0) }
+            }
+            Log.print.info("[Apple] Fetched \(models.count) bundle identifiers (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchBundleIds()
@@ -3531,13 +3546,30 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         name: String,
         platformRaw: String
     ) async throws -> BundleIdentifierModel {
+        // Validate the platform up front so BOTH the Rust-core and the Swift-SDK
+        // paths reject an invalid value identically.
+        guard let platform = BundleIDPlatform(rawValue: platformRaw) else {
+            throw NSError(domain: "BundleId", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid platform: \(platformRaw)"])
+        }
+
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.bundleIds() else {
+                throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
+            }
+            let model = try await callRustCore {
+                let info = try await cap.createBundleId(identifier: identifier, name: name, platform: platformRaw)
+                return Self.mapBundleIdInfo(info)
+            }
+            Log.print.info("[Apple] Created bundle identifier \(identifier) (Rust core)")
+            return model
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await createBundleId(identifier: identifier, name: name, platformRaw: platformRaw)
-        }
-
-        guard let platform = BundleIDPlatform(rawValue: platformRaw) else {
-            throw NSError(domain: "BundleId", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid platform: \(platformRaw)"])
         }
 
         let body = BundleIDCreateRequest(
@@ -3562,6 +3594,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateBundleId(id: String, name: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.bundleIds() else {
+                throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
+            }
+            try await callRustCore { try await cap.updateBundleId(id: id, name: name) }
+            Log.print.info("[Apple] Renamed bundle identifier \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await updateBundleId(id: id, name: name)
@@ -3581,6 +3625,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deleteBundleId(id: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.bundleIds() else {
+                throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
+            }
+            try await callRustCore { try await cap.deleteBundleId(id: id) }
+            Log.print.info("[Apple] Deleted bundle identifier \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await deleteBundleId(id: id)
@@ -3606,6 +3662,21 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func fetchBundleIdCapabilities(bundleId: String) async throws -> [BundleIdentifierCapabilityModel] {
+        // Strangler-fig migration: route this read through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.bundleIds() else {
+                throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
+            }
+            let models = try await callRustCore {
+                let infos = try await cap.fetchBundleIdCapabilities(bundleId: bundleId)
+                return infos.map { Self.mapBundleIdCapabilityInfo($0) }
+            }
+            Log.print.info("[Apple] Fetched \(models.count) capabilities for \(bundleId) (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchBundleIdCapabilities(bundleId: bundleId)
@@ -3630,6 +3701,27 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func enableCapability(bundleId: String, capabilityTypeRaw: String) async throws -> BundleIdentifierCapabilityModel {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        //
+        // Deliberate improvement: the Rust core accepts ANY raw capability-type
+        // string, so we pass `capabilityTypeRaw` straight through WITHOUT the
+        // `CapabilityType` enum validation the SDK path performs below (that enum
+        // rejects newer types such as FONT_INSTALLATION). The SDK branch keeps its
+        // validation unchanged for fidelity with the legacy behaviour.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.bundleIds() else {
+                throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
+            }
+            let model = try await callRustCore {
+                let info = try await cap.enableCapability(bundleId: bundleId, capabilityType: capabilityTypeRaw)
+                return Self.mapBundleIdCapabilityInfo(info)
+            }
+            Log.print.info("[Apple] Enabled capability \(capabilityTypeRaw) on \(bundleId) (Rust core)")
+            return model
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await enableCapability(bundleId: bundleId, capabilityTypeRaw: capabilityTypeRaw)
@@ -3661,6 +3753,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func disableCapability(capabilityId: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.bundleIds() else {
+                throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
+            }
+            try await callRustCore { try await cap.disableCapability(capabilityId: capabilityId) }
+            Log.print.info("[Apple] Disabled capability \(capabilityId) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await disableCapability(capabilityId: capabilityId)
@@ -4137,6 +4241,30 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             model: info.model,
             status: info.status,
             addedDate: info.addedDate.flatMap(parseISO8601Date)
+        )
+    }
+
+    /// Maps a Rust-core `BundleIdInfo` to the app's `BundleIdentifierModel`. Every
+    /// field maps 1:1 and mirrors the inline SDK mapping in `fetchBundleIds`/
+    /// `createBundleId` (`identifier`, `name`, `platform` are non-optional on the
+    /// core side with an empty-string fallback already applied at the wire boundary;
+    /// `seedId` is optional and passes straight through).
+    static func mapBundleIdInfo(_ info: StackCoreRust.BundleIdInfo) -> BundleIdentifierModel {
+        BundleIdentifierModel(
+            id: info.id,
+            identifier: info.identifier,
+            name: info.name,
+            platform: info.platform,
+            seedId: info.seedId
+        )
+    }
+
+    /// Maps a Rust-core `BundleIdCapabilityInfo` to the app's
+    /// `BundleIdentifierCapabilityModel`. Both fields map 1:1.
+    static func mapBundleIdCapabilityInfo(_ info: StackCoreRust.BundleIdCapabilityInfo) -> BundleIdentifierCapabilityModel {
+        BundleIdentifierCapabilityModel(
+            id: info.id,
+            capabilityType: info.capabilityType
         )
     }
 
