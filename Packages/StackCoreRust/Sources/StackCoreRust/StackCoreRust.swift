@@ -4701,6 +4701,245 @@ public func FfiConverterTypeDebugLogger_lower(_ value: DebugLogger) -> UInt64 {
 
 
 /**
+ * UniFFI-exported Devices capability handle. A thin, binding-friendly wrapper
+ * around a boxed [`DevicesImpl`]; async work runs on the tokio runtime. Reached
+ * via [`crate::service::provider::Provider::devices`].
+ */
+public protocol DevicesProtocol: AnyObject, Sendable {
+    
+    /**
+     * Registers a new device with `name`, ASC `platform` (a raw
+     * `BundleIdPlatform` value such as `IOS`, `MAC_OS`, or `UNIVERSAL`, forwarded
+     * verbatim — App Store Connect rejects unknown values with an HTTP error),
+     * and `udid`, returning the created device.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func createDevice(name: String, platform: String, udid: String) async throws  -> DeviceInfo
+    
+    /**
+     * Lists every registered device of the connected account, sorted by name,
+     * following pagination until exhausted.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchDevices() async throws  -> [DeviceInfo]
+    
+    /**
+     * Updates the device `id`, sending only the attributes that are `Some`:
+     * `name` renames the device, and `status` (`"DISABLED"` to remove it from
+     * the account, `"ENABLED"` to re-enable it) changes its status. Attributes
+     * left `None` are omitted from the request entirely.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func updateDevice(id: String, name: String?, status: String?) async throws 
+    
+}
+/**
+ * UniFFI-exported Devices capability handle. A thin, binding-friendly wrapper
+ * around a boxed [`DevicesImpl`]; async work runs on the tokio runtime. Reached
+ * via [`crate::service::provider::Provider::devices`].
+ */
+open class Devices: DevicesProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_devices(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_devices(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Registers a new device with `name`, ASC `platform` (a raw
+     * `BundleIdPlatform` value such as `IOS`, `MAC_OS`, or `UNIVERSAL`, forwarded
+     * verbatim — App Store Connect rejects unknown values with an HTTP error),
+     * and `udid`, returning the created device.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func createDevice(name: String, platform: String, udid: String)async throws  -> DeviceInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_devices_create_device(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(name),FfiConverterString.lower(platform),FfiConverterString.lower(udid)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeDeviceInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists every registered device of the connected account, sorted by name,
+     * following pagination until exhausted.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchDevices()async throws  -> [DeviceInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_devices_fetch_devices(
+                    self.uniffiCloneHandle()
+                    
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeDeviceInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Updates the device `id`, sending only the attributes that are `Some`:
+     * `name` renames the device, and `status` (`"DISABLED"` to remove it from
+     * the account, `"ENABLED"` to re-enable it) changes its status. Attributes
+     * left `None` are omitted from the request entirely.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func updateDevice(id: String, name: String?, status: String?)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_devices_update_device(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id),FfiConverterOptionString.lower(name),FfiConverterOptionString.lower(status)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDevices: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Devices
+
+    public static func lift(_ handle: UInt64) throws -> Devices {
+        return Devices(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Devices) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Devices {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Devices, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDevices_lift(_ handle: UInt64) throws -> Devices {
+    return try FfiConverterTypeDevices.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDevices_lower(_ value: Devices) -> UInt64 {
+    return FfiConverterTypeDevices.lower(value)
+}
+
+
+
+
+
+
+/**
  * UniFFI-exported provider handle. A thin, binding-friendly wrapper around a
  * boxed [`ProviderImpl`]: synchronous metadata is exported directly, async work
  * runs on the tokio runtime. Adding a *service* never changes this surface —
@@ -4777,6 +5016,14 @@ public protocol ProviderProtocol: AnyObject, Sendable {
      * The capabilities exposed for the connected account.
      */
     func capabilities()  -> [Capability]
+    
+    /**
+     * The Devices capability handle, or `None` when this provider does not
+     * expose [`Capability::Devices`]. This is the discovery mechanism: the host
+     * calls `provider.devices()` and gets `None` when device management is
+     * unsupported.
+     */
+    func devices()  -> Devices?
     
     /**
      * Lists the apps visible to the connected account.
@@ -4994,6 +5241,20 @@ open func builds() -> Builds?  {
 open func capabilities() -> [Capability]  {
     return try!  FfiConverterSequenceTypeCapability.lift(try! rustCall() {
     uniffi_stack_core_fn_method_provider_capabilities(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The Devices capability handle, or `None` when this provider does not
+     * expose [`Capability::Devices`]. This is the discovery mechanism: the host
+     * calls `provider.devices()` and gets `None` when device management is
+     * unsupported.
+     */
+open func devices() -> Devices?  {
+    return try!  FfiConverterOptionTypeDevices.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_devices(
             self.uniffiCloneHandle(),$0
     )
 })
@@ -7632,6 +7893,96 @@ public func FfiConverterTypeCustomerReviewsPage_lower(_ value: CustomerReviewsPa
 
 
 /**
+ * A registered device of the connected App Store Connect account (a development
+ * device used for provisioning). `name` and `status` are non-optional with sane
+ * fallbacks (`""` and `"ENABLED"`) applied at the wire-mapping boundary when the
+ * attribute is absent; the remaining attributes are optional.
+ *
+ * `platform` is the raw ASC `BundleIdPlatform` value (`IOS`, `MAC_OS`, or
+ * `UNIVERSAL`); `status` is the raw ASC device status (`ENABLED` or `DISABLED`).
+ * `device_class` mirrors the ASC `deviceClass` attribute and `added_date` the
+ * `addedDate` attribute — a raw ISO8601 string passed through verbatim (the host
+ * owns any date parsing). All raw ASC strings are forwarded without remapping.
+ */
+public struct DeviceInfo: Equatable, Hashable {
+    public var id: String
+    public var name: String
+    public var udid: String?
+    public var platform: String?
+    public var deviceClass: String?
+    public var model: String?
+    public var status: String
+    public var addedDate: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, name: String, udid: String?, platform: String?, deviceClass: String?, model: String?, status: String, addedDate: String?) {
+        self.id = id
+        self.name = name
+        self.udid = udid
+        self.platform = platform
+        self.deviceClass = deviceClass
+        self.model = model
+        self.status = status
+        self.addedDate = addedDate
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension DeviceInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDeviceInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DeviceInfo {
+        return
+            try DeviceInfo(
+                id: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                udid: FfiConverterOptionString.read(from: &buf), 
+                platform: FfiConverterOptionString.read(from: &buf), 
+                deviceClass: FfiConverterOptionString.read(from: &buf), 
+                model: FfiConverterOptionString.read(from: &buf), 
+                status: FfiConverterString.read(from: &buf), 
+                addedDate: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: DeviceInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.udid, into: &buf)
+        FfiConverterOptionString.write(value.platform, into: &buf)
+        FfiConverterOptionString.write(value.deviceClass, into: &buf)
+        FfiConverterOptionString.write(value.model, into: &buf)
+        FfiConverterString.write(value.status, into: &buf)
+        FfiConverterOptionString.write(value.addedDate, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDeviceInfo_lift(_ buf: RustBuffer) throws -> DeviceInfo {
+    return try FfiConverterTypeDeviceInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDeviceInfo_lower(_ value: DeviceInfo) -> RustBuffer {
+    return FfiConverterTypeDeviceInfo.lower(value)
+}
+
+
+/**
  * An App Store version's phased (staged) release. App Store Connect exposes
  * exactly one per version via the singular `appStoreVersionPhasedRelease`
  * relationship. `state` carries the raw ASC `phasedReleaseState` value
@@ -8191,6 +8542,7 @@ public enum Capability: Equatable, Hashable {
     case appMetadata
     case accessibilityDeclarations
     case users
+    case devices
 
 
 
@@ -8233,6 +8585,8 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         case 10: return .accessibilityDeclarations
         
         case 11: return .users
+        
+        case 12: return .devices
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -8284,6 +8638,10 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case .users:
             writeInt(&buf, Int32(11))
+        
+        
+        case .devices:
+            writeInt(&buf, Int32(12))
         
         }
     }
@@ -8792,6 +9150,30 @@ fileprivate struct FfiConverterOptionTypeDebugLogger: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeDebugLogger.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeDevices: FfiConverterRustBuffer {
+    typealias SwiftType = Devices?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeDevices.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeDevices.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -9318,6 +9700,31 @@ fileprivate struct FfiConverterSequenceTypeCustomerReview: FfiConverterRustBuffe
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeDeviceInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [DeviceInfo]
+
+    public static func write(_ value: [DeviceInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeDeviceInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [DeviceInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [DeviceInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeDeviceInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeReviewSubmission: FfiConverterRustBuffer {
     typealias SwiftType = [ReviewSubmission]
 
@@ -9828,6 +10235,15 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_builds_submit_build_for_beta_review() != 34430) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_devices_create_device() != 47764) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_devices_fetch_devices() != 47913) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_devices_update_device() != 7570) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_reviews_delete_review_response() != 19863) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -9880,6 +10296,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_capabilities() != 53465) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_devices() != 37396) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_fetch_apps() != 36949) {

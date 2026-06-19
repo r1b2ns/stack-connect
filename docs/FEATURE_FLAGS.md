@@ -84,6 +84,9 @@ new flag ships **OFF** by default (the safe, fully-reversible value) unless note
   - `createAccessibilityDeclaration(appId:deviceFamily:)` — when ON, validates `deviceFamily` up front (shared by both paths), then calls the Rust core `AccessibilityDeclarations.createAccessibilityDeclaration(appId:deviceFamily:)` and maps the returned `AccessibilityDeclarationInfo` → `AccessibilityDeclarationModel` (the method returns the created model).
   - `updateAccessibilityDeclaration(_:publish:)` — when ON, calls the Rust core `AccessibilityDeclarations.updateAccessibilityDeclaration(id:publish:supports…)` passing the 9 support booleans; the returned `AccessibilityDeclarationInfo` is discarded (method is `Void`).
   - `deleteAccessibilityDeclaration(id:)` — when ON, calls the Rust core `AccessibilityDeclarations.deleteAccessibilityDeclaration(id:)` (method is `Void`).
+  - `fetchDevices()` — when ON, calls the Rust core `Devices.fetchDevices()` and maps `StackCoreRust.DeviceInfo` → `DeviceModel` via `mapDeviceInfo` (every field maps 1:1; the raw ISO8601 `addedDate` is parsed via `parseISO8601Date`). Read only.
+  - `createDevice(name:platformRaw:udid:)` — when ON, validates `platformRaw` (`BundleIDPlatform`) up front (shared by both paths), then calls the Rust core `Devices.createDevice(name:platform:udid:)` and maps the returned `DeviceInfo` → `DeviceModel` (the method returns the created model).
+  - `updateDevice(id:name:status:)` — when ON, calls the Rust core `Devices.updateDevice(id:name:status:)`; the call is `Void` so any core return is discarded.
 - **Supporting types:**
   - `StackConnect/Infra/Providers/Apple/AppleCredentialStore.swift` — bridges `AppleCredentials` to the Rust core's `CredentialStore` (`issuerId` / `keyId` / `privateKeyP8`).
   - Package: `Packages/StackCoreRust` (vendored `StackCoreRust.xcframework` + generated UniFFI wrapper).

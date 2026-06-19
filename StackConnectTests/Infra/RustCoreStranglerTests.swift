@@ -2723,6 +2723,157 @@ final class RustCoreStranglerTests: XCTestCase {
         XCTAssertTrue(modelNilState.supportsVoiceControl)
         XCTAssertFalse(modelNilState.supportsVoiceover)
     }
+
+    // MARK: - Devices (strangler routing)
+
+    /// With the flag ON, `fetchDevices()` must fail via the Rust core for invalid
+    /// credentials, proving the read never reaches the Swift-SDK provider.
+    func testFetchDevicesRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchDevices()
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `createDevice(name:platformRaw:udid:)` must fail via the
+    /// Rust core for invalid credentials, proving the write never reaches the
+    /// Swift-SDK provider. (A VALID platform is passed so we get past the shared
+    /// up-front platform validation and exercise the core path.)
+    func testCreateDeviceRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.createDevice(name: "My iPhone", platformRaw: "IOS", udid: "00008030-001234567890ABCD")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// An invalid platform must be rejected up front (shared validation) BEFORE the
+    /// Rust core is reached — so the error is the plain NSError, not a StackError.
+    func testCreateDeviceRejectsInvalidPlatformBeforeRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.createDevice(name: "My iPhone", platformRaw: "NOT_A_PLATFORM", udid: "udid-1")
+            XCTFail("Expected the up-front platform validation to reject the value.")
+        } catch is StackError {
+            XCTFail("Expected the platform NSError, not a StackError from the core.")
+        } catch {
+            // Plain NSError from the shared up-front validation, as expected.
+        }
+    }
+
+    /// With the flag ON, `updateDevice(id:name:status:)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testUpdateDeviceRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.updateDevice(id: "device-1", name: "Renamed", status: "DISABLED")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    // MARK: - Devices mapping (Rust core -> app model)
+
+    /// `mapDeviceInfo` maps every field 1:1 and parses the raw ISO8601 `addedDate`
+    /// (including fractional seconds) via `parseISO8601Date`.
+    func testMapDeviceInfoMapsAllFieldsAndParsesAddedDate() {
+        let core = StackCoreRust.DeviceInfo(
+            id: "dev-1",
+            name: "Rubens iPhone",
+            udid: "00008030-001234567890ABCD",
+            platform: "IOS",
+            deviceClass: "IPHONE",
+            model: "iPhone 15 Pro",
+            status: "ENABLED",
+            addedDate: "2025-01-15T10:30:00.123Z"
+        )
+
+        let model = AppleAccountConnection.mapDeviceInfo(core)
+
+        XCTAssertEqual(model.id, "dev-1")
+        XCTAssertEqual(model.name, "Rubens iPhone")
+        XCTAssertEqual(model.udid, "00008030-001234567890ABCD")
+        XCTAssertEqual(model.platform, "IOS")
+        XCTAssertEqual(model.deviceClass, "IPHONE")
+        XCTAssertEqual(model.model, "iPhone 15 Pro")
+        XCTAssertEqual(model.status, "ENABLED")
+        XCTAssertNotNil(model.addedDate)
+
+        let expected = ISO8601DateFormatter()
+        expected.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        XCTAssertEqual(model.addedDate, expected.date(from: "2025-01-15T10:30:00.123Z"))
+    }
+
+    /// Optional fields pass straight through as nil; a plain (no-fractional) ISO8601
+    /// `addedDate` still parses; an unparseable date yields nil.
+    func testMapDeviceInfoPassesNilOptionalsThroughAndParsesPlainDate() {
+        let core = StackCoreRust.DeviceInfo(
+            id: "dev-2",
+            name: "Mac",
+            udid: nil,
+            platform: nil,
+            deviceClass: nil,
+            model: nil,
+            status: "DISABLED",
+            addedDate: "2024-06-01T08:00:00Z"
+        )
+
+        let model = AppleAccountConnection.mapDeviceInfo(core)
+
+        XCTAssertEqual(model.id, "dev-2")
+        XCTAssertEqual(model.name, "Mac")
+        XCTAssertNil(model.udid)
+        XCTAssertNil(model.platform)
+        XCTAssertNil(model.deviceClass)
+        XCTAssertNil(model.model)
+        XCTAssertEqual(model.status, "DISABLED")
+
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        XCTAssertEqual(model.addedDate, plain.date(from: "2024-06-01T08:00:00Z"))
+
+        // Unparseable date -> nil.
+        let badDate = StackCoreRust.DeviceInfo(
+            id: "dev-3", name: "X", udid: nil, platform: nil,
+            deviceClass: nil, model: nil, status: "ENABLED", addedDate: "not-a-date"
+        )
+        XCTAssertNil(AppleAccountConnection.mapDeviceInfo(badDate).addedDate)
+
+        // Nil date -> nil.
+        let nilDate = StackCoreRust.DeviceInfo(
+            id: "dev-4", name: "Y", udid: nil, platform: nil,
+            deviceClass: nil, model: nil, status: "ENABLED", addedDate: nil
+        )
+        XCTAssertNil(AppleAccountConnection.mapDeviceInfo(nilDate).addedDate)
+    }
 }
 
 // MARK: - Minimal in-memory PersistentStorable for the BlobStore-backed test

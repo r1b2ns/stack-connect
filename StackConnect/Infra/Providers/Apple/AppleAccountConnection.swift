@@ -3674,6 +3674,21 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - Devices
 
     func fetchDevices() async throws -> [DeviceModel] {
+        // Strangler-fig migration: route this read through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.devices() else {
+                throw translate(.Unsupported(message: "Devices capability is not available for this provider."))
+            }
+            let models = try await callRustCore {
+                let infos = try await cap.fetchDevices()
+                return infos.map { Self.mapDeviceInfo($0) }
+            }
+            Log.print.info("[Apple] Fetched \(models.count) devices (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchDevices()
@@ -3706,13 +3721,30 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         platformRaw: String,
         udid: String
     ) async throws -> DeviceModel {
+        // Validate the platform up front so BOTH the Rust-core and the Swift-SDK
+        // paths reject an invalid value identically.
+        guard let platform = BundleIDPlatform(rawValue: platformRaw) else {
+            throw NSError(domain: "Device", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid platform: \(platformRaw)"])
+        }
+
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.devices() else {
+                throw translate(.Unsupported(message: "Devices capability is not available for this provider."))
+            }
+            let model = try await callRustCore {
+                let info = try await cap.createDevice(name: name, platform: platformRaw, udid: udid)
+                return Self.mapDeviceInfo(info)
+            }
+            Log.print.info("[Apple] Registered device \(udid) (\(name)) (Rust core)")
+            return model
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await createDevice(name: name, platformRaw: platformRaw, udid: udid)
-        }
-
-        guard let platform = BundleIDPlatform(rawValue: platformRaw) else {
-            throw NSError(domain: "Device", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid platform: \(platformRaw)"])
         }
 
         let body = DeviceCreateRequest(
@@ -3740,6 +3772,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateDevice(id: String, name: String?, status: String?) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.devices() else {
+                throw translate(.Unsupported(message: "Devices capability is not available for this provider."))
+            }
+            try await callRustCore { try await cap.updateDevice(id: id, name: name, status: status) }
+            Log.print.info("[Apple] Updated device \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await updateDevice(id: id, name: name, status: status)
@@ -4076,6 +4120,23 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             provisioningAllowed: info.provisioningAllowed,
             isPending: info.isPending,
             expirationDate: info.expirationDate.flatMap(parseISO8601Date)
+        )
+    }
+
+    /// Maps a Rust-core `DeviceInfo` to the app's `DeviceModel`. Every field maps
+    /// 1:1 except `addedDate`, which arrives as a raw ISO8601 string and is parsed
+    /// here via `parseISO8601Date` (the core does no date logic). `status` already
+    /// carries the core's default, so no fallback is needed here.
+    static func mapDeviceInfo(_ info: StackCoreRust.DeviceInfo) -> DeviceModel {
+        DeviceModel(
+            id: info.id,
+            name: info.name,
+            udid: info.udid,
+            platform: info.platform,
+            deviceClass: info.deviceClass,
+            model: info.model,
+            status: info.status,
+            addedDate: info.addedDate.flatMap(parseISO8601Date)
         )
     }
 
