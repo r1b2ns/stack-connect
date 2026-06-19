@@ -902,6 +902,80 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         return models.sorted { ($0.submittedDate ?? .distantPast) > ($1.submittedDate ?? .distantPast) }
     }
 
+    func submitReviewSubmission(id: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core when
+        // the flag is ON. The Swift-SDK body below is left untouched for the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let reviews = provider.reviews() else {
+                throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
+            }
+            try await callRustCore { try await reviews.submitReviewSubmission(submissionId: id) }
+            Log.print.info("[Apple] Resubmitted review submission \(id) (Rust core)")
+            return
+        }
+
+        guard let provider else {
+            try await validateCredentials()
+            return try await submitReviewSubmission(id: id)
+        }
+
+        let body = ReviewSubmissionUpdateRequest(
+            data: .init(
+                type: .reviewSubmissions,
+                id: id,
+                attributes: .init(isSubmitted: true)
+            )
+        )
+        _ = try await provider.request(
+            APIEndpoint.v1.reviewSubmissions.id(id).patch(body)
+        )
+        Log.print.info("[Apple] Resubmitted review submission \(id)")
+    }
+
+    func discardReviewSubmission(id: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core when
+        // the flag is ON. The Swift-SDK body below is left untouched for the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let reviews = provider.reviews() else {
+                throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
+            }
+            try await callRustCore { try await reviews.discardReviewSubmission(submissionId: id) }
+            Log.print.info("[Apple] Discarded review submission \(id) (Rust core)")
+            return
+        }
+
+        guard let provider else {
+            try await validateCredentials()
+            return try await discardReviewSubmission(id: id)
+        }
+
+        let response = try await provider.request(APIEndpoint.v1.reviewSubmissions.id(id).get())
+        let state = response.data.attributes?.state
+
+        switch state {
+        case .readyForReview:
+            // A submission that has not yet entered review can only be discarded by
+            // removing its individual items; deleting all items empties the submission.
+            let itemsResponse = try await provider.request(APIEndpoint.v1.reviewSubmissions.id(id).items.get())
+            for item in itemsResponse.data {
+                _ = try await provider.request(APIEndpoint.v1.reviewSubmissionItems.id(item.id).delete)
+            }
+        case .waitingForReview, .inReview, .unresolvedIssues:
+            // Once a submission is in (or queued for) review it must be cancelled.
+            let cancelBody = ReviewSubmissionUpdateRequest(
+                data: .init(type: .reviewSubmissions, id: id, attributes: .init(isCanceled: true))
+            )
+            _ = try await provider.request(APIEndpoint.v1.reviewSubmissions.id(id).patch(cancelBody))
+        default:
+            // Terminal/transient states (canceling/completing/complete) or nil: no-op.
+            break
+        }
+
+        Log.print.info("[Apple] Discarded review submission \(id)")
+    }
+
     // MARK: - TestFlight: Beta Groups
 
     func fetchBetaGroups(appId: String) async throws -> [BetaGroupModel] {

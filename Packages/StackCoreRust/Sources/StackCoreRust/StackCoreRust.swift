@@ -6490,6 +6490,24 @@ public protocol ReviewsProtocol: AnyObject, Sendable {
     func deleteReviewResponse(responseId: String) async throws 
     
     /**
+     * Discards the review submission identified by `submission_id`, branching on
+     * its current state: an in-flight submission (`WAITING_FOR_REVIEW` /
+     * `IN_REVIEW` / `UNRESOLVED_ISSUES`) is canceled, a not-yet-submitted draft
+     * (`READY_FOR_REVIEW`) is emptied of its items (returning its version to
+     * `PREPARE_FOR_SUBMISSION`), and any other/absent state is a no-op. A
+     * submission that no longer exists (`404`) is also a no-op. Use this to
+     * clear stale drafts that block creating a new submission.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response (other than
+     * the lookup's 404, which is treated as already-discarded),
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func discardReviewSubmission(submissionId: String) async throws 
+    
+    /**
      * Lists the end-user reviews for `app_id`, newest first, including any
      * developer responses.
      *
@@ -6537,6 +6555,18 @@ public protocol ReviewsProtocol: AnyObject, Sendable {
      * malformed JSON, or [`StackError::Network`] on transport failure.
      */
     func replyToReview(reviewId: String, body: String) async throws  -> ReviewResponse
+    
+    /**
+     * Resubmits the draft review submission identified by `submission_id` by
+     * setting its `submitted` attribute to `true`. Use this to re-send a
+     * submission that was left in `READY_FOR_REVIEW`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func submitReviewSubmission(submissionId: String) async throws 
     
 }
 /**
@@ -6611,6 +6641,39 @@ open func deleteReviewResponse(responseId: String)async throws   {
                 uniffi_stack_core_fn_method_reviews_delete_review_response(
                     self.uniffiCloneHandle(),
                     FfiConverterString.lower(responseId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Discards the review submission identified by `submission_id`, branching on
+     * its current state: an in-flight submission (`WAITING_FOR_REVIEW` /
+     * `IN_REVIEW` / `UNRESOLVED_ISSUES`) is canceled, a not-yet-submitted draft
+     * (`READY_FOR_REVIEW`) is emptied of its items (returning its version to
+     * `PREPARE_FOR_SUBMISSION`), and any other/absent state is a no-op. A
+     * submission that no longer exists (`404`) is also a no-op. Use this to
+     * clear stale drafts that block creating a new submission.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response (other than
+     * the lookup's 404, which is treated as already-discarded),
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func discardReviewSubmission(submissionId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_reviews_discard_review_submission(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(submissionId)
                 )
             },
             pollFunc: ffi_stack_core_rust_future_poll_void,
@@ -6726,6 +6789,33 @@ open func replyToReview(reviewId: String, body: String)async throws  -> ReviewRe
             completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeReviewResponse_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Resubmits the draft review submission identified by `submission_id` by
+     * setting its `submitted` attribute to `true`. Use this to re-send a
+     * submission that was left in `READY_FOR_REVIEW`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func submitReviewSubmission(submissionId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_reviews_submit_review_submission(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(submissionId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
             errorHandler: FfiConverterTypeStackError_lift
         )
 }
@@ -11915,6 +12005,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_reviews_delete_review_response() != 19863) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_reviews_discard_review_submission() != 60168) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_reviews_fetch_customer_reviews() != 48520) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -11925,6 +12018,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_reviews_reply_to_review() != 20931) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_reviews_submit_review_submission() != 31458) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_users_delete_user() != 44147) {
