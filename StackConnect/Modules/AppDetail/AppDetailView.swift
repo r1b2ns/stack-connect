@@ -54,7 +54,6 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             buildPlatformSections()
             buildGeneralSection()
             buildAppStoreSection()
-            buildAnalyticsSection()
             buildTestFlightSection()
         }
         .foregroundStyle(.primary)
@@ -445,28 +444,6 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             }
         } header: {
             Text("App Store")
-        }
-    }
-
-    // MARK: - Analytics
-
-    @ViewBuilder
-    private func buildAnalyticsSection() -> some View {
-        if !FeatureFlags.shared.isEnabled(.hideAnalytics) {
-            Section {
-                Button {
-                    guard account.canView(.analytics) else {
-                        denyPermission(String(localized: "You don't have permission to view analytics."))
-                        return
-                    }
-                    homeCoordinator.navigateToAppAnalytics(
-                        appId: viewModel.uiState.app.id,
-                        account: account
-                    )
-                } label: {
-                    buildMenuRow(icon: "chart.bar.fill", color: .purple, title: String(localized: "Analytics"))
-                }
-            }
         }
     }
 

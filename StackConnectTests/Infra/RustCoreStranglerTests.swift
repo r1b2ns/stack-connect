@@ -71,31 +71,6 @@ final class RustCoreStranglerTests: XCTestCase {
         )
     }
 
-    func testHideAnalyticsFlagDefaultsOffWhenUnset() {
-        let suiteName = "RustCoreStranglerTests.hideAnalytics.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        let flags = FeatureFlags(defaults: defaults)
-
-        XCTAssertFalse(
-            flags.isEnabled(.hideAnalytics),
-            "hideAnalytics must default to OFF — Analytics stays visible unless explicitly hidden."
-        )
-    }
-
-    func testHideAnalyticsFlagCanBeEnabled() {
-        let suiteName = "RustCoreStranglerTests.hideAnalytics.toggle.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        let flags = FeatureFlags(defaults: defaults)
-
-        flags.setEnabled(true, for: .hideAnalytics)
-        XCTAssertTrue(
-            flags.isEnabled(.hideAnalytics),
-            "Enabling hideAnalytics must hide the Analytics option."
-        )
-    }
-
     func testRustCoreDebugLoggerConformsAndDoesNotCrash() {
         // Smoke test only — the real cURL/JSON tracing behaviour lives in the Rust
         // core. Here we just prove the Swift adapter conforms to `DebugLogger` and

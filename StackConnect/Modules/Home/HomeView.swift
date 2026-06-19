@@ -423,8 +423,6 @@ private extension View {
                 AppPrivacyViewFactory.build(appId: appId, account: account)
             case .appAccessibility(let appId, let account):
                 AppAccessibilityViewFactory.build(appId: appId, account: account)
-            case .appAnalytics(let appId, let account):
-                AppAnalyticsViewFactory.build(appId: appId, account: account)
             case .ratingsReviews(let appId, let bundleId, let appName, let account):
                 RatingsReviewsViewFactory.build(appId: appId, bundleId: bundleId, appName: appName, account: account)
             case .reviewDetail(let review, let appName, let account):
