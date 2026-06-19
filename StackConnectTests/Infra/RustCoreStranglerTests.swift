@@ -386,7 +386,25 @@ final class RustCoreStranglerTests: XCTestCase {
         }
     }
 
-    /// With the flag ON, `rejectVersion(appId:)` must fail via the Rust core
+    /// With the flag ON, `cancelSubmission(appId:)` must fail via the Rust core
+    /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
+    func testCancelSubmissionRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.cancelSubmission(appId: "123")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `rejectVersion(versionId:)` must fail via the Rust core
     /// for invalid credentials, proving the write never reaches the Swift-SDK provider.
     func testRejectVersionRoutesThroughRustCoreWhenFlagOn() async {
         let connection = AppleAccountConnection(
@@ -395,7 +413,7 @@ final class RustCoreStranglerTests: XCTestCase {
         )
 
         do {
-            try await connection.rejectVersion(appId: "123")
+            try await connection.rejectVersion(versionId: "123")
             XCTFail("Expected the Rust core to reject the invalid credentials.")
         } catch is StackError {
             // Crossed into the Rust core as expected.

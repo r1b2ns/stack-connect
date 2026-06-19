@@ -3311,7 +3311,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         Log.print.info("[Apple] Released version \(versionId)")
     }
 
-    func rejectVersion(appId: String) async throws {
+    func cancelSubmission(appId: String) async throws {
         // Strangler-fig migration: route this write through the shared Rust core when
         // the flag is ON. The Swift-SDK body below is left untouched for the OFF path.
         if featureFlags.isEnabled(.useRustCoreForAppleApps) {
@@ -3319,17 +3319,17 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             guard let versions = provider.appStoreVersions() else {
                 throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
             }
-            try await callRustCore { try await versions.rejectVersion(appId: appId) }
-            Log.print.info("[Apple] Rejected/cancelled review for app \(appId) (Rust core)")
+            try await callRustCore { try await versions.cancelSubmission(appId: appId) }
+            Log.print.info("[Apple] Cancelled submission for app \(appId) (Rust core)")
             return
         }
 
         guard let provider else {
             try await validateCredentials()
-            return try await rejectVersion(appId: appId)
+            return try await cancelSubmission(appId: appId)
         }
 
-        // Find any completing/complete submission to reject
+        // Find any completing/complete submission to cancel
         let request = APIEndpoint.v1.reviewSubmissions.get(
             parameters: .init(
                 filterApp: [appId]
@@ -3353,7 +3353,45 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             APIEndpoint.v1.reviewSubmissions.id(submission.id).patch(cancelBody)
         )
 
-        Log.print.info("[Apple] Rejected version for app \(appId)")
+        Log.print.info("[Apple] Cancelled submission for app \(appId)")
+    }
+
+    func rejectVersion(versionId: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core when
+        // the flag is ON. The Swift-SDK body below is left untouched for the OFF path.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let versions = provider.appStoreVersions() else {
+                throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+            }
+            try await callRustCore { try await versions.rejectVersion(versionId: versionId) }
+            Log.print.info("[Apple] Rejected version \(versionId) (Rust core)")
+            return
+        }
+
+        guard let provider else {
+            try await validateCredentials()
+            return try await rejectVersion(versionId: versionId)
+        }
+
+        // Reject an approved / pending-developer-release version by deleting its
+        // version-scoped submission. If there is no submission, treat as a no-op.
+        let submissionId: String
+        do {
+            let response = try await provider.request(
+                APIEndpoint.v1.appStoreVersions.id(versionId).appStoreVersionSubmission.get()
+            )
+            submissionId = response.data.id
+        } catch {
+            Log.print.info("[Apple] No version submission found for version \(versionId)")
+            return
+        }
+
+        _ = try await provider.request(
+            APIEndpoint.v1.appStoreVersionSubmissions.id(submissionId).delete
+        )
+
+        Log.print.info("[Apple] Rejected version \(versionId)")
     }
 
     func disconnect() {

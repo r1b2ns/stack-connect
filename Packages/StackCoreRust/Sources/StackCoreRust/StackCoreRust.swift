@@ -1405,6 +1405,24 @@ public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
     func cancelReview(appId: String) async throws 
     
     /**
+     * Cancels the active submission for `app_id`, removing a not-yet-approved
+     * submission from review.
+     *
+     * Fetches the app's active/cancellable submissions and clears them: an
+     * in-flight submission (`WAITING_FOR_REVIEW` / `IN_REVIEW` /
+     * `UNRESOLVED_ISSUES`) is canceled, and a not-yet-submitted submission
+     * (`READY_FOR_REVIEW`) has its items removed. Either path returns the
+     * `appStoreVersion` to `PREPARE_FOR_SUBMISSION`. When there is no active
+     * submission this is a no-op that returns `Ok(())`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * on malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+    func cancelSubmission(appId: String) async throws 
+    
+    /**
      * Creates a phased (staged) release for `version_id` with the initial
      * `state`, returning the created phased release. `state` is the raw ASC
      * `phasedReleaseState` value (`INACTIVE` / `ACTIVE` / `PAUSED` /
@@ -1521,18 +1539,20 @@ public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
     func fetchVersions(appId: String, limit: UInt32) async throws  -> [AppStoreVersionInfo]
     
     /**
-     * Rejects the most recent submission for `app_id`.
+     * Rejects the approved version identified by `version_id`.
      *
-     * Looks up the first submission for `app_id` (regardless of state) and
-     * marks it canceled. When no submission exists this is a no-op that returns
-     * `Ok(())`.
+     * Intended for a developer rejecting an already-approved version that is in
+     * `PENDING_DEVELOPER_RELEASE`. Resolves the version's singular
+     * `appStoreVersionSubmission` relationship and deletes it. When the version
+     * has no submission (the relationship's `data` is null/absent, or the
+     * endpoint answers 404) this is a no-op that returns `Ok(())`.
      *
      * # Errors
      * [`StackError::PendingAgreements`] on a pending-agreements 403,
      * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
      * on malformed JSON, or [`StackError::Network`] on transport failure.
      */
-    func rejectVersion(appId: String) async throws 
+    func rejectVersion(versionId: String) async throws 
     
     /**
      * Manually releases the approved version identified by `version_id`.
@@ -1694,6 +1714,39 @@ open func cancelReview(appId: String)async throws   {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_stack_core_fn_method_appstoreversions_cancel_review(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Cancels the active submission for `app_id`, removing a not-yet-approved
+     * submission from review.
+     *
+     * Fetches the app's active/cancellable submissions and clears them: an
+     * in-flight submission (`WAITING_FOR_REVIEW` / `IN_REVIEW` /
+     * `UNRESOLVED_ISSUES`) is canceled, and a not-yet-submitted submission
+     * (`READY_FOR_REVIEW`) has its items removed. Either path returns the
+     * `appStoreVersion` to `PREPARE_FOR_SUBMISSION`. When there is no active
+     * submission this is a no-op that returns `Ok(())`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * on malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+open func cancelSubmission(appId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_cancel_submission(
                     self.uniffiCloneHandle(),
                     FfiConverterString.lower(appId)
                 )
@@ -1958,24 +2011,26 @@ open func fetchVersions(appId: String, limit: UInt32)async throws  -> [AppStoreV
 }
     
     /**
-     * Rejects the most recent submission for `app_id`.
+     * Rejects the approved version identified by `version_id`.
      *
-     * Looks up the first submission for `app_id` (regardless of state) and
-     * marks it canceled. When no submission exists this is a no-op that returns
-     * `Ok(())`.
+     * Intended for a developer rejecting an already-approved version that is in
+     * `PENDING_DEVELOPER_RELEASE`. Resolves the version's singular
+     * `appStoreVersionSubmission` relationship and deletes it. When the version
+     * has no submission (the relationship's `data` is null/absent, or the
+     * endpoint answers 404) this is a no-op that returns `Ok(())`.
      *
      * # Errors
      * [`StackError::PendingAgreements`] on a pending-agreements 403,
      * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
      * on malformed JSON, or [`StackError::Network`] on transport failure.
      */
-open func rejectVersion(appId: String)async throws   {
+open func rejectVersion(versionId: String)async throws   {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_stack_core_fn_method_appstoreversions_reject_version(
                     self.uniffiCloneHandle(),
-                    FfiConverterString.lower(appId)
+                    FfiConverterString.lower(versionId)
                 )
             },
             pollFunc: ffi_stack_core_rust_future_poll_void,
@@ -11671,6 +11726,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_appstoreversions_cancel_review() != 9516) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_appstoreversions_cancel_submission() != 32431) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_appstoreversions_create_phased_release() != 55326) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -11698,7 +11756,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_appstoreversions_fetch_versions() != 49788) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_stack_core_checksum_method_appstoreversions_reject_version() != 61243) {
+    if (uniffi_stack_core_checksum_method_appstoreversions_reject_version() != 2434) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appstoreversions_release_version() != 60767) {

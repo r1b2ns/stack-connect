@@ -335,7 +335,7 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
 
         do {
             guard let connection = createConnection() else { return }
-            try await connection.rejectVersion(appId: version.appId)
+            try await connection.rejectVersion(versionId: version.id)
             uiState.toastMessage = ToastMessage(String(localized: "Version rejected"), icon: "xmark.circle.fill")
             Log.print.info("[AppDetail] Rejected version \(version.id)")
             await refresh()

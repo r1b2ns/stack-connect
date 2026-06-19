@@ -570,7 +570,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
 
         do {
             guard let connection = createConnection() else { return }
-            try await connection.rejectVersion(appId: uiState.version.appId)
+            try await connection.cancelSubmission(appId: uiState.version.appId)
             uiState.toastMessage = ToastMessage(String(localized: "Submission cancelled"), icon: "xmark.circle.fill")
             Log.print.info("[VersionDetail] Cancelled submission")
             await refresh()
@@ -606,7 +606,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
 
         do {
             guard let connection = createConnection() else { return }
-            try await connection.rejectVersion(appId: uiState.version.appId)
+            try await connection.rejectVersion(versionId: uiState.version.id)
             uiState.toastMessage = ToastMessage(String(localized: "Version rejected"), icon: "xmark.circle.fill")
             Log.print.info("[VersionDetail] Rejected version")
             await refresh()
