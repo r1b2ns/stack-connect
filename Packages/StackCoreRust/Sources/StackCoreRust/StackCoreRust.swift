@@ -4572,6 +4572,286 @@ public func FfiConverterTypeBundleIds_lower(_ value: BundleIds) -> UInt64 {
 
 
 /**
+ * UniFFI-exported Certificates capability handle. A thin, binding-friendly
+ * wrapper around a boxed [`CertificatesImpl`]; async work runs on the tokio
+ * runtime. Reached via [`crate::service::provider::Provider::certificates`].
+ */
+public protocol CertificatesProtocol: AnyObject, Sendable {
+    
+    /**
+     * Creates a certificate from `csr_content` (a base64/PEM CSR) of
+     * `certificate_type` (a raw ASC `CertificateType` value, forwarded verbatim —
+     * App Store Connect rejects unknown values with an HTTP error). When
+     * `pass_type_id` is `Some` and non-empty it is attached as the `passTypeId`
+     * relationship; otherwise when `merchant_id` is `Some` and non-empty it is
+     * attached as the `merchantId` relationship; otherwise no relationship is
+     * sent. The returned certificate includes its `certificate_content`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func createCertificate(csrContent: String, certificateType: String, passTypeId: String?, merchantId: String?) async throws  -> CertificateInfo
+    
+    /**
+     * Fetches the base64-encoded `certificateContent` of the certificate `id`,
+     * returning `None` when App Store Connect omits the attribute.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchCertificateContent(id: String) async throws  -> String?
+    
+    /**
+     * Lists every certificate of the connected account, sorted by display name,
+     * following pagination until exhausted. The list does not include
+     * certificate content, so every entry's `certificate_content` is `None`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchCertificates() async throws  -> [CertificateInfo]
+    
+    /**
+     * Revokes (deletes) the certificate `id`. Any 2xx → `Ok(())`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func revokeCertificate(id: String) async throws 
+    
+}
+/**
+ * UniFFI-exported Certificates capability handle. A thin, binding-friendly
+ * wrapper around a boxed [`CertificatesImpl`]; async work runs on the tokio
+ * runtime. Reached via [`crate::service::provider::Provider::certificates`].
+ */
+open class Certificates: CertificatesProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_certificates(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_certificates(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Creates a certificate from `csr_content` (a base64/PEM CSR) of
+     * `certificate_type` (a raw ASC `CertificateType` value, forwarded verbatim —
+     * App Store Connect rejects unknown values with an HTTP error). When
+     * `pass_type_id` is `Some` and non-empty it is attached as the `passTypeId`
+     * relationship; otherwise when `merchant_id` is `Some` and non-empty it is
+     * attached as the `merchantId` relationship; otherwise no relationship is
+     * sent. The returned certificate includes its `certificate_content`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func createCertificate(csrContent: String, certificateType: String, passTypeId: String?, merchantId: String?)async throws  -> CertificateInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_certificates_create_certificate(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(csrContent),FfiConverterString.lower(certificateType),FfiConverterOptionString.lower(passTypeId),FfiConverterOptionString.lower(merchantId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeCertificateInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Fetches the base64-encoded `certificateContent` of the certificate `id`,
+     * returning `None` when App Store Connect omits the attribute.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchCertificateContent(id: String)async throws  -> String?  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_certificates_fetch_certificate_content(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionString.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists every certificate of the connected account, sorted by display name,
+     * following pagination until exhausted. The list does not include
+     * certificate content, so every entry's `certificate_content` is `None`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchCertificates()async throws  -> [CertificateInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_certificates_fetch_certificates(
+                    self.uniffiCloneHandle()
+                    
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeCertificateInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Revokes (deletes) the certificate `id`. Any 2xx → `Ok(())`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func revokeCertificate(id: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_certificates_revoke_certificate(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCertificates: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Certificates
+
+    public static func lift(_ handle: UInt64) throws -> Certificates {
+        return Certificates(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Certificates) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Certificates {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Certificates, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCertificates_lift(_ handle: UInt64) throws -> Certificates {
+    return try FfiConverterTypeCertificates.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCertificates_lower(_ value: Certificates) -> UInt64 {
+    return FfiConverterTypeCertificates.lower(value)
+}
+
+
+
+
+
+
+/**
  * Secure-credential storage implemented natively (Keychain on iOS) and injected
  * across the FFI boundary as a foreign trait. Each provider declares the keys it
  * reads via its `credential_schema` (see `service::registry`).
@@ -5411,6 +5691,14 @@ public protocol ProviderProtocol: AnyObject, Sendable {
     func capabilities()  -> [Capability]
     
     /**
+     * The Certificates capability handle, or `None` when this provider does not
+     * expose [`Capability::Certificates`]. This is the discovery mechanism: the
+     * host calls `provider.certificates()` and gets `None` when certificate
+     * management is unsupported.
+     */
+    func certificates()  -> Certificates?
+    
+    /**
      * The Devices capability handle, or `None` when this provider does not
      * expose [`Capability::Devices`]. This is the discovery mechanism: the host
      * calls `provider.devices()` and gets `None` when device management is
@@ -5648,6 +5936,20 @@ open func bundleIds() -> BundleIds?  {
 open func capabilities() -> [Capability]  {
     return try!  FfiConverterSequenceTypeCapability.lift(try! rustCall() {
     uniffi_stack_core_fn_method_provider_capabilities(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The Certificates capability handle, or `None` when this provider does not
+     * expose [`Capability::Certificates`]. This is the discovery mechanism: the
+     * host calls `provider.certificates()` and gets `None` when certificate
+     * management is unsupported.
+     */
+open func certificates() -> Certificates?  {
+    return try!  FfiConverterOptionTypeCertificates.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_certificates(
             self.uniffiCloneHandle(),$0
     )
 })
@@ -8230,6 +8532,106 @@ public func FfiConverterTypeBundleIdInfo_lower(_ value: BundleIdInfo) -> RustBuf
 
 
 /**
+ * A signing certificate registered for the connected App Store Connect account
+ * (development, distribution, push, Pass Type ID, or Apple Pay merchant
+ * certificate).
+ *
+ * `display_name`, `name`, and `certificate_type` are non-optional with an
+ * empty-string fallback applied at the wire-mapping boundary when the attribute
+ * is absent; `platform`, `serial_number`, and `expiration_date` are optional.
+ * `certificate_type` is the raw ASC `CertificateType` value (e.g.
+ * `IOS_DEVELOPMENT`, `IOS_DISTRIBUTION`, `MAC_APP_DISTRIBUTION`), forwarded
+ * without remapping. `expiration_date` is the raw ISO8601 string passed through
+ * verbatim — the core does no date parsing.
+ *
+ * `is_activated` maps the ASC `activated` attribute (note the wire key is
+ * `activated`, not `isActivated`). `certificate_content` is the base64-encoded
+ * certificate payload: it is `None` for list results (the list omits it) and
+ * `Some` after a create or single-resource fetch.
+ */
+public struct CertificateInfo: Equatable, Hashable {
+    public var id: String
+    public var displayName: String
+    public var name: String
+    public var certificateType: String
+    public var platform: String?
+    public var serialNumber: String?
+    public var expirationDate: String?
+    public var isActivated: Bool
+    public var certificateContent: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, displayName: String, name: String, certificateType: String, platform: String?, serialNumber: String?, expirationDate: String?, isActivated: Bool, certificateContent: String?) {
+        self.id = id
+        self.displayName = displayName
+        self.name = name
+        self.certificateType = certificateType
+        self.platform = platform
+        self.serialNumber = serialNumber
+        self.expirationDate = expirationDate
+        self.isActivated = isActivated
+        self.certificateContent = certificateContent
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CertificateInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCertificateInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CertificateInfo {
+        return
+            try CertificateInfo(
+                id: FfiConverterString.read(from: &buf), 
+                displayName: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                certificateType: FfiConverterString.read(from: &buf), 
+                platform: FfiConverterOptionString.read(from: &buf), 
+                serialNumber: FfiConverterOptionString.read(from: &buf), 
+                expirationDate: FfiConverterOptionString.read(from: &buf), 
+                isActivated: FfiConverterBool.read(from: &buf), 
+                certificateContent: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CertificateInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.displayName, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.certificateType, into: &buf)
+        FfiConverterOptionString.write(value.platform, into: &buf)
+        FfiConverterOptionString.write(value.serialNumber, into: &buf)
+        FfiConverterOptionString.write(value.expirationDate, into: &buf)
+        FfiConverterBool.write(value.isActivated, into: &buf)
+        FfiConverterOptionString.write(value.certificateContent, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCertificateInfo_lift(_ buf: RustBuffer) throws -> CertificateInfo {
+    return try FfiConverterTypeCertificateInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCertificateInfo_lower(_ value: CertificateInfo) -> RustBuffer {
+    return FfiConverterTypeCertificateInfo.lower(value)
+}
+
+
+/**
  * A single credential field a service requires. Drives the host's "connect
  * account" form: `label` is shown to the user, `secret` hides the input, and
  * `multiline` signals a textarea (e.g. a PEM-encoded private key).
@@ -9089,6 +9491,7 @@ public enum Capability: Equatable, Hashable {
     case users
     case devices
     case bundleIds
+    case certificates
 
 
 
@@ -9135,6 +9538,8 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         case 12: return .devices
         
         case 13: return .bundleIds
+        
+        case 14: return .certificates
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -9194,6 +9599,10 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case .bundleIds:
             writeInt(&buf, Int32(13))
+        
+        
+        case .certificates:
+            writeInt(&buf, Int32(14))
         
         }
     }
@@ -9702,6 +10111,30 @@ fileprivate struct FfiConverterOptionTypeBundleIds: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeBundleIds.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeCertificates: FfiConverterRustBuffer {
+    typealias SwiftType = Certificates?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeCertificates.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeCertificates.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -10268,6 +10701,31 @@ fileprivate struct FfiConverterSequenceTypeBundleIdInfo: FfiConverterRustBuffer 
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeBundleIdInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCertificateInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [CertificateInfo]
+
+    public static func write(_ value: [CertificateInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCertificateInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CertificateInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CertificateInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCertificateInfo.read(from: &buf))
         }
         return seq
     }
@@ -10882,6 +11340,18 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_bundleids_update_bundle_id() != 47058) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_certificates_create_certificate() != 36825) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_certificates_fetch_certificate_content() != 58444) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_certificates_fetch_certificates() != 39248) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_certificates_revoke_certificate() != 54249) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_devices_create_device() != 47764) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -10946,6 +11416,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_capabilities() != 53465) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_certificates() != 37612) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_devices() != 37396) {

@@ -3097,6 +3097,166 @@ final class RustCoreStranglerTests: XCTestCase {
         XCTAssertEqual(model.id, "cap-1")
         XCTAssertEqual(model.capabilityType, "FONT_INSTALLATION")
     }
+
+    // MARK: - Certificates (strangler routing)
+
+    /// With the flag ON, `fetchCertificates()` must fail via the Rust core for invalid
+    /// credentials, proving the read never reaches the Swift-SDK provider.
+    func testFetchCertificatesRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchCertificates()
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `fetchCertificateContent(id:)` must fail via the Rust core for
+    /// invalid credentials, proving the read never reaches the Swift-SDK provider.
+    func testFetchCertificateContentRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.fetchCertificateContent(id: "cert-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `createCertificate(...)` must fail via the Rust core for invalid
+    /// credentials, proving the write never reaches the Swift-SDK provider.
+    func testCreateCertificateRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            _ = try await connection.createCertificate(csrContent: "csr", certificateTypeRaw: "IOS_DISTRIBUTION", passTypeId: nil, merchantId: nil)
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    /// On the flag-ON (Rust) path, `createCertificate` does NOT perform the SDK's
+    /// `CertificateType` enum validation — a raw type the SDK enum rejects is passed
+    /// STRAIGHT to the core, so the error is a StackError from the core, not the plain
+    /// NSError the SDK path would throw for an unsupported certificate type.
+    func testCreateCertificatePassesUnknownTypeToRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            // NOT_A_REAL_TYPE is a type the SDK's CertificateType enum rejects.
+            _ = try await connection.createCertificate(csrContent: "csr", certificateTypeRaw: "NOT_A_REAL_TYPE", passTypeId: nil, merchantId: nil)
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Reached the core (no SDK enum validation), as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, not the SDK enum NSError, got: \(error)")
+        }
+    }
+
+    /// With the flag ON, `revokeCertificate(id:)` must fail via the Rust core for invalid
+    /// credentials, proving the write never reaches the Swift-SDK provider.
+    func testRevokeCertificateRoutesThroughRustCoreWhenFlagOn() async {
+        let connection = AppleAccountConnection(
+            credentials: invalidCredentials,
+            featureFlags: makeFlags(rustCoreOn: true)
+        )
+
+        do {
+            try await connection.revokeCertificate(id: "cert-1")
+            XCTFail("Expected the Rust core to reject the invalid credentials.")
+        } catch is StackError {
+            // Crossed into the Rust core as expected.
+        } catch {
+            XCTFail("Expected a StackError from the Rust core, got: \(error)")
+        }
+    }
+
+    // MARK: - Certificate mapping (Rust core -> app model)
+
+    /// `mapCertificateInfo` maps every field 1:1 and parses the raw ISO8601
+    /// `expirationDate` via `parseISO8601Date`. The `certificateContent` is not a field
+    /// on `CertificateModel`, so it is intentionally not asserted here.
+    func testMapCertificateInfoMapsAllFieldsAndParsesDate() {
+        let core = StackCoreRust.CertificateInfo(
+            id: "cert-1",
+            displayName: "Distribution Cert",
+            name: "Apple Distribution",
+            certificateType: "IOS_DISTRIBUTION",
+            platform: "IOS",
+            serialNumber: "ABCDEF0123456789",
+            expirationDate: "2024-01-15T10:30:00Z",
+            isActivated: true,
+            certificateContent: "MIID...base64..."
+        )
+
+        let model = AppleAccountConnection.mapCertificateInfo(core)
+
+        XCTAssertEqual(model.id, "cert-1")
+        XCTAssertEqual(model.displayName, "Distribution Cert")
+        XCTAssertEqual(model.name, "Apple Distribution")
+        XCTAssertEqual(model.certificateType, "IOS_DISTRIBUTION")
+        XCTAssertEqual(model.platform, "IOS")
+        XCTAssertEqual(model.serialNumber, "ABCDEF0123456789")
+        XCTAssertTrue(model.isActivated)
+        XCTAssertEqual(model.expirationDate, ISO8601DateFormatter().date(from: "2024-01-15T10:30:00Z"))
+    }
+
+    /// A nil `expirationDate`/`certificateContent` pass straight through (date -> nil);
+    /// an unparseable date also yields nil while the other fields still map.
+    func testMapCertificateInfoHandlesNilExpirationAndContent() {
+        let core = StackCoreRust.CertificateInfo(
+            id: "cert-2",
+            displayName: "Dev Cert",
+            name: "Apple Development",
+            certificateType: "IOS_DEVELOPMENT",
+            platform: nil,
+            serialNumber: nil,
+            expirationDate: nil,
+            isActivated: false,
+            certificateContent: nil
+        )
+
+        let model = AppleAccountConnection.mapCertificateInfo(core)
+
+        XCTAssertEqual(model.id, "cert-2")
+        XCTAssertEqual(model.displayName, "Dev Cert")
+        XCTAssertEqual(model.name, "Apple Development")
+        XCTAssertEqual(model.certificateType, "IOS_DEVELOPMENT")
+        XCTAssertNil(model.platform)
+        XCTAssertNil(model.serialNumber)
+        XCTAssertFalse(model.isActivated)
+        XCTAssertNil(model.expirationDate)
+
+        // Unparseable date -> nil.
+        let badDate = StackCoreRust.CertificateInfo(
+            id: "cert-3", displayName: "X", name: "X", certificateType: "IOS_DISTRIBUTION",
+            platform: nil, serialNumber: nil, expirationDate: "not-a-date",
+            isActivated: false, certificateContent: nil
+        )
+        XCTAssertNil(AppleAccountConnection.mapCertificateInfo(badDate).expirationDate)
+    }
 }
 
 // MARK: - Minimal in-memory PersistentStorable for the BlobStore-backed test

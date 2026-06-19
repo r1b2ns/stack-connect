@@ -3364,6 +3364,21 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - Certificates
 
     func fetchCertificates() async throws -> [CertificateModel] {
+        // Strangler-fig migration: route this read through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.certificates() else {
+                throw translate(.Unsupported(message: "Certificates capability is not available for this provider."))
+            }
+            let models = try await callRustCore {
+                let infos = try await cap.fetchCertificates()
+                return infos.map { Self.mapCertificateInfo($0) }
+            }
+            Log.print.info("[Apple] Fetched \(models.count) certificates (Rust core)")
+            return models
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchCertificates()
@@ -3394,6 +3409,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func fetchCertificateContent(id: String) async throws -> String? {
+        // Strangler-fig migration: route this read through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.certificates() else {
+                throw translate(.Unsupported(message: "Certificates capability is not available for this provider."))
+            }
+            let content = try await callRustCore { try await cap.fetchCertificateContent(id: id) }
+            Log.print.info("[Apple] Fetched certificate content for \(id) (Rust core)")
+            return content
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await fetchCertificateContent(id: id)
@@ -3431,6 +3458,26 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         passTypeId: String? = nil,
         merchantId: String? = nil
     ) async throws -> CreatedCertificate {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.certificates() else {
+                throw translate(.Unsupported(message: "Certificates capability is not available for this provider."))
+            }
+            let created = try await callRustCore {
+                let info = try await cap.createCertificate(
+                    csrContent: csrContent,
+                    certificateType: certificateTypeRaw,
+                    passTypeId: passTypeId,
+                    merchantId: merchantId
+                )
+                return CreatedCertificate(certificate: Self.mapCertificateInfo(info), content: info.certificateContent)
+            }
+            Log.print.info("[Apple] Created certificate \(created.certificate.id) (\(certificateTypeRaw)) (Rust core)")
+            return created
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await createCertificate(
@@ -3488,6 +3535,18 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func revokeCertificate(id: String) async throws {
+        // Strangler-fig migration: route this write through the shared Rust core
+        // when the flag is ON; the Swift-SDK body below is the flag-OFF fallthrough.
+        if featureFlags.isEnabled(.useRustCoreForAppleApps) {
+            let provider = try rustCoreProvider()
+            guard let cap = provider.certificates() else {
+                throw translate(.Unsupported(message: "Certificates capability is not available for this provider."))
+            }
+            try await callRustCore { try await cap.revokeCertificate(id: id) }
+            Log.print.info("[Apple] Revoked certificate \(id) (Rust core)")
+            return
+        }
+
         guard let provider else {
             try await validateCredentials()
             return try await revokeCertificate(id: id)
@@ -4256,6 +4315,24 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             name: info.name,
             platform: info.platform,
             seedId: info.seedId
+        )
+    }
+
+    /// Maps a Rust-core `CertificateInfo` to the app's `CertificateModel`. Mirrors the
+    /// inline SDK mapping in `fetchCertificates`/`createCertificate`. The core already
+    /// applies the `displayName` fallback to `name`, so it passes straight through. The
+    /// raw ISO8601 `expirationDate` string is parsed via `parseISO8601Date` (the model's
+    /// `expirationDate` is `Date?`).
+    static func mapCertificateInfo(_ info: StackCoreRust.CertificateInfo) -> CertificateModel {
+        CertificateModel(
+            id: info.id,
+            displayName: info.displayName,
+            name: info.name,
+            certificateType: info.certificateType,
+            platform: info.platform,
+            serialNumber: info.serialNumber,
+            expirationDate: info.expirationDate.flatMap { Self.parseISO8601Date($0) },
+            isActivated: info.isActivated
         )
     }
 
