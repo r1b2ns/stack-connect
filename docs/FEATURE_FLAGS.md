@@ -8,7 +8,7 @@ Flags are defined in `FeatureFlag` and resolved through `FeatureFlags`
 at runtime — e.g. via a debug menu or a launch argument — without rebuilding. Every
 new flag ships **OFF** by default (the safe, fully-reversible value) unless noted.
 
-**Total feature flags: 2**
+**Total feature flags: 3**
 
 ## Flags
 
@@ -16,6 +16,7 @@ new flag ships **OFF** by default (the safe, fully-reversible value) unless note
 | --- | --- | --- | --- |
 | `useRustCoreForAppleApps` | `featureFlag.useRustCoreForAppleApps` | OFF | Routes **only** the Apple connection's `validateCredentials()` and `fetchApps()` through the shared Rust core (UniFFI `Provider`) instead of the Swift App Store Connect SDK. All other Apple methods stay on the Swift SDK. Fully reversible — turning it OFF restores the original Swift-SDK behaviour. |
 | `useRustCoreDebugLogging` | `featureFlag.useRustCoreDebugLogging` | OFF | Debug-only HTTP tracer: logs every Rust-core App Store Connect request/response as a runnable cURL command (with pretty-printed JSON) to the Xcode console. Intended purely for diagnosing the Rust-core ASC integration during development. No effect when OFF (zero overhead). |
+| `hideAnalytics` | `featureFlag.hideAnalytics` | OFF | Hides the App Store Connect **Analytics** option (the AppAnalytics / analytics-reports feature) from the app UI. That feature is still served by the legacy Swift App Store Connect SDK and has not yet been migrated to the shared Rust core, so this flag hides it while the migration is pending. OFF = Analytics visible (default); ON = Analytics hidden. Fully reversible. |
 
 ## Usage sites
 
@@ -114,6 +115,12 @@ new flag ships **OFF** by default (the safe, fully-reversible value) unless note
 - **Supporting types:**
   - `StackConnect/Infra/Providers/Apple/RustCoreDebugLogger.swift` — a stateless `DebugLogger` that forwards the core's traces straight to the Xcode console via `print` (not `Log.print`, which truncates long messages).
 - **Runtime usage:** enable at launch via the launch argument `-featureFlag.useRustCoreDebugLogging YES` (Xcode scheme → Run → Arguments → *Arguments Passed On Launch*), or programmatically with `FeatureFlags.shared.setEnabled(true, for: .useRustCoreDebugLogging)`.
+
+### `hideAnalytics`
+
+- **Definition:** `StackConnect/Infra/FeatureFlags/FeatureFlags.swift` — `FeatureFlag.hideAnalytics` (default `false`).
+- **Read at:** `StackConnect/Modules/AppDetail/AppDetailView.swift`
+  - `buildAnalyticsSection()` — when ON, the entire "Analytics" `Section` (the menu row that calls `homeCoordinator.navigateToAppAnalytics(...)`) is omitted from the App Detail screen, so the App Store Connect Analytics option disappears. When OFF, the row renders as before. Scoped strictly to the ASC AppAnalytics entry point; the Firebase analytics surfaces are unaffected.
 
 ## How to toggle (debug / testing)
 

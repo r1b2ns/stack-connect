@@ -27,6 +27,14 @@ enum FeatureFlag: String, CaseIterable {
     /// Default: OFF.
     case useRustCoreDebugLogging = "featureFlag.useRustCoreDebugLogging"
 
+    /// Hides the App Store Connect "Analytics" option (the AppAnalytics /
+    /// analytics-reports feature) from the app UI. That feature is still served by
+    /// the legacy Swift App Store Connect SDK and has not yet been migrated to the
+    /// shared Rust core, so this flag lets us hide it while the migration is
+    /// pending. Ships OFF — Analytics stays VISIBLE by default; enabling the flag
+    /// HIDES it. Default: OFF.
+    case hideAnalytics = "featureFlag.hideAnalytics"
+
     /// The compiled-in default used when no value is stored in `UserDefaults`.
     /// New flags ship OFF by default — the safe, fully-reversible value.
     var defaultValue: Bool {
@@ -34,6 +42,8 @@ enum FeatureFlag: String, CaseIterable {
         case .useRustCoreForAppleApps:
             return false
         case .useRustCoreDebugLogging:
+            return false
+        case .hideAnalytics:
             return false
         }
     }

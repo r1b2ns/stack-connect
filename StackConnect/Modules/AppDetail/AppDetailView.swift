@@ -404,19 +404,22 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
 
     // MARK: - Analytics
 
+    @ViewBuilder
     private func buildAnalyticsSection() -> some View {
-        Section {
-            Button {
-                guard account.canView(.analytics) else {
-                    denyPermission(String(localized: "You don't have permission to view analytics."))
-                    return
+        if !FeatureFlags.shared.isEnabled(.hideAnalytics) {
+            Section {
+                Button {
+                    guard account.canView(.analytics) else {
+                        denyPermission(String(localized: "You don't have permission to view analytics."))
+                        return
+                    }
+                    homeCoordinator.navigateToAppAnalytics(
+                        appId: viewModel.uiState.app.id,
+                        account: account
+                    )
+                } label: {
+                    buildMenuRow(icon: "chart.bar.fill", color: .purple, title: String(localized: "Analytics"))
                 }
-                homeCoordinator.navigateToAppAnalytics(
-                    appId: viewModel.uiState.app.id,
-                    account: account
-                )
-            } label: {
-                buildMenuRow(icon: "chart.bar.fill", color: .purple, title: String(localized: "Analytics"))
             }
         }
     }
