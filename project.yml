@@ -92,7 +92,7 @@ settings:
 packages:
   appstoreconnect-swift-sdk:
     url: https://github.com/r1b2ns/appstoreconnect-swift-sdk.git
-    branch: master
+    revision: 3c71b2bf
   netfox:
     url: https://github.com/rubensmachion/netfox
     branch: develop
