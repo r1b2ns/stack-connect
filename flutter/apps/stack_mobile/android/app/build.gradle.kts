@@ -8,8 +8,10 @@ android {
     namespace = "zeroSixteen.stackconnect.stack_mobile"
     compileSdk = flutter.compileSdkVersion
     // Pinned to the NDK used by build/build-android.sh in the stack-connect-core
-    // repo to build libstack_core.so, so the bundled native libs match.
-    ndkVersion = "27.2.12479018"
+    // repo to build libstack_core.so, so the bundled native libs match. 28.2 also
+    // satisfies the bundled plugins (flutter_secure_storage, jni, sqflite_android,
+    // …), which require >= 28.2.13676358.
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
