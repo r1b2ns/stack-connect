@@ -7,7 +7,9 @@ plugins {
 android {
     namespace = "zeroSixteen.stackconnect.stack_mobile"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // Pinned to the NDK used by build/build-android.sh in the stack-connect-core
+    // repo to build libstack_core.so, so the bundled native libs match.
+    ndkVersion = "27.2.12479018"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
