@@ -6,6 +6,7 @@ import 'features/apps/apps_screen.dart';
 import 'features/builds/builds_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/reviews/reviews_screen.dart';
+import 'features/versions/versions_screen.dart';
 
 /// Top-level router for the mobile app: a single navigation stack.
 ///
@@ -15,6 +16,7 @@ import 'features/reviews/reviews_screen.dart';
 /// `/accounts/:accountId/apps/:appId`           → app detail
 /// `/accounts/:accountId/apps/:appId/reviews`   → ratings & reviews
 /// `/accounts/:accountId/apps/:appId/builds`    → testflight builds
+/// `/accounts/:accountId/apps/:appId/versions`  → app store versions
 GoRouter buildRouter() {
   return GoRouter(
     routes: [
@@ -49,6 +51,13 @@ GoRouter buildRouter() {
                   GoRoute(
                     path: 'builds',
                     builder: (context, state) => BuildsScreen(
+                      accountId: state.pathParameters['accountId']!,
+                      appId: state.pathParameters['appId']!,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'versions',
+                    builder: (context, state) => VersionsScreen(
                       accountId: state.pathParameters['accountId']!,
                       appId: state.pathParameters['appId']!,
                     ),

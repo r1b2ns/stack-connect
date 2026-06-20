@@ -146,6 +146,16 @@ class FakeCoreGateway implements CoreGateway {
       throw UnimplementedError('fetchBuilds not used in smoke test');
 
   @override
+  FrbAppStoreVersions? appStoreVersions(FrbProvider provider) => null;
+
+  @override
+  Future<List<AppStoreVersionInfo>> fetchVersions(
+    FrbAppStoreVersions versions,
+    String appId,
+  ) =>
+      throw UnimplementedError('fetchVersions not used in smoke test');
+
+  @override
   FrbSyncService makeSyncService(FrbProvider provider, String accountId) =>
       throw UnimplementedError('makeSyncService not used in smoke test');
 
@@ -169,6 +179,8 @@ class _FakeFrbReviews extends Mock implements FrbReviews {}
 
 class _FakeFrbBuilds extends Mock implements FrbBuilds {}
 
+class _FakeFrbAppStoreVersions extends Mock implements FrbAppStoreVersions {}
+
 class _FakeFrbSyncService extends Mock implements FrbSyncService {}
 
 /// A fully scriptable [CoreGateway] for widget/integration tests.
@@ -189,8 +201,10 @@ class ConfigurableFakeCoreGateway implements CoreGateway {
     List<AppInfo>? appsToSync,
     Map<String, List<CustomerReview>>? reviewsByApp,
     Map<String, List<BuildInfo>>? buildsByApp,
+    Map<String, List<AppStoreVersionInfo>>? versionsByApp,
     this.exposesReviews = true,
     this.exposesBuilds = true,
+    this.exposesVersions = true,
   })  : appsToSync = appsToSync ?? const [],
         _reviewsByApp = {
           for (final entry in (reviewsByApp ?? const {}).entries)
@@ -199,6 +213,10 @@ class ConfigurableFakeCoreGateway implements CoreGateway {
         _buildsByApp = {
           for (final entry in (buildsByApp ?? const {}).entries)
             entry.key: List<BuildInfo>.of(entry.value),
+        },
+        _versionsByApp = {
+          for (final entry in (versionsByApp ?? const {}).entries)
+            entry.key: List<AppStoreVersionInfo>.of(entry.value),
         };
 
   /// Thrown from [connect] when non-null (e.g. `StackError.auth`).
@@ -216,9 +234,14 @@ class ConfigurableFakeCoreGateway implements CoreGateway {
   /// Whether the provider exposes a builds handle.
   final bool exposesBuilds;
 
+  /// Whether the provider exposes an app store versions handle.
+  final bool exposesVersions;
+
   final Map<String, List<CustomerReview>> _reviewsByApp;
 
   final Map<String, List<BuildInfo>> _buildsByApp;
+
+  final Map<String, List<AppStoreVersionInfo>> _versionsByApp;
 
   /// Records of every [replyToReview] call, in order, for assertions.
   final List<({String reviewId, String body})> replyCalls = [];
@@ -226,6 +249,7 @@ class ConfigurableFakeCoreGateway implements CoreGateway {
   static final _provider = _FakeFrbProvider();
   static final _reviews = _FakeFrbReviews();
   static final _builds = _FakeFrbBuilds();
+  static final _versions = _FakeFrbAppStoreVersions();
   static final _syncService = _FakeFrbSyncService();
 
   @override
@@ -323,6 +347,17 @@ class ConfigurableFakeCoreGateway implements CoreGateway {
   @override
   Future<List<BuildInfo>> fetchBuilds(FrbBuilds builds, String appId) async =>
       List.unmodifiable(_buildsByApp[appId] ?? const []);
+
+  @override
+  FrbAppStoreVersions? appStoreVersions(FrbProvider provider) =>
+      exposesVersions ? _versions : null;
+
+  @override
+  Future<List<AppStoreVersionInfo>> fetchVersions(
+    FrbAppStoreVersions versions,
+    String appId,
+  ) async =>
+      List.unmodifiable(_versionsByApp[appId] ?? const []);
 
   @override
   FrbSyncService makeSyncService(FrbProvider provider, String accountId) {

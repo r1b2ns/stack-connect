@@ -7,7 +7,13 @@ import '../rust/domain.dart';
 // binding function and the [CoreGateway.availableServices] method.
 import '../rust/frb_api.dart' as frb;
 import '../rust/frb_api.dart'
-    show FrbBuilds, FrbCredential, FrbProvider, FrbReviews, FrbSyncService;
+    show
+        FrbAppStoreVersions,
+        FrbBuilds,
+        FrbCredential,
+        FrbProvider,
+        FrbReviews,
+        FrbSyncService;
 import '../rust/service/kind.dart';
 
 /// A no-op debug-log sink.
@@ -71,6 +77,15 @@ abstract interface class CoreGateway {
 
   /// All TestFlight / App Store Connect builds for [appId], newest first.
   Future<List<BuildInfo>> fetchBuilds(FrbBuilds builds, String appId);
+
+  /// The provider's App Store Versions handle, or `null` when unsupported.
+  FrbAppStoreVersions? appStoreVersions(FrbProvider provider);
+
+  /// All App Store versions for [appId], newest first.
+  Future<List<AppStoreVersionInfo>> fetchVersions(
+    FrbAppStoreVersions versions,
+    String appId,
+  );
 
   /// Builds a sync service for [provider] and [accountId].
   FrbSyncService makeSyncService(FrbProvider provider, String accountId);
@@ -143,6 +158,17 @@ class FrbCoreGateway implements CoreGateway {
   @override
   Future<List<BuildInfo>> fetchBuilds(FrbBuilds builds, String appId) =>
       builds.fetchBuilds(appId: appId, limit: 200);
+
+  @override
+  FrbAppStoreVersions? appStoreVersions(FrbProvider provider) =>
+      provider.appStoreVersions();
+
+  @override
+  Future<List<AppStoreVersionInfo>> fetchVersions(
+    FrbAppStoreVersions versions,
+    String appId,
+  ) =>
+      versions.fetchVersions(appId: appId, limit: 200);
 
   @override
   FrbSyncService makeSyncService(FrbProvider provider, String accountId) =>
