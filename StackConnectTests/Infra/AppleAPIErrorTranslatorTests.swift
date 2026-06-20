@@ -1,24 +1,16 @@
 import XCTest
-import AppStoreConnect_Swift_SDK
+import StackCoreRust
 @testable import StackConnect
 
 final class AppleAPIErrorTranslatorTests: XCTestCase {
 
     // MARK: - Helpers
 
-    /// Fabricates an `APIProvider.Error.requestFailure` carrying a single
-    /// `ResponseError` with the given fields. `ResponseError` and `ErrorResponse`
-    /// both expose public memberwise initializers, so the SDK error is directly
-    /// constructible without a JSON fixture.
+    /// Fabricates a `StackCoreRust.StackError.Http` carrying the raw App Store
+    /// Connect JSON:API error document the core surfaces verbatim in `message`.
     private func makeError(status: Int, code: String, detail: String? = nil, title: String = "") -> Error {
-        let responseError = ResponseError(
-            status: String(status),
-            code: code,
-            title: title,
-            detail: detail
-        )
-        let response = ErrorResponse(errors: [responseError])
-        return APIProvider.Error.requestFailure(status, response, nil)
+        let body = "{\"errors\":[{\"status\":\"\(status)\",\"code\":\"\(code)\",\"title\":\"\(title)\",\"detail\":\"\(detail ?? "")\"}]}"
+        return StackCoreRust.StackError.Http(status: UInt16(status), message: body)
     }
 
     // MARK: - isPendingAgreement

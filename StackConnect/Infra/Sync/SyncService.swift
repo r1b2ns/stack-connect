@@ -1,6 +1,6 @@
 import Foundation
 import WidgetKit
-import AppStoreConnect_Swift_SDK
+import StackCoreRust
 #if DEBUG
 import UIKit
 import UserNotifications
@@ -210,7 +210,15 @@ final class SyncService: ObservableObject {
         }
 
         do {
-            let remoteApps = try await connection.fetchApps()
+            // Validate once up front so the connection seeds `self.provider` before
+            // the concurrent `enrichApps` task group runs. Without this, each
+            // parallel Swift-only fetch sees a nil provider and lazily re-validates,
+            // racing ~1 validate per app (the residual storm from #84). One validate
+            // here keeps the count at exactly 1 per account per sync in both flag
+            // states. A thrown error is handled by the surrounding catch, which
+            // already persists metadata with the error.
+            try await connection.validateCredentials()
+            let remoteApps = try await connection.syncApps(accountId: account.id, store: SwiftDataBlobStore(storage: storage))
             let allCached: [AppModel] = (try? await storage.fetchAll(AppModel.self)) ?? []
             let cachedMap = Dictionary(uniqueKeysWithValues:
                 allCached.filter { $0.accountId == account.id }.map { ($0.id, $0) }
@@ -320,14 +328,14 @@ final class SyncService: ObservableObject {
     /// Logs the raw 403 fields so we can calibrate the exact ASC agreement code
     /// against a live response (see TODO(#73) in AppleAPIErrorTranslator).
     private nonisolated static func logAgreementProbe(_ error: Error, accountName: String) {
-        guard let providerError = error as? APIProvider.Error,
-              case .requestFailure(let status, let response, _) = providerError else {
-            return
+        if case StackCoreRust.StackError.Http(let status, let message) = error {
+            let decoded = AppleAPIErrorTranslator.decodeFirstError(fromBody: message)
+            let code = decoded?.code ?? "<none>"
+            let detail = decoded?.detail ?? "<none>"
+            Log.print.error("[Sync][AgreementProbe] \(accountName): status=\(status) code=\(code) detail=\(detail)")
+        } else if case StackCoreRust.StackError.PendingAgreements(let message) = error {
+            Log.print.error("[Sync][AgreementProbe] \(accountName): \(message)")
         }
-        let first = response?.errors?.first
-        let code = first?.code ?? "<none>"
-        let detail = first?.detail ?? "<none>"
-        Log.print.error("[Sync][AgreementProbe] \(accountName): status=\(status) code=\(code) detail=\(detail)")
     }
 
     /// Re-fetch-mutate-save the freshest `AccountModel` to flip the pending

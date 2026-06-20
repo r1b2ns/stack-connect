@@ -72,6 +72,8 @@ struct ProfilesListView<ViewModel: ProfilesListViewModelProtocol>: View {
         if viewModel.uiState.isLoading && viewModel.uiState.profiles.isEmpty {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if viewModel.uiState.pendingAgreement {
+            PendingAgreementTip()
         } else if viewModel.uiState.filteredProfiles.isEmpty {
             buildEmptyState()
         } else {

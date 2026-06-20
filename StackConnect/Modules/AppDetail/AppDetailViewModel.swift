@@ -192,7 +192,7 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
 
             let versions = try await versionsResult
             let icon = await iconResult
-            let state = await stateResult
+            let state = (try? await stateResult) ?? (state: nil, version: nil)
             let submissions = (try? await submissionsResult) ?? []
 
             uiState.hasReviewIssues = submissions.contains { $0.state == "UNRESOLVED_ISSUES" }
@@ -335,7 +335,7 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
 
         do {
             guard let connection = createConnection() else { return }
-            try await connection.rejectVersion(appId: version.appId)
+            try await connection.rejectVersion(versionId: version.id)
             uiState.toastMessage = ToastMessage(String(localized: "Version rejected"), icon: "xmark.circle.fill")
             Log.print.info("[AppDetail] Rejected version \(version.id)")
             await refresh()

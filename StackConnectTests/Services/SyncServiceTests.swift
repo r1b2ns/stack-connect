@@ -1,12 +1,12 @@
 import XCTest
 import StackProtocols
-import AppStoreConnect_Swift_SDK
+import StackCoreRust
 @testable import StackConnect
 
 @MainActor
 final class SyncServiceTests: XCTestCase {
 
-    private var sut: SyncService!
+    private var sut: StackConnect.SyncService!
     private var mockStorage: MockPersistentStorable!
     private var mockKeychain: MockKeyStorable!
     private var connections: [String: MockAppleAccountSyncing] = [:]
@@ -16,7 +16,7 @@ final class SyncServiceTests: XCTestCase {
         mockStorage = MockPersistentStorable()
         mockKeychain = MockKeyStorable()
         connections = [:]
-        sut = SyncService(
+        sut = StackConnect.SyncService(
             storage: mockStorage,
             keychain: mockKeychain,
             appleConnectionFactory: { [weak self] credentials in
@@ -202,6 +202,63 @@ final class SyncServiceTests: XCTestCase {
 
         XCTAssertEqual(connA.fetchedAppListCount, 1)
         XCTAssertEqual(connB.fetchedAppListCount, 1)
+
+        // Optimization (#84 follow-up): validate up front exactly once per account,
+        // before the concurrent enrichment task group — never once per app.
+        XCTAssertEqual(connA.validateCredentialsCount, 1)
+        XCTAssertEqual(connB.validateCredentialsCount, 1)
+    }
+
+    // MARK: - Validate-once optimization (#84 follow-up)
+
+    func testSyncValidatesCredentialsExactlyOncePerAccount() async throws {
+        let account = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(account, id: account.id)
+        setCredentials(issuerID: "issuer-1", for: account)
+
+        let connection = MockAppleAccountSyncing()
+        // Several apps would each spawn a concurrent enrichment task; the up-front
+        // validate must still fire only once for the whole account.
+        connection.apps = [
+            StackProtocols.AppInfo(id: "app-1", name: "App One", bundleId: "com.one", platform: nil),
+            StackProtocols.AppInfo(id: "app-2", name: "App Two", bundleId: "com.two", platform: nil),
+            StackProtocols.AppInfo(id: "app-3", name: "App Three", bundleId: "com.three", platform: nil)
+        ]
+        connection.versions = [
+            "app-1": [makeVersion(id: "v1", appId: "app-1", state: .readyForSale, versionString: "1.0")],
+            "app-2": [makeVersion(id: "v2", appId: "app-2", state: .readyForSale, versionString: "1.0")],
+            "app-3": [makeVersion(id: "v3", appId: "app-3", state: .readyForSale, versionString: "1.0")]
+        ]
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        XCTAssertEqual(connection.validateCredentialsCount, 1,
+                       "validateCredentials must run exactly once per account, before enrichment")
+    }
+
+    func testValidateCredentialsFailureRecordsErrorAndSkipsFetch() async throws {
+        let account = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(account, id: account.id)
+        setCredentials(issuerID: "issuer-1", for: account)
+
+        let connection = MockAppleAccountSyncing()
+        connection.validateCredentialsError = makeError(status: 401, code: "NOT_AUTHORIZED", detail: "Bad key")
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        // The up-front validate throws, so fetchApps must never run...
+        XCTAssertEqual(connection.validateCredentialsCount, 1)
+        XCTAssertEqual(connection.fetchedAppListCount, 0)
+
+        // ...and the existing do/catch persists metadata with the error.
+        let metadata: SyncMetadata? = try await mockStorage.fetch(
+            SyncMetadata.self, id: "sync.account.\(account.id)"
+        )
+        XCTAssertNotNil(metadata)
+        XCTAssertEqual(metadata?.appsSynced, 0)
+        XCTAssertNotNil(metadata?.lastError)
     }
 
     func testArchivedAppsAreNotEnriched() async throws {
@@ -369,16 +426,12 @@ final class SyncServiceTests: XCTestCase {
     // MARK: - Helpers
 
     private func makeAgreementError() -> Error {
-        makeError(
-            status: 403,
-            code: "FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED",
-            detail: "You must accept the latest agreements."
-        )
+        StackCoreRust.StackError.PendingAgreements(message: "You must accept the latest agreements.")
     }
 
     private func makeError(status: Int, code: String, detail: String?) -> Error {
-        let responseError = ResponseError(status: String(status), code: code, title: "", detail: detail)
-        return APIProvider.Error.requestFailure(status, ErrorResponse(errors: [responseError]), nil)
+        let body = "{\"errors\":[{\"status\":\"\(status)\",\"code\":\"\(code)\",\"title\":\"\",\"detail\":\"\(detail ?? "")\"}]}"
+        return StackCoreRust.StackError.Http(status: UInt16(status), message: body)
     }
 
     private func setCredentials(issuerID: String, for account: AccountModel) {

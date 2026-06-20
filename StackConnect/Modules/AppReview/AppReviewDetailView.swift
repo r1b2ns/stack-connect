@@ -33,6 +33,9 @@ private struct AppReviewDetailEntry: View {
 struct AppReviewDetailView<ViewModel: AppReviewDetailViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    private var account: AccountModel { viewModel.uiState.account }
 
     var body: some View {
         List {
@@ -57,6 +60,134 @@ struct AppReviewDetailView<ViewModel: AppReviewDetailViewModelProtocol>: View {
         .navigationTitle(String(localized: "Submission Detail"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.loadDetail() }
+        .safeAreaInset(edge: .bottom) {
+            buildBottomBar()
+        }
+        .alert(
+            viewModel.uiState.confirmAction?.title ?? "",
+            isPresented: Binding(
+                get: { viewModel.uiState.confirmAction != nil },
+                set: { if !$0 { viewModel.uiState.confirmAction = nil } }
+            )
+        ) {
+            if let action = viewModel.uiState.confirmAction {
+                Button(action.confirmLabel, role: action.isDestructive ? .destructive : nil) {
+                    Task { await performConfirmedAction(action) }
+                }
+                Button(String(localized: "Cancel"), role: .cancel) {
+                    viewModel.uiState.confirmAction = nil
+                }
+            }
+        } message: {
+            if let action = viewModel.uiState.confirmAction {
+                Text(action.message(version: viewModel.uiState.submission.versionString))
+            }
+        }
+        .alert(
+            String(localized: "Error"),
+            isPresented: Binding(
+                get: { viewModel.uiState.actionError != nil },
+                set: { if !$0 { viewModel.uiState.actionError = nil } }
+            )
+        ) {
+            Button(String(localized: "OK"), role: .cancel) {
+                viewModel.uiState.actionError = nil
+            }
+        } message: {
+            if let error = viewModel.uiState.actionError {
+                Text(error)
+            }
+        }
+        .toast(message: $viewModel.uiState.toastMessage)
+        .onChange(of: viewModel.uiState.didComplete) { _, completed in
+            if completed { dismiss() }
+        }
+    }
+
+    // MARK: - Bottom Bar
+
+    @ViewBuilder
+    private func buildBottomBar() -> some View {
+        switch viewModel.uiState.submission.state {
+        case "READY_FOR_REVIEW":
+            buildActionBar {
+                HStack(spacing: 12) {
+                    if account.canEdit(.version) {
+                        buildActionButton(
+                            title: String(localized: "Resubmit"),
+                            icon: "paperplane.fill",
+                            color: .blue
+                        ) {
+                            viewModel.uiState.confirmAction = .resubmit
+                        }
+                    }
+
+                    if account.canDelete(.version) {
+                        buildActionButton(
+                            title: String(localized: "Discard"),
+                            icon: "trash.fill",
+                            color: .red
+                        ) {
+                            viewModel.uiState.confirmAction = .discard
+                        }
+                    }
+                }
+            }
+
+        case "WAITING_FOR_REVIEW", "IN_REVIEW", "UNRESOLVED_ISSUES":
+            if account.canDelete(.version) {
+                buildActionBar {
+                    buildActionButton(
+                        title: String(localized: "Cancel Submission"),
+                        icon: "xmark.circle.fill",
+                        color: .red
+                    ) {
+                        viewModel.uiState.confirmAction = .discard
+                    }
+                }
+            }
+
+        default:
+            EmptyView()
+        }
+    }
+
+    private func buildActionBar<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(spacing: 0) {
+            content()
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+        }
+        .background(.bar)
+        .disabled(viewModel.uiState.isPerformingAction)
+        .overlay {
+            if viewModel.uiState.isPerformingAction {
+                ProgressView()
+            }
+        }
+    }
+
+    private func buildActionButton(title: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                Text(title)
+                    .fontWeight(.semibold)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .foregroundStyle(.white)
+            .background(color)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func performConfirmedAction(_ action: AppReviewDetailAction) async {
+        switch action {
+        case .resubmit: await viewModel.resubmit()
+        case .discard:  await viewModel.discard()
+        }
     }
 
     // MARK: - Submission Info

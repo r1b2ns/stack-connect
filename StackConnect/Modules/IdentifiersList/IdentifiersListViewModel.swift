@@ -27,6 +27,7 @@ struct IdentifiersListUiState {
     var isLoading = false
     var isCreating = false
     var errorMessage: String?
+    var pendingAgreement: Bool = false
     var createErrorMessage: String?
     var searchQuery = ""
 
@@ -57,9 +58,22 @@ final class IdentifiersListViewModel: IdentifiersListViewModelProtocol {
         self.keychain = keychain
     }
 
+    /// Maps a `load()` failure onto UI state: a pending Program License Agreement
+    /// surfaces as the friendly tip flag, anything else as the generic error message.
+    /// Extracted as the injectable test seam because `load()` builds its
+    /// `AppleAccountConnection` inline and is otherwise not unit-testable.
+    func handleLoadError(_ error: Error) {
+        if AppleAPIErrorTranslator.isPendingAgreement(error) {
+            uiState.pendingAgreement = true
+        } else {
+            uiState.errorMessage = error.localizedDescription
+        }
+    }
+
     func load() async {
         uiState.isLoading = true
         uiState.errorMessage = nil
+        uiState.pendingAgreement = false
 
         guard let connection = makeConnection() else {
             uiState.isLoading = false
@@ -69,7 +83,7 @@ final class IdentifiersListViewModel: IdentifiersListViewModelProtocol {
         do {
             uiState.bundleIds = try await connection.fetchBundleIds()
         } catch {
-            uiState.errorMessage = error.localizedDescription
+            handleLoadError(error)
             Log.print.error("[Identifiers] Load failed: \(error.localizedDescription)")
         }
 
