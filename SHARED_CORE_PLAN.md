@@ -1,139 +1,158 @@
-# Plano: Core compartilhado em Rust (iOS nativo + Flutter)
+# Plan: Shared Rust Core (native iOS + Flutter)
 
-## Ideia central
+> **Status: this is no longer a proposal — the core exists and ships.** The shared crate
+> `stack_core` lives in the separate repo
+> [`stack-connect-core`](https://github.com/rubensmachion/stack-connect-core); App Store Connect is
+> fully implemented and the native iOS app already runs on it via UniFFI. This document records the
+> shared-core architecture and how the **Flutter (Android + Desktop)** apps plug into the same core
+> via a **new Dart binding**. The authoritative core roadmap is
+> `../stack-connect-core/RUST_CORE_PLAN.md` — defer to it for core internals/phases.
 
-Um único crate **Rust** `stack_core` concentra **toda a lógica** — clientes das 3 APIs
-(App Store Connect / Firebase / Google Play), assinatura JWT (ES256/RS256), OAuth token cache,
-persistência SQLite (blob store), sync, modelos de domínio e tradução de erros. Esse crate é
-consumido **nativamente** por dois mundos, via dois geradores de *language bindings*:
+## Central Idea
+
+A single **Rust** crate `stack_core` holds **all the logic** — the App Store Connect client (and,
+later, Firebase / Google Play), JWT signing (ES256; RS256 later), OAuth token cache (later),
+persistence via a host `BlobStore` callback, sync, domain models, and error translation. That crate
+is consumed **natively** by two worlds through two *language-binding* generators:
 
 ```
                 ┌──────────────── stack_core (Rust) ────────────────┐
-                │  api · auth(JWT/OAuth) · storage(SQLite) · sync ·  │
-                │  domain models · error translation                │
+                │  api · auth(JWT) · ports(BlobStore/CredentialStore)│
+                │  sync · domain models · StackError                 │
                 └───────┬───────────────────────────────┬───────────┘
                         │                                 │
-                  UniFFI (Swift)                  flutter_rust_bridge (Dart)
+                  UniFFI (Swift) — DONE          flutter_rust_bridge (Dart) — NEW
                         │                                 │
-                  StackCore.xcframework            stack_core_dart (.so/.dll)
+                  StackCoreRust.xcframework        stack_core_dart (.so/.dll)
                         │                                 │
-              iOS nativo: wrap em            Flutter: wrap em Riverpod
+              native iOS: wrap in            Flutter: wrap in Riverpod
               @Observable → SwiftUI          AsyncNotifier → Material / Fluent
 ```
 
-> ⚠️ **Muda a premissa "iOS intocado".** O app iOS deixa de usar seus packages Swift
-> (`Packages/StackCore`, `Packages/APIProviderFirebase`, etc.) e passa a consumir o core Rust
-> via XCFramework. Recomenda-se migração **incremental (strangler)**: trocar um provedor por vez
-> atrás dos protocolos já existentes, mantendo o app compilável a cada passo.
+> ✅ **The "iOS untouched" premise already changed — and the migration is done for Apple.** The iOS
+> app no longer uses its Swift `appstoreconnect-swift-sdk`; it consumes the Rust core via the
+> `StackCoreRust` XCFramework (local-path SwiftPM package `Packages/StackCoreRust`). The
+> Firebase/Play providers are not in the core yet, so those parts of the app remain native until
+> they are ported (see the core roadmap).
 
-## O que entra no core (Rust) vs. o que fica nativo
+## What's in the Core (Rust) vs. What Stays Native
 
-**Dentro do core (compartilhado):**
-- `api/` — clientes Apple/Firebase/Play (HTTP tipado, paginação `links.next`, envelopes JSON:API).
-- `auth/` — signers JWT ES256 (`.p8` Apple) e RS256 (service-account Google), `GoogleOAuthAuthenticator` (cache c/ margem 60s).
-- `storage/` — blob store SQLite (`typeName+id+JSON`), equivalente ao `SwiftDataStorable`.
-- `sync/` — `SyncService` (full vs. lightweight), diffs de mudança.
-- `domain/` — modelos (structs `serde`), equivalentes a `StackConnect/Models/*.swift`.
-- `error/` — tradução de erros (incl. 403 "pending agreements" do Apple).
-- `routing/` — parser de deep link `stackconnect://` e tipos de rota (lógica pura, sem UI).
+**Inside the core (shared):**
+- `providers/appstore` — App Store Connect client (**implemented**): typed HTTP, `links.next`
+  pagination, JSON:API envelopes, 14 capability objects.
+- `auth::es256` — ES256 signer (`.p8` Apple) (**implemented**). RS256 + OAuth = **pending**
+  (Firebase/Play).
+- `ports` — host callbacks `CredentialStore`, `BlobStore` (the `SwiftDataStorable` equivalent),
+  `DebugLogger` (**implemented**, `#[uniffi::export(with_foreign)]`).
+- `service::sync::SyncService` — sync over `BlobStore` (**implemented**).
+- `domain` — 31 `serde` record types (**implemented**).
+- `error::StackError` — typed errors incl. `PendingAgreements` (Apple 403) (**implemented**).
+- `routing/` — `stackconnect://` deep-link parser — **pending** (not in the core today).
 
-**Fica nativo por plataforma (NÃO entra no core):**
-- Gerência de estado / controllers (Riverpod no Flutter, `@Observable`/`ObservableObject` no iOS).
-- Widgets / Views; navegação concreta (`go_router` / `NavigationStack`).
-- **Secure storage** — via *callback* (trait `CredentialStore`): Keychain (iOS), `flutter_secure_storage` (Flutter).
-- Strings de UI / l10n (`.xcstrings` no iOS, `.arb` no Flutter). O core só carrega texto de domínio/erro se necessário.
-- Charts, background scheduling (BGTask iOS / `workmanager` Android), notificações locais, widgets de home.
+**Stays native per platform (NOT in the core):**
+- State management / controllers (Riverpod in Flutter, `@Observable`/`ObservableObject` on iOS).
+- Widgets / Views; concrete navigation (`go_router` / `NavigationStack`). **Each Flutter platform
+  has its own UI** (Material on Android, Fluent on desktop) — see `FLUTTER_PLAN.md`.
+- **Secure storage** — via the `CredentialStore` callback: Keychain (iOS), `flutter_secure_storage`
+  (Flutter).
+- UI strings / l10n (`.xcstrings` on iOS, `.arb` on Flutter).
+- Background scheduling (BGTask iOS / `workmanager` Android) and local notifications. *(No charts/
+  analytics and no home-screen widgets — out of scope for the Flutter apps; see `FLUTTER_PLAN.md`.)*
 
-## Ferramentas / crates
+## Tools / Crates
 
-**Lógica (Rust):**
-- HTTP: `reqwest` (TLS via `rustls`).
-- JWT: `jsonwebtoken` (ES256 + RS256, aceita PEM/`.p8` direto — simplifica vs. ASN.1 do Swift).
-- JSON/modelos: `serde` + `serde_json`.
-- SQLite: `rusqlite` (feature `bundled` — SQLite embarcado) ou `sqlx`.
-- Async: `tokio`. Erros: `thiserror`. Datas: `time`/`chrono`. Utils: `uuid`, `base64`.
+**Logic (Rust) — as actually used in `stack-connect-core`:**
+- HTTP: `reqwest` 0.12 (TLS via `rustls`). JWT: `jsonwebtoken` 9 (ES256; RS256 when Google lands).
+- JSON/models: `serde` + `serde_json`. Async: `tokio`. Errors: `thiserror`. Utils: `base64`,
+  `async-trait`. Tests: `wiremock`.
+- Persistence is **not** in the crate — it is delegated to the host via the `BlobStore` callback.
 
 **Bindings:**
-- **UniFFI** (Mozilla) → Swift. Anotações `#[uniffi::export]` (ou UDL). Suporta `async` →
-  Swift `async/await`, *callback interfaces* (para o `CredentialStore`), enums de erro tipados.
-  Build como static lib para os targets Apple → empacota **XCFramework** → consumido no app
-  via SPM `binaryTarget`.
-- **flutter_rust_bridge v2** → Dart. Codegen lê a API Rust e gera Dart idiomático: `async fn`
-  → `Future`, streams → `Stream`, structs espelhadas, enums de erro. *DartFn* para callbacks.
-  Build via `cargo-ndk` (Android `.so`) e cdylib (Windows `.dll` / Linux `.so`); integra com
-  build hooks / native assets do Flutter.
+- **UniFFI** (`uniffi` 0.31, `tokio` feature) → Swift — **done**. `#[uniffi::export]` facade,
+  `#[uniffi::Object]` provider + capabilities, `#[uniffi::Record]` domain, `#[uniffi::Error]`,
+  foreign-trait callbacks. Built as static libs → **XCFramework** → consumed via SPM `binaryTarget`.
+- **flutter_rust_bridge v2** → Dart — **the active next step**. A *separate* generator (not a
+  `uniffi.toml` backend): it reads a designated Rust `api` module and generates idiomatic Dart +
+  C-ABI glue. Build via `cargo-ndk` (Android `.so`) and cdylib (Windows `.dll` / Linux `.so`). See
+  the *Dart binding* section of `FLUTTER_PLAN.md` for the facade + callback-adaptation details.
 
-**Padrão facade:** núcleo puro agnóstico de binding + `bindings/uniffi/` + `bindings/frb/`.
-Cada facade adapta tipos ao que seu gerador prefere; o núcleo nunca depende de UniFFI/FRB.
+**Facade pattern:** a binding-agnostic core + a UniFFI facade (`facade.rs` / `bindings/swift`) +
+(new) an FRB facade (`frb_api.rs` / `bindings/dart`). Each facade adapts types to its generator;
+the core never depends on UniFFI/FRB.
 
-## Build matrix (targets Rust)
+## Build Matrix (Rust targets)
 
-- **Apple (iOS, + macOS se o app nativo macOS compartilhar):** `aarch64-apple-ios`,
-  `aarch64-apple-ios-sim`, `x86_64-apple-ios` (sim Intel), `aarch64-apple-darwin`,
-  `x86_64-apple-darwin` → unidos num `.xcframework`.
-- **Android (Flutter):** `aarch64-linux-android`, `armv7-linux-androideabi`,
+- **Apple (iOS) — done:** `aarch64-apple-ios`, `aarch64-apple-ios-sim`, `x86_64-apple-ios` →
+  merged into `StackCoreRust.xcframework` (`build/build-xcframework.sh`).
+- **Android (Flutter) — new:** `aarch64-linux-android`, `armv7-linux-androideabi`,
   `x86_64-linux-android` (via `cargo-ndk`).
-- **Desktop (Flutter):** `x86_64-pc-windows-msvc`, `x86_64-unknown-linux-gnu` (+ `aarch64`).
+- **Desktop (Flutter) — new:** `x86_64-pc-windows-msvc`, `x86_64-unknown-linux-gnu` (+ `aarch64`).
 
-## Estrutura no repositório
+The crate already declares `crate-type = ["staticlib", "cdylib", "lib"]`, so the `cdylib` the Dart
+binding needs is present; only the Android/desktop build scripts are new.
+
+## Repository Topology
+
+The core, the iOS app, and the Android exploration are **separate repos** — not one monorepo:
 
 ```
-repo/
-├── StackConnect/            (app iOS — passa a linkar StackCore.xcframework)
-├── core/                    (Cargo workspace — o stack_core Rust)
-│   ├── Cargo.toml
-│   ├── crates/
-│   │   └── stack_core/
-│   │       ├── src/  api/ auth/ storage/ sync/ domain/ error/ routing/
-│   │       └── tests/
-│   ├── bindings/
-│   │   ├── uniffi/          (facade + scaffolding Swift)
-│   │   └── frb/             (facade + saída flutter_rust_bridge)
-│   └── build/               (scripts: xcframework, cargo-ndk, codegen)
-└── flutter/                 (ver FLUTTER_PLAN.md — apps consomem stack_core_dart)
-    ├── packages/stack_core_dart/   (Dart gerado pelo FRB + libs nativas + controllers Riverpod)
-    └── apps/stack_mobile  apps/stack_desktop
+stack-connect-core/         (the stack_core Rust crate — its OWN repo)
+├── crates/stack_core/      src/{domain,ports,error,facade,auth,service,providers}
+├── bindings/swift/         Package.swift + StackCoreRust.xcframework (generated, gitignored)
+│                           └─ (new) bindings/dart/  + FRB facade + generated Dart
+├── build/                  build-xcframework.sh  (+ new: build-android.sh, build-desktop.sh)
+└── RUST_CORE_PLAN.md       (authoritative core roadmap)
+
+stack-connect/              (the iOS app — THIS repo)
+├── StackConnect/  StackConnectWidget/  Packages/
+├── Packages/StackCoreRust/ (local-path copy of the core's Swift binding)
+└── flutter/                (the Flutter monorepo — see FLUTTER_PLAN.md)
+    └── core/               GIT SUBMODULE → stack-connect-core
 ```
 
-## Camadas por plataforma
+iOS links the core via the local-path package `Packages/StackCoreRust` (xcframework rebuilt + copied
+from the core). Flutter links it via a git submodule under `flutter/core`.
 
-| Camada | iOS nativo | Flutter |
+## Layers per Platform
+
+| Layer | Native iOS | Flutter |
 |---|---|---|
-| Core (lógica) | `stack_core` Rust (mesmo binário) | `stack_core` Rust (mesmo binário) |
-| Binding | UniFFI → `StackCore.xcframework` | FRB → `stack_core_dart` |
-| Estado | `@Observable`/ViewModel | Riverpod `AsyncNotifier` (controllers) |
-| UI | SwiftUI | Material (`stack_mobile`) / Fluent (`stack_desktop`) |
-| Secure storage | Keychain (impl. do `CredentialStore`) | `flutter_secure_storage` (impl. do `CredentialStore`) |
+| Core (logic) | `stack_core` Rust (same crate) | `stack_core` Rust (same crate) |
+| Binding | UniFFI → `StackCoreRust.xcframework` (done) | FRB → `stack_core_dart` (new) |
+| State | `@Observable`/ViewModel | Riverpod `AsyncNotifier` (controllers, shared by both apps) |
+| UI | SwiftUI | Material (`stack_mobile`) / Fluent (`stack_desktop`) — **distinct per platform** |
+| Secure storage | Keychain (`CredentialStore` impl) | `flutter_secure_storage` (`CredentialStore` impl) |
 | Strings | `Localizable.xcstrings` | `.arb` / `AppLocalizations` |
 
-## Migração do iOS (strangler, incremental)
+## iOS Migration Status (strangler — done for Apple)
 
-1. Compilar o `stack_core` Rust + XCFramework e adicioná-lo ao `project.yml`.
-2. Implementar o `CredentialStore` em Swift sobre o `KeychainStorable` atual.
-3. Trocar **um provedor por vez** (ex.: primeiro App Store Connect) para chamar o core via
-   binding, mantendo a mesma interface/protocolo que as ViewModels já consomem.
-4. Migrados todos, remover os packages Swift `StackCore`/`APIProvider*` legados.
+1. ✅ Built `stack_core` + XCFramework and added it to `project.yml`.
+2. ✅ Implemented `CredentialStore`/`BlobStore` in Swift over the existing Keychain/SwiftData.
+3. ✅ Swapped App Store Connect to call the core; dropped `appstoreconnect-swift-sdk`.
+4. ⏳ Firebase/Play remain native until ported to `providers/firebase` / `providers/googleplay` in
+   the core (then swapped in the app, same pattern).
 
-## Verificação / testes
+## Verification / Tests
 
-- **Rust (grosso da cobertura):** unit de `api/` com HTTP mockado (`wiremock`/`mockito`) e
-  fixtures JSON (URL/método/headers + DTO→domínio + paginação + 403 pending-agreements);
-  golden de JWT ES256/RS256; cache OAuth (margem 60s); blob store em SQLite `:memory:`.
-- **Bindings (smoke):** um teste por lado garantindo que a chamada atravessa a fronteira e
-  retorna o tipo certo (Swift `XCTest` chamando o XCFramework; Dart test chamando o FRB).
-- **Por plataforma:** ViewModels iOS e controllers Riverpod (Flutter) testados com o core
-  mockado atrás do binding.
+- **Rust (bulk of coverage) — exists:** unit tests for `providers/appstore` with `wiremock` + JSON
+  fixtures (URL/method/headers, DTO→domain, pagination, `PendingAgreements`); golden ES256;
+  `registry` (kind→provider/schema); `sync` with an in-memory fake `BlobStore`. ~228+ tests.
+- **Bindings (smoke):** UniFFI — XCTest crossing the boundary (host + simulator), **done**. FRB —
+  a Dart test crossing the boundary, **to add** with the Dart binding.
+- **Per platform:** iOS ViewModels and Flutter Riverpod controllers tested with the core mocked
+  behind the binding.
 
 ## CI (GitHub Actions)
 
-- **Core:** `cargo test` + `cargo clippy` + `cargo fmt --check`; build do XCFramework; build
-  Android `.so` via `cargo-ndk`; checagem de que o codegen FRB está atualizado.
-- **Apps:** depois do core, builds por plataforma (iOS, `assembleDebug` Android, desktop Linux).
+- **Core:** `cargo test` + `cargo clippy` + `cargo fmt --check`; XCFramework build; (new) Android
+  `.so` via `cargo-ndk` + desktop cdylib; FRB-codegen-up-to-date check.
+- **Apps:** after the core, per-platform builds (iOS; `assembleDebug` Android; desktop Linux).
 
-## Trade-offs / riscos
+## Trade-offs / Risks
 
-- **Terceira linguagem** (Rust) — curva de aprendizado da equipe.
-- **Dois geradores de binding** para manter alinhados (mitigado pelo padrão facade).
-- **Bridging async** e **build matrix** aumentam a complexidade de CI/tooling.
-- Compensação: a lógica crítica (auth, API, persistência, sync) é escrita e **testada uma vez**
-  e roda idêntica no iOS nativo e nos três alvos Flutter.
+- **Third language** (Rust) — team learning curve (already absorbed for iOS).
+- **Two binding generators** to keep aligned (mitigated by the facade pattern; the core stays
+  binding-agnostic).
+- **Async bridging** and the **build matrix** add CI/tooling complexity.
+- Upside, already realized for Apple: the critical logic (auth, API, persistence, sync) is written
+  and **tested once** and runs identically on native iOS and the Flutter targets.

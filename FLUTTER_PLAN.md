@@ -1,307 +1,391 @@
-# Plano: Projeto Flutter (Android + Desktop) para o StackConnect
+# Plan: Flutter Project (Android + Desktop) for StackConnect
 
-## Contexto
+## Context
 
-O StackConnect hoje é um app **iOS nativo** (SwiftUI, iOS 17+, ~40k linhas Swift, 51 módulos)
-publicado na App Store. Ele é um painel para desenvolvedores gerenciarem contas de
-**App Store Connect**, **Firebase** e **Google Play** num só lugar (apps, versões, builds,
-TestFlight, reviews, analytics, certificados/perfis, Remote Config, FCM, etc.).
+StackConnect today is a **native iOS app** (SwiftUI, iOS 17+, ~40k lines of Swift, 51 modules)
+published on the App Store. It is a dashboard for developers to manage **App Store Connect**,
+**Firebase**, and **Google Play** accounts in one place (apps, versions, builds, TestFlight,
+reviews, analytics, certificates/profiles, Remote Config, FCM, etc.).
 
-**Decisão:** *não* haverá migração. O app iOS atual (`StackConnect/`, `StackConnectWidget/`,
-`Packages/` Swift) **permanece intocado**. Vamos criar uma pasta `flutter/` dentro do
-repositório com um **monorepo Flutter novo**, focado em **Android + Desktop (Windows/Linux)**,
-reimplementando as funcionalidades. macOS **não** entra no escopo Flutter — já é coberto pelo
-app nativo Apple. Gerenciamento de estado: **Riverpod**.
+**Decision:** there is *no* migration of the iOS app. The current iOS app (`StackConnect/`,
+`StackConnectWidget/`, the Swift `Packages/`) **stays as is**. We add a `flutter/` folder inside
+this repository with a **new Flutter monorepo** focused on **Android + Desktop (Windows/Linux)**,
+re-implementing the **UI** of the features. macOS is **not** in the Flutter scope — it is already
+covered by the native Apple app. State management: **Riverpod**.
 
-**Core compartilhado em Rust (ver `SHARED_CORE_PLAN.md`):** a lógica — clientes de API,
-persistência, auth/JWT, OAuth, sync e modelos de domínio — **não** é escrita em Dart; vive num
-crate **Rust `stack_core`** consumido via **`flutter_rust_bridge`** (e pelo app iOS nativo via
-UniFFI). No lado Flutter, o pacote **`stack_core_dart`** carrega as bindings geradas pelo FRB +
-as libs nativas (`.so`/`.dll`) e **os controllers Riverpod** (`AsyncNotifier`) que envolvem as
-chamadas do core e expõem `AsyncValue` para a UI. Strings (l10n) e secure storage ficam no lado
-Flutter (este último injetado no core via callback `CredentialStore`).
+**The shared logic already lives in a Rust core — it is *not* rewritten in Dart.** The clients of
+the App Store Connect API, persistence, auth/JWT, sync, and the domain models live in the
+**existing** crate **`stack_core`**, shipped as the separate sibling repo
+**[`stack-connect-core`](https://github.com/rubensmachion/stack-connect-core)**. That core is
+**already in production**: the native iOS app consumes it via **UniFFI** (`StackCoreRust.xcframework`)
+— the legacy `appstoreconnect-swift-sdk` has already been dropped, and the app runs on the Rust
+core. See `../stack-connect-core/RUST_CORE_PLAN.md` for the authoritative core roadmap; this repo's
+`SHARED_CORE_PLAN.md` records the shared-core architecture.
 
-**UI por plataforma:** cada plataforma é um app Flutter **fino** que só desenha a interface
-ligada aos providers do `stack_core_dart`:
-- **`stack_mobile`** (Android) → **Material Design 3**.
-- **`stack_desktop`** (Windows/Linux) → **Fluent Design** (`fluent_ui`).
+> **This Flutter effort does not build a new core.** It adds a **second binding** to the existing
+> core — a **Dart binding via `flutter_rust_bridge` (FRB)** — plus the Android/desktop build
+> matrix, and the Flutter UI on top. The same core logic that already powers iOS is reused
+> verbatim.
 
-Assim cada UI fica 100% idiomática à sua plataforma, sem camada de abstração Material↔Fluent;
-nenhuma regra de negócio é duplicada (está no core Rust) e a mesma lógica roda no iOS nativo.
+**Scope — Apple only, for now.** App Store Connect is the **entire active surface**, because it is
+the only service implemented in the core today. **Firebase and Google Play are out of scope** for
+this Flutter effort: they only enter once `providers/firebase` / `providers/googleplay` are first
+implemented **in the Rust core** (shared with iOS). See the *Deferred providers* appendix.
 
-O conhecimento do app iOS (modelos, contratos de API, fluxos de auth JWT, formato de
-persistência) é reescrito **uma vez em Rust** (`SHARED_CORE_PLAN.md`) e compartilhado entre o
-iOS nativo e este projeto Flutter — em vez de portado para Dart. Os contratos REST das três
-APIs são estáveis e a lógica roda idêntica nos dois mundos.
+**Per-platform UI (by design): the desktop and Android interfaces are different.** They are **not**
+one UI with swapped widgets — each app is independently designed to prioritize its own platform's
+user experience:
+- **`stack_mobile`** (Android) → **Material Design 3** (touch, single-stack, compact).
+- **`stack_desktop`** (Windows/Linux) → **Fluent Design** (`fluent_ui`; pointer + keyboard,
+  master-detail / multi-pane, denser).
 
-## Arquitetura alvo (mapeamento iOS → Flutter)
+The **only** shared layers are the Rust core (logic) and the Riverpod controllers (in
+`stack_core_dart`). The widget trees and navigation graphs are platform-specific so each UI is 100%
+idiomatic to its platform; no business rule is duplicated (it lives in the Rust core) and the same
+logic runs on native iOS.
 
-| iOS (atual) | Flutter (novo) |
+## Target Architecture (iOS → Flutter mapping)
+
+| iOS (current) | Flutter (new) |
 |---|---|
-| MVVM `@Published`/ViewModel | `@riverpod` `AsyncNotifier` por tela (Dart, envolve o core) — **em `stack_core_dart`** |
-| View SwiftUI | `ConsumerWidget` no app de UI (`stack_mobile` Material / `stack_desktop` Fluent) |
-| Coordinator + `NavigationPath` | `go_router` (rotas tipadas + `ShellRoute`); parser de deep link **no core Rust** |
-| Deep links `stackconnect://` | parser **no core Rust** → `router.go(...)` (Flutter usa `app_links` p/ receber) |
-| `SwiftDataStorable` (blob: typeName+id+JSON) | **SQLite no core Rust** (`rusqlite`), não `drift` |
-| Keychain (credenciais) | `flutter_secure_storage` via callback `CredentialStore` do core |
-| UserDefaults (flags) | `shared_preferences` (lado Flutter) |
-| `BGAppRefreshTask` (sync background) | `workmanager` (Android) dispara o sync **do core**; timer/launch (Windows/Linux) |
-| App Store Connect Swift SDK | **core Rust** (`reqwest` + JWT ES256) via FRB |
-| Providers REST Firebase/Play (Swift) | **core Rust** (`reqwest` + JWT RS256 → OAuth) via FRB |
-| Padrão offline-first (cache → API → enriquece → persiste) | **no core Rust**; Flutter expõe via `AsyncNotifier` |
+| MVVM `@Published`/ViewModel | `@riverpod` `AsyncNotifier` per screen (Dart, wraps the core) — **in `stack_core_dart`** |
+| SwiftUI View | `ConsumerWidget` in the UI app (`stack_mobile` Material / `stack_desktop` Fluent), **designed per platform** |
+| Coordinator + `NavigationPath` | `go_router` — **each app owns its own router/navigation graph** (no shared shape) |
+| Deep links `stackconnect://` | shared **deep-link target identities**; Flutter uses `app_links` to receive, each app maps the target to its own route |
+| `SwiftDataStorable` (blob: typeName+id+JSON) | host `BlobStore` callback (already a core port) backed by SQLite on the Flutter side |
+| Keychain (credentials) | `flutter_secure_storage` via the core's `CredentialStore` callback |
+| UserDefaults (flags) | `shared_preferences` (Flutter side) |
+| `BGAppRefreshTask` (background sync) | `workmanager` (Android) triggers the core's `SyncService`; timer/launch (Windows/Linux) |
+| App Store Connect Swift SDK | **already implemented** in `stack-connect-core` (`providers/appstore` + `auth::es256`), consumed via FRB |
+| Offline-first pattern (cache → API → enrich → persist) | **already in the Rust core** (`SyncService` over `BlobStore`); Flutter exposes it via `AsyncNotifier` |
 
-## Monorepo: `stack_core_dart` (bindings + controllers) + apps de UI (Material / Fluent)
+## Monorepo: `stack_core_dart` (bindings + controllers) + UI apps (Material / Fluent)
 
-O `flutter/` é um **monorepo** com **pub workspace** (nativo no Dart ≥3.6, via `workspace:` no
-pubspec; `melos` opcional para orquestrar scripts/CI). A **lógica em si** está no crate Rust
-`stack_core` (`SHARED_CORE_PLAN.md`); o Flutter tem o pacote de bindings + dois apps:
+`flutter/` is a **monorepo** with a **pub workspace** (native in Dart ≥3.6, via `workspace:` in
+the pubspec; `melos` optional for scripts/CI). The **logic** is the existing Rust crate
+`stack_core` (pulled in as a git submodule); the FRB **Rust facade + native-lib build scripts live
+in the core repo**. Here we have the **bindings + controllers** package and the **UI** apps:
 
-**`packages/stack_core_dart`** — pacote Flutter que **liga a UI ao core Rust**:
-- `bindings/` — código Dart **gerado pelo `flutter_rust_bridge`** + libs nativas (`.so`/`.dll`)
-  do `stack_core`. Não há `api/`, `auth/`, `storage/` em Dart — isso é tudo Rust.
-- **`controllers/`** — peça central do lado Flutter: os providers Riverpod
-  (`@riverpod AsyncNotifier`) que chamam as funções async do core (via bindings), tratam
-  `AsyncValue`, e expõem dados/mutações para a UI.
-- `credential_store.dart` — implementa o callback `CredentialStore` do core sobre
-  `flutter_secure_storage`; injetado no core na inicialização.
-- `l10n/` (strings geradas, re-exportadas) e os **contratos de rota** que os dois apps usam
-  para montar o `GoRouter` (o parser de deep link em si vem do core Rust).
-- Depende de `flutter_riverpod`, `ffi`/`flutter_rust_bridge`, `flutter_secure_storage`,
-  `shared_preferences`. **Não** depende de `material` nem `fluent_ui`.
+**`packages/stack_core_dart`** — the Flutter package that **wires the UI to the Rust core**:
+- `bindings/` — Dart **generated by `flutter_rust_bridge`** from `stack_core` + the native-lib
+  loader (`.so`/`.dll`). No `api/`, `auth/`, `storage/` in Dart — that is all Rust.
+- **`controllers/`** — the heart of the Flutter side: the Riverpod providers
+  (`@riverpod AsyncNotifier`) that call the core's async functions (through the bindings), handle
+  `AsyncValue`, and expose data/mutations to the UI. **Shared by both apps.**
+- `credential_store.dart` — implements the core's `CredentialStore` callback over
+  `flutter_secure_storage`; the `BlobStore` callback over SQLite; injected into the core at init.
+- `l10n/` (generated strings, re-exported) and the **deep-link target identities** the two apps
+  use (the parser itself comes from the core, or is added Dart-side — see open item).
+- Depends on `flutter_riverpod`, `ffi`/`flutter_rust_bridge`, `flutter_secure_storage`,
+  `shared_preferences`. Does **not** depend on `material` or `fluent_ui`.
 
-**`apps/stack_mobile`** (Android, **Material 3**) e **`apps/stack_desktop`** (Windows/Linux,
-**`fluent_ui`**) — cada um é um app Flutter **fino**:
-- Dependem de `stack_core_dart`. Envolvem a árvore num `ProviderScope`.
-- `stack_mobile`: `MaterialApp.router`, `NavigationBar`/`NavigationRail`, widgets `material.dart`.
+**`apps/stack_mobile`** (Android, **Material 3**) and **`apps/stack_desktop`** (Windows/Linux,
+**`fluent_ui`**) — each is a thin Flutter app with its **own** UX:
+- Both depend on `stack_core_dart` and wrap the tree in a `ProviderScope`.
+- `stack_mobile`: `MaterialApp.router`, `NavigationBar`/`NavigationRail`, `material.dart` widgets.
 - `stack_desktop`: `FluentApp.router`, `NavigationView`/`NavigationPane`, `ContentDialog`,
-  `InfoBar`, etc.
-- Constroem o `GoRouter` a partir dos contratos de rota, mapeando cada rota para o
-  `ConsumerWidget` daquela plataforma.
-- A tela só faz: `ref.watch(algumControllerProvider)` → desenhar → `ref.read(...).acao()`.
-  Nenhuma chamada de API, persistência ou regra de negócio mora nos apps.
+  `InfoBar`, master-detail layouts.
+- Each builds its **own** `GoRouter` and navigation graph, mapping screens to its platform's
+  `ConsumerWidget`. Screens only do: `ref.watch(someControllerProvider)` → draw → `ref.read(...).action()`.
+  No API call, persistence, or business rule lives in the apps.
 
-**Tema:** os **tokens de marca** (cores, espaçamentos, tipografia) ficam em `stack_core_dart`
-num formato neutro; cada app os converte para `ThemeData` (mobile) ou `FluentThemeData`
-(desktop), com light/dark. **Charts** (`fl_chart`) e **strings** (`AppLocalizations`) são
-compartilhados pelos dois apps.
+**Theme:** the **brand tokens** (colors, spacing, typography) live in `stack_core_dart` in a
+neutral format; each app converts them to `ThemeData` (mobile) or `FluentThemeData` (desktop),
+with light/dark. **Strings** (`AppLocalizations`) are shared by both apps, but each app composes
+them into its own layout.
 
-**Regra de ouro:** a lógica testável (auth, API, persistência, sync) vive no core **Rust** e é
-testada uma vez; `stack_core_dart` só faz binding + estado; os apps só fazem UI. Nenhum app
-importa lógica de negócio; o core nunca importa design system.
+**Golden rule:** the testable logic (auth, API, persistence, sync) lives in the Rust core and is
+tested once **there**; `stack_core_dart` only does binding + state; the apps only do UI. No app
+imports business logic; the core never imports a design system.
 
-## Estrutura de pastas (monorepo `flutter/`)
+## Folder Structure (monorepo `flutter/`)
 
-Pub workspace no root. A **lógica** está no crate Rust `core/` na raiz do repo
-(`SHARED_CORE_PLAN.md`); aqui ficam as **bindings + controllers** (`packages/stack_core_dart`)
-e a **UI** (`apps/`).
+Pub workspace at the root. The **logic** is the existing `stack_core` crate, brought in as a **git
+submodule** (it is its own repo); here we keep the **bindings + controllers** (`packages/stack_core_dart`)
+and the **UI** (`apps/`).
 
 ```
 flutter/
+├── core/                 GIT SUBMODULE → stack-connect-core (the existing stack_core crate)
+│                         (FRB facade + build/build-android.sh + build/build-desktop.sh live HERE)
+│
 ├── pubspec.yaml          (workspace root: members = packages/* apps/*)
-├── melos.yaml            (opcional — scripts: bootstrap, frb-gen, analyze, test)
+├── melos.yaml            (optional — scripts: bootstrap, frb-gen, analyze, test)
 ├── analysis_options.yaml
-├── tool/                 (script de conversão de l10n .xcstrings → .arb)
+├── tool/                 (script to convert l10n .xcstrings → .arb)
 │
 ├── packages/
-│   └── stack_core_dart/  PACOTE FLUTTER — bindings do core Rust + estado, sem telas
+│   └── stack_core_dart/  FLUTTER PACKAGE — Rust-core bindings + state, no screens
 │       ├── pubspec.yaml  l10n.yaml  flutter_rust_bridge.yaml
-│       ├── test/         (controllers com core mockado atrás do binding)
+│       ├── test/         (controllers with the core mocked behind the binding)
 │       └── lib/
-│           ├── stack_core_dart.dart   (barrel: API pública do pacote)
-│           ├── bindings/   (Dart GERADO pelo flutter_rust_bridge + loader das libs nativas)
-│           ├── controllers/ (providers Riverpod @riverpod AsyncNotifier — envolvem o core)
-│           ├── credential_store.dart  (impl. do callback CredentialStore via secure_storage)
-│           ├── theme/      (tokens neutros de marca — cores/espaços/tipografia)
-│           ├── router/     (contratos de rota que os apps usam p/ montar o GoRouter)
-│           └── l10n/       (AppLocalizations gerado + re-export)
+│           ├── stack_core_dart.dart   (barrel: the package's public API)
+│           ├── bindings/   (Dart GENERATED by flutter_rust_bridge + native-lib loader)
+│           ├── controllers/ (Riverpod @riverpod AsyncNotifier providers — wrap the core)
+│           ├── credential_store.dart  (CredentialStore via secure_storage; BlobStore via SQLite)
+│           ├── theme/      (neutral brand tokens — colors/spacing/typography)
+│           ├── router/     (deep-link target identities shared by both apps)
+│           └── l10n/       (generated AppLocalizations + re-export)
 │
 └── apps/
-    ├── stack_mobile/     APP ANDROID — Material 3 (depende de stack_core_dart)
+    ├── stack_mobile/     ANDROID APP — Material 3 (depends on stack_core_dart)
     │   ├── pubspec.yaml
-    │   ├── android/       (build do .so do core via cargo-ndk no Gradle)
+    │   ├── android/       (builds the core .so via cargo-ndk in Gradle)
     │   ├── integration_test/
     │   └── lib/
     │       ├── main.dart  bootstrap.dart   (ProviderScope + MaterialApp.router)
     │       ├── theme/      (tokens → ThemeData light/dark)
-    │       ├── router/     (GoRouter: rota → ConsumerWidget Material)
+    │       ├── router/     (its OWN GoRouter: route → Material ConsumerWidget)
     │       ├── shell/      (NavigationBar/NavigationRail)
-    │       └── features/   (telas Material por feature — só widgets)
+    │       └── features/   (Material screens per feature — widgets only)
     │
-    └── stack_desktop/    APP WINDOWS/LINUX — fluent_ui (depende de stack_core_dart)
+    └── stack_desktop/    WINDOWS/LINUX APP — fluent_ui (depends on stack_core_dart)
         ├── pubspec.yaml
-        ├── windows/  linux/   (link da .dll/.so do core)
+        ├── windows/  linux/   (links the core .dll/.so)
         ├── integration_test/
         └── lib/
             ├── main.dart  bootstrap.dart   (ProviderScope + FluentApp.router)
             ├── theme/      (tokens → FluentThemeData light/dark)
-            ├── router/     (GoRouter: rota → ConsumerWidget Fluent)
-            ├── shell/      (NavigationView/NavigationPane)
-            └── features/   (telas Fluent por feature — só widgets)
+            ├── router/     (its OWN GoRouter: route → Fluent ConsumerWidget)
+            ├── shell/      (NavigationView/NavigationPane, master-detail)
+            └── features/   (Fluent screens per feature — widgets only)
 ```
 
-Convenção: modelos de domínio e DTOs vivem no **core Rust** (mapeados de fio → domínio lá
-dentro); o Dart recebe os tipos já espelhados pelo FRB. `controllers/` em `stack_core_dart` =
-os `AsyncNotifier`; os dois apps consomem os mesmos providers. Os apps só têm `features/` de
-widgets — sem `domain/`, `data/` ou chamadas de rede.
+Convention: domain models and DTOs live in the **Rust core** (wire → domain mapped there); Dart
+receives the types already mirrored by FRB. `controllers/` in `stack_core_dart` = the
+`AsyncNotifier`s; both apps consume the **same** providers but render them with **different**
+widgets/navigation. The apps only have `features/` of widgets — no `domain/`, `data/`, or network.
 
-## Dependências principais (pubspec)
+## Dart Binding (flutter_rust_bridge v2)
 
-> A lógica (HTTP, JWT, SQLite, OAuth, sync) está no **crate Rust** `stack_core` — ver
-> `SHARED_CORE_PLAN.md` para os crates (`reqwest`, `jsonwebtoken`, `rusqlite`, `serde`, `tokio`).
-> Abaixo só o lado Flutter.
+This is the central new piece of work. The existing core already has a **UniFFI (Swift)** binding;
+we add a **second, independent Dart binding** without touching the core's logic.
 
-**No `stack_core_dart`** (bindings + estado — compartilhado pelos dois apps):
-- Bindings: `flutter_rust_bridge` + `ffi` (Dart gerado a partir do core Rust).
-- Estado: `flutter_riverpod` + `riverpod_annotation` (codegen `@riverpod`), `riverpod_lint`.
-- Secure storage / prefs (impl. dos callbacks do core): `flutter_secure_storage`,
-  `shared_preferences`.
-- i18n: `intl`, `flutter_localizations` (gera `AppLocalizations` dentro do pacote).
-- Deep link (receber no Flutter; o parsing é do core): `app_links`. Tipos de rota: `go_router`
-  (construção do `GoRouter` fica em cada app).
-- Notif/arquivos: `flutter_local_notifications`, `workmanager` (Android, dispara o sync do
-  core), `file_picker` (importar `.p8`, service-account JSON, `.mobileprovision`).
-- Dev/codegen: `build_runner` (para `@riverpod`), `flutter_rust_bridge_codegen`.
+- **FRB is a separate toolchain from UniFFI.** It reads a designated Rust `api` module and
+  generates idiomatic Dart + the C-ABI glue. It is **not** a `uniffi.toml` backend; the two
+  generators coexist (UniFFI's proc-macro derives are independent, and FRB only scans the
+  module(s) you point it at).
+- **Add an FRB facade in the core** (in the submodule), behind a cargo **`frb` feature**, mirroring
+  the existing `facade.rs` / `bindings/swift` split (e.g. `crates/stack_core/src/frb_api.rs` and/or
+  `bindings/dart/`). It re-exposes `available_services` / `credential_schema` / `connect` /
+  `make_sync_service` and the `Provider` + capability objects in FRB-idiomatic form. **The core
+  modules and the UniFFI facade stay untouched** — the core is already binding-agnostic.
+- **Callback traits need adaptation.** `CredentialStore` / `BlobStore` / `DebugLogger` are exported
+  with `#[uniffi::export(with_foreign)]` (UniFFI-specific). For Dart, the FRB facade accepts the
+  host implementations via FRB's own mechanism (implementing a Rust trait in Dart, or `DartFn`
+  closures) and adapts them into the core's `Arc<dyn CredentialStore>` etc. Dart implementations:
+  `flutter_secure_storage` → `CredentialStore`; a Dart SQLite store → `BlobStore`; a Dart logger →
+  `DebugLogger`.
+- **Opaque objects + async.** `Arc<Provider>` and each of the 14 capability objects cross the
+  boundary as FRB opaque handles with method bindings; every `async fn` → Dart `Future` (FRB's own
+  runtime; no UniFFI `async_runtime`).
+- **Build matrix (the `cdylib` crate-type is already enabled).**
+  - Android via `cargo-ndk`: `aarch64-linux-android`, `armv7-linux-androideabi`, `x86_64-linux-android` → `.so`.
+  - Desktop cdylib: `x86_64-pc-windows-msvc` (`.dll`), `x86_64-unknown-linux-gnu` / `aarch64-unknown-linux-gnu` (`.so`).
+  - Add `build/build-android.sh` + `build/build-desktop.sh` in the **core repo**, mirroring the
+    existing `build/build-xcframework.sh`.
+- **Outputs:** generated Dart lands in `stack_core_dart/lib/bindings/`; native libs are bundled per
+  platform (Gradle for Android, CMake for desktop).
 
-**Em `stack_mobile`** (Android): Material 3 (built-in) + `fl_chart`. Depende de `stack_core_dart`.
+## Main Dependencies (pubspec)
 
-**Em `stack_desktop`** (Windows/Linux): **`fluent_ui`** + `fl_chart`. Depende de `stack_core_dart`.
+> The logic (HTTP, JWT, SQLite-blob, sync) is already in the **Rust crate** `stack_core` — see
+> `../stack-connect-core/RUST_CORE_PLAN.md` (crates: `reqwest`, `jsonwebtoken`, `serde`, `tokio`).
+> Below is only the Flutter side.
 
-**Dev/test (todos os pacotes):** `build_runner`, `mocktail`, `integration_test`.
+**In `stack_core_dart`** (bindings + state — shared by both apps):
+- Bindings: `flutter_rust_bridge` + `ffi` (Dart generated from the Rust core).
+- State: `flutter_riverpod` + `riverpod_annotation` (`@riverpod` codegen), `riverpod_lint`.
+- Secure storage / prefs / blob (the core's callbacks): `flutter_secure_storage`,
+  `shared_preferences`, a SQLite package (e.g. `sqflite`/`sqlite3`) for `BlobStore`.
+- i18n: `intl`, `flutter_localizations` (generates `AppLocalizations` inside the package).
+- Deep link (received on the Flutter side; identities shared, parsing in the core): `app_links`.
+  Route types: `go_router` (each app builds its own `GoRouter`).
+- Notif/files: `flutter_local_notifications`, `workmanager` (Android, triggers the core's sync),
+  `file_picker` (import `.p8`, service-account JSON, `.mobileprovision`).
+- Dev/codegen: `build_runner` (`@riverpod`), `flutter_rust_bridge_codegen`.
 
-## Clientes de API no core Rust (sem SDK pronto — feitos à mão)
+**In `stack_mobile`** (Android): Material 3 (built-in). Depends on `stack_core_dart`.
 
-Implementados em **Rust** (`stack_core`, ver `SHARED_CORE_PLAN.md`) e expostos a Swift (UniFFI)
-e Dart (FRB). Cada provedor: cliente `reqwest` próprio + camada de auth. Contratos abaixo.
+**In `stack_desktop`** (Windows/Linux): **`fluent_ui`**. Depends on `stack_core_dart`.
 
-1. **App Store Connect v1** — base `api.appstoreconnect.apple.com`. Auth: JWT **ES256**
-   (header `kid`=keyId; claims `iss`=issuerId, `aud`=`appstoreconnect-v1`, `exp`≈now+20min),
-   `Authorization: Bearer`. Envelope JSON:API genérico `AscResponse<T>` + paginação por
-   `links.next`. Endpoints (por feature): `/v1/apps`, `appStoreVersions`, `builds`,
-   `betaGroups`/`betaTesters`, `customerReviews`(+responses), `certificates`, `profiles`,
-   `bundleIds`, `devices`, `users`/`userInvitations`, `ageRatingDeclarations`, `appInfos`,
-   relatórios de analytics. Portar tradução de erros de
-   `StackConnect/Infra/Errors/AppleAPIErrorTranslator.swift` (inclui detecção do 403 de
-   "pending agreements").
-2. **Firebase Management** — JWT **RS256** → troca por token OAuth (cache c/ margem 60s).
-   Escopos: `firebase`, `cloud-platform`, `analytics.readonly`, `firebase.messaging`. Hosts:
+**Dev/test (all packages):** `build_runner`, `mocktail`, `integration_test`.
+
+## App Store Connect — Already Implemented in the Core
+
+`providers/appstore` in `stack-connect-core` already covers the surface the iOS app uses. Auth is
+`auth::es256` (JWT ES256, `.p8`/P-256, `aud=appstoreconnect-v1`, `exp ≤ 20min`); JSON:API
+pagination via `links.next`; errors mapped to the typed `StackError` (7 variants, including
+`PendingAgreements` for the 403). The Flutter side consumes this — it does **not** re-implement it.
+
+Reachable via the FRB binding as `Provider` + **14 capability objects** (all `async`):
+
+- `Reviews` — customer reviews (+ pagination), replies, review submissions (submit/discard).
+- `Builds` — builds (+ pagination), build detail, current build, expire/attach, beta-review submit,
+  group membership.
+- `AppStoreVersions` — versions, phased release, localizations, screenshot sets, app-review detail.
+- `BetaGroups`, `BetaBuildLocalizations`, `BetaAppLocalizations`, `BetaAppReviewDetail`.
+- `AppMetadata`, `AccessibilityDeclarations`.
+- `Users`, `Devices`, `BundleIds`, `Certificates`, `Profiles`.
+
+Plus `Provider.validate()` / `Provider.fetch_apps()` and the generic `SyncService.sync_apps()`.
+
+## Per-Platform UI Divergence (a hard rule)
+
+The two apps share controllers, **not** layouts. Each screen is designed twice, for its platform:
+
+- **Navigation:** mobile uses a single navigation stack with `NavigationBar`/bottom sheets; desktop
+  uses persistent `NavigationView`/`NavigationPane` with master-detail / multi-pane content.
+- **Density & input:** mobile is touch-first and compact; desktop is pointer + keyboard, denser
+  tables, context menus, keyboard shortcuts, resizable panes.
+- **Dialogs/feedback:** mobile uses Material dialogs/snackbars; desktop uses `ContentDialog`/`InfoBar`.
+- **Routing:** each app owns its `GoRouter` shape; only the **deep-link target identity** (which
+  screen + params) is shared, so a link resolves to the right screen in each app's own graph.
+
+## Phased Roadmap (MVP first) — each phase is independently testable
+
+From Phase 1 on, **each feature** ships its logic from the **existing core** (consumed, not
+written) → a Riverpod controller in `stack_core_dart` → **two platform-divergent screens**
+(Material in `stack_mobile`, Fluent in `stack_desktop`). The same core logic is consumed by native
+iOS via UniFFI.
+
+**Testability rule:** a phase is **not "done" until its Test gate (DoD) is green** — automated
+tests pass in CI **and** the phase runs as a demo on **both** platforms (Android emulator + a
+desktop target). The test pyramid per phase: core `cargo test` (already green) → FRB smoke →
+Riverpod controller tests (core mocked behind the binding) → widget tests (per platform) →
+`integration_test/` happy path (per platform). No phase merges with a red gate.
+
+- **Phase 0 — Dart binding + Flutter foundation.** Add `stack-connect-core` as a git submodule;
+  add the FRB facade behind the `frb` feature; build the Android (`cargo-ndk`) and desktop
+  (cdylib) libs; generate `stack_core_dart`. Stand up the pub workspace + the two thin apps
+  (`MaterialApp.router` / `FluentApp.router`), token → `ThemeData` / `FluentThemeData` conversion,
+  each app's own `GoRouter` + navigation shell with a placeholder screen. *(The Apple core already
+  exists — no core logic is written here.)*
+  → **Test gate (DoD):** `cargo test`/`clippy` green (core, `frb` feature compiles) + FRB
+  codegen-up-to-date check; a **Dart FRB smoke test** calls `availableServices()` across the
+  boundary and asserts `[ServiceKind.appStoreConnect]` (proves the native lib loads + marshalling
+  works); `flutter analyze` clean; `assembleDebug` (`stack_mobile`) and `flutter build linux`
+  (`stack_desktop`) both produce a launchable app showing the placeholder shell.
+- **Phase 1 — Apple core (demoable MVP).** Consume the already-implemented Apple capabilities via
+  FRB: accounts list, add Apple account (validate via `Provider.validate`/`fetch_apps`), basic
+  home, apps list, app detail, ratings & reviews + all reviews (read) and reply to a review
+  (write). Offline persistence flows through the core's `SyncService`/`BlobStore`. **No core work**
+  beyond the binding.
+  → **Test gate (DoD):** controller tests (`ProviderContainer`, core mocked behind the binding) for
+  accounts/apps/reviews — `AsyncValue` loading→data/error transitions, and the reply mutation
+  invalidates the reviews provider; widget tests on **both** apps for add-account validation, apps
+  list, and the reply flow; an `integration_test/` happy path **add account → apps list → reviews →
+  reply** against a stubbed network, passing on the Android emulator **and** a Linux desktop build.
+- **Phase 2 — Apple breadth (Flutter UI only).** Versions (incl. phased release), builds,
+  TestFlight (groups/testers), certificates, profiles, bundle IDs, devices (+ `.mobileprovision`
+  import), user access, age rating / privacy / accessibility / app info, manage localizations,
+  screenshots — **all already in the core**; pure Dart UI + FRB wiring, each platform in its own
+  idiom. *(Open item: the deep-link parser does not exist in the core yet — decide whether to add
+  it to the core or implement it Dart-side.)*
+  → **Test gate (DoD):** a controller test per capability (read **and** write paths, mocked core);
+  at least one widget test **per platform** for the heavier screens (version detail, build list,
+  TestFlight groups, device import); a unit test for the `.mobileprovision` parser on a fixture; and
+  integration tests for 2–3 representative write flows (e.g. create version, attach build, register
+  device) against a stubbed network on both platforms.
+- **Phase 3 — Sync & notifications.** Built on the core's existing `SyncService`; background via
+  `workmanager` (Android); Windows/Linux = sync on launch + in-process timer + manual refresh.
+  `flutter_local_notifications` for new reviews / status changes; tap → deep link.
+  → **Test gate (DoD):** core `SyncService` tests already green (full/lightweight, in-memory
+  `BlobStore`); a **deep-link unit test** resolving each `stackconnect://` form to the correct route
+  target in **each** app's router; a controller test asserting a sync that surfaces a new review
+  emits a local-notification call (notifications plugin mocked); an integration test where a manual
+  sync refreshes the UI (stubbed network) on both platforms.
+- **Phase 4 — Settings, license & polish (last).** Settings, license, UI polish, and a full l10n
+  pass. **No analytics/charts and no home-screen widgets** (both out of scope).
+  → **Test gate (DoD):** an **l10n completeness test** (every `supportedLocale` loads, no missing
+  keys; the `.xcstrings`→`.arb` converter has a fixture test); widget tests for settings/license on
+  both platforms.
+
+Every phase from Phase 1 on ships **two platform-divergent UIs** over the same shared controllers
+(no shared widget tree), and each ships with the automated tests of its Test gate.
+
+## Per-Platform Concerns / Out of Scope
+
+- **iOS / macOS**: stay 100% in the untouched native Apple app — outside the Flutter scope.
+- **iOS WidgetKit**: stays in the native app — not re-implemented in Flutter.
+- **Home-screen widgets**: **out of scope on all platforms** — no Android `home_widget`/Glance, no
+  desktop widgets.
+- **Analytics / charts**: **out of scope** — no ASC analytics dashboards and no `fl_chart` usage.
+- **Background when closed**: Android only (`workmanager`, ~15 min min). Desktop (Windows/Linux)
+  has no background-task API → sync on launch + timer while open + manual.
+- **Notifications**: full on Android/Linux; Windows best-effort; desktop only while the app is open.
+  Request permission on Android 13+.
+- **Secure storage on Linux**: needs libsecret + keyring; encrypted-file fallback with passphrase
+  for headless/CI.
+- **Deep-link registration**: intent filter (Android), protocol registration (Windows), `.desktop`
+  MimeType (Linux) — via `app_links`.
+- **Fully out of scope**: analytics/charts, home-screen widgets (Android/desktop), iOS and macOS
+  targets, App Group, anything WidgetKit/BGTask, reuse of Swift packages.
+
+## Deferred Providers (future, blocked on the core)
+
+**Firebase** and **Google Play** are **not** part of this Flutter effort. They only enter the
+roadmap **after** they are first implemented in `stack-connect-core` as `providers/firebase` /
+`providers/googleplay` (reusing `auth::oauth_jwt`, shared with iOS — already the core's existing
+Phase 3). Recorded here only as references for when that happens:
+
+1. **Firebase Management** — JWT **RS256** → exchanged for an OAuth token (cache with a 60s margin).
+   Scopes: `firebase`, `cloud-platform`, `analytics.readonly`, `firebase.messaging`. Hosts:
    `firebase.googleapis.com/v1beta1`, Remote Config `firebaseremoteconfig.googleapis.com/v1`
-   (ETag/`If-Match` no PUT), FCM `fcm.googleapis.com`, GA4 `analyticsdata.googleapis.com/v1beta`.
-3. **Google Play** — mesmo fluxo RS256→OAuth, escopos `androidpublisher`,
-   `playdeveloperreporting`. Hosts `androidpublisher.googleapis.com/.../v3`,
-   `playdeveloperreporting.googleapis.com/v1beta1`.
+   (ETag/`If-Match` on PUT), FCM `fcm.googleapis.com`, GA4 `analyticsdata.googleapis.com/v1beta`.
+   Reference: `Packages/APIProviderFirebase/Sources/APIProviderFirebase/JWT/FirebaseAuthenticator.swift`.
+2. **Google Play** — same RS256→OAuth flow, scopes `androidpublisher`, `playdeveloperreporting`.
+   Hosts `androidpublisher.googleapis.com/.../v3`, `playdeveloperreporting.googleapis.com/v1beta1`.
 
-`GoogleOAuthAuthenticator` único parametrizado por (service account, escopos) serve Firebase
-e Play; cache por `(clientEmail, hash dos escopos)`. Clientes são stateless no core Rust;
-no Flutter, providers Riverpod `.family` expõem o core por `accountId` (no iOS, ViewModels).
+Once those providers exist in the core, exposing them to Flutter is just additional FRB surface +
+new platform-divergent screens — no new architecture.
 
-**Arquivos de referência para portar:**
-- `Packages/APIProviderFirebase/Sources/APIProviderFirebase/JWT/FirebaseAuthenticator.swift`
-  (fluxo RS256→OAuth)
-- `Packages/StackCore/Sources/StackCore/SwiftDataStorable.swift` (contrato do blob store)
-- `StackConnect/Models/AccountModel.swift` (conta + regras/papel/origem → freezed)
-- `StackConnect/Infra/Sync/SyncService.swift` (full vs lightweight + notificações)
-- `StackConnect/Infra/Notifications/DeepLink.swift` (gramática das rotas de deep link)
+## Localization (reuse the `.xcstrings`)
 
-## Roadmap faseado (MVP primeiro)
+UI strings stay on the **Flutter side** (the core keeps l10n native by design). Source:
+`StackConnect/Resources/Localizable.xcstrings` (Xcode JSON catalog), 13 languages (en, de, es,
+es-MX, fr, it, ja, ko, nl, pt-BR, pt-PT, ru, sv, zh-Hant). Plan:
+1. A single script in `flutter/tool/` reads the `.xcstrings` and generates one `app_<lang>.arb`
+   per language inside **`packages/stack_core_dart`** (its `l10n.yaml`), falling back to `en`/key
+   when `value` is empty.
+2. Normalize Apple placeholders (`%@`, `%lld`, `%1$@`) → ICU `{argN}` with `@key` metadata.
+3. Locales map directly (pt-BR, pt-PT, es-MX, zh-Hant are valid in Flutter); configure
+   `supportedLocales` + `localeResolutionCallback` in each app.
+4. `flutter gen-l10n` generates `AppLocalizations` **in `stack_core_dart`**, re-exported via the
+   barrel; both apps consume the same strings — translated once. (The native iOS app keeps its own
+   `.xcstrings`.)
 
-A partir da Fase 1, **cada feature** entrega três camadas: lógica no **core Rust** (api +
-persistência + expor função async, testada) → controller Riverpod em `stack_core_dart` → tela
-nos **dois apps** Flutter (Material no `stack_mobile`, Fluent no `stack_desktop`). A mesma
-lógica do core é consumida pelo app iOS nativo via UniFFI (ver `SHARED_CORE_PLAN.md`).
+## Verification / Tests
 
-- **Fase 0 — Fundação (core Rust + monorepo Flutter):** criar o crate Rust `stack_core` com
-  esqueleto (`blob_store` SQLite, `CredentialStore` trait, `api_exception`, deep_link_parser) e
-  as duas facades de binding (UniFFI + FRB) com uma função de *smoke* atravessando a fronteira;
-  build do XCFramework e do `.so` Android. No **pub workspace** Flutter: `packages/stack_core_dart`
-  (bindings FRB + `ProviderScope`/codegen Riverpod + impl. do `CredentialStore` via
-  `flutter_secure_storage` + tokens de tema + gen-l10n) e `apps/stack_mobile` + `apps/stack_desktop`
-  com `MaterialApp.router` / `FluentApp.router`, conversão de tokens → `ThemeData` /
-  `FluentThemeData`, `GoRouter` a partir dos contratos do core e shell de navegação com tela
-  placeholder. CI: `cargo test`/`clippy` + checagem do codegen FRB + `analyze`/`test` no
-  workspace. Sem features.
-- **Fase 1 — Núcleo Apple (MVP demoável):** no core Rust — signer ES256 + `AppStoreConnectClient`
-  + persistência. Telas (nos dois apps Flutter, e disponíveis ao iOS via core): lista de contas,
-  adicionar conta Apple (validar credenciais via `/v1/apps`), home básica, lista de apps,
-  detalhe do app, ratings & reviews + all reviews (leitura) e responder review (escrita).
-  Persistência offline de contas/apps/reviews no core.
-- **Fase 2 — Amplitude Apple:** versões (incl. phased release), builds, TestFlight
-  (grupos/testers), certificados, perfis, bundle IDs, devices (+ parser de `.mobileprovision`,
-  portar `DeviceImportParser.swift`), user access, age rating/privacy/accessibility/app info,
-  manage localizations, screenshots.
-- **Fase 3 — Firebase:** `GoogleOAuthAuthenticator` + clientes; adicionar conta, projetos
-  (lista/detalhe), apps Firebase, Remote Config (leitura + escrita com ETag), FCM campaigns,
-  dashboard de analytics.
-- **Fase 4 — Google Play:** Android Publisher + Reporting; adicionar conta, lista de apps,
-  reviews, reporting/vitals.
-- **Fase 5 — Analytics & charts:** visualizações `fl_chart` (ASC, GA4, Play); cache de
-  relatórios (portar `AnalyticsFileCache.swift`).
-- **Fase 6 — Sync & notificações:** `SyncService` (full/lightweight); background via
-  `workmanager` (Android); Windows/Linux = sync no launch + timer em processo + refresh manual.
-  `flutter_local_notifications` para novos reviews / mudança de status; toque → deep link.
-- **Fase 7 — Widgets & extras (por último):** widget de tela inicial Android via `home_widget`
-  + código nativo Glance/AppWidget. Settings, License, polimento, passada completa de l10n.
+> The bulk of the logic coverage (auth, API, persistence, sync) **already exists** as
+> `cargo test` in the core (~228+ tests) — see `../stack-connect-core/RUST_CORE_PLAN.md`. We do
+> **not** rewrite it. Below is only the Flutter side.
 
-## Concerns por plataforma / fora de escopo
+- **Binding smoke:** one test per side ensuring a call crosses the FRB boundary and returns the
+  expected type (Dart test; the Swift side is covered in `SHARED_CORE_PLAN.md`).
+- **Controller unit tests (Flutter):** `ProviderContainer` with the core mocked behind the binding;
+  `AsyncValue` transitions and invalidation of dependents on mutations.
+- **Widget tests:** key screens (accounts, reviews, add-account) **for both platforms** with fixed
+  providers.
+- **Integration (`integration_test/`):** happy path (add account → apps → reviews) with the core
+  pointed at a stubbed network, on an Android emulator and on a desktop target (Linux in CI).
+- **CI (GitHub Actions):** `cargo test`/`clippy` in the core (submodule) + FRB codegen check; in
+  the Flutter workspace `build_runner`, `flutter analyze` (riverpod_lint), `flutter test`, and
+  widget/integration on the apps; release build of `stack_desktop` (Linux) + `assembleDebug` of
+  `stack_mobile`.
 
-- **iOS / macOS**: permanecem 100% no app nativo Apple intocado — fora do escopo Flutter.
-- **iOS WidgetKit**: permanece no app nativo intocado — não reimplementado em Flutter.
-- **Widget Android**: `home_widget` exige código nativo Glance/AppWidget em `flutter/android/`
-  (Fase 7).
-- **Widgets desktop**: não existem — fora de escopo.
-- **Background quando fechado**: só Android (`workmanager`, ~15 min mín.). Desktop (Windows/Linux)
-  não tem API de background task → sync no launch + timer enquanto aberto + manual.
-- **Notificações**: completas em Android/Linux; Windows best-effort; desktop só com app
-  aberto. Pedir permissão em Android 13+.
-- **Secure storage Linux**: precisa de libsecret + keyring; fallback de arquivo cifrado com
-  passphrase para headless/CI.
-- **Registro de deep link**: intent filter (Android), registro de protocolo (Windows),
-  `.desktop` MimeType (Linux) — via `app_links`.
-- **Fora de escopo total**: targets iOS e macOS, App Group, qualquer coisa WidgetKit/BGTask,
-  reuso de Swift packages.
+## First Concrete Step
 
-## Localização (reaproveitar `.xcstrings`)
-
-Fonte: `StackConnect/Resources/Localizable.xcstrings` (catálogo JSON do Xcode), 13 idiomas
-(en, de, es, es-MX, fr, it, ja, ko, nl, pt-BR, pt-PT, ru, sv, zh-Hant). Plano:
-1. Script único em `flutter/tool/` lê o `.xcstrings` e gera um `app_<lang>.arb` por idioma
-   dentro de `packages/stack_core` (`l10n.yaml` do core), com fallback para `en`/chave quando
-   `value` vazio.
-2. Normalizar placeholders Apple (`%@`, `%lld`, `%1$@`) → ICU `{argN}` com metadados `@chave`.
-3. Locales mapeiam direto (pt-BR, pt-PT, es-MX, zh-Hant válidos no Flutter); configurar
-   `supportedLocales` + `localeResolutionCallback` em cada app a partir da lista exposta pelo core.
-4. `flutter gen-l10n` gera `AppLocalizations` **em `stack_core_dart`**, re-exportado pelo
-   barrel; os dois apps consomem as mesmas strings — traduz-se uma vez só. (As strings de UI
-   ficam no lado Flutter; o iOS nativo segue com seu próprio `.xcstrings`.)
-
-## Verificação / testes
-
-> O grosso da cobertura (auth, API, persistência, sync, deep-link) é **`cargo test` no core
-> Rust** — ver `SHARED_CORE_PLAN.md`. Abaixo só o lado Flutter.
-
-- **Core Rust (prioridade máxima):** golden de JWT ES256/RS256; cache OAuth (margem 60s);
-  clientes API com HTTP mockado + fixtures JSON (URL/método/headers, DTO→domínio, paginação
-  `links.next`, 403 pending-agreements); `blob_store` em SQLite `:memory:`; `deep_link_parser`
-  nas 5 formas `stackconnect://`.
-- **Smoke de binding:** um teste por lado garantindo que a chamada atravessa a fronteira FRB e
-  retorna o tipo esperado (Dart test; o lado Swift no `SHARED_CORE_PLAN.md`).
-- **Unit controllers (Flutter):** `ProviderContainer` com o core mockado atrás do binding;
-  transições de `AsyncValue` e invalidação de dependentes em mutações.
-- **Widget tests:** telas-chave (contas, reviews, add-account) com providers fixados.
-- **Integração (`integration_test/`):** fluxo feliz (add account → apps → reviews) com o core
-  apontando p/ rede stub, em emulador Android e num target desktop (Linux no CI).
-- **CI (GitHub Actions):** `cargo test`/`clippy` no core + checagem do codegen FRB; no workspace
-  Flutter `build_runner`, `flutter analyze` (riverpod_lint), `flutter test` e widget/integration
-  nos apps; build de release do `stack_desktop` (Linux) + `assembleDebug` do `stack_mobile`.
-
-## Primeiro passo concreto
-
-1. **Core Rust** (`core/` na raiz do repo): `cargo new --lib`, configurar as facades UniFFI e
-   FRB, e uma função *smoke* (ex.: `ping()`/validar credenciais) — ver `SHARED_CORE_PLAN.md`.
-2. Montar o **pub workspace** Flutter em `flutter/`:
-   - `flutter create --template=package packages/stack_core_dart` (depois plugar o FRB).
+1. **Add the core as a submodule:** `git submodule add` the `stack-connect-core` repo under
+   `flutter/core` (it already builds the Apple provider + UniFFI binding).
+2. **Add the Dart binding to the core:** an FRB facade behind a `frb` cargo feature + a *smoke*
+   function (e.g. `available_services()` / validate credentials) crossing the boundary — see the
+   *Dart binding* section above.
+3. **Stand up the Flutter pub workspace** in `flutter/`:
+   - `flutter create --template=package packages/stack_core_dart` (then plug in FRB).
    - `flutter create --org <org> --platforms=android apps/stack_mobile`.
    - `flutter create --org <org> --platforms=windows,linux apps/stack_desktop`.
-   - `pubspec.yaml` root com `workspace: [packages/stack_core_dart, apps/stack_mobile,
-     apps/stack_desktop]`; os apps declaram `stack_core_dart` via `path`. `melos.yaml` opcional.
-3. Rodar o codegen FRB + `build_runner`, validar a função *smoke* atravessando o binding nos dois
-   apps, e entregar a Fase 0 antes de iniciar a Fase 1.
+   - root `pubspec.yaml` with `workspace: [packages/stack_core_dart, apps/stack_mobile,
+     apps/stack_desktop]`; the apps declare `stack_core_dart` via `path`. `melos.yaml` optional.
+4. Run FRB codegen + `build_runner`, validate the *smoke* call crossing the binding in both apps,
+   and deliver Phase 0 before starting Phase 1.
