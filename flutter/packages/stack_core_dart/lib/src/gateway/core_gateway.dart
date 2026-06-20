@@ -7,7 +7,7 @@ import '../rust/domain.dart';
 // binding function and the [CoreGateway.availableServices] method.
 import '../rust/frb_api.dart' as frb;
 import '../rust/frb_api.dart'
-    show FrbCredential, FrbProvider, FrbReviews, FrbSyncService;
+    show FrbBuilds, FrbCredential, FrbProvider, FrbReviews, FrbSyncService;
 import '../rust/service/kind.dart';
 
 /// A no-op debug-log sink.
@@ -65,6 +65,12 @@ abstract interface class CoreGateway {
     required String reviewId,
     required String body,
   });
+
+  /// The provider's Builds handle, or `null` when unsupported.
+  FrbBuilds? builds(FrbProvider provider);
+
+  /// All TestFlight / App Store Connect builds for [appId], newest first.
+  Future<List<BuildInfo>> fetchBuilds(FrbBuilds builds, String appId);
 
   /// Builds a sync service for [provider] and [accountId].
   FrbSyncService makeSyncService(FrbProvider provider, String accountId);
@@ -130,6 +136,13 @@ class FrbCoreGateway implements CoreGateway {
     required String body,
   }) =>
       reviews.replyToReview(reviewId: reviewId, body: body);
+
+  @override
+  FrbBuilds? builds(FrbProvider provider) => provider.builds();
+
+  @override
+  Future<List<BuildInfo>> fetchBuilds(FrbBuilds builds, String appId) =>
+      builds.fetchBuilds(appId: appId, limit: 200);
 
   @override
   FrbSyncService makeSyncService(FrbProvider provider, String accountId) =>

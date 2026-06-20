@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stack_core_dart/stack_core_dart.dart';
 
-/// Basic app detail: name, bundle id, platform, and an entry point to the
-/// app's Ratings & Reviews.
+/// Basic app detail: name, bundle id, platform, and entry points to the app's
+/// Ratings & Reviews and TestFlight Builds.
 ///
 /// The [AppInfo] is sourced from the already-loaded apps list for the account
 /// (no dedicated single-app endpoint exists in this slice's controller API).
@@ -56,6 +56,14 @@ class AppDetailScreen extends ConsumerWidget {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.go(
                     '/accounts/$accountId/apps/$appId/reviews',
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.cloud_upload_outlined),
+                  title: const Text('TestFlight Builds'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.go(
+                    '/accounts/$accountId/apps/$appId/builds',
                   ),
                 ),
               ],

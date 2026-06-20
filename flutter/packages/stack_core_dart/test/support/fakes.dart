@@ -11,6 +11,8 @@ class MockFrbProvider extends Mock implements FrbProvider {}
 
 class MockFrbReviews extends Mock implements FrbReviews {}
 
+class MockFrbBuilds extends Mock implements FrbBuilds {}
+
 class MockFrbSyncService extends Mock implements FrbSyncService {}
 
 /// In-memory [SecretStore]: namespaced `accountId -> key -> value`.

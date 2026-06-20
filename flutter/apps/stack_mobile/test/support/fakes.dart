@@ -139,6 +139,13 @@ class FakeCoreGateway implements CoreGateway {
       throw UnimplementedError('replyToReview not used in smoke test');
 
   @override
+  FrbBuilds? builds(FrbProvider provider) => null;
+
+  @override
+  Future<List<BuildInfo>> fetchBuilds(FrbBuilds builds, String appId) =>
+      throw UnimplementedError('fetchBuilds not used in smoke test');
+
+  @override
   FrbSyncService makeSyncService(FrbProvider provider, String accountId) =>
       throw UnimplementedError('makeSyncService not used in smoke test');
 
@@ -160,6 +167,8 @@ class _FakeFrbProvider extends Mock implements FrbProvider {}
 
 class _FakeFrbReviews extends Mock implements FrbReviews {}
 
+class _FakeFrbBuilds extends Mock implements FrbBuilds {}
+
 class _FakeFrbSyncService extends Mock implements FrbSyncService {}
 
 /// A fully scriptable [CoreGateway] for widget/integration tests.
@@ -179,11 +188,17 @@ class ConfigurableFakeCoreGateway implements CoreGateway {
     this.validateError,
     List<AppInfo>? appsToSync,
     Map<String, List<CustomerReview>>? reviewsByApp,
+    Map<String, List<BuildInfo>>? buildsByApp,
     this.exposesReviews = true,
+    this.exposesBuilds = true,
   })  : appsToSync = appsToSync ?? const [],
         _reviewsByApp = {
           for (final entry in (reviewsByApp ?? const {}).entries)
             entry.key: List<CustomerReview>.of(entry.value),
+        },
+        _buildsByApp = {
+          for (final entry in (buildsByApp ?? const {}).entries)
+            entry.key: List<BuildInfo>.of(entry.value),
         };
 
   /// Thrown from [connect] when non-null (e.g. `StackError.auth`).
@@ -198,13 +213,19 @@ class ConfigurableFakeCoreGateway implements CoreGateway {
   /// Whether the provider exposes a reviews handle.
   final bool exposesReviews;
 
+  /// Whether the provider exposes a builds handle.
+  final bool exposesBuilds;
+
   final Map<String, List<CustomerReview>> _reviewsByApp;
+
+  final Map<String, List<BuildInfo>> _buildsByApp;
 
   /// Records of every [replyToReview] call, in order, for assertions.
   final List<({String reviewId, String body})> replyCalls = [];
 
   static final _provider = _FakeFrbProvider();
   static final _reviews = _FakeFrbReviews();
+  static final _builds = _FakeFrbBuilds();
   static final _syncService = _FakeFrbSyncService();
 
   @override
@@ -295,6 +316,13 @@ class ConfigurableFakeCoreGateway implements CoreGateway {
     }
     return response;
   }
+
+  @override
+  FrbBuilds? builds(FrbProvider provider) => exposesBuilds ? _builds : null;
+
+  @override
+  Future<List<BuildInfo>> fetchBuilds(FrbBuilds builds, String appId) async =>
+      List.unmodifiable(_buildsByApp[appId] ?? const []);
 
   @override
   FrbSyncService makeSyncService(FrbProvider provider, String accountId) {
