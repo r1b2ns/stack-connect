@@ -7,12 +7,15 @@ environment:
   sdk: ^3.12.2
   flutter: ">=1.17.0"
 
+resolution: workspace
+
 dependencies:
   flutter:
     sdk: flutter
   # Pinned to match the Rust runtime crate `flutter_rust_bridge` and the
   # installed `flutter_rust_bridge_codegen` (all 2.12.0).
   flutter_rust_bridge: 2.12.0
+  flutter_riverpod: ^2.6.1
 
 dev_dependencies:
   flutter_test:

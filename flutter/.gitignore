@@ -1,0 +1,8 @@
+# Workspace-level build artifacts. Each package/app also has its own .gitignore.
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Native libraries built from the Rust core
+# (rebuilt via ../stack-connect-core/build/build-android.sh; not source).
+**/src/main/jniLibs/
