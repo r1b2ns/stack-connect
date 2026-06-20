@@ -40,12 +40,26 @@ dependencies:
   flutter_riverpod: ^2.6.1
   go_router: ^14.6.2
   flutter_rust_bridge: 2.12.0
+  # Resolves the on-device documents directory where the host SQLite stores
+  # (accounts.db / blobs.db) are opened in bootstrap.
+  path_provider: ^2.1.5
+  # Joins the documents directory with the store filenames in bootstrap.
+  path: ^1.9.0
   stack_core_dart:
     path: ../../packages/stack_core_dart
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  # Drives the same widget tests end-to-end through the real tree on a host or
+  # device via IntegrationTestWidgetsFlutterBinding.
+  integration_test:
+    sdk: flutter
+
+  # Sentinel mocks for the opaque flutter_rust_bridge handles the fake gateway
+  # hands the controllers (they are passed around but never introspected).
+  mocktail: ^1.0.4
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
