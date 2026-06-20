@@ -25,6 +25,54 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   });
 
   CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_FrbAccessibilityDeclarationsPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_FrbAppMetadataPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_FrbAppStoreVersionsPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_FrbBetaAppLocalizationsPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_FrbBetaAppReviewDetailPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_FrbBetaBuildLocalizationsPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_FrbBetaGroupsPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_FrbBuildsPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_FrbBundleIdsPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_FrbCertificatesPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_FrbDevicesPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_FrbProfilesPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles;
+
+  CrossPlatformFinalizerArg
   get rust_arc_decrement_strong_count_FrbProviderPtr => wire
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider;
 
@@ -36,8 +84,84 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   get rust_arc_decrement_strong_count_FrbSyncServicePtr => wire
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService;
 
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_FrbUsersPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers;
+
   @protected
   AnyhowException dco_decode_AnyhowException(dynamic raw);
+
+  @protected
+  FrbAccessibilityDeclarations
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    dynamic raw,
+  );
+
+  @protected
+  FrbAppMetadata
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    dynamic raw,
+  );
+
+  @protected
+  FrbAppStoreVersions
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaAppLocalizations
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaAppReviewDetail
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaBuildLocalizations
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaGroups
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBuilds
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBundleIds
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    dynamic raw,
+  );
+
+  @protected
+  FrbCertificates
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    dynamic raw,
+  );
+
+  @protected
+  FrbDevices
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    dynamic raw,
+  );
+
+  @protected
+  FrbProfiles
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    dynamic raw,
+  );
 
   @protected
   FrbProvider
@@ -54,6 +178,84 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   FrbSyncService
   dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService(
+    dynamic raw,
+  );
+
+  @protected
+  FrbUsers
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    dynamic raw,
+  );
+
+  @protected
+  FrbAccessibilityDeclarations
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    dynamic raw,
+  );
+
+  @protected
+  FrbAppMetadata
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    dynamic raw,
+  );
+
+  @protected
+  FrbAppStoreVersions
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaAppLocalizations
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaAppReviewDetail
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaBuildLocalizations
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaGroups
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBuilds
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBundleIds
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    dynamic raw,
+  );
+
+  @protected
+  FrbCertificates
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    dynamic raw,
+  );
+
+  @protected
+  FrbDevices
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    dynamic raw,
+  );
+
+  @protected
+  FrbProfiles
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
     dynamic raw,
   );
 
@@ -76,6 +278,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  FrbUsers
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    dynamic raw,
+  );
+
+  @protected
   FutureOr<void> Function(String)
   dco_decode_DartFn_Inputs_String_Output_unit_AnyhowException(dynamic raw);
 
@@ -87,6 +295,78 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Object dco_decode_DartOpaque(dynamic raw);
+
+  @protected
+  FrbAccessibilityDeclarations
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    dynamic raw,
+  );
+
+  @protected
+  FrbAppMetadata
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    dynamic raw,
+  );
+
+  @protected
+  FrbAppStoreVersions
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaAppLocalizations
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaAppReviewDetail
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaBuildLocalizations
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaGroups
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBuilds
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBundleIds
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    dynamic raw,
+  );
+
+  @protected
+  FrbCertificates
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    dynamic raw,
+  );
+
+  @protected
+  FrbDevices
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    dynamic raw,
+  );
+
+  @protected
+  FrbProfiles
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    dynamic raw,
+  );
 
   @protected
   FrbProvider
@@ -107,13 +387,134 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  FrbUsers
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    dynamic raw,
+  );
+
+  @protected
   String dco_decode_String(dynamic raw);
+
+  @protected
+  AccessibilityDeclarationInfo dco_decode_accessibility_declaration_info(
+    dynamic raw,
+  );
+
+  @protected
+  AgeRatingDeclarationInfo dco_decode_age_rating_declaration_info(dynamic raw);
+
+  @protected
+  AppCategoryInfo dco_decode_app_category_info(dynamic raw);
 
   @protected
   AppInfo dco_decode_app_info(dynamic raw);
 
   @protected
+  AppInfoDetails dco_decode_app_info_details(dynamic raw);
+
+  @protected
+  AppInfoLocalizationInfo dco_decode_app_info_localization_info(dynamic raw);
+
+  @protected
+  AppReviewDetailInfo dco_decode_app_review_detail_info(dynamic raw);
+
+  @protected
+  AppStoreLocalizationInfo dco_decode_app_store_localization_info(dynamic raw);
+
+  @protected
+  AppStoreVersionInfo dco_decode_app_store_version_info(dynamic raw);
+
+  @protected
+  BetaAppLocalizationInfo dco_decode_beta_app_localization_info(dynamic raw);
+
+  @protected
+  BetaAppReviewDetailInfo dco_decode_beta_app_review_detail_info(dynamic raw);
+
+  @protected
+  BetaBuildLocalizationInfo dco_decode_beta_build_localization_info(
+    dynamic raw,
+  );
+
+  @protected
+  BetaGroupInfo dco_decode_beta_group_info(dynamic raw);
+
+  @protected
+  BetaTesterInfo dco_decode_beta_tester_info(dynamic raw);
+
+  @protected
   bool dco_decode_bool(dynamic raw);
+
+  @protected
+  FrbAccessibilityDeclarations
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    dynamic raw,
+  );
+
+  @protected
+  FrbAppMetadata
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    dynamic raw,
+  );
+
+  @protected
+  FrbAppStoreVersions
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaAppLocalizations
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaAppReviewDetail
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaBuildLocalizations
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaGroups
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBuilds
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBundleIds
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    dynamic raw,
+  );
+
+  @protected
+  FrbCertificates
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    dynamic raw,
+  );
+
+  @protected
+  FrbDevices
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    dynamic raw,
+  );
+
+  @protected
+  FrbProfiles
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    dynamic raw,
+  );
 
   @protected
   FrbReviews
@@ -122,10 +523,56 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  FrbUsers
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    dynamic raw,
+  );
+
+  @protected
+  AgeRatingDeclarationInfo dco_decode_box_autoadd_age_rating_declaration_info(
+    dynamic raw,
+  );
+
+  @protected
+  AppReviewDetailInfo dco_decode_box_autoadd_app_review_detail_info(
+    dynamic raw,
+  );
+
+  @protected
+  bool dco_decode_box_autoadd_bool(dynamic raw);
+
+  @protected
+  BuildInfo dco_decode_box_autoadd_build_info(dynamic raw);
+
+  @protected
+  int dco_decode_box_autoadd_i_32(dynamic raw);
+
+  @protected
+  PhasedReleaseInfo dco_decode_box_autoadd_phased_release_info(dynamic raw);
+
+  @protected
   ReviewResponse dco_decode_box_autoadd_review_response(dynamic raw);
 
   @protected
+  BuildDetailInfo dco_decode_build_detail_info(dynamic raw);
+
+  @protected
+  BuildInfo dco_decode_build_info(dynamic raw);
+
+  @protected
+  BuildsPage dco_decode_builds_page(dynamic raw);
+
+  @protected
+  BundleIdCapabilityInfo dco_decode_bundle_id_capability_info(dynamic raw);
+
+  @protected
+  BundleIdInfo dco_decode_bundle_id_info(dynamic raw);
+
+  @protected
   Capability dco_decode_capability(dynamic raw);
+
+  @protected
+  CertificateInfo dco_decode_certificate_info(dynamic raw);
 
   @protected
   CredentialField dco_decode_credential_field(dynamic raw);
@@ -137,10 +584,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   CustomerReviewsPage dco_decode_customer_reviews_page(dynamic raw);
 
   @protected
+  DeviceInfo dco_decode_device_info(dynamic raw);
+
+  @protected
   FrbCredential dco_decode_frb_credential(dynamic raw);
 
   @protected
   int dco_decode_i_32(dynamic raw);
+
+  @protected
+  PlatformInt64 dco_decode_i_64(dynamic raw);
 
   @protected
   PlatformInt64 dco_decode_isize(dynamic raw);
@@ -149,10 +602,60 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<String> dco_decode_list_String(dynamic raw);
 
   @protected
+  List<AccessibilityDeclarationInfo>
+  dco_decode_list_accessibility_declaration_info(dynamic raw);
+
+  @protected
+  List<AppCategoryInfo> dco_decode_list_app_category_info(dynamic raw);
+
+  @protected
   List<AppInfo> dco_decode_list_app_info(dynamic raw);
 
   @protected
+  List<AppInfoLocalizationInfo> dco_decode_list_app_info_localization_info(
+    dynamic raw,
+  );
+
+  @protected
+  List<AppStoreLocalizationInfo> dco_decode_list_app_store_localization_info(
+    dynamic raw,
+  );
+
+  @protected
+  List<AppStoreVersionInfo> dco_decode_list_app_store_version_info(dynamic raw);
+
+  @protected
+  List<BetaAppLocalizationInfo> dco_decode_list_beta_app_localization_info(
+    dynamic raw,
+  );
+
+  @protected
+  List<BetaBuildLocalizationInfo> dco_decode_list_beta_build_localization_info(
+    dynamic raw,
+  );
+
+  @protected
+  List<BetaGroupInfo> dco_decode_list_beta_group_info(dynamic raw);
+
+  @protected
+  List<BetaTesterInfo> dco_decode_list_beta_tester_info(dynamic raw);
+
+  @protected
+  List<BuildInfo> dco_decode_list_build_info(dynamic raw);
+
+  @protected
+  List<BundleIdCapabilityInfo> dco_decode_list_bundle_id_capability_info(
+    dynamic raw,
+  );
+
+  @protected
+  List<BundleIdInfo> dco_decode_list_bundle_id_info(dynamic raw);
+
+  @protected
   List<Capability> dco_decode_list_capability(dynamic raw);
+
+  @protected
+  List<CertificateInfo> dco_decode_list_certificate_info(dynamic raw);
 
   @protected
   List<CredentialField> dco_decode_list_credential_field(dynamic raw);
@@ -161,16 +664,108 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<CustomerReview> dco_decode_list_customer_review(dynamic raw);
 
   @protected
+  List<DeviceInfo> dco_decode_list_device_info(dynamic raw);
+
+  @protected
   List<FrbCredential> dco_decode_list_frb_credential(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<ProvisioningProfileInfo> dco_decode_list_provisioning_profile_info(
+    dynamic raw,
+  );
+
+  @protected
+  List<ScreenshotInfo> dco_decode_list_screenshot_info(dynamic raw);
+
+  @protected
+  List<ScreenshotSetInfo> dco_decode_list_screenshot_set_info(dynamic raw);
+
+  @protected
   List<ServiceKind> dco_decode_list_service_kind(dynamic raw);
 
   @protected
+  List<TeamMemberInfo> dco_decode_list_team_member_info(dynamic raw);
+
+  @protected
+  List<UserInfo> dco_decode_list_user_info(dynamic raw);
+
+  @protected
   String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  FrbAccessibilityDeclarations?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    dynamic raw,
+  );
+
+  @protected
+  FrbAppMetadata?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    dynamic raw,
+  );
+
+  @protected
+  FrbAppStoreVersions?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaAppLocalizations?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaAppReviewDetail?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaBuildLocalizations?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBetaGroups?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBuilds?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    dynamic raw,
+  );
+
+  @protected
+  FrbBundleIds?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    dynamic raw,
+  );
+
+  @protected
+  FrbCertificates?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    dynamic raw,
+  );
+
+  @protected
+  FrbDevices?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    dynamic raw,
+  );
+
+  @protected
+  FrbProfiles?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    dynamic raw,
+  );
 
   @protected
   FrbReviews?
@@ -179,16 +774,60 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  FrbUsers?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    dynamic raw,
+  );
+
+  @protected
+  AgeRatingDeclarationInfo?
+  dco_decode_opt_box_autoadd_age_rating_declaration_info(dynamic raw);
+
+  @protected
+  AppReviewDetailInfo? dco_decode_opt_box_autoadd_app_review_detail_info(
+    dynamic raw,
+  );
+
+  @protected
+  bool? dco_decode_opt_box_autoadd_bool(dynamic raw);
+
+  @protected
+  BuildInfo? dco_decode_opt_box_autoadd_build_info(dynamic raw);
+
+  @protected
+  int? dco_decode_opt_box_autoadd_i_32(dynamic raw);
+
+  @protected
+  PhasedReleaseInfo? dco_decode_opt_box_autoadd_phased_release_info(
+    dynamic raw,
+  );
+
+  @protected
   ReviewResponse? dco_decode_opt_box_autoadd_review_response(dynamic raw);
 
   @protected
+  PhasedReleaseInfo dco_decode_phased_release_info(dynamic raw);
+
+  @protected
+  ProvisioningProfileInfo dco_decode_provisioning_profile_info(dynamic raw);
+
+  @protected
   ReviewResponse dco_decode_review_response(dynamic raw);
+
+  @protected
+  ScreenshotInfo dco_decode_screenshot_info(dynamic raw);
+
+  @protected
+  ScreenshotSetInfo dco_decode_screenshot_set_info(dynamic raw);
 
   @protected
   ServiceKind dco_decode_service_kind(dynamic raw);
 
   @protected
   StackError dco_decode_stack_error(dynamic raw);
+
+  @protected
+  TeamMemberInfo dco_decode_team_member_info(dynamic raw);
 
   @protected
   int dco_decode_u_16(dynamic raw);
@@ -203,10 +842,85 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void dco_decode_unit(dynamic raw);
 
   @protected
+  UserInfo dco_decode_user_info(dynamic raw);
+
+  @protected
   BigInt dco_decode_usize(dynamic raw);
 
   @protected
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
+
+  @protected
+  FrbAccessibilityDeclarations
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbAppMetadata
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbAppStoreVersions
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaAppLocalizations
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaAppReviewDetail
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaBuildLocalizations
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaGroups
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBuilds
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBundleIds
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbCertificates
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbDevices
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbProfiles
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    SseDeserializer deserializer,
+  );
 
   @protected
   FrbProvider
@@ -223,6 +937,84 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   FrbSyncService
   sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbUsers
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbAccessibilityDeclarations
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbAppMetadata
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbAppStoreVersions
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaAppLocalizations
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaAppReviewDetail
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaBuildLocalizations
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaGroups
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBuilds
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBundleIds
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbCertificates
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbDevices
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbProfiles
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
     SseDeserializer deserializer,
   );
 
@@ -245,7 +1037,85 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  FrbUsers
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   Object sse_decode_DartOpaque(SseDeserializer deserializer);
+
+  @protected
+  FrbAccessibilityDeclarations
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbAppMetadata
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbAppStoreVersions
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaAppLocalizations
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaAppReviewDetail
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaBuildLocalizations
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaGroups
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBuilds
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBundleIds
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbCertificates
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbDevices
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbProfiles
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    SseDeserializer deserializer,
+  );
 
   @protected
   FrbProvider
@@ -266,17 +1136,182 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  FrbUsers
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   String sse_decode_String(SseDeserializer deserializer);
+
+  @protected
+  AccessibilityDeclarationInfo sse_decode_accessibility_declaration_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AgeRatingDeclarationInfo sse_decode_age_rating_declaration_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AppCategoryInfo sse_decode_app_category_info(SseDeserializer deserializer);
 
   @protected
   AppInfo sse_decode_app_info(SseDeserializer deserializer);
 
   @protected
+  AppInfoDetails sse_decode_app_info_details(SseDeserializer deserializer);
+
+  @protected
+  AppInfoLocalizationInfo sse_decode_app_info_localization_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AppReviewDetailInfo sse_decode_app_review_detail_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AppStoreLocalizationInfo sse_decode_app_store_localization_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AppStoreVersionInfo sse_decode_app_store_version_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  BetaAppLocalizationInfo sse_decode_beta_app_localization_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  BetaAppReviewDetailInfo sse_decode_beta_app_review_detail_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  BetaBuildLocalizationInfo sse_decode_beta_build_localization_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  BetaGroupInfo sse_decode_beta_group_info(SseDeserializer deserializer);
+
+  @protected
+  BetaTesterInfo sse_decode_beta_tester_info(SseDeserializer deserializer);
+
+  @protected
   bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
+  FrbAccessibilityDeclarations
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbAppMetadata
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbAppStoreVersions
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaAppLocalizations
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaAppReviewDetail
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaBuildLocalizations
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaGroups
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBuilds
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBundleIds
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbCertificates
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbDevices
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbProfiles
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    SseDeserializer deserializer,
+  );
 
   @protected
   FrbReviews
   sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbUsers
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AgeRatingDeclarationInfo sse_decode_box_autoadd_age_rating_declaration_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AppReviewDetailInfo sse_decode_box_autoadd_app_review_detail_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  bool sse_decode_box_autoadd_bool(SseDeserializer deserializer);
+
+  @protected
+  BuildInfo sse_decode_box_autoadd_build_info(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_box_autoadd_i_32(SseDeserializer deserializer);
+
+  @protected
+  PhasedReleaseInfo sse_decode_box_autoadd_phased_release_info(
     SseDeserializer deserializer,
   );
 
@@ -286,7 +1321,27 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  BuildDetailInfo sse_decode_build_detail_info(SseDeserializer deserializer);
+
+  @protected
+  BuildInfo sse_decode_build_info(SseDeserializer deserializer);
+
+  @protected
+  BuildsPage sse_decode_builds_page(SseDeserializer deserializer);
+
+  @protected
+  BundleIdCapabilityInfo sse_decode_bundle_id_capability_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  BundleIdInfo sse_decode_bundle_id_info(SseDeserializer deserializer);
+
+  @protected
   Capability sse_decode_capability(SseDeserializer deserializer);
+
+  @protected
+  CertificateInfo sse_decode_certificate_info(SseDeserializer deserializer);
 
   @protected
   CredentialField sse_decode_credential_field(SseDeserializer deserializer);
@@ -300,10 +1355,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  DeviceInfo sse_decode_device_info(SseDeserializer deserializer);
+
+  @protected
   FrbCredential sse_decode_frb_credential(SseDeserializer deserializer);
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
+
+  @protected
+  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
 
   @protected
   PlatformInt64 sse_decode_isize(SseDeserializer deserializer);
@@ -312,10 +1373,72 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<String> sse_decode_list_String(SseDeserializer deserializer);
 
   @protected
+  List<AccessibilityDeclarationInfo>
+  sse_decode_list_accessibility_declaration_info(SseDeserializer deserializer);
+
+  @protected
+  List<AppCategoryInfo> sse_decode_list_app_category_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<AppInfo> sse_decode_list_app_info(SseDeserializer deserializer);
 
   @protected
+  List<AppInfoLocalizationInfo> sse_decode_list_app_info_localization_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<AppStoreLocalizationInfo> sse_decode_list_app_store_localization_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<AppStoreVersionInfo> sse_decode_list_app_store_version_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<BetaAppLocalizationInfo> sse_decode_list_beta_app_localization_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<BetaBuildLocalizationInfo> sse_decode_list_beta_build_localization_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<BetaGroupInfo> sse_decode_list_beta_group_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<BetaTesterInfo> sse_decode_list_beta_tester_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<BuildInfo> sse_decode_list_build_info(SseDeserializer deserializer);
+
+  @protected
+  List<BundleIdCapabilityInfo> sse_decode_list_bundle_id_capability_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<BundleIdInfo> sse_decode_list_bundle_id_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<Capability> sse_decode_list_capability(SseDeserializer deserializer);
+
+  @protected
+  List<CertificateInfo> sse_decode_list_certificate_info(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<CredentialField> sse_decode_list_credential_field(
@@ -328,6 +1451,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<DeviceInfo> sse_decode_list_device_info(SseDeserializer deserializer);
+
+  @protected
   List<FrbCredential> sse_decode_list_frb_credential(
     SseDeserializer deserializer,
   );
@@ -336,14 +1462,142 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<ProvisioningProfileInfo> sse_decode_list_provisioning_profile_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<ScreenshotInfo> sse_decode_list_screenshot_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<ScreenshotSetInfo> sse_decode_list_screenshot_set_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<ServiceKind> sse_decode_list_service_kind(SseDeserializer deserializer);
+
+  @protected
+  List<TeamMemberInfo> sse_decode_list_team_member_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<UserInfo> sse_decode_list_user_info(SseDeserializer deserializer);
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
+  FrbAccessibilityDeclarations?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbAppMetadata?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbAppStoreVersions?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaAppLocalizations?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaAppReviewDetail?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaBuildLocalizations?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBetaGroups?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBuilds?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbBundleIds?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbCertificates?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbDevices?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbProfiles?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   FrbReviews?
   sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  FrbUsers?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AgeRatingDeclarationInfo?
+  sse_decode_opt_box_autoadd_age_rating_declaration_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  AppReviewDetailInfo? sse_decode_opt_box_autoadd_app_review_detail_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  bool? sse_decode_opt_box_autoadd_bool(SseDeserializer deserializer);
+
+  @protected
+  BuildInfo? sse_decode_opt_box_autoadd_build_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  int? sse_decode_opt_box_autoadd_i_32(SseDeserializer deserializer);
+
+  @protected
+  PhasedReleaseInfo? sse_decode_opt_box_autoadd_phased_release_info(
     SseDeserializer deserializer,
   );
 
@@ -353,13 +1607,34 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  PhasedReleaseInfo sse_decode_phased_release_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ProvisioningProfileInfo sse_decode_provisioning_profile_info(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   ReviewResponse sse_decode_review_response(SseDeserializer deserializer);
+
+  @protected
+  ScreenshotInfo sse_decode_screenshot_info(SseDeserializer deserializer);
+
+  @protected
+  ScreenshotSetInfo sse_decode_screenshot_set_info(
+    SseDeserializer deserializer,
+  );
 
   @protected
   ServiceKind sse_decode_service_kind(SseDeserializer deserializer);
 
   @protected
   StackError sse_decode_stack_error(SseDeserializer deserializer);
+
+  @protected
+  TeamMemberInfo sse_decode_team_member_info(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_16(SseDeserializer deserializer);
@@ -374,11 +1649,98 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_decode_unit(SseDeserializer deserializer);
 
   @protected
+  UserInfo sse_decode_user_info(SseDeserializer deserializer);
+
+  @protected
   BigInt sse_decode_usize(SseDeserializer deserializer);
 
   @protected
   void sse_encode_AnyhowException(
     AnyhowException self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    FrbAccessibilityDeclarations self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    FrbAppMetadata self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    FrbAppStoreVersions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    FrbBetaAppLocalizations self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    FrbBetaAppReviewDetail self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    FrbBetaBuildLocalizations self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    FrbBetaGroups self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    FrbBuilds self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    FrbBundleIds self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    FrbCertificates self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    FrbDevices self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    FrbProfiles self,
     SseSerializer serializer,
   );
 
@@ -405,6 +1767,97 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    FrbUsers self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    FrbAccessibilityDeclarations self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    FrbAppMetadata self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    FrbAppStoreVersions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    FrbBetaAppLocalizations self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    FrbBetaAppReviewDetail self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    FrbBetaBuildLocalizations self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    FrbBetaGroups self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    FrbBuilds self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    FrbBundleIds self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    FrbCertificates self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    FrbDevices self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    FrbProfiles self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
   sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
     FrbProvider self,
     SseSerializer serializer,
@@ -425,6 +1878,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    FrbUsers self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_DartFn_Inputs_String_Output_unit_AnyhowException(
     FutureOr<void> Function(String) self,
     SseSerializer serializer,
@@ -439,6 +1899,90 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_DartOpaque(Object self, SseSerializer serializer);
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    FrbAccessibilityDeclarations self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    FrbAppMetadata self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    FrbAppStoreVersions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    FrbBetaAppLocalizations self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    FrbBetaAppReviewDetail self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    FrbBetaBuildLocalizations self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    FrbBetaGroups self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    FrbBuilds self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    FrbBundleIds self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    FrbCertificates self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    FrbDevices self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    FrbProfiles self,
+    SseSerializer serializer,
+  );
 
   @protected
   void
@@ -462,18 +2006,221 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    FrbUsers self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
+  void sse_encode_accessibility_declaration_info(
+    AccessibilityDeclarationInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_age_rating_declaration_info(
+    AgeRatingDeclarationInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_app_category_info(
+    AppCategoryInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_app_info(AppInfo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_app_info_details(
+    AppInfoDetails self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_app_info_localization_info(
+    AppInfoLocalizationInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_app_review_detail_info(
+    AppReviewDetailInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_app_store_localization_info(
+    AppStoreLocalizationInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_app_store_version_info(
+    AppStoreVersionInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_beta_app_localization_info(
+    BetaAppLocalizationInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_beta_app_review_detail_info(
+    BetaAppReviewDetailInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_beta_build_localization_info(
+    BetaBuildLocalizationInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_beta_group_info(BetaGroupInfo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_beta_tester_info(
+    BetaTesterInfo self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
 
   @protected
   void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    FrbAccessibilityDeclarations self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    FrbAppMetadata self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    FrbAppStoreVersions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    FrbBetaAppLocalizations self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    FrbBetaAppReviewDetail self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    FrbBetaBuildLocalizations self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    FrbBetaGroups self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    FrbBuilds self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    FrbBundleIds self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    FrbCertificates self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    FrbDevices self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    FrbProfiles self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
   sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
     FrbReviews self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    FrbUsers self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_age_rating_declaration_info(
+    AgeRatingDeclarationInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_app_review_detail_info(
+    AppReviewDetailInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_build_info(
+    BuildInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_i_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_phased_release_info(
+    PhasedReleaseInfo self,
     SseSerializer serializer,
   );
 
@@ -484,7 +2231,34 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_build_detail_info(
+    BuildDetailInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_build_info(BuildInfo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_builds_page(BuildsPage self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_bundle_id_capability_info(
+    BundleIdCapabilityInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_bundle_id_info(BundleIdInfo self, SseSerializer serializer);
+
+  @protected
   void sse_encode_capability(Capability self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_certificate_info(
+    CertificateInfo self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_credential_field(
@@ -505,10 +2279,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_device_info(DeviceInfo self, SseSerializer serializer);
+
+  @protected
   void sse_encode_frb_credential(FrbCredential self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
 
   @protected
   void sse_encode_isize(PlatformInt64 self, SseSerializer serializer);
@@ -517,11 +2297,89 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_String(List<String> self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_accessibility_declaration_info(
+    List<AccessibilityDeclarationInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_app_category_info(
+    List<AppCategoryInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_app_info(List<AppInfo> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_app_info_localization_info(
+    List<AppInfoLocalizationInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_app_store_localization_info(
+    List<AppStoreLocalizationInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_app_store_version_info(
+    List<AppStoreVersionInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_beta_app_localization_info(
+    List<BetaAppLocalizationInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_beta_build_localization_info(
+    List<BetaBuildLocalizationInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_beta_group_info(
+    List<BetaGroupInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_beta_tester_info(
+    List<BetaTesterInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_build_info(
+    List<BuildInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_bundle_id_capability_info(
+    List<BundleIdCapabilityInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_bundle_id_info(
+    List<BundleIdInfo> self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_list_capability(
     List<Capability> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_certificate_info(
+    List<CertificateInfo> self,
     SseSerializer serializer,
   );
 
@@ -538,6 +2396,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_device_info(
+    List<DeviceInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_frb_credential(
     List<FrbCredential> self,
     SseSerializer serializer,
@@ -550,18 +2414,166 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_provisioning_profile_info(
+    List<ProvisioningProfileInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_screenshot_info(
+    List<ScreenshotInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_screenshot_set_info(
+    List<ScreenshotSetInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_service_kind(
     List<ServiceKind> self,
     SseSerializer serializer,
   );
 
   @protected
+  void sse_encode_list_team_member_info(
+    List<TeamMemberInfo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_user_info(List<UserInfo> self, SseSerializer serializer);
+
+  @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    FrbAccessibilityDeclarations? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    FrbAppMetadata? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    FrbAppStoreVersions? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    FrbBetaAppLocalizations? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    FrbBetaAppReviewDetail? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    FrbBetaBuildLocalizations? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    FrbBetaGroups? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    FrbBuilds? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    FrbBundleIds? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    FrbCertificates? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    FrbDevices? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    FrbProfiles? self,
+    SseSerializer serializer,
+  );
 
   @protected
   void
   sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
     FrbReviews? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    FrbUsers? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_age_rating_declaration_info(
+    AgeRatingDeclarationInfo? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_app_review_detail_info(
+    AppReviewDetailInfo? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_bool(bool? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_build_info(
+    BuildInfo? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_i_32(int? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_phased_release_info(
+    PhasedReleaseInfo? self,
     SseSerializer serializer,
   );
 
@@ -572,8 +2584,32 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_phased_release_info(
+    PhasedReleaseInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_provisioning_profile_info(
+    ProvisioningProfileInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_review_response(
     ReviewResponse self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_screenshot_info(
+    ScreenshotInfo self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_screenshot_set_info(
+    ScreenshotSetInfo self,
     SseSerializer serializer,
   );
 
@@ -582,6 +2618,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_stack_error(StackError self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_team_member_info(
+    TeamMemberInfo self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_u_16(int self, SseSerializer serializer);
@@ -596,6 +2638,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_unit(void self, SseSerializer serializer);
 
   @protected
+  void sse_encode_user_info(UserInfo self, SseSerializer serializer);
+
+  @protected
   void sse_encode_usize(BigInt self, SseSerializer serializer);
 }
 
@@ -603,6 +2648,198 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
 class RustLibWire implements BaseWire {
   RustLibWire.fromExternalLibrary(ExternalLibrary lib);
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+        ptr,
+      );
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+        ptr,
+      );
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+        ptr,
+      );
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+        ptr,
+      );
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+        ptr,
+      );
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+        ptr,
+      );
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+        ptr,
+      );
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+        ptr,
+      );
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+        ptr,
+      );
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+        ptr,
+      );
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+        ptr,
+      );
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+        ptr,
+      );
 
   void
   rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
@@ -651,6 +2888,22 @@ class RustLibWire implements BaseWire {
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService(
         ptr,
       );
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+        ptr,
+      );
 }
 
 @JS('wasm_bindgen')
@@ -659,6 +2912,126 @@ external RustLibWasmModule get wasmModule;
 @JS()
 @anonymous
 extension type RustLibWasmModule._(JSObject _) implements JSObject {
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAccessibilityDeclarations(
+    int ptr,
+  );
+
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppMetadata(
+    int ptr,
+  );
+
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbAppStoreVersions(
+    int ptr,
+  );
+
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppLocalizations(
+    int ptr,
+  );
+
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaAppReviewDetail(
+    int ptr,
+  );
+
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaBuildLocalizations(
+    int ptr,
+  );
+
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBetaGroups(
+    int ptr,
+  );
+
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBuilds(
+    int ptr,
+  );
+
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbBundleIds(
+    int ptr,
+  );
+
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbCertificates(
+    int ptr,
+  );
+
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbDevices(
+    int ptr,
+  );
+
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProfiles(
+    int ptr,
+  );
+
   external void
   rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
     int ptr,
@@ -686,6 +3059,16 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
 
   external void
   rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService(
+    int ptr,
+  );
+
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbUsers(
     int ptr,
   );
 }

@@ -10,7 +10,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'service/kind.dart';
 import 'service/provider.dart';
 
-// These functions are ignored because they are not marked as `pub`: `flush_logs`, `flush_logs`, `flush`, `new`, `new`, `take`
+// These functions are ignored because they are not marked as `pub`: `flush_logs`, `flush_logs`, `flush_logs`, `flush_logs`, `flush_logs`, `flush_logs`, `flush_logs`, `flush_logs`, `flush_logs`, `flush_logs`, `flush_logs`, `flush_logs`, `flush_logs`, `flush_logs`, `flush_logs`, `flush`, `new`, `new`, `take`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `BufferingBlobStore`, `LogBuffer`, `MapCredentialStore`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `eq`, `fmt`
 // These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `default`, `delete`, `delete`, `fetch_all`, `fetch`, `log`, `save`, `secret`, `set_secret`
@@ -92,10 +92,1096 @@ FrbSyncService makeSyncService({
   accountId: accountId,
 );
 
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbAccessibilityDeclarations>>
+abstract class FrbAccessibilityDeclarations implements RustOpaqueInterface {
+  /// Creates an accessibility declaration for `app_id` targeting `device_family`
+  /// (an App Store Connect device-family value such as `IPHONE`, `IPAD`,
+  /// `APPLE_TV`, `APPLE_WATCH`, `MAC`, or `VISION`), returning the created
+  /// declaration. The core forwards `device_family` verbatim; App Store Connect
+  /// rejects unknown values with an HTTP error.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<AccessibilityDeclarationInfo> createAccessibilityDeclaration({
+    required String appId,
+    required String deviceFamily,
+  });
+
+  /// Deletes the accessibility declaration `id`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> deleteAccessibilityDeclaration({required String id});
+
+  /// Lists the accessibility declarations for `app_id`, up to `limit` per page,
+  /// following pagination until exhausted.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx page,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<List<AccessibilityDeclarationInfo>> fetchAccessibilityDeclarations({
+    required String appId,
+    required PlatformInt64 limit,
+  });
+
+  /// Updates the accessibility declaration `id`, setting all nine supported
+  /// feature flags and, when `publish` is `true`, publishing the declaration (the
+  /// `publish` attribute is omitted entirely when `publish` is `false`). Returns
+  /// the updated declaration.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<AccessibilityDeclarationInfo> updateAccessibilityDeclaration({
+    required String id,
+    required bool publish,
+    required bool supportsAudioDescriptions,
+    required bool supportsCaptions,
+    required bool supportsDarkInterface,
+    required bool supportsDifferentiateWithoutColor,
+    required bool supportsLargerText,
+    required bool supportsReducedMotion,
+    required bool supportsSufficientContrast,
+    required bool supportsVoiceControl,
+    required bool supportsVoiceover,
+  });
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbAppMetadata>>
+abstract class FrbAppMetadata implements RustOpaqueInterface {
+  /// Creates an app-info localization for `app_info_id` in `locale`, returning
+  /// the created localization. `name` is always set; `subtitle` is set only when
+  /// `Some`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<AppInfoLocalizationInfo> createAppInfoLocalization({
+    required String appInfoId,
+    required String locale,
+    required String name,
+    String? subtitle,
+  });
+
+  /// Deletes the app-info localization `id`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> deleteAppInfoLocalization({required String id});
+
+  /// Lists the top-level App Store categories (iOS), each with the ids of its
+  /// subcategories.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<List<AppCategoryInfo>> fetchAppCategories();
+
+  /// Fetches the full App Info detail for `app_id`: the app-info ids,
+  /// category/age-rating wiring, and per-locale localizations, merged with the
+  /// owning app's `sku`/`primary_locale`/`content_rights_declaration`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<AppInfoDetails> fetchAppInfo({required String appId});
+
+  /// Lists the app-info localizations for `app_info_id`. Each carries the
+  /// per-locale product-page `name`/`subtitle` and the three privacy links/text.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<List<AppInfoLocalizationInfo>> fetchAppInfoLocalizations({
+    required String appInfoId,
+  });
+
+  /// Resolves the icon URL for `app_id` from its most recent build, or `None`
+  /// when there is no build / no icon token.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<String?> fetchIconUrl({required String appId});
+
+  /// Updates the age-rating declaration `id`, sending all 18 attributes (all
+  /// required from the host).
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> updateAgeRating({
+    required String id,
+    required String alcoholTobacco,
+    required String contests,
+    required String gamblingSimulated,
+    required String gunsOrOtherWeapons,
+    required String medicalInformation,
+    required String profanity,
+    required String sexualContentGraphic,
+    required String sexualContentOrNudity,
+    required String horrorOrFear,
+    required String matureOrSuggestive,
+    required String violenceCartoon,
+    required String violenceRealistic,
+    required String violenceGraphic,
+    required bool isAdvertising,
+    required bool isGambling,
+    required bool isUnrestrictedWebAccess,
+    required bool isUserGeneratedContent,
+    required String ageRatingOverride,
+  });
+
+  /// Updates the app `id`, sending `content_rights_declaration` and/or
+  /// `primary_locale` only when `Some`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> updateApp({
+    required String id,
+    String? contentRightsDeclaration,
+    String? primaryLocale,
+  });
+
+  /// Updates the category relationships of the app-info `app_info_id`. Each of
+  /// `primary_category_id`, `subcategory_one_id`, `secondary_category_id`, and
+  /// `secondary_subcategory_one_id` is wired only when `Some`; the others are
+  /// omitted (not sent as `null`).
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> updateAppInfoCategory({
+    required String appInfoId,
+    String? primaryCategoryId,
+    String? subcategoryOneId,
+    String? secondaryCategoryId,
+    String? secondarySubcategoryOneId,
+  });
+
+  /// Updates the app-info localization `id`, returning the updated localization.
+  /// `name` is always sent; `subtitle` is sent only when `Some`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<AppInfoLocalizationInfo> updateAppInfoLocalization({
+    required String id,
+    required String name,
+    String? subtitle,
+  });
+
+  /// Updates the privacy attributes of the app-info localization `id`, replacing
+  /// only the provided `privacy_policy_url`, `privacy_choices_url`, and/or
+  /// `privacy_policy_text` attributes, and returns the updated localization.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<AppInfoLocalizationInfo> updateAppInfoLocalizationPrivacy({
+    required String id,
+    String? privacyPolicyUrl,
+    String? privacyChoicesUrl,
+    String? privacyPolicyText,
+  });
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbAppStoreVersions>>
+abstract class FrbAppStoreVersions implements RustOpaqueInterface {
+  /// Cancels the active (waiting-for-review or in-review) submission for
+  /// `app_id`. When no such submission exists this is a no-op that returns
+  /// `Ok(())`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] on a pending-agreements 403,
+  /// [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+  /// on malformed JSON, or [`StackError::Network`] on transport failure.
+  Future<void> cancelReview({required String appId});
+
+  /// Cancels the active submission for `app_id`, removing a not-yet-approved
+  /// submission from review. When there is no active submission this is a no-op
+  /// that returns `Ok(())`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] on a pending-agreements 403,
+  /// [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+  /// on malformed JSON, or [`StackError::Network`] on transport failure.
+  Future<void> cancelSubmission({required String appId});
+
+  /// Creates a phased (staged) release for `version_id` with the initial
+  /// `state`, returning the created phased release. `state` is the raw ASC
+  /// `phasedReleaseState` value (`INACTIVE` / `ACTIVE` / `PAUSED` / `COMPLETE`).
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] on a pending-agreements 403,
+  /// [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+  /// on malformed JSON, or [`StackError::Network`] on transport failure.
+  Future<PhasedReleaseInfo> createPhasedRelease({
+    required String versionId,
+    required String state,
+  });
+
+  /// Creates a new App Store version for `app_id` on `platform` with
+  /// `version_string`, returning the created version. `platform` is the raw ASC
+  /// value (`IOS` / `MAC_OS` / `TV_OS` / `VISION_OS`).
+  ///
+  /// # Errors
+  /// [`StackError::Http`] on a non-2xx response, [`StackError::Decode`] on
+  /// malformed JSON, or [`StackError::Network`] on transport failure.
+  Future<AppStoreVersionInfo> createVersion({
+    required String appId,
+    required String platform,
+    required String versionString,
+  });
+
+  /// Deletes the phased release identified by `id`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] on a pending-agreements 403,
+  /// [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> deletePhasedRelease({required String id});
+
+  /// Deletes the version identified by `id`.
+  ///
+  /// # Errors
+  /// [`StackError::Http`] on a non-2xx response or [`StackError::Network`] on
+  /// transport failure.
+  Future<void> deleteVersion({required String id});
+
+  /// Fetches the single app review detail for `version_id` — the version's "App
+  /// Review Information". Returns `Ok(None)` when no app review detail exists.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<AppReviewDetailInfo?> fetchAppReviewDetail({
+    required String versionId,
+  });
+
+  /// Lists the version localizations for `version_id`. Each localization carries
+  /// the per-locale product-page metadata.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] on a pending-agreements 403,
+  /// [`StackError::Http`] on any other non-2xx page, [`StackError::Decode`] on
+  /// malformed JSON, or [`StackError::Network`] on transport failure.
+  Future<List<AppStoreLocalizationInfo>> fetchLocalizations({
+    required String versionId,
+  });
+
+  /// Fetches the phased (staged) release for `version_id`. Returns `Ok(None)`
+  /// when no phased release exists.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] on a pending-agreements 403,
+  /// [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+  /// on malformed JSON, or [`StackError::Network`] on transport failure.
+  Future<PhasedReleaseInfo?> fetchPhasedRelease({required String versionId});
+
+  /// Lists the screenshot sets (with their screenshots) for the version
+  /// localization identified by `localization_id`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] on a pending-agreements 403,
+  /// [`StackError::Http`] on any other non-2xx page, [`StackError::Decode`] on
+  /// malformed JSON, or [`StackError::Network`] on transport failure.
+  Future<List<ScreenshotSetInfo>> fetchScreenshotSets({
+    required String localizationId,
+  });
+
+  /// Lists the App Store versions for `app_id`, up to `limit`.
+  ///
+  /// # Errors
+  /// [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+  /// JSON, or [`StackError::Network`] on transport failure.
+  Future<List<AppStoreVersionInfo>> fetchVersions({
+    required String appId,
+    required int limit,
+  });
+
+  /// Rejects the approved (pending-developer-release) version identified by
+  /// `version_id`. When the version has no submission this is a no-op that
+  /// returns `Ok(())`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] on a pending-agreements 403,
+  /// [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+  /// on malformed JSON, or [`StackError::Network`] on transport failure.
+  Future<void> rejectVersion({required String versionId});
+
+  /// Manually releases the approved version identified by `version_id`. Any 2xx
+  /// is treated as success.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] on a pending-agreements 403,
+  /// [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> releaseVersion({required String versionId});
+
+  /// Submits the version `version_id` of `app_id` for App Store review. When
+  /// `platform` is `Some`, the review submission is scoped to that raw ASC
+  /// platform value (`IOS` / `MAC_OS` / `TV_OS` / `VISION_OS`); when `None`, the
+  /// submission carries no platform attribute.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] on a pending-agreements 403,
+  /// [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+  /// on malformed JSON, or [`StackError::Network`] on transport failure.
+  Future<void> submitForReview({
+    required String appId,
+    required String versionId,
+    String? platform,
+  });
+
+  /// Updates the app review detail `detail_id`, replacing only the provided
+  /// attributes, and returns the updated detail. Only the `Some` attributes are
+  /// sent in the PATCH body; `None` attributes are omitted entirely.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<AppReviewDetailInfo> updateAppReviewDetail({
+    required String detailId,
+    String? contactFirstName,
+    String? contactLastName,
+    String? contactEmail,
+    String? contactPhone,
+    String? notes,
+    String? demoAccountName,
+    String? demoAccountPassword,
+    bool? isDemoAccountRequired,
+  });
+
+  /// Updates the version localization identified by `id`, sending only the
+  /// `Some` attributes; `None` attributes are omitted entirely.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] on a pending-agreements 403,
+  /// [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> updateLocalization({
+    required String id,
+    String? description,
+    String? keywords,
+    String? promotionalText,
+    String? supportUrl,
+    String? marketingUrl,
+    String? whatsNew,
+  });
+
+  /// Updates the `state` of the phased release identified by `id`, returning the
+  /// updated phased release. `state` is the raw ASC `phasedReleaseState` value
+  /// (`INACTIVE` / `ACTIVE` / `PAUSED` / `COMPLETE`).
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] on a pending-agreements 403,
+  /// [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+  /// on malformed JSON, or [`StackError::Network`] on transport failure.
+  Future<PhasedReleaseInfo> updatePhasedReleaseState({
+    required String id,
+    required String state,
+  });
+
+  /// Updates the version identified by `id`, sending only the provided
+  /// attributes. `earliest_release_date` is a raw ISO8601 string passed through
+  /// verbatim — the core does no date parsing.
+  ///
+  /// # Errors
+  /// [`StackError::Http`] on a non-2xx response or [`StackError::Network`] on
+  /// transport failure.
+  Future<void> updateVersion({
+    required String id,
+    String? versionString,
+    String? copyright,
+    String? releaseType,
+    String? earliestReleaseDate,
+  });
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbBetaAppLocalizations>>
+abstract class FrbBetaAppLocalizations implements RustOpaqueInterface {
+  /// Creates a beta app localization for `app_id` in `locale`, returning the
+  /// created localization. `feedback_email` is the per-locale address testers'
+  /// feedback is sent to, and `description` is the per-locale TestFlight test
+  /// description shown to testers; both are optional.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<BetaAppLocalizationInfo> createBetaAppLocalization({
+    required String appId,
+    required String locale,
+    String? feedbackEmail,
+    String? description,
+  });
+
+  /// Lists the beta app localizations for `app_id`, up to `limit`.
+  ///
+  /// # Errors
+  /// [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+  /// JSON, or [`StackError::Network`] on transport failure.
+  Future<List<BetaAppLocalizationInfo>> fetchBetaAppLocalizations({
+    required String appId,
+    required int limit,
+  });
+
+  /// Updates the beta app localization `id`, replacing only the provided
+  /// `feedback_email` and/or `description` attributes, and returns the updated
+  /// localization.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<BetaAppLocalizationInfo> updateBetaAppLocalization({
+    required String id,
+    String? feedbackEmail,
+    String? description,
+  });
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbBetaAppReviewDetail>>
+abstract class FrbBetaAppReviewDetail implements RustOpaqueInterface {
+  /// Fetches the single beta app review detail for `app_id` — the TestFlight
+  /// "Test Information" containing the beta review contact and optional demo
+  /// account credentials.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<BetaAppReviewDetailInfo> fetchBetaAppReviewDetail({
+    required String appId,
+  });
+
+  /// Updates the beta app review detail `detail_id`, replacing only the provided
+  /// attributes, and returns the updated detail. Every attribute is optional:
+  /// `contact_*` set the beta review contact, `demo_account_*` set the demo
+  /// account credentials, `is_demo_account_required` toggles whether a demo
+  /// account is needed, and `notes` are the reviewer notes.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<BetaAppReviewDetailInfo> updateBetaAppReviewDetail({
+    required String detailId,
+    String? contactFirstName,
+    String? contactLastName,
+    String? contactEmail,
+    String? contactPhone,
+    String? demoAccountName,
+    String? demoAccountPassword,
+    bool? isDemoAccountRequired,
+    String? notes,
+  });
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbBetaBuildLocalizations>>
+abstract class FrbBetaBuildLocalizations implements RustOpaqueInterface {
+  /// Creates a beta build localization for `build_id` in `locale`, returning the
+  /// created localization. `whats_new` is the per-locale "What to Test" text
+  /// shown to testers.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<BetaBuildLocalizationInfo> createBetaBuildLocalization({
+    required String buildId,
+    required String locale,
+    required String whatsNew,
+  });
+
+  /// Lists the beta build localizations for `build_id`, up to `limit`.
+  ///
+  /// # Errors
+  /// [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+  /// JSON, or [`StackError::Network`] on transport failure.
+  Future<List<BetaBuildLocalizationInfo>> fetchBetaBuildLocalizations({
+    required String buildId,
+    required int limit,
+  });
+
+  /// Updates the beta build localization `id`, replacing its `whats_new` testing
+  /// notes, and returns the updated localization.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<BetaBuildLocalizationInfo> updateBetaBuildLocalization({
+    required String id,
+    required String whatsNew,
+  });
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbBetaGroups>>
+abstract class FrbBetaGroups implements RustOpaqueInterface {
+  /// Adds a beta tester to `group_id`, creating the tester from `email` and the
+  /// optional `first_name`/`last_name`, and returns the created tester.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<BetaTesterInfo> addBetaTester({
+    required String groupId,
+    required String email,
+    String? firstName,
+    String? lastName,
+  });
+
+  /// Creates a beta group named `name` under `app_id`, returning the created
+  /// group. `is_internal` selects an internal vs. external group;
+  /// `public_link_enabled` toggles the TestFlight public link; and
+  /// `has_access_to_all_builds` grants the group every build.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<BetaGroupInfo> createBetaGroup({
+    required String appId,
+    required String name,
+    required bool isInternal,
+    required bool publicLinkEnabled,
+    required bool hasAccessToAllBuilds,
+  });
+
+  /// Deletes the beta group `group_id`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> deleteBetaGroup({required String groupId});
+
+  /// Lists the beta groups for `app_id`, up to `limit`.
+  ///
+  /// # Errors
+  /// [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+  /// JSON, or [`StackError::Network`] on transport failure.
+  Future<List<BetaGroupInfo>> fetchBetaGroups({
+    required String appId,
+    required int limit,
+  });
+
+  /// Lists the beta testers belonging to `group_id`, up to `limit`.
+  ///
+  /// # Errors
+  /// [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+  /// JSON, or [`StackError::Network`] on transport failure.
+  Future<List<BetaTesterInfo>> fetchBetaTesters({
+    required String groupId,
+    required int limit,
+  });
+
+  /// Returns the number of beta testers belonging to `group_id`, read from App
+  /// Store Connect's paging metadata without materializing the full list.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<int> fetchTesterCount({required String groupId});
+
+  /// Removes the beta tester `tester_id` from `group_id` (unlinks the tester
+  /// from the group; the tester itself is not deleted).
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> removeBetaTester({
+    required String groupId,
+    required String testerId,
+  });
+
+  /// Resends the TestFlight invite for the beta tester `tester_id` on `app_id`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> resendInvite({required String testerId, required String appId});
+
+  /// Updates the beta group `group_id`, applying only the fields that are `Some`
+  /// and leaving the rest untouched. `public_link_limit` caps the number of
+  /// testers who can join via the public link.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<BetaGroupInfo> updateBetaGroup({
+    required String groupId,
+    String? name,
+    bool? publicLinkEnabled,
+    int? publicLinkLimit,
+    bool? feedbackEnabled,
+  });
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbBuilds>>
+abstract class FrbBuilds implements RustOpaqueInterface {
+  /// Adds the build `build_id` to each beta group in `group_ids` (appends to the
+  /// build's `betaGroups` to-many relationship). An empty `group_ids` issues the
+  /// request with an empty linkage array.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> addBuildToGroups({
+    required String buildId,
+    required List<String> groupIds,
+  });
+
+  /// Attaches the build `build_id` to the App Store version `version_id` (sets
+  /// the version's `build` to-one relationship).
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> attachBuild({
+    required String versionId,
+    required String buildId,
+  });
+
+  /// Marks the build `build_id` as expired (sets its `expired` attribute to
+  /// `true`).
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> expireBuild({required String buildId});
+
+  /// Fetches the full detail of the build `build_id`: the enriched build plus
+  /// its associated beta groups and per-locale "What to Test" localizations.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<BuildDetailInfo> fetchBuildDetail({required String buildId});
+
+  /// Lists the builds for `app_id`, newest first (by upload date), up to
+  /// `limit`.
+  ///
+  /// # Errors
+  /// [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on malformed
+  /// JSON, or [`StackError::Network`] on transport failure.
+  Future<List<BuildInfo>> fetchBuilds({
+    required String appId,
+    required int limit,
+  });
+
+  /// Lists the builds belonging to the beta group `group_id`, newest first (by
+  /// upload date), up to `limit`, following pagination to the end.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx page,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<List<BuildInfo>> fetchBuildsForGroup({
+    required String groupId,
+    required int limit,
+  });
+
+  /// Fetches a single page of builds for `app_id`, newest first (by upload
+  /// date), up to `limit`. When `platform` is `Some`, only builds for that
+  /// platform are returned; when `processing_states` is non-empty, only builds
+  /// in those states are returned. Pass a prior call's `next_token` back as
+  /// `page_token` to load the next page.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx page,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<BuildsPage> fetchBuildsPage({
+    required String appId,
+    String? platform,
+    required List<String> processingStates,
+    required int limit,
+    String? pageToken,
+  });
+
+  /// Fetches the build currently attached to the App Store version `version_id`,
+  /// or `None` when no build is attached.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<BuildInfo?> fetchCurrentBuild({required String versionId});
+
+  /// Removes the build `build_id` from the beta group `group_id` (deletes the
+  /// build from the group's `builds` to-many relationship).
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> removeBuildFromGroup({
+    required String buildId,
+    required String groupId,
+  });
+
+  /// Submits the build `build_id` for beta (TestFlight) review by creating a
+  /// beta app review submission.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> submitBuildForBetaReview({required String buildId});
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbBundleIds>>
+abstract class FrbBundleIds implements RustOpaqueInterface {
+  /// Registers a new bundle ID with `identifier`, `name`, and ASC `platform` (a
+  /// raw `BundleIdPlatform` value such as `IOS`, `MAC_OS`, or `UNIVERSAL`,
+  /// forwarded verbatim — App Store Connect rejects unknown values with an HTTP
+  /// error), returning the created bundle ID.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<BundleIdInfo> createBundleId({
+    required String identifier,
+    required String name,
+    required String platform,
+  });
+
+  /// Deletes the bundle ID `id`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> deleteBundleId({required String id});
+
+  /// Disables the capability `capability_id`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> disableCapability({required String capabilityId});
+
+  /// Enables `capability_type` (a raw ASC `capabilityType` string, forwarded
+  /// verbatim) on `bundle_id`, returning the created capability.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<BundleIdCapabilityInfo> enableCapability({
+    required String bundleId,
+    required String capabilityType,
+  });
+
+  /// Lists the capabilities enabled on `bundle_id`, following pagination until
+  /// exhausted. Entries whose `capabilityType` is missing or empty are skipped.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx page,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<List<BundleIdCapabilityInfo>> fetchBundleIdCapabilities({
+    required String bundleId,
+  });
+
+  /// Lists every bundle ID of the connected account, sorted by name, following
+  /// pagination until exhausted.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx page,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<List<BundleIdInfo>> fetchBundleIds();
+
+  /// Renames the bundle ID `id`. Only the `name` is mutable; the identifier and
+  /// platform are fixed at creation.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> updateBundleId({required String id, required String name});
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbCertificates>>
+abstract class FrbCertificates implements RustOpaqueInterface {
+  /// Creates a certificate from `csr_content` (a base64/PEM CSR) of
+  /// `certificate_type` (a raw ASC `CertificateType` value, forwarded verbatim —
+  /// App Store Connect rejects unknown values with an HTTP error). When
+  /// `pass_type_id` is `Some` and non-empty it is attached as the `passTypeId`
+  /// relationship; otherwise when `merchant_id` is `Some` and non-empty it is
+  /// attached as the `merchantId` relationship; otherwise no relationship is
+  /// sent. The returned certificate includes its `certificate_content`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<CertificateInfo> createCertificate({
+    required String csrContent,
+    required String certificateType,
+    String? passTypeId,
+    String? merchantId,
+  });
+
+  /// Fetches the base64-encoded `certificateContent` of the certificate `id`,
+  /// returning `None` when App Store Connect omits the attribute.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<String?> fetchCertificateContent({required String id});
+
+  /// Lists every certificate of the connected account, sorted by display name,
+  /// following pagination until exhausted. The list does not include certificate
+  /// content, so every entry's `certificate_content` is `None`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx page,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<List<CertificateInfo>> fetchCertificates();
+
+  /// Revokes (deletes) the certificate `id`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> revokeCertificate({required String id});
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbDevices>>
+abstract class FrbDevices implements RustOpaqueInterface {
+  /// Registers a new device with `name`, ASC `platform` (a raw `BundleIdPlatform`
+  /// value such as `IOS`, `MAC_OS`, or `UNIVERSAL`, forwarded verbatim — App
+  /// Store Connect rejects unknown values with an HTTP error), and `udid`,
+  /// returning the created device.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<DeviceInfo> createDevice({
+    required String name,
+    required String platform,
+    required String udid,
+  });
+
+  /// Lists every registered device of the connected account, sorted by name,
+  /// following pagination until exhausted.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx page,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<List<DeviceInfo>> fetchDevices();
+
+  /// Updates the device `id`, sending only the attributes that are `Some`: `name`
+  /// renames the device, and `status` (`"DISABLED"` to remove it from the
+  /// account, `"ENABLED"` to re-enable it) changes its status. Attributes left
+  /// `None` are omitted from the request entirely.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> updateDevice({required String id, String? name, String? status});
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbProfiles>>
+abstract class FrbProfiles implements RustOpaqueInterface {
+  /// Creates a provisioning profile named `name` of `profile_type` (a raw ASC
+  /// `ProfileType` value such as `IOS_APP_DEVELOPMENT`, `IOS_APP_STORE`, or
+  /// `MAC_APP_STORE`, forwarded verbatim — App Store Connect rejects unknown
+  /// values with an HTTP error), related to the bundle ID `bundle_id_id` and the
+  /// signing certificates `certificate_ids`. When `device_ids` is non-empty the
+  /// `devices` relationship is attached; when empty it is omitted entirely (App
+  /// Store Connect rejects an empty `devices` array for App Store profiles). The
+  /// `certificates` relationship is always sent, even when `certificate_ids` is
+  /// empty. The returned profile includes its `profile_content`; its `bundle_id`
+  /// is `None` (not resolved on create).
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<ProvisioningProfileInfo> createProfile({
+    required String name,
+    required String profileType,
+    required String bundleIdId,
+    required List<String> certificateIds,
+    required List<String> deviceIds,
+  });
+
+  /// Deletes the profile `id`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> deleteProfile({required String id});
+
+  /// Fetches the base64-encoded `profileContent` of the profile `id`, returning
+  /// `None` when App Store Connect omits the attribute.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<String?> fetchProfileContent({required String id});
+
+  /// Lists every provisioning profile of the connected account, sorted by name,
+  /// following pagination until exhausted. Each profile's `bundle_id` is resolved
+  /// to the referenced bundle ID's `identifier` string via the response's
+  /// `included[]` bundleIds (or `None` when the relationship is missing or the
+  /// bundle ID is absent from `included[]`). The list does not include profile
+  /// content, so every entry's `profile_content` is `None`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx page,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<List<ProvisioningProfileInfo>> fetchProfiles();
+}
+
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbProvider>>
 abstract class FrbProvider implements RustOpaqueInterface {
+  /// The Accessibility Declarations capability handle, or `None` when this
+  /// provider does not expose accessibility declarations. Mirrors
+  /// [`Provider::accessibility_declarations`]: the discovery mechanism is a `None`
+  /// return, not an error.
+  FrbAccessibilityDeclarations? accessibilityDeclarations();
+
+  /// The App Metadata capability handle, or `None` when this provider does not
+  /// expose app metadata. Mirrors [`Provider::app_metadata`]: the discovery
+  /// mechanism is a `None` return, not an error.
+  FrbAppMetadata? appMetadata();
+
+  /// The App Store Versions capability handle, or `None` when this provider does
+  /// not expose versions. Mirrors [`Provider::app_store_versions`]: the discovery
+  /// mechanism is a `None` return, not an error.
+  FrbAppStoreVersions? appStoreVersions();
+
+  /// The Beta App Localizations capability handle, or `None` when this provider
+  /// does not expose beta app localizations. Mirrors
+  /// [`Provider::beta_app_localizations`]: the discovery mechanism is a `None`
+  /// return, not an error.
+  FrbBetaAppLocalizations? betaAppLocalizations();
+
+  /// The Beta App Review Detail capability handle, or `None` when this provider
+  /// does not expose the beta app review detail. Mirrors
+  /// [`Provider::beta_app_review_detail`]: the discovery mechanism is a `None`
+  /// return, not an error.
+  FrbBetaAppReviewDetail? betaAppReviewDetail();
+
+  /// The Beta Build Localizations capability handle, or `None` when this provider
+  /// does not expose beta build localizations. Mirrors
+  /// [`Provider::beta_build_localizations`]: the discovery mechanism is a `None`
+  /// return, not an error.
+  FrbBetaBuildLocalizations? betaBuildLocalizations();
+
+  /// The Beta Groups (TestFlight) capability handle, or `None` when this provider
+  /// does not expose beta groups. Mirrors [`Provider::beta_groups`]: the discovery
+  /// mechanism is a `None` return, not an error.
+  FrbBetaGroups? betaGroups();
+
+  /// The Builds capability handle, or `None` when this provider does not expose
+  /// builds. Mirrors [`Provider::builds`]: the discovery mechanism is a `None`
+  /// return, not an error.
+  FrbBuilds? builds();
+
+  /// The BundleIds capability handle, or `None` when this provider does not
+  /// expose bundle ID management. Mirrors [`Provider::bundle_ids`]: the discovery
+  /// mechanism is a `None` return, not an error.
+  FrbBundleIds? bundleIds();
+
   /// The capabilities exposed for the connected account.
   List<Capability> capabilities();
+
+  /// The Certificates capability handle, or `None` when this provider does not
+  /// expose certificate management. Mirrors [`Provider::certificates`]: the
+  /// discovery mechanism is a `None` return, not an error.
+  FrbCertificates? certificates();
+
+  /// The Devices capability handle, or `None` when this provider does not expose
+  /// device management. Mirrors [`Provider::devices`]: the discovery mechanism is
+  /// a `None` return, not an error.
+  FrbDevices? devices();
 
   /// Lists the apps visible to the connected account.
   ///
@@ -107,10 +1193,20 @@ abstract class FrbProvider implements RustOpaqueInterface {
   /// Which service this provider speaks to.
   ServiceKind kind();
 
+  /// The Profiles capability handle, or `None` when this provider does not expose
+  /// provisioning profile management. Mirrors [`Provider::profiles`]: the
+  /// discovery mechanism is a `None` return, not an error.
+  FrbProfiles? profiles();
+
   /// The Reviews capability handle, or `None` when this provider does not
   /// expose reviews. Mirrors [`Provider::reviews`]: the discovery mechanism is
   /// a `None` return, not an error.
   FrbReviews? reviews();
+
+  /// The Users capability handle, or `None` when this provider does not expose
+  /// user management. Mirrors [`Provider::users`]: the discovery mechanism is a
+  /// `None` return, not an error.
+  FrbUsers? users();
 
   /// Verifies the stored credentials against the live service.
   ///
@@ -185,6 +1281,61 @@ abstract class FrbSyncService implements RustOpaqueInterface {
   /// serialize.
   Future<List<AppInfo>> syncApps({
     required FutureOr<void> Function(String, String, String) persist,
+  });
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbUsers>>
+abstract class FrbUsers implements RustOpaqueInterface {
+  /// Deletes the user `id`. When `is_pending` is `true` the id is an outstanding
+  /// `userInvitations` resource and the invitation is cancelled; otherwise the id
+  /// is an active `users` resource and the member is removed.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> deleteUser({required String id, required bool isPending});
+
+  /// Lists the team members of the connected account — the lightweight
+  /// projection of the active `users` resources (no pending invitations),
+  /// carrying only `first_name`/`last_name`/`username` and the raw ASC `roles`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<List<TeamMemberInfo>> fetchTeamMembers();
+
+  /// Lists every user of the connected account: the active members (`users`)
+  /// followed by the outstanding invitations (`userInvitations`), unified into
+  /// one list and discriminated by `is_pending`. For active members `email` is
+  /// taken from the `username` attribute; pending invitations carry their own
+  /// `email` and `expiration_date`.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<List<UserInfo>> fetchUsers();
+
+  /// Invites a new user to the connected account, granting the raw ASC `roles`
+  /// (e.g. `"ADMIN"`, `"DEVELOPER"`, `"APP_MANAGER"`), passed through verbatim.
+  /// `all_apps_visible` and `provisioning_allowed` set the corresponding
+  /// invitation flags.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx response, or
+  /// [`StackError::Network`] on transport failure.
+  Future<void> inviteUser({
+    required String email,
+    required String firstName,
+    required String lastName,
+    required List<String> roles,
+    required bool allAppsVisible,
+    required bool provisioningAllowed,
   });
 }
 
