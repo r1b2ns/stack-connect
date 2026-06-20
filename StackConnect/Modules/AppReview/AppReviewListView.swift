@@ -43,6 +43,7 @@ struct AppReviewListView<ViewModel: AppReviewListViewModelProtocol>: View {
             .navigationBarTitleDisplayMode(.inline)
             .task { await viewModel.loadSubmissions() }
             .refreshable { await viewModel.loadSubmissions() }
+            .onAppear { Task { await viewModel.loadSubmissions() } }
     }
 
     // MARK: - Content

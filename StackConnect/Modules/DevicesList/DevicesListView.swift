@@ -78,6 +78,8 @@ struct DevicesListView<ViewModel: DevicesListViewModelProtocol>: View {
         if viewModel.uiState.isLoading && viewModel.uiState.devices.isEmpty {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if viewModel.uiState.pendingAgreement {
+            PendingAgreementTip()
         } else if viewModel.uiState.filtered.isEmpty {
             buildEmptyState()
         } else {

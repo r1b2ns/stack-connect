@@ -1,147 +1,123 @@
 import Foundation
-import AppStoreConnect_Swift_SDK
 import StackProtocols
+import StackCoreRust
 
 final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendable {
 
     private let credentials: AppleCredentials
-    private var provider: APIProvider?
 
-    init(credentials: AppleCredentials) {
+    /// Resolves feature flags (e.g. `useRustCoreDebugLogging`). Injected for testability.
+    private let featureFlags: FeatureFlags
+
+    /// Lazily-built Rust core provider, reused across `validateCredentials()` and
+    /// `fetchApps()` within a single connection. Only created when the flag is ON.
+    private var rustProvider: StackCoreRust.Provider?
+
+    /// Backs the Rust core's `CredentialStore` callback. Read-only bridge to
+    /// `AppleCredentials`. Constructed once per connection.
+    private lazy var rustCredentialStore = AppleCredentialStore(credentials: credentials)
+
+    init(
+        credentials: AppleCredentials,
+        featureFlags: FeatureFlags = .shared
+    ) {
         self.credentials = credentials
+        self.featureFlags = featureFlags
     }
 
     // MARK: - AccountConnectionProtocol
 
     func validateCredentials() async throws {
-        let provider = try createProvider()
-        self.provider = provider
-
-        let request = APIEndpoint
-            .v1
-            .apps
-            .get(parameters: .init(limit: 1))
-
-        _ = try await provider.request(request)
-        Log.print.info("[Apple] Credentials validated successfully")
+        let provider = try rustCoreProvider()
+        try await callRustCore { try await provider.validate() }
+        Log.print.info("[Apple] Credentials validated successfully (Rust core)")
     }
 
     func fetchApps() async throws -> [StackProtocols.AppInfo] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchApps()
-        }
-
-        let request = APIEndpoint
-            .v1
-            .apps
-            .get(parameters: .init(sort: [.minusname], limit: 200))
-
-        let response = try await provider.request(request)
-
-        let apps = response.data.map { app in
+        let provider = try rustCoreProvider()
+        let coreApps = try await callRustCore { try await provider.fetchApps() }
+        let apps = coreApps.map { app in
             StackProtocols.AppInfo(
                 id: app.id,
-                name: app.attributes?.name ?? "",
-                bundleId: app.attributes?.bundleID ?? "",
-                platform: nil
+                name: app.name,
+                bundleId: app.bundleId,
+                platform: app.platform
             )
         }
+        Log.print.info("[Apple] Fetched \(apps.count) apps (Rust core)")
+        return apps
+    }
 
-        Log.print.info("[Apple] Fetched \(apps.count) apps")
+    func syncApps(accountId: String, store: BlobStore) async throws -> [StackProtocols.AppInfo] {
+        let provider = try rustCoreProvider()
+        let syncService = makeSyncService(provider: provider, store: store, accountId: accountId)
+        let coreApps = try await callRustCore { try await syncService.syncApps() }
+        let apps = coreApps.map { app in
+            StackProtocols.AppInfo(
+                id: app.id,
+                name: app.name,
+                bundleId: app.bundleId,
+                platform: app.platform
+            )
+        }
+        Log.print.info("[Apple] Synced \(apps.count) apps into store (Rust core)")
         return apps
     }
 
     func fetchIconUrl(appId: String) async -> String? {
-        guard let provider else { return nil }
-
         do {
-            let request = APIEndpoint
-                .v1
-                .builds
-                .get(
-                    parameters: .init(
-                        filterApp: [appId],
-                        sort: [.minusuploadedDate],
-                        limit: 1
-                    )
-                )
-
-            let response = try await provider.request(request)
-            guard let build = response.data.first else { return nil }
-            return build.attributes?.iconAssetToken?.toIconUrl()
+            let provider = try rustCoreProvider()
+            guard let meta = provider.appMetadata() else { return nil }
+            return try await callRustCore { try await meta.fetchIconUrl(appId: appId) }
         } catch {
-            Log.print.info("[Apple] Icon fetch failed for app \(appId): \(error.localizedDescription)")
+            Log.print.info("[Apple] Icon fetch failed for app \(appId) (Rust core): \(error.localizedDescription)")
             return nil
         }
     }
 
     func fetchAppStoreVersions(appId: String, limit: Int = 20) async throws -> [AppStoreVersionModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchAppStoreVersions(appId: appId, limit: limit)
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
-        let request = APIEndpoint
-            .v1
-            .apps
-            .id(appId)
-            .appStoreVersions
-            .get(parameters: .init(limit: limit))
-
-        let response = try await provider.request(request)
-
-        return response.data.map { version in
-            Self.mapVersion(version, appId: appId)
-        }
+        let core = try await callRustCore { try await versions.fetchVersions(appId: appId, limit: UInt32(limit)) }
+        let models = core.map { Self.mapVersionInfo($0) }
+        Log.print.info("[Apple] Fetched \(models.count) versions (Rust core)")
+        return models
     }
 
     func createAppStoreVersion(request: CreateAppVersionRequest) async throws -> AppStoreVersionModel {
-        guard let provider else {
-            try await validateCredentials()
-            return try await createAppStoreVersion(request: request)
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
-        let body = request.toSDKRequest()
-        let endpoint = APIEndpoint.v1.appStoreVersions.post(body)
-        let response = try await provider.request(endpoint)
-        return Self.mapVersion(response.data, appId: request.appId)
+        let core = try await callRustCore {
+            try await versions.createVersion(appId: request.appId, platform: request.platform.rawValue, versionString: request.version)
+        }
+        Log.print.info("[Apple] Created version \(request.version) (Rust core)")
+        return Self.mapVersionInfo(core)
     }
 
-    func fetchAppStoreVersion(appId: String) async -> (state: String?, version: String?) {
-        guard let provider else { return (nil, nil) }
-
-        do {
-            let request = APIEndpoint
-                .v1
-                .apps
-                .id(appId)
-                .appStoreVersions
-                .get(parameters: .init(limit: 1))
-
-            let response = try await provider.request(request)
-            guard let version = response.data.first else { return (nil, nil) }
-            return (
-                version.attributes?.appStoreState?.rawValue,
-                version.attributes?.versionString
-            )
-        } catch {
-            Log.print.info("[Apple] Version fetch failed for app \(appId): \(error.localizedDescription)")
-            return (nil, nil)
+    func fetchAppStoreVersion(appId: String) async throws -> (state: String?, version: String?) {
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
+        let core = try await callRustCore { try await versions.fetchVersions(appId: appId, limit: 1) }
+        guard let first = core.first else { return (nil, nil) }
+        return (first.appStoreState, first.versionString)
     }
 
     // MARK: - Delete Version
 
     func deleteAppStoreVersion(id: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await deleteAppStoreVersion(id: id)
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.appStoreVersions.id(id).delete
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Deleted version \(id)")
+        try await callRustCore { try await versions.deleteVersion(id: id) }
+        Log.print.info("[Apple] Deleted version \(id) (Rust core)")
+        return
     }
 
     // MARK: - Update Version
@@ -150,61 +126,38 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         id: String,
         versionString: String? = nil,
         copyright: String? = nil,
-        releaseType: AppStoreVersionUpdateRequest.Data.Attributes.ReleaseType? = nil,
+        releaseType: String? = nil,
         earliestReleaseDate: Date? = nil
     ) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await updateAppStoreVersion(id: id, versionString: versionString, copyright: copyright, releaseType: releaseType, earliestReleaseDate: earliestReleaseDate)
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
-        let body = AppStoreVersionUpdateRequest(
-            data: .init(
-                type: .appStoreVersions,
+        let earliestISO = earliestReleaseDate.map { ISO8601DateFormatter().string(from: $0) }
+        try await callRustCore {
+            try await versions.updateVersion(
                 id: id,
-                attributes: .init(
-                    versionString: versionString,
-                    copyright: copyright,
-                    releaseType: releaseType,
-                    earliestReleaseDate: earliestReleaseDate
-                )
+                versionString: versionString,
+                copyright: copyright,
+                releaseType: releaseType,
+                earliestReleaseDate: earliestISO
             )
-        )
-
-        let endpoint = APIEndpoint.v1.appStoreVersions.id(id).patch(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Updated version \(id)")
+        }
+        Log.print.info("[Apple] Updated version \(id) (Rust core)")
+        return
     }
 
     // MARK: - Localizations
 
     func fetchLocalizations(versionId: String) async throws -> [AppStoreLocalizationModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchLocalizations(versionId: versionId)
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint
-            .v1
-            .appStoreVersions
-            .id(versionId)
-            .appStoreVersionLocalizations
-            .get()
-
-        let response = try await provider.request(endpoint)
-
-        return response.data.map { loc in
-            AppStoreLocalizationModel(
-                id: loc.id,
-                locale: loc.attributes?.locale,
-                description: loc.attributes?.description,
-                keywords: loc.attributes?.keywords,
-                promotionalText: loc.attributes?.promotionalText,
-                supportUrl: loc.attributes?.supportURL?.absoluteString,
-                marketingUrl: loc.attributes?.marketingURL?.absoluteString,
-                whatsNew: loc.attributes?.whatsNew
-            )
-        }
+        let infos = try await callRustCore { try await versions.fetchLocalizations(versionId: versionId) }
+        let models = infos.map { Self.mapAppStoreLocalizationInfo($0) }
+        Log.print.info("[Apple] Fetched \(models.count) localizations for version \(versionId) (Rust core)")
+        return models
     }
 
     func updateLocalization(
@@ -216,53 +169,26 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         marketingUrl: String? = nil,
         whatsNew: String? = nil
     ) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await updateLocalization(id: id, description: description, keywords: keywords, promotionalText: promotionalText, supportUrl: supportUrl, marketingUrl: marketingUrl, whatsNew: whatsNew)
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
-        let body = AppStoreVersionLocalizationUpdateRequest(
-            data: .init(
-                type: .appStoreVersionLocalizations,
-                id: id,
-                attributes: .init(
-                    description: description,
-                    keywords: keywords,
-                    marketingURL: marketingUrl.flatMap { URL(string: $0) },
-                    promotionalText: promotionalText,
-                    supportURL: supportUrl.flatMap { URL(string: $0) },
-                    whatsNew: whatsNew
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.appStoreVersionLocalizations.id(id).patch(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Updated localization \(id)")
+        try await callRustCore { try await versions.updateLocalization(id: id, description: description, keywords: keywords, promotionalText: promotionalText, supportUrl: supportUrl, marketingUrl: marketingUrl, whatsNew: whatsNew) }
+        Log.print.info("[Apple] Updated localization \(id) (Rust core)")
+        return
     }
 
     // MARK: - Builds
 
     func fetchBuilds(appId: String, limit: Int = 50) async throws -> [BuildModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchBuilds(appId: appId, limit: limit)
+        let provider = try rustCoreProvider()
+        guard let builds = provider.builds() else {
+            throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
         }
-
-        let request = APIEndpoint
-            .v1
-            .builds
-            .get(
-                parameters: .init(
-                    filterApp: [appId],
-                    sort: [.minusuploadedDate],
-                    limit: limit,
-                    include: [.preReleaseVersion, .buildBetaDetail, .betaAppReviewSubmission]
-                )
-            )
-
-        let response = try await provider.request(request)
-        return mapBuilds(response)
+        let core = try await callRustCore { try await builds.fetchBuilds(appId: appId, limit: UInt32(limit)) }
+        let models = core.map { Self.mapBuildInfo($0) }
+        Log.print.info("[Apple] Fetched \(models.count) builds (Rust core)")
+        return models
     }
 
     struct BuildsPage {
@@ -279,359 +205,122 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         limit: Int = 25,
         pageAfterResponse: Any?
     ) async throws -> BuildsPage {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchBuildsPage(appId: appId, platform: platform, processingStates: processingStates, limit: limit, pageAfterResponse: pageAfterResponse)
+        let provider = try rustCoreProvider()
+        guard let builds = provider.builds() else {
+            throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
         }
-
-        typealias Params = APIEndpoint.V1.Builds.GetParameters
-
-        let platformFilter: [Params.FilterPreReleaseVersionPlatform]? = platform
-            .flatMap { Params.FilterPreReleaseVersionPlatform(rawValue: $0) }
-            .map { [$0] }
-
-        let stateFilter: [Params.FilterProcessingState]? = processingStates.flatMap { raws in
-            let mapped = raws.compactMap { Params.FilterProcessingState(rawValue: $0) }
-            return mapped.isEmpty ? nil : mapped
+        let token = pageAfterResponse as? String
+        let page = try await callRustCore {
+            try await builds.fetchBuildsPage(appId: appId, platform: platform, processingStates: processingStates ?? [], limit: UInt32(limit), pageToken: token)
         }
-
-        let endpoint = APIEndpoint
-            .v1
-            .builds
-            .get(
-                parameters: .init(
-                    filterProcessingState: stateFilter,
-                    filterPreReleaseVersionPlatform: platformFilter,
-                    filterApp: [appId],
-                    sort: [.minusuploadedDate],
-                    limit: limit,
-                    include: [.preReleaseVersion, .buildBetaDetail, .betaAppReviewSubmission]
-                )
-            )
-
-        let response: BuildsResponse
-        if let previousResponse = pageAfterResponse as? BuildsResponse {
-            guard let nextPage = try await provider.request(endpoint, pageAfter: previousResponse) else {
-                return BuildsPage(builds: [], hasNextPage: false, rawResponse: nil)
-            }
-            response = nextPage
-        } else {
-            response = try await provider.request(endpoint)
-        }
-
-        let builds = mapBuilds(response)
-        return BuildsPage(builds: builds, hasNextPage: response.links.next != nil, rawResponse: response)
-    }
-
-    private func mapBuilds(_ response: BuildsResponse) -> [BuildModel] {
-        var platformByPreReleaseId: [String: String] = [:]
-        var marketingVersionByPreReleaseId: [String: String] = [:]
-        var detailById: [String: BuildBetaDetail] = [:]
-        var submissionById: [String: BetaAppReviewSubmission] = [:]
-
-        for item in response.included ?? [] {
-            switch item {
-            case .prereleaseVersion(let pre):
-                if let platform = pre.attributes?.platform?.rawValue {
-                    platformByPreReleaseId[pre.id] = platform
-                }
-                if let version = pre.attributes?.version {
-                    marketingVersionByPreReleaseId[pre.id] = version
-                }
-            case .buildBetaDetail(let detail):
-                detailById[detail.id] = detail
-            case .betaAppReviewSubmission(let submission):
-                submissionById[submission.id] = submission
-            default:
-                break
-            }
-        }
-
-        return response.data.map { build in
-            let preReleaseId = build.relationships?.preReleaseVersion?.data?.id
-            let platform = preReleaseId.flatMap { platformByPreReleaseId[$0] }
-            let marketingVersion = preReleaseId.flatMap { marketingVersionByPreReleaseId[$0] }
-
-            let detailId = build.relationships?.buildBetaDetail?.data?.id
-            let detail = detailId.flatMap { detailById[$0] }
-
-            let submissionId = build.relationships?.betaAppReviewSubmission?.data?.id
-            let submission = submissionId.flatMap { submissionById[$0] }
-
-            return BuildModel(
-                id: build.id,
-                version: build.attributes?.version,
-                marketingVersion: marketingVersion,
-                processingState: build.attributes?.processingState?.rawValue,
-                uploadedDate: build.attributes?.uploadedDate,
-                iconUrl: build.attributes?.iconAssetToken?.toIconUrl(),
-                platform: platform,
-                externalBuildState: detail?.attributes?.externalBuildState?.rawValue,
-                betaReviewState: submission?.attributes?.betaReviewState?.rawValue,
-                submittedDate: submission?.attributes?.submittedDate,
-                expirationDate: build.attributes?.expirationDate,
-                isExpired: build.attributes?.isExpired ?? false,
-                minOsVersion: build.attributes?.minOsVersion,
-                computedMinMacOsVersion: build.attributes?.computedMinMacOsVersion,
-                computedMinVisionOsVersion: build.attributes?.computedMinVisionOsVersion,
-                buildAudienceType: build.attributes?.buildAudienceType?.rawValue,
-                usesNonExemptEncryption: build.attributes?.usesNonExemptEncryption,
-                internalBuildState: detail?.attributes?.internalBuildState?.rawValue,
-                autoNotifyEnabled: detail?.attributes?.isAutoNotifyEnabled
-            )
-        }
+        let models = page.builds.map { Self.mapBuildInfo($0) }
+        Log.print.info("[Apple] Fetched \(models.count) builds page (Rust core)")
+        return BuildsPage(builds: models, hasNextPage: page.nextToken != nil, rawResponse: page.nextToken)
     }
 
     func fetchBuildDetail(buildId: String) async throws -> BuildDetailData {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchBuildDetail(buildId: buildId)
+        let provider = try rustCoreProvider()
+        guard let builds = provider.builds() else {
+            throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.builds.id(buildId).get(
-            parameters: .init(
-                include: [.preReleaseVersion, .buildBetaDetail, .betaAppReviewSubmission, .betaGroups, .betaBuildLocalizations],
-                limitBetaBuildLocalizations: 50,
-                limitBetaGroups: 50
-            )
+        let detail = try await callRustCore { try await builds.fetchBuildDetail(buildId: buildId) }
+        Log.print.info("[Apple] Fetched build detail \(buildId) (Rust core)")
+        return BuildDetailData(
+            build: Self.mapBuildInfo(detail.build),
+            betaGroups: detail.betaGroups.map { Self.mapBetaGroupInfo($0) },
+            localizations: detail.localizations.map { Self.mapBetaBuildLocalizationInfo($0) }
         )
-        let response = try await provider.request(endpoint)
-        let b = response.data
-
-        var marketingVersion: String?
-        var platform: String?
-        var detail: BuildBetaDetail?
-        var submission: BetaAppReviewSubmission?
-        var groups: [BetaGroupModel] = []
-        var localizations: [BetaBuildLocalizationModel] = []
-
-        for item in response.included ?? [] {
-            switch item {
-            case .prereleaseVersion(let pre):
-                marketingVersion = pre.attributes?.version
-                platform = pre.attributes?.platform?.rawValue
-            case .buildBetaDetail(let d):
-                detail = d
-            case .betaAppReviewSubmission(let s):
-                submission = s
-            case .betaGroup(let g):
-                groups.append(
-                    BetaGroupModel(
-                        id: g.id,
-                        name: g.attributes?.name ?? "",
-                        isInternalGroup: g.attributes?.isInternalGroup ?? false,
-                        createdDate: g.attributes?.createdDate,
-                        hasAccessToAllBuilds: g.attributes?.hasAccessToAllBuilds ?? false,
-                        isPublicLinkEnabled: g.attributes?.isPublicLinkEnabled ?? false,
-                        publicLink: g.attributes?.publicLink,
-                        publicLinkId: g.attributes?.publicLinkID,
-                        publicLinkLimit: g.attributes?.publicLinkLimit,
-                        isPublicLinkLimitEnabled: g.attributes?.isPublicLinkLimitEnabled ?? false,
-                        isFeedbackEnabled: g.attributes?.isFeedbackEnabled ?? false,
-                        testerCount: nil,
-                        buildCount: nil
-                    )
-                )
-            case .betaBuildLocalization(let l):
-                localizations.append(
-                    BetaBuildLocalizationModel(
-                        id: l.id,
-                        locale: l.attributes?.locale ?? "",
-                        whatsNew: l.attributes?.whatsNew
-                    )
-                )
-            default:
-                break
-            }
-        }
-
-        let build = BuildModel(
-            id: b.id,
-            version: b.attributes?.version,
-            marketingVersion: marketingVersion,
-            processingState: b.attributes?.processingState?.rawValue,
-            uploadedDate: b.attributes?.uploadedDate,
-            iconUrl: b.attributes?.iconAssetToken?.toIconUrl(),
-            platform: platform,
-            externalBuildState: detail?.attributes?.externalBuildState?.rawValue,
-            betaReviewState: submission?.attributes?.betaReviewState?.rawValue,
-            submittedDate: submission?.attributes?.submittedDate,
-            expirationDate: b.attributes?.expirationDate,
-            isExpired: b.attributes?.isExpired ?? false,
-            minOsVersion: b.attributes?.minOsVersion,
-            computedMinMacOsVersion: b.attributes?.computedMinMacOsVersion,
-            computedMinVisionOsVersion: b.attributes?.computedMinVisionOsVersion,
-            buildAudienceType: b.attributes?.buildAudienceType?.rawValue,
-            usesNonExemptEncryption: b.attributes?.usesNonExemptEncryption,
-            internalBuildState: detail?.attributes?.internalBuildState?.rawValue,
-            autoNotifyEnabled: detail?.attributes?.isAutoNotifyEnabled
-        )
-
-        return BuildDetailData(build: build, betaGroups: groups, localizations: localizations)
     }
 
     func expireBuild(buildId: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await expireBuild(buildId: buildId)
+        let provider = try rustCoreProvider()
+        guard let builds = provider.builds() else {
+            throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
         }
-
-        let body = BuildUpdateRequest(
-            data: .init(
-                type: .builds,
-                id: buildId,
-                attributes: .init(isExpired: true)
-            )
-        )
-        let endpoint = APIEndpoint.v1.builds.id(buildId).patch(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Expired build \(buildId)")
+        try await callRustCore { try await builds.expireBuild(buildId: buildId) }
+        Log.print.info("[Apple] Expired build \(buildId) (Rust core)")
+        return
     }
 
     func fetchCurrentBuild(versionId: String) async throws -> BuildModel? {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchCurrentBuild(versionId: versionId)
+        let provider = try rustCoreProvider()
+        guard let builds = provider.builds() else {
+            throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
         }
-
         do {
-            let endpoint = APIEndpoint
-                .v1
-                .appStoreVersions
-                .id(versionId)
-                .build
-                .get(fieldsBuilds: [])
-
-            let build = try await provider.request(endpoint).data
-            return BuildModel(
-                id: build.id,
-                version: build.attributes?.version,
-                processingState: build.attributes?.processingState?.rawValue,
-                uploadedDate: build.attributes?.uploadedDate,
-                iconUrl: build.attributes?.iconAssetToken?.toIconUrl()
-            )
+            let info = try await callRustCore { try await builds.fetchCurrentBuild(versionId: versionId) }
+            return info.map { Self.mapBuildInfo($0) }
         } catch {
-            Log.print.info("[Apple] No build attached to version \(versionId)")
+            Log.print.info("[Apple] No build attached to version \(versionId) (Rust core)")
             return nil
         }
     }
 
     func attachBuild(versionId: String, buildId: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await attachBuild(versionId: versionId, buildId: buildId)
+        let provider = try rustCoreProvider()
+        guard let builds = provider.builds() else {
+            throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
         }
-
-        let body = AppStoreVersionBuildLinkageRequest(
-            data: .init(type: .builds, id: buildId)
-        )
-
-        let endpoint = APIEndpoint
-            .v1
-            .appStoreVersions
-            .id(versionId)
-            .relationships
-            .build
-            .patch(body)
-
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Attached build \(buildId) to version \(versionId)")
+        try await callRustCore { try await builds.attachBuild(versionId: versionId, buildId: buildId) }
+        Log.print.info("[Apple] Attached build \(buildId) to version \(versionId) (Rust core)")
+        return
     }
 
     // MARK: - Review Submissions
 
     func fetchReviewSubmissions(appId: String) async throws -> [ReviewSubmissionModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchReviewSubmissions(appId: appId)
+        let provider = try rustCoreProvider()
+
+        // App Store Connect always exposes the Reviews capability today, so a nil
+        // here means the core genuinely cannot serve it for this provider kind.
+        // We surface a clear `.Unsupported` StackError (consistent with how the
+        // core signals unsupported capabilities) rather than silently falling back
+        // to the Swift SDK — falling back would mask a real configuration problem
+        // and defeat the purpose of the flag being ON.
+        guard let reviews = provider.reviews() else {
+            throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
         }
 
-        let endpoint = APIEndpoint.v1.reviewSubmissions.get(
-            parameters: .init(
-                filterApp: [appId],
-                limit: 50,
-                include: [.appStoreVersionForReview, .submittedByActor]
-            )
-        )
-
-        let response = try await provider.request(endpoint)
-
-        let models: [ReviewSubmissionModel] = response.data.map { submission in
-            let versionId = submission.relationships?.appStoreVersionForReview?.data?.id
-            let actorId = submission.relationships?.submittedByActor?.data?.id
-
-            var versionString: String?
-            if let versionId {
-                versionString = response.included?.compactMap { item -> String? in
-                    guard case .appStoreVersion(let v) = item, v.id == versionId else { return nil }
-                    return v.attributes?.versionString
-                }.first
-            }
-
-            var actorName: String?
-            var actorEmail: String?
-            if let actorId {
-                let actor = response.included?.compactMap { item -> Actor? in
-                    guard case .actor(let a) = item, a.id == actorId else { return nil }
-                    return a
-                }.first
-
-                if let a = actor {
-                    if let first = a.attributes?.userFirstName, let last = a.attributes?.userLastName {
-                        actorName = "\(first) \(last)"
-                    } else if let apiKey = a.attributes?.apiKeyID {
-                        actorName = "API Key (\(apiKey))"
-                    } else if a.attributes?.actorType == .apple {
-                        actorName = "Apple"
-                    }
-                    actorEmail = a.attributes?.userEmail
-                }
-            }
-
-            return ReviewSubmissionModel(
-                id: submission.id,
-                appId: appId,
-                platform: submission.attributes?.platform?.rawValue,
-                submittedDate: submission.attributes?.submittedDate,
-                state: submission.attributes?.state?.rawValue,
-                versionString: versionString,
-                versionId: versionId,
-                submittedByName: actorName,
-                submittedByEmail: actorEmail
-            )
+        let coreSubmissions = try await callRustCore {
+            try await reviews.fetchReviewSubmissions(appId: appId)
         }
 
+        let models = coreSubmissions.map { Self.mapReviewSubmission($0) }
+        Log.print.info("[Apple] Fetched \(models.count) review submissions (Rust core)")
         return models.sorted { ($0.submittedDate ?? .distantPast) > ($1.submittedDate ?? .distantPast) }
+    }
+
+    func submitReviewSubmission(id: String) async throws {
+        let provider = try rustCoreProvider()
+        guard let reviews = provider.reviews() else {
+            throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
+        }
+        try await callRustCore { try await reviews.submitReviewSubmission(submissionId: id) }
+        Log.print.info("[Apple] Resubmitted review submission \(id) (Rust core)")
+        return
+    }
+
+    func discardReviewSubmission(id: String) async throws {
+        let provider = try rustCoreProvider()
+        guard let reviews = provider.reviews() else {
+            throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
+        }
+        try await callRustCore { try await reviews.discardReviewSubmission(submissionId: id) }
+        Log.print.info("[Apple] Discarded review submission \(id) (Rust core)")
+        return
     }
 
     // MARK: - TestFlight: Beta Groups
 
     func fetchBetaGroups(appId: String) async throws -> [BetaGroupModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchBetaGroups(appId: appId)
+        let provider = try rustCoreProvider()
+        guard let bg = provider.betaGroups() else {
+            throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.apps.id(appId).betaGroups.get(limit: 50)
-        let response = try await provider.request(endpoint)
-
-        return response.data.map { group in
-            BetaGroupModel(
-                id: group.id,
-                name: group.attributes?.name ?? "",
-                isInternalGroup: group.attributes?.isInternalGroup ?? false,
-                createdDate: group.attributes?.createdDate,
-                hasAccessToAllBuilds: group.attributes?.hasAccessToAllBuilds ?? false,
-                isPublicLinkEnabled: group.attributes?.isPublicLinkEnabled ?? false,
-                publicLink: group.attributes?.publicLink,
-                publicLinkId: group.attributes?.publicLinkID,
-                publicLinkLimit: group.attributes?.publicLinkLimit,
-                isPublicLinkLimitEnabled: group.attributes?.isPublicLinkLimitEnabled ?? false,
-                isFeedbackEnabled: group.attributes?.isFeedbackEnabled ?? false,
-                testerCount: group.relationships?.betaTesters?.meta?.paging.total,
-                buildCount: group.relationships?.builds?.meta?.paging.total
-            )
-        }
+        let core = try await callRustCore { try await bg.fetchBetaGroups(appId: appId, limit: 50) }
+        let models = core.map { Self.mapBetaGroupInfo($0) }
+        Log.print.info("[Apple] Fetched \(models.count) beta groups (Rust core)")
+        return models
     }
 
     func createBetaGroup(
@@ -641,267 +330,136 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         isPublicLinkEnabled: Bool = false,
         hasAccessToAllBuilds: Bool = false
     ) async throws -> BetaGroupModel {
-        guard let provider else {
-            try await validateCredentials()
-            return try await createBetaGroup(
+        let provider = try rustCoreProvider()
+        guard let bg = provider.betaGroups() else {
+            throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
+        }
+        let core = try await callRustCore {
+            try await bg.createBetaGroup(
                 appId: appId,
                 name: name,
                 isInternal: isInternal,
-                isPublicLinkEnabled: isPublicLinkEnabled,
+                publicLinkEnabled: isPublicLinkEnabled,
                 hasAccessToAllBuilds: hasAccessToAllBuilds
             )
         }
-
-        let body = BetaGroupCreateRequest(
-            data: .init(
-                type: .betaGroups,
-                attributes: .init(
-                    name: name,
-                    isInternalGroup: isInternal,
-                    hasAccessToAllBuilds: hasAccessToAllBuilds,
-                    isPublicLinkEnabled: isPublicLinkEnabled,
-                    isFeedbackEnabled: true
-                ),
-                relationships: .init(
-                    app: .init(data: .init(type: .apps, id: appId))
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.betaGroups.post(body)
-        let response = try await provider.request(endpoint)
-        let g = response.data
-
-        Log.print.info("[TestFlight] Created beta group: \(name)")
-        return BetaGroupModel(
-            id: g.id,
-            name: g.attributes?.name ?? name,
-            isInternalGroup: g.attributes?.isInternalGroup ?? isInternal,
-            createdDate: g.attributes?.createdDate,
-            hasAccessToAllBuilds: g.attributes?.hasAccessToAllBuilds ?? false,
-            isPublicLinkEnabled: g.attributes?.isPublicLinkEnabled ?? false,
-            publicLink: g.attributes?.publicLink,
-            publicLinkId: g.attributes?.publicLinkID,
-            publicLinkLimit: g.attributes?.publicLinkLimit,
-            isPublicLinkLimitEnabled: g.attributes?.isPublicLinkLimitEnabled ?? false,
-            isFeedbackEnabled: g.attributes?.isFeedbackEnabled ?? false,
-            testerCount: 0,
-            buildCount: 0
-        )
+        let model = Self.mapBetaGroupInfo(core)
+        Log.print.info("[Apple] Created beta group: \(name) (Rust core)")
+        return model
     }
 
     func updateBetaGroup(id: String, name: String?, isPublicLinkEnabled: Bool?, publicLinkLimit: Int?, isFeedbackEnabled: Bool?) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await updateBetaGroup(id: id, name: name, isPublicLinkEnabled: isPublicLinkEnabled, publicLinkLimit: publicLinkLimit, isFeedbackEnabled: isFeedbackEnabled)
+        let provider = try rustCoreProvider()
+        guard let bg = provider.betaGroups() else {
+            throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
         }
-
-        let body = BetaGroupUpdateRequest(
-            data: .init(
-                type: .betaGroups,
-                id: id,
-                attributes: .init(
-                    name: name,
-                    isPublicLinkEnabled: isPublicLinkEnabled,
-                    publicLinkLimit: publicLinkLimit,
-                    isFeedbackEnabled: isFeedbackEnabled
-                )
+        _ = try await callRustCore {
+            try await bg.updateBetaGroup(
+                groupId: id,
+                name: name,
+                publicLinkEnabled: isPublicLinkEnabled,
+                publicLinkLimit: publicLinkLimit.map(Int32.init),
+                feedbackEnabled: isFeedbackEnabled
             )
-        )
-
-        let endpoint = APIEndpoint.v1.betaGroups.id(id).patch(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[TestFlight] Updated beta group \(id)")
+        }
+        Log.print.info("[Apple] Updated beta group \(id) (Rust core)")
+        return
     }
 
     func deleteBetaGroup(id: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await deleteBetaGroup(id: id)
+        let provider = try rustCoreProvider()
+        guard let bg = provider.betaGroups() else {
+            throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.betaGroups.id(id).delete
-        _ = try await provider.request(endpoint)
-        Log.print.info("[TestFlight] Deleted beta group \(id)")
+        try await callRustCore { try await bg.deleteBetaGroup(groupId: id) }
+        Log.print.info("[Apple] Deleted beta group \(id) (Rust core)")
+        return
     }
 
     // MARK: - TestFlight: Beta Testers
 
     func fetchTesterCount(groupId: String) async throws -> Int {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchTesterCount(groupId: groupId)
+        let provider = try rustCoreProvider()
+        guard let bg = provider.betaGroups() else {
+            throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.betaGroups.id(groupId).betaTesters.get(fieldsBetaTesters: [], limit: 1)
-        let response = try await provider.request(endpoint)
-        return response.meta?.paging.total ?? 0
+        let count = try await callRustCore { try await bg.fetchTesterCount(groupId: groupId) }
+        Log.print.info("[Apple] Fetched tester count \(count) for group \(groupId) (Rust core)")
+        return Int(count)
     }
 
     func fetchBetaTestersForGroup(groupId: String) async throws -> [BetaTesterModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchBetaTestersForGroup(groupId: groupId)
+        let provider = try rustCoreProvider()
+        guard let bg = provider.betaGroups() else {
+            throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.betaGroups.id(groupId).betaTesters.get(fieldsBetaTesters: nil, limit: 200)
-        let response = try await provider.request(endpoint)
-
-        return response.data.map { tester in
-            BetaTesterModel(
-                id: tester.id,
-                firstName: tester.attributes?.firstName,
-                lastName: tester.attributes?.lastName,
-                email: tester.attributes?.email,
-                inviteType: tester.attributes?.inviteType?.rawValue,
-                state: tester.attributes?.state?.rawValue
-            )
-        }
+        let core = try await callRustCore { try await bg.fetchBetaTesters(groupId: groupId, limit: 200) }
+        let models = core.map { Self.mapBetaTesterInfo($0) }
+        Log.print.info("[Apple] Fetched \(models.count) beta testers (Rust core)")
+        return models
     }
 
     func addTesterToGroup(email: String, firstName: String?, lastName: String?, groupId: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await addTesterToGroup(email: email, firstName: firstName, lastName: lastName, groupId: groupId)
+        let provider = try rustCoreProvider()
+        guard let bg = provider.betaGroups() else {
+            throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
         }
-
-        let body = BetaTesterCreateRequest(
-            data: .init(
-                type: .betaTesters,
-                attributes: .init(firstName: firstName, lastName: lastName, email: email),
-                relationships: .init(
-                    betaGroups: .init(data: [.init(type: .betaGroups, id: groupId)])
-                )
+        _ = try await callRustCore {
+            try await bg.addBetaTester(
+                groupId: groupId,
+                email: email,
+                firstName: firstName,
+                lastName: lastName
             )
-        )
-
-        let endpoint = APIEndpoint.v1.betaTesters.post(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[TestFlight] Added tester \(email) to group \(groupId)")
+        }
+        Log.print.info("[Apple] Added tester \(email) to group \(groupId) (Rust core)")
+        return
     }
 
     func removeTesterFromGroup(testerId: String, groupId: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await removeTesterFromGroup(testerId: testerId, groupId: groupId)
+        let provider = try rustCoreProvider()
+        guard let bg = provider.betaGroups() else {
+            throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
         }
-
-        let body = BetaGroupBetaTestersLinkagesRequest(
-            data: [.init(type: .betaTesters, id: testerId)]
-        )
-
-        let endpoint = APIEndpoint.v1.betaGroups.id(groupId).relationships.betaTesters.delete(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[TestFlight] Removed tester \(testerId) from group \(groupId)")
+        try await callRustCore { try await bg.removeBetaTester(groupId: groupId, testerId: testerId) }
+        Log.print.info("[Apple] Removed tester \(testerId) from group \(groupId) (Rust core)")
+        return
     }
 
     func resendInvite(testerId: String, appId: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await resendInvite(testerId: testerId, appId: appId)
+        let provider = try rustCoreProvider()
+        guard let bg = provider.betaGroups() else {
+            throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
         }
-
-        let body = BetaTesterInvitationCreateRequest(
-            data: .init(
-                type: .betaTesterInvitations,
-                relationships: .init(
-                    betaTester: .init(data: .init(type: .betaTesters, id: testerId)),
-                    app: .init(data: .init(type: .apps, id: appId))
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.betaTesterInvitations.post(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[TestFlight] Resent invite to tester \(testerId)")
+        try await callRustCore { try await bg.resendInvite(testerId: testerId, appId: appId) }
+        Log.print.info("[Apple] Resent invite to tester \(testerId) (Rust core)")
+        return
     }
 
     // MARK: - Team Members
 
     func fetchTeamMembers() async throws -> [TeamMemberModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchTeamMembers()
+        let provider = try rustCoreProvider()
+        guard let cap = provider.users() else {
+            throw translate(.Unsupported(message: "Users capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.users.get(
-            parameters: .init(
-                fieldsUsers: [.firstName, .lastName, .username, .roles],
-                limit: 200
-            )
-        )
-        let response = try await provider.request(endpoint)
-        Log.print.info("[Apple] Fetched \(response.data.count) team members")
-        return response.data.map { user in
-            TeamMemberModel(
-                id: user.id,
-                firstName: user.attributes?.firstName,
-                lastName: user.attributes?.lastName,
-                username: user.attributes?.username,
-                roles: user.attributes?.roles?.map(\.rawValue) ?? []
-            )
-        }
+        let core = try await callRustCore { try await cap.fetchTeamMembers() }
+        let models = core.map { Self.mapTeamMemberInfo($0) }
+        Log.print.info("[Apple] Fetched \(models.count) team members (Rust core)")
+        return models
     }
 
     // MARK: - User Management
 
     func fetchUsers() async throws -> [UserModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchUsers()
+        let provider = try rustCoreProvider()
+        guard let cap = provider.users() else {
+            throw translate(.Unsupported(message: "Users capability is not available for this provider."))
         }
-
-        async let activeResponse = provider.request(
-            APIEndpoint.v1.users.get(
-                parameters: .init(
-                    fieldsUsers: [.firstName, .lastName, .username, .roles, .allAppsVisible, .provisioningAllowed],
-                    limit: 200
-                )
-            )
-        )
-
-        async let pendingResponse = provider.request(
-            APIEndpoint.v1.userInvitations.get(
-                parameters: .init(
-                    fieldsUserInvitations: [.firstName, .lastName, .email, .roles, .allAppsVisible, .provisioningAllowed, .expirationDate],
-                    limit: 200
-                )
-            )
-        )
-
-        let active = try await activeResponse
-        let pending = try await pendingResponse
-
-        let activeUsers: [UserModel] = active.data.map { user in
-            UserModel(
-                id: user.id,
-                firstName: user.attributes?.firstName,
-                lastName: user.attributes?.lastName,
-                email: user.attributes?.username,
-                roles: user.attributes?.roles?.map(\.rawValue) ?? [],
-                allAppsVisible: user.attributes?.isAllAppsVisible ?? false,
-                provisioningAllowed: user.attributes?.isProvisioningAllowed ?? false,
-                isPending: false,
-                expirationDate: nil
-            )
-        }
-
-        let pendingUsers: [UserModel] = pending.data.map { inv in
-            UserModel(
-                id: inv.id,
-                firstName: inv.attributes?.firstName,
-                lastName: inv.attributes?.lastName,
-                email: inv.attributes?.email,
-                roles: inv.attributes?.roles?.map(\.rawValue) ?? [],
-                allAppsVisible: inv.attributes?.isAllAppsVisible ?? false,
-                provisioningAllowed: inv.attributes?.isProvisioningAllowed ?? false,
-                isPending: true,
-                expirationDate: inv.attributes?.expirationDate
-            )
-        }
-
-        Log.print.info("[Apple] Fetched \(activeUsers.count) users + \(pendingUsers.count) pending invitations")
-        return activeUsers + pendingUsers
+        let core = try await callRustCore { try await cap.fetchUsers() }
+        let models = core.map { Self.mapUserInfo($0) }
+        Log.print.info("[Apple] Fetched \(models.count) users (Rust core)")
+        return models
     }
 
     func inviteUser(
@@ -912,184 +470,116 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         allAppsVisible: Bool,
         provisioningAllowed: Bool
     ) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await inviteUser(
-                email: email, firstName: firstName, lastName: lastName,
-                roles: roles, allAppsVisible: allAppsVisible, provisioningAllowed: provisioningAllowed
+        let provider = try rustCoreProvider()
+        guard let cap = provider.users() else {
+            throw translate(.Unsupported(message: "Users capability is not available for this provider."))
+        }
+        try await callRustCore {
+            try await cap.inviteUser(
+                email: email,
+                firstName: firstName,
+                lastName: lastName,
+                roles: roles,
+                allAppsVisible: allAppsVisible,
+                provisioningAllowed: provisioningAllowed
             )
         }
-
-        let userRoles: [UserRole] = roles.compactMap { UserRole(rawValue: $0) }
-
-        let body = UserInvitationCreateRequest(
-            data: .init(
-                type: .userInvitations,
-                attributes: .init(
-                    email: email,
-                    firstName: firstName,
-                    lastName: lastName,
-                    roles: userRoles,
-                    isAllAppsVisible: allAppsVisible,
-                    isProvisioningAllowed: provisioningAllowed
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.userInvitations.post(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Invited user \(email)")
+        Log.print.info("[Apple] Invited user \(email) (Rust core)")
+        return
     }
 
     func deleteUser(id: String, isPending: Bool) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await deleteUser(id: id, isPending: isPending)
+        let provider = try rustCoreProvider()
+        guard let cap = provider.users() else {
+            throw translate(.Unsupported(message: "Users capability is not available for this provider."))
         }
-
-        if isPending {
-            let endpoint = APIEndpoint.v1.userInvitations.id(id).delete
-            _ = try await provider.request(endpoint)
-            Log.print.info("[Apple] Cancelled invitation \(id)")
-        } else {
-            let endpoint = APIEndpoint.v1.users.id(id).delete
-            _ = try await provider.request(endpoint)
-            Log.print.info("[Apple] Deleted user \(id)")
-        }
+        try await callRustCore { try await cap.deleteUser(id: id, isPending: isPending) }
+        Log.print.info("[Apple] Deleted user \(id) (isPending: \(isPending)) (Rust core)")
+        return
     }
 
     // MARK: - TestFlight: Builds for Group
 
     func fetchBuildsForGroup(groupId: String) async throws -> [BuildModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchBuildsForGroup(groupId: groupId)
+        let provider = try rustCoreProvider()
+        guard let builds = provider.builds() else {
+            throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint
-            .v1
-            .builds
-            .get(
-                parameters: .init(
-                    filterBetaGroups: [groupId],
-                    sort: [.minusuploadedDate],
-                    limit: 200,
-                    include: [.preReleaseVersion, .buildBetaDetail, .betaAppReviewSubmission]
-                )
-            )
-
-        let response = try await provider.request(endpoint)
-        return mapBuilds(response)
+        let core = try await callRustCore { try await builds.fetchBuildsForGroup(groupId: groupId, limit: 200) }
+        let models = core.map { Self.mapBuildInfo($0) }
+        Log.print.info("[TestFlight] Fetched \(models.count) builds for group \(groupId) (Rust core)")
+        return models
     }
 
     // MARK: - TestFlight: Beta Review Submission
 
     func submitBuildForBetaReview(buildId: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await submitBuildForBetaReview(buildId: buildId)
+        let provider = try rustCoreProvider()
+        guard let builds = provider.builds() else {
+            throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
         }
-
-        let body = BetaAppReviewSubmissionCreateRequest(
-            data: .init(
-                type: .betaAppReviewSubmissions,
-                relationships: .init(
-                    build: .init(data: .init(type: .builds, id: buildId))
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.betaAppReviewSubmissions.post(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[TestFlight] Submitted build \(buildId) for beta review")
+        try await callRustCore { try await builds.submitBuildForBetaReview(buildId: buildId) }
+        Log.print.info("[TestFlight] Submitted build \(buildId) for beta review (Rust core)")
+        return
     }
 
     func fetchBetaBuildLocalizations(buildId: String) async throws -> [BetaBuildLocalizationModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchBetaBuildLocalizations(buildId: buildId)
+        let provider = try rustCoreProvider()
+        guard let bbl = provider.betaBuildLocalizations() else {
+            throw translate(.Unsupported(message: "Beta Build Localizations capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.betaBuildLocalizations.get(
-            parameters: .init(filterBuild: [buildId], limit: 50)
-        )
-        let response = try await provider.request(endpoint)
-
-        return response.data.map { item in
-            BetaBuildLocalizationModel(
-                id: item.id,
-                locale: item.attributes?.locale ?? "",
-                whatsNew: item.attributes?.whatsNew
-            )
+        let models = try await callRustCore {
+            let infos = try await bbl.fetchBetaBuildLocalizations(buildId: buildId, limit: 50)
+            return infos.map { Self.mapBetaBuildLocalizationInfo($0) }
         }
+        Log.print.info("[TestFlight] Fetched \(models.count) beta localizations for build \(buildId) (Rust core)")
+        return models
     }
 
     func createBetaBuildLocalization(buildId: String, locale: String, whatsNew: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await createBetaBuildLocalization(buildId: buildId, locale: locale, whatsNew: whatsNew)
+        let provider = try rustCoreProvider()
+        guard let bbl = provider.betaBuildLocalizations() else {
+            throw translate(.Unsupported(message: "Beta Build Localizations capability is not available for this provider."))
         }
-
-        let body = BetaBuildLocalizationCreateRequest(
-            data: .init(
-                type: .betaBuildLocalizations,
-                attributes: .init(whatsNew: whatsNew, locale: locale),
-                relationships: .init(build: .init(data: .init(type: .builds, id: buildId)))
-            )
-        )
-        let endpoint = APIEndpoint.v1.betaBuildLocalizations.post(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[TestFlight] Created beta localization (\(locale)) for build \(buildId)")
+        try await callRustCore {
+            _ = try await bbl.createBetaBuildLocalization(buildId: buildId, locale: locale, whatsNew: whatsNew)
+        }
+        Log.print.info("[TestFlight] Created beta localization (\(locale)) for build \(buildId) (Rust core)")
+        return
     }
 
     func updateBetaBuildLocalization(id: String, whatsNew: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await updateBetaBuildLocalization(id: id, whatsNew: whatsNew)
+        let provider = try rustCoreProvider()
+        guard let bbl = provider.betaBuildLocalizations() else {
+            throw translate(.Unsupported(message: "Beta Build Localizations capability is not available for this provider."))
         }
-
-        let body = BetaBuildLocalizationUpdateRequest(
-            data: .init(
-                type: .betaBuildLocalizations,
-                id: id,
-                attributes: .init(whatsNew: whatsNew)
-            )
-        )
-        let endpoint = APIEndpoint.v1.betaBuildLocalizations.id(id).patch(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[TestFlight] Updated beta localization \(id)")
+        try await callRustCore {
+            _ = try await bbl.updateBetaBuildLocalization(id: id, whatsNew: whatsNew)
+        }
+        Log.print.info("[TestFlight] Updated beta localization \(id) (Rust core)")
+        return
     }
 
     // MARK: - TestFlight: Builds for Group (continued)
 
     func removeBuildFromGroup(buildId: String, groupId: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await removeBuildFromGroup(buildId: buildId, groupId: groupId)
+        let provider = try rustCoreProvider()
+        guard let builds = provider.builds() else {
+            throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
         }
-
-        let body = BetaGroupBuildsLinkagesRequest(
-            data: [.init(type: .builds, id: buildId)]
-        )
-
-        let endpoint = APIEndpoint.v1.betaGroups.id(groupId).relationships.builds.delete(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[TestFlight] Removed build \(buildId) from group \(groupId)")
+        try await callRustCore { try await builds.removeBuildFromGroup(buildId: buildId, groupId: groupId) }
+        Log.print.info("[TestFlight] Removed build \(buildId) from group \(groupId) (Rust core)")
+        return
     }
 
     func addBuildToGroups(buildId: String, groupIds: [String]) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await addBuildToGroups(buildId: buildId, groupIds: groupIds)
+        let provider = try rustCoreProvider()
+        guard let builds = provider.builds() else {
+            throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
         }
-
-        let body = BuildBetaGroupsLinkagesRequest(
-            data: groupIds.map { .init(type: .betaGroups, id: $0) }
-        )
-
-        let endpoint = APIEndpoint.v1.builds.id(buildId).relationships.betaGroups.post(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[TestFlight] Added build \(buildId) to \(groupIds.count) groups")
+        try await callRustCore { try await builds.addBuildToGroups(buildId: buildId, groupIds: groupIds) }
+        Log.print.info("[TestFlight] Added build \(buildId) to \(groupIds.count) groups (Rust core)")
+        return
     }
 
     // MARK: - Customer Reviews
@@ -1118,386 +608,222 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         limit: Int = 50,
         pageAfterResponse: Any?
     ) async throws -> CustomerReviewsPage {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchCustomerReviewsPage(appId: appId, sort: sort, filterRating: filterRating, limit: limit, pageAfterResponse: pageAfterResponse)
+        let provider = try rustCoreProvider()
+        guard let reviews = provider.reviews() else {
+            throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
         }
-
-        typealias Params = APIEndpoint.V1.Apps.WithID.CustomerReviews.GetParameters
-
-        let sortValue: [Params.Sort] = sort == "-createdDate" ? [.minuscreatedDate]
-            : sort == "createdDate" ? [.createdDate]
-            : sort == "-rating" ? [.minusrating]
-            : sort == "rating" ? [.rating]
-            : [.minuscreatedDate]
-
-        let endpoint = APIEndpoint.v1.apps.id(appId).customerReviews.get(
-            parameters: .init(
-                filterRating: filterRating,
-                sort: sortValue,
-                limit: limit,
-                include: [.response]
-            )
-        )
-
-        let response: CustomerReviewsResponse
-        if let previousResponse = pageAfterResponse as? CustomerReviewsResponse {
-            guard let nextPage = try await provider.request(endpoint, pageAfter: previousResponse) else {
-                return CustomerReviewsPage(reviews: [], hasNextPage: false, rawResponse: nil)
-            }
-            response = nextPage
-        } else {
-            response = try await provider.request(endpoint)
-        }
-
-        let hasNext = response.links.next != nil
-
-        let responsesById: [String: CustomerReviewResponseV1] = {
-            var dict: [String: CustomerReviewResponseV1] = [:]
-            for item in response.included ?? [] {
-                dict[item.id] = item
-            }
-            return dict
-        }()
-
-        let reviews = response.data.map { review in
-            let responseRelId = review.relationships?.response?.data?.id
-            let reviewResponse = responseRelId.flatMap { responsesById[$0] }
-
-            return CustomerReviewModel(
-                id: review.id,
-                rating: review.attributes?.rating ?? 0,
-                title: review.attributes?.title,
-                body: review.attributes?.body,
-                reviewerNickname: review.attributes?.reviewerNickname,
-                createdDate: review.attributes?.createdDate,
-                territory: review.attributes?.territory?.rawValue,
-                responseId: reviewResponse?.id,
-                responseBody: reviewResponse?.attributes?.responseBody,
-                responseState: reviewResponse?.attributes?.state?.rawValue,
-                responseDate: reviewResponse?.attributes?.lastModifiedDate
+        // Our opaque paging token IS the core's nextToken (a String). When the flag is
+        // OFF the token is the SDK response; the flag state is consistent within a
+        // session, so the `as? String` downcast is correct here.
+        let pageToken = pageAfterResponse as? String
+        let core = try await callRustCore {
+            try await reviews.fetchCustomerReviewsPage(
+                appId: appId,
+                sort: sort,
+                filterRating: filterRating ?? [],
+                limit: UInt32(limit),
+                pageToken: pageToken
             )
         }
-
-        return CustomerReviewsPage(reviews: reviews, hasNextPage: hasNext, rawResponse: response)
+        let models = core.reviews.map { Self.mapCustomerReview($0) }
+        Log.print.info("[Apple] Fetched \(models.count) customer reviews (Rust core)")
+        return CustomerReviewsPage(reviews: models, hasNextPage: core.nextToken != nil, rawResponse: core.nextToken)
     }
 
     func replyToReview(reviewId: String, responseBody: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await replyToReview(reviewId: reviewId, responseBody: responseBody)
+        let provider = try rustCoreProvider()
+        guard let reviews = provider.reviews() else {
+            throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
         }
-
-        let body = CustomerReviewResponseV1CreateRequest(
-            data: .init(
-                type: .customerReviewResponses,
-                attributes: .init(responseBody: responseBody),
-                relationships: .init(
-                    review: .init(data: .init(type: .customerReviews, id: reviewId))
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.customerReviewResponses.post(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Replied to review \(reviewId)")
+        // Rust core returns the created/replaced ReviewResponse; this method's contract
+        // is Void, so we discard it (callers re-fetch the review list to see the reply).
+        _ = try await callRustCore {
+            try await reviews.replyToReview(reviewId: reviewId, body: responseBody)
+        }
+        Log.print.info("[Apple] Replied to review \(reviewId) (Rust core)")
+        return
     }
 
     func deleteReviewResponse(responseId: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await deleteReviewResponse(responseId: responseId)
+        let provider = try rustCoreProvider()
+        guard let reviews = provider.reviews() else {
+            throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.customerReviewResponses.id(responseId).delete
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Deleted review response \(responseId)")
+        try await callRustCore {
+            try await reviews.deleteReviewResponse(responseId: responseId)
+        }
+        Log.print.info("[Apple] Deleted review response \(responseId) (Rust core)")
+        return
     }
 
     // MARK: - Accessibility Declarations
 
     func fetchAccessibilityDeclarations(appId: String) async throws -> [AccessibilityDeclarationModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchAccessibilityDeclarations(appId: appId)
+        let provider = try rustCoreProvider()
+        guard let cap = provider.accessibilityDeclarations() else {
+            throw translate(.Unsupported(message: "Accessibility Declarations capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.apps.id(appId).accessibilityDeclarations.get(
-            parameters: .init(limit: 20)
-        )
-
-        let response = try await provider.request(endpoint)
-
-        return response.data.map { decl in
-            AccessibilityDeclarationModel(
-                id: decl.id,
-                deviceFamily: decl.attributes?.deviceFamily?.rawValue ?? "",
-                state: decl.attributes?.state?.rawValue,
-                supportsAudioDescriptions: decl.attributes?.isSupportsAudioDescriptions ?? false,
-                supportsCaptions: decl.attributes?.isSupportsCaptions ?? false,
-                supportsDarkInterface: decl.attributes?.isSupportsDarkInterface ?? false,
-                supportsDifferentiateWithoutColor: decl.attributes?.isSupportsDifferentiateWithoutColorAlone ?? false,
-                supportsLargerText: decl.attributes?.isSupportsLargerText ?? false,
-                supportsReducedMotion: decl.attributes?.isSupportsReducedMotion ?? false,
-                supportsSufficientContrast: decl.attributes?.isSupportsSufficientContrast ?? false,
-                supportsVoiceControl: decl.attributes?.isSupportsVoiceControl ?? false,
-                supportsVoiceover: decl.attributes?.isSupportsVoiceover ?? false
-            )
+        let models = try await callRustCore {
+            let infos = try await cap.fetchAccessibilityDeclarations(appId: appId, limit: 20)
+            return infos.map { Self.mapAccessibilityDeclarationInfo($0) }
         }
+        Log.print.info("[Apple] Fetched \(models.count) accessibility declarations for app \(appId) (Rust core)")
+        return models
     }
 
     func updateAccessibilityDeclaration(_ model: AccessibilityDeclarationModel, publish: Bool = false) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await updateAccessibilityDeclaration(model, publish: publish)
+        let provider = try rustCoreProvider()
+        guard let cap = provider.accessibilityDeclarations() else {
+            throw translate(.Unsupported(message: "Accessibility Declarations capability is not available for this provider."))
         }
-
-        let body = AccessibilityDeclarationUpdateRequest(
-            data: .init(
-                type: .accessibilityDeclarations,
+        _ = try await callRustCore {
+            try await cap.updateAccessibilityDeclaration(
                 id: model.id,
-                attributes: .init(
-                    isPublish: publish ? true : nil,
-                    isSupportsAudioDescriptions: model.supportsAudioDescriptions,
-                    isSupportsCaptions: model.supportsCaptions,
-                    isSupportsDarkInterface: model.supportsDarkInterface,
-                    isSupportsDifferentiateWithoutColorAlone: model.supportsDifferentiateWithoutColor,
-                    isSupportsLargerText: model.supportsLargerText,
-                    isSupportsReducedMotion: model.supportsReducedMotion,
-                    isSupportsSufficientContrast: model.supportsSufficientContrast,
-                    isSupportsVoiceControl: model.supportsVoiceControl,
-                    isSupportsVoiceover: model.supportsVoiceover
-                )
+                publish: publish,
+                supportsAudioDescriptions: model.supportsAudioDescriptions,
+                supportsCaptions: model.supportsCaptions,
+                supportsDarkInterface: model.supportsDarkInterface,
+                supportsDifferentiateWithoutColor: model.supportsDifferentiateWithoutColor,
+                supportsLargerText: model.supportsLargerText,
+                supportsReducedMotion: model.supportsReducedMotion,
+                supportsSufficientContrast: model.supportsSufficientContrast,
+                supportsVoiceControl: model.supportsVoiceControl,
+                supportsVoiceover: model.supportsVoiceover
             )
-        )
-
-        let endpoint = APIEndpoint.v1.accessibilityDeclarations.id(model.id).patch(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Updated accessibility declaration \(model.id)")
+        }
+        Log.print.info("[Apple] Updated accessibility declaration \(model.id) (Rust core)")
+        return
     }
 
     func createAccessibilityDeclaration(appId: String, deviceFamily: String) async throws -> AccessibilityDeclarationModel {
-        guard let provider else {
-            try await validateCredentials()
-            return try await createAccessibilityDeclaration(appId: appId, deviceFamily: deviceFamily)
-        }
-
-        guard let family = DeviceFamily(rawValue: deviceFamily) else {
+        // Validate the device family up front against the ASC-accepted values.
+        guard Self.validDeviceFamilies.contains(deviceFamily) else {
             throw NSError(domain: "Accessibility", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid device family"])
         }
 
-        let body = AccessibilityDeclarationCreateRequest(
-            data: .init(
-                type: .accessibilityDeclarations,
-                attributes: .init(deviceFamily: family),
-                relationships: .init(
-                    app: .init(data: .init(type: .apps, id: appId))
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.accessibilityDeclarations.post(body)
-        let response = try await provider.request(endpoint)
-        let decl = response.data
-
-        Log.print.info("[Apple] Created accessibility declaration for \(deviceFamily)")
-        return AccessibilityDeclarationModel(
-            id: decl.id,
-            deviceFamily: decl.attributes?.deviceFamily?.rawValue ?? deviceFamily,
-            state: decl.attributes?.state?.rawValue,
-            supportsAudioDescriptions: decl.attributes?.isSupportsAudioDescriptions ?? false,
-            supportsCaptions: decl.attributes?.isSupportsCaptions ?? false,
-            supportsDarkInterface: decl.attributes?.isSupportsDarkInterface ?? false,
-            supportsDifferentiateWithoutColor: decl.attributes?.isSupportsDifferentiateWithoutColorAlone ?? false,
-            supportsLargerText: decl.attributes?.isSupportsLargerText ?? false,
-            supportsReducedMotion: decl.attributes?.isSupportsReducedMotion ?? false,
-            supportsSufficientContrast: decl.attributes?.isSupportsSufficientContrast ?? false,
-            supportsVoiceControl: decl.attributes?.isSupportsVoiceControl ?? false,
-            supportsVoiceover: decl.attributes?.isSupportsVoiceover ?? false
-        )
+        let provider = try rustCoreProvider()
+        guard let cap = provider.accessibilityDeclarations() else {
+            throw translate(.Unsupported(message: "Accessibility Declarations capability is not available for this provider."))
+        }
+        let model = try await callRustCore {
+            let info = try await cap.createAccessibilityDeclaration(appId: appId, deviceFamily: deviceFamily)
+            return Self.mapAccessibilityDeclarationInfo(info)
+        }
+        Log.print.info("[Apple] Created accessibility declaration for \(deviceFamily) (Rust core)")
+        return model
     }
 
     func deleteAccessibilityDeclaration(id: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await deleteAccessibilityDeclaration(id: id)
+        let provider = try rustCoreProvider()
+        guard let cap = provider.accessibilityDeclarations() else {
+            throw translate(.Unsupported(message: "Accessibility Declarations capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.accessibilityDeclarations.id(id).delete
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Deleted accessibility declaration \(id)")
+        try await callRustCore { try await cap.deleteAccessibilityDeclaration(id: id) }
+        Log.print.info("[Apple] Deleted accessibility declaration \(id) (Rust core)")
+        return
     }
 
     // MARK: - App Review Detail
 
     func fetchAppReviewDetail(versionId: String) async throws -> AppReviewDetailModel? {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchAppReviewDetail(versionId: versionId)
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
         do {
-            let endpoint = APIEndpoint
-                .v1
-                .appStoreVersions
-                .id(versionId)
-                .appStoreReviewDetail
-                .get()
-
-            let result = try await provider.request(endpoint).data
-            return AppReviewDetailModel(
-                id: result.id,
-                contactFirstName: result.attributes?.contactFirstName,
-                contactLastName: result.attributes?.contactLastName,
-                contactEmail: result.attributes?.contactEmail,
-                contactPhone: result.attributes?.contactPhone,
-                notes: result.attributes?.notes,
-                demoAccountName: result.attributes?.demoAccountName,
-                demoAccountPassword: result.attributes?.demoAccountPassword,
-                isDemoAccountRequired: result.attributes?.isDemoAccountRequired
-            )
+            let info = try await callRustCore { try await versions.fetchAppReviewDetail(versionId: versionId) }
+            return info.map { Self.mapAppReviewDetailInfo($0) }
         } catch {
-            Log.print.info("[Apple] No review detail for version \(versionId)")
+            Log.print.info("[Apple] No review detail for version \(versionId) (Rust core)")
             return nil
         }
     }
 
     func updateAppReviewDetail(model: AppReviewDetailModel) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await updateAppReviewDetail(model: model)
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
-        let body = AppStoreReviewDetailUpdateRequest(
-            data: .init(
-                type: .appStoreReviewDetails,
-                id: model.id,
-                attributes: .init(
-                    contactFirstName: model.contactFirstName,
-                    contactLastName: model.contactLastName,
-                    contactPhone: model.contactPhone,
-                    contactEmail: model.contactEmail,
-                    demoAccountName: model.demoAccountName,
-                    demoAccountPassword: model.demoAccountPassword,
-                    isDemoAccountRequired: model.isDemoAccountRequired,
-                    notes: model.notes
-                )
+        try await callRustCore {
+            _ = try await versions.updateAppReviewDetail(
+                detailId: model.id,
+                contactFirstName: model.contactFirstName,
+                contactLastName: model.contactLastName,
+                contactEmail: model.contactEmail,
+                contactPhone: model.contactPhone,
+                notes: model.notes,
+                demoAccountName: model.demoAccountName,
+                demoAccountPassword: model.demoAccountPassword,
+                isDemoAccountRequired: model.isDemoAccountRequired
             )
-        )
-
-        let endpoint = APIEndpoint.v1.appStoreReviewDetails.id(model.id).patch(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Updated review detail \(model.id)")
+        }
+        Log.print.info("[Apple] Updated review detail \(model.id) (Rust core)")
+        return
     }
 
     // MARK: - Beta App Review Detail (TestFlight Test Information)
 
     func fetchBetaAppReviewDetail(appId: String) async throws -> BetaAppReviewDetailModel? {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchBetaAppReviewDetail(appId: appId)
+        let provider = try rustCoreProvider()
+        guard let detail = provider.betaAppReviewDetail() else {
+            throw translate(.Unsupported(message: "Beta App Review Detail capability is not available for this provider."))
         }
-
         do {
-            let endpoint = APIEndpoint
-                .v1
-                .apps
-                .id(appId)
-                .betaAppReviewDetail
-                .get()
-
-            let result = try await provider.request(endpoint).data
-            return BetaAppReviewDetailModel(
-                id: result.id,
-                contactFirstName: result.attributes?.contactFirstName,
-                contactLastName: result.attributes?.contactLastName,
-                contactEmail: result.attributes?.contactEmail,
-                contactPhone: result.attributes?.contactPhone,
-                demoAccountName: result.attributes?.demoAccountName,
-                demoAccountPassword: result.attributes?.demoAccountPassword,
-                isDemoAccountRequired: result.attributes?.isDemoAccountRequired,
-                notes: result.attributes?.notes
-            )
+            let info = try await callRustCore { try await detail.fetchBetaAppReviewDetail(appId: appId) }
+            return Self.mapBetaAppReviewDetailInfo(info)
         } catch {
-            Log.print.info("[Apple] No beta review detail for app \(appId)")
+            Log.print.info("[Apple] No beta review detail for app \(appId) (Rust core)")
             return nil
         }
     }
 
     func updateBetaAppReviewDetail(model: BetaAppReviewDetailModel) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await updateBetaAppReviewDetail(model: model)
+        let provider = try rustCoreProvider()
+        guard let detail = provider.betaAppReviewDetail() else {
+            throw translate(.Unsupported(message: "Beta App Review Detail capability is not available for this provider."))
         }
-
-        let body = BetaAppReviewDetailUpdateRequest(
-            data: .init(
-                type: .betaAppReviewDetails,
-                id: model.id,
-                attributes: .init(
-                    contactFirstName: model.contactFirstName,
-                    contactLastName: model.contactLastName,
-                    contactPhone: model.contactPhone,
-                    contactEmail: model.contactEmail,
-                    demoAccountName: model.demoAccountName,
-                    demoAccountPassword: model.demoAccountPassword,
-                    isDemoAccountRequired: model.isDemoAccountRequired,
-                    notes: model.notes
-                )
+        try await callRustCore {
+            _ = try await detail.updateBetaAppReviewDetail(
+                detailId: model.id,
+                contactFirstName: model.contactFirstName,
+                contactLastName: model.contactLastName,
+                contactEmail: model.contactEmail,
+                contactPhone: model.contactPhone,
+                demoAccountName: model.demoAccountName,
+                demoAccountPassword: model.demoAccountPassword,
+                isDemoAccountRequired: model.isDemoAccountRequired,
+                notes: model.notes
             )
-        )
-
-        let endpoint = APIEndpoint.v1.betaAppReviewDetails.id(model.id).patch(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Updated beta review detail \(model.id)")
+        }
+        Log.print.info("[Apple] Updated beta review detail \(model.id) (Rust core)")
+        return
     }
 
     // MARK: - Beta App Localizations (TestFlight description / feedback email)
 
     func fetchBetaAppLocalizations(appId: String) async throws -> [BetaAppLocalizationModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchBetaAppLocalizations(appId: appId)
+        let provider = try rustCoreProvider()
+        guard let bal = provider.betaAppLocalizations() else {
+            throw translate(.Unsupported(message: "Beta App Localizations capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint
-            .v1
-            .apps
-            .id(appId)
-            .betaAppLocalizations
-            .get()
-
-        let response = try await provider.request(endpoint)
-        return response.data.map { entry in
-            BetaAppLocalizationModel(
-                id: entry.id,
-                locale: entry.attributes?.locale ?? "",
-                feedbackEmail: entry.attributes?.feedbackEmail,
-                description: entry.attributes?.description
-            )
+        let models = try await callRustCore {
+            let infos = try await bal.fetchBetaAppLocalizations(appId: appId, limit: 50)
+            return infos.map { Self.mapBetaAppLocalizationInfo($0) }
         }
+        Log.print.info("[Apple] Fetched \(models.count) beta app localizations for app \(appId) (Rust core)")
+        return models
     }
 
     func updateBetaAppLocalization(id: String, feedbackEmail: String?, description: String?) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await updateBetaAppLocalization(id: id, feedbackEmail: feedbackEmail, description: description)
+        let provider = try rustCoreProvider()
+        guard let bal = provider.betaAppLocalizations() else {
+            throw translate(.Unsupported(message: "Beta App Localizations capability is not available for this provider."))
         }
-
-        let body = BetaAppLocalizationUpdateRequest(
-            data: .init(
-                type: .betaAppLocalizations,
-                id: id,
-                attributes: .init(
-                    feedbackEmail: feedbackEmail,
-                    description: description
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.betaAppLocalizations.id(id).patch(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Updated beta app localization \(id)")
+        try await callRustCore {
+            _ = try await bal.updateBetaAppLocalization(id: id, feedbackEmail: feedbackEmail, description: description)
+        }
+        Log.print.info("[Apple] Updated beta app localization \(id) (Rust core)")
+        return
     }
 
     func createBetaAppLocalization(
@@ -1506,346 +832,123 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         feedbackEmail: String?,
         description: String?
     ) async throws -> BetaAppLocalizationModel {
-        guard let provider else {
-            try await validateCredentials()
-            return try await createBetaAppLocalization(
-                appId: appId,
-                locale: locale,
-                feedbackEmail: feedbackEmail,
-                description: description
-            )
+        let provider = try rustCoreProvider()
+        guard let bal = provider.betaAppLocalizations() else {
+            throw translate(.Unsupported(message: "Beta App Localizations capability is not available for this provider."))
         }
-
-        let body = BetaAppLocalizationCreateRequest(
-            data: .init(
-                type: .betaAppLocalizations,
-                attributes: .init(
-                    feedbackEmail: feedbackEmail,
-                    description: description,
-                    locale: locale
-                ),
-                relationships: .init(
-                    app: .init(data: .init(type: .apps, id: appId))
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.betaAppLocalizations.post(body)
-        let response = try await provider.request(endpoint)
-        Log.print.info("[Apple] Created beta app localization \(response.data.id)")
-        return BetaAppLocalizationModel(
-            id: response.data.id,
-            locale: response.data.attributes?.locale ?? locale,
-            feedbackEmail: response.data.attributes?.feedbackEmail,
-            description: response.data.attributes?.description
-        )
+        let model = try await callRustCore {
+            let info = try await bal.createBetaAppLocalization(appId: appId, locale: locale, feedbackEmail: feedbackEmail, description: description)
+            return Self.mapBetaAppLocalizationInfo(info)
+        }
+        Log.print.info("[Apple] Created beta app localization \(model.id) (Rust core)")
+        return model
     }
 
     // MARK: - Screenshot Sets
 
     func fetchScreenshotSets(localizationId: String) async throws -> [ScreenshotSetModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchScreenshotSets(localizationId: localizationId)
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint
-            .v1
-            .appStoreVersionLocalizations
-            .id(localizationId)
-            .appScreenshotSets
-            .get(parameters: .init(include: [.appScreenshots]))
-
-        let response = try await provider.request(endpoint)
-
-        return response.data.compactMap { set in
-            let displayType = set.attributes?.screenshotDisplayType?.rawValue
-            let screenshotIds = set.relationships?.appScreenshots?.data?.map(\.id) ?? []
-
-            let screenshots: [ScreenshotModel] = (response.included ?? []).compactMap { included in
-                guard case .appScreenshot(let screenshot) = included,
-                      screenshotIds.contains(screenshot.id) else { return nil }
-                return ScreenshotModel(
-                    id: screenshot.id,
-                    imageUrl: screenshot.attributes?.imageAsset?.toIconUrl(),
-                    fileName: screenshot.attributes?.fileName,
-                    fileSize: screenshot.attributes?.fileSize,
-                    width: screenshot.attributes?.imageAsset?.width,
-                    height: screenshot.attributes?.imageAsset?.height
-                )
-            }
-
-            return ScreenshotSetModel(
-                id: set.id,
-                displayType: displayType,
-                screenshots: screenshots
-            )
-        }
+        let sets = try await callRustCore { try await versions.fetchScreenshotSets(localizationId: localizationId) }
+        let models = sets.map { Self.mapScreenshotSetInfo($0) }
+        Log.print.info("[Apple] Fetched \(models.count) screenshot sets for localization \(localizationId) (Rust core)")
+        return models
     }
 
     // MARK: - Phased Release
 
     func fetchPhasedRelease(versionId: String) async throws -> PhasedReleaseModel? {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchPhasedRelease(versionId: versionId)
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
         do {
-            let endpoint = APIEndpoint
-                .v1
-                .appStoreVersions
-                .id(versionId)
-                .appStoreVersionPhasedRelease
-                .get()
-
-            let result = try await provider.request(endpoint).data
-            return PhasedReleaseModel(
-                id: result.id,
-                state: result.attributes?.phasedReleaseState.flatMap { PhasedReleaseStatus(rawValue: $0.rawValue) },
-                startDate: result.attributes?.startDate,
-                totalPauseDuration: result.attributes?.totalPauseDuration,
-                currentDayNumber: result.attributes?.currentDayNumber
-            )
+            let info = try await callRustCore { try await versions.fetchPhasedRelease(versionId: versionId) }
+            return info.map { Self.mapPhasedReleaseInfo($0) }
         } catch {
-            Log.print.info("[Apple] No phased release for version \(versionId)")
+            Log.print.info("[Apple] No phased release for version \(versionId) (Rust core)")
             return nil
         }
     }
 
-    func createPhasedRelease(versionId: String, state: PhasedReleaseState) async throws -> PhasedReleaseModel {
-        guard let provider else {
-            try await validateCredentials()
-            return try await createPhasedRelease(versionId: versionId, state: state)
+    func createPhasedRelease(versionId: String, state: String) async throws -> PhasedReleaseModel {
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
-        let body = AppStoreVersionPhasedReleaseCreateRequest(
-            data: .init(
-                type: .appStoreVersionPhasedReleases,
-                attributes: .init(phasedReleaseState: state),
-                relationships: .init(
-                    appStoreVersion: .init(
-                        data: .init(type: .appStoreVersions, id: versionId)
-                    )
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.appStoreVersionPhasedReleases.post(body)
-        let result = try await provider.request(endpoint).data
-        Log.print.info("[Apple] Created phased release for version \(versionId)")
-        return PhasedReleaseModel(
-            id: result.id,
-            state: result.attributes?.phasedReleaseState.flatMap { PhasedReleaseStatus(rawValue: $0.rawValue) },
-            startDate: result.attributes?.startDate,
-            totalPauseDuration: result.attributes?.totalPauseDuration,
-            currentDayNumber: result.attributes?.currentDayNumber
-        )
+        let model = try await callRustCore {
+            let info = try await versions.createPhasedRelease(versionId: versionId, state: state)
+            return Self.mapPhasedReleaseInfo(info)
+        }
+        Log.print.info("[Apple] Created phased release for version \(versionId) (Rust core)")
+        return model
     }
 
     func deletePhasedRelease(id: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await deletePhasedRelease(id: id)
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.appStoreVersionPhasedReleases.id(id).delete
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Deleted phased release \(id)")
+        try await callRustCore { try await versions.deletePhasedRelease(id: id) }
+        Log.print.info("[Apple] Deleted phased release \(id) (Rust core)")
+        return
     }
 
     @discardableResult
-    func updatePhasedReleaseState(id: String, state: PhasedReleaseState) async throws -> PhasedReleaseModel {
-        guard let provider else {
-            try await validateCredentials()
-            return try await updatePhasedReleaseState(id: id, state: state)
+    func updatePhasedReleaseState(id: String, state: String) async throws -> PhasedReleaseModel {
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
-        let body = AppStoreVersionPhasedReleaseUpdateRequest(
-            data: .init(
-                type: .appStoreVersionPhasedReleases,
-                id: id,
-                attributes: .init(phasedReleaseState: state)
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.appStoreVersionPhasedReleases.id(id).patch(body)
-        let result = try await provider.request(endpoint).data
-        Log.print.info("[Apple] Updated phased release \(id) to state \(state.rawValue)")
-        return PhasedReleaseModel(
-            id: result.id,
-            state: result.attributes?.phasedReleaseState.flatMap { PhasedReleaseStatus(rawValue: $0.rawValue) },
-            startDate: result.attributes?.startDate,
-            totalPauseDuration: result.attributes?.totalPauseDuration,
-            currentDayNumber: result.attributes?.currentDayNumber
-        )
+        let model = try await callRustCore {
+            let info = try await versions.updatePhasedReleaseState(id: id, state: state)
+            return Self.mapPhasedReleaseInfo(info)
+        }
+        Log.print.info("[Apple] Updated phased release \(id) to state \(state) (Rust core)")
+        return model
     }
 
     // MARK: - App Info
 
     func fetchAppInfo(appId: String) async throws -> (AppInfoModel, AgeRatingDeclarationModel?) {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchAppInfo(appId: appId)
+        let provider = try rustCoreProvider()
+        guard let meta = provider.appMetadata() else {
+            throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
         }
-
-        let request = APIEndpoint.v1.apps.id(appId).appInfos.get(
-            parameters: .init(
-                fieldsAppInfos: [.appStoreAgeRating, .primaryCategory, .primarySubcategoryOne, .secondaryCategory, .secondarySubcategoryOne],
-                fieldsAgeRatingDeclarations: [
-                    .alcoholTobaccoOrDrugUseOrReferences, .contests, .gamblingSimulated,
-                    .gunsOrOtherWeapons, .medicalOrTreatmentInformation, .profanityOrCrudeHumor,
-                    .sexualContentGraphicAndNudity, .sexualContentOrNudity, .horrorOrFearThemes,
-                    .matureOrSuggestiveThemes, .violenceCartoonOrFantasy, .violenceRealistic,
-                    .violenceRealisticProlongedGraphicOrSadistic, .advertising, .gambling,
-                    .unrestrictedWebAccess, .userGeneratedContent, .ageRatingOverrideV2
-                ],
-                fieldsAppInfoLocalizations: [.locale, .name, .subtitle, .privacyPolicyURL, .privacyChoicesURL, .privacyPolicyText],
-                fieldsAppCategories: [.platforms],
-                limit: 1,
-                include: [.ageRatingDeclaration, .appInfoLocalizations, .primaryCategory, .primarySubcategoryOne, .secondaryCategory, .secondarySubcategoryOne],
-                limitAppInfoLocalizations: 50
-            )
-        )
-
-        let response = try await provider.request(request)
-        guard let info = response.data.first else {
-            throw NSError(domain: "AppInfo", code: 404, userInfo: [NSLocalizedDescriptionKey: "App info not found"])
-        }
-
-        // Fetch app-level fields (sku, primaryLocale, contentRights)
-        let appRequest = APIEndpoint.v1.apps.id(appId).get(
-            parameters: .init(fieldsApps: [.sku, .primaryLocale, .contentRightsDeclaration])
-        )
-        let appResponse = try await provider.request(appRequest)
-        let appAttrs = appResponse.data.attributes
-
-        let included = response.included ?? []
-
-        // Map localizations from included
-        var localizations: [AppInfoLocalizationModel] = []
-        for item in included {
-            if case .appInfoLocalization(let loc) = item {
-                let model = AppInfoLocalizationModel(
-                    id: loc.id,
-                    locale: loc.attributes?.locale ?? "",
-                    name: loc.attributes?.name,
-                    subtitle: loc.attributes?.subtitle,
-                    privacyPolicyUrl: loc.attributes?.privacyPolicyURL,
-                    privacyChoicesUrl: loc.attributes?.privacyChoicesURL,
-                    privacyPolicyText: loc.attributes?.privacyPolicyText
-                )
-                localizations.append(model)
-            }
-        }
-
-        // Map category IDs from relationships (most reliable source)
-        let primaryCatId = info.relationships?.primaryCategory?.data?.id
-        let primarySubCatOneId = info.relationships?.primarySubcategoryOne?.data?.id
-        let secondaryCatId = info.relationships?.secondaryCategory?.data?.id
-        let secondarySubCatOneId = info.relationships?.secondarySubcategoryOne?.data?.id
-        let primaryCategoryId = primaryCatId
-        let primaryCategoryName = primaryCatId.map { AppleAccountConnection.formatCategoryId($0) }
-        let primarySubcategoryOneId = primarySubCatOneId
-        let primarySubcategoryOneName = primarySubCatOneId.map { id in
-            AppleAccountConnection.formatSubcategoryId(id, parentId: primaryCatId)
-        }
-        let secondaryCategoryId = secondaryCatId
-        let secondaryCategoryName = secondaryCatId.map { AppleAccountConnection.formatCategoryId($0) }
-        let secondarySubcategoryOneId = secondarySubCatOneId
-
-        // Map age rating declaration from included
-        var ageRating: AgeRatingDeclarationModel?
-        for item in included {
-            if case .ageRatingDeclaration(let ar) = item {
-                let attrs = ar.attributes
-                ageRating = AgeRatingDeclarationModel(
-                    id: ar.id,
-                    alcoholTobaccoOrDrugUseOrReferences: attrs?.alcoholTobaccoOrDrugUseOrReferences?.rawValue,
-                    contests: attrs?.contests?.rawValue,
-                    gamblingSimulated: attrs?.gamblingSimulated?.rawValue,
-                    gunsOrOtherWeapons: attrs?.gunsOrOtherWeapons?.rawValue,
-                    medicalOrTreatmentInformation: attrs?.medicalOrTreatmentInformation?.rawValue,
-                    profanityOrCrudeHumor: attrs?.profanityOrCrudeHumor?.rawValue,
-                    sexualContentGraphicAndNudity: attrs?.sexualContentGraphicAndNudity?.rawValue,
-                    sexualContentOrNudity: attrs?.sexualContentOrNudity?.rawValue,
-                    horrorOrFearThemes: attrs?.horrorOrFearThemes?.rawValue,
-                    matureOrSuggestiveThemes: attrs?.matureOrSuggestiveThemes?.rawValue,
-                    violenceCartoonOrFantasy: attrs?.violenceCartoonOrFantasy?.rawValue,
-                    violenceRealistic: attrs?.violenceRealistic?.rawValue,
-                    violenceRealisticProlongedGraphicOrSadistic: attrs?.violenceRealisticProlongedGraphicOrSadistic?.rawValue,
-                    isAdvertising: attrs?.isAdvertising,
-                    isGambling: attrs?.isGambling,
-                    isUnrestrictedWebAccess: attrs?.isUnrestrictedWebAccess,
-                    isUserGeneratedContent: attrs?.isUserGeneratedContent,
-                    ageRatingOverrideV2: attrs?.ageRatingOverrideV2?.rawValue
-                )
-            }
-        }
-
-        let appInfo = AppInfoModel(
-            id: info.id,
-            appId: appId,
-            sku: appAttrs?.sku,
-            primaryLocale: appAttrs?.primaryLocale,
-            contentRightsDeclaration: appAttrs?.contentRightsDeclaration?.rawValue,
-            primaryCategoryId: primaryCategoryId,
-            primaryCategoryName: primaryCategoryName,
-            primarySubcategoryOneId: primarySubcategoryOneId,
-            primarySubcategoryOneName: primarySubcategoryOneName,
-            secondaryCategoryId: secondaryCategoryId,
-            secondaryCategoryName: secondaryCategoryName,
-            secondarySubcategoryOneId: secondarySubcategoryOneId,
-            ageRatingDeclarationId: ageRating?.id,
-            appStoreAgeRating: info.attributes?.appStoreAgeRating?.rawValue,
-            localizations: localizations
-        )
-
-        Log.print.info("[Apple] Fetched app info for \(appId)")
+        let details = try await callRustCore { try await meta.fetchAppInfo(appId: appId) }
+        let ageRating = details.ageRating.map { Self.mapAgeRatingDeclarationInfo($0) }
+        let appInfo = Self.mapAppInfoDetails(details)
+        Log.print.info("[Apple] Fetched app info for \(appId) (Rust core)")
         return (appInfo, ageRating)
     }
 
     // MARK: - App Info Localizations
 
     func fetchAppInfoLocalizations(appInfoId: String) async throws -> [AppInfoLocalizationModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchAppInfoLocalizations(appInfoId: appInfoId)
+        let provider = try rustCoreProvider()
+        guard let meta = provider.appMetadata() else {
+            throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.appInfos.id(appInfoId).appInfoLocalizations.get()
-        let response = try await provider.request(endpoint)
-
-        return response.data.map { loc in
-            AppInfoLocalizationModel(
-                id: loc.id,
-                locale: loc.attributes?.locale ?? "",
-                name: loc.attributes?.name,
-                subtitle: loc.attributes?.subtitle,
-                privacyPolicyUrl: loc.attributes?.privacyPolicyURL,
-                privacyChoicesUrl: loc.attributes?.privacyChoicesURL,
-                privacyPolicyText: loc.attributes?.privacyPolicyText
-            )
+        let models = try await callRustCore {
+            let infos = try await meta.fetchAppInfoLocalizations(appInfoId: appInfoId)
+            return infos.map { Self.mapAppInfoLocalizationInfo($0) }
         }
+        Log.print.info("[Apple] Fetched \(models.count) app info localizations for \(appInfoId) (Rust core)")
+        return models
     }
 
     func updateAppInfoLocalization(id: String, name: String, subtitle: String?) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await updateAppInfoLocalization(id: id, name: name, subtitle: subtitle)
+        let provider = try rustCoreProvider()
+        guard let meta = provider.appMetadata() else {
+            throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
         }
-
-        let body = AppInfoLocalizationUpdateRequest(
-            data: .init(
-                type: .appInfoLocalizations,
-                id: id,
-                attributes: .init(name: name, subtitle: subtitle)
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.appInfoLocalizations.id(id).patch(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Updated app info localization \(id)")
+        try await callRustCore {
+            _ = try await meta.updateAppInfoLocalization(id: id, name: name, subtitle: subtitle)
+        }
+        Log.print.info("[Apple] Updated app info localization \(id) (Rust core)")
+        return
     }
 
     func updateAppInfoLocalizationPrivacy(
@@ -1854,31 +957,15 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         privacyChoicesUrl: String?,
         privacyPolicyText: String?
     ) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await updateAppInfoLocalizationPrivacy(
-                id: id,
-                privacyPolicyUrl: privacyPolicyUrl,
-                privacyChoicesUrl: privacyChoicesUrl,
-                privacyPolicyText: privacyPolicyText
-            )
+        let provider = try rustCoreProvider()
+        guard let meta = provider.appMetadata() else {
+            throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
         }
-
-        let body = AppInfoLocalizationUpdateRequest(
-            data: .init(
-                type: .appInfoLocalizations,
-                id: id,
-                attributes: .init(
-                    privacyPolicyURL: privacyPolicyUrl,
-                    privacyChoicesURL: privacyChoicesUrl,
-                    privacyPolicyText: privacyPolicyText
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.appInfoLocalizations.id(id).patch(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Updated privacy for localization \(id)")
+        try await callRustCore {
+            _ = try await meta.updateAppInfoLocalizationPrivacy(id: id, privacyPolicyUrl: privacyPolicyUrl, privacyChoicesUrl: privacyChoicesUrl, privacyPolicyText: privacyPolicyText)
+        }
+        Log.print.info("[Apple] Updated privacy for localization \(id) (Rust core)")
+        return
     }
 
     func createAppInfoLocalization(
@@ -1887,70 +974,43 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         name: String,
         subtitle: String?
     ) async throws -> AppInfoLocalizationModel {
-        guard let provider else {
-            try await validateCredentials()
-            return try await createAppInfoLocalization(appInfoId: appInfoId, locale: locale, name: name, subtitle: subtitle)
+        let provider = try rustCoreProvider()
+        guard let meta = provider.appMetadata() else {
+            throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
         }
-
-        let body = AppInfoLocalizationCreateRequest(
-            data: .init(
-                type: .appInfoLocalizations,
-                attributes: .init(locale: locale, name: name, subtitle: subtitle),
-                relationships: .init(
-                    appInfo: .init(data: .init(type: .appInfos, id: appInfoId))
-                )
-            )
-        )
-
-        let response = try await provider.request(APIEndpoint.v1.appInfoLocalizations.post(body))
-        Log.print.info("[Apple] Created app info localization for \(locale)")
-        return AppInfoLocalizationModel(
-            id: response.data.id,
-            locale: response.data.attributes?.locale ?? locale,
-            name: response.data.attributes?.name ?? name,
-            subtitle: response.data.attributes?.subtitle ?? subtitle
-        )
+        let model = try await callRustCore {
+            let info = try await meta.createAppInfoLocalization(appInfoId: appInfoId, locale: locale, name: name, subtitle: subtitle)
+            return Self.mapAppInfoLocalizationInfo(info)
+        }
+        Log.print.info("[Apple] Created app info localization for \(locale) (Rust core)")
+        return model
     }
 
     func deleteAppInfoLocalization(id: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await deleteAppInfoLocalization(id: id)
+        let provider = try rustCoreProvider()
+        guard let meta = provider.appMetadata() else {
+            throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.appInfoLocalizations.id(id).delete
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Deleted app info localization \(id)")
+        try await callRustCore {
+            try await meta.deleteAppInfoLocalization(id: id)
+        }
+        Log.print.info("[Apple] Deleted app info localization \(id) (Rust core)")
+        return
     }
 
     // MARK: - App Categories
 
     func fetchAppCategories() async throws -> [AppCategoryModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchAppCategories()
+        let provider = try rustCoreProvider()
+        guard let meta = provider.appMetadata() else {
+            throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.appCategories.get(
-            parameters: .init(
-                filterPlatforms: [.ios],
-                isExistsParent: false,
-                include: [.subcategories]
-            )
-        )
-        let response = try await provider.request(endpoint)
-
-        let subcategoryMap: [String: AppCategoryModel] = Dictionary(
-            uniqueKeysWithValues: (response.included ?? []).map { sub in
-                (sub.id, AppCategoryModel(id: sub.id))
-            }
-        )
-
-        return response.data.map { cat in
-            let subcategoryIds = cat.relationships?.subcategories?.data?.map(\.id) ?? []
-            let subcategories = subcategoryIds.compactMap { subcategoryMap[$0] }
-            return AppCategoryModel(id: cat.id, subcategories: subcategories)
+        let models = try await callRustCore {
+            let cats = try await meta.fetchAppCategories()
+            return cats.map { Self.mapAppCategoryInfo($0) }
         }
+        Log.print.info("[Apple] Fetched \(models.count) app categories (Rust core)")
+        return models
     }
 
     func updateAppInfoCategory(
@@ -1960,9 +1020,12 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         secondaryCategoryId: String?,
         secondarySubcategoryOneId: String?
     ) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await updateAppInfoCategory(
+        let provider = try rustCoreProvider()
+        guard let meta = provider.appMetadata() else {
+            throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
+        }
+        try await callRustCore {
+            try await meta.updateAppInfoCategory(
                 appInfoId: appInfoId,
                 primaryCategoryId: primaryCategoryId,
                 subcategoryOneId: subcategoryOneId,
@@ -1970,63 +1033,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
                 secondarySubcategoryOneId: secondarySubcategoryOneId
             )
         }
-
-        typealias Rels = AppInfoUpdateRequest.Data.Relationships
-        let primaryCat = primaryCategoryId.map { id in
-            Rels.PrimaryCategory(data: .init(type: .appCategories, id: id))
-        }
-        let subCatOne = subcategoryOneId.map { id in
-            Rels.PrimarySubcategoryOne(data: .init(type: .appCategories, id: id))
-        }
-        let secondaryCat = secondaryCategoryId.map { id in
-            Rels.SecondaryCategory(data: .init(type: .appCategories, id: id))
-        }
-        let secondarySubCatOne = secondarySubcategoryOneId.map { id in
-            Rels.SecondarySubcategoryOne(data: .init(type: .appCategories, id: id))
-        }
-
-        let body = AppInfoUpdateRequest(
-            data: .init(
-                type: .appInfos,
-                id: appInfoId,
-                relationships: .init(
-                    primaryCategory: primaryCat,
-                    primarySubcategoryOne: subCatOne,
-                    secondaryCategory: secondaryCat,
-                    secondarySubcategoryOne: secondarySubCatOne
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.appInfos.id(appInfoId).patch(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Updated app info category for \(appInfoId)")
+        Log.print.info("[Apple] Updated app info category for \(appInfoId) (Rust core)")
+        return
     }
 
     func updateApp(id: String, contentRightsDeclaration: String? = nil, primaryLocale: String? = nil) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await updateApp(id: id, contentRightsDeclaration: contentRightsDeclaration, primaryLocale: primaryLocale)
+        let provider = try rustCoreProvider()
+        guard let meta = provider.appMetadata() else {
+            throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
         }
-
-        let rights = contentRightsDeclaration.flatMap {
-            AppUpdateRequest.Data.Attributes.ContentRightsDeclaration(rawValue: $0)
+        try await callRustCore {
+            try await meta.updateApp(id: id, contentRightsDeclaration: contentRightsDeclaration, primaryLocale: primaryLocale)
         }
-
-        let body = AppUpdateRequest(
-            data: .init(
-                type: .apps,
-                id: id,
-                attributes: .init(
-                    primaryLocale: primaryLocale,
-                    contentRightsDeclaration: rights
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.apps.id(id).patch(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Updated app \(id)")
+        Log.print.info("[Apple] Updated app \(id) (Rust core)")
+        return
     }
 
     func updateAgeRating(
@@ -2050,9 +1070,12 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         isUserGeneratedContent: Bool,
         ageRatingOverride: String
     ) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await updateAgeRating(
+        let provider = try rustCoreProvider()
+        guard let meta = provider.appMetadata() else {
+            throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
+        }
+        try await callRustCore {
+            try await meta.updateAgeRating(
                 id: id,
                 alcoholTobacco: alcoholTobacco,
                 contests: contests,
@@ -2074,249 +1097,90 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
                 ageRatingOverride: ageRatingOverride
             )
         }
-
-        typealias Attrs = AgeRatingDeclarationUpdateRequest.Data.Attributes
-
-        let body = AgeRatingDeclarationUpdateRequest(
-            data: .init(
-                type: .ageRatingDeclarations,
-                id: id,
-                attributes: .init(
-                    isAdvertising: isAdvertising,
-                    alcoholTobaccoOrDrugUseOrReferences: Attrs.AlcoholTobaccoOrDrugUseOrReferences(rawValue: alcoholTobacco),
-                    contests: Attrs.Contests(rawValue: contests),
-                    isGambling: isGambling,
-                    gamblingSimulated: Attrs.GamblingSimulated(rawValue: gamblingSimulated),
-                    gunsOrOtherWeapons: Attrs.GunsOrOtherWeapons(rawValue: gunsOrOtherWeapons),
-                    medicalOrTreatmentInformation: Attrs.MedicalOrTreatmentInformation(rawValue: medicalInformation),
-                    profanityOrCrudeHumor: Attrs.ProfanityOrCrudeHumor(rawValue: profanity),
-                    sexualContentGraphicAndNudity: Attrs.SexualContentGraphicAndNudity(rawValue: sexualContentGraphic),
-                    sexualContentOrNudity: Attrs.SexualContentOrNudity(rawValue: sexualContentOrNudity),
-                    horrorOrFearThemes: Attrs.HorrorOrFearThemes(rawValue: horrorOrFear),
-                    matureOrSuggestiveThemes: Attrs.MatureOrSuggestiveThemes(rawValue: matureOrSuggestive),
-                    isUnrestrictedWebAccess: isUnrestrictedWebAccess,
-                    isUserGeneratedContent: isUserGeneratedContent,
-                    violenceCartoonOrFantasy: Attrs.ViolenceCartoonOrFantasy(rawValue: violenceCartoon),
-                    violenceRealisticProlongedGraphicOrSadistic: Attrs.ViolenceRealisticProlongedGraphicOrSadistic(rawValue: violenceGraphic),
-                    violenceRealistic: Attrs.ViolenceRealistic(rawValue: violenceRealistic),
-                    ageRatingOverrideV2: Attrs.AgeRatingOverrideV2(rawValue: ageRatingOverride)
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.ageRatingDeclarations.id(id).patch(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Updated age rating \(id)")
+        Log.print.info("[Apple] Updated age rating \(id) (Rust core)")
+        return
     }
 
     // MARK: - Review Submissions
 
     func submitForReview(appId: String, versionId: String, platform: AppPlatform?) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await submitForReview(appId: appId, versionId: versionId, platform: platform)
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
-        // 1. Create review submission
-        let sdkPlatform: Platform? = platform.flatMap { Platform(rawValue: $0.rawValue) }
-        let createBody = ReviewSubmissionCreateRequest(
-            data: .init(
-                type: .reviewSubmissions,
-                attributes: sdkPlatform.map { .init(platform: $0) },
-                relationships: .init(
-                    app: .init(data: .init(type: .apps, id: appId))
-                )
-            )
-        )
-        let submission = try await provider.request(
-            APIEndpoint.v1.reviewSubmissions.post(createBody)
-        )
-        let submissionId = submission.data.id
-
-        // 2. Add version as item
-        let itemBody = ReviewSubmissionItemCreateRequest(
-            data: .init(
-                type: .reviewSubmissionItems,
-                relationships: .init(
-                    reviewSubmission: .init(data: .init(type: .reviewSubmissions, id: submissionId)),
-                    appStoreVersion: .init(data: .init(type: .appStoreVersions, id: versionId))
-                )
-            )
-        )
-        _ = try await provider.request(
-            APIEndpoint.v1.reviewSubmissionItems.post(itemBody)
-        )
-
-        // 3. Submit
-        let submitBody = ReviewSubmissionUpdateRequest(
-            data: .init(
-                type: .reviewSubmissions,
-                id: submissionId,
-                attributes: .init(isSubmitted: true)
-            )
-        )
-        _ = try await provider.request(
-            APIEndpoint.v1.reviewSubmissions.id(submissionId).patch(submitBody)
-        )
-
-        Log.print.info("[Apple] Submitted version \(versionId) for review")
+        try await callRustCore { try await versions.submitForReview(appId: appId, versionId: versionId, platform: platform?.rawValue) }
+        Log.print.info("[Apple] Submitted version \(versionId) for review (Rust core)")
+        return
     }
 
     func cancelReview(appId: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await cancelReview(appId: appId)
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
-        // Find active submission
-        let request = APIEndpoint.v1.reviewSubmissions.get(
-            parameters: .init(
-                filterState: [.waitingForReview, .inReview],
-                filterApp: [appId]
-            )
-        )
-        let response = try await provider.request(request)
-
-        guard let submission = response.data.first else {
-            Log.print.info("[Apple] No active review submission found for app \(appId)")
-            return
-        }
-
-        // Cancel it
-        let cancelBody = ReviewSubmissionUpdateRequest(
-            data: .init(
-                type: .reviewSubmissions,
-                id: submission.id,
-                attributes: .init(isCanceled: true)
-            )
-        )
-        _ = try await provider.request(
-            APIEndpoint.v1.reviewSubmissions.id(submission.id).patch(cancelBody)
-        )
-
-        Log.print.info("[Apple] Cancelled review for app \(appId)")
+        try await callRustCore { try await versions.cancelReview(appId: appId) }
+        Log.print.info("[Apple] Cancelled review for app \(appId) (Rust core)")
+        return
     }
 
     func releaseVersion(versionId: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await releaseVersion(versionId: versionId)
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
-        let body = AppStoreVersionReleaseRequestCreateRequest(
-            data: .init(
-                type: .appStoreVersionReleaseRequests,
-                relationships: .init(
-                    appStoreVersion: .init(
-                        data: .init(
-                            type: .appStoreVersions,
-                            id: versionId
-                        )
-                    )
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.appStoreVersionReleaseRequests.post(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Released version \(versionId)")
+        try await callRustCore { try await versions.releaseVersion(versionId: versionId) }
+        Log.print.info("[Apple] Released version \(versionId) (Rust core)")
+        return
     }
 
-    func rejectVersion(appId: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await rejectVersion(appId: appId)
+    func cancelSubmission(appId: String) async throws {
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
+        try await callRustCore { try await versions.cancelSubmission(appId: appId) }
+        Log.print.info("[Apple] Cancelled submission for app \(appId) (Rust core)")
+        return
+    }
 
-        // Find any completing/complete submission to reject
-        let request = APIEndpoint.v1.reviewSubmissions.get(
-            parameters: .init(
-                filterApp: [appId]
-            )
-        )
-        let response = try await provider.request(request)
-
-        guard let submission = response.data.first else {
-            Log.print.info("[Apple] No review submission found for app \(appId)")
-            return
+    func rejectVersion(versionId: String) async throws {
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
         }
-
-        let cancelBody = ReviewSubmissionUpdateRequest(
-            data: .init(
-                type: .reviewSubmissions,
-                id: submission.id,
-                attributes: .init(isCanceled: true)
-            )
-        )
-        _ = try await provider.request(
-            APIEndpoint.v1.reviewSubmissions.id(submission.id).patch(cancelBody)
-        )
-
-        Log.print.info("[Apple] Rejected version for app \(appId)")
+        try await callRustCore { try await versions.rejectVersion(versionId: versionId) }
+        Log.print.info("[Apple] Rejected version \(versionId) (Rust core)")
+        return
     }
 
     func disconnect() {
-        provider = nil
+        rustProvider = nil
         Log.print.info("[Apple] Disconnected")
     }
 
     // MARK: - Certificates
 
     func fetchCertificates() async throws -> [CertificateModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchCertificates()
+        let provider = try rustCoreProvider()
+        guard let cap = provider.certificates() else {
+            throw translate(.Unsupported(message: "Certificates capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint
-            .v1
-            .certificates
-            .get(parameters: .init(sort: [.displayName], limit: 200))
-
-        let response = try await provider.request(endpoint)
-
-        let models = response.data.map { cert in
-            CertificateModel(
-                id: cert.id,
-                displayName: cert.attributes?.displayName ?? cert.attributes?.name ?? "",
-                name: cert.attributes?.name ?? "",
-                certificateType: cert.attributes?.certificateType?.rawValue ?? "",
-                platform: cert.attributes?.platform?.rawValue,
-                serialNumber: cert.attributes?.serialNumber,
-                expirationDate: cert.attributes?.expirationDate,
-                isActivated: cert.attributes?.isActivated ?? false
-            )
+        let models = try await callRustCore {
+            let infos = try await cap.fetchCertificates()
+            return infos.map { Self.mapCertificateInfo($0) }
         }
-
-        Log.print.info("[Apple] Fetched \(models.count) certificates")
+        Log.print.info("[Apple] Fetched \(models.count) certificates (Rust core)")
         return models
     }
 
     func fetchCertificateContent(id: String) async throws -> String? {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchCertificateContent(id: id)
+        let provider = try rustCoreProvider()
+        guard let cap = provider.certificates() else {
+            throw translate(.Unsupported(message: "Certificates capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint
-            .v1
-            .certificates
-            .id(id)
-            .get(parameters: .init(
-                fieldsCertificates: [
-                    .certificateContent,
-                    .displayName,
-                    .name,
-                    .certificateType,
-                    .platform,
-                    .serialNumber,
-                    .expirationDate,
-                    .activated
-                ]
-            ))
-
-        let response = try await provider.request(endpoint)
-        return response.data.attributes?.certificateContent
+        let content = try await callRustCore { try await cap.fetchCertificateContent(id: id) }
+        Log.print.info("[Apple] Fetched certificate content for \(id) (Rust core)")
+        return content
     }
 
     struct CreatedCertificate {
@@ -2330,98 +1194,45 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         passTypeId: String? = nil,
         merchantId: String? = nil
     ) async throws -> CreatedCertificate {
-        guard let provider else {
-            try await validateCredentials()
-            return try await createCertificate(
+        let provider = try rustCoreProvider()
+        guard let cap = provider.certificates() else {
+            throw translate(.Unsupported(message: "Certificates capability is not available for this provider."))
+        }
+        let created = try await callRustCore {
+            let info = try await cap.createCertificate(
                 csrContent: csrContent,
-                certificateTypeRaw: certificateTypeRaw,
+                certificateType: certificateTypeRaw,
                 passTypeId: passTypeId,
                 merchantId: merchantId
             )
+            return CreatedCertificate(certificate: Self.mapCertificateInfo(info), content: info.certificateContent)
         }
-
-        guard let typeEnum = CertificateType(rawValue: certificateTypeRaw) else {
-            throw NSError(
-                domain: "Certificates",
-                code: 400,
-                userInfo: [NSLocalizedDescriptionKey: "Unsupported certificate type: \(certificateTypeRaw)"]
-            )
-        }
-
-        var relationships: CertificateCreateRequest.Data.Relationships?
-        if let passTypeId, !passTypeId.isEmpty {
-            relationships = .init(
-                passTypeID: .init(data: .init(type: .passTypeIDs, id: passTypeId))
-            )
-        } else if let merchantId, !merchantId.isEmpty {
-            relationships = .init(
-                merchantID: .init(data: .init(type: .merchantIDs, id: merchantId))
-            )
-        }
-
-        let body = CertificateCreateRequest(
-            data: .init(
-                type: .certificates,
-                attributes: .init(csrContent: csrContent, certificateType: typeEnum),
-                relationships: relationships
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.certificates.post(body)
-        let response = try await provider.request(endpoint)
-        let cert = response.data
-
-        let model = CertificateModel(
-            id: cert.id,
-            displayName: cert.attributes?.displayName ?? cert.attributes?.name ?? "",
-            name: cert.attributes?.name ?? "",
-            certificateType: cert.attributes?.certificateType?.rawValue ?? certificateTypeRaw,
-            platform: cert.attributes?.platform?.rawValue,
-            serialNumber: cert.attributes?.serialNumber,
-            expirationDate: cert.attributes?.expirationDate,
-            isActivated: cert.attributes?.isActivated ?? false
-        )
-
-        Log.print.info("[Apple] Created certificate \(model.id) (\(certificateTypeRaw))")
-        return CreatedCertificate(certificate: model, content: cert.attributes?.certificateContent)
+        Log.print.info("[Apple] Created certificate \(created.certificate.id) (\(certificateTypeRaw)) (Rust core)")
+        return created
     }
 
     func revokeCertificate(id: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await revokeCertificate(id: id)
+        let provider = try rustCoreProvider()
+        guard let cap = provider.certificates() else {
+            throw translate(.Unsupported(message: "Certificates capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.certificates.id(id).delete
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Revoked certificate \(id)")
+        try await callRustCore { try await cap.revokeCertificate(id: id) }
+        Log.print.info("[Apple] Revoked certificate \(id) (Rust core)")
+        return
     }
 
     // MARK: - Bundle Identifiers
 
     func fetchBundleIds() async throws -> [BundleIdentifierModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchBundleIds()
+        let provider = try rustCoreProvider()
+        guard let cap = provider.bundleIds() else {
+            throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint
-            .v1
-            .bundleIDs
-            .get(parameters: .init(sort: [.name], limit: 200))
-
-        let response = try await provider.request(endpoint)
-
-        let models = response.data.map { bundle in
-            BundleIdentifierModel(
-                id: bundle.id,
-                identifier: bundle.attributes?.identifier ?? "",
-                name: bundle.attributes?.name ?? "",
-                platform: bundle.attributes?.platform?.rawValue ?? "",
-                seedId: bundle.attributes?.seedID
-            )
+        let models = try await callRustCore {
+            let infos = try await cap.fetchBundleIds()
+            return infos.map { Self.mapBundleIdInfo($0) }
         }
-        Log.print.info("[Apple] Fetched \(models.count) bundle identifiers")
+        Log.print.info("[Apple] Fetched \(models.count) bundle identifiers (Rust core)")
         return models
     }
 
@@ -2430,64 +1241,41 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         name: String,
         platformRaw: String
     ) async throws -> BundleIdentifierModel {
-        guard let provider else {
-            try await validateCredentials()
-            return try await createBundleId(identifier: identifier, name: name, platformRaw: platformRaw)
-        }
-
-        guard let platform = BundleIDPlatform(rawValue: platformRaw) else {
+        // Validate the platform up front against the ASC-accepted values.
+        guard Self.validBundleIdPlatforms.contains(platformRaw) else {
             throw NSError(domain: "BundleId", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid platform: \(platformRaw)"])
         }
 
-        let body = BundleIDCreateRequest(
-            data: .init(
-                type: .bundleIDs,
-                attributes: .init(name: name, platform: platform, identifier: identifier)
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.bundleIDs.post(body)
-        let response = try await provider.request(endpoint)
-        let bundle = response.data
-
-        Log.print.info("[Apple] Created bundle identifier \(identifier)")
-        return BundleIdentifierModel(
-            id: bundle.id,
-            identifier: bundle.attributes?.identifier ?? identifier,
-            name: bundle.attributes?.name ?? name,
-            platform: bundle.attributes?.platform?.rawValue ?? platformRaw,
-            seedId: bundle.attributes?.seedID
-        )
+        let provider = try rustCoreProvider()
+        guard let cap = provider.bundleIds() else {
+            throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
+        }
+        let model = try await callRustCore {
+            let info = try await cap.createBundleId(identifier: identifier, name: name, platform: platformRaw)
+            return Self.mapBundleIdInfo(info)
+        }
+        Log.print.info("[Apple] Created bundle identifier \(identifier) (Rust core)")
+        return model
     }
 
     func updateBundleId(id: String, name: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await updateBundleId(id: id, name: name)
+        let provider = try rustCoreProvider()
+        guard let cap = provider.bundleIds() else {
+            throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
         }
-
-        let body = BundleIDUpdateRequest(
-            data: .init(
-                type: .bundleIDs,
-                id: id,
-                attributes: .init(name: name)
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.bundleIDs.id(id).patch(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Renamed bundle identifier \(id)")
+        try await callRustCore { try await cap.updateBundleId(id: id, name: name) }
+        Log.print.info("[Apple] Renamed bundle identifier \(id) (Rust core)")
+        return
     }
 
     func deleteBundleId(id: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await deleteBundleId(id: id)
+        let provider = try rustCoreProvider()
+        guard let cap = provider.bundleIds() else {
+            throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.bundleIDs.id(id).delete
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Deleted bundle identifier \(id)")
+        try await callRustCore { try await cap.deleteBundleId(id: id) }
+        Log.print.info("[Apple] Deleted bundle identifier \(id) (Rust core)")
+        return
     }
 
     // Permissive response: the SDK's CapabilityType enum doesn't know newer values
@@ -2505,98 +1293,53 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func fetchBundleIdCapabilities(bundleId: String) async throws -> [BundleIdentifierCapabilityModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchBundleIdCapabilities(bundleId: bundleId)
+        let provider = try rustCoreProvider()
+        guard let cap = provider.bundleIds() else {
+            throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
         }
-
-        // The /bundleIds/{id}/bundleIdCapabilities relationship rejects the `limit` query
-        // ("PARAMETER_ERROR.ILLEGAL: This relationship does not support this parameter."),
-        // even though the SDK exposes it. Call without parameters and let the API page itself.
-        let endpoint = Request<CapabilitiesRawResponse>(
-            path: "/v1/bundleIds/\(bundleId)/bundleIdCapabilities",
-            method: "GET",
-            id: "stackconnect_bundleIdCapabilities_relationship"
-        )
-
-        let response = try await provider.request(endpoint)
-        let models = response.data.compactMap { cap -> BundleIdentifierCapabilityModel? in
-            guard let typeRaw = cap.attributes?.capabilityType, !typeRaw.isEmpty else { return nil }
-            return BundleIdentifierCapabilityModel(id: cap.id, capabilityType: typeRaw)
+        let models = try await callRustCore {
+            let infos = try await cap.fetchBundleIdCapabilities(bundleId: bundleId)
+            return infos.map { Self.mapBundleIdCapabilityInfo($0) }
         }
-        Log.print.info("[Apple] Fetched \(models.count) capabilities for \(bundleId)")
+        Log.print.info("[Apple] Fetched \(models.count) capabilities for \(bundleId) (Rust core)")
         return models
     }
 
     func enableCapability(bundleId: String, capabilityTypeRaw: String) async throws -> BundleIdentifierCapabilityModel {
-        guard let provider else {
-            try await validateCredentials()
-            return try await enableCapability(bundleId: bundleId, capabilityTypeRaw: capabilityTypeRaw)
+        let provider = try rustCoreProvider()
+        guard let cap = provider.bundleIds() else {
+            throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
         }
-
-        guard let type = CapabilityType(rawValue: capabilityTypeRaw) else {
-            throw NSError(domain: "Capability", code: 400, userInfo: [NSLocalizedDescriptionKey: "Unsupported capability: \(capabilityTypeRaw)"])
+        let model = try await callRustCore {
+            let info = try await cap.enableCapability(bundleId: bundleId, capabilityType: capabilityTypeRaw)
+            return Self.mapBundleIdCapabilityInfo(info)
         }
-
-        let body = BundleIDCapabilityCreateRequest(
-            data: .init(
-                type: .bundleIDCapabilities,
-                attributes: .init(capabilityType: type),
-                relationships: .init(
-                    bundleID: .init(data: .init(type: .bundleIDs, id: bundleId))
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.bundleIDCapabilities.post(body)
-        let response = try await provider.request(endpoint)
-        let cap = response.data
-
-        Log.print.info("[Apple] Enabled capability \(capabilityTypeRaw) on \(bundleId)")
-        return BundleIdentifierCapabilityModel(
-            id: cap.id,
-            capabilityType: cap.attributes?.capabilityType?.rawValue ?? capabilityTypeRaw
-        )
+        Log.print.info("[Apple] Enabled capability \(capabilityTypeRaw) on \(bundleId) (Rust core)")
+        return model
     }
 
     func disableCapability(capabilityId: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await disableCapability(capabilityId: capabilityId)
+        let provider = try rustCoreProvider()
+        guard let cap = provider.bundleIds() else {
+            throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.bundleIDCapabilities.id(capabilityId).delete
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Disabled capability \(capabilityId)")
+        try await callRustCore { try await cap.disableCapability(capabilityId: capabilityId) }
+        Log.print.info("[Apple] Disabled capability \(capabilityId) (Rust core)")
+        return
     }
 
     // MARK: - Devices
 
     func fetchDevices() async throws -> [DeviceModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchDevices()
+        let provider = try rustCoreProvider()
+        guard let cap = provider.devices() else {
+            throw translate(.Unsupported(message: "Devices capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint
-            .v1
-            .devices
-            .get(parameters: .init(sort: [.name], limit: 200))
-
-        let response = try await provider.request(endpoint)
-        let models = response.data.map { device in
-            DeviceModel(
-                id: device.id,
-                name: device.attributes?.name ?? "",
-                udid: device.attributes?.udid,
-                platform: device.attributes?.platform?.rawValue,
-                deviceClass: device.attributes?.deviceClass?.rawValue,
-                model: device.attributes?.model,
-                status: device.attributes?.status?.rawValue ?? "ENABLED",
-                addedDate: device.attributes?.addedDate
-            )
+        let models = try await callRustCore {
+            let infos = try await cap.fetchDevices()
+            return infos.map { Self.mapDeviceInfo($0) }
         }
-        Log.print.info("[Apple] Fetched \(models.count) devices")
+        Log.print.info("[Apple] Fetched \(models.count) devices (Rust core)")
         return models
     }
 
@@ -2605,106 +1348,45 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         platformRaw: String,
         udid: String
     ) async throws -> DeviceModel {
-        guard let provider else {
-            try await validateCredentials()
-            return try await createDevice(name: name, platformRaw: platformRaw, udid: udid)
-        }
-
-        guard let platform = BundleIDPlatform(rawValue: platformRaw) else {
+        // Validate the platform up front against the ASC-accepted values.
+        guard Self.validBundleIdPlatforms.contains(platformRaw) else {
             throw NSError(domain: "Device", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid platform: \(platformRaw)"])
         }
 
-        let body = DeviceCreateRequest(
-            data: .init(
-                type: .devices,
-                attributes: .init(name: name, platform: platform, udid: udid)
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.devices.post(body)
-        let response = try await provider.request(endpoint)
-        let device = response.data
-
-        Log.print.info("[Apple] Registered device \(udid) (\(name))")
-        return DeviceModel(
-            id: device.id,
-            name: device.attributes?.name ?? name,
-            udid: device.attributes?.udid ?? udid,
-            platform: device.attributes?.platform?.rawValue ?? platformRaw,
-            deviceClass: device.attributes?.deviceClass?.rawValue,
-            model: device.attributes?.model,
-            status: device.attributes?.status?.rawValue ?? "ENABLED",
-            addedDate: device.attributes?.addedDate
-        )
+        let provider = try rustCoreProvider()
+        guard let cap = provider.devices() else {
+            throw translate(.Unsupported(message: "Devices capability is not available for this provider."))
+        }
+        let model = try await callRustCore {
+            let info = try await cap.createDevice(name: name, platform: platformRaw, udid: udid)
+            return Self.mapDeviceInfo(info)
+        }
+        Log.print.info("[Apple] Registered device \(udid) (\(name)) (Rust core)")
+        return model
     }
 
     func updateDevice(id: String, name: String?, status: String?) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await updateDevice(id: id, name: name, status: status)
+        let provider = try rustCoreProvider()
+        guard let cap = provider.devices() else {
+            throw translate(.Unsupported(message: "Devices capability is not available for this provider."))
         }
-
-        let statusEnum: DeviceUpdateRequest.Data.Attributes.Status? = status.flatMap {
-            DeviceUpdateRequest.Data.Attributes.Status(rawValue: $0)
-        }
-
-        let body = DeviceUpdateRequest(
-            data: .init(
-                type: .devices,
-                id: id,
-                attributes: .init(name: name, status: statusEnum)
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.devices.id(id).patch(body)
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Updated device \(id)")
+        try await callRustCore { try await cap.updateDevice(id: id, name: name, status: status) }
+        Log.print.info("[Apple] Updated device \(id) (Rust core)")
+        return
     }
 
     // MARK: - Provisioning Profiles
 
     func fetchProfiles() async throws -> [ProvisioningProfileModel] {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchProfiles()
+        let provider = try rustCoreProvider()
+        guard let cap = provider.profiles() else {
+            throw translate(.Unsupported(message: "Profiles capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint
-            .v1
-            .profiles
-            .get(parameters: .init(
-                sort: [.name],
-                limit: 200,
-                include: [.bundleID]
-            ))
-
-        let response = try await provider.request(endpoint)
-
-        var bundleIdentifierById: [String: String] = [:]
-        for item in response.included ?? [] {
-            if case .bundleID(let bundle) = item {
-                bundleIdentifierById[bundle.id] = bundle.attributes?.identifier
-            }
+        let models = try await callRustCore {
+            let infos = try await cap.fetchProfiles()
+            return infos.map { Self.mapProvisioningProfileInfo($0) }
         }
-
-        let models = response.data.map { profile -> ProvisioningProfileModel in
-            let bundleRelId = profile.relationships?.bundleID?.data?.id
-            let bundleIdentifier = bundleRelId.flatMap { bundleIdentifierById[$0] }
-
-            return ProvisioningProfileModel(
-                id: profile.id,
-                name: profile.attributes?.name ?? "",
-                profileType: profile.attributes?.profileType?.rawValue ?? "",
-                profileState: profile.attributes?.profileState?.rawValue ?? "",
-                platform: profile.attributes?.platform?.rawValue,
-                uuid: profile.attributes?.uuid,
-                bundleId: bundleIdentifier,
-                createdDate: profile.attributes?.createdDate,
-                expirationDate: profile.attributes?.expirationDate
-            )
-        }
-
-        Log.print.info("[Apple] Fetched \(models.count) provisioning profiles")
+        Log.print.info("[Apple] Fetched \(models.count) provisioning profiles (Rust core)")
         return models
     }
 
@@ -2720,85 +1402,58 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         certificateIds: [String],
         deviceIds: [String]
     ) async throws -> CreatedProfile {
-        guard let provider else {
-            try await validateCredentials()
-            return try await createProfile(
+        let provider = try rustCoreProvider()
+        guard let cap = provider.profiles() else {
+            throw translate(.Unsupported(message: "Profiles capability is not available for this provider."))
+        }
+        let created = try await callRustCore {
+            let info = try await cap.createProfile(
                 name: name,
-                profileTypeRaw: profileTypeRaw,
+                profileType: profileTypeRaw,
                 bundleIdId: bundleIdId,
                 certificateIds: certificateIds,
                 deviceIds: deviceIds
             )
+            return CreatedProfile(profile: Self.mapProvisioningProfileInfo(info), content: info.profileContent)
         }
-
-        guard let typeEnum = ProfileCreateRequest.Data.Attributes.ProfileType(rawValue: profileTypeRaw) else {
-            throw NSError(domain: "Profiles", code: 400, userInfo: [NSLocalizedDescriptionKey: "Unsupported profile type: \(profileTypeRaw)"])
-        }
-
-        let devicesRel: ProfileCreateRequest.Data.Relationships.Devices? = deviceIds.isEmpty
-            ? nil
-            : .init(data: deviceIds.map { .init(type: .devices, id: $0) })
-
-        let body = ProfileCreateRequest(
-            data: .init(
-                type: .profiles,
-                attributes: .init(name: name, profileType: typeEnum),
-                relationships: .init(
-                    bundleID: .init(data: .init(type: .bundleIDs, id: bundleIdId)),
-                    devices: devicesRel,
-                    certificates: .init(data: certificateIds.map { .init(type: .certificates, id: $0) })
-                )
-            )
-        )
-
-        let endpoint = APIEndpoint.v1.profiles.post(body)
-        let response = try await provider.request(endpoint)
-        let profile = response.data
-
-        let model = ProvisioningProfileModel(
-            id: profile.id,
-            name: profile.attributes?.name ?? name,
-            profileType: profile.attributes?.profileType?.rawValue ?? profileTypeRaw,
-            profileState: profile.attributes?.profileState?.rawValue ?? "ACTIVE",
-            platform: profile.attributes?.platform?.rawValue,
-            uuid: profile.attributes?.uuid,
-            bundleId: nil,
-            createdDate: profile.attributes?.createdDate,
-            expirationDate: profile.attributes?.expirationDate
-        )
-
-        Log.print.info("[Apple] Created profile \(model.id) (\(profileTypeRaw))")
-        return CreatedProfile(profile: model, content: profile.attributes?.profileContent)
+        Log.print.info("[Apple] Created profile \(created.profile.id) (\(profileTypeRaw)) (Rust core)")
+        return created
     }
 
     func deleteProfile(id: String) async throws {
-        guard let provider else {
-            try await validateCredentials()
-            return try await deleteProfile(id: id)
+        let provider = try rustCoreProvider()
+        guard let cap = provider.profiles() else {
+            throw translate(.Unsupported(message: "Profiles capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint.v1.profiles.id(id).delete
-        _ = try await provider.request(endpoint)
-        Log.print.info("[Apple] Deleted profile \(id)")
+        try await callRustCore { try await cap.deleteProfile(id: id) }
+        Log.print.info("[Apple] Deleted profile \(id) (Rust core)")
+        return
     }
 
     func fetchProfileContent(id: String) async throws -> String? {
-        guard let provider else {
-            try await validateCredentials()
-            return try await fetchProfileContent(id: id)
+        let provider = try rustCoreProvider()
+        guard let cap = provider.profiles() else {
+            throw translate(.Unsupported(message: "Profiles capability is not available for this provider."))
         }
-
-        let endpoint = APIEndpoint
-            .v1
-            .profiles
-            .id(id)
-            .get(parameters: .init(fieldsProfiles: [.profileContent, .name, .profileType, .platform, .profileState, .uuid, .createdDate, .expirationDate]))
-
-        let response = try await provider.request(endpoint)
-        return response.data.attributes?.profileContent
+        let content = try await callRustCore { try await cap.fetchProfileContent(id: id) }
+        Log.print.info("[Apple] Fetched profile content for \(id) (Rust core)")
+        return content
     }
 
     // MARK: - Private
+
+    /// ASC-accepted `deviceFamily` values for accessibility declarations. Mirrors the
+    /// raw values of the former SDK `DeviceFamily` enum so input validation stays
+    /// identical after dropping the SDK.
+    static let validDeviceFamilies: Set<String> = [
+        "IPHONE", "IPAD", "APPLE_TV", "APPLE_WATCH", "MAC", "VISION"
+    ]
+
+    /// ASC-accepted `BundleIdPlatform` raw values used to validate device/bundle-id
+    /// platform input. Mirrors the former SDK `BundleIDPlatform` enum.
+    static let validBundleIdPlatforms: Set<String> = [
+        "IOS", "MAC_OS", "UNIVERSAL", "SERVICES"
+    ]
 
     static func formatCategoryId(_ id: String) -> String {
         id.replacingOccurrences(of: "_", with: " ")
@@ -2815,40 +1470,508 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         return formatCategoryId(id)
     }
 
-    private static func mapVersion(_ version: AppStoreConnect_Swift_SDK.AppStoreVersion, appId: String) -> AppStoreVersionModel {
-        let platformRaw = version.attributes?.platform?.rawValue
-        let stateRaw = version.attributes?.appStoreState?.rawValue
-
-        return AppStoreVersionModel(
-            id: version.id,
-            platform: platformRaw.flatMap { AppPlatform(rawValue: $0) },
-            appStoreState: stateRaw.flatMap { AppStoreState(rawValue: $0) },
-            appVersionState: version.attributes?.appVersionState?.rawValue,
-            versionString: version.attributes?.versionString,
-            copyright: version.attributes?.copyright,
-            releaseType: version.attributes?.releaseType?.rawValue,
-            createdDate: version.attributes?.createdDate,
-            appId: appId
+    /// Maps a Rust-core `AppStoreVersionInfo` to the app's `AppStoreVersionModel`.
+    /// The core does no date logic, so `createdDate` (raw ISO8601) is parsed here;
+    /// `platform`/`appStoreState` raw strings map back to the app enums.
+    static func mapVersionInfo(_ info: StackCoreRust.AppStoreVersionInfo) -> AppStoreVersionModel {
+        AppStoreVersionModel(
+            id: info.id,
+            platform: info.platform.flatMap { AppPlatform(rawValue: $0) },
+            appStoreState: info.appStoreState.flatMap { AppStoreState(rawValue: $0) },
+            appVersionState: info.appVersionState,
+            versionString: info.versionString,
+            copyright: info.copyright,
+            releaseType: info.releaseType,
+            createdDate: info.createdDate.flatMap(parseISO8601Date),
+            appId: info.appId
         )
     }
 
-    private func createProvider() throws -> APIProvider {
-        let config = try APIConfiguration(
-            issuerID: credentials.issuerID,
-            privateKeyID: credentials.privateKeyID,
-            privateKey: credentials.privateKey
+    /// Maps a Rust-core `ReviewSubmission` to the app's `ReviewSubmissionModel`.
+    /// The core does no date logic, so the raw ISO8601 `submittedDate` string is
+    /// parsed here. `appId` comes straight from the core value (it is set to the
+    /// requested appId by the core).
+    static func mapReviewSubmission(_ submission: StackCoreRust.ReviewSubmission) -> ReviewSubmissionModel {
+        ReviewSubmissionModel(
+            id: submission.id,
+            appId: submission.appId,
+            platform: submission.platform,
+            submittedDate: submission.submittedDate.flatMap(parseISO8601Date),
+            state: submission.state,
+            versionString: submission.versionString,
+            versionId: submission.versionId,
+            submittedByName: submission.submittedByName,
+            submittedByEmail: submission.submittedByEmail
         )
-        return APIProvider(configuration: config)
     }
-}
 
-// MARK: - ImageAsset
+    /// Maps a Rust-core `CustomerReview` to the app's `CustomerReviewModel`.
+    /// The core does no date logic, so `createdDate`/response date (raw ISO8601)
+    /// are parsed here; the developer response is flattened into the model fields.
+    static func mapCustomerReview(_ review: StackCoreRust.CustomerReview) -> CustomerReviewModel {
+        CustomerReviewModel(
+            id: review.id,
+            rating: Int(review.rating),
+            title: review.title,
+            body: review.body,
+            reviewerNickname: review.reviewerNickname,
+            createdDate: review.createdDate.flatMap(parseISO8601Date),
+            territory: review.territory,
+            responseId: review.response?.id,
+            responseBody: review.response?.body,
+            responseState: review.response?.state,
+            responseDate: review.response?.lastModifiedDate.flatMap(parseISO8601Date)
+        )
+    }
 
-private extension ImageAsset {
-    func toIconUrl() -> String? {
-        templateURL?
-            .replacingOccurrences(of: "{w}", with: "\(width ?? 512)")
-            .replacingOccurrences(of: "{h}", with: "\(height ?? 512)")
-            .replacingOccurrences(of: "{f}", with: "png")
+    /// Maps a Rust-core `BuildInfo` to the app's `BuildModel`.
+    ///
+    /// The core does no date logic, so the raw ISO8601 `uploadedDate`/`expirationDate`/
+    /// `submittedDate` strings are parsed here. Every `BuildModel` field is now fully
+    /// mapped: the enrichment fields (`marketingVersion`, `platform`,
+    /// `externalBuildState`, `internalBuildState`, `autoNotifyEnabled`,
+    /// `betaReviewState`, `submittedDate`, the computed min-OS versions,
+    /// `buildAudienceType`, `usesNonExemptEncryption`) come from the `included`
+    /// relationships the core now requests (preReleaseVersion / buildBetaDetail /
+    /// betaAppReviewSubmission), and `iconUrl` is passed through unchanged because the
+    /// core already computed it from the build's `iconAssetToken` template.
+    static func mapBuildInfo(_ info: StackCoreRust.BuildInfo) -> BuildModel {
+        BuildModel(
+            id: info.id,
+            version: info.version,
+            marketingVersion: info.marketingVersion,
+            processingState: info.processingState,
+            uploadedDate: info.uploadedDate.flatMap(parseISO8601Date),
+            iconUrl: info.iconUrl,
+            platform: info.platform,
+            externalBuildState: info.externalBuildState,
+            betaReviewState: info.betaReviewState,
+            submittedDate: info.submittedDate.flatMap(parseISO8601Date),
+            expirationDate: info.expirationDate.flatMap(parseISO8601Date),
+            isExpired: info.expired ?? false,
+            minOsVersion: info.minOsVersion,
+            computedMinMacOsVersion: info.computedMinMacOsVersion,
+            computedMinVisionOsVersion: info.computedMinVisionOsVersion,
+            buildAudienceType: info.buildAudienceType,
+            usesNonExemptEncryption: info.usesNonExemptEncryption,
+            internalBuildState: info.internalBuildState,
+            autoNotifyEnabled: info.autoNotifyEnabled
+        )
+    }
+
+    /// Maps a Rust-core `BetaGroupInfo` to the app's `BetaGroupModel`.
+    ///
+    /// The core does no date logic, so the raw ISO8601 `createdDate` string is parsed
+    /// here, and the optional core flags are defaulted to match the Swift-SDK path
+    /// (`?? false` / `?? ""`).
+    ///
+    /// Known Rust-path degradation: the core does not expose `publicLinkId`,
+    /// `publicLinkLimit`, `isPublicLinkLimitEnabled`, `testerCount` or `buildCount`
+    /// (the last two come from ASC relationship paging meta the core does not request),
+    /// so those are left at sensible defaults (`nil`/`false`) on the Rust path.
+    static func mapBetaGroupInfo(_ info: StackCoreRust.BetaGroupInfo) -> BetaGroupModel {
+        BetaGroupModel(
+            id: info.id,
+            name: info.name ?? "",
+            isInternalGroup: info.isInternalGroup ?? false,
+            createdDate: info.createdDate.flatMap(parseISO8601Date),
+            hasAccessToAllBuilds: info.hasAccessToAllBuilds ?? false,
+            isPublicLinkEnabled: info.publicLinkEnabled ?? false,
+            publicLink: info.publicLink,
+            publicLinkId: nil,                  // degraded: core does not provide
+            publicLinkLimit: nil,               // degraded: core does not provide
+            isPublicLinkLimitEnabled: false,    // degraded: core does not provide
+            isFeedbackEnabled: info.feedbackEnabled ?? false,
+            testerCount: nil,                   // degraded: core does not provide
+            buildCount: nil                     // degraded: core does not provide
+        )
+    }
+
+    /// Maps a Rust-core `TeamMemberInfo` to the app's `TeamMemberModel`.
+    /// Full fidelity: every field maps 1:1 (no date logic needed).
+    static func mapTeamMemberInfo(_ info: StackCoreRust.TeamMemberInfo) -> TeamMemberModel {
+        TeamMemberModel(
+            id: info.id,
+            firstName: info.firstName,
+            lastName: info.lastName,
+            username: info.username,
+            roles: info.roles
+        )
+    }
+
+    /// Maps a Rust-core `UserInfo` to the app's `UserModel`.
+    /// The core does no date logic, so the raw ISO8601 `expirationDate` string is
+    /// parsed here via `parseISO8601Date`; every other field maps 1:1.
+    static func mapUserInfo(_ info: StackCoreRust.UserInfo) -> UserModel {
+        UserModel(
+            id: info.id,
+            firstName: info.firstName,
+            lastName: info.lastName,
+            email: info.email,
+            roles: info.roles,
+            allAppsVisible: info.allAppsVisible,
+            provisioningAllowed: info.provisioningAllowed,
+            isPending: info.isPending,
+            expirationDate: info.expirationDate.flatMap(parseISO8601Date)
+        )
+    }
+
+    /// Maps a Rust-core `DeviceInfo` to the app's `DeviceModel`. Every field maps
+    /// 1:1 except `addedDate`, which arrives as a raw ISO8601 string and is parsed
+    /// here via `parseISO8601Date` (the core does no date logic). `status` already
+    /// carries the core's default, so no fallback is needed here.
+    static func mapDeviceInfo(_ info: StackCoreRust.DeviceInfo) -> DeviceModel {
+        DeviceModel(
+            id: info.id,
+            name: info.name,
+            udid: info.udid,
+            platform: info.platform,
+            deviceClass: info.deviceClass,
+            model: info.model,
+            status: info.status,
+            addedDate: info.addedDate.flatMap(parseISO8601Date)
+        )
+    }
+
+    /// Maps a Rust-core `BundleIdInfo` to the app's `BundleIdentifierModel`. Every
+    /// field maps 1:1 and mirrors the inline SDK mapping in `fetchBundleIds`/
+    /// `createBundleId` (`identifier`, `name`, `platform` are non-optional on the
+    /// core side with an empty-string fallback already applied at the wire boundary;
+    /// `seedId` is optional and passes straight through).
+    static func mapBundleIdInfo(_ info: StackCoreRust.BundleIdInfo) -> BundleIdentifierModel {
+        BundleIdentifierModel(
+            id: info.id,
+            identifier: info.identifier,
+            name: info.name,
+            platform: info.platform,
+            seedId: info.seedId
+        )
+    }
+
+    /// Maps a Rust-core `CertificateInfo` to the app's `CertificateModel`. Mirrors the
+    /// inline SDK mapping in `fetchCertificates`/`createCertificate`. The core already
+    /// applies the `displayName` fallback to `name`, so it passes straight through. The
+    /// raw ISO8601 `expirationDate` string is parsed via `parseISO8601Date` (the model's
+    /// `expirationDate` is `Date?`).
+    static func mapCertificateInfo(_ info: StackCoreRust.CertificateInfo) -> CertificateModel {
+        CertificateModel(
+            id: info.id,
+            displayName: info.displayName,
+            name: info.name,
+            certificateType: info.certificateType,
+            platform: info.platform,
+            serialNumber: info.serialNumber,
+            expirationDate: info.expirationDate.flatMap { Self.parseISO8601Date($0) },
+            isActivated: info.isActivated
+        )
+    }
+
+    /// Maps a Rust-core `ProvisioningProfileInfo` to the app's `ProvisioningProfileModel`.
+    /// Mirrors the inline SDK mapping in `fetchProfiles`/`createProfile`. The raw ISO8601
+    /// `createdDate`/`expirationDate` strings are parsed via `parseISO8601Date` (both model
+    /// fields are `Date?`); `profileContent` is not a field on the model so it is omitted here.
+    static func mapProvisioningProfileInfo(_ info: StackCoreRust.ProvisioningProfileInfo) -> ProvisioningProfileModel {
+        ProvisioningProfileModel(
+            id: info.id,
+            name: info.name,
+            profileType: info.profileType,
+            profileState: info.profileState,
+            platform: info.platform,
+            uuid: info.uuid,
+            bundleId: info.bundleId,
+            createdDate: info.createdDate.flatMap { Self.parseISO8601Date($0) },
+            expirationDate: info.expirationDate.flatMap { Self.parseISO8601Date($0) }
+        )
+    }
+
+    /// Maps a Rust-core `BundleIdCapabilityInfo` to the app's
+    /// `BundleIdentifierCapabilityModel`. Both fields map 1:1.
+    static func mapBundleIdCapabilityInfo(_ info: StackCoreRust.BundleIdCapabilityInfo) -> BundleIdentifierCapabilityModel {
+        BundleIdentifierCapabilityModel(
+            id: info.id,
+            capabilityType: info.capabilityType
+        )
+    }
+
+    /// Maps a Rust-core `BetaBuildLocalizationInfo` to the app's `BetaBuildLocalizationModel`.
+    /// Full fidelity: the core provides every field this model needs, so they map 1:1.
+    static func mapBetaBuildLocalizationInfo(_ info: StackCoreRust.BetaBuildLocalizationInfo) -> BetaBuildLocalizationModel {
+        BetaBuildLocalizationModel(
+            id: info.id,
+            locale: info.locale,
+            whatsNew: info.whatsNew
+        )
+    }
+
+    /// Maps a Rust-core `BetaAppLocalizationInfo` to the app's `BetaAppLocalizationModel`.
+    /// Full fidelity: the core provides every field this model needs, so they map 1:1.
+    static func mapBetaAppLocalizationInfo(_ info: StackCoreRust.BetaAppLocalizationInfo) -> BetaAppLocalizationModel {
+        BetaAppLocalizationModel(
+            id: info.id,
+            locale: info.locale,
+            feedbackEmail: info.feedbackEmail,
+            description: info.description
+        )
+    }
+
+    /// Maps a Rust-core `AccessibilityDeclarationInfo` to the app's
+    /// `AccessibilityDeclarationModel`. Full fidelity: every field (id +
+    /// deviceFamily + optional state + the 9 support booleans) maps 1:1.
+    static func mapAccessibilityDeclarationInfo(_ info: StackCoreRust.AccessibilityDeclarationInfo) -> AccessibilityDeclarationModel {
+        AccessibilityDeclarationModel(
+            id: info.id,
+            deviceFamily: info.deviceFamily,
+            state: info.state,
+            supportsAudioDescriptions: info.supportsAudioDescriptions,
+            supportsCaptions: info.supportsCaptions,
+            supportsDarkInterface: info.supportsDarkInterface,
+            supportsDifferentiateWithoutColor: info.supportsDifferentiateWithoutColor,
+            supportsLargerText: info.supportsLargerText,
+            supportsReducedMotion: info.supportsReducedMotion,
+            supportsSufficientContrast: info.supportsSufficientContrast,
+            supportsVoiceControl: info.supportsVoiceControl,
+            supportsVoiceover: info.supportsVoiceover
+        )
+    }
+
+    /// Maps a Rust-core `AppStoreLocalizationInfo` to the app's `AppStoreLocalizationModel`.
+    /// Full fidelity: every field (id + 7 optional strings) maps 1:1.
+    static func mapAppStoreLocalizationInfo(_ info: StackCoreRust.AppStoreLocalizationInfo) -> AppStoreLocalizationModel {
+        AppStoreLocalizationModel(
+            id: info.id,
+            locale: info.locale,
+            description: info.description,
+            keywords: info.keywords,
+            promotionalText: info.promotionalText,
+            supportUrl: info.supportUrl,
+            marketingUrl: info.marketingUrl,
+            whatsNew: info.whatsNew
+        )
+    }
+
+    /// Maps a Rust-core `ScreenshotInfo` to the app's `ScreenshotModel`.
+    /// The numeric dimensions arrive as `Int32?` over FFI and are widened to `Int?`.
+    static func mapScreenshotInfo(_ s: StackCoreRust.ScreenshotInfo) -> ScreenshotModel {
+        ScreenshotModel(
+            id: s.id,
+            imageUrl: s.imageUrl,
+            fileName: s.fileName,
+            fileSize: s.fileSize.map(Int.init),
+            width: s.width.map(Int.init),
+            height: s.height.map(Int.init)
+        )
+    }
+
+    /// Maps a Rust-core `ScreenshotSetInfo` to the app's `ScreenshotSetModel`,
+    /// recursively mapping each nested screenshot.
+    static func mapScreenshotSetInfo(_ info: StackCoreRust.ScreenshotSetInfo) -> ScreenshotSetModel {
+        ScreenshotSetModel(
+            id: info.id,
+            displayType: info.displayType,
+            screenshots: info.screenshots.map { Self.mapScreenshotInfo($0) }
+        )
+    }
+
+    /// Maps a Rust-core `AppInfoLocalizationInfo` to the app's `AppInfoLocalizationModel`.
+    /// Full fidelity: the core provides every field this model needs, so they map 1:1.
+    static func mapAppInfoLocalizationInfo(_ info: StackCoreRust.AppInfoLocalizationInfo) -> AppInfoLocalizationModel {
+        AppInfoLocalizationModel(
+            id: info.id,
+            locale: info.locale,
+            name: info.name,
+            subtitle: info.subtitle,
+            privacyPolicyUrl: info.privacyPolicyUrl,
+            privacyChoicesUrl: info.privacyChoicesUrl,
+            privacyPolicyText: info.privacyPolicyText
+        )
+    }
+
+    /// Maps a Rust-core `AgeRatingDeclarationInfo` to the app's `AgeRatingDeclarationModel`.
+    /// Full fidelity: every field (id + 13 string ratings + 4 bool flags + override)
+    /// maps 1:1 — the Rust field names match the model's exactly.
+    static func mapAgeRatingDeclarationInfo(_ info: StackCoreRust.AgeRatingDeclarationInfo) -> AgeRatingDeclarationModel {
+        AgeRatingDeclarationModel(
+            id: info.id,
+            alcoholTobaccoOrDrugUseOrReferences: info.alcoholTobaccoOrDrugUseOrReferences,
+            contests: info.contests,
+            gamblingSimulated: info.gamblingSimulated,
+            gunsOrOtherWeapons: info.gunsOrOtherWeapons,
+            medicalOrTreatmentInformation: info.medicalOrTreatmentInformation,
+            profanityOrCrudeHumor: info.profanityOrCrudeHumor,
+            sexualContentGraphicAndNudity: info.sexualContentGraphicAndNudity,
+            sexualContentOrNudity: info.sexualContentOrNudity,
+            horrorOrFearThemes: info.horrorOrFearThemes,
+            matureOrSuggestiveThemes: info.matureOrSuggestiveThemes,
+            violenceCartoonOrFantasy: info.violenceCartoonOrFantasy,
+            violenceRealistic: info.violenceRealistic,
+            violenceRealisticProlongedGraphicOrSadistic: info.violenceRealisticProlongedGraphicOrSadistic,
+            isAdvertising: info.isAdvertising,
+            isGambling: info.isGambling,
+            isUnrestrictedWebAccess: info.isUnrestrictedWebAccess,
+            isUserGeneratedContent: info.isUserGeneratedContent,
+            ageRatingOverrideV2: info.ageRatingOverrideV2
+        )
+    }
+
+    /// Maps a Rust-core `AppInfoDetails` to the app's `AppInfoModel`. The core does no
+    /// display formatting, so category/subcategory *names* are computed here from their
+    /// IDs via the existing `formatCategoryId`/`formatSubcategoryId` helpers — mirroring
+    /// exactly what the Swift-SDK body builds. Localizations are mapped via the shared
+    /// `mapAppInfoLocalizationInfo`. (`AppInfoModel` has no `secondarySubcategoryOneName`.)
+    static func mapAppInfoDetails(_ d: StackCoreRust.AppInfoDetails) -> AppInfoModel {
+        AppInfoModel(
+            id: d.appInfoId,
+            appId: d.appId,
+            sku: d.sku,
+            primaryLocale: d.primaryLocale,
+            contentRightsDeclaration: d.contentRightsDeclaration,
+            primaryCategoryId: d.primaryCategoryId,
+            primaryCategoryName: d.primaryCategoryId.map { Self.formatCategoryId($0) },
+            primarySubcategoryOneId: d.primarySubcategoryOneId,
+            primarySubcategoryOneName: d.primarySubcategoryOneId.map { Self.formatSubcategoryId($0, parentId: d.primaryCategoryId) },
+            secondaryCategoryId: d.secondaryCategoryId,
+            secondaryCategoryName: d.secondaryCategoryId.map { Self.formatCategoryId($0) },
+            secondarySubcategoryOneId: d.secondarySubcategoryOneId,
+            ageRatingDeclarationId: d.ageRatingDeclarationId,
+            appStoreAgeRating: d.appStoreAgeRating,
+            localizations: d.localizations.map { Self.mapAppInfoLocalizationInfo($0) }
+        )
+    }
+
+    /// Maps a Rust-core `AppCategoryInfo` to the app's `AppCategoryModel`, nesting each
+    /// subcategory id as a leaf `AppCategoryModel`. Mirrors the Swift-SDK body.
+    static func mapAppCategoryInfo(_ info: StackCoreRust.AppCategoryInfo) -> AppCategoryModel {
+        AppCategoryModel(
+            id: info.id,
+            subcategories: info.subcategoryIds.map { AppCategoryModel(id: $0) }
+        )
+    }
+
+    /// Maps a Rust-core `BetaAppReviewDetailInfo` to the app's `BetaAppReviewDetailModel`.
+    /// Full fidelity: the core provides every field this model needs, so they map 1:1,
+    /// passing all eight optional fields straight through.
+    static func mapBetaAppReviewDetailInfo(_ info: StackCoreRust.BetaAppReviewDetailInfo) -> BetaAppReviewDetailModel {
+        BetaAppReviewDetailModel(
+            id: info.id,
+            contactFirstName: info.contactFirstName,
+            contactLastName: info.contactLastName,
+            contactEmail: info.contactEmail,
+            contactPhone: info.contactPhone,
+            demoAccountName: info.demoAccountName,
+            demoAccountPassword: info.demoAccountPassword,
+            isDemoAccountRequired: info.isDemoAccountRequired,
+            notes: info.notes
+        )
+    }
+
+    /// Maps a Rust-core `AppReviewDetailInfo` to the app's `AppReviewDetailModel`.
+    /// Full fidelity: the core provides every field this model needs, so they map 1:1,
+    /// passing all eight optional fields straight through.
+    static func mapAppReviewDetailInfo(_ info: StackCoreRust.AppReviewDetailInfo) -> AppReviewDetailModel {
+        AppReviewDetailModel(
+            id: info.id,
+            contactFirstName: info.contactFirstName,
+            contactLastName: info.contactLastName,
+            contactEmail: info.contactEmail,
+            contactPhone: info.contactPhone,
+            notes: info.notes,
+            demoAccountName: info.demoAccountName,
+            demoAccountPassword: info.demoAccountPassword,
+            isDemoAccountRequired: info.isDemoAccountRequired
+        )
+    }
+
+    /// Maps a Rust-core `BetaTesterInfo` to the app's `BetaTesterModel`. Full fidelity:
+    /// the core provides every field this model needs, so they map 1:1.
+    static func mapBetaTesterInfo(_ info: StackCoreRust.BetaTesterInfo) -> BetaTesterModel {
+        BetaTesterModel(
+            id: info.id,
+            firstName: info.firstName,
+            lastName: info.lastName,
+            email: info.email,
+            inviteType: info.inviteType,
+            state: info.state
+        )
+    }
+
+    /// Maps a Rust-core `PhasedReleaseInfo` to the app's `PhasedReleaseModel`.
+    /// The core hands back the phased-release state and start date as raw strings,
+    /// so we parse the state into `PhasedReleaseStatus` and the ISO8601 start date
+    /// into `Date`, and widen the `Int32` counters to `Int`. Any unparseable /
+    /// absent optional collapses to `nil`.
+    static func mapPhasedReleaseInfo(_ info: StackCoreRust.PhasedReleaseInfo) -> PhasedReleaseModel {
+        PhasedReleaseModel(
+            id: info.id,
+            state: info.state.flatMap { PhasedReleaseStatus(rawValue: $0) },
+            startDate: info.startDate.flatMap(parseISO8601Date),
+            totalPauseDuration: info.totalPauseDuration.map(Int.init),
+            currentDayNumber: info.currentDayNumber.map(Int.init)
+        )
+    }
+
+    /// App Store Connect timestamps may or may not include fractional seconds
+    /// (e.g. `2024-01-15T10:30:00Z` vs `2024-01-15T10:30:00.123Z`). A single
+    /// `ISO8601DateFormatter` cannot tolerate both, so we try with fractional
+    /// seconds first, then fall back to the plain internet date-time format.
+    static func parseISO8601Date(_ string: String) -> Date? {
+        let withFractional = ISO8601DateFormatter()
+        withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = withFractional.date(from: string) {
+            return date
+        }
+
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        return plain.date(from: string)
+    }
+
+    // MARK: - Rust core
+
+    /// Lazily builds and caches the Rust core `Provider` for App Store Connect,
+    /// reusing it across `validateCredentials()` and `fetchApps()` within this
+    /// connection. `connect(...)` reads credentials synchronously via the
+    /// `AppleCredentialStore` callback. The `accountId` is the issuer ID — a stable
+    /// per-connection identifier (the store is built per connection).
+    private func rustCoreProvider() throws -> StackCoreRust.Provider {
+        if let rustProvider {
+            return rustProvider
+        }
+        do {
+            let provider = try connect(
+                kind: .appStoreConnect,
+                accountId: credentials.issuerID,
+                store: rustCredentialStore,
+                debugLogger: featureFlags.isEnabled(.useRustCoreDebugLogging) ? RustCoreDebugLogger() : nil
+            )
+            rustProvider = provider
+            return provider
+        } catch let error as StackError {
+            throw translate(error)
+        }
+    }
+
+    /// Runs a Rust core async call, translating `StackError` into the app's error
+    /// handling so callers behave the same as with the Swift SDK path.
+    private func callRustCore<T>(
+        _ operation: () async throws -> T
+    ) async throws -> T {
+        do {
+            return try await operation()
+        } catch let error as StackError {
+            throw translate(error)
+        }
+    }
+
+    /// Translates a Rust-core `StackError` for the app.
+    ///
+    /// `StackError` already conforms to `LocalizedError`, and every existing Apple
+    /// call site surfaces failures via `error.localizedDescription` / generic
+    /// `catch`. We therefore preserve the typed error (so `errorDescription` flows
+    /// through unchanged) while logging it at the boundary. This keeps caller
+    /// behaviour identical to the Swift SDK path and gives us a single place to add
+    /// richer mapping (e.g. pending-agreement handling) if the migration expands.
+    private func translate(_ error: StackError) -> Error {
+        Log.print.error("[Apple] Rust core error: \(error.localizedDescription)")
+        return error
     }
 }

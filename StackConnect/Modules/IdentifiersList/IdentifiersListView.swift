@@ -74,6 +74,8 @@ struct IdentifiersListView<ViewModel: IdentifiersListViewModelProtocol>: View {
         if viewModel.uiState.isLoading && viewModel.uiState.bundleIds.isEmpty {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if viewModel.uiState.pendingAgreement {
+            PendingAgreementTip()
         } else if viewModel.uiState.filtered.isEmpty {
             buildEmptyState()
         } else {

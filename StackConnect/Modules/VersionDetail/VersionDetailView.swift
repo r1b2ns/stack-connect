@@ -1,5 +1,4 @@
 import SwiftUI
-import AppStoreConnect_Swift_SDK
 
 // MARK: - Factory
 
@@ -459,7 +458,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         let state = viewModel.uiState.version.appStoreState
 
         switch state {
-        case .prepareForSubmission:
+        case .prepareForSubmission, .developerRejected:
             if account.canEdit(.version) {
                 buildActionBar {
                     buildActionButton(
@@ -506,6 +505,19 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                         color: .red
                     ) {
                         viewModel.uiState.confirmAction = .cancelReview
+                    }
+                }
+            }
+
+        case .readyForReview:
+            if account.canEdit(.version) {
+                buildActionBar {
+                    buildActionButton(
+                        title: String(localized: "Cancel Submission"),
+                        icon: "xmark.circle.fill",
+                        color: .red
+                    ) {
+                        viewModel.uiState.confirmAction = .cancelSubmission
                     }
                 }
             }
@@ -594,6 +606,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         switch action {
         case .submitForReview:       await viewModel.submitForReview()
         case .cancelReview:          await viewModel.cancelReview()
+        case .cancelSubmission:      await viewModel.cancelSubmission()
         case .release:               await viewModel.releaseVersion()
         case .reject:                await viewModel.rejectVersion()
         case .completePhasedRelease: await viewModel.completePhasedRelease()

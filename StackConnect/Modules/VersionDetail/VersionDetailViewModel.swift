@@ -1,6 +1,5 @@
 import Foundation
 import SwiftUI
-import AppStoreConnect_Swift_SDK
 
 // MARK: - Protocol
 
@@ -17,6 +16,7 @@ protocol VersionDetailViewModelProtocol: ObservableObject {
     func setPhasedReleasePaused(_ paused: Bool) async
     func submitForReview() async
     func cancelReview() async
+    func cancelSubmission() async
     func releaseVersion() async
     func rejectVersion() async
     func completePhasedRelease() async
@@ -142,11 +142,22 @@ enum VersionReleaseType: String, CaseIterable, Identifiable {
         case .scheduled:     return "calendar.badge.clock"
         }
     }
+
+    /// The App Store Connect API release-type string. The local `rawValue`s are
+    /// camelCase, which do NOT match ASC, so this maps to the ASC `SCREAMING_SNAKE_CASE`.
+    var ascValue: String {
+        switch self {
+        case .manual:        return "MANUAL"
+        case .afterApproval: return "AFTER_APPROVAL"
+        case .scheduled:     return "SCHEDULED"
+        }
+    }
 }
 
 enum VersionDetailAction: Identifiable {
     case submitForReview
     case cancelReview
+    case cancelSubmission
     case release
     case reject
     case completePhasedRelease
@@ -155,6 +166,7 @@ enum VersionDetailAction: Identifiable {
         switch self {
         case .submitForReview:       return "submit"
         case .cancelReview:          return "cancel"
+        case .cancelSubmission:      return "cancelSubmission"
         case .release:               return "release"
         case .reject:                return "reject"
         case .completePhasedRelease: return "completePhasedRelease"
@@ -165,6 +177,7 @@ enum VersionDetailAction: Identifiable {
         switch self {
         case .submitForReview:       return String(localized: "Submit for Review")
         case .cancelReview:          return String(localized: "Cancel Review")
+        case .cancelSubmission:      return String(localized: "Cancel Submission")
         case .release:               return String(localized: "Release Version")
         case .reject:                return String(localized: "Reject Version")
         case .completePhasedRelease: return String(localized: "Release to All Users")
@@ -178,6 +191,8 @@ enum VersionDetailAction: Identifiable {
             return String(localized: "Are you sure you want to submit version \(v) for review?")
         case .cancelReview:
             return String(localized: "Are you sure you want to cancel the review for version \(v)?")
+        case .cancelSubmission:
+            return String(localized: "Are you sure you want to cancel the submission for version \(v)? The version will return to “Prepare for Submission”.")
         case .release:
             return String(localized: "Are you sure you want to release version \(v) to the App Store?")
         case .reject:
@@ -191,6 +206,7 @@ enum VersionDetailAction: Identifiable {
         switch self {
         case .submitForReview:       return String(localized: "Submit")
         case .cancelReview:          return String(localized: "Cancel Review")
+        case .cancelSubmission:      return String(localized: "Cancel Submission")
         case .release:               return String(localized: "Release")
         case .reject:                return String(localized: "Reject")
         case .completePhasedRelease: return String(localized: "Release to All")
@@ -200,7 +216,7 @@ enum VersionDetailAction: Identifiable {
     var isDestructive: Bool {
         switch self {
         case .submitForReview, .release, .completePhasedRelease: return false
-        case .cancelReview, .reject: return true
+        case .cancelReview, .cancelSubmission, .reject: return true
         }
     }
 }
@@ -426,16 +442,10 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         }
 
         do {
-            let releaseType: AppStoreVersionUpdateRequest.Data.Attributes.ReleaseType
+            let releaseType = uiState.selectedReleaseType.ascValue
             var earliestDate: Date?
 
-            switch uiState.selectedReleaseType {
-            case .manual:
-                releaseType = .manual
-            case .afterApproval:
-                releaseType = .afterApproval
-            case .scheduled:
-                releaseType = .scheduled
+            if uiState.selectedReleaseType == .scheduled {
                 earliestDate = uiState.scheduledDate
             }
 
@@ -445,7 +455,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
                 earliestReleaseDate: earliestDate
             )
 
-            uiState.version.releaseType = uiState.selectedReleaseType.rawValue.uppercased()
+            uiState.version.releaseType = releaseType
             uiState.showReleaseSheet = false
             try await storage.save(uiState.version, id: "version.\(self.uiState.version.id)")
             Log.print.info("[VersionDetail] Saved release type: \(self.uiState.selectedReleaseType.rawValue)")
@@ -471,7 +481,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             if usePhased {
                 // Create or keep phased release
                 if uiState.phasedRelease == nil {
-                    let created = try await connection.createPhasedRelease(versionId: uiState.version.id, state: .active)
+                    let created = try await connection.createPhasedRelease(versionId: uiState.version.id, state: "ACTIVE")
                     uiState.phasedRelease = created
                 }
             } else {
@@ -503,7 +513,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         }
 
         do {
-            let newState: PhasedReleaseState = paused ? .paused : .active
+            let newState = paused ? "PAUSED" : "ACTIVE"
             let updated = try await connection.updatePhasedReleaseState(id: phasedId, state: newState)
             uiState.phasedRelease = updated
             Log.print.info("[VersionDetail] Phased release paused=\(paused)")
@@ -557,6 +567,24 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         uiState.isPerformingAction = false
     }
 
+    func cancelSubmission() async {
+        uiState.isPerformingAction = true
+        uiState.actionError = nil
+
+        do {
+            guard let connection = createConnection() else { return }
+            try await connection.cancelSubmission(appId: uiState.version.appId)
+            uiState.toastMessage = ToastMessage(String(localized: "Submission cancelled"), icon: "xmark.circle.fill")
+            Log.print.info("[VersionDetail] Cancelled submission")
+            await refresh()
+        } catch {
+            uiState.actionError = error.localizedDescription
+            Log.print.error("[VersionDetail] Cancel submission failed: \(error.localizedDescription)")
+        }
+
+        uiState.isPerformingAction = false
+    }
+
     func releaseVersion() async {
         uiState.isPerformingAction = true
         uiState.actionError = nil
@@ -581,7 +609,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
 
         do {
             guard let connection = createConnection() else { return }
-            try await connection.rejectVersion(appId: uiState.version.appId)
+            try await connection.rejectVersion(versionId: uiState.version.id)
             uiState.toastMessage = ToastMessage(String(localized: "Version rejected"), icon: "xmark.circle.fill")
             Log.print.info("[VersionDetail] Rejected version")
             await refresh()
@@ -601,7 +629,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
 
         do {
             guard let connection = createConnection() else { return }
-            let updated = try await connection.updatePhasedReleaseState(id: phasedId, state: .complete)
+            let updated = try await connection.updatePhasedReleaseState(id: phasedId, state: "COMPLETE")
             uiState.phasedRelease = updated
             uiState.toastMessage = ToastMessage(String(localized: "Released to all users"), icon: "checkmark.circle.fill")
             Log.print.info("[VersionDetail] Completed phased release")

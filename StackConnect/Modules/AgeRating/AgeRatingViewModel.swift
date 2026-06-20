@@ -1,5 +1,4 @@
 import Foundation
-import AppStoreConnect_Swift_SDK
 
 // MARK: - Protocol
 

@@ -50,10 +50,10 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
     var body: some View {
         List {
             buildHeaderSection()
+            buildRejectedReviewTip()
             buildPlatformSections()
             buildGeneralSection()
             buildAppStoreSection()
-            buildAnalyticsSection()
             buildTestFlightSection()
         }
         .foregroundStyle(.primary)
@@ -136,6 +136,51 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                 }
             }
             .padding(.vertical, 4)
+        }
+    }
+
+    // MARK: - Rejected Review Tip
+
+    private var hasRejectedVersion: Bool {
+        viewModel.uiState.versions.contains { version in
+            version.appStoreState == .rejected || version.appStoreState == .metadataRejected
+        }
+    }
+
+    @ViewBuilder
+    private func buildRejectedReviewTip() -> some View {
+        if hasRejectedVersion {
+            Section {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                            .font(.title3)
+
+                        Text(String(localized: "One or more builds were rejected by App Review. Open the Resolution Center on the web to review the issues and respond."))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Link(destination: URL(string: "https://appstoreconnect.apple.com/apps/\(viewModel.uiState.app.id)/appstore/resolutioncenter")!) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.up.right.square.fill")
+                            Text(String(localized: "Open Resolution Center"))
+                                .fontWeight(.medium)
+                        }
+                        .font(.subheadline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color.blue.opacity(0.1))
+                        .foregroundStyle(.blue)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        } else {
+            EmptyView()
         }
     }
 
@@ -399,25 +444,6 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             }
         } header: {
             Text("App Store")
-        }
-    }
-
-    // MARK: - Analytics
-
-    private func buildAnalyticsSection() -> some View {
-        Section {
-            Button {
-                guard account.canView(.analytics) else {
-                    denyPermission(String(localized: "You don't have permission to view analytics."))
-                    return
-                }
-                homeCoordinator.navigateToAppAnalytics(
-                    appId: viewModel.uiState.app.id,
-                    account: account
-                )
-            } label: {
-                buildMenuRow(icon: "chart.bar.fill", color: .purple, title: String(localized: "Analytics"))
-            }
         }
     }
 

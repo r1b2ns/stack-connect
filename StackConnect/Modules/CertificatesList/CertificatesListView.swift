@@ -72,6 +72,8 @@ struct CertificatesListView<ViewModel: CertificatesListViewModelProtocol>: View 
         if viewModel.uiState.isLoading && viewModel.uiState.certificates.isEmpty {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if viewModel.uiState.pendingAgreement {
+            PendingAgreementTip()
         } else if viewModel.uiState.filteredCertificates.isEmpty {
             buildEmptyState()
         } else {

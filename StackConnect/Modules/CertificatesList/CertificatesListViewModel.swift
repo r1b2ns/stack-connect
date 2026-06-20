@@ -17,6 +17,7 @@ struct CertificatesListUiState {
     var certificates: [CertificateModel] = []
     var isLoading = false
     var errorMessage: String?
+    var pendingAgreement: Bool = false
     var searchQuery = ""
 
     var filteredCertificates: [CertificateModel] {
@@ -66,9 +67,22 @@ final class CertificatesListViewModel: CertificatesListViewModelProtocol {
         }
     }
 
+    /// Maps a `load()` failure onto UI state: a pending Program License Agreement
+    /// surfaces as the friendly tip flag, anything else as the generic error message.
+    /// Extracted as the injectable test seam because `load()` builds its
+    /// `AppleAccountConnection` inline and is otherwise not unit-testable.
+    func handleLoadError(_ error: Error) {
+        if AppleAPIErrorTranslator.isPendingAgreement(error) {
+            uiState.pendingAgreement = true
+        } else {
+            uiState.errorMessage = error.localizedDescription
+        }
+    }
+
     func load() async {
         uiState.isLoading = true
         uiState.errorMessage = nil
+        uiState.pendingAgreement = false
 
         guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else {
             uiState.errorMessage = String(localized: "No credentials found for this account")
@@ -84,7 +98,7 @@ final class CertificatesListViewModel: CertificatesListViewModelProtocol {
             uiState.certificates = certificates
             Log.print.info("[Certificates] Loaded \(certificates.count) for account: \(self.uiState.account.name)")
         } catch {
-            uiState.errorMessage = error.localizedDescription
+            handleLoadError(error)
             Log.print.error("[Certificates] Load failed: \(error.localizedDescription)")
         }
 
