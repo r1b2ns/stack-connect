@@ -13,11 +13,6 @@ import Foundation
 /// `featureFlag.` to avoid collisions with other stored values.
 enum FeatureFlag: String, CaseIterable {
 
-    /// Routes ONLY the Apple connection's `validateCredentials()` and `fetchApps()`
-    /// through the Rust core (UniFFI `Provider`) instead of the Swift App Store
-    /// Connect SDK. All other Apple methods stay on the Swift SDK. Default: OFF.
-    case useRustCoreForAppleApps = "featureFlag.useRustCoreForAppleApps"
-
     /// Debug-only tracer: when ON, the Rust core logs every App Store Connect HTTP
     /// call it makes as a runnable cURL command (with pretty-printed JSON
     /// request/response) straight to the Xcode console. Intended purely for
@@ -31,8 +26,6 @@ enum FeatureFlag: String, CaseIterable {
     /// New flags ship OFF by default — the safe, fully-reversible value.
     var defaultValue: Bool {
         switch self {
-        case .useRustCoreForAppleApps:
-            return false
         case .useRustCoreDebugLogging:
             return false
         }

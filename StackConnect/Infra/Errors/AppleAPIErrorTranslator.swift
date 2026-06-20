@@ -1,27 +1,58 @@
 import Foundation
-import AppStoreConnect_Swift_SDK
 import StackCoreRust
 
-/// Turns SDK errors and raw Apple error payloads into short, user-facing messages.
+/// Turns core errors and raw Apple error payloads into short, user-facing messages.
 /// Falls back to Apple's `detail` field (or `error.localizedDescription`) so we
 /// never hide useful info for unknown cases.
 enum AppleAPIErrorTranslator {
 
+    // MARK: - Raw Apple error payload (JSON:API error document)
+
+    private struct AppleErrorPayload: Decodable {
+        let errors: [AppleErrorItem]?
+    }
+
+    private struct AppleErrorItem: Decodable {
+        let status: String?
+        let code: String?
+        let title: String?
+        let detail: String?
+    }
+
+    /// Decodes the raw App Store Connect response body and returns the first error,
+    /// or `nil` on any decode failure or an empty `errors` array.
+    private static func firstError(fromBody body: String) -> AppleErrorItem? {
+        guard let data = body.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(AppleErrorPayload.self, from: data),
+              let first = payload.errors?.first else {
+            return nil
+        }
+        return first
+    }
+
+    /// Internal helper so callers (e.g. `SyncService`) can decode the body without
+    /// duplicating the private payload structs. Returns `nil` if there is no first error.
+    static func decodeFirstError(
+        fromBody body: String
+    ) -> (code: String?, title: String?, detail: String?, status: String?)? {
+        guard let first = firstError(fromBody: body) else { return nil }
+        return (first.code, first.title, first.detail, first.status)
+    }
+
     static func friendlyMessage(for error: Error) -> String {
-        guard let providerError = error as? APIProvider.Error,
-              case .requestFailure(let status, let response, _) = providerError else {
+        guard case StackCoreRust.StackError.Http(let status, let message) = error else {
             return error.localizedDescription
         }
 
-        let first = response?.errors?.first
-        let code  = first?.code   ?? ""
-        let title = first?.title  ?? ""
+        let first = firstError(fromBody: message)
+        let code   = first?.code   ?? ""
+        let title  = first?.title  ?? ""
         let detail = first?.detail ?? ""
 
         if let humanized = humanize(code: code, detail: detail) {
             return humanized
         }
-        if let humanized = humanize(status: status) {
+        if let humanized = humanize(status: Int(status)) {
             return humanized
         }
 
@@ -52,16 +83,16 @@ enum AppleAPIErrorTranslator {
             return true
         }
 
-        guard let providerError = error as? APIProvider.Error,
-              case .requestFailure(let status, let response, _) = providerError,
+        // Defensive fallback: classify a raw 403 whose payload references agreements.
+        guard case StackCoreRust.StackError.Http(let status, let message) = error,
               status == 403 else {
             return false
         }
 
-        let first = response?.errors?.first
-        let code = (first?.code ?? "").uppercased()
-        let detail = first?.detail ?? ""
-        let title = first?.title ?? ""
+        let decoded = decodeFirstError(fromBody: message)
+        let code = (decoded?.code ?? "").uppercased()
+        let detail = decoded?.detail ?? ""
+        let title = decoded?.title ?? ""
 
         // Primary match: a known agreement error code.
         if pendingAgreementCodes.contains(code) {
@@ -86,12 +117,11 @@ enum AppleAPIErrorTranslator {
     /// For Users & Access operations this almost always means the API key lacks
     /// the Admin role required to create or remove users.
     static func isForbidden(_ error: Error) -> Bool {
-        guard let providerError = error as? APIProvider.Error,
-              case .requestFailure(let status, let response, _) = providerError,
+        guard case StackCoreRust.StackError.Http(let status, let message) = error,
               status == 403 else {
             return false
         }
-        let code = (response?.errors?.first?.code ?? "").uppercased()
+        let code = (decodeFirstError(fromBody: message)?.code ?? "").uppercased()
         return code == "FORBIDDEN_ERROR"
     }
 

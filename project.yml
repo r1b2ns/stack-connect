@@ -90,9 +90,6 @@ settings:
     VALIDATE_PRODUCT: YES
 
 packages:
-  appstoreconnect-swift-sdk:
-    url: https://github.com/r1b2ns/appstoreconnect-swift-sdk.git
-    revision: 3c71b2bf
   netfox:
     url: https://github.com/rubensmachion/netfox
     branch: develop
@@ -166,8 +163,6 @@ targets:
     dependencies:
       - package: netfox
         product: netfox
-      - package: appstoreconnect-swift-sdk
-        product: AppStoreConnect-Swift-SDK
       - package: StackCore
       - package: StackCoreRust
         product: StackCoreRust

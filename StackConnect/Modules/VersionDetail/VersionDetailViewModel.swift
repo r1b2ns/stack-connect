@@ -1,6 +1,5 @@
 import Foundation
 import SwiftUI
-import AppStoreConnect_Swift_SDK
 
 // MARK: - Protocol
 
@@ -141,6 +140,16 @@ enum VersionReleaseType: String, CaseIterable, Identifiable {
         case .manual:        return "hand.tap"
         case .afterApproval: return "checkmark.circle"
         case .scheduled:     return "calendar.badge.clock"
+        }
+    }
+
+    /// The App Store Connect API release-type string. The local `rawValue`s are
+    /// camelCase, which do NOT match ASC, so this maps to the ASC `SCREAMING_SNAKE_CASE`.
+    var ascValue: String {
+        switch self {
+        case .manual:        return "MANUAL"
+        case .afterApproval: return "AFTER_APPROVAL"
+        case .scheduled:     return "SCHEDULED"
         }
     }
 }
@@ -433,16 +442,10 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         }
 
         do {
-            let releaseType: AppStoreVersionUpdateRequest.Data.Attributes.ReleaseType
+            let releaseType = uiState.selectedReleaseType.ascValue
             var earliestDate: Date?
 
-            switch uiState.selectedReleaseType {
-            case .manual:
-                releaseType = .manual
-            case .afterApproval:
-                releaseType = .afterApproval
-            case .scheduled:
-                releaseType = .scheduled
+            if uiState.selectedReleaseType == .scheduled {
                 earliestDate = uiState.scheduledDate
             }
 
@@ -452,7 +455,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
                 earliestReleaseDate: earliestDate
             )
 
-            uiState.version.releaseType = uiState.selectedReleaseType.rawValue.uppercased()
+            uiState.version.releaseType = releaseType
             uiState.showReleaseSheet = false
             try await storage.save(uiState.version, id: "version.\(self.uiState.version.id)")
             Log.print.info("[VersionDetail] Saved release type: \(self.uiState.selectedReleaseType.rawValue)")
@@ -478,7 +481,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             if usePhased {
                 // Create or keep phased release
                 if uiState.phasedRelease == nil {
-                    let created = try await connection.createPhasedRelease(versionId: uiState.version.id, state: .active)
+                    let created = try await connection.createPhasedRelease(versionId: uiState.version.id, state: "ACTIVE")
                     uiState.phasedRelease = created
                 }
             } else {
@@ -510,7 +513,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         }
 
         do {
-            let newState: PhasedReleaseState = paused ? .paused : .active
+            let newState = paused ? "PAUSED" : "ACTIVE"
             let updated = try await connection.updatePhasedReleaseState(id: phasedId, state: newState)
             uiState.phasedRelease = updated
             Log.print.info("[VersionDetail] Phased release paused=\(paused)")
@@ -626,7 +629,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
 
         do {
             guard let connection = createConnection() else { return }
-            let updated = try await connection.updatePhasedReleaseState(id: phasedId, state: .complete)
+            let updated = try await connection.updatePhasedReleaseState(id: phasedId, state: "COMPLETE")
             uiState.phasedRelease = updated
             uiState.toastMessage = ToastMessage(String(localized: "Released to all users"), icon: "checkmark.circle.fill")
             Log.print.info("[VersionDetail] Completed phased release")

@@ -1,12 +1,12 @@
 import XCTest
 import StackProtocols
-import AppStoreConnect_Swift_SDK
+import StackCoreRust
 @testable import StackConnect
 
 @MainActor
 final class SyncServiceTests: XCTestCase {
 
-    private var sut: SyncService!
+    private var sut: StackConnect.SyncService!
     private var mockStorage: MockPersistentStorable!
     private var mockKeychain: MockKeyStorable!
     private var connections: [String: MockAppleAccountSyncing] = [:]
@@ -16,7 +16,7 @@ final class SyncServiceTests: XCTestCase {
         mockStorage = MockPersistentStorable()
         mockKeychain = MockKeyStorable()
         connections = [:]
-        sut = SyncService(
+        sut = StackConnect.SyncService(
             storage: mockStorage,
             keychain: mockKeychain,
             appleConnectionFactory: { [weak self] credentials in
@@ -426,16 +426,12 @@ final class SyncServiceTests: XCTestCase {
     // MARK: - Helpers
 
     private func makeAgreementError() -> Error {
-        makeError(
-            status: 403,
-            code: "FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED",
-            detail: "You must accept the latest agreements."
-        )
+        StackCoreRust.StackError.PendingAgreements(message: "You must accept the latest agreements.")
     }
 
     private func makeError(status: Int, code: String, detail: String?) -> Error {
-        let responseError = ResponseError(status: String(status), code: code, title: "", detail: detail)
-        return APIProvider.Error.requestFailure(status, ErrorResponse(errors: [responseError]), nil)
+        let body = "{\"errors\":[{\"status\":\"\(status)\",\"code\":\"\(code)\",\"title\":\"\",\"detail\":\"\(detail ?? "")\"}]}"
+        return StackCoreRust.StackError.Http(status: UInt16(status), message: body)
     }
 
     private func setCredentials(issuerID: String, for account: AccountModel) {

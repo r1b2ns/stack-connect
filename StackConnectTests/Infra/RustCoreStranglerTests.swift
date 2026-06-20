@@ -3,22 +3,23 @@ import StackCore        // PersistentStorable
 import StackCoreRust
 @testable import StackConnect
 
-/// Covers the first strangler step that routes the Apple connection's
-/// `validateCredentials()` / `fetchApps()` through the shared Rust core behind the
-/// `useRustCoreForAppleApps` feature flag.
+/// Covers the Apple connection's Rust-core routing. The SDK has been dropped and the
+/// Rust core is now the sole path, so these tests verify each method hits the Rust
+/// core (the capability/credential failure surfaces a `StackError`) and that the
+/// pure mappers translate core types into the app's models.
 final class RustCoreStranglerTests: XCTestCase {
 
     // MARK: - Helpers
 
     /// Builds a `FeatureFlags` backed by an isolated, empty `UserDefaults` suite so
-    /// tests never touch the shared store and can assert the OFF/ON states cleanly.
+    /// tests never touch the shared store. The Apple Rust-core path is now
+    /// unconditional, so the `rustCoreOn` parameter is retained only for call-site
+    /// compatibility and has no effect on routing.
     private func makeFlags(rustCoreOn: Bool) -> FeatureFlags {
         let suiteName = "RustCoreStranglerTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
-        let flags = FeatureFlags(defaults: defaults)
-        flags.setEnabled(rustCoreOn, for: .useRustCoreForAppleApps)
-        return flags
+        return FeatureFlags(defaults: defaults)
     }
 
     private let invalidCredentials = AppleCredentials(
@@ -27,37 +28,7 @@ final class RustCoreStranglerTests: XCTestCase {
         privateKey: "not-a-real-key"
     )
 
-    /// Throwaway EC P-256 PKCS#8 private key (bare base64, no PEM armor — the form
-    /// the app stores). It is *well-formed* so the Swift SDK's `APIConfiguration`
-    /// parses it successfully, letting `createProvider()` build an `APIProvider`
-    /// locally with no network. NOT a real Apple key.
-    private let wellFormedCredentials = AppleCredentials(
-        issuerID: "00000000-0000-0000-0000-000000000000",
-        privateKeyID: "ABCD1234EF",
-        privateKey: "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgNq00FIJGPS2dceTavvHniKrgQspy39Pn2k6vij01BZihRANCAAQw1YrXLyOyKjU4AUwTI5dWduXQSG78mWjW0PRzM3m29SKWZ2/n5YaFoKx3akDno+SdY6/AYY88UWOPgS9bobWM"
-    )
-
     // MARK: - FeatureFlags
-
-    func testFlagDefaultsOffWhenUnset() {
-        let suiteName = "RustCoreStranglerTests.default.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        let flags = FeatureFlags(defaults: defaults)
-
-        XCTAssertFalse(
-            flags.isEnabled(.useRustCoreForAppleApps),
-            "New flag must default to OFF (safe, reversible)."
-        )
-    }
-
-    func testFlagCanBeToggled() {
-        let flags = makeFlags(rustCoreOn: true)
-        XCTAssertTrue(flags.isEnabled(.useRustCoreForAppleApps))
-
-        flags.setEnabled(false, for: .useRustCoreForAppleApps)
-        XCTAssertFalse(flags.isEnabled(.useRustCoreForAppleApps))
-    }
 
     func testDebugLoggingFlagDefaultsOffWhenUnset() {
         let suiteName = "RustCoreStranglerTests.debugLogging.\(UUID().uuidString)"
@@ -483,59 +454,6 @@ final class RustCoreStranglerTests: XCTestCase {
         XCTAssertNil(model.platform, "Unknown platform raw value must map to nil, not crash.")
         XCTAssertNil(model.appStoreState)
         XCTAssertNil(model.createdDate)
-    }
-
-    // MARK: - Re-validation storm regression (issue #84)
-
-    /// Regression guard for issue #84: with the flag ON, the Rust-core
-    /// `validateCredentials()` path must SEED the Swift SDK `self.provider`.
-    ///
-    /// Why this matters: ~87 not-yet-migrated Swift-only methods begin with
-    /// `guard let provider else { try await validateCredentials(); return try await <same>() }`.
-    /// Before the fix the Rust path returned without setting `self.provider`, so
-    /// every such method re-entered `validateCredentials()` (a network call) and
-    /// retried into the same nil guard — a runaway storm of ~752 validate calls per
-    /// sync that got the account rate-limited (HTTP 429).
-    ///
-    /// `establishSwiftProvider()` is exactly the seeding step the Rust validate path
-    /// runs after a successful `provider.validate()`. We invoke it in isolation from
-    /// the network `validate()` (which can't succeed against fake credentials in a
-    /// unit test) and prove it flips `provider` nil -> non-nil with no network. With
-    /// `provider` non-nil, the `guard let provider else { ... }` in every Swift-only
-    /// method short-circuits, so none of them can re-enter `validateCredentials()`.
-    func testRustCorePathSeedsSwiftProviderToPreventReValidationStorm() throws {
-        let connection = AppleAccountConnection(
-            credentials: wellFormedCredentials,
-            featureFlags: makeFlags(rustCoreOn: true)
-        )
-
-        XCTAssertFalse(
-            connection.hasSwiftProviderForTesting,
-            "Precondition: no Swift provider before validation — this nil is what made the Swift-only methods recurse."
-        )
-
-        // The seeding step the Rust validate path performs after `provider.validate()`.
-        // Network-free: builds APIConfiguration/APIProvider from the stored key.
-        try connection.establishSwiftProvider()
-
-        XCTAssertTrue(
-            connection.hasSwiftProviderForTesting,
-            "After the Rust validate path seeds it, self.provider must be non-nil so the ~87 Swift-only methods' `guard let provider else { validateCredentials() }` short-circuits instead of re-validating (issue #84)."
-        )
-    }
-
-    /// Seeding is safe to repeat: a second call (e.g. another sync on the same reused
-    /// connection) keeps `provider` non-nil and does not throw or hit the network.
-    func testEstablishSwiftProviderIsRepeatableAndNetworkFree() throws {
-        let connection = AppleAccountConnection(
-            credentials: wellFormedCredentials,
-            featureFlags: makeFlags(rustCoreOn: true)
-        )
-
-        try connection.establishSwiftProvider()
-        try connection.establishSwiftProvider()
-
-        XCTAssertTrue(connection.hasSwiftProviderForTesting)
     }
 
     // MARK: - Review submission mapping (Rust core -> app model)
@@ -2224,7 +2142,7 @@ final class RustCoreStranglerTests: XCTestCase {
         )
 
         do {
-            _ = try await connection.createPhasedRelease(versionId: "v1", state: .active)
+            _ = try await connection.createPhasedRelease(versionId: "v1", state: "ACTIVE")
             XCTFail("Expected the Rust core to reject the invalid credentials.")
         } catch is StackError {
             // Crossed into the Rust core as expected.
@@ -2260,7 +2178,7 @@ final class RustCoreStranglerTests: XCTestCase {
         )
 
         do {
-            _ = try await connection.updatePhasedReleaseState(id: "pr-1", state: .active)
+            _ = try await connection.updatePhasedReleaseState(id: "pr-1", state: "ACTIVE")
             XCTFail("Expected the Rust core to reject the invalid credentials.")
         } catch is StackError {
             // Crossed into the Rust core as expected.
