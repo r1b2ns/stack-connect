@@ -5,12 +5,15 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'domain.dart';
+import 'error.dart';
 import 'frb_api.dart';
 import 'frb_generated.dart';
 import 'frb_generated.io.dart'
     if (dart.library.js_interop) 'frb_generated.web.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'service/kind.dart';
+import 'service/provider.dart';
 
 /// Main entrypoint of the Rust API
 class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
@@ -65,7 +68,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => -399672990;
+  int get rustContentHash => 295458225;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -78,7 +81,88 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  List<Capability> crateFrbApiFrbProviderCapabilities({
+    required FrbProvider that,
+  });
+
+  Future<List<AppInfo>> crateFrbApiFrbProviderFetchApps({
+    required FrbProvider that,
+  });
+
+  ServiceKind crateFrbApiFrbProviderKind({required FrbProvider that});
+
+  FrbReviews? crateFrbApiFrbProviderReviews({required FrbProvider that});
+
+  Future<void> crateFrbApiFrbProviderValidate({required FrbProvider that});
+
+  Future<List<CustomerReview>> crateFrbApiFrbReviewsFetchCustomerReviews({
+    required FrbReviews that,
+    required String appId,
+  });
+
+  Future<CustomerReviewsPage> crateFrbApiFrbReviewsFetchCustomerReviewsPage({
+    required FrbReviews that,
+    required String appId,
+    required String sort,
+    required List<String> filterRating,
+    required int limit,
+    String? pageToken,
+  });
+
+  Future<ReviewResponse> crateFrbApiFrbReviewsReplyToReview({
+    required FrbReviews that,
+    required String reviewId,
+    required String body,
+  });
+
+  Future<List<AppInfo>> crateFrbApiFrbSyncServiceSyncApps({
+    required FrbSyncService that,
+    required FutureOr<void> Function(String, String, String) persist,
+  });
+
   List<ServiceKind> crateFrbApiAvailableServices();
+
+  Future<FrbProvider> crateFrbApiConnect({
+    required ServiceKind kind,
+    required String accountId,
+    required List<FrbCredential> credentials,
+    required bool debugLogging,
+    required FutureOr<void> Function(String) debugLogger,
+  });
+
+  List<CredentialField> crateFrbApiCredentialSchema({
+    required ServiceKind kind,
+  });
+
+  FrbSyncService crateFrbApiMakeSyncService({
+    required FrbProvider provider,
+    required String accountId,
+  });
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_FrbProvider;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_FrbProvider;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_FrbProviderPtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_FrbReviews;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_FrbReviews;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_FrbReviewsPtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_FrbSyncService;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_FrbSyncService;
+
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_FrbSyncServicePtr;
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -90,12 +174,338 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  List<Capability> crateFrbApiFrbProviderCapabilities({
+    required FrbProvider that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_capability,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateFrbApiFrbProviderCapabilitiesConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateFrbApiFrbProviderCapabilitiesConstMeta =>
+      const TaskConstMeta(
+        debugName: "FrbProvider_capabilities",
+        argNames: ["that"],
+      );
+
+  @override
+  Future<List<AppInfo>> crateFrbApiFrbProviderFetchApps({
+    required FrbProvider that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
+            that,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 2,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_app_info,
+          decodeErrorData: sse_decode_stack_error,
+        ),
+        constMeta: kCrateFrbApiFrbProviderFetchAppsConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateFrbApiFrbProviderFetchAppsConstMeta =>
+      const TaskConstMeta(
+        debugName: "FrbProvider_fetch_apps",
+        argNames: ["that"],
+      );
+
+  @override
+  ServiceKind crateFrbApiFrbProviderKind({required FrbProvider that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_service_kind,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateFrbApiFrbProviderKindConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateFrbApiFrbProviderKindConstMeta =>
+      const TaskConstMeta(debugName: "FrbProvider_kind", argNames: ["that"]);
+
+  @override
+  FrbReviews? crateFrbApiFrbProviderReviews({required FrbProvider that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateFrbApiFrbProviderReviewsConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateFrbApiFrbProviderReviewsConstMeta =>
+      const TaskConstMeta(debugName: "FrbProvider_reviews", argNames: ["that"]);
+
+  @override
+  Future<void> crateFrbApiFrbProviderValidate({required FrbProvider that}) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
+            that,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_stack_error,
+        ),
+        constMeta: kCrateFrbApiFrbProviderValidateConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateFrbApiFrbProviderValidateConstMeta =>
+      const TaskConstMeta(
+        debugName: "FrbProvider_validate",
+        argNames: ["that"],
+      );
+
+  @override
+  Future<List<CustomerReview>> crateFrbApiFrbReviewsFetchCustomerReviews({
+    required FrbReviews that,
+    required String appId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+            that,
+            serializer,
+          );
+          sse_encode_String(appId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_customer_review,
+          decodeErrorData: sse_decode_stack_error,
+        ),
+        constMeta: kCrateFrbApiFrbReviewsFetchCustomerReviewsConstMeta,
+        argValues: [that, appId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateFrbApiFrbReviewsFetchCustomerReviewsConstMeta =>
+      const TaskConstMeta(
+        debugName: "FrbReviews_fetch_customer_reviews",
+        argNames: ["that", "appId"],
+      );
+
+  @override
+  Future<CustomerReviewsPage> crateFrbApiFrbReviewsFetchCustomerReviewsPage({
+    required FrbReviews that,
+    required String appId,
+    required String sort,
+    required List<String> filterRating,
+    required int limit,
+    String? pageToken,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+            that,
+            serializer,
+          );
+          sse_encode_String(appId, serializer);
+          sse_encode_String(sort, serializer);
+          sse_encode_list_String(filterRating, serializer);
+          sse_encode_u_32(limit, serializer);
+          sse_encode_opt_String(pageToken, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_customer_reviews_page,
+          decodeErrorData: sse_decode_stack_error,
+        ),
+        constMeta: kCrateFrbApiFrbReviewsFetchCustomerReviewsPageConstMeta,
+        argValues: [that, appId, sort, filterRating, limit, pageToken],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateFrbApiFrbReviewsFetchCustomerReviewsPageConstMeta =>
+      const TaskConstMeta(
+        debugName: "FrbReviews_fetch_customer_reviews_page",
+        argNames: [
+          "that",
+          "appId",
+          "sort",
+          "filterRating",
+          "limit",
+          "pageToken",
+        ],
+      );
+
+  @override
+  Future<ReviewResponse> crateFrbApiFrbReviewsReplyToReview({
+    required FrbReviews that,
+    required String reviewId,
+    required String body,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+            that,
+            serializer,
+          );
+          sse_encode_String(reviewId, serializer);
+          sse_encode_String(body, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_review_response,
+          decodeErrorData: sse_decode_stack_error,
+        ),
+        constMeta: kCrateFrbApiFrbReviewsReplyToReviewConstMeta,
+        argValues: [that, reviewId, body],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateFrbApiFrbReviewsReplyToReviewConstMeta =>
+      const TaskConstMeta(
+        debugName: "FrbReviews_reply_to_review",
+        argNames: ["that", "reviewId", "body"],
+      );
+
+  @override
+  Future<List<AppInfo>> crateFrbApiFrbSyncServiceSyncApps({
+    required FrbSyncService that,
+    required FutureOr<void> Function(String, String, String) persist,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService(
+            that,
+            serializer,
+          );
+          sse_encode_DartFn_Inputs_String_String_String_Output_unit_AnyhowException(
+            persist,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 9,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_app_info,
+          decodeErrorData: sse_decode_stack_error,
+        ),
+        constMeta: kCrateFrbApiFrbSyncServiceSyncAppsConstMeta,
+        argValues: [that, persist],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateFrbApiFrbSyncServiceSyncAppsConstMeta =>
+      const TaskConstMeta(
+        debugName: "FrbSyncService_sync_apps",
+        argNames: ["that", "persist"],
+      );
+
+  @override
   List<ServiceKind> crateFrbApiAvailableServices() {
     return handler.executeSync(
       SyncTask(
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_service_kind,
@@ -111,10 +521,476 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateFrbApiAvailableServicesConstMeta =>
       const TaskConstMeta(debugName: "available_services", argNames: []);
 
+  @override
+  Future<FrbProvider> crateFrbApiConnect({
+    required ServiceKind kind,
+    required String accountId,
+    required List<FrbCredential> credentials,
+    required bool debugLogging,
+    required FutureOr<void> Function(String) debugLogger,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_service_kind(kind, serializer);
+          sse_encode_String(accountId, serializer);
+          sse_encode_list_frb_credential(credentials, serializer);
+          sse_encode_bool(debugLogging, serializer);
+          sse_encode_DartFn_Inputs_String_Output_unit_AnyhowException(
+            debugLogger,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 11,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider,
+          decodeErrorData: sse_decode_stack_error,
+        ),
+        constMeta: kCrateFrbApiConnectConstMeta,
+        argValues: [kind, accountId, credentials, debugLogging, debugLogger],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateFrbApiConnectConstMeta => const TaskConstMeta(
+    debugName: "connect",
+    argNames: [
+      "kind",
+      "accountId",
+      "credentials",
+      "debugLogging",
+      "debugLogger",
+    ],
+  );
+
+  @override
+  List<CredentialField> crateFrbApiCredentialSchema({
+    required ServiceKind kind,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_service_kind(kind, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_credential_field,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateFrbApiCredentialSchemaConstMeta,
+        argValues: [kind],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateFrbApiCredentialSchemaConstMeta =>
+      const TaskConstMeta(debugName: "credential_schema", argNames: ["kind"]);
+
+  @override
+  FrbSyncService crateFrbApiMakeSyncService({
+    required FrbProvider provider,
+    required String accountId,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
+            provider,
+            serializer,
+          );
+          sse_encode_String(accountId, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateFrbApiMakeSyncServiceConstMeta,
+        argValues: [provider, accountId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateFrbApiMakeSyncServiceConstMeta => const TaskConstMeta(
+    debugName: "make_sync_service",
+    argNames: ["provider", "accountId"],
+  );
+
+  Future<void> Function(int, dynamic)
+  encode_DartFn_Inputs_String_Output_unit_AnyhowException(
+    FutureOr<void> Function(String) raw,
+  ) {
+    return (callId, rawArg0) async {
+      final arg0 = dco_decode_String(rawArg0);
+
+      Box<void>? rawOutput;
+      Box<AnyhowException>? rawError;
+      try {
+        rawOutput = Box(await raw(arg0));
+      } catch (e, s) {
+        rawError = Box(AnyhowException("$e\n\n$s"));
+      }
+
+      final serializer = SseSerializer(generalizedFrbRustBinding);
+      assert((rawOutput != null) ^ (rawError != null));
+      if (rawOutput != null) {
+        serializer.buffer.putUint8(0);
+        sse_encode_unit(rawOutput.value, serializer);
+      } else {
+        serializer.buffer.putUint8(1);
+        sse_encode_AnyhowException(rawError!.value, serializer);
+      }
+      final output = serializer.intoRaw();
+
+      generalizedFrbRustBinding.dartFnDeliverOutput(
+        callId: callId,
+        ptr: output.ptr,
+        rustVecLen: output.rustVecLen,
+        dataLen: output.dataLen,
+      );
+    };
+  }
+
+  Future<void> Function(int, dynamic, dynamic, dynamic)
+  encode_DartFn_Inputs_String_String_String_Output_unit_AnyhowException(
+    FutureOr<void> Function(String, String, String) raw,
+  ) {
+    return (callId, rawArg0, rawArg1, rawArg2) async {
+      final arg0 = dco_decode_String(rawArg0);
+      final arg1 = dco_decode_String(rawArg1);
+      final arg2 = dco_decode_String(rawArg2);
+
+      Box<void>? rawOutput;
+      Box<AnyhowException>? rawError;
+      try {
+        rawOutput = Box(await raw(arg0, arg1, arg2));
+      } catch (e, s) {
+        rawError = Box(AnyhowException("$e\n\n$s"));
+      }
+
+      final serializer = SseSerializer(generalizedFrbRustBinding);
+      assert((rawOutput != null) ^ (rawError != null));
+      if (rawOutput != null) {
+        serializer.buffer.putUint8(0);
+        sse_encode_unit(rawOutput.value, serializer);
+      } else {
+        serializer.buffer.putUint8(1);
+        sse_encode_AnyhowException(rawError!.value, serializer);
+      }
+      final output = serializer.intoRaw();
+
+      generalizedFrbRustBinding.dartFnDeliverOutput(
+        callId: callId,
+        ptr: output.ptr,
+        rustVecLen: output.rustVecLen,
+        dataLen: output.dataLen,
+      );
+    };
+  }
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_FrbProvider => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_FrbProvider => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_FrbReviews => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_FrbReviews => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_FrbSyncService => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_FrbSyncService => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService;
+
+  @protected
+  AnyhowException dco_decode_AnyhowException(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return AnyhowException(raw as String);
+  }
+
+  @protected
+  FrbProvider
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FrbProviderImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  FrbReviews
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FrbReviewsImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  FrbSyncService
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FrbSyncServiceImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  FrbProvider
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FrbProviderImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  FrbReviews
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FrbReviewsImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  FrbSyncService
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FrbSyncServiceImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  FutureOr<void> Function(String)
+  dco_decode_DartFn_Inputs_String_Output_unit_AnyhowException(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError('');
+  }
+
+  @protected
+  FutureOr<void> Function(String, String, String)
+  dco_decode_DartFn_Inputs_String_String_String_Output_unit_AnyhowException(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    throw UnimplementedError('');
+  }
+
+  @protected
+  Object dco_decode_DartOpaque(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return decodeDartOpaque(raw, generalizedFrbRustBinding);
+  }
+
+  @protected
+  FrbProvider
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FrbProviderImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  FrbReviews
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FrbReviewsImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  FrbSyncService
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return FrbSyncServiceImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  String dco_decode_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as String;
+  }
+
+  @protected
+  AppInfo dco_decode_app_info(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return AppInfo(
+      id: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+      bundleId: dco_decode_String(arr[2]),
+      platform: dco_decode_opt_String(arr[3]),
+    );
+  }
+
+  @protected
+  bool dco_decode_bool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as bool;
+  }
+
+  @protected
+  FrbReviews
+  dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+      raw,
+    );
+  }
+
+  @protected
+  ReviewResponse dco_decode_box_autoadd_review_response(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_review_response(raw);
+  }
+
+  @protected
+  Capability dco_decode_capability(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return Capability.values[raw as int];
+  }
+
+  @protected
+  CredentialField dco_decode_credential_field(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return CredentialField(
+      key: dco_decode_String(arr[0]),
+      label: dco_decode_String(arr[1]),
+      secret: dco_decode_bool(arr[2]),
+      multiline: dco_decode_bool(arr[3]),
+    );
+  }
+
+  @protected
+  CustomerReview dco_decode_customer_review(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 8)
+      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    return CustomerReview(
+      id: dco_decode_String(arr[0]),
+      rating: dco_decode_i_32(arr[1]),
+      title: dco_decode_opt_String(arr[2]),
+      body: dco_decode_opt_String(arr[3]),
+      reviewerNickname: dco_decode_opt_String(arr[4]),
+      createdDate: dco_decode_opt_String(arr[5]),
+      territory: dco_decode_opt_String(arr[6]),
+      response: dco_decode_opt_box_autoadd_review_response(arr[7]),
+    );
+  }
+
+  @protected
+  CustomerReviewsPage dco_decode_customer_reviews_page(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return CustomerReviewsPage(
+      reviews: dco_decode_list_customer_review(arr[0]),
+      nextToken: dco_decode_opt_String(arr[1]),
+    );
+  }
+
+  @protected
+  FrbCredential dco_decode_frb_credential(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return FrbCredential(
+      key: dco_decode_String(arr[0]),
+      value: dco_decode_String(arr[1]),
+    );
+  }
+
   @protected
   int dco_decode_i_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
+  }
+
+  @protected
+  PlatformInt64 dco_decode_isize(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeI64(raw);
+  }
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
+  List<AppInfo> dco_decode_list_app_info(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_app_info).toList();
+  }
+
+  @protected
+  List<Capability> dco_decode_list_capability(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_capability).toList();
+  }
+
+  @protected
+  List<CredentialField> dco_decode_list_credential_field(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_credential_field).toList();
+  }
+
+  @protected
+  List<CustomerReview> dco_decode_list_customer_review(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_customer_review).toList();
+  }
+
+  @protected
+  List<FrbCredential> dco_decode_list_frb_credential(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_frb_credential).toList();
+  }
+
+  @protected
+  Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as Uint8List;
   }
 
   @protected
@@ -124,9 +1000,94 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  String? dco_decode_opt_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
+  FrbReviews?
+  dco_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null
+        ? null
+        : dco_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+            raw,
+          );
+  }
+
+  @protected
+  ReviewResponse? dco_decode_opt_box_autoadd_review_response(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_review_response(raw);
+  }
+
+  @protected
+  ReviewResponse dco_decode_review_response(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return ReviewResponse(
+      id: dco_decode_String(arr[0]),
+      body: dco_decode_opt_String(arr[1]),
+      state: dco_decode_opt_String(arr[2]),
+      lastModifiedDate: dco_decode_opt_String(arr[3]),
+    );
+  }
+
+  @protected
   ServiceKind dco_decode_service_kind(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return ServiceKind.values[raw as int];
+  }
+
+  @protected
+  StackError dco_decode_stack_error(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return StackError_InvalidCredentials(
+          message: dco_decode_String(raw[1]),
+        );
+      case 1:
+        return StackError_Auth(message: dco_decode_String(raw[1]));
+      case 2:
+        return StackError_PendingAgreements(message: dco_decode_String(raw[1]));
+      case 3:
+        return StackError_Http(
+          status: dco_decode_u_16(raw[1]),
+          message: dco_decode_String(raw[2]),
+        );
+      case 4:
+        return StackError_Decode(message: dco_decode_String(raw[1]));
+      case 5:
+        return StackError_Network(message: dco_decode_String(raw[1]));
+      case 6:
+        return StackError_Unsupported(message: dco_decode_String(raw[1]));
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  int dco_decode_u_16(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  int dco_decode_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  int dco_decode_u_8(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
   }
 
   @protected
@@ -136,9 +1097,338 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BigInt dco_decode_usize(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeU64(raw);
+  }
+
+  @protected
+  AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_String(deserializer);
+    return AnyhowException(inner);
+  }
+
+  @protected
+  FrbProvider
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return FrbProviderImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  FrbReviews
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return FrbReviewsImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  FrbSyncService
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return FrbSyncServiceImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  FrbProvider
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return FrbProviderImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  FrbReviews
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return FrbReviewsImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  FrbSyncService
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return FrbSyncServiceImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  Object sse_decode_DartOpaque(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_isize(deserializer);
+    return decodeDartOpaque(inner, generalizedFrbRustBinding);
+  }
+
+  @protected
+  FrbProvider
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return FrbProviderImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  FrbReviews
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return FrbReviewsImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  FrbSyncService
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return FrbSyncServiceImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  String sse_decode_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_list_prim_u_8_strict(deserializer);
+    return utf8.decoder.convert(inner);
+  }
+
+  @protected
+  AppInfo sse_decode_app_info(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_bundleId = sse_decode_String(deserializer);
+    var var_platform = sse_decode_opt_String(deserializer);
+    return AppInfo(
+      id: var_id,
+      name: var_name,
+      bundleId: var_bundleId,
+      platform: var_platform,
+    );
+  }
+
+  @protected
+  bool sse_decode_bool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint8() != 0;
+  }
+
+  @protected
+  FrbReviews
+  sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+      deserializer,
+    ));
+  }
+
+  @protected
+  ReviewResponse sse_decode_box_autoadd_review_response(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_review_response(deserializer));
+  }
+
+  @protected
+  Capability sse_decode_capability(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return Capability.values[inner];
+  }
+
+  @protected
+  CredentialField sse_decode_credential_field(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_key = sse_decode_String(deserializer);
+    var var_label = sse_decode_String(deserializer);
+    var var_secret = sse_decode_bool(deserializer);
+    var var_multiline = sse_decode_bool(deserializer);
+    return CredentialField(
+      key: var_key,
+      label: var_label,
+      secret: var_secret,
+      multiline: var_multiline,
+    );
+  }
+
+  @protected
+  CustomerReview sse_decode_customer_review(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_rating = sse_decode_i_32(deserializer);
+    var var_title = sse_decode_opt_String(deserializer);
+    var var_body = sse_decode_opt_String(deserializer);
+    var var_reviewerNickname = sse_decode_opt_String(deserializer);
+    var var_createdDate = sse_decode_opt_String(deserializer);
+    var var_territory = sse_decode_opt_String(deserializer);
+    var var_response = sse_decode_opt_box_autoadd_review_response(deserializer);
+    return CustomerReview(
+      id: var_id,
+      rating: var_rating,
+      title: var_title,
+      body: var_body,
+      reviewerNickname: var_reviewerNickname,
+      createdDate: var_createdDate,
+      territory: var_territory,
+      response: var_response,
+    );
+  }
+
+  @protected
+  CustomerReviewsPage sse_decode_customer_reviews_page(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_reviews = sse_decode_list_customer_review(deserializer);
+    var var_nextToken = sse_decode_opt_String(deserializer);
+    return CustomerReviewsPage(reviews: var_reviews, nextToken: var_nextToken);
+  }
+
+  @protected
+  FrbCredential sse_decode_frb_credential(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_key = sse_decode_String(deserializer);
+    var var_value = sse_decode_String(deserializer);
+    return FrbCredential(key: var_key, value: var_value);
+  }
+
+  @protected
   int sse_decode_i_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getInt32();
+  }
+
+  @protected
+  PlatformInt64 sse_decode_isize(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getPlatformInt64();
+  }
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <String>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<AppInfo> sse_decode_list_app_info(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <AppInfo>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_app_info(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<Capability> sse_decode_list_capability(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <Capability>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_capability(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<CredentialField> sse_decode_list_credential_field(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <CredentialField>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_credential_field(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<CustomerReview> sse_decode_list_customer_review(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <CustomerReview>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_customer_review(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<FrbCredential> sse_decode_list_frb_credential(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <FrbCredential>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_frb_credential(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var len_ = sse_decode_i_32(deserializer);
+    return deserializer.buffer.getUint8List(len_);
   }
 
   @protected
@@ -154,10 +1444,116 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  FrbReviews?
+  sse_decode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+        deserializer,
+      ));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  ReviewResponse? sse_decode_opt_box_autoadd_review_response(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_review_response(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  ReviewResponse sse_decode_review_response(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_body = sse_decode_opt_String(deserializer);
+    var var_state = sse_decode_opt_String(deserializer);
+    var var_lastModifiedDate = sse_decode_opt_String(deserializer);
+    return ReviewResponse(
+      id: var_id,
+      body: var_body,
+      state: var_state,
+      lastModifiedDate: var_lastModifiedDate,
+    );
+  }
+
+  @protected
   ServiceKind sse_decode_service_kind(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_i_32(deserializer);
     return ServiceKind.values[inner];
+  }
+
+  @protected
+  StackError sse_decode_stack_error(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_message = sse_decode_String(deserializer);
+        return StackError_InvalidCredentials(message: var_message);
+      case 1:
+        var var_message = sse_decode_String(deserializer);
+        return StackError_Auth(message: var_message);
+      case 2:
+        var var_message = sse_decode_String(deserializer);
+        return StackError_PendingAgreements(message: var_message);
+      case 3:
+        var var_status = sse_decode_u_16(deserializer);
+        var var_message = sse_decode_String(deserializer);
+        return StackError_Http(status: var_status, message: var_message);
+      case 4:
+        var var_message = sse_decode_String(deserializer);
+        return StackError_Decode(message: var_message);
+      case 5:
+        var var_message = sse_decode_String(deserializer);
+        return StackError_Network(message: var_message);
+      case 6:
+        var var_message = sse_decode_String(deserializer);
+        return StackError_Unsupported(message: var_message);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  int sse_decode_u_16(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint16();
+  }
+
+  @protected
+  int sse_decode_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint32();
+  }
+
+  @protected
+  int sse_decode_u_8(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint8();
   }
 
   @protected
@@ -166,15 +1562,359 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  bool sse_decode_bool(SseDeserializer deserializer) {
+  BigInt sse_decode_usize(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getUint8() != 0;
+    return deserializer.buffer.getBigUint64();
+  }
+
+  @protected
+  void sse_encode_AnyhowException(
+    AnyhowException self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.message, serializer);
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
+    FrbProvider self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as FrbProviderImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    FrbReviews self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as FrbReviewsImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService(
+    FrbSyncService self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as FrbSyncServiceImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
+    FrbProvider self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as FrbProviderImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    FrbReviews self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as FrbReviewsImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService(
+    FrbSyncService self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as FrbSyncServiceImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_DartFn_Inputs_String_Output_unit_AnyhowException(
+    FutureOr<void> Function(String) self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_DartOpaque(
+      encode_DartFn_Inputs_String_Output_unit_AnyhowException(self),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_DartFn_Inputs_String_String_String_Output_unit_AnyhowException(
+    FutureOr<void> Function(String, String, String) self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_DartOpaque(
+      encode_DartFn_Inputs_String_String_String_Output_unit_AnyhowException(
+        self,
+      ),
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_DartOpaque(Object self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_isize(
+      PlatformPointerUtil.ptrToPlatformInt64(
+        encodeDartOpaque(
+          self,
+          portManager.dartHandlerPort,
+          generalizedFrbRustBinding,
+        ),
+      ),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbProvider(
+    FrbProvider self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as FrbProviderImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    FrbReviews self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as FrbReviewsImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbSyncService(
+    FrbSyncService self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as FrbSyncServiceImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_String(String self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
+  }
+
+  @protected
+  void sse_encode_app_info(AppInfo self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.bundleId, serializer);
+    sse_encode_opt_String(self.platform, serializer);
+  }
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint8(self ? 1 : 0);
+  }
+
+  @protected
+  void
+  sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    FrbReviews self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+      self,
+      serializer,
+    );
+  }
+
+  @protected
+  void sse_encode_box_autoadd_review_response(
+    ReviewResponse self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_review_response(self, serializer);
+  }
+
+  @protected
+  void sse_encode_capability(Capability self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_credential_field(
+    CredentialField self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.key, serializer);
+    sse_encode_String(self.label, serializer);
+    sse_encode_bool(self.secret, serializer);
+    sse_encode_bool(self.multiline, serializer);
+  }
+
+  @protected
+  void sse_encode_customer_review(
+    CustomerReview self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_i_32(self.rating, serializer);
+    sse_encode_opt_String(self.title, serializer);
+    sse_encode_opt_String(self.body, serializer);
+    sse_encode_opt_String(self.reviewerNickname, serializer);
+    sse_encode_opt_String(self.createdDate, serializer);
+    sse_encode_opt_String(self.territory, serializer);
+    sse_encode_opt_box_autoadd_review_response(self.response, serializer);
+  }
+
+  @protected
+  void sse_encode_customer_reviews_page(
+    CustomerReviewsPage self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_customer_review(self.reviews, serializer);
+    sse_encode_opt_String(self.nextToken, serializer);
+  }
+
+  @protected
+  void sse_encode_frb_credential(FrbCredential self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.key, serializer);
+    sse_encode_String(self.value, serializer);
   }
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putInt32(self);
+  }
+
+  @protected
+  void sse_encode_isize(PlatformInt64 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putPlatformInt64(self);
+  }
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_app_info(List<AppInfo> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_app_info(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_capability(
+    List<Capability> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_capability(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_credential_field(
+    List<CredentialField> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_credential_field(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_customer_review(
+    List<CustomerReview> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_customer_review(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_frb_credential(
+    List<FrbCredential> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_frb_credential(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_prim_u_8_strict(
+    Uint8List self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    serializer.buffer.putUint8List(self);
   }
 
   @protected
@@ -190,9 +1930,108 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
+  void
+  sse_encode_opt_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+    FrbReviews? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFrbReviews(
+        self,
+        serializer,
+      );
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_review_response(
+    ReviewResponse? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_review_response(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_review_response(
+    ReviewResponse self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_opt_String(self.body, serializer);
+    sse_encode_opt_String(self.state, serializer);
+    sse_encode_opt_String(self.lastModifiedDate, serializer);
+  }
+
+  @protected
   void sse_encode_service_kind(ServiceKind self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_stack_error(StackError self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case StackError_InvalidCredentials(message: final message):
+        sse_encode_i_32(0, serializer);
+        sse_encode_String(message, serializer);
+      case StackError_Auth(message: final message):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(message, serializer);
+      case StackError_PendingAgreements(message: final message):
+        sse_encode_i_32(2, serializer);
+        sse_encode_String(message, serializer);
+      case StackError_Http(status: final status, message: final message):
+        sse_encode_i_32(3, serializer);
+        sse_encode_u_16(status, serializer);
+        sse_encode_String(message, serializer);
+      case StackError_Decode(message: final message):
+        sse_encode_i_32(4, serializer);
+        sse_encode_String(message, serializer);
+      case StackError_Network(message: final message):
+        sse_encode_i_32(5, serializer);
+        sse_encode_String(message, serializer);
+      case StackError_Unsupported(message: final message):
+        sse_encode_i_32(6, serializer);
+        sse_encode_String(message, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint16(self);
+  }
+
+  @protected
+  void sse_encode_u_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint32(self);
+  }
+
+  @protected
+  void sse_encode_u_8(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint8(self);
   }
 
   @protected
@@ -201,8 +2040,178 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_bool(bool self, SseSerializer serializer) {
+  void sse_encode_usize(BigInt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putUint8(self ? 1 : 0);
+    serializer.buffer.putBigUint64(self);
   }
+}
+
+@sealed
+class FrbProviderImpl extends RustOpaque implements FrbProvider {
+  // Not to be used by end users
+  FrbProviderImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  FrbProviderImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_FrbProvider,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_FrbProvider,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_FrbProviderPtr,
+  );
+
+  /// The capabilities exposed for the connected account.
+  List<Capability> capabilities() =>
+      RustLib.instance.api.crateFrbApiFrbProviderCapabilities(that: this);
+
+  /// Lists the apps visible to the connected account.
+  ///
+  /// # Errors
+  /// [`StackError::Unsupported`] if the provider lacks the Apps capability;
+  /// otherwise a transport, HTTP, or decoding error.
+  Future<List<AppInfo>> fetchApps() =>
+      RustLib.instance.api.crateFrbApiFrbProviderFetchApps(that: this);
+
+  /// Which service this provider speaks to.
+  ServiceKind kind() =>
+      RustLib.instance.api.crateFrbApiFrbProviderKind(that: this);
+
+  /// The Reviews capability handle, or `None` when this provider does not
+  /// expose reviews. Mirrors [`Provider::reviews`]: the discovery mechanism is
+  /// a `None` return, not an error.
+  FrbReviews? reviews() =>
+      RustLib.instance.api.crateFrbApiFrbProviderReviews(that: this);
+
+  /// Verifies the stored credentials against the live service.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Auth`] when the credentials are rejected, or a
+  /// transport/decoding error.
+  Future<void> validate() =>
+      RustLib.instance.api.crateFrbApiFrbProviderValidate(that: this);
+}
+
+@sealed
+class FrbReviewsImpl extends RustOpaque implements FrbReviews {
+  // Not to be used by end users
+  FrbReviewsImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  FrbReviewsImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_FrbReviews,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_FrbReviews,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_FrbReviewsPtr,
+  );
+
+  /// Lists the end-user reviews for `app_id`, newest first, including any
+  /// developer responses.
+  ///
+  /// # Errors
+  /// [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on
+  /// malformed JSON, or [`StackError::Network`] on transport failure.
+  Future<List<CustomerReview>> fetchCustomerReviews({required String appId}) =>
+      RustLib.instance.api.crateFrbApiFrbReviewsFetchCustomerReviews(
+        that: this,
+        appId: appId,
+      );
+
+  /// Fetches a single page of customer reviews for incremental (load-more)
+  /// paging, returning the page's reviews plus an opaque `nextToken`.
+  ///
+  /// `sort` is the raw ASC sort value (`-createdDate` | `createdDate` |
+  /// `-rating` | `rating`), passed through unchanged. `filter_rating` is empty
+  /// for no filter, else the ratings to include. `page_token` is `None` for
+  /// the first page; otherwise pass back a previous call's `nextToken`
+  /// verbatim. The returned `nextToken` is `None` once the last page is
+  /// reached.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx page,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<CustomerReviewsPage> fetchCustomerReviewsPage({
+    required String appId,
+    required String sort,
+    required List<String> filterRating,
+    required int limit,
+    String? pageToken,
+  }) => RustLib.instance.api.crateFrbApiFrbReviewsFetchCustomerReviewsPage(
+    that: this,
+    appId: appId,
+    sort: sort,
+    filterRating: filterRating,
+    limit: limit,
+    pageToken: pageToken,
+  );
+
+  /// Creates or replaces the developer response for `review_id` with `body`,
+  /// returning the resulting response (upsert).
+  ///
+  /// # Errors
+  /// [`StackError::Http`] on a non-2xx response, [`StackError::Decode`] on
+  /// malformed JSON, or [`StackError::Network`] on transport failure.
+  Future<ReviewResponse> replyToReview({
+    required String reviewId,
+    required String body,
+  }) => RustLib.instance.api.crateFrbApiFrbReviewsReplyToReview(
+    that: this,
+    reviewId: reviewId,
+    body: body,
+  );
+}
+
+@sealed
+class FrbSyncServiceImpl extends RustOpaque implements FrbSyncService {
+  // Not to be used by end users
+  FrbSyncServiceImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  FrbSyncServiceImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_FrbSyncService,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_FrbSyncService,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_FrbSyncServicePtr,
+  );
+
+  /// Fetches every visible app and persists each as an AppModel-compatible base
+  /// blob through the Dart `persist` callback, then returns the fetched apps.
+  ///
+  /// This reuses the real core [`SyncService::sync_apps`] so the persisted blob
+  /// JSON is byte-for-byte the iOS-facing camelCase contract
+  /// (`{id,name,bundleId,platform,accountId}`, keyed by the bare app id). The
+  /// core writes each blob into a buffering [`BlobStore`]; once the async core
+  /// sync completes, the buffered `(typeName, id, json)` saves are handed to
+  /// `persist` in order. `persist` is the Dart async equivalent of
+  /// [`BlobStore::save`].
+  ///
+  /// # Errors
+  /// Propagates whatever [`SyncService::sync_apps`] returns
+  /// (HTTP/Decode/Network), or [`StackError::Decode`] if an app fails to
+  /// serialize.
+  Future<List<AppInfo>> syncApps({
+    required FutureOr<void> Function(String, String, String) persist,
+  }) => RustLib.instance.api.crateFrbApiFrbSyncServiceSyncApps(
+    that: this,
+    persist: persist,
+  );
 }

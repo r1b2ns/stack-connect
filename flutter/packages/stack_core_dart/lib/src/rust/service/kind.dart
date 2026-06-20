@@ -6,6 +6,37 @@
 import '../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+/// A single credential field a service requires. Drives the host's "connect
+/// account" form: `label` is shown to the user, `secret` hides the input, and
+/// `multiline` signals a textarea (e.g. a PEM-encoded private key).
+class CredentialField {
+  final String key;
+  final String label;
+  final bool secret;
+  final bool multiline;
+
+  const CredentialField({
+    required this.key,
+    required this.label,
+    required this.secret,
+    required this.multiline,
+  });
+
+  @override
+  int get hashCode =>
+      key.hashCode ^ label.hashCode ^ secret.hashCode ^ multiline.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CredentialField &&
+          runtimeType == other.runtimeType &&
+          key == other.key &&
+          label == other.label &&
+          secret == other.secret &&
+          multiline == other.multiline;
+}
+
 /// Which external service a connected account talks to. Exported across the FFI;
 /// designed to grow as new plugins land (Firebase, Google Play, AWS, GitHub, …).
 enum ServiceKind { appStoreConnect }

@@ -16,11 +16,40 @@ dependencies:
   # installed `flutter_rust_bridge_codegen` (all 2.12.0).
   flutter_rust_bridge: 2.12.0
   flutter_riverpod: ^2.6.1
+  # flutter_rust_bridge codegen emits freezed classes for the records/enums that
+  # now cross the boundary (e.g. the `StackError` error enum). Required from
+  # Phase 1 on, when the first data-carrying types were exposed.
+  freezed_annotation: ^2.4.4
+  # Host stores (Dart side of the core's ports). The core owns no persistence;
+  # the host owns its accounts list, blob cache and credential secrets.
+  flutter_secure_storage: ^9.2.2
+  # SQLite for device (mobile) plus the FFI backend for host/desktop & tests.
+  sqflite: ^2.4.1
+  sqflite_common_ffi: ^2.3.4
+  path: ^1.9.0
+  path_provider: ^2.1.5
+  shared_preferences: ^2.3.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  # Code generators backing the freezed classes emitted by flutter_rust_bridge
+  # and the Riverpod `@riverpod` providers.
+  build_runner: ^2.4.13
+  freezed: ^2.5.7
+  # NOTE: Riverpod code generation (riverpod_generator / riverpod_lint /
+  # custom_lint) is intentionally NOT used. Its analyzer chain
+  # (riverpod_analyzer_utils 0.5.x, custom_lint_core, analyzer_plugin) does not
+  # compile against the analyzer bundled with the Dart 3.12 SDK (analyzer 7.6,
+  # post Element2 migration), which breaks the build_runner entrypoint. The
+  # providers are therefore written by hand with the classic Riverpod 2.x API
+  # (AsyncNotifier / NotifierProvider / FutureProvider.family) — identical
+  # runtime semantics, no codegen. Revisit when the Riverpod codegen chain
+  # supports analyzer >= 7.6.
+  # Controller unit tests mock `CoreGateway` (the binding boundary) — no dylib,
+  # no network.
+  mocktail: ^1.0.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

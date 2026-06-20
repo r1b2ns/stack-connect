@@ -3,9 +3,17 @@
 
 // ignore_for_file: invalid_use_of_internal_member, unused_import, unnecessary_import
 
+import 'domain.dart';
+import 'error.dart';
 import 'frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'service/kind.dart';
+import 'service/provider.dart';
+
+// These functions are ignored because they are not marked as `pub`: `flush_logs`, `flush_logs`, `flush`, `new`, `new`, `take`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `BufferingBlobStore`, `LogBuffer`, `MapCredentialStore`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `clone`, `eq`, `fmt`
+// These functions are ignored (category: IgnoreBecauseOwnerTyShouldIgnore): `default`, `delete`, `delete`, `fetch_all`, `fetch`, `log`, `save`, `secret`, `set_secret`
 
 /// Every service the core can connect today, for the Dart host's service picker.
 ///
@@ -24,3 +32,187 @@ import 'service/kind.dart';
 /// ```
 List<ServiceKind> availableServices() =>
     RustLib.instance.api.crateFrbApiAvailableServices();
+
+/// The credential form the host should render to connect an account of `kind`.
+///
+/// Mirrors [`crate::facade::credential_schema`]. Synchronous: it only inspects
+/// the static schema. FRB mirrors [`CredentialField`] into a Dart class.
+List<CredentialField> credentialSchema({required ServiceKind kind}) =>
+    RustLib.instance.api.crateFrbApiCredentialSchema(kind: kind);
+
+/// Reads the secrets the Dart host supplies and builds a connected provider.
+///
+/// Mirror of [`crate::facade::connect`]. Synchronous on purpose: it only wraps
+/// the supplied secrets and parses the key material — no network. The returned
+/// [`FrbProvider`] does the async work (`validate`, `fetch_apps`).
+///
+/// `debug_logger` is an async Dart closure invoked once per already-formatted
+/// HTTP trace line (runnable cURL request + response). It is gated by
+/// `debug_logging`: only when `debug_logging` is `true` is it wired into the
+/// core's (sync) [`DebugLogger`] (via a buffer drained to Dart after each async
+/// call, so the sync `log` never blocks on the Dart executor). When
+/// `debug_logging` is `false` the closure is never called and the core never
+/// logs — mirroring the UniFFI `debug_logger: None` release path.
+///
+/// (The flag exists because flutter_rust_bridge 2.12 cannot express an
+/// `Option<DartFn>` parameter — its `DartFn` Rust-side representation is a
+/// placeholder that an `Option` cannot wrap. A required callback plus a boolean
+/// gate is the faithful, single-call equivalent. The host passes a no-op closure
+/// and `false` in release builds.)
+///
+/// # Errors
+/// [`StackError::InvalidCredentials`] if a required secret is missing from
+/// `credentials`.
+Future<FrbProvider> connect({
+  required ServiceKind kind,
+  required String accountId,
+  required List<FrbCredential> credentials,
+  required bool debugLogging,
+  required FutureOr<void> Function(String) debugLogger,
+}) => RustLib.instance.api.crateFrbApiConnect(
+  kind: kind,
+  accountId: accountId,
+  credentials: credentials,
+  debugLogging: debugLogging,
+  debugLogger: debugLogger,
+);
+
+/// Builds an [`FrbSyncService`] that syncs `provider` for `account_id`.
+///
+/// Mirror of [`crate::facade::make_sync_service`]. The UniFFI version takes a
+/// host `BlobStore` foreign trait up front; FRB instead takes the Dart blob
+/// persistence callback later, at [`FrbSyncService::sync_apps`] time (FRB's Dart
+/// callbacks are async, and `sync_apps` is the only place persistence runs).
+/// Synchronous: it only wires the handles together.
+FrbSyncService makeSyncService({
+  required FrbProvider provider,
+  required String accountId,
+}) => RustLib.instance.api.crateFrbApiMakeSyncService(
+  provider: provider,
+  accountId: accountId,
+);
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbProvider>>
+abstract class FrbProvider implements RustOpaqueInterface {
+  /// The capabilities exposed for the connected account.
+  List<Capability> capabilities();
+
+  /// Lists the apps visible to the connected account.
+  ///
+  /// # Errors
+  /// [`StackError::Unsupported`] if the provider lacks the Apps capability;
+  /// otherwise a transport, HTTP, or decoding error.
+  Future<List<AppInfo>> fetchApps();
+
+  /// Which service this provider speaks to.
+  ServiceKind kind();
+
+  /// The Reviews capability handle, or `None` when this provider does not
+  /// expose reviews. Mirrors [`Provider::reviews`]: the discovery mechanism is
+  /// a `None` return, not an error.
+  FrbReviews? reviews();
+
+  /// Verifies the stored credentials against the live service.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Auth`] when the credentials are rejected, or a
+  /// transport/decoding error.
+  Future<void> validate();
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbReviews>>
+abstract class FrbReviews implements RustOpaqueInterface {
+  /// Lists the end-user reviews for `app_id`, newest first, including any
+  /// developer responses.
+  ///
+  /// # Errors
+  /// [`StackError::Http`] on a non-2xx page, [`StackError::Decode`] on
+  /// malformed JSON, or [`StackError::Network`] on transport failure.
+  Future<List<CustomerReview>> fetchCustomerReviews({required String appId});
+
+  /// Fetches a single page of customer reviews for incremental (load-more)
+  /// paging, returning the page's reviews plus an opaque `nextToken`.
+  ///
+  /// `sort` is the raw ASC sort value (`-createdDate` | `createdDate` |
+  /// `-rating` | `rating`), passed through unchanged. `filter_rating` is empty
+  /// for no filter, else the ratings to include. `page_token` is `None` for
+  /// the first page; otherwise pass back a previous call's `nextToken`
+  /// verbatim. The returned `nextToken` is `None` once the last page is
+  /// reached.
+  ///
+  /// # Errors
+  /// [`StackError::PendingAgreements`] when App Store Connect reports pending
+  /// agreements, [`StackError::Http`] on any other non-2xx page,
+  /// [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+  /// transport failure.
+  Future<CustomerReviewsPage> fetchCustomerReviewsPage({
+    required String appId,
+    required String sort,
+    required List<String> filterRating,
+    required int limit,
+    String? pageToken,
+  });
+
+  /// Creates or replaces the developer response for `review_id` with `body`,
+  /// returning the resulting response (upsert).
+  ///
+  /// # Errors
+  /// [`StackError::Http`] on a non-2xx response, [`StackError::Decode`] on
+  /// malformed JSON, or [`StackError::Network`] on transport failure.
+  Future<ReviewResponse> replyToReview({
+    required String reviewId,
+    required String body,
+  });
+}
+
+// Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<FrbSyncService>>
+abstract class FrbSyncService implements RustOpaqueInterface {
+  /// Fetches every visible app and persists each as an AppModel-compatible base
+  /// blob through the Dart `persist` callback, then returns the fetched apps.
+  ///
+  /// This reuses the real core [`SyncService::sync_apps`] so the persisted blob
+  /// JSON is byte-for-byte the iOS-facing camelCase contract
+  /// (`{id,name,bundleId,platform,accountId}`, keyed by the bare app id). The
+  /// core writes each blob into a buffering [`BlobStore`]; once the async core
+  /// sync completes, the buffered `(typeName, id, json)` saves are handed to
+  /// `persist` in order. `persist` is the Dart async equivalent of
+  /// [`BlobStore::save`].
+  ///
+  /// # Errors
+  /// Propagates whatever [`SyncService::sync_apps`] returns
+  /// (HTTP/Decode/Network), or [`StackError::Decode`] if an app fails to
+  /// serialize.
+  Future<List<AppInfo>> syncApps({
+    required FutureOr<void> Function(String, String, String) persist,
+  });
+}
+
+/// A single resolved credential the Dart host hands to [`connect`].
+///
+/// The UniFFI facade reads secrets through the host's (sync) `CredentialStore`
+/// foreign trait. FRB cannot reuse that export and its only Dart-callback
+/// mechanism is async, so the Dart host instead reads its own secure storage
+/// and passes the already-resolved `(key, value)` pairs here as plain data. The
+/// FRB facade wraps them in an in-memory [`CredentialStore`] and runs the exact
+/// same `registry::build` the UniFFI `connect` runs.
+class FrbCredential {
+  /// The schema key (e.g. `issuerId`), matching a [`CredentialField::key`].
+  final String key;
+
+  /// The secret value for that key.
+  final String value;
+
+  const FrbCredential({required this.key, required this.value});
+
+  @override
+  int get hashCode => key.hashCode ^ value.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FrbCredential &&
+          runtimeType == other.runtimeType &&
+          key == other.key &&
+          value == other.value;
+}
