@@ -32,3 +32,4 @@ export 'src/controllers/apps_controller.dart';
 export 'src/controllers/reviews_controller.dart';
 export 'src/controllers/builds_controller.dart';
 export 'src/controllers/versions_controller.dart';
+export 'src/controllers/beta_groups_controller.dart';

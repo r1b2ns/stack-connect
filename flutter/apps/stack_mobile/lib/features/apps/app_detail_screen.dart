@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:stack_core_dart/stack_core_dart.dart';
 
 /// Basic app detail: name, bundle id, platform, and entry points to the app's
-/// Ratings & Reviews, TestFlight Builds, and App Store Versions.
+/// Ratings & Reviews, TestFlight Builds, App Store Versions, and Beta Groups.
 ///
 /// The [AppInfo] is sourced from the already-loaded apps list for the account
 /// (no dedicated single-app endpoint exists in this slice's controller API).
@@ -72,6 +72,14 @@ class AppDetailScreen extends ConsumerWidget {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.go(
                     '/accounts/$accountId/apps/$appId/versions',
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.groups_outlined),
+                  title: const Text('Beta Groups'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.go(
+                    '/accounts/$accountId/apps/$appId/beta-groups',
                   ),
                 ),
               ],

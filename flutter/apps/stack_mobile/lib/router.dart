@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'features/accounts/add_account_screen.dart';
 import 'features/apps/app_detail_screen.dart';
 import 'features/apps/apps_screen.dart';
+import 'features/beta_groups/beta_groups_screen.dart';
 import 'features/builds/builds_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/reviews/reviews_screen.dart';
@@ -17,6 +18,7 @@ import 'features/versions/versions_screen.dart';
 /// `/accounts/:accountId/apps/:appId/reviews`   → ratings & reviews
 /// `/accounts/:accountId/apps/:appId/builds`    → testflight builds
 /// `/accounts/:accountId/apps/:appId/versions`  → app store versions
+/// `/accounts/:accountId/apps/:appId/beta-groups` → beta groups
 GoRouter buildRouter() {
   return GoRouter(
     routes: [
@@ -58,6 +60,13 @@ GoRouter buildRouter() {
                   GoRoute(
                     path: 'versions',
                     builder: (context, state) => VersionsScreen(
+                      accountId: state.pathParameters['accountId']!,
+                      appId: state.pathParameters['appId']!,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'beta-groups',
+                    builder: (context, state) => BetaGroupsScreen(
                       accountId: state.pathParameters['accountId']!,
                       appId: state.pathParameters['appId']!,
                     ),

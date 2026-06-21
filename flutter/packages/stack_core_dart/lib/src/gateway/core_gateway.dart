@@ -9,6 +9,7 @@ import '../rust/frb_api.dart' as frb;
 import '../rust/frb_api.dart'
     show
         FrbAppStoreVersions,
+        FrbBetaGroups,
         FrbBuilds,
         FrbCredential,
         FrbProvider,
@@ -84,6 +85,15 @@ abstract interface class CoreGateway {
   /// All App Store versions for [appId], newest first.
   Future<List<AppStoreVersionInfo>> fetchVersions(
     FrbAppStoreVersions versions,
+    String appId,
+  );
+
+  /// The provider's Beta Groups handle, or `null` when unsupported.
+  FrbBetaGroups? betaGroups(FrbProvider provider);
+
+  /// All TestFlight beta groups for [appId].
+  Future<List<BetaGroupInfo>> fetchBetaGroups(
+    FrbBetaGroups groups,
     String appId,
   );
 
@@ -169,6 +179,16 @@ class FrbCoreGateway implements CoreGateway {
     String appId,
   ) =>
       versions.fetchVersions(appId: appId, limit: 200);
+
+  @override
+  FrbBetaGroups? betaGroups(FrbProvider provider) => provider.betaGroups();
+
+  @override
+  Future<List<BetaGroupInfo>> fetchBetaGroups(
+    FrbBetaGroups groups,
+    String appId,
+  ) =>
+      groups.fetchBetaGroups(appId: appId, limit: 200);
 
   @override
   FrbSyncService makeSyncService(FrbProvider provider, String accountId) =>
