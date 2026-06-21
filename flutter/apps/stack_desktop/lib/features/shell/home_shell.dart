@@ -1,4 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
+// fluent_ui re-exports Material but hides `Icons`, so import it directly for the
+// Material `view_sidebar` glyph used by the sidebar toggle.
+import 'package:flutter/material.dart' show Icons;
 import 'package:stack_core_dart/stack_core_dart.dart';
 
 import '../../core/service_kind_label.dart';
@@ -16,6 +19,13 @@ import 'selection.dart';
 /// the [selectionControllerProvider]; the right detail pane renders apps → app
 /// detail → reviews for that selection. This is deliberately a multi-pane Fluent
 /// layout, distinct from the mobile single-stack navigation.
+///
+/// The [NavigationView.titleBar] hosts an in-app top bar: a custom sidebar
+/// toggle on the far left followed by the "Stack Connect" app name. The toggle
+/// flips [paneExpandedProvider], which drives [NavigationPane.displayMode]
+/// between `expanded` (full width with labels) and `compact` (icons-only rail).
+/// The pane's built-in toggle is suppressed (`toggleButton: null`) so only this
+/// single custom toggle is ever shown.
 class HomeShell extends ConsumerWidget {
   const HomeShell({super.key});
 
@@ -24,21 +34,32 @@ class HomeShell extends ConsumerWidget {
     final accounts = ref.watch(accountsControllerProvider);
     final selection = ref.watch(selectionControllerProvider);
     final selectionCtrl = ref.read(selectionControllerProvider.notifier);
+    final isExpanded = ref.watch(paneExpandedProvider);
 
     final records = accounts.valueOrNull ?? const <AccountRecord>[];
     final selectedIndex = _selectedPaneIndex(records, selection);
 
     return NavigationView(
+      titleBar: _ShellTitleBar(isExpanded: isExpanded),
       pane: NavigationPane(
         // fluent_ui asserts a non-null `selected` whenever any item renders its
         // body, so index 0 is a synthetic "Home" item that always exists; the
         // accounts occupy indices 1..N below it.
         selected: selectedIndex,
-        displayMode: PaneDisplayMode.expanded,
-        header: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Text('Stack Connect'),
-        ),
+        // The rail layout is driven explicitly by [paneExpandedProvider]:
+        // `expanded` shows the full-width rail with labels, `compact` collapses
+        // it to an icons-only rail (labels surface as tooltips on hover). The
+        // custom top-bar toggle is the sole control flipping this state, so we
+        // bind `displayMode` directly to it rather than relying on fluent_ui's
+        // internal compact-overlay open state. This only affects layout; the
+        // `selected` indexing into `effectiveItems` documented in
+        // [_selectedPaneIndex] is unchanged.
+        displayMode:
+            isExpanded ? PaneDisplayMode.expanded : PaneDisplayMode.compact,
+        // Suppress fluent_ui's built-in `PaneToggleButton` (☰): the title bar
+        // provides the single custom sidebar toggle instead, so a null here
+        // guarantees there is never a second, duplicate toggle in the pane.
+        toggleButton: null,
         items: [
           PaneItem(
             icon: const Icon(FluentIcons.home),
@@ -94,6 +115,55 @@ class HomeShell extends ConsumerWidget {
   }
 }
 
+/// In-app top bar rendered as the [NavigationView.titleBar].
+///
+/// Lays out, left to right: the sidebar toggle button, then the "Stack Connect"
+/// app name. The toggle flips [paneExpandedProvider]; its glyph swaps between an
+/// "open" and "close" sidebar icon to reflect the current rail state. This is
+/// the only sidebar toggle in the shell — the pane's built-in one is suppressed.
+class _ShellTitleBar extends ConsumerWidget {
+  const _ShellTitleBar({required this.isExpanded});
+
+  /// Whether the navigation rail is currently expanded. Provided by the parent
+  /// so the bar and the pane share one rebuild-driving value.
+  final bool isExpanded;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SizedBox(
+      height: 40,
+      child: Row(
+        children: [
+          const SizedBox(width: 4),
+          Tooltip(
+            message: isExpanded ? 'Collapse sidebar' : 'Expand sidebar',
+            child: IconButton(
+              icon: Icon(
+                // Material `view_sidebar` glyph: a rounded rectangle with a
+                // vertical divider carving out a narrow left column — the
+                // standard VS Code / macOS show-hide sidebar icon. fluent_ui's
+                // own glyphs (`FluentIcons.side_panel`, `open_pane`, …) are
+                // Segoe MDL2 marks that don't read as a left-column sidebar, so
+                // Material is the closer match. `IconButton` accepts any
+                // `IconData`, so a Material glyph drops in cleanly.
+                isExpanded
+                    ? Icons.view_sidebar_outlined
+                    : Icons.view_sidebar,
+                size: 18,
+              ),
+              onPressed: () {
+                ref.read(paneExpandedProvider.notifier).state = !isExpanded;
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Text('Stack Connect'),
+        ],
+      ),
+    );
+  }
+}
+
 /// The right-hand detail pane: renders according to the selection.
 class _DetailPane extends StatelessWidget {
   const _DetailPane({required this.selection});
@@ -133,7 +203,6 @@ class _AccountsEmptyDetail extends ConsumerWidget {
     final accounts = ref.watch(accountsControllerProvider);
 
     return ScaffoldPage(
-      header: const PageHeader(title: Text('Stack Connect')),
       content: accounts.when(
         loading: () => const Center(child: ProgressRing()),
         error: (error, _) => Center(

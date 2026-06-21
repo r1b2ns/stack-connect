@@ -1,5 +1,15 @@
 import 'package:stack_core_dart/stack_core_dart.dart';
 
+/// Whether the desktop navigation rail is expanded (full width, labels) or
+/// collapsed (icons-only compact rail).
+///
+/// Drives [NavigationPane.displayMode] in the shell so the custom top-bar
+/// sidebar toggle can flip the rail explicitly. Defaults to `false` (collapsed),
+/// matching the original compact start state. A [StateProvider] keeps this in
+/// line with the app's Riverpod usage and lets the title-bar button and the
+/// pane read/write the same source of truth.
+final paneExpandedProvider = StateProvider<bool>((ref) => false);
+
 /// What the desktop detail pane is currently showing.
 enum DetailView { none, addAccount, apps, appDetail, reviews }
 
