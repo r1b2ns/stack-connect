@@ -6,17 +6,19 @@ import 'package:stack_core_dart/stack_core_dart.dart';
 
 import '../../core/service_kind_label.dart';
 import '../../core/stack_error_message.dart';
-import '../accounts/add_account_pane.dart';
+import '../accounts/add_account_pane.dart' show showAddAccountDialog;
 import '../apps/app_detail_pane.dart';
 import '../apps/apps_pane.dart';
 import '../reviews/reviews_pane.dart';
+import '../settings/settings_dialog.dart';
 import 'selection.dart';
 
 /// Desktop master-detail shell.
 ///
 /// The left [NavigationPane] is the master: connected accounts (each a
-/// `PaneItem`) plus an "Add account" footer command. Selecting an account drives
-/// the [selectionControllerProvider]; the right detail pane renders apps → app
+/// `PaneItem`) plus an "Add account" footer command (a [PaneItemAction] that
+/// opens a modal rather than navigating). Selecting an account drives the
+/// [selectionControllerProvider]; the right detail pane renders apps → app
 /// detail → reviews for that selection. This is deliberately a multi-pane Fluent
 /// layout, distinct from the mobile single-stack navigation.
 ///
@@ -78,11 +80,15 @@ class HomeShell extends ConsumerWidget {
         ],
         footerItems: [
           PaneItemSeparator(),
-          PaneItem(
+          // A [PaneItemAction] — a tappable footer command that opens the
+          // "Add account" modal. Unlike [PaneItem] it has no navigable body and
+          // is excluded from fluent_ui's `effectiveItems`, so it never becomes a
+          // selectable destination nor occupies a `selected` index (see
+          // [_selectedPaneIndex]).
+          PaneItemAction(
             icon: const Icon(FluentIcons.add),
             title: const Text('Add account'),
-            body: _DetailPane(selection: selection),
-            onTap: selectionCtrl.openAddAccount,
+            onTap: () => showAddAccountDialog(context),
           ),
         ],
       ),
@@ -93,19 +99,17 @@ class HomeShell extends ConsumerWidget {
   /// highlight tracks the detail view.
   ///
   /// `NavigationPane.selected` indexes into fluent_ui's `effectiveItems`, which
-  /// keeps only navigable [PaneItem]s and EXCLUDES [PaneItemHeader] and
-  /// [PaneItemSeparator]. So the effective order is: Home(0), accounts(1..N),
-  /// then the footer "Add account"(N+1) — the "Accounts" header and the footer
-  /// separator do not occupy an index.
+  /// keeps only navigable [PaneItem]s and EXCLUDES [PaneItemHeader],
+  /// [PaneItemSeparator], and [PaneItemAction]. So the effective order is just
+  /// Home(0) then accounts(1..N) — the "Accounts" header, the footer separator,
+  /// and the footer "Add account" action do not occupy an index. As a result
+  /// this only ever returns Home(0) or an account index (1..N), never the
+  /// footer command.
   int _selectedPaneIndex(
     List<AccountRecord> records,
     DesktopSelection selection,
   ) {
     const homeIndex = 0;
-    // Home(0) + the N accounts ⇒ "Add account" is the next effective item.
-    final addAccountIndex = records.length + 1;
-
-    if (selection.view == DetailView.addAccount) return addAccountIndex;
 
     final accountId = selection.accountId;
     if (accountId == null) return homeIndex;
@@ -117,10 +121,12 @@ class HomeShell extends ConsumerWidget {
 
 /// In-app top bar rendered as the [NavigationView.titleBar].
 ///
-/// Lays out, left to right: the sidebar toggle button, then the "Stack Connect"
-/// app name. The toggle flips [paneExpandedProvider]; its glyph swaps between an
-/// "open" and "close" sidebar icon to reflect the current rail state. This is
-/// the only sidebar toggle in the shell — the pane's built-in one is suppressed.
+/// Lays out, left to right: the sidebar toggle button, the "Stack Connect" app
+/// name, a flexible spacer, then a settings gear on the far right. The toggle
+/// flips [paneExpandedProvider]; its glyph swaps between an "open" and "close"
+/// sidebar icon to reflect the current rail state. This is the only sidebar
+/// toggle in the shell — the pane's built-in one is suppressed. The gear opens
+/// the Settings modal (see [showSettingsDialog]).
 class _ShellTitleBar extends ConsumerWidget {
   const _ShellTitleBar({required this.isExpanded});
 
@@ -158,6 +164,15 @@ class _ShellTitleBar extends ConsumerWidget {
           ),
           const SizedBox(width: 8),
           const Text('Stack Connect'),
+          const Spacer(),
+          Tooltip(
+            message: 'Settings',
+            child: IconButton(
+              icon: const Icon(FluentIcons.settings, size: 18),
+              onPressed: () => showSettingsDialog(context),
+            ),
+          ),
+          const SizedBox(width: 4),
         ],
       ),
     );
@@ -175,8 +190,6 @@ class _DetailPane extends StatelessWidget {
     switch (selection.view) {
       case DetailView.none:
         return const _AccountsEmptyDetail();
-      case DetailView.addAccount:
-        return const AddAccountPane();
       case DetailView.apps:
         return AppsPane(accountId: selection.accountId!);
       case DetailView.appDetail:

@@ -3,24 +3,37 @@ import 'package:stack_core_dart/stack_core_dart.dart';
 
 import '../../core/service_kind_label.dart';
 import '../../core/stack_error_message.dart';
-import '../shell/selection.dart';
 
-/// Detail pane: the "connect a new account" form.
+/// Opens the "connect a new account" modal as a Fluent [ContentDialog].
+///
+/// Mirrors [showSettingsDialog]: a top-level entry point that calls [showDialog]
+/// with a [ContentDialog]-based widget. Returns when the user dismisses the
+/// modal — either by cancelling or after a successful connection. On success the
+/// accounts rail rebuilds from [accountsControllerProvider] automatically, so the
+/// new account appears without any explicit selection bookkeeping here.
+Future<void> showAddAccountDialog(BuildContext context) {
+  return showDialog<void>(
+    context: context,
+    builder: (context) => const AddAccountDialog(),
+  );
+}
+
+/// The "connect a new account" modal content. See [showAddAccountDialog].
 ///
 /// The service combo only offers `ServiceKind.appStoreConnect` today. Credential
 /// fields are rendered dynamically from [credentialSchema] (`secret` → obscured,
 /// `multiline` → multi-line `.p8` box). Submitting shows a progress ring while
 /// the controller validates against the live service; on [StackError] the mapped
-/// message shows in an [InfoBar] and the form stays put, on success the pane
-/// clears the selection back to the placeholder.
-class AddAccountPane extends ConsumerStatefulWidget {
-  const AddAccountPane({super.key});
+/// message shows in an [InfoBar] and the form stays put, on success the dialog
+/// pops itself.
+class AddAccountDialog extends ConsumerStatefulWidget {
+  const AddAccountDialog({super.key});
 
   @override
-  ConsumerState<AddAccountPane> createState() => _AddAccountPaneState();
+  ConsumerState<AddAccountDialog> createState() => _AddAccountDialogState();
 }
 
-class _AddAccountPaneState extends ConsumerState<AddAccountPane> {
+class _AddAccountDialogState extends ConsumerState<AddAccountDialog> {
   final _labelController = TextEditingController();
   final _fieldControllers = <String, TextEditingController>{};
 
@@ -70,9 +83,9 @@ class _AddAccountPaneState extends ConsumerState<AddAccountPane> {
             label: _labelController.text.trim(),
             secrets: secrets,
           );
-      if (mounted) {
-        ref.read(selectionControllerProvider.notifier).clear();
-      }
+      // On success close the modal; the accounts rail rebuilds from
+      // [accountsControllerProvider] and surfaces the new account itself.
+      if (mounted) Navigator.of(context).pop();
     } catch (error) {
       if (mounted) setState(() => _errorMessage = stackErrorMessage(error));
     } finally {
@@ -84,84 +97,84 @@ class _AddAccountPaneState extends ConsumerState<AddAccountPane> {
   Widget build(BuildContext context) {
     final schemaAsync = ref.watch(_credentialSchemaProvider(_kind));
 
-    return ScaffoldPage(
-      header: PageHeader(
-        title: const Text('Add account'),
-        leading: IconButton(
-          icon: const Icon(FluentIcons.cancel),
-          onPressed: _submitting
-              ? null
-              : () => ref.read(selectionControllerProvider.notifier).clear(),
-        ),
-      ),
+    return ContentDialog(
+      constraints: const BoxConstraints(maxWidth: 560, maxHeight: 620),
+      title: const Text('Add account'),
       content: schemaAsync.when(
         loading: () => const Center(child: ProgressRing()),
         error: (error, _) => Center(child: Text(stackErrorMessage(error))),
         data: _buildForm,
       ),
+      actions: [
+        Button(
+          // Disable Cancel while a connection is in flight, matching the field
+          // disabling below, so the modal cannot be dismissed mid-submission.
+          onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+      ],
     );
   }
 
   Widget _buildForm(List<CredentialField> schema) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_errorMessage != null) ...[
-              InfoBar(
-                title: const Text('Could not connect'),
-                content: Text(_errorMessage!),
-                severity: InfoBarSeverity.error,
-              ),
-              const SizedBox(height: 16),
-            ],
-            InfoLabel(
-              label: 'Service',
-              child: ComboBox<ServiceKind>(
-                value: _kind,
-                isExpanded: true,
-                items: ServiceKind.values
-                    .map(
-                      (kind) => ComboBoxItem(
-                        value: kind,
-                        child: Text(kind.label),
-                      ),
-                    )
-                    .toList(),
-                onChanged: _submitting
-                    ? null
-                    : (kind) {
-                        if (kind != null) setState(() => _kind = kind);
-                      },
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_errorMessage != null) ...[
+            InfoBar(
+              title: const Text('Could not connect'),
+              content: Text(_errorMessage!),
+              severity: InfoBarSeverity.error,
             ),
             const SizedBox(height: 16),
+          ],
+          InfoLabel(
+            label: 'Service',
+            child: ComboBox<ServiceKind>(
+              value: _kind,
+              isExpanded: true,
+              items: ServiceKind.values
+                  .map(
+                    (kind) => ComboBoxItem(
+                      value: kind,
+                      child: Text(kind.label),
+                    ),
+                  )
+                  .toList(),
+              onChanged: _submitting
+                  ? null
+                  : (kind) {
+                      if (kind != null) setState(() => _kind = kind);
+                    },
+            ),
+          ),
+          const SizedBox(height: 16),
+          InfoLabel(
+            label: 'Label',
+            child: TextBox(
+              controller: _labelController,
+              placeholder: 'e.g. My Company',
+              enabled: !_submitting,
+            ),
+          ),
+          const SizedBox(height: 16),
+          for (final field in schema) ...[
             InfoLabel(
-              label: 'Label',
+              label: field.label,
               child: TextBox(
-                controller: _labelController,
-                placeholder: 'e.g. My Company',
+                controller: _controllerFor(field.key),
+                obscureText: field.secret && !field.multiline,
+                minLines: field.multiline ? 4 : 1,
+                maxLines: field.multiline ? 10 : 1,
                 enabled: !_submitting,
               ),
             ),
             const SizedBox(height: 16),
-            for (final field in schema) ...[
-              InfoLabel(
-                label: field.label,
-                child: TextBox(
-                  controller: _controllerFor(field.key),
-                  obscureText: field.secret && !field.multiline,
-                  minLines: field.multiline ? 4 : 1,
-                  maxLines: field.multiline ? 10 : 1,
-                  enabled: !_submitting,
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            FilledButton(
+          ],
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilledButton(
               onPressed: _submitting ? null : () => _submit(schema),
               child: _submitting
                   ? const SizedBox(
@@ -171,8 +184,8 @@ class _AddAccountPaneState extends ConsumerState<AddAccountPane> {
                     )
                   : const Text('Connect'),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

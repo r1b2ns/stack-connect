@@ -48,6 +48,10 @@ dependencies:
   path: ^1.9.0
   # Initializes the FFI SQLite loader on desktop before the host stores open.
   sqflite_common_ffi: ^2.3.4
+  # Opens the GitHub repo in the external browser from the Settings modal.
+  url_launcher: ^6.3.0
+  # Reads the bundled app version/build for the Settings footer.
+  package_info_plus: ^8.0.0
   stack_core_dart:
     path: ../../packages/stack_core_dart
 
@@ -81,6 +85,10 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # The app license text, surfaced read-only in the Settings > License view.
+  assets:
+    - assets/LICENSE.txt
 
   # To add assets to your application, add an assets section, like this:
   # assets:

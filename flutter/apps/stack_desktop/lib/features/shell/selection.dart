@@ -11,7 +11,7 @@ import 'package:stack_core_dart/stack_core_dart.dart';
 final paneExpandedProvider = StateProvider<bool>((ref) => false);
 
 /// What the desktop detail pane is currently showing.
-enum DetailView { none, addAccount, apps, appDetail, reviews }
+enum DetailView { none, apps, appDetail, reviews }
 
 /// Immutable selection driving the desktop master-detail layout.
 ///
@@ -44,9 +44,6 @@ class DesktopSelection {
         appId: appId,
       );
 
-  DesktopSelection get addAccount =>
-      const DesktopSelection(view: DetailView.addAccount);
-
   @override
   int get hashCode => Object.hash(view, accountId, appId);
 
@@ -67,8 +64,6 @@ class SelectionController extends Notifier<DesktopSelection> {
 
   void selectAccountApps(String accountId) =>
       state = state.showApps(accountId);
-
-  void openAddAccount() => state = state.addAccount;
 
   void openAppDetail(String appId) => state = state.showAppDetail(appId);
 
