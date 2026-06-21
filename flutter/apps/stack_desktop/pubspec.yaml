@@ -54,6 +54,7 @@ dependencies:
   package_info_plus: ^8.0.0
   stack_core_dart:
     path: ../../packages/stack_core_dart
+  simple_icons: ^16.23.0
 
 dev_dependencies:
   flutter_test:

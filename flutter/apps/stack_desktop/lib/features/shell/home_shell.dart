@@ -2,6 +2,10 @@ import 'package:fluent_ui/fluent_ui.dart';
 // fluent_ui re-exports Material but hides `Icons`, so import it directly for the
 // Material `view_sidebar` glyph used by the sidebar toggle.
 import 'package:flutter/material.dart' show Icons;
+// Brand logo glyphs (Apple, Google Play, Firebase, GitHub) for the grouped
+// "Mobile"/"Development" navigation sections. FluentIcons/Material ship none of
+// these, so `simple_icons` supplies them as `IconData` usable in `Icon(...)`.
+import 'package:simple_icons/simple_icons.dart';
 import 'package:stack_core_dart/stack_core_dart.dart';
 
 import '../../core/service_kind_label.dart';
@@ -15,12 +19,27 @@ import 'selection.dart';
 
 /// Desktop master-detail shell.
 ///
-/// The left [NavigationPane] is the master: connected accounts (each a
-/// `PaneItem`) plus an "Add account" footer command (a [PaneItemAction] that
-/// opens a modal rather than navigating). Selecting an account drives the
-/// [selectionControllerProvider]; the right detail pane renders apps → app
-/// detail → reviews for that selection. This is deliberately a multi-pane Fluent
-/// layout, distinct from the mobile single-stack navigation.
+/// The left [NavigationPane] is the master. Top to bottom it renders:
+///   1. "Home" — the synthetic landing item (effective index 0).
+///   2. A "Mobile" section header followed by three brand destinations:
+///      "App Store Connect" (enabled, effective index 1) and the
+///      coming-soon "Play Store" and "Firebase" entries.
+///   3. A "Development" section header with the coming-soon "Github" entry.
+///   4. An "Accounts" header followed by the connected accounts (each a
+///      navigable `PaneItem`, effective indices 2..N+1).
+///   5. An "Add account" footer command (a [PaneItemAction] that opens a modal
+///      rather than navigating).
+///
+/// The coming-soon entries (Play Store, Firebase, Github) are rendered as
+/// dimmed, non-interactive [PaneItemAction]s. [PaneItemAction] is excluded from
+/// fluent_ui's `effectiveItems`, so these placeholders never occupy a `selected`
+/// index — keeping the selection math in [_selectedPaneIndex] tied solely to the
+/// navigable items (Home, App Store Connect, and the accounts).
+///
+/// Selecting an account drives the [selectionControllerProvider]; the right
+/// detail pane renders apps → app detail → reviews for that selection. This is
+/// deliberately a multi-pane Fluent layout, distinct from the mobile
+/// single-stack navigation.
 ///
 /// The [NavigationView.titleBar] hosts an in-app top bar: a custom sidebar
 /// toggle on the far left followed by the "Stack Connect" app name. The toggle
@@ -45,8 +64,10 @@ class HomeShell extends ConsumerWidget {
       titleBar: _ShellTitleBar(isExpanded: isExpanded),
       pane: NavigationPane(
         // fluent_ui asserts a non-null `selected` whenever any item renders its
-        // body, so index 0 is a synthetic "Home" item that always exists; the
-        // accounts occupy indices 1..N below it.
+        // body, so index 0 is a synthetic "Home" item that always exists.
+        // "App Store Connect" is the next navigable item (index 1) and the
+        // accounts occupy indices 2..N+1 below it. The section headers and the
+        // coming-soon [PaneItemAction]s carry no index (see [_selectedPaneIndex]).
         selected: selectedIndex,
         // The rail layout is driven explicitly by [paneExpandedProvider]:
         // `expanded` shows the full-width rail with labels, `compact` collapses
@@ -69,6 +90,40 @@ class HomeShell extends ConsumerWidget {
             body: _DetailPane(selection: selection),
             onTap: selectionCtrl.clear,
           ),
+          // --- Mobile section -------------------------------------------------
+          // A non-navigable header; excluded from `effectiveItems`.
+          PaneItemHeader(header: const Text('Mobile')),
+          // The only enabled new destination. It is a navigable [PaneItem] with
+          // a body, so it counts toward `effectiveItems` (effective index 1).
+          // Tapping it clears the account selection, which routes the detail
+          // pane to the existing accounts landing (`_AccountsEmptyDetail`),
+          // matching Home's behavior — a minimal, dependency-free placeholder.
+          PaneItem(
+            icon: const Icon(SimpleIcons.apple),
+            title: const Text('App Store Connect'),
+            body: _DetailPane(selection: selection),
+            onTap: selectionCtrl.clear,
+          ),
+          // Coming-soon placeholders. Rendered as [PaneItemAction] (NOT
+          // [PaneItem]) precisely because actions are excluded from
+          // `effectiveItems` — so they never take a `selected` index and keep
+          // [_selectedPaneIndex] math intact. Styled via [_comingSoonItem] to
+          // read as dimmed and inert (no-op tap, "Coming soon" tooltip).
+          _comingSoonItem(
+            icon: SimpleIcons.googleplay,
+            label: 'Play Store',
+          ),
+          _comingSoonItem(
+            icon: SimpleIcons.firebase,
+            label: 'Firebase',
+          ),
+          // --- Development section --------------------------------------------
+          PaneItemHeader(header: const Text('Development')),
+          _comingSoonItem(
+            icon: SimpleIcons.github,
+            label: 'Github',
+          ),
+          // --- Accounts section -----------------------------------------------
           PaneItemHeader(header: const Text('Accounts')),
           for (final record in records)
             PaneItem(
@@ -99,24 +154,87 @@ class HomeShell extends ConsumerWidget {
   /// highlight tracks the detail view.
   ///
   /// `NavigationPane.selected` indexes into fluent_ui's `effectiveItems`, which
-  /// keeps only navigable [PaneItem]s and EXCLUDES [PaneItemHeader],
-  /// [PaneItemSeparator], and [PaneItemAction]. So the effective order is just
-  /// Home(0) then accounts(1..N) — the "Accounts" header, the footer separator,
-  /// and the footer "Add account" action do not occupy an index. As a result
-  /// this only ever returns Home(0) or an account index (1..N), never the
-  /// footer command.
+  /// (per fluent_ui 4.15.1) keeps only `i is PaneItem && i is! PaneItemAction &&
+  /// i.body != null`. That EXCLUDES every [PaneItemHeader] ("Mobile",
+  /// "Development", "Accounts"), [PaneItemSeparator], and [PaneItemAction] —
+  /// including the dimmed coming-soon placeholders (Play Store, Firebase,
+  /// Github) and the footer "Add account" command.
+  ///
+  /// The surviving effective order is therefore:
+  ///   - index 0 → Home
+  ///   - index 1 → App Store Connect
+  ///   - indices 2..N+1 → the connected accounts, in list order
+  ///
+  /// `kAccountsOffset` (= 2) is the count of navigable items that precede the
+  /// accounts (Home + App Store Connect). Both Home and App Store Connect clear
+  /// the selection, so when no account is selected we resolve to Home(0); this
+  /// method never returns the index of a header, action, or footer command.
   int _selectedPaneIndex(
     List<AccountRecord> records,
     DesktopSelection selection,
   ) {
     const homeIndex = 0;
+    // Navigable items rendered before the accounts: Home (0) + App Store
+    // Connect (1). The first account therefore lands at effective index 2.
+    const accountsOffset = 2;
 
     final accountId = selection.accountId;
     if (accountId == null) return homeIndex;
     final pos = records.indexWhere((r) => r.id == accountId);
-    // Home occupies index 0, so the account at list position `pos` is `pos + 1`.
-    return pos < 0 ? homeIndex : pos + 1;
+    // The account at list position `pos` is `pos + accountsOffset`.
+    return pos < 0 ? homeIndex : pos + accountsOffset;
   }
+}
+
+/// Builds a dimmed, non-interactive "coming soon" navigation entry.
+///
+/// Implemented as a [PaneItemAction] rather than a [PaneItem] on purpose:
+/// actions are excluded from fluent_ui's `effectiveItems`, so the placeholder
+/// never claims a `selected` index and cannot perturb the [HomeShell]
+/// selection math. The [icon] and [label] are rendered at reduced opacity and
+/// the title is suffixed with "(soon)"; a "Coming soon" tooltip and a trailing
+/// "Soon" tag reinforce the disabled state. The tap is a no-op.
+///
+/// Strings are intentionally in English to match the desktop app UI; they can be
+/// swapped to Portuguese ("Em breve") if the product chooses a localized UI.
+PaneItemAction _comingSoonItem({
+  required IconData icon,
+  required String label,
+}) {
+  const disabledOpacity = 0.4;
+
+  return PaneItemAction(
+    icon: Opacity(
+      opacity: disabledOpacity,
+      child: Icon(icon),
+    ),
+    title: Opacity(
+      opacity: disabledOpacity,
+      child: Text('$label (soon)'),
+    ),
+    // A muted "Soon" tag at the trailing edge; surfaces in the expanded rail.
+    trailing: Builder(
+      builder: (context) {
+        final theme = FluentTheme.of(context);
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: theme.resources.subtleFillColorSecondary,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            'Soon',
+            style: theme.typography.caption?.copyWith(
+              color: theme.resources.textFillColorDisabled,
+            ),
+          ),
+        );
+      },
+    ),
+    // Non-interactive: a no-op tap keeps the item inert. The tooltip clarifies
+    // why nothing happens.
+    onTap: () {},
+  );
 }
 
 /// In-app top bar rendered as the [NavigationView.titleBar].
