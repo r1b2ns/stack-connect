@@ -135,6 +135,33 @@ class FakeCoreGateway implements CoreGateway {
       throw UnimplementedError('replyToReview not used in smoke test');
 
   @override
+  FrbBuilds? builds(FrbProvider provider) => null;
+
+  @override
+  Future<List<BuildInfo>> fetchBuilds(FrbBuilds builds, String appId) =>
+      throw UnimplementedError('fetchBuilds not used in smoke test');
+
+  @override
+  FrbAppStoreVersions? appStoreVersions(FrbProvider provider) => null;
+
+  @override
+  Future<List<AppStoreVersionInfo>> fetchVersions(
+    FrbAppStoreVersions versions,
+    String appId,
+  ) =>
+      throw UnimplementedError('fetchVersions not used in smoke test');
+
+  @override
+  FrbBetaGroups? betaGroups(FrbProvider provider) => null;
+
+  @override
+  Future<List<BetaGroupInfo>> fetchBetaGroups(
+    FrbBetaGroups groups,
+    String appId,
+  ) =>
+      throw UnimplementedError('fetchBetaGroups not used in smoke test');
+
+  @override
   FrbSyncService makeSyncService(FrbProvider provider, String accountId) =>
       throw UnimplementedError('makeSyncService not used in smoke test');
 
@@ -156,6 +183,12 @@ class _FakeFrbProvider extends Mock implements FrbProvider {}
 
 class _FakeFrbReviews extends Mock implements FrbReviews {}
 
+class _FakeFrbBuilds extends Mock implements FrbBuilds {}
+
+class _FakeFrbAppStoreVersions extends Mock implements FrbAppStoreVersions {}
+
+class _FakeFrbBetaGroups extends Mock implements FrbBetaGroups {}
+
 class _FakeFrbSyncService extends Mock implements FrbSyncService {}
 
 /// A fully scriptable [CoreGateway] for widget/integration tests.
@@ -175,11 +208,29 @@ class ConfigurableFakeCoreGateway implements CoreGateway {
     this.validateError,
     List<AppInfo>? appsToSync,
     Map<String, List<CustomerReview>>? reviewsByApp,
+    Map<String, List<BuildInfo>>? buildsByApp,
+    Map<String, List<AppStoreVersionInfo>>? versionsByApp,
+    Map<String, List<BetaGroupInfo>>? betaGroupsByApp,
     this.exposesReviews = true,
+    this.exposesBuilds = true,
+    this.exposesVersions = true,
+    this.exposesBetaGroups = true,
   })  : appsToSync = appsToSync ?? const [],
         _reviewsByApp = {
           for (final entry in (reviewsByApp ?? const {}).entries)
             entry.key: List<CustomerReview>.of(entry.value),
+        },
+        _buildsByApp = {
+          for (final entry in (buildsByApp ?? const {}).entries)
+            entry.key: List<BuildInfo>.of(entry.value),
+        },
+        _versionsByApp = {
+          for (final entry in (versionsByApp ?? const {}).entries)
+            entry.key: List<AppStoreVersionInfo>.of(entry.value),
+        },
+        _betaGroupsByApp = {
+          for (final entry in (betaGroupsByApp ?? const {}).entries)
+            entry.key: List<BetaGroupInfo>.of(entry.value),
         };
 
   /// Thrown from [connect] when non-null (e.g. `StackError.auth`).
@@ -194,13 +245,31 @@ class ConfigurableFakeCoreGateway implements CoreGateway {
   /// Whether the provider exposes a reviews handle.
   final bool exposesReviews;
 
+  /// Whether the provider exposes a builds handle.
+  final bool exposesBuilds;
+
+  /// Whether the provider exposes an app store versions handle.
+  final bool exposesVersions;
+
+  /// Whether the provider exposes a beta groups handle.
+  final bool exposesBetaGroups;
+
   final Map<String, List<CustomerReview>> _reviewsByApp;
+
+  final Map<String, List<BuildInfo>> _buildsByApp;
+
+  final Map<String, List<AppStoreVersionInfo>> _versionsByApp;
+
+  final Map<String, List<BetaGroupInfo>> _betaGroupsByApp;
 
   /// Records of every [replyToReview] call, in order, for assertions.
   final List<({String reviewId, String body})> replyCalls = [];
 
   static final _provider = _FakeFrbProvider();
   static final _reviews = _FakeFrbReviews();
+  static final _builds = _FakeFrbBuilds();
+  static final _versions = _FakeFrbAppStoreVersions();
+  static final _betaGroups = _FakeFrbBetaGroups();
   static final _syncService = _FakeFrbSyncService();
 
   @override
@@ -291,6 +360,35 @@ class ConfigurableFakeCoreGateway implements CoreGateway {
     }
     return response;
   }
+
+  @override
+  FrbBuilds? builds(FrbProvider provider) => exposesBuilds ? _builds : null;
+
+  @override
+  Future<List<BuildInfo>> fetchBuilds(FrbBuilds builds, String appId) async =>
+      List.unmodifiable(_buildsByApp[appId] ?? const []);
+
+  @override
+  FrbAppStoreVersions? appStoreVersions(FrbProvider provider) =>
+      exposesVersions ? _versions : null;
+
+  @override
+  Future<List<AppStoreVersionInfo>> fetchVersions(
+    FrbAppStoreVersions versions,
+    String appId,
+  ) async =>
+      List.unmodifiable(_versionsByApp[appId] ?? const []);
+
+  @override
+  FrbBetaGroups? betaGroups(FrbProvider provider) =>
+      exposesBetaGroups ? _betaGroups : null;
+
+  @override
+  Future<List<BetaGroupInfo>> fetchBetaGroups(
+    FrbBetaGroups groups,
+    String appId,
+  ) async =>
+      List.unmodifiable(_betaGroupsByApp[appId] ?? const []);
 
   @override
   FrbSyncService makeSyncService(FrbProvider provider, String accountId) {
