@@ -2,20 +2,11 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../rust/domain.dart';
+// Unprefixed: domain/kind types plus the Frb* DTOs used directly below.
+import 'package:stack_core_rust/stack_core_rust.dart';
 // Prefixed: avoids the name clash between the top-level `availableServices`
 // binding function and the [CoreGateway.availableServices] method.
-import '../rust/frb_api.dart' as frb;
-import '../rust/frb_api.dart'
-    show
-        FrbAppStoreVersions,
-        FrbBetaGroups,
-        FrbBuilds,
-        FrbCredential,
-        FrbProvider,
-        FrbReviews,
-        FrbSyncService;
-import '../rust/service/kind.dart';
+import 'package:stack_core_rust/stack_core_rust.dart' as frb;
 
 /// A no-op debug-log sink.
 ///

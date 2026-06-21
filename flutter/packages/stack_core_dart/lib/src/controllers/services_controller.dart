@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../rust/frb_api.dart';
-import '../rust/service/kind.dart';
+import 'package:stack_core_rust/stack_core_rust.dart';
 
 /// Shared controller layer consumed by every host app.
 ///

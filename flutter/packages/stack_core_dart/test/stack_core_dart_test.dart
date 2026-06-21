@@ -1,7 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-// `ExternalLibrary` (host-path dylib loader) lives in the for-generated API.
-import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+// `ExternalLibrary` (host-path dylib loader), `RustLib`, `availableServices`
+// and `ServiceKind` all come from the barrel, which re-exports the generated
+// `stack_core_rust` binding surface.
 import 'package:stack_core_dart/stack_core_dart.dart';
 
 /// Absolute path to the host (macOS) dylib built with:

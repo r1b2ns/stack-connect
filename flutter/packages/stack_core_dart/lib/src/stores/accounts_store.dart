@@ -8,7 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import '../rust/service/kind.dart';
+import 'package:stack_core_rust/stack_core_rust.dart';
 
 /// A connected-account record the host owns.
 ///

@@ -2,6 +2,9 @@ name: stack_core_dart
 description: "A new Flutter package project."
 version: 0.0.1
 homepage:
+# Never published: consumes the generated FRB binding via a local path
+# dependency into the sibling stack-connect-core checkout.
+publish_to: none
 
 environment:
   sdk: ^3.12.2
@@ -12,13 +15,19 @@ resolution: workspace
 dependencies:
   flutter:
     sdk: flutter
+  # The generated flutter_rust_bridge binding now lives in the core repo
+  # (mirroring the Swift binding) and is consumed via a path dependency reaching
+  # into the sibling stack-connect-core checkout. This package re-exports its
+  # surface so app code keeps a single `package:stack_core_dart/...` import.
+  stack_core_rust:
+    path: ../../../../stack-connect-core/bindings/dart/stack_core_rust
   # Pinned to match the Rust runtime crate `flutter_rust_bridge` and the
-  # installed `flutter_rust_bridge_codegen` (all 2.12.0).
+  # installed `flutter_rust_bridge_codegen` (all 2.12.0). Still a direct dep:
+  # hand-written controllers/gateway reference FRB types at runtime.
   flutter_rust_bridge: 2.12.0
   flutter_riverpod: ^2.6.1
-  # flutter_rust_bridge codegen emits freezed classes for the records/enums that
-  # now cross the boundary (e.g. the `StackError` error enum). Required from
-  # Phase 1 on, when the first data-carrying types were exposed.
+  # FRB types crossing the boundary (e.g. the `StackError` error enum) are
+  # freezed classes; the annotation is referenced transitively via re-exports.
   freezed_annotation: ^2.4.4
   # Host stores (Dart side of the core's ports). The core owns no persistence;
   # the host owns its accounts list, blob cache and credential secrets.
@@ -34,19 +43,12 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  # Code generators backing the freezed classes emitted by flutter_rust_bridge
-  # and the Riverpod `@riverpod` providers.
-  build_runner: ^2.4.13
-  freezed: ^2.5.7
-  # NOTE: Riverpod code generation (riverpod_generator / riverpod_lint /
-  # custom_lint) is intentionally NOT used. Its analyzer chain
-  # (riverpod_analyzer_utils 0.5.x, custom_lint_core, analyzer_plugin) does not
-  # compile against the analyzer bundled with the Dart 3.12 SDK (analyzer 7.6,
-  # post Element2 migration), which breaks the build_runner entrypoint. The
-  # providers are therefore written by hand with the classic Riverpod 2.x API
-  # (AsyncNotifier / NotifierProvider / FutureProvider.family) — identical
-  # runtime semantics, no codegen. Revisit when the Riverpod codegen chain
-  # supports analyzer >= 7.6.
+  # NOTE: build_runner / freezed are intentionally NOT dev-deps here anymore.
+  # This package carries no codegen of its own — the freezed classes emitted by
+  # flutter_rust_bridge now live in the `stack_core_rust` binding package (core
+  # repo), generated there. Riverpod providers remain hand-written with the
+  # classic 2.x API (its codegen chain is incompatible with the Dart 3.12
+  # analyzer 7.6).
   # Controller unit tests mock `CoreGateway` (the binding boundary) — no dylib,
   # no network.
   mocktail: ^1.0.4

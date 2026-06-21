@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../gateway/core_gateway.dart';
-import '../rust/domain.dart';
+import 'package:stack_core_rust/stack_core_rust.dart';
 import 'connected_provider.dart';
 
 /// The (account, app) key a [BuildsController] is scoped to.

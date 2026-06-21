@@ -7,13 +7,11 @@ library;
 
 export 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// Generated Rust binding surface (treated as read-only API).
-export 'src/rust/frb_generated.dart' show RustLib;
-export 'src/rust/frb_api.dart';
-export 'src/rust/domain.dart';
-export 'src/rust/error.dart';
-export 'src/rust/service/kind.dart';
-export 'src/rust/service/provider.dart';
+// Generated Rust binding surface (treated as read-only API), now sourced from
+// the standalone `stack_core_rust` package in the core repo. Re-exported here so
+// downstream apps keep getting `RustLib`, `FrbProvider`, domain/error/kind/
+// provider types via a single `package:stack_core_dart/...` import.
+export 'package:stack_core_rust/stack_core_rust.dart';
 
 // Host stores (the core's ports, Dart side).
 export 'src/stores/accounts_store.dart';
