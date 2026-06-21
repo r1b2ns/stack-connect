@@ -87,6 +87,24 @@ if(PLUGIN_BUNDLED_LIBRARIES)
     COMPONENT Runtime)
 endif()
 
+# Bundle the stack_core Rust cdylib (flutter_rust_bridge) next to the executable
+# so FRB resolves it by stem "stack_core". Build it with the core repo's
+# build/build-desktop.sh (target x86_64-pc-windows-msvc). Override the path with
+# -DSTACK_CORE_DLL=<abs path> if the two repos are not checked out as siblings.
+if(NOT DEFINED STACK_CORE_DLL)
+  set(STACK_CORE_DLL
+    "${CMAKE_SOURCE_DIR}/../../../../../stack-connect-core/target/x86_64-pc-windows-msvc/release/stack_core.dll")
+endif()
+if(EXISTS "${STACK_CORE_DLL}")
+  install(FILES "${STACK_CORE_DLL}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime)
+else()
+  message(WARNING
+    "stack_core.dll not found at ${STACK_CORE_DLL}. Build it via stack-connect-core "
+    "build/build-desktop.sh (or pass -DSTACK_CORE_DLL=<abs path>); otherwise the app "
+    "will fail to load the Rust core at runtime.")
+endif()
+
 # Copy the native assets provided by the build.dart from all packages.
 set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/windows/")
 install(DIRECTORY "${NATIVE_ASSETS_DIR}"
