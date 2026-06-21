@@ -16,3 +16,12 @@ PRODUCT_BUNDLE_IDENTIFIER = zeroSixteen.stackconnect.stack-desktop
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 zeroSixteen.stackconnect. All rights reserved.
+
+// Code signing. The `keychain-access-groups` entitlement (needed so the P8
+// credential persists in the data-protection Keychain via flutter_secure_storage)
+// requires signing with an Apple Development certificate rather than the default
+// ad-hoc identity ("-"). Automatic signing with this team provisions a profile
+// that includes the keychain-access-group declared in the .entitlements files.
+DEVELOPMENT_TEAM = VVAVW2S9CF
+CODE_SIGN_STYLE = Automatic
+CODE_SIGN_IDENTITY = Apple Development

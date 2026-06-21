@@ -10,5 +10,9 @@
 	<true/>
 	<key>com.apple.security.network.client</key>
 	<true/>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)zeroSixteen.stackconnect.stack-desktop</string>
+	</array>
 </dict>
 </plist>
