@@ -1,7 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:stack_core_dart/stack_core_dart.dart';
 
-import '../../core/service_kind_label.dart';
 import '../../core/stack_error_message.dart';
 
 /// Opens the "connect a new account" modal as a Fluent [ContentDialog].
@@ -20,12 +19,16 @@ Future<void> showAddAccountDialog(BuildContext context) {
 
 /// The "connect a new account" modal content. See [showAddAccountDialog].
 ///
-/// The service combo only offers `ServiceKind.appStoreConnect` today. Credential
-/// fields are rendered dynamically from [credentialSchema] (`secret` → obscured,
-/// `multiline` → multi-line `.p8` box). Submitting shows a progress ring while
-/// the controller validates against the live service; on [StackError] the mapped
-/// message shows in an [InfoBar] and the form stays put, on success the dialog
-/// pops itself.
+/// This modal always connects an App Store Connect account
+/// ([ServiceKind.appStoreConnect]); there is no service selector. Credential
+/// fields are rendered dynamically from [credentialSchema]. The only single-line
+/// fields here are the Issuer ID and Key ID identifiers, which are shown in plain
+/// text (never obscured); the `multiline` private key is rendered as a multi-line
+/// `.p8` box. The `secret` flag still governs storage semantics in the core, it is
+/// just not used to obscure these inputs. The action row reads `[Cancel] [Connect]`
+/// left-to-right; Connect shows a progress ring while the controller validates
+/// against the live service. On [StackError] the mapped message shows in an
+/// [InfoBar] and the form stays put, on success the dialog pops itself.
 class AddAccountDialog extends ConsumerStatefulWidget {
   const AddAccountDialog({super.key});
 
@@ -37,7 +40,7 @@ class _AddAccountDialogState extends ConsumerState<AddAccountDialog> {
   final _labelController = TextEditingController();
   final _fieldControllers = <String, TextEditingController>{};
 
-  ServiceKind _kind = ServiceKind.appStoreConnect;
+  static const _kind = ServiceKind.appStoreConnect;
   bool _submitting = false;
   String? _errorMessage;
 
@@ -96,6 +99,9 @@ class _AddAccountDialogState extends ConsumerState<AddAccountDialog> {
   @override
   Widget build(BuildContext context) {
     final schemaAsync = ref.watch(_credentialSchemaProvider(_kind));
+    // Resolved schema, or null while the provider is still loading/errored.
+    // Connect stays disabled until this is non-null.
+    final schema = schemaAsync.valueOrNull;
 
     return ContentDialog(
       constraints: const BoxConstraints(maxWidth: 560, maxHeight: 620),
@@ -105,12 +111,27 @@ class _AddAccountDialogState extends ConsumerState<AddAccountDialog> {
         error: (error, _) => Center(child: Text(stackErrorMessage(error))),
         data: _buildForm,
       ),
+      // Rendered in order, so the row reads `[Cancel] [Connect]` left-to-right.
       actions: [
         Button(
           // Disable Cancel while a connection is in flight, matching the field
           // disabling below, so the modal cannot be dismissed mid-submission.
           onPressed: _submitting ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
+        ),
+        FilledButton(
+          // Enabled only once the credential schema has resolved and no
+          // submission is in flight. While submitting, show a progress ring.
+          onPressed: (schema != null && !_submitting)
+              ? () => _submit(schema)
+              : null,
+          child: _submitting
+              ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: ProgressRing(strokeWidth: 2),
+                )
+              : const Text('Connect'),
         ),
       ],
     );
@@ -130,27 +151,6 @@ class _AddAccountDialogState extends ConsumerState<AddAccountDialog> {
             const SizedBox(height: 16),
           ],
           InfoLabel(
-            label: 'Service',
-            child: ComboBox<ServiceKind>(
-              value: _kind,
-              isExpanded: true,
-              items: ServiceKind.values
-                  .map(
-                    (kind) => ComboBoxItem(
-                      value: kind,
-                      child: Text(kind.label),
-                    ),
-                  )
-                  .toList(),
-              onChanged: _submitting
-                  ? null
-                  : (kind) {
-                      if (kind != null) setState(() => _kind = kind);
-                    },
-            ),
-          ),
-          const SizedBox(height: 16),
-          InfoLabel(
             label: 'Label',
             child: TextBox(
               controller: _labelController,
@@ -164,7 +164,10 @@ class _AddAccountDialogState extends ConsumerState<AddAccountDialog> {
               label: field.label,
               child: TextBox(
                 controller: _controllerFor(field.key),
-                obscureText: field.secret && !field.multiline,
+                // Issuer ID and Key ID are identifiers, not passwords, so they
+                // are shown in plain text. The `.p8` key is multiline and was
+                // never obscured either, so no field in this modal is masked.
+                obscureText: false,
                 minLines: field.multiline ? 4 : 1,
                 maxLines: field.multiline ? 10 : 1,
                 enabled: !_submitting,
@@ -172,19 +175,6 @@ class _AddAccountDialogState extends ConsumerState<AddAccountDialog> {
             ),
             const SizedBox(height: 16),
           ],
-          Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton(
-              onPressed: _submitting ? null : () => _submit(schema),
-              child: _submitting
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: ProgressRing(strokeWidth: 2),
-                    )
-                  : const Text('Connect'),
-            ),
-          ),
         ],
       ),
     );
