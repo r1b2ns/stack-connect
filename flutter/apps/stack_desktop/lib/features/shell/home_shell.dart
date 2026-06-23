@@ -26,10 +26,13 @@ import 'selection.dart';
 ///   2. A "Mobile" section header followed by three brand destinations:
 ///      "App Store Connect" (enabled, effective index 1) and the
 ///      coming-soon "Play Store" and "Firebase" entries. "App Store Connect"
-///      renders the accounts landing ([_AccountsEmptyDetail]).
+///      renders the connected accounts list ([_AccountsDetail]).
+///      When at least one account is connected, "App Store Connect" is a
+///      [PaneItemExpander] whose nested child items are the connected accounts
+///      (effective indices 2..N+1), shown expanded by default so they read as
+///      its children. With no accounts it degrades to a plain [PaneItem] (no
+///      dangling chevron).
 ///   3. A "Development" section header with the coming-soon "Github" entry.
-///   4. An "Accounts" header followed by the connected accounts (each a
-///      navigable `PaneItem`, effective indices 2..N+1).
 ///
 /// The coming-soon entries (Play Store, Firebase, Github) are rendered as
 /// dimmed, non-interactive [PaneItemAction]s. [PaneItemAction] is excluded from
@@ -39,7 +42,7 @@ import 'selection.dart';
 ///
 /// There is no pane footer: the "Add account" command lives in the accounts
 /// detail view's [PageHeader] as a [CommandBar] button (see
-/// [_AccountsEmptyDetail]), not in the navigation rail.
+/// [_AccountsDetail]), not in the navigation rail.
 ///
 /// Selecting an account drives the [selectionControllerProvider]; the right
 /// detail pane renders apps → app detail → reviews for that selection. This is
@@ -70,9 +73,11 @@ class HomeShell extends ConsumerWidget {
       pane: NavigationPane(
         // fluent_ui asserts a non-null `selected` whenever any item renders its
         // body, so index 0 is a synthetic "Home" item that always exists.
-        // "App Store Connect" is the next navigable item (index 1) and the
-        // accounts occupy indices 2..N+1 below it. The section headers and the
-        // coming-soon [PaneItemAction]s carry no index (see [_selectedPaneIndex]).
+        // "App Store Connect" is the next navigable item (index 1); when
+        // accounts exist it is a [PaneItemExpander] and its nested account
+        // children flatten inline right after it (indices 2..N+1). The section
+        // headers and the coming-soon [PaneItemAction]s carry no index (see
+        // [_selectedPaneIndex]).
         selected: selectedIndex,
         // The rail layout is driven explicitly by [paneExpandedProvider]:
         // `expanded` shows the full-width rail with labels, `compact` collapses
@@ -101,18 +106,54 @@ class HomeShell extends ConsumerWidget {
           // --- Mobile section -------------------------------------------------
           // A non-navigable header; excluded from `effectiveItems`.
           PaneItemHeader(header: const Text('Mobile')),
-          // The only enabled new destination. It is a navigable [PaneItem] with
-          // a body, so it counts toward `effectiveItems` (effective index 1).
-          // Tapping it clears the account selection ([DetailView.none]), which
-          // routes the detail pane to the accounts landing
-          // (`_AccountsEmptyDetail`). This is the distinct counterpart to Home,
-          // which routes to the [HomeView] dashboard.
-          PaneItem(
-            icon: const Icon(SimpleIcons.apple),
-            title: const Text('App Store Connect'),
-            body: _DetailPane(selection: selection),
-            onTap: selectionCtrl.clear,
-          ),
+          // The only enabled new destination, at effective index 1. Tapping it
+          // clears the account selection ([DetailView.none]), routing the detail
+          // pane to the connected accounts list (`_AccountsDetail`) — the
+          // distinct counterpart to Home (which routes to [HomeView]).
+          //
+          // The connected accounts are nested directly under this item so the
+          // grouping is unambiguous. We use a [PaneItemExpander] (a [PaneItem]
+          // subclass that renders nested child `items` indented with a
+          // chevron); `initiallyExpanded: true` keeps the accounts visible
+          // without a manual expand. fluent_ui flattens the expander and its
+          // children inline into `effectiveItems` — the expander at index 1 and
+          // each account at index 2..N+1 in list order — so [_selectedPaneIndex]
+          // keeps its existing math (see that method for the flattening rule).
+          //
+          // With no accounts we degrade to a plain [PaneItem]: an empty expander
+          // would render a dangling chevron with nothing to reveal.
+          if (records.isEmpty)
+            PaneItem(
+              icon: const Icon(SimpleIcons.apple),
+              title: const Text('App Store Connect'),
+              body: _DetailPane(selection: selection),
+              onTap: selectionCtrl.clear,
+            )
+          else
+            PaneItemExpander(
+              icon: const Icon(SimpleIcons.apple),
+              title: const Text('App Store Connect'),
+              body: _DetailPane(selection: selection),
+              // Tapping the parent still navigates to the accounts-list detail
+              // view (and highlights index 1); the chevron only toggles the
+              // child visibility.
+              onTap: selectionCtrl.clear,
+              initiallyExpanded: true,
+              items: [
+                for (final record in records)
+                  PaneItem(
+                    // Account child rows intentionally carry no leading icon —
+                    // only the account label shows. `PaneItem.icon` is required
+                    // and non-null, so a zero-size [SizedBox.shrink] stands in
+                    // to render no glyph without reserving an icon slot that
+                    // would push the label.
+                    icon: const SizedBox.shrink(),
+                    title: Text(record.label),
+                    body: _DetailPane(selection: selection),
+                    onTap: () => selectionCtrl.selectAccountApps(record.id),
+                  ),
+              ],
+            ),
           // Coming-soon placeholders. Rendered as [PaneItemAction] (NOT
           // [PaneItem]) precisely because actions are excluded from
           // `effectiveItems` — so they never take a `selected` index and keep
@@ -132,15 +173,6 @@ class HomeShell extends ConsumerWidget {
             icon: SimpleIcons.github,
             label: 'Github',
           ),
-          // --- Accounts section -----------------------------------------------
-          PaneItemHeader(header: const Text('Accounts')),
-          for (final record in records)
-            PaneItem(
-              icon: const Icon(FluentIcons.cloud),
-              title: Text(record.label),
-              body: _DetailPane(selection: selection),
-              onTap: () => selectionCtrl.selectAccountApps(record.id),
-            ),
         ],
       ),
     );
@@ -150,22 +182,32 @@ class HomeShell extends ConsumerWidget {
   /// highlight tracks the detail view.
   ///
   /// `NavigationPane.selected` indexes into fluent_ui's `effectiveItems`, which
-  /// (per fluent_ui 4.15.1) keeps only `i is PaneItem && i is! PaneItemAction &&
-  /// i.body != null`. That EXCLUDES every [PaneItemHeader] ("Mobile",
-  /// "Development", "Accounts"), [PaneItemSeparator], and [PaneItemAction] —
-  /// including the dimmed coming-soon placeholders (Play Store, Firebase,
-  /// Github).
+  /// (per fluent_ui 4.15.1) flattens the pane tree depth-first into `allItems`
+  /// — a [PaneItemExpander] is followed inline by its child `items` — then
+  /// keeps only `i is PaneItem && i is! PaneItemAction && i.body != null`. That
+  /// EXCLUDES every [PaneItemHeader] ("Mobile", "Development"),
+  /// [PaneItemSeparator], and [PaneItemAction] — including the dimmed
+  /// coming-soon placeholders (Play Store, Firebase, Github) — regardless of
+  /// the expander's expanded/collapsed visual state (collapsing only hides
+  /// children visually; they remain in `effectiveItems`).
   ///
   /// The surviving effective order is therefore:
   ///   - index 0 → Home
-  ///   - index 1 → App Store Connect
-  ///   - indices 2..N+1 → the connected accounts, in list order
+  ///   - index 1 → App Store Connect (the [PaneItemExpander] parent, or a plain
+  ///     [PaneItem] when no account is connected)
+  ///   - indices 2..N+1 → the connected accounts, in list order — the
+  ///     expander's child items, flattened inline right after the parent
   ///
-  /// Home and App Store Connect now highlight independently because they route
-  /// to distinct detail views:
+  /// Because the expander itself has a non-null `body` it occupies index 1 and
+  /// its children follow at 2..N+1, this is the identical layout to a flat
+  /// Home / App Store Connect / accounts list; the nesting changes only the
+  /// rendering, not the index math.
+  ///
+  /// Home and App Store Connect highlight independently because they route to
+  /// distinct detail views:
   ///   - [DetailView.home] → Home (index 0).
   ///   - no account selected and not Home (e.g. [DetailView.none]) → App Store
-  ///     Connect (index 1), the accounts landing.
+  ///     Connect (index 1), the accounts landing / expander parent.
   ///   - an account selected → `pos + accountsOffset`, falling back to App
   ///     Store Connect (1) if the id is no longer in `records`.
   ///
@@ -318,7 +360,7 @@ class _DetailPane extends StatelessWidget {
       case DetailView.home:
         return const HomeView();
       case DetailView.none:
-        return const _AccountsEmptyDetail();
+        return const _AccountsDetail();
       case DetailView.apps:
         return AppsPane(accountId: selection.accountId!);
       case DetailView.appDetail:
@@ -335,15 +377,19 @@ class _DetailPane extends StatelessWidget {
   }
 }
 
-/// Detail placeholder shown before any account is selected. Also surfaces the
-/// accounts controller's loading/error states (the master pane itself cannot).
+/// The "App Store Connect" detail pane: lists the connected App Store Connect
+/// accounts as selectable rows. Tapping a row opens that account's apps
+/// (mirrors the sidebar account items, driving [selectionControllerProvider]'s
+/// [SelectionController.selectAccountApps]). Surfaces the accounts controller's
+/// loading/error states (the master pane itself cannot) and an empty state when
+/// no account is connected yet.
 ///
 /// Its [PageHeader] hosts the "Add account" command — a [CommandBar] button at
 /// the top-right that opens the add-account modal (see [showAddAccountDialog]).
 /// This is the sole entry point for connecting an account; the navigation rail
 /// no longer carries a footer command for it.
-class _AccountsEmptyDetail extends ConsumerWidget {
-  const _AccountsEmptyDetail();
+class _AccountsDetail extends ConsumerWidget {
+  const _AccountsDetail();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -379,27 +425,111 @@ class _AccountsEmptyDetail extends ConsumerWidget {
             ),
           ),
         ),
-        data: (records) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(FluentIcons.cloud_add, size: 48),
-              const SizedBox(height: 12),
-              Text(
-                records.isEmpty
-                    ? 'No accounts yet. Use "Add account" above to connect one.'
-                    : 'Select an account to view its apps.',
+        // Filter to App Store Connect so this pane stays correct once other
+        // [ServiceKind]s exist; today every record already matches.
+        data: (records) {
+          final ascAccounts = records
+              .where((r) => r.kind == ServiceKind.appStoreConnect)
+              .toList();
+
+          if (ascAccounts.isEmpty) {
+            return const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(FluentIcons.cloud_add, size: 48),
+                  SizedBox(height: 12),
+                  Text(
+                    'No accounts yet. '
+                    'Use "Add account" above to connect one.',
+                  ),
+                ],
               ),
-              if (records.isNotEmpty) ...[
-                const SizedBox(height: 8),
+            );
+          }
+
+          // A left-aligned, full-width, scrollable list — one selectable row
+          // per account. Tapping a row opens its apps via the same selection
+          // controller call the sidebar account items use.
+          return ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: ascAccounts.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final record = ascAccounts[index];
+              return _AccountTile(
+                record: record,
+                onPressed: () => ref
+                    .read(selectionControllerProvider.notifier)
+                    .selectAccountApps(record.id),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// A single selectable account row in [_AccountsDetail].
+///
+/// Rendered as a full-width fluent_ui [Button] (its hover/press states give the
+/// affordance of a tappable card) wrapping a [Row]: an Apple brand glyph, the
+/// account [AccountRecord.label] over a muted [ServiceKindLabel.label]
+/// subtitle, and a trailing chevron signalling it drills into the account's
+/// apps. Extracted as its own widget (rather than an inline builder method) so
+/// each row rebuilds in isolation.
+class _AccountTile extends StatelessWidget {
+  const _AccountTile({required this.record, required this.onPressed});
+
+  final AccountRecord record;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+
+    return Button(
+      onPressed: onPressed,
+      style: const ButtonStyle(
+        padding: WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(SimpleIcons.apple, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Text(
-                  '${records.length} account(s): '
-                  '${records.map((r) => r.kind.label).toSet().join(', ')}',
+                  record.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.typography.bodyStrong,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  record.kind.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.typography.caption?.copyWith(
+                    color: theme.resources.textFillColorSecondary,
+                  ),
                 ),
               ],
-            ],
+            ),
           ),
-        ),
+          const SizedBox(width: 8),
+          Icon(
+            FluentIcons.chevron_right,
+            size: 12,
+            color: theme.resources.textFillColorSecondary,
+          ),
+        ],
       ),
     );
   }
