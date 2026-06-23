@@ -1,3 +1,4 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:stack_core_dart/stack_core_dart.dart';
 
@@ -24,7 +25,9 @@ Future<void> showAddAccountDialog(BuildContext context) {
 /// fields are rendered dynamically from [credentialSchema]. The only single-line
 /// fields here are the Issuer ID and Key ID identifiers, which are shown in plain
 /// text (never obscured); the `multiline` private key is rendered as a multi-line
-/// `.p8` box. The `secret` flag still governs storage semantics in the core, it is
+/// `.p8` box. That key can be typed in manually or loaded from disk via the
+/// "Select .p8 file…" picker button rendered directly beneath it, which reads the
+/// chosen file's contents into the field. The `secret` flag still governs storage semantics in the core, it is
 /// just not used to obscure these inputs. The action row reads `[Cancel] [Connect]`
 /// left-to-right; Connect shows a progress ring while the controller validates
 /// against the live service. On [StackError] the mapped message shows in an
@@ -93,6 +96,34 @@ class _AddAccountDialogState extends ConsumerState<AddAccountDialog> {
       if (mounted) setState(() => _errorMessage = stackErrorMessage(error));
     } finally {
       if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  /// Lets the user pick a `.p8` key file from disk and loads its text contents
+  /// into the [field]'s controller, replacing whatever was there.
+  ///
+  /// Uses the sandbox-friendly [openFile] picker; the macOS
+  /// `com.apple.security.files.user-selected.read-only` entitlement grants the
+  /// read. A cancelled pick is a no-op. Read failures surface in [_errorMessage]
+  /// rather than throwing, keeping the modal usable.
+  Future<void> _pickP8File(String fieldKey) async {
+    const group = XTypeGroup(
+      label: 'App Store Connect key',
+      extensions: ['p8'],
+    );
+    final file = await openFile(acceptedTypeGroups: [group]);
+    if (file == null) return;
+
+    try {
+      final contents = await file.readAsString();
+      if (!mounted) return;
+      setState(() {
+        _controllerFor(fieldKey).text = contents.trim();
+        _errorMessage = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _errorMessage = 'Could not read the selected file.');
     }
   }
 
@@ -173,6 +204,27 @@ class _AddAccountDialogState extends ConsumerState<AddAccountDialog> {
                 enabled: !_submitting,
               ),
             ),
+            // The multiline field is the `.p8` private key. Offer a file picker
+            // directly beneath it so the key can be loaded from disk instead of
+            // being pasted by hand.
+            if (field.multiline) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Button(
+                  onPressed:
+                      _submitting ? null : () => _pickP8File(field.key),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(FluentIcons.open_file),
+                      SizedBox(width: 8),
+                      Text('Select .p8 file…'),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
           ],
         ],
