@@ -13,6 +13,7 @@ import '../../core/stack_error_message.dart';
 import '../accounts/add_account_pane.dart' show showAddAccountDialog;
 import '../apps/app_detail_pane.dart';
 import '../apps/apps_pane.dart';
+import '../home/home_view.dart';
 import '../reviews/reviews_pane.dart';
 import '../settings/settings_dialog.dart';
 import 'selection.dart';
@@ -20,21 +21,25 @@ import 'selection.dart';
 /// Desktop master-detail shell.
 ///
 /// The left [NavigationPane] is the master. Top to bottom it renders:
-///   1. "Home" — the synthetic landing item (effective index 0).
+///   1. "Home" — the landing item (effective index 0). It renders a dedicated
+///      Home dashboard ([HomeView]), distinct from the accounts landing.
 ///   2. A "Mobile" section header followed by three brand destinations:
 ///      "App Store Connect" (enabled, effective index 1) and the
-///      coming-soon "Play Store" and "Firebase" entries.
+///      coming-soon "Play Store" and "Firebase" entries. "App Store Connect"
+///      renders the accounts landing ([_AccountsEmptyDetail]).
 ///   3. A "Development" section header with the coming-soon "Github" entry.
 ///   4. An "Accounts" header followed by the connected accounts (each a
 ///      navigable `PaneItem`, effective indices 2..N+1).
-///   5. An "Add account" footer command (a [PaneItemAction] that opens a modal
-///      rather than navigating).
 ///
 /// The coming-soon entries (Play Store, Firebase, Github) are rendered as
 /// dimmed, non-interactive [PaneItemAction]s. [PaneItemAction] is excluded from
 /// fluent_ui's `effectiveItems`, so these placeholders never occupy a `selected`
 /// index — keeping the selection math in [_selectedPaneIndex] tied solely to the
 /// navigable items (Home, App Store Connect, and the accounts).
+///
+/// There is no pane footer: the "Add account" command lives in the accounts
+/// detail view's [PageHeader] as a [CommandBar] button (see
+/// [_AccountsEmptyDetail]), not in the navigation rail.
 ///
 /// Selecting an account drives the [selectionControllerProvider]; the right
 /// detail pane renders apps → app detail → reviews for that selection. This is
@@ -88,16 +93,20 @@ class HomeShell extends ConsumerWidget {
             icon: const Icon(FluentIcons.home),
             title: const Text('Home'),
             body: _DetailPane(selection: selection),
-            onTap: selectionCtrl.clear,
+            // Routes the detail pane to the dedicated Home dashboard
+            // ([HomeView]) — distinct from "App Store Connect", which clears to
+            // the accounts landing.
+            onTap: selectionCtrl.showHome,
           ),
           // --- Mobile section -------------------------------------------------
           // A non-navigable header; excluded from `effectiveItems`.
           PaneItemHeader(header: const Text('Mobile')),
           // The only enabled new destination. It is a navigable [PaneItem] with
           // a body, so it counts toward `effectiveItems` (effective index 1).
-          // Tapping it clears the account selection, which routes the detail
-          // pane to the existing accounts landing (`_AccountsEmptyDetail`),
-          // matching Home's behavior — a minimal, dependency-free placeholder.
+          // Tapping it clears the account selection ([DetailView.none]), which
+          // routes the detail pane to the accounts landing
+          // (`_AccountsEmptyDetail`). This is the distinct counterpart to Home,
+          // which routes to the [HomeView] dashboard.
           PaneItem(
             icon: const Icon(SimpleIcons.apple),
             title: const Text('App Store Connect'),
@@ -133,19 +142,6 @@ class HomeShell extends ConsumerWidget {
               onTap: () => selectionCtrl.selectAccountApps(record.id),
             ),
         ],
-        footerItems: [
-          PaneItemSeparator(),
-          // A [PaneItemAction] — a tappable footer command that opens the
-          // "Add account" modal. Unlike [PaneItem] it has no navigable body and
-          // is excluded from fluent_ui's `effectiveItems`, so it never becomes a
-          // selectable destination nor occupies a `selected` index (see
-          // [_selectedPaneIndex]).
-          PaneItemAction(
-            icon: const Icon(FluentIcons.add),
-            title: const Text('Add account'),
-            onTap: () => showAddAccountDialog(context),
-          ),
-        ],
       ),
     );
   }
@@ -158,31 +154,44 @@ class HomeShell extends ConsumerWidget {
   /// i.body != null`. That EXCLUDES every [PaneItemHeader] ("Mobile",
   /// "Development", "Accounts"), [PaneItemSeparator], and [PaneItemAction] —
   /// including the dimmed coming-soon placeholders (Play Store, Firebase,
-  /// Github) and the footer "Add account" command.
+  /// Github).
   ///
   /// The surviving effective order is therefore:
   ///   - index 0 → Home
   ///   - index 1 → App Store Connect
   ///   - indices 2..N+1 → the connected accounts, in list order
   ///
-  /// `kAccountsOffset` (= 2) is the count of navigable items that precede the
-  /// accounts (Home + App Store Connect). Both Home and App Store Connect clear
-  /// the selection, so when no account is selected we resolve to Home(0); this
-  /// method never returns the index of a header, action, or footer command.
+  /// Home and App Store Connect now highlight independently because they route
+  /// to distinct detail views:
+  ///   - [DetailView.home] → Home (index 0).
+  ///   - no account selected and not Home (e.g. [DetailView.none]) → App Store
+  ///     Connect (index 1), the accounts landing.
+  ///   - an account selected → `pos + accountsOffset`, falling back to App
+  ///     Store Connect (1) if the id is no longer in `records`.
+  ///
+  /// `accountsOffset` (= 2) is the count of navigable items that precede the
+  /// accounts (Home + App Store Connect). This method never returns the index
+  /// of a header or action.
   int _selectedPaneIndex(
     List<AccountRecord> records,
     DesktopSelection selection,
   ) {
     const homeIndex = 0;
+    const appStoreConnectIndex = 1;
     // Navigable items rendered before the accounts: Home (0) + App Store
     // Connect (1). The first account therefore lands at effective index 2.
     const accountsOffset = 2;
 
+    if (selection.view == DetailView.home) return homeIndex;
+
     final accountId = selection.accountId;
-    if (accountId == null) return homeIndex;
+    // No account in scope (and not Home) → the App Store Connect landing.
+    if (accountId == null) return appStoreConnectIndex;
+
     final pos = records.indexWhere((r) => r.id == accountId);
-    // The account at list position `pos` is `pos + accountsOffset`.
-    return pos < 0 ? homeIndex : pos + accountsOffset;
+    // The account at list position `pos` is `pos + accountsOffset`; if the id
+    // is stale, fall back to the App Store Connect landing.
+    return pos < 0 ? appStoreConnectIndex : pos + accountsOffset;
   }
 }
 
@@ -306,6 +315,8 @@ class _DetailPane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     switch (selection.view) {
+      case DetailView.home:
+        return const HomeView();
       case DetailView.none:
         return const _AccountsEmptyDetail();
       case DetailView.apps:
@@ -326,6 +337,11 @@ class _DetailPane extends StatelessWidget {
 
 /// Detail placeholder shown before any account is selected. Also surfaces the
 /// accounts controller's loading/error states (the master pane itself cannot).
+///
+/// Its [PageHeader] hosts the "Add account" command — a [CommandBar] button at
+/// the top-right that opens the add-account modal (see [showAddAccountDialog]).
+/// This is the sole entry point for connecting an account; the navigation rail
+/// no longer carries a footer command for it.
 class _AccountsEmptyDetail extends ConsumerWidget {
   const _AccountsEmptyDetail();
 
@@ -334,6 +350,23 @@ class _AccountsEmptyDetail extends ConsumerWidget {
     final accounts = ref.watch(accountsControllerProvider);
 
     return ScaffoldPage(
+      header: PageHeader(
+        title: const Text('App Store Connect'),
+        // A right-aligned command bar (the default `MainAxisAlignment.end`)
+        // hosting the "Add account" action. This replaces the former pane
+        // footer [PaneItemAction]; it opens the same modal but reads as a
+        // page-level command in the detail view rather than a rail entry.
+        commandBar: CommandBar(
+          mainAxisAlignment: MainAxisAlignment.end,
+          primaryItems: [
+            CommandBarButton(
+              icon: const Icon(FluentIcons.add),
+              label: const Text('Add account'),
+              onPressed: () => showAddAccountDialog(context),
+            ),
+          ],
+        ),
+      ),
       content: accounts.when(
         loading: () => const Center(child: ProgressRing()),
         error: (error, _) => Center(
@@ -354,7 +387,7 @@ class _AccountsEmptyDetail extends ConsumerWidget {
               const SizedBox(height: 12),
               Text(
                 records.isEmpty
-                    ? 'No accounts yet. Use "Add account" to connect one.'
+                    ? 'No accounts yet. Use "Add account" above to connect one.'
                     : 'Select an account to view its apps.',
               ),
               if (records.isNotEmpty) ...[

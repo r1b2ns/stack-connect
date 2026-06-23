@@ -11,7 +11,12 @@ import 'package:stack_core_dart/stack_core_dart.dart';
 final paneExpandedProvider = StateProvider<bool>((ref) => false);
 
 /// What the desktop detail pane is currently showing.
-enum DetailView { none, apps, appDetail, reviews }
+///
+/// [home] renders the dedicated Home dashboard (the desktop counterpart of the
+/// iOS `HomeView.swift`); [none] renders the App Store Connect accounts landing.
+/// These two are intentionally distinct so the "Home" and "App Store Connect"
+/// pane items diverge into separate detail views.
+enum DetailView { home, none, apps, appDetail, reviews }
 
 /// Immutable selection driving the desktop master-detail layout.
 ///
@@ -28,6 +33,9 @@ class DesktopSelection {
   final DetailView view;
   final String? accountId;
   final String? appId;
+
+  /// Returns the Home dashboard landing (no account scope).
+  DesktopSelection showHome() => const DesktopSelection(view: DetailView.home);
 
   DesktopSelection showApps(String accountId) =>
       DesktopSelection(view: DetailView.apps, accountId: accountId);
@@ -60,7 +68,10 @@ class DesktopSelection {
 /// Holds the desktop master-detail selection.
 class SelectionController extends Notifier<DesktopSelection> {
   @override
-  DesktopSelection build() => const DesktopSelection();
+  DesktopSelection build() => const DesktopSelection(view: DetailView.home);
+
+  /// Routes the detail pane to the dedicated Home dashboard.
+  void showHome() => state = const DesktopSelection(view: DetailView.home);
 
   void selectAccountApps(String accountId) =>
       state = state.showApps(accountId);
@@ -74,7 +85,10 @@ class SelectionController extends Notifier<DesktopSelection> {
     if (accountId != null) state = state.showApps(accountId);
   }
 
-  void clear() => state = const DesktopSelection();
+  /// Returns to the App Store Connect accounts landing ([DetailView.none] with
+  /// no account selected). This is distinct from [showHome]: "Home" routes to
+  /// the dashboard, "App Store Connect" clears to this accounts landing.
+  void clear() => state = const DesktopSelection(view: DetailView.none);
 }
 
 /// The desktop selection controller the shell and panes consume.
