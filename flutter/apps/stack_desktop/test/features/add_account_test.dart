@@ -3,19 +3,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stack_core_dart/stack_core_dart.dart';
 
 import 'package:stack_desktop/features/accounts/add_account_pane.dart';
-import 'package:stack_desktop/features/shell/selection.dart';
 import 'package:stack_desktop/theme/app_theme.dart';
 
 import '../support/fakes.dart';
 
-/// Pumps the add-account pane directly inside a [FluentApp] (the pane is a
-/// `ScaffoldPage` and uses fluent widgets that require that ancestor), with the
-/// host stores + gateway overridden. Returns the [FakeAccountsStore] and the
-/// [ProviderContainer] so tests can assert on persistence and selection state.
+/// Pumps a tiny host whose single button opens the add-account modal via
+/// [showAddAccountDialog], then taps it so the real `showDialog`/`Navigator.pop`
+/// flow is exercised end-to-end. The host stores + gateway are overridden so the
+/// modal runs without a dylib or network. Returns the [FakeAccountsStore] and the
+/// [ProviderContainer] so tests can assert on persistence.
 ///
-/// The pane is pumped directly rather than through the `HomeShell`'s
-/// `NavigationView` so the test exercises the form behaviour without coupling to
-/// the shell's footer-index math.
+/// The dialog is opened from a host button (rather than pumping the widget
+/// directly) so the test covers the same `showDialog` entry point the shell uses
+/// and the success-path `Navigator.pop` that dismisses the modal.
 Future<({FakeAccountsStore store, ProviderContainer container})> _pumpAddAccount(
   WidgetTester tester, {
   required ConfigurableFakeCoreGateway gateway,
@@ -31,18 +31,22 @@ Future<({FakeAccountsStore store, ProviderContainer container})> _pumpAddAccount
   );
   addTearDown(container.dispose);
 
-  // Selecting the add-account view mirrors the shell driving the pane.
-  container.read(selectionControllerProvider.notifier).openAddAccount();
-
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,
       child: FluentApp(
         theme: AppTheme.light(),
-        home: const AddAccountPane(),
+        home: Builder(
+          builder: (context) => Button(
+            child: const Text('open'),
+            onPressed: () => showAddAccountDialog(context),
+          ),
+        ),
       ),
     ),
   );
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('open'));
   await tester.pumpAndSettle();
   expect(find.widgetWithText(FilledButton, 'Connect'), findsOneWidget);
   return (store: accountsStore, container: container);
@@ -73,18 +77,13 @@ void main() {
 
       await _fillAndSubmit(tester);
 
-      // The mapped message is surfaced in the InfoBar; the form stays put.
+      // The mapped message is surfaced in the InfoBar; the modal stays open.
       expect(
         find.textContaining('Accept the App Store Connect agreements'),
         findsOneWidget,
       );
       expect(find.widgetWithText(FilledButton, 'Connect'), findsOneWidget);
       expect(await store.all(), isEmpty);
-      // Still on the add-account view (the form did not clear).
-      expect(
-        container.read(selectionControllerProvider).view,
-        DetailView.addAccount,
-      );
     },
   );
 
@@ -109,7 +108,7 @@ void main() {
   );
 
   testWidgets(
-    'successful connect persists the account and clears the selection',
+    'successful connect persists the account and closes the modal',
     (tester) async {
       final gateway = ConfigurableFakeCoreGateway();
       final (:store, :container) =
@@ -117,16 +116,13 @@ void main() {
 
       await _fillAndSubmit(tester);
 
-      // On success the pane clears the selection back to the placeholder and the
-      // account is persisted.
+      // On success the modal pops itself and the account is persisted.
       final records = await store.all();
       expect(records, hasLength(1));
       expect(records.single.label, 'My Company');
       expect(records.single.kind, ServiceKind.appStoreConnect);
-      expect(
-        container.read(selectionControllerProvider).view,
-        DetailView.none,
-      );
+      // The ContentDialog popped, so Connect is no longer in the tree.
+      expect(find.widgetWithText(FilledButton, 'Connect'), findsNothing);
     },
   );
 }
