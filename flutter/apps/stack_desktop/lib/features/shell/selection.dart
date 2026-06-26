@@ -16,7 +16,7 @@ final paneExpandedProvider = StateProvider<bool>((ref) => true);
 /// iOS `HomeView.swift`); [none] renders the App Store Connect accounts landing.
 /// These two are intentionally distinct so the "Home" and "App Store Connect"
 /// pane items diverge into separate detail views.
-enum DetailView { home, none, apps, appDetail, reviews }
+enum DetailView { home, none, apps, archivedApps, appDetail, reviews }
 
 /// Immutable selection driving the desktop master-detail layout.
 ///
@@ -39,6 +39,12 @@ class DesktopSelection {
 
   DesktopSelection showApps(String accountId) =>
       DesktopSelection(view: DetailView.apps, accountId: accountId);
+
+  /// Returns the archived-apps list for the currently scoped account.
+  DesktopSelection showArchivedApps() => DesktopSelection(
+        view: DetailView.archivedApps,
+        accountId: accountId,
+      );
 
   DesktopSelection showAppDetail(String appId) => DesktopSelection(
         view: DetailView.appDetail,
@@ -77,6 +83,9 @@ class SelectionController extends Notifier<DesktopSelection> {
       state = state.showApps(accountId);
 
   void openAppDetail(String appId) => state = state.showAppDetail(appId);
+
+  /// Routes the detail pane to the archived-apps list for the scoped account.
+  void openArchivedApps() => state = state.showArchivedApps();
 
   void openReviews() => state = state.showReviews();
 

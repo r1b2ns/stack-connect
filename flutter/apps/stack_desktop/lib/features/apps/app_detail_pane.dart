@@ -1,13 +1,15 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:stack_core_dart/stack_core_dart.dart';
 
+import '../../core/stack_error_message.dart';
 import '../shell/selection.dart';
 
 /// Detail pane: basic metadata for the selected app plus an entry point to its
-/// Ratings & Reviews.
+/// Ratings & Reviews and commands to toggle its local favorite/archive flags.
 ///
-/// The [AppInfo] is sourced from the already-loaded apps list for the account
-/// (no single-app endpoint exists in this slice's controller API).
+/// The [AppView] is sourced from [appListProvider] (which includes archived
+/// apps), found by [appId] — no single-app endpoint exists in this slice's
+/// controller API. The command bar reflects and toggles the local flags.
 class AppDetailPane extends ConsumerWidget {
   const AppDetailPane({
     required this.accountId,
@@ -20,7 +22,7 @@ class AppDetailPane extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final apps = ref.watch(appsControllerProvider(accountId));
+    final apps = ref.watch(appListProvider(accountId));
     final app = apps.valueOrNull?.where((a) => a.id == appId).firstOrNull;
     final selection = ref.read(selectionControllerProvider.notifier);
 
@@ -31,6 +33,33 @@ class AppDetailPane extends ConsumerWidget {
           icon: const Icon(FluentIcons.back),
           onPressed: selection.backToApps,
         ),
+        commandBar: app == null
+            ? null
+            : CommandBar(
+                mainAxisAlignment: MainAxisAlignment.end,
+                primaryItems: [
+                  CommandBarButton(
+                    icon: Icon(
+                      app.isFavorite
+                          ? FluentIcons.favorite_star_fill
+                          : FluentIcons.favorite_star,
+                    ),
+                    label: Text(
+                      app.isFavorite ? 'Unfavorite' : 'Favorite',
+                    ),
+                    onPressed: () => _toggleFavorite(context, ref, app),
+                  ),
+                  CommandBarButton(
+                    icon: Icon(
+                      app.isArchived
+                          ? FluentIcons.archive_undo
+                          : FluentIcons.archive,
+                    ),
+                    label: Text(app.isArchived ? 'Unarchive' : 'Archive'),
+                    onPressed: () => _toggleArchive(context, ref, app),
+                  ),
+                ],
+              ),
       ),
       content: app == null
           ? const Center(child: Text('App not found.'))
@@ -59,7 +88,67 @@ class AppDetailPane extends ConsumerWidget {
             ),
     );
   }
+
+  Future<void> _toggleFavorite(
+    BuildContext context,
+    WidgetRef ref,
+    AppView app,
+  ) async {
+    final wasFavorite = app.isFavorite;
+    try {
+      await ref
+          .read(appFlagsControllerProvider(accountId).notifier)
+          .toggleFavorite(app.id);
+      if (context.mounted) {
+        await _toast(
+          context,
+          wasFavorite ? 'Removed from favorites' : 'Added to favorites',
+        );
+      }
+    } catch (error) {
+      if (context.mounted) await _errorToast(context, error);
+    }
+  }
+
+  Future<void> _toggleArchive(
+    BuildContext context,
+    WidgetRef ref,
+    AppView app,
+  ) async {
+    final wasArchived = app.isArchived;
+    try {
+      await ref
+          .read(appFlagsControllerProvider(accountId).notifier)
+          .toggleArchive(app.id);
+      if (context.mounted) {
+        await _toast(context, wasArchived ? 'Unarchived' : 'Archived');
+      }
+    } catch (error) {
+      if (context.mounted) await _errorToast(context, error);
+    }
+  }
 }
+
+/// Shows a brief success [InfoBar] with [message].
+Future<void> _toast(BuildContext context, String message) => displayInfoBar(
+      context,
+      builder: (context, close) => InfoBar(
+        title: Text(message),
+        severity: InfoBarSeverity.success,
+        onClose: close,
+      ),
+    );
+
+/// Shows a mapped-error [InfoBar] for a failed flag toggle.
+Future<void> _errorToast(BuildContext context, Object error) => displayInfoBar(
+      context,
+      builder: (context, close) => InfoBar(
+        title: const Text('Could not update app'),
+        content: Text(stackErrorMessage(error)),
+        severity: InfoBarSeverity.error,
+        onClose: close,
+      ),
+    );
 
 class _InfoRow extends StatelessWidget {
   const _InfoRow({required this.label, required this.value});

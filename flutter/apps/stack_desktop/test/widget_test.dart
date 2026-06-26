@@ -23,11 +23,9 @@ void main() {
     // Let the accounts AsyncNotifier resolve its initial (empty) list.
     await tester.pumpAndSettle();
 
-    // The Fluent master-detail shell builds and the empty detail placeholder is
-    // shown, proving the widget tree and the host overrides wire up.
-    expect(
-      find.text('No accounts yet. Use "Add account" to connect one.'),
-      findsOneWidget,
-    );
+    // The Fluent master-detail shell builds and lands on the Home dashboard
+    // (the default selection), proving the widget tree and the host overrides
+    // wire up.
+    expect(find.text('No widgets yet'), findsOneWidget);
   });
 }

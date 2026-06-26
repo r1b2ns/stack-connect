@@ -13,6 +13,9 @@ export 'package:flutter_riverpod/flutter_riverpod.dart';
 // provider types via a single `package:stack_core_dart/...` import.
 export 'package:stack_core_rust/stack_core_rust.dart';
 
+// Host-only view models (favorite/archive flags zipped onto AppInfo).
+export 'src/models/app_view.dart';
+
 // Host stores (the core's ports, Dart side).
 export 'src/stores/accounts_store.dart';
 export 'src/stores/blob_cache.dart';
@@ -27,6 +30,8 @@ export 'src/controllers/services_controller.dart';
 export 'src/controllers/connected_provider.dart';
 export 'src/controllers/accounts_controller.dart';
 export 'src/controllers/apps_controller.dart';
+export 'src/controllers/app_flags_controller.dart';
+export 'src/controllers/app_list_provider.dart';
 export 'src/controllers/reviews_controller.dart';
 export 'src/controllers/builds_controller.dart';
 export 'src/controllers/versions_controller.dart';

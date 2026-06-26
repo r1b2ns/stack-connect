@@ -95,6 +95,91 @@ void main() {
 
     expect(find.textContaining('Network error'), findsOneWidget);
   });
+
+  testWidgets('each row shows always-visible star + archive trailing buttons',
+      (tester) async {
+    await _pumpApps(
+      tester,
+      gateway: ConfigurableFakeCoreGateway(appsToSync: _apps),
+    );
+    await tester.pumpAndSettle();
+
+    // No favorites yet: every row carries the outline star and an archive
+    // glyph. Scope to the rows so the toolbar's "Archived" command bar button
+    // (also an archive glyph) does not inflate the count.
+    for (final name in ['Aurora', 'Borealis']) {
+      final row = find.widgetWithText(ListTile, name);
+      expect(
+        find.descendant(of: row, matching: find.byIcon(FluentIcons.favorite_star)),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: row, matching: find.byIcon(FluentIcons.archive)),
+        findsOneWidget,
+      );
+    }
+  });
+
+  testWidgets('tapping the star favorites the app and promotes it to the top',
+      (tester) async {
+    final blobCache = FakeBlobCache();
+    await _pumpApps(
+      tester,
+      gateway: ConfigurableFakeCoreGateway(appsToSync: _apps),
+      blobCache: blobCache,
+    );
+    await tester.pumpAndSettle();
+
+    // Favorite the second app (Borealis) via its star button.
+    final borealisStar = find.descendant(
+      of: find.widgetWithText(ListTile, 'Borealis'),
+      matching: find.byIcon(FluentIcons.favorite_star),
+    );
+    await tester.tap(borealisStar);
+    await tester.pump(); // apply the optimistic state + show the toast
+
+    // A "Favorites" section header appears and the row now shows the filled
+    // star.
+    expect(find.text('Favorites'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, 'Borealis'),
+        matching: find.byIcon(FluentIcons.favorite_star_fill),
+      ),
+      findsOneWidget,
+    );
+
+    // The flag was persisted to the app_flags blob (NOT the app blob).
+    final flagBlob =
+        await blobCache.fetch(kAppFlagsBlobType, '$_accountId.app-2');
+    expect(flagBlob, isNotNull);
+
+    // Drain the auto-dismiss InfoBar timer so no timer outlives the test.
+    await tester.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('tapping archive removes the app from the active list',
+      (tester) async {
+    await _pumpApps(
+      tester,
+      gateway: ConfigurableFakeCoreGateway(appsToSync: _apps),
+    );
+    await tester.pumpAndSettle();
+
+    final auroraArchive = find.descendant(
+      of: find.widgetWithText(ListTile, 'Aurora'),
+      matching: find.byIcon(FluentIcons.archive),
+    );
+    await tester.tap(auroraArchive);
+    await tester.pump(); // apply the optimistic state + show the toast
+
+    // Aurora left the active list; Borealis remains.
+    expect(find.widgetWithText(ListTile, 'Aurora'), findsNothing);
+    expect(find.widgetWithText(ListTile, 'Borealis'), findsOneWidget);
+
+    // Drain the auto-dismiss InfoBar timer so no timer outlives the test.
+    await tester.pump(const Duration(seconds: 4));
+  });
 }
 
 /// A blob cache whose reads resolve only after a delay, so the controller's

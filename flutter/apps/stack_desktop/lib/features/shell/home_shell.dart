@@ -13,6 +13,7 @@ import '../../core/stack_error_message.dart';
 import '../accounts/add_account_pane.dart' show showAddAccountDialog;
 import '../apps/app_detail_pane.dart';
 import '../apps/apps_pane.dart';
+import '../apps/archived_apps_pane.dart';
 import '../home/home_view.dart';
 import '../reviews/reviews_pane.dart';
 import '../settings/settings_dialog.dart';
@@ -363,6 +364,8 @@ class _DetailPane extends StatelessWidget {
         return const _AccountsDetail();
       case DetailView.apps:
         return AppsPane(accountId: selection.accountId!);
+      case DetailView.archivedApps:
+        return ArchivedAppsPane(accountId: selection.accountId!);
       case DetailView.appDetail:
         return AppDetailPane(
           accountId: selection.accountId!,
