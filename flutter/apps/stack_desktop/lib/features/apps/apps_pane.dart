@@ -3,6 +3,7 @@ import 'package:stack_core_dart/stack_core_dart.dart';
 
 import '../../core/stack_error_message.dart';
 import '../shell/selection.dart';
+import 'widgets/app_icon.dart';
 
 /// Detail pane: the ACTIVE apps for the selected account, offline-first.
 ///
@@ -122,7 +123,7 @@ class _AppRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListTile.selectable(
-      leading: const Icon(FluentIcons.cube_shape),
+      leading: AppIcon(accountId: accountId, appId: app.id),
       title: Text(app.name),
       subtitle: Text(
         app.platform == null

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stack_core_dart/stack_core_dart.dart';
 
 import 'package:stack_desktop/features/apps/apps_pane.dart';
+import 'package:stack_desktop/features/apps/widgets/app_icon.dart';
 import 'package:stack_desktop/theme/app_theme.dart';
 
 import '../support/fakes.dart';
@@ -94,6 +95,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Network error'), findsOneWidget);
+  });
+
+  testWidgets('each row renders an AppIcon for its app', (tester) async {
+    await _pumpApps(
+      tester,
+      gateway: ConfigurableFakeCoreGateway(appsToSync: _apps),
+    );
+    await tester.pumpAndSettle();
+
+    // One AppIcon (resolver + placeholder/network) per app row.
+    expect(find.byType(AppIcon), findsNWidgets(_apps.length));
+    // With no build seeded, the icon resolves to null → the cube placeholder.
+    expect(find.byIcon(FluentIcons.cube_shape), findsNWidgets(_apps.length));
   });
 
   testWidgets('each row shows always-visible star + archive trailing buttons',

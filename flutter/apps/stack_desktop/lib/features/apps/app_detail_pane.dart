@@ -3,6 +3,7 @@ import 'package:stack_core_dart/stack_core_dart.dart';
 
 import '../../core/stack_error_message.dart';
 import '../shell/selection.dart';
+import 'widgets/app_icon.dart';
 
 /// Detail pane: basic metadata for the selected app plus an entry point to its
 /// Ratings & Reviews and commands to toggle its local favorite/archive flags.
@@ -68,6 +69,24 @@ class AppDetailPane extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    children: [
+                      AppIcon(
+                        accountId: accountId,
+                        appId: app.id,
+                        size: 56,
+                        radius: 12,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          app.name,
+                          style: FluentTheme.of(context).typography.subtitle,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
                   _InfoRow(label: 'Name', value: app.name),
                   _InfoRow(label: 'Bundle ID', value: app.bundleId),
                   _InfoRow(label: 'Platform', value: app.platform ?? '—'),

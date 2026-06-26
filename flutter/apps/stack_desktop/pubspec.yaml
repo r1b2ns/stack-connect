@@ -58,6 +58,9 @@ dependencies:
   # Sandbox-friendly native file picker (flutter.dev). Used in the Add Account
   # modal to load the `.p8` private key from disk into its text field.
   file_selector: ^1.0.3
+  # Fetches + caches the App Store Connect app icon (resolved from the most
+  # recent build's iconUrl) for the apps list / detail panes.
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:
@@ -71,6 +74,13 @@ dev_dependencies:
   # Sentinel mocks for the opaque flutter_rust_bridge handles the fake gateway
   # hands the controllers (they are passed around but never introspected).
   mocktail: ^1.0.4
+
+  # Lets the add-account widget test swap in a fake FileSelectorPlatform so the
+  # `.scexport` pick -> decrypt -> persist path is drivable without an OS dialog.
+  # Both are transitive deps of `file_selector`; declared here so the test can
+  # import `FileSelectorPlatform` / `MockPlatformInterfaceMixin` directly.
+  file_selector_platform_interface: ^2.6.0
+  plugin_platform_interface: ^2.1.8
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
