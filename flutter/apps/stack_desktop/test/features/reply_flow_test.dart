@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stack_core_dart/stack_core_dart.dart';
 
@@ -48,6 +49,14 @@ Future<ConfigurableFakeCoreGateway> _pumpReviews(WidgetTester tester) async {
       ],
       child: FluentApp(
         theme: AppTheme.light(),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          FluentLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
         home: const ReviewsPane(accountId: _accountId, appId: _appId),
       ),
     ),

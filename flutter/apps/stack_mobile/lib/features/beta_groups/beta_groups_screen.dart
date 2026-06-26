@@ -24,10 +24,11 @@ class BetaGroupsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final groups = ref.watch(betaGroupsControllerProvider(_key));
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Beta Groups'),
+        title: Text(l10n.betaGroups),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/accounts/$accountId/apps/$appId'),
@@ -45,7 +46,7 @@ class BetaGroupsScreen extends ConsumerWidget {
           ),
         ),
         data: (items) => items.isEmpty
-            ? const Center(child: Text('No beta groups yet.'))
+            ? Center(child: Text(l10n.noBetaGroupsYet))
             : ListView.separated(
                 padding: const EdgeInsets.all(12),
                 itemCount: items.length,
@@ -66,6 +67,7 @@ class _BetaGroupCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Card(
       child: Padding(
@@ -77,12 +79,14 @@ class _BetaGroupCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    _nameLabel,
+                    _nameLabel(l10n),
                     style: theme.textTheme.titleMedium,
                   ),
                 ),
                 _Pill(
-                  label: group.isInternalGroup == true ? 'Internal' : 'External',
+                  label: group.isInternalGroup == true
+                      ? l10n.internal
+                      : l10n.external,
                   color: theme.colorScheme.primary,
                 ),
               ],
@@ -90,22 +94,22 @@ class _BetaGroupCard extends StatelessWidget {
             if (group.hasAccessToAllBuilds != null) ...[
               const SizedBox(height: 8),
               _Field(
-                label: 'All builds',
-                value: _yesNo(group.hasAccessToAllBuilds),
+                label: l10n.fieldAllBuilds,
+                value: _yesNo(l10n, group.hasAccessToAllBuilds),
               ),
             ],
             if (group.publicLinkEnabled != null) ...[
               const SizedBox(height: 4),
               _Field(
-                label: 'Public link',
-                value: _yesNo(group.publicLinkEnabled),
+                label: l10n.fieldPublicLink,
+                value: _yesNo(l10n, group.publicLinkEnabled),
               ),
             ],
             if (group.feedbackEnabled != null) ...[
               const SizedBox(height: 4),
               _Field(
-                label: 'Feedback',
-                value: _yesNo(group.feedbackEnabled),
+                label: l10n.fieldFeedback,
+                value: _yesNo(l10n, group.feedbackEnabled),
               ),
             ],
             if (group.createdDate != null &&
@@ -124,13 +128,14 @@ class _BetaGroupCard extends StatelessWidget {
   }
 
   /// The group name when present, falling back to a generic label.
-  String get _nameLabel {
+  String _nameLabel(AppLocalizations l10n) {
     final name = group.name;
     if (name != null && name.isNotEmpty) return name;
-    return 'Beta Group';
+    return l10n.betaGroupFallback;
   }
 
-  String _yesNo(bool? value) => value == true ? 'Yes' : 'No';
+  String _yesNo(AppLocalizations l10n, bool? value) =>
+      value == true ? l10n.yes : l10n.no;
 }
 
 class _Field extends StatelessWidget {

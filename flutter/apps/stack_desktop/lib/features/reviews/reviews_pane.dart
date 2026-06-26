@@ -26,10 +26,11 @@ class ReviewsPane extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final reviews = ref.watch(reviewsControllerProvider(_key));
     final selection = ref.read(selectionControllerProvider.notifier);
+    final l10n = AppLocalizations.of(context)!;
 
     return ScaffoldPage(
       header: PageHeader(
-        title: const Text('Ratings & Reviews'),
+        title: Text(l10n.ratingsAndReviews),
         leading: IconButton(
           icon: const Icon(FluentIcons.back),
           onPressed: () =>
@@ -42,14 +43,14 @@ class ReviewsPane extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: InfoBar(
-              title: const Text('Could not load reviews'),
+              title: Text(l10n.couldNotLoadReviews),
               content: Text(stackErrorMessage(error)),
               severity: InfoBarSeverity.error,
             ),
           ),
         ),
         data: (items) => items.isEmpty
-            ? const Center(child: Text('No reviews yet.'))
+            ? Center(child: Text(l10n.noReviewsYet))
             : ListView.builder(
                 padding: const EdgeInsets.all(12),
                 itemCount: items.length,
@@ -75,6 +76,7 @@ class _ReviewCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final typography = FluentTheme.of(context).typography;
+    final l10n = AppLocalizations.of(context)!;
     final response = review.response;
 
     return Card(
@@ -106,7 +108,7 @@ class _ReviewCard extends ConsumerWidget {
                 children: [
                   const Icon(FluentIcons.reply),
                   const SizedBox(width: 6),
-                  Text(response == null ? 'Reply' : 'Edit reply'),
+                  Text(response == null ? l10n.replyAction : l10n.editReplyAction),
                 ],
               ),
             ),
@@ -143,6 +145,7 @@ class _ReviewCard extends ConsumerWidget {
 
     if (body == null || !context.mounted) return;
 
+    final l10n = AppLocalizations.of(context)!;
     try {
       await ref
           .read(reviewsControllerProvider(reviewsKey).notifier)
@@ -151,7 +154,7 @@ class _ReviewCard extends ConsumerWidget {
         await displayInfoBar(
           context,
           builder: (context, close) => InfoBar(
-            title: const Text('Reply submitted'),
+            title: Text(l10n.replySubmitted),
             severity: InfoBarSeverity.success,
             onClose: close,
           ),
@@ -162,7 +165,7 @@ class _ReviewCard extends ConsumerWidget {
         await displayInfoBar(
           context,
           builder: (context, close) => InfoBar(
-            title: const Text('Reply failed'),
+            title: Text(l10n.replyFailed),
             content: Text(stackErrorMessage(error)),
             severity: InfoBarSeverity.error,
             onClose: close,
@@ -180,19 +183,20 @@ class _ReplyDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return ContentDialog(
-      title: const Text('Reply to review'),
+      title: Text(l10n.replyToReviewTitle),
       content: TextBox(
         controller: controller,
         autofocus: true,
         minLines: 3,
         maxLines: 6,
-        placeholder: 'Write your response…',
+        placeholder: l10n.writeYourResponse,
       ),
       actions: [
         Button(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(l10n.cancel),
         ),
         FilledButton(
           onPressed: () {
@@ -200,7 +204,7 @@ class _ReplyDialog extends StatelessWidget {
             if (text.isEmpty) return;
             Navigator.of(context).pop(text);
           },
-          child: const Text('Submit'),
+          child: Text(l10n.submit),
         ),
       ],
     );
@@ -215,6 +219,7 @@ class _DeveloperResponse extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -227,7 +232,7 @@ class _DeveloperResponse extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Developer response',
+            l10n.developerResponse,
             style: theme.typography.caption
                 ?.copyWith(color: theme.accentColor),
           ),

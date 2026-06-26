@@ -25,10 +25,11 @@ class ReviewsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reviews = ref.watch(reviewsControllerProvider(_key));
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ratings & Reviews'),
+        title: Text(l10n.ratingsAndReviews),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () =>
@@ -47,7 +48,7 @@ class ReviewsScreen extends ConsumerWidget {
           ),
         ),
         data: (items) => items.isEmpty
-            ? const Center(child: Text('No reviews yet.'))
+            ? Center(child: Text(l10n.noReviewsYet))
             : ListView.separated(
                 padding: const EdgeInsets.all(12),
                 itemCount: items.length,
@@ -71,6 +72,7 @@ class _ReviewCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final response = review.response;
 
     return Card(
@@ -103,7 +105,9 @@ class _ReviewCard extends ConsumerWidget {
               alignment: Alignment.centerRight,
               child: TextButton.icon(
                 icon: const Icon(Icons.reply),
-                label: Text(response == null ? 'Reply' : 'Edit reply'),
+                label: Text(
+                  response == null ? l10n.replyAction : l10n.editReplyAction,
+                ),
                 onPressed: () => _openReplyDialog(context, ref, response),
               ),
             ),
@@ -132,6 +136,7 @@ class _ReviewCard extends ConsumerWidget {
     ReviewResponse? existing,
   ) async {
     final controller = TextEditingController(text: existing?.body ?? '');
+    final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
 
     final body = await showDialog<String>(
@@ -147,7 +152,9 @@ class _ReviewCard extends ConsumerWidget {
           .reply(reviewId: review.id, body: body);
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Reply submitted.')));
+        ..showSnackBar(
+          SnackBar(content: Text(l10n.replySubmittedToast)),
+        );
     } catch (error) {
       messenger
         ..hideCurrentSnackBar()
@@ -163,22 +170,23 @@ class _ReplyDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AlertDialog(
-      title: const Text('Reply to review'),
+      title: Text(l10n.replyToReviewTitle),
       content: TextField(
         controller: controller,
         autofocus: true,
         minLines: 3,
         maxLines: 6,
-        decoration: const InputDecoration(
-          hintText: 'Write your response…',
-          border: OutlineInputBorder(),
+        decoration: InputDecoration(
+          hintText: l10n.writeYourResponse,
+          border: const OutlineInputBorder(),
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(l10n.cancel),
         ),
         FilledButton(
           onPressed: () {
@@ -186,7 +194,7 @@ class _ReplyDialog extends StatelessWidget {
             if (text.isEmpty) return;
             Navigator.of(context).pop(text);
           },
-          child: const Text('Submit'),
+          child: Text(l10n.submit),
         ),
       ],
     );
@@ -201,6 +209,7 @@ class _DeveloperResponse extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -212,7 +221,7 @@ class _DeveloperResponse extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Developer response',
+            l10n.developerResponse,
             style: theme.textTheme.labelMedium
                 ?.copyWith(color: theme.colorScheme.primary),
           ),

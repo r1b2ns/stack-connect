@@ -65,6 +65,7 @@ class HomeShell extends ConsumerWidget {
     final selection = ref.watch(selectionControllerProvider);
     final selectionCtrl = ref.read(selectionControllerProvider.notifier);
     final isExpanded = ref.watch(paneExpandedProvider);
+    final l10n = AppLocalizations.of(context)!;
 
     final records = accounts.valueOrNull ?? const <AccountRecord>[];
     final selectedIndex = _selectedPaneIndex(records, selection);
@@ -97,7 +98,7 @@ class HomeShell extends ConsumerWidget {
         items: [
           PaneItem(
             icon: const Icon(FluentIcons.home),
-            title: const Text('Home'),
+            title: Text(l10n.navHome),
             body: _DetailPane(selection: selection),
             // Routes the detail pane to the dedicated Home dashboard
             // ([HomeView]) — distinct from "App Store Connect", which clears to
@@ -106,7 +107,7 @@ class HomeShell extends ConsumerWidget {
           ),
           // --- Mobile section -------------------------------------------------
           // A non-navigable header; excluded from `effectiveItems`.
-          PaneItemHeader(header: const Text('Mobile')),
+          PaneItemHeader(header: Text(l10n.navMobileSection)),
           // The only enabled new destination, at effective index 1. Tapping it
           // clears the account selection ([DetailView.none]), routing the detail
           // pane to the connected accounts list (`_AccountsDetail`) — the
@@ -126,14 +127,14 @@ class HomeShell extends ConsumerWidget {
           if (records.isEmpty)
             PaneItem(
               icon: const Icon(SimpleIcons.apple),
-              title: const Text('App Store Connect'),
+              title: Text(l10n.navAppStoreConnect),
               body: _DetailPane(selection: selection),
               onTap: selectionCtrl.clear,
             )
           else
             PaneItemExpander(
               icon: const Icon(SimpleIcons.apple),
-              title: const Text('App Store Connect'),
+              title: Text(l10n.navAppStoreConnect),
               body: _DetailPane(selection: selection),
               // Tapping the parent still navigates to the accounts-list detail
               // view (and highlights index 1); the chevron only toggles the
@@ -169,7 +170,7 @@ class HomeShell extends ConsumerWidget {
             label: 'Firebase',
           ),
           // --- Development section --------------------------------------------
-          PaneItemHeader(header: const Text('Development')),
+          PaneItemHeader(header: Text(l10n.navDevelopmentSection)),
           _comingSoonItem(
             icon: SimpleIcons.github,
             label: 'Github',
@@ -247,8 +248,9 @@ class HomeShell extends ConsumerWidget {
 /// the title is suffixed with "(soon)"; a "Coming soon" tooltip and a trailing
 /// "Soon" tag reinforce the disabled state. The tap is a no-op.
 ///
-/// Strings are intentionally in English to match the desktop app UI; they can be
-/// swapped to Portuguese ("Em breve") if the product chooses a localized UI.
+/// The "(soon)" suffix and "Soon" tag are localized via [AppLocalizations]
+/// inside [Builder]s (this function runs outside a build context). The brand
+/// [label] (Play Store, Firebase, Github) is a proper noun and stays verbatim.
 PaneItemAction _comingSoonItem({
   required IconData icon,
   required String label,
@@ -260,14 +262,20 @@ PaneItemAction _comingSoonItem({
       opacity: disabledOpacity,
       child: Icon(icon),
     ),
-    title: Opacity(
-      opacity: disabledOpacity,
-      child: Text('$label (soon)'),
+    title: Builder(
+      builder: (context) {
+        final l10n = AppLocalizations.of(context)!;
+        return Opacity(
+          opacity: disabledOpacity,
+          child: Text(l10n.comingSoonLabel(label)),
+        );
+      },
     ),
     // A muted "Soon" tag at the trailing edge; surfaces in the expanded rail.
     trailing: Builder(
       builder: (context) {
         final theme = FluentTheme.of(context);
+        final l10n = AppLocalizations.of(context)!;
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
@@ -275,7 +283,7 @@ PaneItemAction _comingSoonItem({
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(
-            'Soon',
+            l10n.soonTag,
             style: theme.typography.caption?.copyWith(
               color: theme.resources.textFillColorDisabled,
             ),
@@ -306,13 +314,14 @@ class _ShellTitleBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     return SizedBox(
       height: 40,
       child: Row(
         children: [
           const SizedBox(width: 4),
           Tooltip(
-            message: isExpanded ? 'Collapse sidebar' : 'Expand sidebar',
+            message: isExpanded ? l10n.collapseSidebar : l10n.expandSidebar,
             child: IconButton(
               icon: Icon(
                 // Material `view_sidebar` glyph: a rounded rectangle with a
@@ -336,7 +345,7 @@ class _ShellTitleBar extends ConsumerWidget {
           const Text('Stack Connect'),
           const Spacer(),
           Tooltip(
-            message: 'Settings',
+            message: l10n.settingsTitle,
             child: IconButton(
               icon: const Icon(FluentIcons.settings, size: 18),
               onPressed: () => showSettingsDialog(context),
@@ -397,10 +406,11 @@ class _AccountsDetail extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accounts = ref.watch(accountsControllerProvider);
+    final l10n = AppLocalizations.of(context)!;
 
     return ScaffoldPage(
       header: PageHeader(
-        title: const Text('App Store Connect'),
+        title: Text(l10n.navAppStoreConnect),
         // A right-aligned command bar (the default `MainAxisAlignment.end`)
         // hosting the "Add account" action. This replaces the former pane
         // footer [PaneItemAction]; it opens the same modal but reads as a
@@ -410,7 +420,7 @@ class _AccountsDetail extends ConsumerWidget {
           primaryItems: [
             CommandBarButton(
               icon: const Icon(FluentIcons.add),
-              label: const Text('Add account'),
+              label: Text(l10n.addAccount),
               onPressed: () => showAddAccountDialog(context),
             ),
           ],
@@ -422,7 +432,7 @@ class _AccountsDetail extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: InfoBar(
-              title: const Text('Could not load accounts'),
+              title: Text(l10n.couldNotLoadAccounts),
               content: Text(stackErrorMessage(error)),
               severity: InfoBarSeverity.error,
             ),
@@ -436,16 +446,13 @@ class _AccountsDetail extends ConsumerWidget {
               .toList();
 
           if (ascAccounts.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(FluentIcons.cloud_add, size: 48),
-                  SizedBox(height: 12),
-                  Text(
-                    'No accounts yet. '
-                    'Use "Add account" above to connect one.',
-                  ),
+                  const Icon(FluentIcons.cloud_add, size: 48),
+                  const SizedBox(height: 12),
+                  Text(l10n.noAccountsYetDesktop),
                 ],
               ),
             );

@@ -29,9 +29,10 @@ class SettingsDialog extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     return ContentDialog(
       constraints: const BoxConstraints(maxWidth: 520, maxHeight: 620),
-      title: const Text('Settings'),
+      title: Text(l10n.settingsTitle),
       content: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -42,14 +43,14 @@ class SettingsDialog extends ConsumerWidget {
             const SizedBox(height: 20),
             _buildDangerSection(context, ref),
             const SizedBox(height: 24),
-            _buildFooter(ref),
+            _buildFooter(context, ref),
           ],
         ),
       ),
       actions: [
         Button(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Done'),
+          child: Text(l10n.done),
         ),
       ],
     );
@@ -58,13 +59,14 @@ class SettingsDialog extends ConsumerWidget {
   // MARK: - General
 
   Widget _buildGeneralSection(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return _SettingsSection(
-      header: 'General',
+      header: l10n.settingsGeneral,
       children: [
         _SettingsRow(
           icon: FluentIcons.people,
           iconColor: Colors.blue,
-          label: 'Accounts',
+          label: l10n.accountsTitle,
           showChevron: true,
           onPressed: () => showDialog<void>(
             context: context,
@@ -78,20 +80,21 @@ class SettingsDialog extends ConsumerWidget {
   // MARK: - About
 
   Widget _buildAboutSection(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return _SettingsSection(
-      header: 'About',
+      header: l10n.settingsAbout,
       children: [
         _SettingsRow(
           icon: FluentIcons.code,
           iconColor: Colors.purple,
-          label: 'GitHub',
+          label: l10n.github,
           trailing: const Icon(FluentIcons.open_in_new_window, size: 12),
           onPressed: () => _openGitHub(context),
         ),
         _SettingsRow(
           icon: FluentIcons.page,
           iconColor: Colors.grey,
-          label: 'License',
+          label: l10n.license,
           showChevron: true,
           onPressed: () => showDialog<void>(
             context: context,
@@ -105,13 +108,14 @@ class SettingsDialog extends ConsumerWidget {
   /// Opens the GitHub repo in the external browser. On failure surfaces an
   /// [InfoBar] rather than silently swallowing the error.
   Future<void> _openGitHub(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
     final launched =
         await launchUrl(_githubUri, mode: LaunchMode.externalApplication);
     if (!launched && context.mounted) {
       await displayInfoBar(
         context,
         builder: (context, close) => InfoBar(
-          title: const Text('Could not open GitHub'),
+          title: Text(l10n.couldNotOpenGitHub),
           content: Text('$_githubUri'),
           severity: InfoBarSeverity.warning,
           onClose: close,
@@ -123,13 +127,14 @@ class SettingsDialog extends ConsumerWidget {
   // MARK: - Danger
 
   Widget _buildDangerSection(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     return _SettingsSection(
-      header: 'Danger',
+      header: l10n.settingsDanger,
       children: [
         _SettingsRow(
           icon: FluentIcons.delete,
           iconColor: Colors.red,
-          label: 'Delete All Accounts',
+          label: l10n.deleteAllAccounts,
           labelColor: Colors.red,
           onPressed: () => _confirmDeleteAll(context, ref),
         ),
@@ -146,25 +151,23 @@ class SettingsDialog extends ConsumerWidget {
   /// loop snapshots the record ids first so it does not iterate a list that is
   /// mutating underneath it.
   Future<void> _confirmDeleteAll(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => ContentDialog(
-        title: const Text('Delete All Accounts'),
-        content: const Text(
-          'This will permanently delete all accounts, apps, versions, and '
-          'credentials from the app. This action cannot be undone.',
-        ),
+        title: Text(l10n.deleteAllAccounts),
+        content: Text(l10n.deleteAllAccountsBody),
         actions: [
           Button(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             style: ButtonStyle(
               backgroundColor: WidgetStateProperty.all(Colors.red),
             ),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete All'),
+            child: Text(l10n.deleteAll),
           ),
         ],
       ),
@@ -193,11 +196,12 @@ class SettingsDialog extends ConsumerWidget {
 
   // MARK: - Footer
 
-  Widget _buildFooter(WidgetRef ref) {
+  Widget _buildFooter(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final infoAsync = ref.watch(appInfoProvider);
     final text = infoAsync.maybeWhen(
-      data: (info) => 'StackConnect v${info.version} (${info.build})',
-      orElse: () => 'StackConnect',
+      data: (info) => l10n.appVersionFooter(info.version, info.build),
+      orElse: () => l10n.appName,
     );
     return Center(
       child: Text(

@@ -92,7 +92,7 @@ class AppDetailScreen extends ConsumerWidget {
                 ),
                 ListTile(
                   leading: const Icon(Icons.cloud_upload_outlined),
-                  title: const Text('TestFlight Builds'),
+                  title: Text(l10n.testFlightBuilds),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.go(
                     '/accounts/$accountId/apps/$appId/builds',
@@ -100,7 +100,7 @@ class AppDetailScreen extends ConsumerWidget {
                 ),
                 ListTile(
                   leading: const Icon(Icons.layers_outlined),
-                  title: const Text('App Store Versions'),
+                  title: Text(l10n.appStoreVersions),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.go(
                     '/accounts/$accountId/apps/$appId/versions',
@@ -108,7 +108,7 @@ class AppDetailScreen extends ConsumerWidget {
                 ),
                 ListTile(
                   leading: const Icon(Icons.groups_outlined),
-                  title: const Text('Beta Groups'),
+                  title: Text(l10n.betaGroups),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.go(
                     '/accounts/$accountId/apps/$appId/beta-groups',

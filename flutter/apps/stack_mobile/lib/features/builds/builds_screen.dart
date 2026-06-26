@@ -24,10 +24,11 @@ class BuildsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final builds = ref.watch(buildsControllerProvider(_key));
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('TestFlight Builds'),
+        title: Text(l10n.testFlightBuilds),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/accounts/$accountId/apps/$appId'),
@@ -45,7 +46,7 @@ class BuildsScreen extends ConsumerWidget {
           ),
         ),
         data: (items) => items.isEmpty
-            ? const Center(child: Text('No builds yet.'))
+            ? Center(child: Text(l10n.noBuildsYet))
             : ListView.separated(
                 padding: const EdgeInsets.all(12),
                 itemCount: items.length,
@@ -66,6 +67,7 @@ class _BuildCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Card(
       child: Padding(
@@ -77,13 +79,13 @@ class _BuildCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    _versionLabel,
+                    _versionLabel(l10n),
                     style: theme.textTheme.titleMedium,
                   ),
                 ),
                 if (buildInfo.expired == true)
                   _Pill(
-                    label: 'Expired',
+                    label: l10n.expired,
                     color: theme.colorScheme.error,
                   ),
               ],
@@ -91,17 +93,17 @@ class _BuildCard extends StatelessWidget {
             if (buildInfo.processingState != null &&
                 buildInfo.processingState!.isNotEmpty) ...[
               const SizedBox(height: 8),
-              _Field(label: 'Processing', value: buildInfo.processingState!),
+              _Field(label: l10n.processing, value: buildInfo.processingState!),
             ],
             if (buildInfo.externalBuildState != null &&
                 buildInfo.externalBuildState!.isNotEmpty) ...[
               const SizedBox(height: 4),
-              _Field(label: 'External', value: buildInfo.externalBuildState!),
+              _Field(label: l10n.external, value: buildInfo.externalBuildState!),
             ],
             if (buildInfo.internalBuildState != null &&
                 buildInfo.internalBuildState!.isNotEmpty) ...[
               const SizedBox(height: 4),
-              _Field(label: 'Internal', value: buildInfo.internalBuildState!),
+              _Field(label: l10n.internal, value: buildInfo.internalBuildState!),
             ],
             if (buildInfo.uploadedDate != null &&
                 buildInfo.uploadedDate!.isNotEmpty) ...[
@@ -119,16 +121,18 @@ class _BuildCard extends StatelessWidget {
   }
 
   /// "1.2.0 (45)" when both are present, falling back to whichever exists.
-  String get _versionLabel {
+  String _versionLabel(AppLocalizations l10n) {
     final marketing = buildInfo.marketingVersion;
     final number = buildInfo.version;
     if (marketing != null && marketing.isNotEmpty) {
       return number != null && number.isNotEmpty
-          ? '$marketing ($number)'
+          ? l10n.buildVersionLabel(marketing, number)
           : marketing;
     }
-    if (number != null && number.isNotEmpty) return 'Build $number';
-    return 'Build';
+    if (number != null && number.isNotEmpty) {
+      return l10n.buildNumberLabel(number);
+    }
+    return l10n.buildFallback;
   }
 }
 

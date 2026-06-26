@@ -15,13 +15,14 @@ class AccountsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accounts = ref.watch(accountsControllerProvider);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Accounts'),
+        title: Text(l10n.accountsTitle),
         actions: [
           IconButton(
-            tooltip: 'Add account',
+            tooltip: l10n.addAccount,
             icon: const Icon(Icons.add),
             onPressed: () => context.go('/accounts/add'),
           ),
@@ -30,7 +31,7 @@ class AccountsScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.go('/accounts/add'),
         icon: const Icon(Icons.add),
-        label: const Text('Add account'),
+        label: Text(l10n.addAccount),
       ),
       body: accounts.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -68,6 +69,7 @@ class _AccountTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     return ListTile(
       leading: const CircleAvatar(child: Icon(Icons.cloud_outlined)),
       title: Text(record.label),
@@ -80,8 +82,8 @@ class _AccountTile extends ConsumerWidget {
                 .removeAccount(record.id);
           }
         },
-        itemBuilder: (context) => const [
-          PopupMenuItem(value: 'remove', child: Text('Remove')),
+        itemBuilder: (context) => [
+          PopupMenuItem(value: 'remove', child: Text(l10n.removeAction)),
         ],
       ),
       onTap: () => context.go('/accounts/${record.id}/apps'),
@@ -95,6 +97,7 @@ class _EmptyAccounts extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -107,10 +110,10 @@ class _EmptyAccounts extends StatelessWidget {
               color: theme.colorScheme.outline,
             ),
             const SizedBox(height: 16),
-            Text('No accounts yet', style: theme.textTheme.titleMedium),
+            Text(l10n.noAccountsYet, style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
-              'Connect an App Store Connect account to get started.',
+              l10n.connectAccountToStart,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: theme.colorScheme.outline),
@@ -119,7 +122,7 @@ class _EmptyAccounts extends StatelessWidget {
             FilledButton.icon(
               onPressed: () => context.go('/accounts/add'),
               icon: const Icon(Icons.add),
-              label: const Text('Add account'),
+              label: Text(l10n.addAccount),
             ),
           ],
         ),

@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:stack_core_dart/stack_core_dart.dart' show AppLocalizations;
 
 /// The app license text, loaded from the bundled `assets/LICENSE.txt`.
 ///
@@ -22,14 +23,15 @@ class LicenseDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final licenseAsync = ref.watch(_licenseTextProvider);
+    final l10n = AppLocalizations.of(context)!;
 
     return ContentDialog(
       constraints: const BoxConstraints(maxWidth: 640, maxHeight: 560),
-      title: const Text('License'),
+      title: Text(l10n.license),
       content: licenseAsync.when(
         loading: () => const Center(child: ProgressRing()),
         error: (error, _) =>
-            Center(child: Text('Could not load the license text.\n$error')),
+            Center(child: Text(l10n.couldNotLoadLicenseDetail('$error'))),
         data: (text) => SingleChildScrollView(
           child: SelectableText(
             text,
@@ -45,7 +47,7 @@ class LicenseDialog extends ConsumerWidget {
       actions: [
         Button(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          child: Text(l10n.close),
         ),
       ],
     );

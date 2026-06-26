@@ -24,10 +24,11 @@ class VersionsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final versions = ref.watch(versionsControllerProvider(_key));
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('App Store Versions'),
+        title: Text(l10n.appStoreVersions),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/accounts/$accountId/apps/$appId'),
@@ -45,7 +46,7 @@ class VersionsScreen extends ConsumerWidget {
           ),
         ),
         data: (items) => items.isEmpty
-            ? const Center(child: Text('No versions yet.'))
+            ? Center(child: Text(l10n.noVersionsYet))
             : ListView.separated(
                 padding: const EdgeInsets.all(12),
                 itemCount: items.length,
@@ -66,6 +67,7 @@ class _VersionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Card(
       child: Padding(
@@ -77,7 +79,7 @@ class _VersionCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    _versionLabel,
+                    _versionLabel(l10n),
                     style: theme.textTheme.titleMedium,
                   ),
                 ),
@@ -91,17 +93,17 @@ class _VersionCard extends StatelessWidget {
             ),
             if (version.platform != null && version.platform!.isNotEmpty) ...[
               const SizedBox(height: 8),
-              _Field(label: 'Platform', value: version.platform!),
+              _Field(label: l10n.fieldPlatform, value: version.platform!),
             ],
             if (version.appVersionState != null &&
                 version.appVersionState!.isNotEmpty) ...[
               const SizedBox(height: 4),
-              _Field(label: 'State', value: version.appVersionState!),
+              _Field(label: l10n.fieldState, value: version.appVersionState!),
             ],
             if (version.releaseType != null &&
                 version.releaseType!.isNotEmpty) ...[
               const SizedBox(height: 4),
-              _Field(label: 'Release', value: version.releaseType!),
+              _Field(label: l10n.fieldRelease, value: version.releaseType!),
             ],
             if (version.createdDate != null &&
                 version.createdDate!.isNotEmpty) ...[
@@ -119,10 +121,10 @@ class _VersionCard extends StatelessWidget {
   }
 
   /// The version string when present, falling back to a generic label.
-  String get _versionLabel {
+  String _versionLabel(AppLocalizations l10n) {
     final string = version.versionString;
     if (string != null && string.isNotEmpty) return string;
-    return 'Version';
+    return l10n.versionFallback;
   }
 }
 

@@ -37,9 +37,10 @@ class HomeView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final typography = FluentTheme.of(context).typography;
     final resources = FluentTheme.of(context).resources;
+    final l10n = AppLocalizations.of(context)!;
 
     return ScaffoldPage(
-      header: const PageHeader(title: Text('Home')),
+      header: PageHeader(title: Text(l10n.navHome)),
       content: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -51,12 +52,12 @@ class HomeView extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'No widgets yet',
+              l10n.noWidgetsYet,
               style: typography.subtitle,
             ),
             const SizedBox(height: 8),
             Text(
-              'Widgets to keep an eye on your apps will live here.',
+              l10n.noWidgetsDescription,
               style: typography.body?.copyWith(
                 color: resources.textFillColorSecondary,
               ),

@@ -20,16 +20,17 @@ class AccountsDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accounts = ref.watch(accountsControllerProvider);
+    final l10n = AppLocalizations.of(context)!;
 
     return ContentDialog(
       constraints: const BoxConstraints(maxWidth: 560, maxHeight: 560),
-      title: const Text('Accounts'),
+      title: Text(l10n.accountsTitle),
       content: accounts.when(
         loading: () => const Center(child: ProgressRing()),
         error: (error, _) => Center(child: Text(stackErrorMessage(error))),
         data: (records) => records.isEmpty
-            ? const Center(
-                child: Text('No accounts connected yet.'),
+            ? Center(
+                child: Text(l10n.noAccountsConnected),
               )
             : SizedBox(
                 width: 520,
@@ -47,7 +48,7 @@ class AccountsDialog extends ConsumerWidget {
       actions: [
         Button(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          child: Text(l10n.close),
         ),
       ],
     );
@@ -62,13 +63,14 @@ class _AccountRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     return ListTile(
       leading: const Icon(FluentIcons.cloud),
       title: Text(record.label),
       subtitle: Text(record.kind.label),
       trailing: Button(
         onPressed: () => _confirmRemove(context, ref),
-        child: const Text('Remove'),
+        child: Text(l10n.removeAction),
       ),
     );
   }
@@ -76,25 +78,23 @@ class _AccountRow extends ConsumerWidget {
   /// Asks for confirmation before removing [record]; on confirm delegates to the
   /// accounts controller. Errors surface in an [InfoBar] flyout.
   Future<void> _confirmRemove(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => ContentDialog(
-        title: const Text('Remove account'),
-        content: Text(
-          'Remove "${record.label}"? Its apps, versions, and credentials '
-          'will be deleted from the app. This cannot be undone.',
-        ),
+        title: Text(l10n.removeAccountTitle),
+        content: Text(l10n.removeAccountConfirmBody(record.label)),
         actions: [
           Button(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             style: ButtonStyle(
               backgroundColor: WidgetStateProperty.all(Colors.red),
             ),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Remove'),
+            child: Text(l10n.removeAction),
           ),
         ],
       ),
@@ -111,7 +111,7 @@ class _AccountRow extends ConsumerWidget {
         await displayInfoBar(
           context,
           builder: (context, close) => InfoBar(
-            title: const Text('Could not remove account'),
+            title: Text(l10n.couldNotRemoveAccount),
             content: Text(stackErrorMessage(error)),
             severity: InfoBarSeverity.error,
             onClose: close,

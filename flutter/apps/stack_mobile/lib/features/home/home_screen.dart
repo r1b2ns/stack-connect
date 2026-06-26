@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stack_core_dart/stack_core_dart.dart' show AppLocalizations;
 
 import '../accounts/accounts_screen.dart';
 
@@ -17,6 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final body = switch (_index) {
       0 => const AccountsScreen(),
       _ => const _SettingsPlaceholder(),
@@ -27,16 +29,16 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.account_circle_outlined),
-            selectedIcon: Icon(Icons.account_circle),
-            label: 'Accounts',
+            icon: const Icon(Icons.account_circle_outlined),
+            selectedIcon: const Icon(Icons.account_circle),
+            label: l10n.accountsTitle,
           ),
           NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'Settings',
+            icon: const Icon(Icons.settings_outlined),
+            selectedIcon: const Icon(Icons.settings),
+            label: l10n.settingsTitle,
           ),
         ],
       ),
@@ -49,9 +51,10 @@ class _SettingsPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: const Center(child: Text('Settings coming soon')),
+      appBar: AppBar(title: Text(l10n.settingsTitle)),
+      body: Center(child: Text(l10n.settingsComingSoon)),
     );
   }
 }

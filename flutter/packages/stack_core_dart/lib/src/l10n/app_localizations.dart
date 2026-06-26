@@ -248,11 +248,443 @@ abstract class AppLocalizations {
   /// **'Ratings & Reviews'**
   String get ratingsAndReviews;
 
+  /// No description provided for @navHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get navHome;
+
+  /// No description provided for @navMobileSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile'**
+  String get navMobileSection;
+
+  /// No description provided for @navAppStoreConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'App Store Connect'**
+  String get navAppStoreConnect;
+
+  /// No description provided for @navDevelopmentSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Development'**
+  String get navDevelopmentSection;
+
+  /// No description provided for @soonTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Soon'**
+  String get soonTag;
+
+  /// No description provided for @collapseSidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse sidebar'**
+  String get collapseSidebar;
+
+  /// No description provided for @expandSidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand sidebar'**
+  String get expandSidebar;
+
+  /// No description provided for @addAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Add account'**
+  String get addAccount;
+
+  /// No description provided for @noAccountsYetDesktop.
+  ///
+  /// In en, this message translates to:
+  /// **'No accounts yet. Use \"Add account\" above to connect one.'**
+  String get noAccountsYetDesktop;
+
+  /// No description provided for @couldNotLoadAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load accounts'**
+  String get couldNotLoadAccounts;
+
+  /// No description provided for @noWidgetsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No widgets yet'**
+  String get noWidgetsYet;
+
+  /// No description provided for @noWidgetsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Widgets to keep an eye on your apps will live here.'**
+  String get noWidgetsDescription;
+
+  /// No description provided for @accountsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts'**
+  String get accountsTitle;
+
+  /// No description provided for @noAccountsConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'No accounts connected yet.'**
+  String get noAccountsConnected;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
+  /// No description provided for @removeAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove account'**
+  String get removeAccountTitle;
+
+  /// No description provided for @removeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get removeAction;
+
+  /// No description provided for @couldNotRemoveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not remove account'**
+  String get couldNotRemoveAccount;
+
+  /// No description provided for @couldNotLoadReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load reviews'**
+  String get couldNotLoadReviews;
+
+  /// No description provided for @noReviewsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No reviews yet.'**
+  String get noReviewsYet;
+
+  /// No description provided for @replyAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply'**
+  String get replyAction;
+
+  /// No description provided for @editReplyAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit reply'**
+  String get editReplyAction;
+
+  /// No description provided for @replyToReviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply to review'**
+  String get replyToReviewTitle;
+
+  /// No description provided for @writeYourResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Write your response…'**
+  String get writeYourResponse;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @submit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit'**
+  String get submit;
+
+  /// No description provided for @replySubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply submitted'**
+  String get replySubmitted;
+
+  /// No description provided for @replySubmittedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply submitted.'**
+  String get replySubmittedToast;
+
+  /// No description provided for @replyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply failed'**
+  String get replyFailed;
+
+  /// No description provided for @developerResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Developer response'**
+  String get developerResponse;
+
+  /// No description provided for @settingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// No description provided for @settingsGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get settingsGeneral;
+
+  /// No description provided for @settingsAbout.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get settingsAbout;
+
+  /// No description provided for @github.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub'**
+  String get github;
+
+  /// No description provided for @license.
+  ///
+  /// In en, this message translates to:
+  /// **'License'**
+  String get license;
+
+  /// No description provided for @settingsDanger.
+  ///
+  /// In en, this message translates to:
+  /// **'Danger'**
+  String get settingsDanger;
+
+  /// No description provided for @deleteAllAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete All Accounts'**
+  String get deleteAllAccounts;
+
+  /// No description provided for @deleteAllAccountsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This will permanently delete all accounts, apps, versions, and credentials from the app. This action cannot be undone.'**
+  String get deleteAllAccountsBody;
+
+  /// No description provided for @deleteAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete All'**
+  String get deleteAll;
+
+  /// No description provided for @couldNotOpenGitHub.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open GitHub'**
+  String get couldNotOpenGitHub;
+
+  /// No description provided for @done.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get done;
+
+  /// No description provided for @appName.
+  ///
+  /// In en, this message translates to:
+  /// **'StackConnect'**
+  String get appName;
+
+  /// No description provided for @couldNotLoadLicense.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the license text.'**
+  String get couldNotLoadLicense;
+
+  /// No description provided for @settingsComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings coming soon'**
+  String get settingsComingSoon;
+
+  /// No description provided for @noAccountsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No accounts yet'**
+  String get noAccountsYet;
+
+  /// No description provided for @connectAccountToStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect an App Store Connect account to get started.'**
+  String get connectAccountToStart;
+
+  /// No description provided for @testFlightBuilds.
+  ///
+  /// In en, this message translates to:
+  /// **'TestFlight Builds'**
+  String get testFlightBuilds;
+
+  /// No description provided for @noBuildsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No builds yet.'**
+  String get noBuildsYet;
+
+  /// No description provided for @expired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get expired;
+
+  /// No description provided for @processing.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing'**
+  String get processing;
+
+  /// No description provided for @external.
+  ///
+  /// In en, this message translates to:
+  /// **'External'**
+  String get external;
+
+  /// No description provided for @internal.
+  ///
+  /// In en, this message translates to:
+  /// **'Internal'**
+  String get internal;
+
+  /// No description provided for @buildFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Build'**
+  String get buildFallback;
+
+  /// No description provided for @appStoreVersions.
+  ///
+  /// In en, this message translates to:
+  /// **'App Store Versions'**
+  String get appStoreVersions;
+
+  /// No description provided for @noVersionsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No versions yet.'**
+  String get noVersionsYet;
+
+  /// No description provided for @versionFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get versionFallback;
+
+  /// No description provided for @fieldState.
+  ///
+  /// In en, this message translates to:
+  /// **'State'**
+  String get fieldState;
+
+  /// No description provided for @fieldRelease.
+  ///
+  /// In en, this message translates to:
+  /// **'Release'**
+  String get fieldRelease;
+
+  /// No description provided for @betaGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'Beta Groups'**
+  String get betaGroups;
+
+  /// No description provided for @noBetaGroupsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No beta groups yet.'**
+  String get noBetaGroupsYet;
+
+  /// No description provided for @betaGroupFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Beta Group'**
+  String get betaGroupFallback;
+
+  /// No description provided for @fieldAllBuilds.
+  ///
+  /// In en, this message translates to:
+  /// **'All builds'**
+  String get fieldAllBuilds;
+
+  /// No description provided for @fieldPublicLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Public link'**
+  String get fieldPublicLink;
+
+  /// No description provided for @fieldFeedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback'**
+  String get fieldFeedback;
+
+  /// No description provided for @yes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get yes;
+
+  /// No description provided for @no.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get no;
+
   /// App row subtitle combining bundle id and platform.
   ///
   /// In en, this message translates to:
   /// **'{bundleId} · {platform}'**
   String appSubtitleWithPlatform(String bundleId, String platform);
+
+  /// Title for a coming-soon navigation item.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} (soon)'**
+  String comingSoonLabel(String label);
+
+  /// Confirmation body shown before removing a single account.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove \"{label}\"? Its apps, versions, and credentials will be deleted from the app. This cannot be undone.'**
+  String removeAccountConfirmBody(String label);
+
+  /// Settings footer showing the app version and build.
+  ///
+  /// In en, this message translates to:
+  /// **'StackConnect v{version} ({build})'**
+  String appVersionFooter(String version, String build);
+
+  /// License dialog error with the underlying error appended.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the license text.\\n{error}'**
+  String couldNotLoadLicenseDetail(String error);
+
+  /// Build title using only the build number.
+  ///
+  /// In en, this message translates to:
+  /// **'Build {number}'**
+  String buildNumberLabel(String number);
+
+  /// Build title combining marketing version and build number.
+  ///
+  /// In en, this message translates to:
+  /// **'{marketing} ({number})'**
+  String buildVersionLabel(String marketing, String number);
 }
 
 class _AppLocalizationsDelegate
