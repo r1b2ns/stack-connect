@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'features/accounts/add_account_screen.dart';
 import 'features/apps/app_detail_screen.dart';
 import 'features/apps/apps_screen.dart';
+import 'features/apps/archived_apps_screen.dart';
 import 'features/beta_groups/beta_groups_screen.dart';
 import 'features/builds/builds_screen.dart';
 import 'features/home/home_screen.dart';
@@ -14,6 +15,7 @@ import 'features/versions/versions_screen.dart';
 /// `/`                                          → home shell (Accounts tab)
 /// `/accounts/add`                              → add-account form
 /// `/accounts/:accountId/apps`                  → apps for an account
+/// `/accounts/:accountId/archived-apps`         → archived apps for an account
 /// `/accounts/:accountId/apps/:appId`           → app detail
 /// `/accounts/:accountId/apps/:appId/reviews`   → ratings & reviews
 /// `/accounts/:accountId/apps/:appId/builds`    → testflight builds
@@ -29,6 +31,12 @@ GoRouter buildRouter() {
           GoRoute(
             path: 'accounts/add',
             builder: (context, state) => const AddAccountScreen(),
+          ),
+          GoRoute(
+            path: 'accounts/:accountId/archived-apps',
+            builder: (context, state) => ArchivedAppsScreen(
+              accountId: state.pathParameters['accountId']!,
+            ),
           ),
           GoRoute(
             path: 'accounts/:accountId/apps',

@@ -3,11 +3,15 @@ import 'package:go_router/go_router.dart';
 import 'package:stack_core_dart/stack_core_dart.dart';
 
 import '../../core/stack_error_message.dart';
+import 'widgets/app_icon.dart';
 
-/// Lists the apps for a single account, offline-first (cache then synced).
+/// Lists the ACTIVE apps for a single account, offline-first (cache then synced).
 ///
-/// Pull-to-refresh triggers `AppsController.refresh()`. Tapping an app routes to
-/// its detail screen.
+/// Consumes [activeAppListProvider] (favorites first, archived excluded). A
+/// "Favorites" section header precedes the favorited rows, then "All apps".
+/// Each row carries a ⋮ menu to favorite/unfavorite or archive. Pull-to-refresh
+/// triggers `AppsController.refresh()`. The app-bar overflow menu opens the
+/// archived list. Tapping an app routes to its detail screen.
 class AppsScreen extends ConsumerWidget {
   const AppsScreen({required this.accountId, super.key});
 
@@ -15,7 +19,7 @@ class AppsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final apps = ref.watch(appsControllerProvider(accountId));
+    final apps = ref.watch(activeAppListProvider(accountId));
 
     return Scaffold(
       appBar: AppBar(
@@ -24,6 +28,18 @@ class AppsScreen extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/'),
         ),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'archived') {
+                context.go('/accounts/$accountId/archived-apps');
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'archived', child: Text('Archived')),
+            ],
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () =>
@@ -40,35 +56,123 @@ class AppsScreen extends ConsumerWidget {
   }
 }
 
+/// The active apps list, partitioned into a "Favorites" section (when any) and
+/// the remaining apps. [items] is already favorites-first, so a single split on
+/// [AppView.isFavorite] reconstructs both groups in order.
 class _AppsList extends StatelessWidget {
   const _AppsList({required this.accountId, required this.items});
 
   final String accountId;
-  final List<AppInfo> items;
+  final List<AppView> items;
 
   @override
   Widget build(BuildContext context) {
+    final favorites = items.where((a) => a.isFavorite).toList();
+    final rest = items.where((a) => !a.isFavorite).toList();
+
+    // A flat row model so one ListView.separated renders both section headers
+    // and app rows. Each entry knows whether it is a header (no divider above).
+    final rows = <Widget>[
+      if (favorites.isNotEmpty) ...[
+        const _SectionHeader(label: 'Favorites'),
+        for (final app in favorites) _AppRow(accountId: accountId, app: app),
+      ],
+      if (rest.isNotEmpty) ...[
+        if (favorites.isNotEmpty) const _SectionHeader(label: 'All apps'),
+        for (final app in rest) _AppRow(accountId: accountId, app: app),
+      ],
+    ];
+
     return ListView.separated(
       // AlwaysScrollable so pull-to-refresh works even with few items.
       physics: const AlwaysScrollableScrollPhysics(),
-      itemCount: items.length,
+      itemCount: rows.length,
       separatorBuilder: (_, _) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        final app = items[index];
-        return ListTile(
-          leading: const Icon(Icons.apps),
-          title: Text(app.name),
-          subtitle: Text(
-            app.platform == null
-                ? app.bundleId
-                : '${app.bundleId} · ${app.platform}',
-          ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () =>
-              context.go('/accounts/$accountId/apps/${app.id}'),
-        );
-      },
+      itemBuilder: (context, index) => rows[index],
     );
+  }
+}
+
+/// A non-interactive section label rendered above a group of rows.
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Text(
+        label,
+        style: theme.textTheme.titleSmall?.copyWith(
+          color: theme.colorScheme.primary,
+        ),
+      ),
+    );
+  }
+}
+
+/// A single active-app row: tap to open detail; the ⋮ menu toggles flags.
+class _AppRow extends ConsumerWidget {
+  const _AppRow({required this.accountId, required this.app});
+
+  final String accountId;
+  final AppView app;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ListTile(
+      leading: AppIcon(accountId: accountId, appId: app.id),
+      title: Text(app.name),
+      subtitle: Text(
+        app.platform == null
+            ? app.bundleId
+            : '${app.bundleId} · ${app.platform}',
+      ),
+      trailing: PopupMenuButton<String>(
+        onSelected: (value) => _onSelected(context, ref, value),
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            value: 'favorite',
+            child: Text(
+              app.isFavorite ? 'Remove from favorites' : 'Add to favorites',
+            ),
+          ),
+          const PopupMenuItem(value: 'archive', child: Text('Archive')),
+        ],
+      ),
+      onTap: () => context.go('/accounts/$accountId/apps/${app.id}'),
+    );
+  }
+
+  Future<void> _onSelected(
+    BuildContext context,
+    WidgetRef ref,
+    String value,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final notifier = ref.read(appFlagsControllerProvider(accountId).notifier);
+    try {
+      switch (value) {
+        case 'favorite':
+          final wasFavorite = app.isFavorite;
+          await notifier.toggleFavorite(app.id);
+          messenger.showSnackBar(SnackBar(
+            content: Text(
+              wasFavorite ? 'Removed from favorites' : 'Added to favorites',
+            ),
+          ));
+        case 'archive':
+          await notifier.toggleArchive(app.id);
+          messenger.showSnackBar(const SnackBar(content: Text('Archived')));
+      }
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(stackErrorMessage(error))),
+      );
+    }
   }
 }
 

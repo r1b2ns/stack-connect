@@ -45,6 +45,9 @@ dependencies:
   path_provider: ^2.1.5
   # Joins the documents directory with the store filenames in bootstrap.
   path: ^1.9.0
+  # Fetches + caches the App Store Connect app icon (resolved from the most
+  # recent build's iconUrl) for the apps list / detail screens.
+  cached_network_image: ^3.4.1
   stack_core_dart:
     path: ../../packages/stack_core_dart
 

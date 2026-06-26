@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:stack_core_dart/stack_core_dart.dart';
 
 import 'package:stack_mobile/features/apps/apps_screen.dart';
+import 'package:stack_mobile/features/apps/widgets/app_icon.dart';
 import 'package:stack_mobile/theme/app_theme.dart';
 
 import '../support/fakes.dart';
@@ -113,6 +114,69 @@ void main() {
       find.textContaining('Network error'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('each row renders an AppIcon for its app', (tester) async {
+    await _pumpApps(
+      tester,
+      gateway: ConfigurableFakeCoreGateway(appsToSync: _apps),
+    );
+    await tester.pumpAndSettle();
+
+    // One AppIcon per app row; with no build seeded the icon resolves to null
+    // and the placeholder Icons.apps glyph is shown.
+    expect(find.byType(AppIcon), findsNWidgets(_apps.length));
+    expect(find.byIcon(Icons.apps), findsNWidgets(_apps.length));
+  });
+
+  testWidgets('favoriting via the row menu surfaces the Favorites header '
+      'and persists a flag blob', (tester) async {
+    final blobCache = FakeBlobCache();
+    await _pumpApps(
+      tester,
+      gateway: ConfigurableFakeCoreGateway(appsToSync: _apps),
+      blobCache: blobCache,
+    );
+    await tester.pumpAndSettle();
+
+    // Open the Borealis row's ⋮ menu and tap "Add to favorites".
+    final borealisMenu = find.descendant(
+      of: find.widgetWithText(ListTile, 'Borealis'),
+      matching: find.byType(PopupMenuButton<String>),
+    );
+    await tester.tap(borealisMenu);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add to favorites').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Favorites'), findsOneWidget);
+    expect(find.text('Added to favorites'), findsOneWidget); // SnackBar
+
+    final flagBlob =
+        await blobCache.fetch(kAppFlagsBlobType, '$_accountId.app-2');
+    expect(flagBlob, isNotNull);
+  });
+
+  testWidgets('archiving via the row menu drops the app from the active list',
+      (tester) async {
+    await _pumpApps(
+      tester,
+      gateway: ConfigurableFakeCoreGateway(appsToSync: _apps),
+    );
+    await tester.pumpAndSettle();
+
+    final auroraMenu = find.descendant(
+      of: find.widgetWithText(ListTile, 'Aurora'),
+      matching: find.byType(PopupMenuButton<String>),
+    );
+    await tester.tap(auroraMenu);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Archive').last);
+    await tester.pumpAndSettle();
+
+    // Aurora left the active list; Borealis remains.
+    expect(find.widgetWithText(ListTile, 'Aurora'), findsNothing);
+    expect(find.widgetWithText(ListTile, 'Borealis'), findsOneWidget);
   });
 }
 
