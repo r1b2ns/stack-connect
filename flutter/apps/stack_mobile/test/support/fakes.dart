@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:mocktail/mocktail.dart';
 import 'package:stack_core_dart/stack_core_dart.dart';
@@ -176,6 +177,20 @@ class FakeCoreGateway implements CoreGateway {
         persist,
   }) =>
       throw UnimplementedError('syncApps not used in smoke test');
+
+  @override
+  AccountExport decryptScexport({
+    required List<int> bytes,
+    required String password,
+  }) =>
+      throw UnimplementedError('decryptScexport not used in smoke test');
+
+  @override
+  Uint8List encryptScexport({
+    required AccountExport account,
+    required String password,
+  }) =>
+      throw UnimplementedError('encryptScexport not used in smoke test');
 }
 
 FutureOr<void> _noop(String _) {}
@@ -210,6 +225,10 @@ class ConfigurableFakeCoreGateway implements CoreGateway {
   ConfigurableFakeCoreGateway({
     this.connectError,
     this.validateError,
+    this.decryptResult,
+    this.decryptError,
+    this.encryptResult,
+    this.encryptError,
     List<AppInfo>? appsToSync,
     Map<String, List<CustomerReview>>? reviewsByApp,
     Map<String, List<BuildInfo>>? buildsByApp,
@@ -242,6 +261,20 @@ class ConfigurableFakeCoreGateway implements CoreGateway {
 
   /// Thrown from [validate] when non-null (e.g. `StackError.pendingAgreements`).
   final Object? validateError;
+
+  /// Returned from [decryptScexport] when non-null (drives the import flow).
+  final AccountExport? decryptResult;
+
+  /// Thrown from [decryptScexport] when non-null (e.g. `StackError.auth` for a
+  /// wrong password). Takes precedence over [decryptResult].
+  final Object? decryptError;
+
+  /// Returned from [encryptScexport] when non-null (drives the export flow).
+  final Uint8List? encryptResult;
+
+  /// Thrown from [encryptScexport] when non-null. Takes precedence over
+  /// [encryptResult].
+  final Object? encryptError;
 
   /// Apps returned (and persisted) by [syncApps].
   final List<AppInfo> appsToSync;
@@ -416,6 +449,26 @@ class ConfigurableFakeCoreGateway implements CoreGateway {
       await persist(kAppBlobType, app.id, json);
     }
     return appsToSync;
+  }
+
+  @override
+  AccountExport decryptScexport({
+    required List<int> bytes,
+    required String password,
+  }) {
+    if (decryptError != null) throw decryptError!;
+    if (decryptResult != null) return decryptResult!;
+    throw UnimplementedError('decryptScexport not configured');
+  }
+
+  @override
+  Uint8List encryptScexport({
+    required AccountExport account,
+    required String password,
+  }) {
+    if (encryptError != null) throw encryptError!;
+    if (encryptResult != null) return encryptResult!;
+    throw UnimplementedError('encryptScexport not configured');
   }
 
   /// The accountId most recently passed to [makeSyncService], used to stamp the

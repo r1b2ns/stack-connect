@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -98,6 +99,28 @@ abstract interface class CoreGateway {
     required FutureOr<void> Function(String typeName, String id, String json)
         persist,
   });
+
+  /// Decrypts a `.scexport` archive with [password], returning the account
+  /// metadata + credentials (already keyed to the App Store Connect schema).
+  ///
+  /// Synchronous in the core (pure CPU work: key derivation + AES-GCM, no I/O).
+  /// Throws [StackError] (`Auth` on a wrong password / corrupted file, `Decode`
+  /// on an invalid or unsupported format) — same error surface as the rest of
+  /// the gateway.
+  AccountExport decryptScexport({
+    required List<int> bytes,
+    required String password,
+  });
+
+  /// Encrypts [account] into a `.scexport` archive (v3) protected by [password].
+  ///
+  /// Synchronous in the core (pure CPU work: key derivation + AES-GCM, no I/O).
+  /// Throws [StackError] (`Decode`) when a required field is missing or on an
+  /// internal serialization/encryption failure.
+  Uint8List encryptScexport({
+    required AccountExport account,
+    required String password,
+  });
 }
 
 /// The real [CoreGateway]: a thin adapter over the generated `frb_api`.
@@ -192,6 +215,20 @@ class FrbCoreGateway implements CoreGateway {
         persist,
   }) =>
       service.syncApps(persist: persist);
+
+  @override
+  AccountExport decryptScexport({
+    required List<int> bytes,
+    required String password,
+  }) =>
+      frb.decryptScexport(bytes: bytes, password: password);
+
+  @override
+  Uint8List encryptScexport({
+    required AccountExport account,
+    required String password,
+  }) =>
+      frb.encryptScexport(account: account, password: password);
 }
 
 /// The [CoreGateway] controllers depend on.
