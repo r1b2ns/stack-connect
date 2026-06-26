@@ -220,6 +220,57 @@ void main() {
     expect(find.text('Arquivado'), findsOneWidget);
     expect(find.text('Archived'), findsNothing);
   });
+
+  testWidgets('renders Spanish copy when the locale is forced to es',
+      (tester) async {
+    await _pumpApps(
+      tester,
+      gateway: ConfigurableFakeCoreGateway(appsToSync: _apps),
+      locale: const Locale('es'),
+    );
+    await tester.pumpAndSettle();
+
+    // "Archived" -> "Archivada" is a real es value from the iOS catalog.
+    expect(find.text('Archivada'), findsOneWidget);
+    expect(find.text('Archived'), findsNothing);
+  });
+
+  testWidgets('renders Japanese copy when the locale is forced to ja',
+      (tester) async {
+    await _pumpApps(
+      tester,
+      gateway: ConfigurableFakeCoreGateway(appsToSync: _apps),
+      locale: const Locale('ja'),
+    );
+    await tester.pumpAndSettle();
+
+    // "Apps" -> "アプリ" and "Archived" -> "アーカイブ済み" are real ja catalog
+    // values, proving ja resolution end-to-end.
+    expect(find.text('アプリ'), findsOneWidget);
+    expect(find.text('アーカイブ済み'), findsOneWidget);
+  });
+
+  testWidgets(
+      'pumps the pane under every supported locale without a '
+      'FluentLocalizations assert', (tester) async {
+    // Guards the desktop Fluent gotcha: a supportedLocale whose language Fluent
+    // cannot resolve would throw. Building under each proves none do.
+    for (final locale in AppLocalizations.supportedLocales) {
+      await _pumpApps(
+        tester,
+        gateway: ConfigurableFakeCoreGateway(appsToSync: _apps),
+        locale: locale,
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'building the pane under $locale should not throw',
+      );
+      // Both app rows always render regardless of locale.
+      expect(find.text('Aurora'), findsOneWidget);
+    }
+  });
 }
 
 /// A blob cache whose reads resolve only after a delay, so the controller's

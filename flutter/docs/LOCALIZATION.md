@@ -48,6 +48,54 @@ The single source is the existing `Localizable.xcstrings` (already 14 languages)
 | **3** | Pilot: migrate the apps / archived / app-detail screens (desktop + mobile). |
 | **4** | Migrate the rest feature-by-feature. |
 | **5** | CI guard: a lint that fails on `Text('literal')` plus the staleness check. |
+| **6** | Expand from en+pt to every well-covered catalog locale. |
+
+## Supported languages & coverage
+
+Flutter now ships the same languages the iOS catalog already translates. The
+generator emits one ARB per catalog locale **whose real coverage of the mapped
+keys is ≥ 10%**; locales below that threshold are skipped (they would be ~all
+English) rather than shipped as English-only. `en` is the source/template and the
+universal fallback; for any other locale each key uses the catalog's translated
+value when present, else falls back to English (the `pt` inline fallbacks in
+`l10n_keys.yaml` still apply to `pt` only).
+
+**Included (9)** — coverage out of 98 keys (from the generator's summary):
+
+| Locale (ARB) | Catalog locale | From catalog | English fallback |
+|--------------|----------------|--------------|------------------|
+| `en` | en (source) | template | — |
+| `de` | de | 46/98 | 52 |
+| `es` | es | 46/98 | 52 |
+| `fr` | fr | 46/98 | 52 |
+| `it` | it | 46/98 | 52 |
+| `ja` | ja | 46/98 | 52 |
+| `ko` | ko | 46/98 | 52 |
+| `nl` | nl | 46/98 | 52 |
+| `pt` | pt-BR | 46/98 (+inline pt fallbacks) | rest |
+
+**Skipped (< 10% coverage, 0/98 in the catalog today):** `es-MX` (→`es_MX`),
+`pt-PT` (→`pt_PT`), `ru`, `sv`, `zh-Hant` (→`zh_Hant`). They are listed in the
+generator's `_localeMap` and will be emitted automatically once the catalog
+gains translations for them and they cross the threshold.
+
+`AppLocalizations.supportedLocales` is generated from these ARBs, and both apps
+bind `supportedLocales: AppLocalizations.supportedLocales`, so the new languages
+are picked up automatically.
+
+### Desktop Fluent locale resolution
+
+`fluent_ui`'s `FluentLocalizations.delegate` ships strings for a fixed language
+set and matches on `languageCode` only. Every currently-included locale (en, de,
+es, fr, it, ja, ko, nl, pt) **is** in Fluent's set, so it resolves them directly.
+As a guard, `apps/stack_desktop/lib/app.dart` adds a
+`localeListResolutionCallback` that steers the active locale to a Fluent-safe
+language (falling back to `en`) if a device/app locale Fluent can't localize ever
+appears — preventing a "No FluentLocalizations found" assert. App copy still comes
+from `AppLocalizations`; the Global Material/Widgets/Cupertino delegates cover all
+our locales, and mobile (`MaterialApp` + Global delegates) needs no such guard.
+A desktop test pumps the shell under **every** `supportedLocales` entry to prove
+no Fluent assert fires.
 
 ## Tooling & commands
 
@@ -150,10 +198,13 @@ Grouped roughly by feature: accounts, apps, app detail, archived, reviews, home,
 
 ---
 
-**Status:** Phases 0–5 done. All user-facing screens migrated to `AppLocalizations`
-(en + pt) **except** the add-account flows (desktop `add_account_pane.dart` +
-mobile `add_account_screen.dart`), which remain the only pending screens and are
-excluded from `l10n:lint`. Phase 5 guards are in place: the generator's `--check`
-staleness gate (`l10n:check`) and the hardcoded-string scanner (`l10n:lint`).
+**Status:** Phases 0–6 done. All user-facing screens migrated to `AppLocalizations`
+**except** the add-account flows (desktop `add_account_pane.dart` + mobile
+`add_account_screen.dart`), which remain the only pending screens and are excluded
+from `l10n:lint`. Flutter now ships **9 languages** (en, de, es, fr, it, ja, ko,
+nl, pt) — every catalog locale at/above the 10% coverage threshold; 5 more
+(es_MX, pt_PT, ru, sv, zh_Hant) are wired and skipped until the catalog
+translates them. Phase 5 guards remain in place: the generator's `--check`
+staleness gate (now diffing all 9 locale ARBs) and the hardcoded-string scanner.
 There is no melos/CI in the repo, so the three commands run as raw `dart run`
 invocations (documented above) and should be wired into CI when one is added.

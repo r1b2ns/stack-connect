@@ -206,6 +206,38 @@ void main() {
     );
     expect(find.text('No apps found for this account.'), findsNothing);
   });
+
+  testWidgets('renders Spanish copy when the locale is forced to es',
+      (tester) async {
+    await _pumpApps(
+      tester,
+      gateway: ConfigurableFakeCoreGateway(appsToSync: const []),
+      locale: const Locale('es'),
+    );
+    await tester.pumpAndSettle();
+
+    // Real es catalog values, proving es resolution end-to-end on mobile.
+    expect(find.text('Apps'), findsOneWidget); // app bar title (es == "Apps")
+    expect(
+      find.text('No se encontraron apps para esta cuenta.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('renders Japanese copy when the locale is forced to ja',
+      (tester) async {
+    await _pumpApps(
+      tester,
+      gateway: ConfigurableFakeCoreGateway(appsToSync: const []),
+      locale: const Locale('ja'),
+    );
+    await tester.pumpAndSettle();
+
+    // "Apps" -> "アプリ" (app bar) and the empty state are real ja catalog
+    // values, proving ja resolution end-to-end on mobile.
+    expect(find.text('アプリ'), findsOneWidget);
+    expect(find.text('このアカウントのアプリが見つかりません。'), findsOneWidget);
+  });
 }
 
 /// A blob cache whose reads resolve only after a delay, so the controller's

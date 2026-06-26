@@ -7,32 +7,67 @@
 //      this script's own location so it also works from other CWDs).
 //   2. Reads the key mapping at   tool/l10n_keys.yaml  (English source text ->
 //      stable Dart key, plus placeholder declarations).
-//   3. Emits, for the `en` (source) and `pt` (mapped from the catalog's
-//      `pt-BR`) locales:
-//          packages/stack_core_dart/lib/l10n/app_en.arb
-//          packages/stack_core_dart/lib/l10n/app_pt.arb
-//      with `@@locale`, the key/value pairs, and `@key` metadata
-//      (description + placeholders, ICU `{name}` syntax) for interpolated keys.
+//   3. Emits one ARB per catalog locale (subject to the coverage threshold
+//      below) into  packages/stack_core_dart/lib/l10n/app_<flutterLocale>.arb,
+//      with `@@locale`, the key/value pairs, and `@key` metadata (description +
+//      placeholders, ICU `{name}` syntax) on the `en` TEMPLATE only.
+//
+//      The catalog<->Flutter locale mapping is [_localeMap]: en->en, de->de,
+//      es->es, es-MX->es_MX, fr->fr, it->it, ja->ja, ko->ko, nl->nl,
+//      pt-BR->pt, pt-PT->pt_PT, ru->ru, sv->sv, zh-Hant->zh_Hant.
 //
 // ── Resolution rules ─────────────────────────────────────────────────────────
-//   • The catalog's KEYS are the English source (its `sourceLanguage` is `en`
-//     and it stores no explicit `en` localization), so the English value of a
-//     mapped key is the catalog key itself (or the placeholder `template`).
-//   • The Portuguese value is the catalog's `pt-BR` value when the key exists
-//     there; otherwise the inline `pt:` from the mapping; otherwise it falls
-//     back to English (reported on stdout as "untranslated pt"). The catalog is
-//     NEVER written to.
+//   • `en` is the source/template: every value is the catalog key itself (or
+//     the placeholder `template`). It is also the universal fallback.
+//   • For any other locale, each key takes the catalog's translated value for
+//     that locale (state==translated, non-empty) when present; otherwise it
+//     FALLS BACK to the English value. The inline `pt:` fallbacks in the
+//     mapping are honored ONLY for the `pt` locale (pt-BR). Other locales are
+//     never hand-translated here — English fallback is intentional.
 //   • iOS `%@` / `%lld` / `%1$@` tokens in catalog values are converted to the
 //     ICU `{name}` placeholders declared in the mapping (only the interpolated
-//     keys in this pilot use them).
+//     keys use them).
+//   • The catalog is NEVER written to.
+//
+// ── Coverage threshold ───────────────────────────────────────────────────────
+//   A locale whose real catalog coverage is below [_minCoveragePct] of the
+//   total keys is SKIPPED (it would be ~all English) and reported as skipped.
+//   `en` and `pt` are always kept.
 //
 // ── Run ──────────────────────────────────────────────────────────────────────
 //   From `flutter/`:  dart run tool/gen_l10n_from_xcstrings.dart
+//   Staleness check:  dart run tool/gen_l10n_from_xcstrings.dart --check
 //
 // The mapping file's schema is documented at the top of tool/l10n_keys.yaml.
 
 import 'dart:convert';
 import 'dart:io';
+
+/// Catalog locale -> Flutter ARB locale (used for `@@locale` and the filename
+/// suffix `app_<value>.arb`). Order here is the emit/report order.
+const _localeMap = <String, String>{
+  'en': 'en', // source / template
+  'de': 'de',
+  'es': 'es',
+  'es-MX': 'es_MX',
+  'fr': 'fr',
+  'it': 'it',
+  'ja': 'ja',
+  'ko': 'ko',
+  'nl': 'nl',
+  'pt-BR': 'pt',
+  'pt-PT': 'pt_PT',
+  'ru': 'ru',
+  'sv': 'sv',
+  'zh-Hant': 'zh_Hant',
+};
+
+/// Locales always emitted regardless of coverage (the pilot/source set).
+const _alwaysKeep = <String>{'en', 'pt'};
+
+/// Minimum real-catalog coverage (% of total keys) for a non-kept locale to be
+/// emitted. Below this it is skipped (it would be ~all English).
+const _minCoveragePct = 10.0;
 
 void main(List<String> args) {
   // `--check` (CI staleness guard): generate the ARB in memory and diff against
@@ -69,65 +104,54 @@ void main(List<String> args) {
   final catalogStrings = (catalog['strings'] as Map).cast<String, dynamic>();
 
   final mapping = _Mapping.parse(mappingFile.readAsStringSync());
-
-  // Accumulate ARB entries in declaration order for stable, diff-friendly
-  // output.
-  final enEntries = <_ArbEntry>[];
-  final ptEntries = <_ArbEntry>[];
-
-  var fromCatalog = 0;
-  var fallbackPt = 0;
-  final untranslated = <String>[];
-
-  // ── Simple strings ────────────────────────────────────────────────────────
-  for (final s in mapping.strings) {
-    final en = s.source;
-    final pt = _resolvePt(
-      catalogStrings: catalogStrings,
-      source: s.source,
-      inlinePt: s.pt,
-      onFromCatalog: () => fromCatalog++,
-    );
-    if (pt == null) {
-      fallbackPt++;
-      untranslated.add(s.dartKey);
-    }
-    enEntries.add(_ArbEntry(key: s.dartKey, value: en, meta: s.metaJson()));
-    ptEntries.add(_ArbEntry(key: s.dartKey, value: pt ?? en, meta: null));
-  }
-
-  // ── Placeholder (interpolated) strings ────────────────────────────────────
-  for (final p in mapping.placeholders) {
-    final enValue = p.template;
-    // Placeholders are not looked up in the catalog by literal text in this
-    // pilot; pt comes from the inline `pt:` (defaulting to the template).
-    final ptValue = p.pt ?? p.template;
-    if (p.pt == null) {
-      fallbackPt++;
-      untranslated.add(p.dartKey);
-    } else {
-      // Treat an explicit pt template as a real translation source.
-      fromCatalog += 0; // not catalog-sourced; counted as inline below
-    }
-    enEntries.add(
-      _ArbEntry(key: p.dartKey, value: enValue, meta: p.metaJson()),
-    );
-    ptEntries.add(_ArbEntry(key: p.dartKey, value: ptValue, meta: null));
-  }
-
-  final enArb = _renderArb('en', enEntries);
-  final ptArb = _renderArb('pt', ptEntries);
-  final enPath = _join(outDir, 'app_en.arb');
-  final ptPath = _join(outDir, 'app_pt.arb');
   final total = mapping.strings.length + mapping.placeholders.length;
 
+  // Build the ARB content + a coverage stat for every catalog locale.
+  final results = <_LocaleResult>[];
+  for (final catalogLocale in _localeMap.keys) {
+    final flutterLocale = _localeMap[catalogLocale]!;
+    results.add(
+      _buildLocale(
+        catalogLocale: catalogLocale,
+        flutterLocale: flutterLocale,
+        mapping: mapping,
+        catalogStrings: catalogStrings,
+      ),
+    );
+  }
+
+  // Decide which locales to emit: always keep [_alwaysKeep]; otherwise require
+  // [_minCoveragePct] real catalog coverage.
+  bool keep(_LocaleResult r) =>
+      _alwaysKeep.contains(r.flutterLocale) || r.coveragePct >= _minCoveragePct;
+  final kept = results.where(keep).toList();
+  final skipped = results.where((r) => !keep(r)).toList();
+
   if (checkMode) {
-    final drift = <String>[
-      ..._driftFor(path: enPath, expected: enArb, locale: 'en'),
-      ..._driftFor(path: ptPath, expected: ptArb, locale: 'pt'),
-    ];
+    final drift = <String>[];
+    for (final r in kept) {
+      drift.addAll(
+        _driftFor(
+          path: _join(outDir, 'app_${r.flutterLocale}.arb'),
+          expected: r.arb,
+          locale: r.flutterLocale,
+        ),
+      );
+    }
+    // Flag any on-disk ARB for a now-skipped locale that should be removed.
+    for (final r in skipped) {
+      final f = File(_join(outDir, 'app_${r.flutterLocale}.arb'));
+      if (f.existsSync()) {
+        drift.add('app_${r.flutterLocale}.arb: present on disk but locale is '
+            'below the ${_minCoveragePct.toStringAsFixed(0)}% threshold '
+            '(${r.fromCatalog}/$total) — delete it');
+      }
+    }
     if (drift.isEmpty) {
-      stdout.writeln('l10n ARB up to date ($total keys)');
+      stdout.writeln(
+        'l10n ARB up to date ($total keys, ${kept.length} locales: '
+        '${kept.map((r) => r.flutterLocale).join(', ')})',
+      );
       exit(0);
     }
     stderr.writeln('l10n ARB is STALE — regenerate with:');
@@ -140,20 +164,136 @@ void main(List<String> args) {
   }
 
   Directory(outDir).createSync(recursive: true);
-  File(enPath).writeAsStringSync(enArb);
-  File(ptPath).writeAsStringSync(ptArb);
+  for (final r in kept) {
+    File(_join(outDir, 'app_${r.flutterLocale}.arb')).writeAsStringSync(r.arb);
+  }
 
+  // ── Summary ─────────────────────────────────────────────────────────────────
   stdout.writeln('l10n generation complete');
   stdout.writeln('  catalog : $catalogPath');
-  stdout.writeln('  output  : $outDir/{app_en.arb, app_pt.arb}');
-  stdout.writeln('  keys generated      : $total');
-  stdout.writeln('  pt from catalog     : $fromCatalog');
-  stdout.writeln('  pt fallback (en/inline) : $fallbackPt');
-  if (untranslated.isNotEmpty) {
+  stdout.writeln('  output  : $outDir/app_<locale>.arb');
+  stdout.writeln('  keys per locale : $total');
+  stdout.writeln('  included locales (${kept.length}):');
+  for (final r in kept) {
+    final fallback = total - r.fromCatalog;
+    final note = r.flutterLocale == 'en' ? '  (source/template)' : '';
     stdout.writeln(
-      '  untranslated pt (no catalog pt-BR): ${untranslated.join(', ')}',
+      '    ${r.flutterLocale.padRight(7)} '
+      '${r.fromCatalog}/$total from catalog, '
+      '$fallback English fallback$note',
     );
   }
+  if (skipped.isNotEmpty) {
+    stdout.writeln('  skipped locales (<${_minCoveragePct.toStringAsFixed(0)}% '
+        'coverage, ${skipped.length}):');
+    for (final r in skipped) {
+      stdout.writeln(
+        '    ${r.flutterLocale.padRight(7)} '
+        '${r.fromCatalog}/$total from catalog '
+        '(${r.coveragePct.toStringAsFixed(1)}%) — not emitted',
+      );
+    }
+  }
+}
+
+/// Builds the ARB content and coverage stat for one [catalogLocale].
+///
+/// `en` (the source) takes the catalog key as every value and carries the
+/// `@key` metadata. Every other locale takes the catalog's translated value
+/// when present (counting toward [_LocaleResult.fromCatalog]); else the inline
+/// `pt:` fallback (pt only); else the English value.
+_LocaleResult _buildLocale({
+  required String catalogLocale,
+  required String flutterLocale,
+  required _Mapping mapping,
+  required Map<String, dynamic> catalogStrings,
+}) {
+  final isEn = flutterLocale == 'en';
+  final isPt = flutterLocale == 'pt';
+  final entries = <_ArbEntry>[];
+  var fromCatalog = 0;
+
+  // ── Simple strings ────────────────────────────────────────────────────────
+  for (final s in mapping.strings) {
+    final en = s.source;
+    String value;
+    if (isEn) {
+      value = en;
+    } else {
+      final translated = _catalogValue(catalogStrings, s.source, catalogLocale);
+      if (translated != null) {
+        fromCatalog++;
+        value = translated;
+      } else {
+        // Inline pt: fallback applies to the pt locale only; else English.
+        value = (isPt ? s.pt : null) ?? en;
+      }
+    }
+    entries.add(
+      _ArbEntry(key: s.dartKey, value: value, meta: isEn ? s.metaJson() : null),
+    );
+  }
+
+  // ── Placeholder (interpolated) strings ────────────────────────────────────
+  // Placeholders are not looked up in the catalog by literal text; the template
+  // is the en value, and pt may override via inline pt:. Other locales reuse
+  // the (English) template.
+  for (final p in mapping.placeholders) {
+    final value = isEn ? p.template : (isPt ? (p.pt ?? p.template) : p.template);
+    entries.add(
+      _ArbEntry(key: p.dartKey, value: value, meta: isEn ? p.metaJson() : null),
+    );
+  }
+
+  final total = mapping.strings.length + mapping.placeholders.length;
+  return _LocaleResult(
+    flutterLocale: flutterLocale,
+    arb: _renderArb(flutterLocale, entries),
+    fromCatalog: fromCatalog,
+    total: total,
+  );
+}
+
+/// The generated ARB + coverage stat for a single locale.
+class _LocaleResult {
+  _LocaleResult({
+    required this.flutterLocale,
+    required this.arb,
+    required this.fromCatalog,
+    required this.total,
+  });
+
+  final String flutterLocale;
+  final String arb;
+
+  /// Count of keys whose value came from a real catalog translation.
+  final int fromCatalog;
+  final int total;
+
+  double get coveragePct => total == 0 ? 0 : 100 * fromCatalog / total;
+}
+
+/// Returns the catalog's translated value of [source] for [catalogLocale]
+/// (state==translated, non-empty), or null when absent.
+String? _catalogValue(
+  Map<String, dynamic> catalogStrings,
+  String source,
+  String catalogLocale,
+) {
+  final entry = catalogStrings[source];
+  if (entry is! Map) return null;
+  final localizations = entry['localizations'];
+  if (localizations is! Map) return null;
+  final loc = localizations[catalogLocale];
+  if (loc is! Map) return null;
+  final unit = loc['stringUnit'];
+  if (unit is! Map) return null;
+  final state = unit['state'];
+  final value = unit['value'];
+  if (state == 'translated' && value is String && value.isNotEmpty) {
+    return value;
+  }
+  return null;
 }
 
 /// Compares the on-disk ARB at [path] against the freshly [expected] content.
@@ -203,37 +343,6 @@ List<String> _driftFor({
     lines.add('  (content differs; re-run the generator to normalize)');
   }
   return lines;
-}
-
-/// Resolves the Portuguese value for [source].
-///
-/// Returns the catalog `pt-BR` value when present (invoking [onFromCatalog]);
-/// otherwise the [inlinePt] fallback; otherwise `null` to signal a pure-English
-/// fallback to the caller.
-String? _resolvePt({
-  required Map<String, dynamic> catalogStrings,
-  required String source,
-  required String? inlinePt,
-  required void Function() onFromCatalog,
-}) {
-  final entry = catalogStrings[source];
-  if (entry is Map) {
-    final localizations = entry['localizations'];
-    if (localizations is Map) {
-      final ptBr = localizations['pt-BR'];
-      if (ptBr is Map) {
-        final unit = ptBr['stringUnit'];
-        if (unit is Map) {
-          final value = unit['value'];
-          if (value is String && value.isNotEmpty) {
-            onFromCatalog();
-            return value;
-          }
-        }
-      }
-    }
-  }
-  return inlinePt;
 }
 
 /// Renders an ARB document with stable 2-space indentation.
