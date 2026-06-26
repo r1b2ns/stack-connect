@@ -49,6 +49,80 @@ The single source is the existing `Localizable.xcstrings` (already 14 languages)
 | **4** | Migrate the rest feature-by-feature. |
 | **5** | CI guard: a lint that fails on `Text('literal')` plus the staleness check. |
 
+## Tooling & commands
+
+There is **no melos / script runner** in this repo (the workspace uses Dart's
+native pub `workspace:`), and **no CI** (`.github/workflows/` does not exist).
+The pipeline is therefore driven by three raw `dart run` commands from the
+`flutter/` directory:
+
+| Command | Raw invocation (run from `flutter/`) | Purpose |
+|---------|--------------------------------------|---------|
+| `l10n:gen`   | `dart run tool/gen_l10n_from_xcstrings.dart` then, in `packages/stack_core_dart`, `flutter gen-l10n` (or `flutter pub get`) | Regenerate `app_en.arb` / `app_pt.arb` from the catalog + mapping, then rebuild `AppLocalizations`. |
+| `l10n:check` | `dart run tool/gen_l10n_from_xcstrings.dart --check` | Staleness guard: regenerates in memory and diffs against the committed ARB. Prints drifted keys and **exits 1** if `l10n_keys.yaml` or the catalog changed without a regen; **exits 0** ("l10n ARB up to date") otherwise. Writes nothing. |
+| `l10n:lint`  | `dart run tool/check_no_hardcoded_strings.dart` | Fails (**exit 1**) on any hardcoded user-facing `Text('...')` literal outside the allowlist / opt-outs / deferred paths. |
+
+> If a melos.yaml (or other script runner) is later added, register these three
+> as `l10n:gen` / `l10n:check` / `l10n:lint` so the names above resolve.
+
+### `l10n:gen` — regenerate
+
+Run after editing `tool/l10n_keys.yaml` or whenever the iOS catalog changes:
+
+```sh
+cd flutter
+dart run tool/gen_l10n_from_xcstrings.dart
+cd packages/stack_core_dart && flutter pub get   # triggers `flutter gen-l10n`
+```
+
+### `l10n:check` — staleness guard (CI)
+
+```sh
+cd flutter
+dart run tool/gen_l10n_from_xcstrings.dart --check
+```
+
+The check decodes both the freshly-generated and on-disk ARB and reports which
+keys were **added / removed / changed**, so a reviewer sees exactly what drifted.
+
+### `l10n:lint` — hardcoded-string scanner (CI)
+
+```sh
+cd flutter
+dart run tool/check_no_hardcoded_strings.dart
+```
+
+Scans `apps/stack_desktop/lib` + `apps/stack_mobile/lib` for `Text('...')` /
+`Text("...")` literals that look like human language (contain a letter and
+either a space or length > 2; pure `$`-interpolations are ignored).
+
+**Opt-out:** add `// l10n-ignore` on the **same line or the line directly above**
+a `Text(...)` to suppress one finding. Use sparingly, with a reason.
+
+**Allowlist policy** (curated in `tool/check_no_hardcoded_strings.dart`): only
+literals that are intentionally never translated —
+- brand / proper nouns: `Stack Connect`, `StackConnect`, `GitHub`, `Github`,
+  `Firebase`, `Play Store`;
+- pure punctuation / separators: `·`, `—`, `…`, `-`.
+
+Anything else that is genuinely user-facing must be localized with a real key
+rather than allowlisted.
+
+**Excluded paths** (deferred, still WIP — see `TODO(l10n)` in the scanner):
+`features/accounts/add_account_pane.dart` (desktop) and
+`features/accounts/add_account_screen.dart` (mobile).
+
+### CI integration (when CI is added)
+
+No CI exists yet. When one is introduced, add these two gates next to the
+existing `flutter analyze` / `flutter test` steps (single lines, run from
+`flutter/`):
+
+```sh
+dart run tool/gen_l10n_from_xcstrings.dart --check   # l10n:check
+dart run tool/check_no_hardcoded_strings.dart        # l10n:lint
+```
+
 ## Alternatives considered
 
 - **B — Translation Management System** (Lokalise / Crowdin / Tolgee / Phrase): Natively import/export BOTH .xcstrings and .arb; the cloud becomes the single source, with a translator UI and translation states. Best for scaling translation and adding languages, at the cost of SaaS + CI integration. **Recommended if the translation team grows.**
@@ -76,4 +150,10 @@ Grouped roughly by feature: accounts, apps, app detail, archived, reviews, home,
 
 ---
 
-**Status:** Plan approved; pilot in progress (apps / archived / app-detail screens, en + pt).
+**Status:** Phases 0–5 done. All user-facing screens migrated to `AppLocalizations`
+(en + pt) **except** the add-account flows (desktop `add_account_pane.dart` +
+mobile `add_account_screen.dart`), which remain the only pending screens and are
+excluded from `l10n:lint`. Phase 5 guards are in place: the generator's `--check`
+staleness gate (`l10n:check`) and the hardcoded-string scanner (`l10n:lint`).
+There is no melos/CI in the repo, so the three commands run as raw `dart run`
+invocations (documented above) and should be wired into CI when one is added.

@@ -35,6 +35,10 @@ import 'dart:convert';
 import 'dart:io';
 
 void main(List<String> args) {
+  // `--check` (CI staleness guard): generate the ARB in memory and diff against
+  // the on-disk files instead of writing. Exits 1 on drift, 0 when up to date.
+  final checkMode = args.contains('--check');
+
   final scriptDir = _scriptDir();
   // flutter/tool/gen_l10n_from_xcstrings.dart  ->  flutter/
   final flutterRoot = Directory(_join(scriptDir, '..')).absolute;
@@ -111,13 +115,34 @@ void main(List<String> args) {
     ptEntries.add(_ArbEntry(key: p.dartKey, value: ptValue, meta: null));
   }
 
-  Directory(outDir).createSync(recursive: true);
-  File(_join(outDir, 'app_en.arb'))
-      .writeAsStringSync(_renderArb('en', enEntries));
-  File(_join(outDir, 'app_pt.arb'))
-      .writeAsStringSync(_renderArb('pt', ptEntries));
-
+  final enArb = _renderArb('en', enEntries);
+  final ptArb = _renderArb('pt', ptEntries);
+  final enPath = _join(outDir, 'app_en.arb');
+  final ptPath = _join(outDir, 'app_pt.arb');
   final total = mapping.strings.length + mapping.placeholders.length;
+
+  if (checkMode) {
+    final drift = <String>[
+      ..._driftFor(path: enPath, expected: enArb, locale: 'en'),
+      ..._driftFor(path: ptPath, expected: ptArb, locale: 'pt'),
+    ];
+    if (drift.isEmpty) {
+      stdout.writeln('l10n ARB up to date ($total keys)');
+      exit(0);
+    }
+    stderr.writeln('l10n ARB is STALE — regenerate with:');
+    stderr.writeln('  dart run tool/gen_l10n_from_xcstrings.dart');
+    stderr.writeln('');
+    for (final line in drift) {
+      stderr.writeln('  $line');
+    }
+    exit(1);
+  }
+
+  Directory(outDir).createSync(recursive: true);
+  File(enPath).writeAsStringSync(enArb);
+  File(ptPath).writeAsStringSync(ptArb);
+
   stdout.writeln('l10n generation complete');
   stdout.writeln('  catalog : $catalogPath');
   stdout.writeln('  output  : $outDir/{app_en.arb, app_pt.arb}');
@@ -129,6 +154,55 @@ void main(List<String> args) {
       '  untranslated pt (no catalog pt-BR): ${untranslated.join(', ')}',
     );
   }
+}
+
+/// Compares the on-disk ARB at [path] against the freshly [expected] content.
+///
+/// Returns a list of human-readable drift lines (empty when identical): a
+/// missing-file marker, or the set of keys that were added / removed / changed
+/// relative to the on-disk file. Used by `--check` to fail CI on stale ARB.
+List<String> _driftFor({
+  required String path,
+  required String expected,
+  required String locale,
+}) {
+  final file = File(path);
+  if (!file.existsSync()) {
+    return ['app_$locale.arb: MISSING on disk (would be created)'];
+  }
+  final onDisk = file.readAsStringSync();
+  if (onDisk == expected) return const [];
+
+  // Decode both to report which KEYS drifted (more useful than a raw text diff).
+  Map<String, dynamic> decode(String s) {
+    try {
+      return (json.decode(s) as Map).cast<String, dynamic>();
+    } catch (_) {
+      return <String, dynamic>{};
+    }
+  }
+
+  final expectedMap = decode(expected);
+  final onDiskMap = decode(onDisk);
+  final expectedKeys = expectedMap.keys.toSet();
+  final onDiskKeys = onDiskMap.keys.toSet();
+
+  final added = expectedKeys.difference(onDiskKeys).toList()..sort();
+  final removed = onDiskKeys.difference(expectedKeys).toList()..sort();
+  final changed = <String>[
+    for (final k in expectedKeys.intersection(onDiskKeys))
+      if ('${expectedMap[k]}' != '${onDiskMap[k]}') k,
+  ]..sort();
+
+  final lines = <String>['app_$locale.arb: drifted'];
+  if (added.isNotEmpty) lines.add('  + added:   ${added.join(', ')}');
+  if (removed.isNotEmpty) lines.add('  - removed: ${removed.join(', ')}');
+  if (changed.isNotEmpty) lines.add('  ~ changed: ${changed.join(', ')}');
+  if (added.isEmpty && removed.isEmpty && changed.isEmpty) {
+    // Same keys/values but text differs (e.g. formatting) — flag generically.
+    lines.add('  (content differs; re-run the generator to normalize)');
+  }
+  return lines;
 }
 
 /// Resolves the Portuguese value for [source].
