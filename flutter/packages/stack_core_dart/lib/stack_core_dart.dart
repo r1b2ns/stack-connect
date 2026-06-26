@@ -13,6 +13,12 @@ export 'package:flutter_riverpod/flutter_riverpod.dart';
 // provider types via a single `package:stack_core_dart/...` import.
 export 'package:stack_core_rust/stack_core_rust.dart';
 
+// Generated localizations (from the ARB files, themselves generated from the
+// iOS String Catalog). Apps wire `AppLocalizations.delegate` /
+// `AppLocalizations.supportedLocales` and read copy via
+// `AppLocalizations.of(context)`.
+export 'src/l10n/app_localizations.dart';
+
 // Host-only view models (favorite/archive flags zipped onto AppInfo).
 export 'src/models/app_view.dart';
 

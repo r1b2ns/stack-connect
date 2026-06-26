@@ -26,10 +26,11 @@ class AppDetailPane extends ConsumerWidget {
     final apps = ref.watch(appListProvider(accountId));
     final app = apps.valueOrNull?.where((a) => a.id == appId).firstOrNull;
     final selection = ref.read(selectionControllerProvider.notifier);
+    final l10n = AppLocalizations.of(context)!;
 
     return ScaffoldPage(
       header: PageHeader(
-        title: Text(app?.name ?? 'App'),
+        title: Text(app?.name ?? l10n.appFallbackTitle),
         leading: IconButton(
           icon: const Icon(FluentIcons.back),
           onPressed: selection.backToApps,
@@ -46,7 +47,9 @@ class AppDetailPane extends ConsumerWidget {
                           : FluentIcons.favorite_star,
                     ),
                     label: Text(
-                      app.isFavorite ? 'Unfavorite' : 'Favorite',
+                      app.isFavorite
+                          ? l10n.unfavoriteAction
+                          : l10n.favoriteAction,
                     ),
                     onPressed: () => _toggleFavorite(context, ref, app),
                   ),
@@ -56,14 +59,18 @@ class AppDetailPane extends ConsumerWidget {
                           ? FluentIcons.archive_undo
                           : FluentIcons.archive,
                     ),
-                    label: Text(app.isArchived ? 'Unarchive' : 'Archive'),
+                    label: Text(
+                      app.isArchived
+                          ? l10n.unarchiveAction
+                          : l10n.archiveAction,
+                    ),
                     onPressed: () => _toggleArchive(context, ref, app),
                   ),
                 ],
               ),
       ),
       content: app == null
-          ? const Center(child: Text('App not found.'))
+          ? Center(child: Text(l10n.appNotFound))
           : Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -87,18 +94,21 @@ class AppDetailPane extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  _InfoRow(label: 'Name', value: app.name),
-                  _InfoRow(label: 'Bundle ID', value: app.bundleId),
-                  _InfoRow(label: 'Platform', value: app.platform ?? '—'),
+                  _InfoRow(label: l10n.fieldName, value: app.name),
+                  _InfoRow(label: l10n.fieldBundleId, value: app.bundleId),
+                  _InfoRow(
+                    label: l10n.fieldPlatform,
+                    value: app.platform ?? '—',
+                  ),
                   const SizedBox(height: 24),
                   FilledButton(
                     onPressed: selection.openReviews,
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(FluentIcons.favorite_star),
-                        SizedBox(width: 8),
-                        Text('Ratings & Reviews'),
+                        const Icon(FluentIcons.favorite_star),
+                        const SizedBox(width: 8),
+                        Text(l10n.ratingsAndReviews),
                       ],
                     ),
                   ),
@@ -113,6 +123,7 @@ class AppDetailPane extends ConsumerWidget {
     WidgetRef ref,
     AppView app,
   ) async {
+    final l10n = AppLocalizations.of(context)!;
     final wasFavorite = app.isFavorite;
     try {
       await ref
@@ -121,7 +132,7 @@ class AppDetailPane extends ConsumerWidget {
       if (context.mounted) {
         await _toast(
           context,
-          wasFavorite ? 'Removed from favorites' : 'Added to favorites',
+          wasFavorite ? l10n.removedFromFavorites : l10n.addedToFavorites,
         );
       }
     } catch (error) {
@@ -134,13 +145,17 @@ class AppDetailPane extends ConsumerWidget {
     WidgetRef ref,
     AppView app,
   ) async {
+    final l10n = AppLocalizations.of(context)!;
     final wasArchived = app.isArchived;
     try {
       await ref
           .read(appFlagsControllerProvider(accountId).notifier)
           .toggleArchive(app.id);
       if (context.mounted) {
-        await _toast(context, wasArchived ? 'Unarchived' : 'Archived');
+        await _toast(
+          context,
+          wasArchived ? l10n.unarchivedToast : l10n.archivedToast,
+        );
       }
     } catch (error) {
       if (context.mounted) await _errorToast(context, error);
@@ -159,15 +174,18 @@ Future<void> _toast(BuildContext context, String message) => displayInfoBar(
     );
 
 /// Shows a mapped-error [InfoBar] for a failed flag toggle.
-Future<void> _errorToast(BuildContext context, Object error) => displayInfoBar(
-      context,
-      builder: (context, close) => InfoBar(
-        title: const Text('Could not update app'),
-        content: Text(stackErrorMessage(error)),
-        severity: InfoBarSeverity.error,
-        onClose: close,
-      ),
-    );
+Future<void> _errorToast(BuildContext context, Object error) {
+  final title = AppLocalizations.of(context)!.couldNotUpdateApp;
+  return displayInfoBar(
+    context,
+    builder: (context, close) => InfoBar(
+      title: Text(title),
+      content: Text(stackErrorMessage(error)),
+      severity: InfoBarSeverity.error,
+      onClose: close,
+    ),
+  );
+}
 
 class _InfoRow extends StatelessWidget {
   const _InfoRow({required this.label, required this.value});

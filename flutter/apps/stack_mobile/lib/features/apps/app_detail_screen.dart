@@ -26,10 +26,11 @@ class AppDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final apps = ref.watch(appListProvider(accountId));
     final app = apps.valueOrNull?.where((a) => a.id == appId).firstOrNull;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(app?.name ?? 'App'),
+        title: Text(app?.name ?? l10n.appFallbackTitle),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/accounts/$accountId/apps'),
@@ -41,41 +42,49 @@ class AppDetailScreen extends ConsumerWidget {
               itemBuilder: (context) => [
                 PopupMenuItem(
                   value: 'favorite',
-                  child: Text(app.isFavorite ? 'Unfavorite' : 'Favorite'),
+                  child: Text(
+                    app.isFavorite
+                        ? l10n.unfavoriteAction
+                        : l10n.favoriteAction,
+                  ),
                 ),
                 PopupMenuItem(
                   value: 'archive',
-                  child: Text(app.isArchived ? 'Unarchive' : 'Archive'),
+                  child: Text(
+                    app.isArchived
+                        ? l10n.unarchiveAction
+                        : l10n.archiveAction,
+                  ),
                 ),
               ],
             ),
         ],
       ),
       body: app == null
-          ? const Center(child: Text('App not found.'))
+          ? Center(child: Text(l10n.appNotFound))
           : ListView(
               children: [
                 _AppHeader(accountId: accountId, app: app),
                 const Divider(height: 1),
                 _DetailTile(
                   icon: Icons.badge_outlined,
-                  label: 'Name',
+                  label: l10n.fieldName,
                   value: app.name,
                 ),
                 _DetailTile(
                   icon: Icons.tag,
-                  label: 'Bundle ID',
+                  label: l10n.fieldBundleId,
                   value: app.bundleId,
                 ),
                 _DetailTile(
                   icon: Icons.devices_outlined,
-                  label: 'Platform',
+                  label: l10n.fieldPlatform,
                   value: app.platform ?? '—',
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.star_outline),
-                  title: const Text('Ratings & Reviews'),
+                  title: Text(l10n.ratingsAndReviews),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.go(
                     '/accounts/$accountId/apps/$appId/reviews',
@@ -116,6 +125,7 @@ class AppDetailScreen extends ConsumerWidget {
     AppView app,
     String value,
   ) async {
+    final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
     final notifier = ref.read(appFlagsControllerProvider(accountId).notifier);
     try {
@@ -125,14 +135,14 @@ class AppDetailScreen extends ConsumerWidget {
           await notifier.toggleFavorite(app.id);
           messenger.showSnackBar(SnackBar(
             content: Text(
-              wasFavorite ? 'Removed from favorites' : 'Added to favorites',
+              wasFavorite ? l10n.removedFromFavorites : l10n.addedToFavorites,
             ),
           ));
         case 'archive':
           final wasArchived = app.isArchived;
           await notifier.toggleArchive(app.id);
           messenger.showSnackBar(SnackBar(
-            content: Text(wasArchived ? 'Unarchived' : 'Archived'),
+            content: Text(wasArchived ? l10n.unarchivedToast : l10n.archivedToast),
           ));
       }
     } catch (error) {

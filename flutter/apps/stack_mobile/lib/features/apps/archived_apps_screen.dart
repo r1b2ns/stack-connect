@@ -19,10 +19,11 @@ class ArchivedAppsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final apps = ref.watch(archivedAppListProvider(accountId));
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Archived'),
+        title: Text(l10n.archived),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/accounts/$accountId/apps'),
@@ -53,33 +54,41 @@ class _ArchivedRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final platform = app.platform;
     return ListTile(
       leading: AppIcon(accountId: accountId, appId: app.id),
       title: Text(app.name),
       subtitle: Text(
-        app.platform == null
+        platform == null
             ? app.bundleId
-            : '${app.bundleId} · ${app.platform}',
+            : l10n.appSubtitleWithPlatform(app.bundleId, platform),
       ),
       trailing: PopupMenuButton<String>(
         onSelected: (value) {
           if (value == 'unarchive') _unarchive(context, ref);
         },
-        itemBuilder: (context) => const [
-          PopupMenuItem(value: 'unarchive', child: Text('Unarchive')),
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            value: 'unarchive',
+            child: Text(l10n.unarchiveAction),
+          ),
         ],
       ),
     );
   }
 
   Future<void> _unarchive(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
     try {
       // The flag is a single boolean toggle; archived rows can only un-archive.
       await ref
           .read(appFlagsControllerProvider(accountId).notifier)
           .toggleArchive(app.id);
-      messenger.showSnackBar(const SnackBar(content: Text('Unarchived')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.unarchivedToast)),
+      );
     } catch (error) {
       messenger.showSnackBar(
         SnackBar(content: Text(stackErrorMessage(error))),
@@ -93,7 +102,8 @@ class _EmptyArchived extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('No archived apps.'));
+    final l10n = AppLocalizations.of(context)!;
+    return Center(child: Text(l10n.noArchivedApps));
   }
 }
 

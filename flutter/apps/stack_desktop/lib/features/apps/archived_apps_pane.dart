@@ -22,10 +22,11 @@ class ArchivedAppsPane extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final apps = ref.watch(archivedAppListProvider(accountId));
     final selection = ref.read(selectionControllerProvider.notifier);
+    final l10n = AppLocalizations.of(context)!;
 
     return ScaffoldPage(
       header: PageHeader(
-        title: const Text('Archived'),
+        title: Text(l10n.archived),
         leading: IconButton(
           icon: const Icon(FluentIcons.back),
           onPressed: selection.backToApps,
@@ -35,7 +36,7 @@ class ArchivedAppsPane extends ConsumerWidget {
           primaryItems: [
             CommandBarButton(
               icon: const Icon(FluentIcons.refresh),
-              label: const Text('Refresh'),
+              label: Text(l10n.refresh),
               onPressed: () => ref
                   .read(appsControllerProvider(accountId).notifier)
                   .refresh(),
@@ -49,14 +50,14 @@ class ArchivedAppsPane extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: InfoBar(
-              title: const Text('Could not load apps'),
+              title: Text(l10n.couldNotLoadApps),
               content: Text(stackErrorMessage(error)),
               severity: InfoBarSeverity.error,
             ),
           ),
         ),
         data: (items) => items.isEmpty
-            ? const Center(child: Text('No archived apps.'))
+            ? Center(child: Text(l10n.noArchivedApps))
             : ListView.builder(
                 itemCount: items.length,
                 itemBuilder: (context, index) =>
@@ -76,24 +77,26 @@ class _ArchivedAppRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final platform = app.platform;
     return ListTile(
       leading: AppIcon(accountId: accountId, appId: app.id),
       title: Text(app.name),
       subtitle: Text(
-        app.platform == null
+        platform == null
             ? app.bundleId
-            : '${app.bundleId} · ${app.platform}',
+            : l10n.appSubtitleWithPlatform(app.bundleId, platform),
       ),
       trailing: Tooltip(
-        message: 'Unarchive',
+        message: l10n.unarchiveAction,
         child: Button(
           onPressed: () => _unarchive(context, ref),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(FluentIcons.archive_undo),
-              SizedBox(width: 6),
-              Text('Unarchive'),
+              const Icon(FluentIcons.archive_undo),
+              const SizedBox(width: 6),
+              Text(l10n.unarchiveAction),
             ],
           ),
         ),
@@ -102,6 +105,7 @@ class _ArchivedAppRow extends ConsumerWidget {
   }
 
   Future<void> _unarchive(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       // The flag is a single boolean toggle; archived rows can only un-archive.
       await ref
@@ -111,7 +115,7 @@ class _ArchivedAppRow extends ConsumerWidget {
         await displayInfoBar(
           context,
           builder: (context, close) => InfoBar(
-            title: const Text('Unarchived'),
+            title: Text(l10n.unarchivedToast),
             severity: InfoBarSeverity.success,
             onClose: close,
           ),
@@ -122,7 +126,7 @@ class _ArchivedAppRow extends ConsumerWidget {
         await displayInfoBar(
           context,
           builder: (context, close) => InfoBar(
-            title: const Text('Could not update app'),
+            title: Text(l10n.couldNotUpdateApp),
             content: Text(stackErrorMessage(error)),
             severity: InfoBarSeverity.error,
             onClose: close,

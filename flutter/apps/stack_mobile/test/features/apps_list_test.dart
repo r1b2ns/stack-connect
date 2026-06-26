@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:stack_core_dart/stack_core_dart.dart';
@@ -28,6 +29,7 @@ Future<void> _pumpApps(
   WidgetTester tester, {
   required CoreGateway gateway,
   BlobCache? blobCache,
+  Locale? locale,
 }) async {
   final accountsStore = FakeAccountsStore()
     ..upsert(
@@ -63,6 +65,14 @@ Future<void> _pumpApps(
       ],
       child: MaterialApp.router(
         theme: AppTheme.light(),
+        locale: locale,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
         routerConfig: router,
       ),
     ),
@@ -177,6 +187,24 @@ void main() {
     // Aurora left the active list; Borealis remains.
     expect(find.widgetWithText(ListTile, 'Aurora'), findsNothing);
     expect(find.widgetWithText(ListTile, 'Borealis'), findsOneWidget);
+  });
+
+  testWidgets('renders Portuguese empty-state copy when locale is forced to pt',
+      (tester) async {
+    await _pumpApps(
+      tester,
+      gateway: ConfigurableFakeCoreGateway(appsToSync: const []),
+      locale: const Locale('pt'),
+    );
+    await tester.pumpAndSettle();
+
+    // "No apps found for this account." -> the pt-BR value from the iOS
+    // catalog, proving pt resolution end-to-end on mobile.
+    expect(
+      find.text('Nenhum app encontrado para esta conta.'),
+      findsOneWidget,
+    );
+    expect(find.text('No apps found for this account.'), findsNothing);
   });
 }
 

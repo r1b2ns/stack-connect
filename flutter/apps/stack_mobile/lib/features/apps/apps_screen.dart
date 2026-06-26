@@ -20,10 +20,11 @@ class AppsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final apps = ref.watch(activeAppListProvider(accountId));
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Apps'),
+        title: Text(l10n.appsTitle),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/'),
@@ -35,8 +36,8 @@ class AppsScreen extends ConsumerWidget {
                 context.go('/accounts/$accountId/archived-apps');
               }
             },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'archived', child: Text('Archived')),
+            itemBuilder: (context) => [
+              PopupMenuItem(value: 'archived', child: Text(l10n.archived)),
             ],
           ),
         ],
@@ -67,6 +68,7 @@ class _AppsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final favorites = items.where((a) => a.isFavorite).toList();
     final rest = items.where((a) => !a.isFavorite).toList();
 
@@ -74,11 +76,11 @@ class _AppsList extends StatelessWidget {
     // and app rows. Each entry knows whether it is a header (no divider above).
     final rows = <Widget>[
       if (favorites.isNotEmpty) ...[
-        const _SectionHeader(label: 'Favorites'),
+        _SectionHeader(label: l10n.favoritesSection),
         for (final app in favorites) _AppRow(accountId: accountId, app: app),
       ],
       if (rest.isNotEmpty) ...[
-        if (favorites.isNotEmpty) const _SectionHeader(label: 'All apps'),
+        if (favorites.isNotEmpty) _SectionHeader(label: l10n.allAppsSection),
         for (final app in rest) _AppRow(accountId: accountId, app: app),
       ],
     ];
@@ -123,13 +125,15 @@ class _AppRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final platform = app.platform;
     return ListTile(
       leading: AppIcon(accountId: accountId, appId: app.id),
       title: Text(app.name),
       subtitle: Text(
-        app.platform == null
+        platform == null
             ? app.bundleId
-            : '${app.bundleId} · ${app.platform}',
+            : l10n.appSubtitleWithPlatform(app.bundleId, platform),
       ),
       trailing: PopupMenuButton<String>(
         onSelected: (value) => _onSelected(context, ref, value),
@@ -137,10 +141,10 @@ class _AppRow extends ConsumerWidget {
           PopupMenuItem(
             value: 'favorite',
             child: Text(
-              app.isFavorite ? 'Remove from favorites' : 'Add to favorites',
+              app.isFavorite ? l10n.removeFromFavorites : l10n.addToFavorites,
             ),
           ),
-          const PopupMenuItem(value: 'archive', child: Text('Archive')),
+          PopupMenuItem(value: 'archive', child: Text(l10n.archiveAction)),
         ],
       ),
       onTap: () => context.go('/accounts/$accountId/apps/${app.id}'),
@@ -152,6 +156,7 @@ class _AppRow extends ConsumerWidget {
     WidgetRef ref,
     String value,
   ) async {
+    final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
     final notifier = ref.read(appFlagsControllerProvider(accountId).notifier);
     try {
@@ -161,12 +166,14 @@ class _AppRow extends ConsumerWidget {
           await notifier.toggleFavorite(app.id);
           messenger.showSnackBar(SnackBar(
             content: Text(
-              wasFavorite ? 'Removed from favorites' : 'Added to favorites',
+              wasFavorite ? l10n.removedFromFavorites : l10n.addedToFavorites,
             ),
           ));
         case 'archive':
           await notifier.toggleArchive(app.id);
-          messenger.showSnackBar(const SnackBar(content: Text('Archived')));
+          messenger.showSnackBar(
+            SnackBar(content: Text(l10n.archivedToast)),
+          );
       }
     } catch (error) {
       messenger.showSnackBar(
@@ -181,11 +188,12 @@ class _EmptyApps extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      children: const [
-        SizedBox(height: 120),
-        Center(child: Text('No apps found for this account.')),
+      children: [
+        const SizedBox(height: 120),
+        Center(child: Text(l10n.noAppsForAccount)),
       ],
     );
   }

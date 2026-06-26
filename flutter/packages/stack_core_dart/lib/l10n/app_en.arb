@@ -1,0 +1,43 @@
+{
+  "@@locale": "en",
+  "appsTitle": "Apps",
+  "refresh": "Refresh",
+  "archived": "Archived",
+  "favoritesSection": "Favorites",
+  "allAppsSection": "All apps",
+  "noAppsForAccount": "No apps found for this account.",
+  "addToFavorites": "Add to favorites",
+  "removeFromFavorites": "Remove from favorites",
+  "archiveAction": "Archive",
+  "addedToFavorites": "Added to favorites",
+  "removedFromFavorites": "Removed from favorites",
+  "archivedToast": "Archived",
+  "@archivedToast": {
+    "description": "Success toast shown after archiving an app."
+  },
+  "unarchivedToast": "Unarchived",
+  "couldNotUpdateApp": "Could not update app",
+  "couldNotLoadApps": "Could not load apps",
+  "noArchivedApps": "No archived apps.",
+  "unarchiveAction": "Unarchive",
+  "appFallbackTitle": "App",
+  "appNotFound": "App not found.",
+  "favoriteAction": "Favorite",
+  "unfavoriteAction": "Unfavorite",
+  "fieldName": "Name",
+  "fieldBundleId": "Bundle ID",
+  "fieldPlatform": "Platform",
+  "ratingsAndReviews": "Ratings & Reviews",
+  "appSubtitleWithPlatform": "{bundleId} · {platform}",
+  "@appSubtitleWithPlatform": {
+    "description": "App row subtitle combining bundle id and platform.",
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      },
+      "platform": {
+        "type": "String"
+      }
+    }
+  }
+}

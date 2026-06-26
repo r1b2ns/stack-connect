@@ -22,21 +22,22 @@ class AppsPane extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final apps = ref.watch(activeAppListProvider(accountId));
     final selection = ref.read(selectionControllerProvider.notifier);
+    final l10n = AppLocalizations.of(context)!;
 
     return ScaffoldPage(
       header: PageHeader(
-        title: const Text('Apps'),
+        title: Text(l10n.appsTitle),
         commandBar: CommandBar(
           mainAxisAlignment: MainAxisAlignment.end,
           primaryItems: [
             CommandBarButton(
               icon: const Icon(FluentIcons.archive),
-              label: const Text('Archived'),
+              label: Text(l10n.archived),
               onPressed: selection.openArchivedApps,
             ),
             CommandBarButton(
               icon: const Icon(FluentIcons.refresh),
-              label: const Text('Refresh'),
+              label: Text(l10n.refresh),
               onPressed: () => ref
                   .read(appsControllerProvider(accountId).notifier)
                   .refresh(),
@@ -48,7 +49,7 @@ class AppsPane extends ConsumerWidget {
         loading: () => const Center(child: ProgressRing()),
         error: (error, _) => _PaneError(message: stackErrorMessage(error)),
         data: (items) => items.isEmpty
-            ? const Center(child: Text('No apps found for this account.'))
+            ? Center(child: Text(l10n.noAppsForAccount))
             : _AppsList(accountId: accountId, items: items),
       ),
     );
@@ -66,6 +67,7 @@ class _AppsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final favorites = items.where((a) => a.isFavorite).toList();
     final rest = items.where((a) => !a.isFavorite).toList();
 
@@ -73,12 +75,12 @@ class _AppsList extends StatelessWidget {
     // header and the app rows without nesting scroll views.
     final rows = <Widget>[
       if (favorites.isNotEmpty) ...[
-        const _SectionHeader(label: 'Favorites'),
+        _SectionHeader(label: l10n.favoritesSection),
         for (final app in favorites)
           _AppRow(accountId: accountId, app: app),
       ],
       if (rest.isNotEmpty) ...[
-        if (favorites.isNotEmpty) const _SectionHeader(label: 'All apps'),
+        if (favorites.isNotEmpty) _SectionHeader(label: l10n.allAppsSection),
         for (final app in rest) _AppRow(accountId: accountId, app: app),
       ],
     ];
@@ -122,13 +124,15 @@ class _AppRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final platform = app.platform;
     return ListTile.selectable(
       leading: AppIcon(accountId: accountId, appId: app.id),
       title: Text(app.name),
       subtitle: Text(
-        app.platform == null
+        platform == null
             ? app.bundleId
-            : '${app.bundleId} · ${app.platform}',
+            : l10n.appSubtitleWithPlatform(app.bundleId, platform),
       ),
       onPressed: () => ref
           .read(selectionControllerProvider.notifier)
@@ -138,8 +142,8 @@ class _AppRow extends ConsumerWidget {
         children: [
           Tooltip(
             message: app.isFavorite
-                ? 'Remove from favorites'
-                : 'Add to favorites',
+                ? l10n.removeFromFavorites
+                : l10n.addToFavorites,
             child: IconButton(
               icon: Icon(
                 app.isFavorite
@@ -150,7 +154,7 @@ class _AppRow extends ConsumerWidget {
             ),
           ),
           Tooltip(
-            message: 'Archive',
+            message: l10n.archiveAction,
             child: IconButton(
               icon: const Icon(FluentIcons.archive),
               onPressed: () => _archive(context, ref),
@@ -162,6 +166,7 @@ class _AppRow extends ConsumerWidget {
   }
 
   Future<void> _toggleFavorite(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
     final wasFavorite = app.isFavorite;
     try {
       await ref
@@ -170,7 +175,7 @@ class _AppRow extends ConsumerWidget {
       if (context.mounted) {
         await _toast(
           context,
-          wasFavorite ? 'Removed from favorites' : 'Added to favorites',
+          wasFavorite ? l10n.removedFromFavorites : l10n.addedToFavorites,
         );
       }
     } catch (error) {
@@ -179,11 +184,12 @@ class _AppRow extends ConsumerWidget {
   }
 
   Future<void> _archive(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       await ref
           .read(appFlagsControllerProvider(accountId).notifier)
           .toggleArchive(app.id);
-      if (context.mounted) await _toast(context, 'Archived');
+      if (context.mounted) await _toast(context, l10n.archivedToast);
     } catch (error) {
       if (context.mounted) await _errorToast(context, error);
     }
@@ -201,15 +207,18 @@ Future<void> _toast(BuildContext context, String message) => displayInfoBar(
     );
 
 /// Shows a mapped-error [InfoBar] for a failed flag toggle.
-Future<void> _errorToast(BuildContext context, Object error) => displayInfoBar(
-      context,
-      builder: (context, close) => InfoBar(
-        title: const Text('Could not update app'),
-        content: Text(stackErrorMessage(error)),
-        severity: InfoBarSeverity.error,
-        onClose: close,
-      ),
-    );
+Future<void> _errorToast(BuildContext context, Object error) {
+  final title = AppLocalizations.of(context)!.couldNotUpdateApp;
+  return displayInfoBar(
+    context,
+    builder: (context, close) => InfoBar(
+      title: Text(title),
+      content: Text(stackErrorMessage(error)),
+      severity: InfoBarSeverity.error,
+      onClose: close,
+    ),
+  );
+}
 
 class _PaneError extends StatelessWidget {
   const _PaneError({required this.message});
@@ -218,11 +227,12 @@ class _PaneError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: InfoBar(
-          title: const Text('Could not load apps'),
+          title: Text(l10n.couldNotLoadApps),
           content: Text(message),
           severity: InfoBarSeverity.error,
         ),

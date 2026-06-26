@@ -1,0 +1,98 @@
+# l10n key mapping — single source of truth: the iOS String Catalog at
+# ../StackConnect/Resources/Localizable.xcstrings (READ-ONLY).
+#
+# The generator `gen_l10n_from_xcstrings.dart` reads this file and produces the
+# Flutter ARB files for stack_core_dart. The iOS catalog's KEYS are the English
+# source text (its `sourceLanguage` is `en` and it stores no explicit `en`
+# localization), so for each entry below the English value is the catalog key
+# itself, and the Portuguese value is taken from the catalog's `pt-BR`
+# localization.
+#
+# ── Schema ───────────────────────────────────────────────────────────────────
+#
+# strings:
+#   "<English source text>": <dartKey>        # simple 1:1 string
+#   "<English source text>":                   # explicit form (lets you add a
+#     key: <dartKey>                           #   pt fallback for catalog-missing
+#     pt: "<Portuguese fallback>"              #   strings, or a description)
+#     description: "<ARB @description>"
+#
+# placeholders:                               # interpolated (ICU {name}) strings
+#   <dartKey>:
+#     template: "{a} · {b}"                    # English/source ICU template
+#     pt: "{a} · {b}"                          # optional pt override (else =template)
+#     description: "..."
+#     args:
+#       a: String
+#       b: String
+#
+# Resolution rules applied by the generator:
+#   • English value  = the catalog key (the map key here), or `template` for
+#     placeholder entries.
+#   • Portuguese value = catalog `pt-BR` if the key exists there; otherwise the
+#     inline `pt:` here; otherwise it falls back to English (reported on stdout
+#     as "untranslated pt"). The catalog is never written to.
+#   • iOS `%@` / `%lld` / `%1$@` tokens found in catalog values are converted to
+#     ICU `{name}` placeholders (only relevant for the placeholder entries).
+#
+# NOTE: the literal "Archived" is ambiguous in the UI — it is both a screen
+# title and a past-tense success toast. Two distinct Dart keys map to it
+# (`archived` / `archivedToast`); they happen to share the same en/pt text.
+
+strings:
+  # ── Apps list (apps_pane / apps_screen) ──────────────────────────────────
+  "Apps": appsTitle
+  "Refresh": refresh
+  "Archived": archived                 # toolbar command + archived screen title
+  "Favorites": favoritesSection
+  "All apps": allAppsSection            # Flutter-only (not in catalog)
+  "No apps found for this account.": noAppsForAccount
+  "Add to favorites": addToFavorites    # Flutter-only (not in catalog)
+  "Remove from favorites": removeFromFavorites  # Flutter-only (not in catalog)
+  "Archive": archiveAction
+
+  # ── Toasts / snackbars ───────────────────────────────────────────────────
+  "Added to favorites": addedToFavorites
+  "Removed from favorites": removedFromFavorites
+  "Archived ":                          # trailing space disambiguates the map
+    key: archivedToast                  #   key from the title "Archived" above
+    pt: "Arquivado"                     # mirrors catalog pt-BR for "Archived"
+    description: "Success toast shown after archiving an app."
+  "Unarchived": unarchivedToast
+  "Could not update app":               # Flutter-only (not in catalog)
+    key: couldNotUpdateApp
+    pt: "Não foi possível atualizar o app"
+  "Could not load apps":                # Flutter-only (not in catalog)
+    key: couldNotLoadApps
+    pt: "Não foi possível carregar os apps"
+
+  # ── Archived apps (archived_apps_pane / archived_apps_screen) ────────────
+  "No archived apps.":                  # Flutter-only (not in catalog)
+    key: noArchivedApps
+    pt: "Nenhum app arquivado."
+  "Unarchive": unarchiveAction
+
+  # ── App detail (app_detail_pane / app_detail_screen) ─────────────────────
+  "App":                                # fallback title while the app loads
+    key: appFallbackTitle
+    pt: "App"
+  "App not found.":                     # Flutter-only (not in catalog)
+    key: appNotFound
+    pt: "App não encontrado."
+  "Favorite": favoriteAction
+  "Unfavorite": unfavoriteAction
+  "Name": fieldName
+  "Bundle ID": fieldBundleId
+  "Platform": fieldPlatform
+  "Ratings & Reviews": ratingsAndReviews
+
+placeholders:
+  # The app row subtitle: "<bundleId> · <platform>". Catalog has no equivalent
+  # interpolated entry, so this is sourced entirely from the template below.
+  appSubtitleWithPlatform:
+    template: "{bundleId} · {platform}"
+    pt: "{bundleId} · {platform}"
+    description: "App row subtitle combining bundle id and platform."
+    args:
+      bundleId: String
+      platform: String

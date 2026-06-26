@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stack_core_dart/stack_core_dart.dart';
 
@@ -27,6 +28,7 @@ Future<void> _pumpApps(
   WidgetTester tester, {
   required CoreGateway gateway,
   BlobCache? blobCache,
+  Locale? locale,
 }) async {
   final accountsStore = FakeAccountsStore()
     ..upsert(
@@ -51,6 +53,15 @@ Future<void> _pumpApps(
       ],
       child: FluentApp(
         theme: AppTheme.light(),
+        locale: locale,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          FluentLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
         home: const AppsPane(accountId: _accountId),
       ),
     ),
@@ -193,6 +204,21 @@ void main() {
 
     // Drain the auto-dismiss InfoBar timer so no timer outlives the test.
     await tester.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('renders Portuguese copy when the locale is forced to pt',
+      (tester) async {
+    await _pumpApps(
+      tester,
+      gateway: ConfigurableFakeCoreGateway(appsToSync: _apps),
+      locale: const Locale('pt'),
+    );
+    await tester.pumpAndSettle();
+
+    // "Archived" -> "Arquivado" (the toolbar command label) is a real pt-BR
+    // value from the iOS catalog, so it proves pt resolution end-to-end.
+    expect(find.text('Arquivado'), findsOneWidget);
+    expect(find.text('Archived'), findsNothing);
   });
 }
 
