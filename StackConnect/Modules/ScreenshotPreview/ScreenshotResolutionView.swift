@@ -4,8 +4,8 @@ import SwiftUI
 
 @MainActor
 struct ScreenshotResolutionViewFactory {
-    static func build(device: ScreenshotDeviceType, sets: [ScreenshotSetModel]) -> some View {
-        ScreenshotResolutionView(device: device, sets: sets)
+    static func build(device: ScreenshotDeviceType, sets: [ScreenshotSetModel], account: AccountModel, appStoreState: AppStoreState?) -> some View {
+        ScreenshotResolutionView(device: device, sets: sets, account: account, appStoreState: appStoreState)
     }
 }
 
@@ -15,6 +15,8 @@ struct ScreenshotResolutionView: View {
 
     let device: ScreenshotDeviceType
     let sets: [ScreenshotSetModel]
+    let account: AccountModel
+    let appStoreState: AppStoreState?
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
     var body: some View {
@@ -34,7 +36,7 @@ struct ScreenshotResolutionView: View {
         } else {
             List(sets) { set in
                 Button {
-                    homeCoordinator.navigateToScreenshotPage(screenshots: set.screenshots)
+                    homeCoordinator.navigateToScreenshotPage(screenshots: set.screenshots, account: account, appStoreState: appStoreState)
                 } label: {
                     HStack(spacing: 12) {
                         if let first = set.screenshots.first,
