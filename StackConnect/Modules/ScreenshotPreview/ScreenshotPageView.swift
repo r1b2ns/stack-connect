@@ -4,8 +4,8 @@ import SwiftUI
 
 @MainActor
 struct ScreenshotPageViewFactory {
-    static func build(screenshots: [ScreenshotModel], account: AccountModel, appStoreState: AppStoreState?) -> some View {
-        ScreenshotPageView(screenshots: screenshots, account: account, appStoreState: appStoreState)
+    static func build(screenshots: [ScreenshotModel], startIndex: Int = 0, account: AccountModel, appStoreState: AppStoreState?) -> some View {
+        ScreenshotPageView(screenshots: screenshots, startIndex: startIndex, account: account, appStoreState: appStoreState)
     }
 }
 
@@ -73,7 +73,8 @@ struct ScreenshotPageView: View {
     @State private var currentIndex = 0
     @Environment(\.dismiss) private var dismiss
 
-    init(screenshots: [ScreenshotModel], account: AccountModel, appStoreState: AppStoreState?) {
+    init(screenshots: [ScreenshotModel], startIndex: Int = 0, account: AccountModel, appStoreState: AppStoreState?) {
+        _currentIndex = State(initialValue: max(0, min(startIndex, max(screenshots.count - 1, 0))))
         _viewModel = StateObject(wrappedValue: ScreenshotPageViewModel(
             screenshots: screenshots,
             account: account,

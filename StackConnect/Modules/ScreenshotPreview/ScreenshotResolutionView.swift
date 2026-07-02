@@ -36,7 +36,7 @@ struct ScreenshotResolutionView: View {
         } else {
             List(sets) { set in
                 Button {
-                    homeCoordinator.navigateToScreenshotPage(screenshots: set.screenshots, account: account, appStoreState: appStoreState)
+                    homeCoordinator.navigateToScreenshotGrid(screenshots: set.screenshots, account: account, appStoreState: appStoreState)
                 } label: {
                     HStack(spacing: 12) {
                         if let first = set.screenshots.first,

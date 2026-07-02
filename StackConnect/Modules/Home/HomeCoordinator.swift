@@ -32,7 +32,8 @@ enum HomeRoute: Hashable {
     case buildSelection(versionId: String, appId: String, account: AccountModel)
     case screenshotPreview(versionId: String, localizationId: String?, platform: AppPlatform?, appStoreState: AppStoreState?, account: AccountModel)
     case screenshotResolution(device: ScreenshotDeviceType, sets: [ScreenshotSetModel], account: AccountModel, appStoreState: AppStoreState?)
-    case screenshotPage(screenshots: [ScreenshotModel], account: AccountModel, appStoreState: AppStoreState?)
+    case screenshotGrid(screenshots: [ScreenshotModel], account: AccountModel, appStoreState: AppStoreState?)
+    case screenshotPage(screenshots: [ScreenshotModel], startIndex: Int, account: AccountModel, appStoreState: AppStoreState?)
     case appReviewInfo(versionId: String, account: AccountModel)
     case betaAppReviewInfo(appId: String, account: AccountModel)
     case appInformation(app: AppModel, account: AccountModel)
@@ -183,8 +184,12 @@ final class HomeCoordinator: MainCoordinatorProtocol {
         path.append(HomeRoute.screenshotResolution(device: device, sets: sets, account: account, appStoreState: appStoreState))
     }
 
-    func navigateToScreenshotPage(screenshots: [ScreenshotModel], account: AccountModel, appStoreState: AppStoreState?) {
-        path.append(HomeRoute.screenshotPage(screenshots: screenshots, account: account, appStoreState: appStoreState))
+    func navigateToScreenshotGrid(screenshots: [ScreenshotModel], account: AccountModel, appStoreState: AppStoreState?) {
+        path.append(HomeRoute.screenshotGrid(screenshots: screenshots, account: account, appStoreState: appStoreState))
+    }
+
+    func navigateToScreenshotPage(screenshots: [ScreenshotModel], startIndex: Int = 0, account: AccountModel, appStoreState: AppStoreState?) {
+        path.append(HomeRoute.screenshotPage(screenshots: screenshots, startIndex: startIndex, account: account, appStoreState: appStoreState))
     }
 
     func navigateToAppReviewInfo(versionId: String, account: AccountModel) {

@@ -401,8 +401,10 @@ private extension View {
                 ScreenshotPreviewViewFactory.build(versionId: versionId, account: account, localizationId: localizationId, platform: platform, appStoreState: appStoreState)
             case .screenshotResolution(let device, let sets, let account, let appStoreState):
                 ScreenshotResolutionViewFactory.build(device: device, sets: sets, account: account, appStoreState: appStoreState)
-            case .screenshotPage(let screenshots, let account, let appStoreState):
-                ScreenshotPageViewFactory.build(screenshots: screenshots, account: account, appStoreState: appStoreState)
+            case .screenshotGrid(let screenshots, let account, let appStoreState):
+                ScreenshotGridViewFactory.build(screenshots: screenshots, account: account, appStoreState: appStoreState)
+            case .screenshotPage(let screenshots, let startIndex, let account, let appStoreState):
+                ScreenshotPageViewFactory.build(screenshots: screenshots, startIndex: startIndex, account: account, appStoreState: appStoreState)
             case .appReviewInfo(let versionId, let account):
                 AppReviewInfoViewFactory.build(versionId: versionId, account: account)
             case .betaAppReviewInfo(let appId, let account):
