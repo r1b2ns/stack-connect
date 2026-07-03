@@ -259,7 +259,8 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 versionId: viewModel.uiState.version.id,
                 account: viewModel.uiState.account,
                 localizationId: localizationId,
-                platform: viewModel.uiState.version.platform
+                platform: viewModel.uiState.version.platform,
+                appStoreState: viewModel.uiState.version.appStoreState
             )
         }
     }
@@ -280,7 +281,8 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                     versionId: viewModel.uiState.version.id,
                     account: viewModel.uiState.account,
                     localizationId: localization.id,
-                    platform: viewModel.uiState.version.platform
+                    platform: viewModel.uiState.version.platform,
+                    appStoreState: viewModel.uiState.version.appStoreState
                 )
             } else {
                 viewModel.selectLocalization(localization, for: field)

@@ -397,12 +397,14 @@ private extension View {
                 VersionDetailViewFactory.build(version: version, account: account)
             case .buildSelection(let versionId, let appId, let account):
                 BuildSelectionViewFactory.build(versionId: versionId, appId: appId, account: account)
-            case .screenshotPreview(let versionId, let localizationId, let platform, let account):
-                ScreenshotPreviewViewFactory.build(versionId: versionId, account: account, localizationId: localizationId, platform: platform)
-            case .screenshotResolution(let device, let sets):
-                ScreenshotResolutionViewFactory.build(device: device, sets: sets)
-            case .screenshotPage(let screenshots):
-                ScreenshotPageViewFactory.build(screenshots: screenshots)
+            case .screenshotPreview(let versionId, let localizationId, let platform, let appStoreState, let account):
+                ScreenshotPreviewViewFactory.build(versionId: versionId, account: account, localizationId: localizationId, platform: platform, appStoreState: appStoreState)
+            case .screenshotResolution(let device, let sets, let account, let appStoreState):
+                ScreenshotResolutionViewFactory.build(device: device, sets: sets, account: account, appStoreState: appStoreState)
+            case .screenshotGrid(let screenshots, let account, let appStoreState):
+                ScreenshotGridViewFactory.build(screenshots: screenshots, account: account, appStoreState: appStoreState)
+            case .screenshotPage(let screenshots, let startIndex, let account, let appStoreState):
+                ScreenshotPageViewFactory.build(screenshots: screenshots, startIndex: startIndex, account: account, appStoreState: appStoreState)
             case .appReviewInfo(let versionId, let account):
                 AppReviewInfoViewFactory.build(versionId: versionId, account: account)
             case .betaAppReviewInfo(let appId, let account):

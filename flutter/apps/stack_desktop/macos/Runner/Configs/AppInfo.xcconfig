@@ -1,0 +1,27 @@
+// Application-level settings for the Runner target.
+//
+// This may be replaced with something auto-generated from metadata (e.g., pubspec.yaml) in the
+// future. If not, the values below would default to using the project name when this becomes a
+// 'flutter create' template.
+
+// The application's name. By default this is also the title of the Flutter window.
+PRODUCT_NAME = StackConnect
+
+// The application's bundle identifier
+//
+// macOS bundle identifiers must be valid UTIs: only alphanumerics, hyphen, and
+// period are allowed (no underscore), so the "stack_desktop" suffix used by the
+// Linux/Windows runners is spelled with a hyphen here.
+PRODUCT_BUNDLE_IDENTIFIER = zeroSixteen.stackconnect.stack-desktop
+
+// The copyright displayed in application information
+PRODUCT_COPYRIGHT = Copyright © 2026 zeroSixteen.stackconnect. All rights reserved.
+
+// Code signing. The `keychain-access-groups` entitlement (needed so the P8
+// credential persists in the data-protection Keychain via flutter_secure_storage)
+// requires signing with an Apple Development certificate rather than the default
+// ad-hoc identity ("-"). Automatic signing with this team provisions a profile
+// that includes the keychain-access-group declared in the .entitlements files.
+DEVELOPMENT_TEAM = VVAVW2S9CF
+CODE_SIGN_STYLE = Automatic
+CODE_SIGN_IDENTITY = Apple Development

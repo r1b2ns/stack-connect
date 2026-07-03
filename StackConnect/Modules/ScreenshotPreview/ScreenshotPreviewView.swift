@@ -53,8 +53,8 @@ enum ScreenshotDeviceType: String, CaseIterable, Identifiable, Hashable {
 
 @MainActor
 struct ScreenshotPreviewViewFactory {
-    static func build(versionId: String, account: AccountModel, localizationId: String? = nil, platform: AppPlatform? = nil) -> some View {
-        ScreenshotPreviewEntry(versionId: versionId, account: account, localizationId: localizationId, platform: platform)
+    static func build(versionId: String, account: AccountModel, localizationId: String? = nil, platform: AppPlatform? = nil, appStoreState: AppStoreState? = nil) -> some View {
+        ScreenshotPreviewEntry(versionId: versionId, account: account, localizationId: localizationId, platform: platform, appStoreState: appStoreState)
     }
 }
 
@@ -65,19 +65,22 @@ private struct ScreenshotPreviewEntry: View {
     let account: AccountModel
     let localizationId: String?
     let platform: AppPlatform?
+    let appStoreState: AppStoreState?
 
     @StateObject private var viewModel: ScreenshotPreviewViewModel
 
-    init(versionId: String, account: AccountModel, localizationId: String?, platform: AppPlatform?) {
+    init(versionId: String, account: AccountModel, localizationId: String?, platform: AppPlatform?, appStoreState: AppStoreState?) {
         self.versionId = versionId
         self.account = account
         self.localizationId = localizationId
         self.platform = platform
+        self.appStoreState = appStoreState
         _viewModel = StateObject(wrappedValue: ScreenshotPreviewViewModel(
             versionId: versionId,
             account: account,
             localizationId: localizationId,
-            platform: platform
+            platform: platform,
+            appStoreState: appStoreState
         ))
     }
 
@@ -102,8 +105,19 @@ final class ScreenshotPreviewViewModel: ObservableObject {
     @Published var zipURL: URL?
     @Published var downloadError: String?
 
+    // Delete-all state
+    @Published var showDeleteAllConfirmation = false
+    @Published var isDeleting = false
+    @Published var deleteError: String?
+
     var hasScreenshots: Bool {
         screenshotSets.contains { !$0.screenshots.isEmpty }
+    }
+
+    /// The "Delete All" action is only offered while the version is still
+    /// editable (Prepare for Submission) and there is something to delete.
+    var canDeleteAll: Bool {
+        appStoreState == .prepareForSubmission && hasScreenshots
     }
 
     /// Device types relevant to this version's platform. When the platform is
@@ -114,9 +128,10 @@ final class ScreenshotPreviewViewModel: ObservableObject {
     }
 
     private let versionId: String
-    private let account: AccountModel
+    let account: AccountModel
     private let localizationId: String?
     private let platform: AppPlatform?
+    let appStoreState: AppStoreState?
     private let keychain: KeyStorable
 
     init(
@@ -124,12 +139,14 @@ final class ScreenshotPreviewViewModel: ObservableObject {
         account: AccountModel,
         localizationId: String? = nil,
         platform: AppPlatform? = nil,
+        appStoreState: AppStoreState? = nil,
         keychain: KeyStorable = KeychainStorable.shared
     ) {
         self.versionId = versionId
         self.account = account
         self.localizationId = localizationId
         self.platform = platform
+        self.appStoreState = appStoreState
         self.keychain = keychain
     }
 
@@ -230,6 +247,36 @@ final class ScreenshotPreviewViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Delete all
+
+    /// Deletes every screenshot set of the current localization, then reloads to
+    /// reflect the server state. Only meaningful while the version is in Prepare
+    /// for Submission (guarded by `canDeleteAll`).
+    func deleteAllScreenshots() async {
+        let sets = screenshotSets
+        guard !sets.isEmpty else { return }
+
+        guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(account.id)") else {
+            return
+        }
+
+        deleteError = nil
+        isDeleting = true
+        defer { isDeleting = false }
+
+        let connection = AppleAccountConnection(credentials: credentials)
+        do {
+            for set in sets {
+                try await connection.deleteScreenshotSet(screenshotSetId: set.id)
+            }
+            Log.print.info("[Screenshots] Deleted \(sets.count) screenshot sets")
+            await loadScreenshots()
+        } catch {
+            deleteError = error.localizedDescription
+            Log.print.error("[Screenshots] Delete all failed: \(error.localizedDescription)")
+        }
+    }
+
     private func sanitize(_ name: String) -> String {
         let invalid = CharacterSet(charactersIn: "/\\:?%*|\"<>")
         let cleaned = name.components(separatedBy: invalid).joined(separator: "-")
@@ -284,6 +331,14 @@ struct ScreenshotPreviewContentView: View {
             .safeAreaInset(edge: .bottom) {
                 buildDownloadBar()
             }
+            .alert(String(localized: "Delete All Screenshots"), isPresented: $viewModel.showDeleteAllConfirmation) {
+                Button(String(localized: "Cancel"), role: .cancel) {}
+                Button(String(localized: "Delete All"), role: .destructive) {
+                    Task { await viewModel.deleteAllScreenshots() }
+                }
+            } message: {
+                Text(String(localized: "This permanently removes every screenshot for this localization. This action cannot be undone."))
+            }
     }
 
     // MARK: - Download / Share bar
@@ -334,7 +389,36 @@ struct ScreenshotPreviewContentView: View {
                     .buttonStyle(.plain)
                 }
 
+                if viewModel.canDeleteAll {
+                    if viewModel.isDeleting {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    } else {
+                        Button(role: .destructive) {
+                            viewModel.showDeleteAllConfirmation = true
+                        } label: {
+                            Label(String(localized: "Delete All"), systemImage: "trash")
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .foregroundStyle(.white)
+                                .background(.red)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        .buttonStyle(.plain)
+                        .tint(.red)
+                    }
+                }
+
                 if let error = viewModel.downloadError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                }
+
+                if let error = viewModel.deleteError {
                     Text(error)
                         .font(.caption)
                         .foregroundStyle(.red)
@@ -357,7 +441,9 @@ struct ScreenshotPreviewContentView: View {
                 Button {
                     homeCoordinator.navigateToScreenshotResolution(
                         device: device,
-                        sets: sets
+                        sets: sets,
+                        account: viewModel.account,
+                        appStoreState: viewModel.appStoreState
                     )
                 } label: {
                     HStack(spacing: 12) {

@@ -1,0 +1,169 @@
+{
+  "@@locale": "en",
+  "appsTitle": "Apps",
+  "refresh": "Refresh",
+  "archived": "Archived",
+  "favoritesSection": "Favorites",
+  "allAppsSection": "All apps",
+  "noAppsForAccount": "No apps found for this account.",
+  "addToFavorites": "Add to favorites",
+  "removeFromFavorites": "Remove from favorites",
+  "archiveAction": "Archive",
+  "addedToFavorites": "Added to favorites",
+  "removedFromFavorites": "Removed from favorites",
+  "archivedToast": "Archived",
+  "@archivedToast": {
+    "description": "Success toast shown after archiving an app."
+  },
+  "unarchivedToast": "Unarchived",
+  "couldNotUpdateApp": "Could not update app",
+  "couldNotLoadApps": "Could not load apps",
+  "noArchivedApps": "No archived apps.",
+  "unarchiveAction": "Unarchive",
+  "appFallbackTitle": "App",
+  "appNotFound": "App not found.",
+  "favoriteAction": "Favorite",
+  "unfavoriteAction": "Unfavorite",
+  "fieldName": "Name",
+  "fieldBundleId": "Bundle ID",
+  "fieldPlatform": "Platform",
+  "ratingsAndReviews": "Ratings & Reviews",
+  "navHome": "Home",
+  "navMobileSection": "Mobile",
+  "navAppStoreConnect": "App Store Connect",
+  "navDevelopmentSection": "Development",
+  "soonTag": "Soon",
+  "collapseSidebar": "Collapse sidebar",
+  "expandSidebar": "Expand sidebar",
+  "addAccount": "Add account",
+  "noAccountsYetDesktop": "No accounts yet. Use \"Add account\" above to connect one.",
+  "couldNotLoadAccounts": "Could not load accounts",
+  "noWidgetsYet": "No widgets yet",
+  "noWidgetsDescription": "Widgets to keep an eye on your apps will live here.",
+  "accountsTitle": "Accounts",
+  "noAccountsConnected": "No accounts connected yet.",
+  "close": "Close",
+  "removeAccountTitle": "Remove account",
+  "removeAction": "Remove",
+  "couldNotRemoveAccount": "Could not remove account",
+  "couldNotLoadReviews": "Could not load reviews",
+  "noReviewsYet": "No reviews yet.",
+  "replyAction": "Reply",
+  "editReplyAction": "Edit reply",
+  "replyToReviewTitle": "Reply to review",
+  "writeYourResponse": "Write your response…",
+  "cancel": "Cancel",
+  "submit": "Submit",
+  "replySubmitted": "Reply submitted",
+  "replySubmittedToast": "Reply submitted.",
+  "replyFailed": "Reply failed",
+  "developerResponse": "Developer response",
+  "settingsTitle": "Settings",
+  "settingsGeneral": "General",
+  "settingsAbout": "About",
+  "github": "GitHub",
+  "license": "License",
+  "settingsDanger": "Danger",
+  "deleteAllAccounts": "Delete All Accounts",
+  "deleteAllAccountsBody": "This will permanently delete all accounts, apps, versions, and credentials from the app. This action cannot be undone.",
+  "deleteAll": "Delete All",
+  "couldNotOpenGitHub": "Could not open GitHub",
+  "done": "Done",
+  "appName": "StackConnect",
+  "couldNotLoadLicense": "Could not load the license text.",
+  "settingsComingSoon": "Settings coming soon",
+  "noAccountsYet": "No accounts yet",
+  "connectAccountToStart": "Connect an App Store Connect account to get started.",
+  "testFlightBuilds": "TestFlight Builds",
+  "noBuildsYet": "No builds yet.",
+  "expired": "Expired",
+  "processing": "Processing",
+  "external": "External",
+  "internal": "Internal",
+  "buildFallback": "Build",
+  "appStoreVersions": "App Store Versions",
+  "noVersionsYet": "No versions yet.",
+  "versionFallback": "Version",
+  "fieldState": "State",
+  "fieldRelease": "Release",
+  "betaGroups": "Beta Groups",
+  "noBetaGroupsYet": "No beta groups yet.",
+  "betaGroupFallback": "Beta Group",
+  "fieldAllBuilds": "All builds",
+  "fieldPublicLink": "Public link",
+  "fieldFeedback": "Feedback",
+  "yes": "Yes",
+  "no": "No",
+  "appSubtitleWithPlatform": "{bundleId} · {platform}",
+  "@appSubtitleWithPlatform": {
+    "description": "App row subtitle combining bundle id and platform.",
+    "placeholders": {
+      "bundleId": {
+        "type": "String"
+      },
+      "platform": {
+        "type": "String"
+      }
+    }
+  },
+  "comingSoonLabel": "{label} (soon)",
+  "@comingSoonLabel": {
+    "description": "Title for a coming-soon navigation item.",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "removeAccountConfirmBody": "Remove \"{label}\"? Its apps, versions, and credentials will be deleted from the app. This cannot be undone.",
+  "@removeAccountConfirmBody": {
+    "description": "Confirmation body shown before removing a single account.",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "appVersionFooter": "StackConnect v{version} ({build})",
+  "@appVersionFooter": {
+    "description": "Settings footer showing the app version and build.",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "build": {
+        "type": "String"
+      }
+    }
+  },
+  "couldNotLoadLicenseDetail": "Could not load the license text.\\n{error}",
+  "@couldNotLoadLicenseDetail": {
+    "description": "License dialog error with the underlying error appended.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "buildNumberLabel": "Build {number}",
+  "@buildNumberLabel": {
+    "description": "Build title using only the build number.",
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "buildVersionLabel": "{marketing} ({number})",
+  "@buildVersionLabel": {
+    "description": "Build title combining marketing version and build number.",
+    "placeholders": {
+      "marketing": {
+        "type": "String"
+      },
+      "number": {
+        "type": "String"
+      }
+    }
+  }
+}

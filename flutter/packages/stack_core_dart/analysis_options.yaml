@@ -1,0 +1,15 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    # flutter_rust_bridge output is treated as read-only generated API.
+    - lib/src/rust/**
+    # build_runner / riverpod / freezed generated output.
+    - lib/**/*.g.dart
+    - lib/**/*.freezed.dart
+
+# NOTE: riverpod_lint (custom_lint) is not enabled — its analyzer_plugin pin is
+# incompatible with the Dart 3.12 SDK analyzer. See pubspec.yaml.
+
+# Additional information about this file can be found at
+# https://dart.dev/guides/language/analysis-options

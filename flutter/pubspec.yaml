@@ -1,0 +1,10 @@
+name: stack_connect_workspace
+publish_to: 'none'
+
+environment:
+  sdk: ^3.12.2
+
+workspace:
+  - packages/stack_core_dart
+  - apps/stack_mobile
+  - apps/stack_desktop

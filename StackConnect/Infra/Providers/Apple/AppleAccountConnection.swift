@@ -857,6 +857,24 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         return models
     }
 
+    func deleteScreenshotSet(screenshotSetId: String) async throws {
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+        }
+        try await callRustCore { try await versions.deleteScreenshotSet(screenshotSetId: screenshotSetId) }
+        Log.print.info("[Apple] Deleted screenshot set \(screenshotSetId) (Rust core)")
+    }
+
+    func deleteScreenshot(screenshotId: String) async throws {
+        let provider = try rustCoreProvider()
+        guard let versions = provider.appStoreVersions() else {
+            throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
+        }
+        try await callRustCore { try await versions.deleteScreenshot(screenshotId: screenshotId) }
+        Log.print.info("[Apple] Deleted screenshot \(screenshotId) (Rust core)")
+    }
+
     // MARK: - Phased Release
 
     func fetchPhasedRelease(versionId: String) async throws -> PhasedReleaseModel? {
