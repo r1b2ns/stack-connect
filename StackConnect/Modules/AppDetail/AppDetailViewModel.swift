@@ -23,6 +23,7 @@ struct AppDetailUiState {
     var app: AppModel
     var account: AccountModel
     var versions: [AppStoreVersionModel] = []
+    var phasedByVersionId: [String: PhasedReleaseModel] = [:]
     var isLoading = false
     var syncError: String?
 
@@ -153,6 +154,8 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
                 uiState.versions = appVersions
                 Log.print.info("[AppDetail] Loaded \(appVersions.count) cached versions for \(self.uiState.app.name)")
             }
+
+            await loadCachedPhased(for: uiState.versions)
         } catch {
             Log.print.error("[AppDetail] Failed to load cached versions: \(error.localizedDescription)")
         }
@@ -206,6 +209,8 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             uiState.app.hasReviewPending = uiState.app.appStoreState?.isReviewPending ?? false
 
             uiState.versions = versions
+
+            await syncPhased(for: versions, connection: connection)
 
             // 5. Persist to SwiftData in a detached Task so a view dismissal mid-loop
             // (which cancels `.task`) doesn't truncate the writes.
@@ -380,6 +385,43 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
     }
 
     // MARK: - Private
+
+    /// Offline-first: loads any cached phased releases for the given versions
+    /// from `"phased.{versionId}"` and publishes them. Never throws.
+    private func loadCachedPhased(for versions: [AppStoreVersionModel]) async {
+        guard !versions.isEmpty else { return }
+        var map: [String: PhasedReleaseModel] = [:]
+        for version in versions {
+            if let phased = try? await storage.fetch(PhasedReleaseModel.self, id: "phased.\(version.id)") {
+                map[version.id] = phased
+            }
+        }
+        uiState.phasedByVersionId = map
+        if !map.isEmpty {
+            Log.print.info("[AppDetail] Loaded \(map.count) cached phased release(s) for \(self.uiState.app.name)")
+        }
+    }
+
+    /// Fetches fresh phased-release data for versions that are awaiting release
+    /// (readyForSale / pendingDeveloperRelease), publishes it and persists it
+    /// under `"phased.{versionId}"`. Clears stale entries when the API returns
+    /// nil. Never throws out of `refresh()`.
+    private func syncPhased(for versions: [AppStoreVersionModel], connection: AppleAccountConnection) async {
+        let eligible = versions.filter {
+            $0.appStoreState == .pendingDeveloperRelease || $0.appStoreState == .readyForSale
+        }
+        for version in eligible {
+            let phased = (try? await connection.fetchPhasedRelease(versionId: version.id)) ?? nil
+            if let phased {
+                uiState.phasedByVersionId[version.id] = phased
+                try? await storage.save(phased, id: "phased.\(version.id)")
+            } else {
+                uiState.phasedByVersionId[version.id] = nil
+                try? await storage.delete(PhasedReleaseModel.self, id: "phased.\(version.id)")
+            }
+        }
+        Log.print.info("[AppDetail] Synced phased releases for \(eligible.count) eligible version(s) of \(self.uiState.app.name)")
+    }
 
     private func persistSync(app: AppModel, versions: [AppStoreVersionModel], limit: Int) {
         let storage = self.storage

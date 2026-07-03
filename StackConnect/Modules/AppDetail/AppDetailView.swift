@@ -270,6 +270,12 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                 if let state = version.appStoreState {
                     buildStatusBadge(state: state, version: nil)
                 }
+
+                if let phased = viewModel.uiState.phasedByVersionId[version.id],
+                   phased.state == .active || phased.state == .paused,
+                   let day = phased.currentDayNumber {
+                    buildPhasedReleaseLabel(day: day, paused: phased.state == .paused)
+                }
             }
 
             Spacer()
@@ -513,6 +519,24 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
+        }
+    }
+
+    private func buildPhasedReleaseLabel(day: Int, paused: Bool) -> some View {
+        HStack(spacing: 4) {
+            if paused {
+                Circle()
+                    .fill(.orange)
+                    .frame(width: 6, height: 6)
+            } else {
+                Circle()
+                    .fill(.green)
+                    .frame(width: 6, height: 6)
+            }
+
+            Text(String(localized: "Phased release: \(day) of 7 days"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
