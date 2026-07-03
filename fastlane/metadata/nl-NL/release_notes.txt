@@ -1,10 +1,4 @@
-• Beheer meerdere accounts per team, elk met een label voor de rol
-• Nieuw scherm met gebruikersdetails om de apps en toegang van een teamlid te bekijken
-• Ontvang een melding wanneer er App Store Connect-overeenkomsten klaarstaan om te bekijken
-• Waarschuwing wanneer je API-sleutel geen toestemming heeft om gebruikers te verwijderen
-• De apps-lijst toont nu de binaire status per platform en behoudt je favorieten
-• Schermafbeeldingen en het platformfilter ondersteunen nu tvOS, macOS en visionOS
-• Deel een begeleide handleiding om anderen te helpen je .scexport-bestanden te importeren
-• Gearchiveerde apps worden nu uitgesloten van de lijst Beoordelingen en reviews
-• De app is nu beschikbaar in 8 talen
+• Schermafbeelding-voorbeeld — blader door de App Store-schermafbeeldingen van een app op versie, apparaat en resolutie, direct in StackConnect
+• De voortgang van de gefaseerde release verschijnt nu bij elke versie, zodat je de uitrol in één oogopslag volgt
+• Checklist vóór indienen — valideer build, schermafbeeldingen, nieuwe functies en demoaccount voordat je ter beoordeling indient, met een optionele bevestiging
 • Bugfixes en stabiliteitsverbeteringen

@@ -1,10 +1,4 @@
-• Gestiona varias cuentas por equipo, cada una identificada con su rol
-• Nueva pantalla de detalle de usuario para ver las apps y los accesos de un miembro del equipo
-• Recibe un aviso cuando tengas contratos de App Store Connect pendientes de revisar
-• Aviso cuando tu clave de API no tiene permiso para eliminar usuarios
-• La lista de apps ahora muestra el estado del binario por plataforma y mantiene tus favoritos marcados
-• Las capturas y el filtro por plataforma ahora admiten tvOS, macOS y visionOS
-• Comparte un tutorial guiado para ayudar a otras personas a importar tus archivos .scexport
-• Las apps archivadas ahora se excluyen de la lista de Valoraciones y resenas
-• La app ahora esta disponible en 8 idiomas
-• Correccion de errores y mejoras de estabilidad
+• Vista previa de capturas — explora las capturas de la App Store por versión, dispositivo y resolución, sin salir de StackConnect
+• El progreso del lanzamiento por fases ahora aparece en cada versión, para seguir el despliegue de un vistazo
+• Lista de verificación previa al envío — valida la compilación, las capturas, las novedades y la cuenta de demostración antes de enviar a revisión, con una confirmación opcional
+• Corrección de errores y mejoras de estabilidad
