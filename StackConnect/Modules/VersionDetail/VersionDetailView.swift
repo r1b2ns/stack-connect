@@ -112,11 +112,43 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         .sheet(isPresented: $viewModel.uiState.showReleaseSheet) {
             VersionReleaseSheet(viewModel: viewModel)
         }
+        .sheet(isPresented: $viewModel.uiState.showBuildPicker) {
+            BuildPickerSheet(
+                title: String(localized: "Select Build"),
+                appId: viewModel.uiState.version.appId,
+                account: viewModel.uiState.account,
+                platform: viewModel.uiState.version.platform,
+                assignedBuildIds: Set([viewModel.uiState.currentBuild?.id].compactMap { $0 }),
+                builds: viewModel.uiState.availableBuilds,
+                isLoading: viewModel.uiState.isLoadingBuilds,
+                isBusy: viewModel.uiState.isAttachingBuild
+            ) { build in
+                Task { await viewModel.attachBuild(build) }
+            } onCancel: {
+                viewModel.uiState.showBuildPicker = false
+            }
+            .task { await viewModel.loadAvailableBuilds() }
+        }
         .sheet(isPresented: $viewModel.uiState.showPhasedReleaseSheet) {
             PhasedReleaseSheet(viewModel: viewModel)
         }
+        .sheet(isPresented: $viewModel.uiState.showPreSubmitSheet) {
+            if let checklist = viewModel.uiState.preSubmitChecklist {
+                PreSubmitChecklistSheet(
+                    checklist: checklist,
+                    isSubmitting: viewModel.uiState.isPerformingAction,
+                    onSubmit: { Task { await viewModel.confirmPreSubmit() } },
+                    onCancel: { viewModel.uiState.showPreSubmitSheet = false }
+                )
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             buildBottomBar()
+        }
+        .overlay {
+            if viewModel.uiState.isValidatingSubmit {
+                buildValidatingOverlay()
+            }
         }
         .alert(
             String(localized: "Build Selection"),
@@ -204,11 +236,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             // Build row
             Button {
                 if canEditMetadata {
-                    homeCoordinator.navigateToBuildSelection(
-                        versionId: viewModel.uiState.version.id,
-                        appId: viewModel.uiState.version.appId,
-                        account: viewModel.uiState.account
-                    )
+                    viewModel.uiState.showBuildPicker = true
                 } else {
                     showBuildBlockedAlert = true
                 }
@@ -455,6 +483,20 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         }
     }
 
+    private func buildValidatingOverlay() -> some View {
+        ZStack {
+            Color.black.opacity(0.15).ignoresSafeArea()
+            VStack(spacing: 12) {
+                ProgressView()
+                Text(String(localized: "Checking submission…"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(24)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        }
+    }
+
     @ViewBuilder
     private func buildBottomBarContent() -> some View {
         let state = viewModel.uiState.version.appStoreState
@@ -468,7 +510,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                         icon: "paperplane.fill",
                         color: .blue
                     ) {
-                        viewModel.uiState.confirmAction = .submitForReview
+                        Task { await viewModel.startSubmitForReview() }
                     }
                 }
             }

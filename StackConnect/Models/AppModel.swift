@@ -17,6 +17,14 @@ struct AppModel: Codable, Identifiable, Hashable {
     /// macOS, etc. under one record). `appStoreState`/`platform` above hold the
     /// most-recent version overall; this captures each platform individually.
     var platformVersions: [AppPlatformVersion]?
+    /// Versions eligible for the "Awaiting Release" bucket (state
+    /// `pendingDeveloperRelease` or `readyForSale`), each with its version id.
+    /// Unlike `platformVersions` (latest per platform), this retains a live
+    /// `readyForSale` version that is still phasing even after a newer version
+    /// has moved to `prepareForSubmission`, so an in-progress phased rollout keeps
+    /// showing until it fully completes. `nil` for data persisted before this
+    /// field existed (callers fall back to `platformVersions`).
+    var awaitingVersions: [AppPlatformVersion]?
 
     init(
         id: String,
@@ -31,7 +39,8 @@ struct AppModel: Codable, Identifiable, Hashable {
         isArchived: Bool = false,
         isFavorite: Bool = false,
         hasReviewPending: Bool = false,
-        platformVersions: [AppPlatformVersion]? = nil
+        platformVersions: [AppPlatformVersion]? = nil,
+        awaitingVersions: [AppPlatformVersion]? = nil
     ) {
         self.id = id
         self.name = name
@@ -46,6 +55,7 @@ struct AppModel: Codable, Identifiable, Hashable {
         self.isFavorite = isFavorite
         self.hasReviewPending = hasReviewPending
         self.platformVersions = platformVersions
+        self.awaitingVersions = awaitingVersions
     }
 }
 

@@ -9,6 +9,9 @@ protocol AppDetailViewModelProtocol: ObservableObject {
     func refresh() async
     func createVersions() async
     func deleteVersion(id: String) async
+    func prepareCreatePlatform()
+    func startSubmitForReview(_ version: AppStoreVersionModel) async
+    func confirmPreSubmit() async
     func submitForReview(version: AppStoreVersionModel) async
     func cancelReview(version: AppStoreVersionModel) async
     func releaseVersion(_ version: AppStoreVersionModel) async
@@ -23,6 +26,7 @@ struct AppDetailUiState {
     var app: AppModel
     var account: AccountModel
     var versions: [AppStoreVersionModel] = []
+    var phasedByVersionId: [String: PhasedReleaseModel] = [:]
     var isLoading = false
     var syncError: String?
 
@@ -31,6 +35,12 @@ struct AppDetailUiState {
     var actionError: String?
     var confirmAction: VersionAction?
     var toastMessage: ToastMessage?
+
+    // Pre-submit checklist
+    var isValidatingSubmit = false
+    var preSubmitChecklist: PreSubmitChecklist?
+    var preSubmitVersion: AppStoreVersionModel?
+    var showPreSubmitSheet = false
 
     // Review issues
     var hasReviewIssues = false
@@ -153,6 +163,8 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
                 uiState.versions = appVersions
                 Log.print.info("[AppDetail] Loaded \(appVersions.count) cached versions for \(self.uiState.app.name)")
             }
+
+            await loadCachedPhased(for: uiState.versions)
         } catch {
             Log.print.error("[AppDetail] Failed to load cached versions: \(error.localizedDescription)")
         }
@@ -207,6 +219,8 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
 
             uiState.versions = versions
 
+            await syncPhased(for: versions, connection: connection)
+
             // 5. Persist to SwiftData in a detached Task so a view dismissal mid-loop
             // (which cancels `.task`) doesn't truncate the writes.
             persistSync(app: uiState.app, versions: versions, limit: versionsLimit)
@@ -217,6 +231,49 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
         }
 
         uiState.isLoading = false
+    }
+
+    /// Opens the create-platform sheet, pre-filling the version field with the
+    /// next suggested number: the highest existing version with its minor bumped
+    /// and patch reset (e.g. latest `3.1.0` → `3.2.0`). Defaults to `1.0.0` when
+    /// there are no parseable versions yet.
+    func prepareCreatePlatform() {
+        uiState.newVersionString = Self.suggestedNextVersion(from: uiState.versions)
+        uiState.selectedPlatforms = []
+        uiState.createError = nil
+        uiState.showCreatePlatform = true
+    }
+
+    /// Suggests the next version string from the highest existing version:
+    /// bump the minor component and reset the patch (`3.1.4` → `3.2.0`).
+    static func suggestedNextVersion(from versions: [AppStoreVersionModel]) -> String {
+        let fallback = "1.0.0"
+        let components = versions.compactMap { parseVersionComponents($0.versionString) }
+        guard let latest = components.max(by: versionLess) else { return fallback }
+        let major = latest[0]
+        let minor = (latest.count > 1 ? latest[1] : 0) + 1
+        return "\(major).\(minor).0"
+    }
+
+    /// Parses `"3.1.0"` into `[3, 1, 0]`. Returns `nil` when empty or any
+    /// component isn't a non-negative integer (e.g. `"3.1.0-beta"`).
+    static func parseVersionComponents(_ string: String?) -> [Int]? {
+        guard let string, !string.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+        let parts = string.trimmingCharacters(in: .whitespaces).split(separator: ".", omittingEmptySubsequences: false)
+        let numbers = parts.map { Int($0) }
+        guard !numbers.isEmpty, numbers.allSatisfy({ ($0 ?? -1) >= 0 }) else { return nil }
+        return numbers.map { $0! }
+    }
+
+    /// Semantic (component-wise, zero-padded) comparison so `3.10.0` > `3.9.0`.
+    private static func versionLess(_ lhs: [Int], _ rhs: [Int]) -> Bool {
+        let count = max(lhs.count, rhs.count)
+        for index in 0..<count {
+            let left = index < lhs.count ? lhs[index] : 0
+            let right = index < rhs.count ? rhs[index] : 0
+            if left != right { return left < right }
+        }
+        return false
     }
 
     func createVersions() async {
@@ -273,6 +330,46 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             uiState.actionError = error.localizedDescription
             Log.print.error("[AppDetail] Delete version failed: \(error.localizedDescription)")
         }
+    }
+
+    /// Entry point for "Submit for Review". Always loads and validates the
+    /// pre-submit checklist first: if anything required is missing, it surfaces an
+    /// error instead of submitting. When valid, it either presents the checklist
+    /// sheet (when the setting is on) or falls back to the plain confirmation.
+    func startSubmitForReview(_ version: AppStoreVersionModel) async {
+        uiState.actionError = nil
+        uiState.isValidatingSubmit = true
+
+        guard let connection = createConnection() else {
+            uiState.isValidatingSubmit = false
+            return
+        }
+
+        let checklist = await PreSubmitChecklistLoader.load(source: connection, version: version)
+        uiState.isValidatingSubmit = false
+
+        if let message = checklist.validationMessage {
+            uiState.actionError = message
+            Log.print.info("[AppDetail] Submit blocked for \(version.id): missing \(checklist.missingRequirements.map(\.rawValue))")
+            return
+        }
+
+        if AppSettings.shared.isEnabled(.preReviewChecklistEnabled) {
+            uiState.preSubmitChecklist = checklist
+            uiState.preSubmitVersion = version
+            uiState.showPreSubmitSheet = true
+        } else {
+            uiState.confirmAction = .submitForReview(version)
+        }
+    }
+
+    /// Confirms submission from the pre-submit checklist sheet.
+    func confirmPreSubmit() async {
+        uiState.showPreSubmitSheet = false
+        guard let version = uiState.preSubmitVersion else { return }
+        await submitForReview(version: version)
+        uiState.preSubmitChecklist = nil
+        uiState.preSubmitVersion = nil
     }
 
     func submitForReview(version: AppStoreVersionModel) async {
@@ -380,6 +477,43 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
     }
 
     // MARK: - Private
+
+    /// Offline-first: loads any cached phased releases for the given versions
+    /// from `"phased.{versionId}"` and publishes them. Never throws.
+    private func loadCachedPhased(for versions: [AppStoreVersionModel]) async {
+        guard !versions.isEmpty else { return }
+        var map: [String: PhasedReleaseModel] = [:]
+        for version in versions {
+            if let phased = try? await storage.fetch(PhasedReleaseModel.self, id: "phased.\(version.id)") {
+                map[version.id] = phased
+            }
+        }
+        uiState.phasedByVersionId = map
+        if !map.isEmpty {
+            Log.print.info("[AppDetail] Loaded \(map.count) cached phased release(s) for \(self.uiState.app.name)")
+        }
+    }
+
+    /// Fetches fresh phased-release data for versions that are awaiting release
+    /// (readyForSale / pendingDeveloperRelease), publishes it and persists it
+    /// under `"phased.{versionId}"`. Clears stale entries when the API returns
+    /// nil. Never throws out of `refresh()`.
+    private func syncPhased(for versions: [AppStoreVersionModel], connection: AppleAccountConnection) async {
+        let eligible = versions.filter {
+            $0.appStoreState == .pendingDeveloperRelease || $0.appStoreState == .readyForSale
+        }
+        for version in eligible {
+            let phased = (try? await connection.fetchPhasedRelease(versionId: version.id)) ?? nil
+            if let phased {
+                uiState.phasedByVersionId[version.id] = phased
+                try? await storage.save(phased, id: "phased.\(version.id)")
+            } else {
+                uiState.phasedByVersionId[version.id] = nil
+                try? await storage.delete(PhasedReleaseModel.self, id: "phased.\(version.id)")
+            }
+        }
+        Log.print.info("[AppDetail] Synced phased releases for \(eligible.count) eligible version(s) of \(self.uiState.app.name)")
+    }
 
     private func persistSync(app: AppModel, versions: [AppStoreVersionModel], limit: Int) {
         let storage = self.storage

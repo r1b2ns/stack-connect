@@ -374,6 +374,7 @@ final class SyncService: ObservableObject {
         let currentVersionId: String?
         let platform: AppPlatform?
         let platformVersions: [AppPlatformVersion]
+        let awaitingVersions: [AppPlatformVersion]
     }
 
     private nonisolated static func enrichApps(
@@ -407,6 +408,20 @@ final class SyncService: ObservableObject {
                         )
                     }
 
+                    // Every awaiting-eligible version (not deduped to latest-per-platform):
+                    // retains a still-phasing readyForSale version even when a newer
+                    // version is being prepared, so phased rollouts keep showing.
+                    let awaitingVersions: [AppPlatformVersion] = sorted.compactMap { version in
+                        guard version.appStoreState?.isAwaitingReleaseEligible == true,
+                              let platform = version.platform?.rawValue else { return nil }
+                        return AppPlatformVersion(
+                            platform: platform,
+                            appStoreState: version.appStoreState,
+                            versionString: version.versionString,
+                            id: version.id
+                        )
+                    }
+
                     let icon = await iconUrl
                     return AppEnrichment(
                         appId: appId,
@@ -416,7 +431,8 @@ final class SyncService: ObservableObject {
                         lastModifiedDate: latest?.createdDate,
                         currentVersionId: latest?.id,
                         platform: latest?.platform,
-                        platformVersions: platformVersions
+                        platformVersions: platformVersions,
+                        awaitingVersions: awaitingVersions
                     )
                 }
             }
@@ -434,7 +450,10 @@ final class SyncService: ObservableObject {
                 if let ver = e.versionString { updated.versionString = ver }
                 if let date = e.lastModifiedDate { updated.lastModifiedDate = date }
                 if let platform = e.platform { updated.platform = platform.rawValue }
-                if !e.platformVersions.isEmpty { updated.platformVersions = e.platformVersions }
+                if !e.platformVersions.isEmpty {
+                    updated.platformVersions = e.platformVersions
+                    updated.awaitingVersions = e.awaitingVersions
+                }
                 updated.hasReviewPending = updated.appStoreState?.isReviewPending ?? false
             }
             return updated
@@ -547,7 +566,16 @@ final class SyncService: ObservableObject {
         var seenVersionIds = Set<String>()
 
         for app in apps {
-            if let platformVersions = app.platformVersions, !platformVersions.isEmpty {
+            if let awaitingVersions = app.awaitingVersions {
+                // Preferred path: every awaiting-eligible version, including a
+                // still-phasing readyForSale version behind a newer prepared one.
+                for version in awaitingVersions {
+                    guard let versionId = version.id, !seenVersionIds.contains(versionId) else { continue }
+                    seenVersionIds.insert(versionId)
+                    targets.append((app.name, versionId))
+                }
+            } else if let platformVersions = app.platformVersions, !platformVersions.isEmpty {
+                // Legacy data (pre-awaitingVersions): latest per platform.
                 for version in platformVersions where isAwaitingEligible(version.appStoreState) {
                     guard let versionId = version.id, !seenVersionIds.contains(versionId) else { continue }
                     seenVersionIds.insert(versionId)

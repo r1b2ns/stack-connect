@@ -31,6 +31,7 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
     var body: some View {
         List {
             buildGeneralSection()
+            buildAppStoreConnectSection()
             buildAboutSection()
             buildDangerSection()
             buildFooterSection()
@@ -75,6 +76,26 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
                 }
             }
             .foregroundStyle(.primary)
+        }
+    }
+
+    private func buildAppStoreConnectSection() -> some View {
+        Section {
+            Toggle(isOn: Binding(
+                get: { viewModel.uiState.preReviewChecklistEnabled },
+                set: { viewModel.setPreReviewChecklistEnabled($0) }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(String(localized: "Check list pre review"))
+                        .foregroundStyle(.primary)
+
+                    Text(String(localized: "Shows a checklist before submitting for Apple review"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text(String(localized: "App Store Connect"))
         }
     }
 
