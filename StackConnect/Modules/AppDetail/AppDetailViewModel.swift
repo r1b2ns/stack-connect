@@ -9,6 +9,7 @@ protocol AppDetailViewModelProtocol: ObservableObject {
     func refresh() async
     func createVersions() async
     func deleteVersion(id: String) async
+    func prepareCreatePlatform()
     func startSubmitForReview(_ version: AppStoreVersionModel) async
     func confirmPreSubmit() async
     func submitForReview(version: AppStoreVersionModel) async
@@ -230,6 +231,49 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
         }
 
         uiState.isLoading = false
+    }
+
+    /// Opens the create-platform sheet, pre-filling the version field with the
+    /// next suggested number: the highest existing version with its minor bumped
+    /// and patch reset (e.g. latest `3.1.0` → `3.2.0`). Defaults to `1.0.0` when
+    /// there are no parseable versions yet.
+    func prepareCreatePlatform() {
+        uiState.newVersionString = Self.suggestedNextVersion(from: uiState.versions)
+        uiState.selectedPlatforms = []
+        uiState.createError = nil
+        uiState.showCreatePlatform = true
+    }
+
+    /// Suggests the next version string from the highest existing version:
+    /// bump the minor component and reset the patch (`3.1.4` → `3.2.0`).
+    static func suggestedNextVersion(from versions: [AppStoreVersionModel]) -> String {
+        let fallback = "1.0.0"
+        let components = versions.compactMap { parseVersionComponents($0.versionString) }
+        guard let latest = components.max(by: versionLess) else { return fallback }
+        let major = latest[0]
+        let minor = (latest.count > 1 ? latest[1] : 0) + 1
+        return "\(major).\(minor).0"
+    }
+
+    /// Parses `"3.1.0"` into `[3, 1, 0]`. Returns `nil` when empty or any
+    /// component isn't a non-negative integer (e.g. `"3.1.0-beta"`).
+    static func parseVersionComponents(_ string: String?) -> [Int]? {
+        guard let string, !string.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+        let parts = string.trimmingCharacters(in: .whitespaces).split(separator: ".", omittingEmptySubsequences: false)
+        let numbers = parts.map { Int($0) }
+        guard !numbers.isEmpty, numbers.allSatisfy({ ($0 ?? -1) >= 0 }) else { return nil }
+        return numbers.map { $0! }
+    }
+
+    /// Semantic (component-wise, zero-padded) comparison so `3.10.0` > `3.9.0`.
+    private static func versionLess(_ lhs: [Int], _ rhs: [Int]) -> Bool {
+        let count = max(lhs.count, rhs.count)
+        for index in 0..<count {
+            let left = index < lhs.count ? lhs[index] : 0
+            let right = index < rhs.count ? rhs[index] : 0
+            if left != right { return left < right }
+        }
+        return false
     }
 
     func createVersions() async {

@@ -620,7 +620,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
         if account.canAdd(.version) {
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    viewModel.uiState.showCreatePlatform = true
+                    viewModel.prepareCreatePlatform()
                 } label: {
                     Image(systemName: "plus")
                 }
