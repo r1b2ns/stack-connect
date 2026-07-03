@@ -262,6 +262,13 @@ struct HomePhasedProgressView: View {
                     Image(systemName: "pause.circle.fill")
                         .font(.caption2)
                         .foregroundStyle(.orange)
+                    Text(String(localized: "Paused"))
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.orange)
+                    Text(verbatim: "·")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
                 }
                 Text(String(localized: "Day \(day) of \(total)"))
                     .font(.caption2)

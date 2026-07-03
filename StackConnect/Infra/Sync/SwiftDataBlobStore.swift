@@ -75,7 +75,8 @@ final class SwiftDataBlobStore: BlobStore, @unchecked Sendable {
                         isArchived: existing?.isArchived ?? false,
                         isFavorite: existing?.isFavorite ?? false,
                         hasReviewPending: existing?.hasReviewPending ?? false,
-                        platformVersions: existing?.platformVersions
+                        platformVersions: existing?.platformVersions,
+                        awaitingVersions: existing?.awaitingVersions
                     )
                     try await storage.save(merged, id: compositeId)
                 } catch {

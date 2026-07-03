@@ -195,6 +195,81 @@ final class AppStatusCategorizerTests: XCTestCase {
         XCTAssertTrue(entries.isEmpty)
     }
 
+    // MARK: - awaitingVersions (phasing version behind a newer prepared version)
+
+    /// The reported bug: iOS 3.1.0 is the latest per platform in
+    /// `prepareForSubmission`, while 3.0.3 is still phasing (`readyForSale` +
+    /// active phased). 3.0.3 must keep appearing in "Awaiting Release".
+    func testAwaitingEntriesSurfacesPhasingVersionBehindNewerPreparedVersion() {
+        let app = makeAppWithAwaiting(
+            id: "1",
+            primaryState: .prepareForSubmission,
+            platformVersions: [platform(.ios, .prepareForSubmission, versionId: "v-310")],
+            awaitingVersions: [platform(.ios, .readyForSale, versionId: "v-303")]
+        )
+        let phased = ["v-303": PhasedReleaseModel(id: "phased.v-303", state: .active)]
+
+        let entries = AppStatusCategorizer.awaitingReleaseEntries([app], phasedByVersionId: phased)
+
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertEqual(entries.first?.appStoreState, .readyForSale)
+        XCTAssertEqual(entries.first?.versionString, "1.0-IOS")
+        // The entry carries only the phasing version so the widget resolves phased by exact id.
+        XCTAssertEqual(entries.first?.platformVersions?.map(\.id), ["v-303"])
+    }
+
+    /// Same as above but the rollout is paused — it must still appear.
+    func testAwaitingEntriesSurfacesPausedPhasingVersionBehindNewerPreparedVersion() {
+        let app = makeAppWithAwaiting(
+            id: "1",
+            primaryState: .prepareForSubmission,
+            platformVersions: [platform(.ios, .prepareForSubmission, versionId: "v-310")],
+            awaitingVersions: [platform(.ios, .readyForSale, versionId: "v-303")]
+        )
+        let phased = ["v-303": PhasedReleaseModel(id: "phased.v-303", state: .paused)]
+
+        let entries = AppStatusCategorizer.awaitingReleaseEntries([app], phasedByVersionId: phased)
+
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertEqual(entries.first?.appStoreState, .readyForSale)
+    }
+
+    /// The same platform can expose both a newer `pendingDeveloperRelease` version
+    /// and an older still-phasing `readyForSale` version — both must appear.
+    func testAwaitingEntriesEmitsBothPendingAndPhasingForSamePlatform() {
+        let app = makeAppWithAwaiting(
+            id: "1",
+            primaryState: .pendingDeveloperRelease,
+            platformVersions: [platform(.ios, .pendingDeveloperRelease, versionId: "v-311")],
+            awaitingVersions: [
+                platform(.ios, .pendingDeveloperRelease, versionId: "v-311"),
+                platform(.ios, .readyForSale, versionId: "v-303")
+            ]
+        )
+        let phased = ["v-303": PhasedReleaseModel(id: "phased.v-303", state: .active)]
+
+        let entries = AppStatusCategorizer.awaitingReleaseEntries([app], phasedByVersionId: phased)
+
+        XCTAssertEqual(entries.count, 2)
+        XCTAssertEqual(Set(entries.compactMap { $0.platformVersions?.first?.id }), ["v-311", "v-303"])
+    }
+
+    /// A non-nil (even empty) `awaitingVersions` is authoritative: it short-circuits
+    /// the legacy `platformVersions` fallback.
+    func testEmptyAwaitingVersionsSuppressesLegacyPlatformVersionsFallback() {
+        let app = makeAppWithAwaiting(
+            id: "1",
+            primaryState: .readyForSale,
+            platformVersions: [platform(.ios, .readyForSale, versionId: "v-1")],
+            awaitingVersions: []
+        )
+        let phased = ["v-1": PhasedReleaseModel(id: "phased.v-1", state: .active)]
+
+        let entries = AppStatusCategorizer.awaitingReleaseEntries([app], phasedByVersionId: phased)
+
+        XCTAssertTrue(entries.isEmpty)
+    }
+
     // MARK: - Helpers
 
     private func makeApp(id: String, state: AppStoreState?) -> AppModel {
@@ -235,6 +310,26 @@ final class AppStatusCategorizerTests: XCTestCase {
             appStoreState: primaryState,
             versionString: "1.0-primary",
             platformVersions: versions
+        )
+    }
+
+    private func makeAppWithAwaiting(
+        id: String,
+        primaryState: AppStoreState,
+        primaryPlatform: AppPlatform = .ios,
+        platformVersions: [AppPlatformVersion],
+        awaitingVersions: [AppPlatformVersion]
+    ) -> AppModel {
+        AppModel(
+            id: id,
+            name: "App \(id)",
+            bundleId: "com.test.\(id)",
+            platform: primaryPlatform.rawValue,
+            accountId: "acc",
+            appStoreState: primaryState,
+            versionString: "1.0-primary",
+            platformVersions: platformVersions,
+            awaitingVersions: awaitingVersions
         )
     }
 }
