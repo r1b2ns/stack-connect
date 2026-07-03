@@ -1,10 +1,4 @@
-• Gérez plusieurs comptes par équipe, chacun étiqueté avec son rôle
-• Nouvel écran de détail d'un utilisateur pour voir les apps et les accès d'un membre de l'équipe
-• Soyez alerté lorsque des contrats App Store Connect sont en attente d'examen
-• Avertissement lorsque votre clé d'API n'a pas l'autorisation de supprimer des utilisateurs
-• La liste des apps affiche désormais l'état du binaire par plateforme et conserve vos favoris
-• Les captures d'écran et le filtre par plateforme prennent désormais en charge tvOS, macOS et visionOS
-• Partagez un tutoriel guidé pour aider d'autres personnes à importer vos fichiers .scexport
-• Les apps archivées sont désormais exclues de la liste Notes et avis
-• L'app est maintenant disponible en 8 langues
-• Corrections de bogues et améliorations de la stabilité
+• Aperçu des captures d'écran — parcourez les captures de l'App Store d'une app par version, appareil et résolution, sans quitter StackConnect
+• La progression du déploiement par phases apparaît désormais sur chaque version, pour suivre le déploiement d'un coup d'œil
+• Liste de vérification avant soumission — validez le build, les captures, les nouveautés et le compte de démonstration avant de soumettre pour examen, avec une confirmation facultative
+• Corrections de bugs et améliorations de la stabilité

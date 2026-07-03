@@ -1,10 +1,4 @@
-• Mehrere Accounts pro Team verwalten, jeweils mit seiner Rolle gekennzeichnet
-• Neue Benutzer-Detailansicht, um Apps und Zugriffsrechte eines Teammitglieds zu sehen
-• Hinweis, wenn ausstehende App-Store-Connect-Verträge zur Prüfung anstehen
-• Warnung, wenn dein API-Schlüssel keine Berechtigung zum Entfernen von Benutzern hat
-• Die App-Liste zeigt jetzt den Binär-Status je Plattform und behält deine Favoriten markiert
-• Screenshots und Plattformfilter unterstützen jetzt tvOS, macOS und visionOS
-• Teile eine geführte Anleitung, um anderen den Import deiner .scexport-Dateien zu erleichtern
-• Archivierte Apps werden jetzt aus der Liste „Bewertungen und Rezensionen“ ausgeschlossen
-• Die App ist jetzt in 8 Sprachen verfügbar
+• Screenshot-Vorschau — durchsuche die App-Store-Screenshots einer App nach Version, Gerät und Auflösung, direkt in StackConnect
+• Der Fortschritt der stufenweisen Freigabe erscheint jetzt in jeder Version, sodass du den Rollout auf einen Blick verfolgst
+• Checkliste vor dem Einreichen — prüfe Build, Screenshots, Neuigkeiten und Demokonto vor dem Einreichen zur Überprüfung, mit optionaler Bestätigung
 • Fehlerbehebungen und Stabilitätsverbesserungen

@@ -1,10 +1,4 @@
-• Manage multiple accounts per team, each labeled with its role
-• New user detail screen to see a team member's apps and access
-• Get alerted when you have pending App Store Connect agreements to review
-• Heads-up when your API key lacks permission to remove users
-• App list now shows binary status per platform and keeps your favorites starred
-• Screenshots and platform filtering now support tvOS, macOS, and visionOS
-• Share a guided tutorial to help others import your .scexport files
-• Archived apps are now excluded from the Rating & Reviews list
-• The app is now available in 8 languages
+• Screenshot Preview — browse an app's App Store screenshots by version, device, and resolution, right inside StackConnect
+• Phased Release progress now appears on each version row, so you can follow a staged rollout at a glance
+• Pre-Submit Checklist — validate build, screenshots, What's New, and demo account before submitting for review, with an optional confirmation step
 • Bug fixes and stability improvements
