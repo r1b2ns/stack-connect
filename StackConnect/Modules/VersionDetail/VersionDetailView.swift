@@ -117,6 +117,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 title: String(localized: "Select Build"),
                 appId: viewModel.uiState.version.appId,
                 account: viewModel.uiState.account,
+                platform: viewModel.uiState.version.platform,
                 assignedBuildIds: Set([viewModel.uiState.currentBuild?.id].compactMap { $0 }),
                 builds: viewModel.uiState.availableBuilds,
                 isLoading: viewModel.uiState.isLoadingBuilds,

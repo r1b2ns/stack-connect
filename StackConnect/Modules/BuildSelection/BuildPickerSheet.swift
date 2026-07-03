@@ -17,6 +17,10 @@ struct BuildPickerSheet: View {
     let title: String
     let appId: String
     let account: AccountModel
+    /// When non-nil, only builds for this platform are listed; nil lists every
+    /// platform. Useful when the action targets one platform (e.g. attaching a
+    /// build to an iOS App Store version should only offer iOS builds).
+    var platform: AppPlatform? = nil
     let assignedBuildIds: Set<String>
     let builds: [BuildModel]
     let isLoading: Bool
@@ -27,8 +31,19 @@ struct BuildPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var path = NavigationPath()
 
+    /// Filters `builds` to `platform` (matched by App Store Connect raw value);
+    /// returns all builds when `platform` is nil.
+    static func builds(_ builds: [BuildModel], matching platform: AppPlatform?) -> [BuildModel] {
+        guard let platform else { return builds }
+        return builds.filter { $0.platform == platform.rawValue }
+    }
+
+    private var filteredBuilds: [BuildModel] {
+        Self.builds(builds, matching: platform)
+    }
+
     private var buildsByPlatform: [PlatformBuildGroup] {
-        let sorted = builds.sorted { ($0.uploadedDate ?? .distantPast) > ($1.uploadedDate ?? .distantPast) }
+        let sorted = filteredBuilds.sorted { ($0.uploadedDate ?? .distantPast) > ($1.uploadedDate ?? .distantPast) }
         let dict = Dictionary(grouping: sorted) { $0.platform ?? "" }
         return dict
             .map { PlatformBuildGroup(platform: $0.key, builds: $0.value) }
@@ -41,7 +56,7 @@ struct BuildPickerSheet: View {
                 if isLoading {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if builds.isEmpty {
+                } else if filteredBuilds.isEmpty {
                     ContentUnavailableView {
                         Label(String(localized: "No Builds"), systemImage: "hammer")
                     } description: {
