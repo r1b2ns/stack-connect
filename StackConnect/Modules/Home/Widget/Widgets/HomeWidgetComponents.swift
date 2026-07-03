@@ -29,8 +29,10 @@ enum HomeWidgetDataLoader {
 
     /// Loads phased releases keyed by version id (matching the
     /// `"phased.{versionId}"` storage scheme written by `SyncService.syncPhased`).
-    /// For each app it looks up every per-platform version id, plus the app id
-    /// itself as a fallback for single-platform apps that predate per-version ids.
+    /// Looks up every version id in `awaitingVersions` (a still-phasing
+    /// `readyForSale` version kept behind a newer prepared one) AND
+    /// `platformVersions` (latest per platform), plus the app id as a fallback for
+    /// single-platform apps that predate per-version ids.
     static func loadPhasedReleases(
         for apps: [AppModel],
         storage: PersistentStorable
@@ -38,12 +40,12 @@ enum HomeWidgetDataLoader {
         // Build the deduplicated set of keys to look up.
         var keys = Set<String>()
         for app in apps {
-            if let platformVersions = app.platformVersions, !platformVersions.isEmpty {
-                for version in platformVersions {
-                    if let id = version.id { keys.insert(id) }
-                }
-            } else {
+            let versionIds = ((app.awaitingVersions ?? []) + (app.platformVersions ?? []))
+                .compactMap { $0.id }
+            if versionIds.isEmpty {
                 keys.insert(app.id)
+            } else {
+                keys.formUnion(versionIds)
             }
         }
 

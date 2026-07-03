@@ -290,6 +290,36 @@ final class AppStatusCategorizerTests: XCTestCase {
         XCTAssertTrue(entries.isEmpty)
     }
 
+    // MARK: - loadPhasedReleases integration
+
+    /// Regression: `loadPhasedReleases` must look up phased releases for versions
+    /// in `awaitingVersions` (a still-phasing readyForSale version behind a newer
+    /// prepared one), not only `platformVersions` — otherwise the app never
+    /// surfaces in Awaiting Release even though its rollout was stored.
+    func testLoadPhasedReleasesIncludesAwaitingVersionsBehindNewerVersion() async throws {
+        let storage = MockPersistentStorable()
+        try await storage.save(
+            PhasedReleaseModel(id: "p", state: .active, currentDayNumber: 3),
+            id: "phased.v-303"
+        )
+        let app = makeAppWithAwaiting(
+            id: "1",
+            primaryState: .prepareForSubmission,
+            platformVersions: [platform(.ios, .prepareForSubmission, versionId: "v-310")],
+            awaitingVersions: [platform(.ios, .readyForSale, versionId: "v-303")]
+        )
+
+        let phased = await HomeWidgetDataLoader.loadPhasedReleases(for: [app], storage: storage)
+
+        // The phasing version's rollout is loaded even though it isn't in platformVersions.
+        XCTAssertEqual(phased["v-303"]?.state, .active)
+
+        // End-to-end: the app now surfaces in Awaiting Release.
+        let entries = AppStatusCategorizer.awaitingReleaseEntries([app], phasedByVersionId: phased)
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertEqual(entries.first?.appStoreState, .readyForSale)
+    }
+
     // MARK: - Helpers
 
     private func makeApp(id: String, state: AppStoreState?) -> AppModel {
