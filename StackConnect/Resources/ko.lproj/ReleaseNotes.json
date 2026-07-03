@@ -1,7 +1,25 @@
 {
-  "version": "2.1.0",
+  "version": "2.2.0",
   "title": "새로운 기능",
   "highlights": [
+    {
+      "icon": "photo.on.rectangle.angled",
+      "color": "blue",
+      "title": "스크린샷 미리보기",
+      "description": "App Store 스크린샷을 버전, 기기, 해상도별로 앱 안에서 바로 확인하세요."
+    },
+    {
+      "icon": "chart.line.uptrend.xyaxis",
+      "color": "green",
+      "title": "단계적 출시 진행 상황",
+      "description": "진행 중인 단계적 출시를 앱 세부 정보의 각 버전 행에서 바로 확인하세요."
+    },
+    {
+      "icon": "checklist",
+      "color": "purple",
+      "title": "제출 전 체크리스트",
+      "description": "심사에 제출하기 전에 빌드, 스크린샷, 새로운 기능 등을 검증합니다."
+    },
     {
       "icon": "ladybug.fill",
       "color": "red",

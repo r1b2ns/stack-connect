@@ -1,7 +1,25 @@
 {
-  "version": "2.1.0",
+  "version": "2.2.0",
   "title": "Nyheter",
   "highlights": [
+    {
+      "icon": "photo.on.rectangle.angled",
+      "color": "blue",
+      "title": "Förhandsvisning av skärmbilder",
+      "description": "Bläddra bland dina App Store-skärmbilder efter version, enhet och upplösning – direkt i appen."
+    },
+    {
+      "icon": "chart.line.uptrend.xyaxis",
+      "color": "green",
+      "title": "Förlopp för stegvis lansering",
+      "description": "Följ en pågående stegvis lansering direkt på varje version i Appdetaljer."
+    },
+    {
+      "icon": "checklist",
+      "color": "purple",
+      "title": "Checklista före inskickning",
+      "description": "Validera build, skärmbilder, nyheter och mer innan du skickar in för granskning."
+    },
     {
       "icon": "ladybug.fill",
       "color": "red",

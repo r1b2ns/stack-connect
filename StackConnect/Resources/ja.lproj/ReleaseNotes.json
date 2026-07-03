@@ -1,7 +1,25 @@
 {
-  "version": "2.1.0",
+  "version": "2.2.0",
   "title": "新機能",
   "highlights": [
+    {
+      "icon": "photo.on.rectangle.angled",
+      "color": "blue",
+      "title": "スクリーンショットのプレビュー",
+      "description": "App Store のスクリーンショットをバージョン・デバイス・解像度ごとにアプリ内で確認できます。"
+    },
+    {
+      "icon": "chart.line.uptrend.xyaxis",
+      "color": "green",
+      "title": "段階的リリースの進捗",
+      "description": "進行中の段階的リリースを App 詳細の各バージョン行で確認できます。"
+    },
+    {
+      "icon": "checklist",
+      "color": "purple",
+      "title": "提出前チェックリスト",
+      "description": "審査に提出する前に、ビルド・スクリーンショット・新機能などを検証します。"
+    },
     {
       "icon": "ladybug.fill",
       "color": "red",

@@ -1,7 +1,25 @@
 {
-  "version": "2.1.0",
+  "version": "2.2.0",
   "title": "Nieuw",
   "highlights": [
+    {
+      "icon": "photo.on.rectangle.angled",
+      "color": "blue",
+      "title": "Schermafbeelding-voorbeeld",
+      "description": "Blader door je App Store-schermafbeeldingen op versie, apparaat en resolutie, direct in de app."
+    },
+    {
+      "icon": "chart.line.uptrend.xyaxis",
+      "color": "green",
+      "title": "Voortgang van gefaseerde release",
+      "description": "Volg een lopende gefaseerde release direct bij elke versie in App-details."
+    },
+    {
+      "icon": "checklist",
+      "color": "purple",
+      "title": "Checklist vóór indienen",
+      "description": "Valideer build, schermafbeeldingen, nieuwe functies en meer voordat je ter beoordeling indient."
+    },
     {
       "icon": "ladybug.fill",
       "color": "red",

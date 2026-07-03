@@ -1,7 +1,25 @@
 {
-  "version": "2.1.0",
+  "version": "2.2.0",
   "title": "新功能",
   "highlights": [
+    {
+      "icon": "photo.on.rectangle.angled",
+      "color": "blue",
+      "title": "螢幕截圖預覽",
+      "description": "直接在 App 內依版本、裝置與解析度瀏覽你的 App Store 螢幕截圖。"
+    },
+    {
+      "icon": "chart.line.uptrend.xyaxis",
+      "color": "green",
+      "title": "分階段發布進度",
+      "description": "直接在「App 詳細資訊」的每個版本列中追蹤進行中的分階段發布。"
+    },
+    {
+      "icon": "checklist",
+      "color": "purple",
+      "title": "提交前檢查清單",
+      "description": "在提交審查前，驗證組建、螢幕截圖、新功能等項目。"
+    },
     {
       "icon": "ladybug.fill",
       "color": "red",

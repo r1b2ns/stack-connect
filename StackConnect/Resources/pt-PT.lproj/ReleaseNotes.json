@@ -1,7 +1,25 @@
 {
-  "version": "2.1.0",
+  "version": "2.2.0",
   "title": "Novidades",
   "highlights": [
+    {
+      "icon": "photo.on.rectangle.angled",
+      "color": "blue",
+      "title": "Pré-visualização de Capturas de Ecrã",
+      "description": "Veja as capturas de ecrã da App Store por versão, dispositivo e resolução, diretamente na aplicação."
+    },
+    {
+      "icon": "chart.line.uptrend.xyaxis",
+      "color": "green",
+      "title": "Progresso do Lançamento Faseado",
+      "description": "Acompanhe o lançamento faseado em curso em cada versão nos Detalhes da Aplicação."
+    },
+    {
+      "icon": "checklist",
+      "color": "purple",
+      "title": "Lista de Verificação Pré-Envio",
+      "description": "Valide a build, capturas de ecrã, novidades e mais antes de enviar para revisão."
+    },
     {
       "icon": "ladybug.fill",
       "color": "red",

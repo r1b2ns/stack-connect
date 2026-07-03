@@ -1,7 +1,25 @@
 {
-  "version": "2.1.0",
+  "version": "2.2.0",
   "title": "Nouveautés",
   "highlights": [
+    {
+      "icon": "photo.on.rectangle.angled",
+      "color": "blue",
+      "title": "Aperçu des captures d'écran",
+      "description": "Parcourez les captures d'écran de l'App Store par version, appareil et résolution, directement dans l'app."
+    },
+    {
+      "icon": "chart.line.uptrend.xyaxis",
+      "color": "green",
+      "title": "Progression du déploiement par phases",
+      "description": "Suivez un déploiement par phases en cours directement sur chaque version dans les détails de l'app."
+    },
+    {
+      "icon": "checklist",
+      "color": "purple",
+      "title": "Liste de vérification avant soumission",
+      "description": "Validez le build, les captures d'écran, les nouveautés et plus avant de soumettre pour examen."
+    },
     {
       "icon": "ladybug.fill",
       "color": "red",
