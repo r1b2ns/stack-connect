@@ -71,16 +71,21 @@ enum AppStatusCategorizer {
     ) -> [AppModel] {
         var result: [AppModel] = []
         for app in apps {
-            if let platformVersions = app.platformVersions, !platformVersions.isEmpty {
+            if let awaitingVersions = app.awaitingVersions {
+                // Preferred path: `awaitingVersions` retains a still-phasing
+                // `readyForSale` version even after a newer version has moved to
+                // `prepareForSubmission`, so the rollout keeps showing here.
+                for version in awaitingVersions {
+                    if let entry = awaitingEntry(app: app, version: version, phasedByVersionId: phasedByVersionId) {
+                        result.append(entry)
+                    }
+                }
+            } else if let platformVersions = app.platformVersions, !platformVersions.isEmpty {
+                // Legacy data (persisted before `awaitingVersions`): latest per platform.
                 for version in platformVersions {
-                    guard let state = version.appStoreState,
-                          isAwaiting(state: state, phased: phasedByVersionId[version.id ?? ""])
-                    else { continue }
-                    var entry = app
-                    entry.appStoreState = state
-                    entry.platform = version.platform
-                    entry.versionString = version.versionString
-                    result.append(entry)
+                    if let entry = awaitingEntry(app: app, version: version, phasedByVersionId: phasedByVersionId) {
+                        result.append(entry)
+                    }
                 }
             } else if let state = app.appStoreState,
                       isAwaiting(state: state, phased: phasedByVersionId[app.id]) {
@@ -88,6 +93,29 @@ enum AppStatusCategorizer {
             }
         }
         return result
+    }
+
+    /// Builds an awaiting-release entry for a single per-platform version, or
+    /// `nil` when that version isn't awaiting. The entry keeps the app's full
+    /// `platformVersions` (so App Detail still shows every platform the app ships)
+    /// and its `awaitingVersions`; its own `platform`/`versionString` identify
+    /// which version this entry represents, so the widget resolves the exact
+    /// phased release via `HomeWidgetDataLoader.phasedRelease(for:in:)` — an app
+    /// can expose two versions for one platform (a phasing `readyForSale` one plus
+    /// a newer prepared one).
+    private static func awaitingEntry(
+        app: AppModel,
+        version: AppPlatformVersion,
+        phasedByVersionId: [String: PhasedReleaseModel]
+    ) -> AppModel? {
+        guard let state = version.appStoreState,
+              isAwaiting(state: state, phased: phasedByVersionId[version.id ?? ""])
+        else { return nil }
+        var entry = app
+        entry.appStoreState = state
+        entry.platform = version.platform
+        entry.versionString = version.versionString
+        return entry
     }
 
     /// The awaiting-release decision used by `awaitingReleaseEntries`:

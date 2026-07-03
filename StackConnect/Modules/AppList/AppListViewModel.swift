@@ -119,7 +119,8 @@ final class AppListViewModel: AppListViewModelProtocol {
                     lastModifiedDate: cached?.lastModifiedDate,
                     isArchived: cached?.isArchived ?? false,
                     isFavorite: cached?.isFavorite ?? false,
-                    platformVersions: cached?.platformVersions
+                    platformVersions: cached?.platformVersions,
+                    awaitingVersions: cached?.awaitingVersions
                 )
             }.sorted { a, b in
                 switch (a.lastModifiedDate, b.lastModifiedDate) {
@@ -204,6 +205,7 @@ final class AppListViewModel: AppListViewModelProtocol {
         let versionString: String?
         let lastModifiedDate: Date?
         let platformVersions: [AppPlatformVersion]
+        let awaitingVersions: [AppPlatformVersion]
     }
 
     private func enrichApps(_ apps: [AppModel], using connection: AppleAccountConnection) async -> [AppModel] {
@@ -228,8 +230,22 @@ final class AppListViewModel: AppListViewModelProtocol {
                             AppPlatformVersion(
                                 platform: platform,
                                 appStoreState: version.appStoreState,
-                                versionString: version.versionString
+                                versionString: version.versionString,
+                                id: version.id
                             )
+                        )
+                    }
+
+                    // Every awaiting-eligible version (not deduped to latest-per-platform),
+                    // so a still-phasing readyForSale version survives a newer prepared one.
+                    let awaitingVersions: [AppPlatformVersion] = sorted.compactMap { version in
+                        guard version.appStoreState?.isAwaitingReleaseEligible == true,
+                              let platform = version.platform?.rawValue else { return nil }
+                        return AppPlatformVersion(
+                            platform: platform,
+                            appStoreState: version.appStoreState,
+                            versionString: version.versionString,
+                            id: version.id
                         )
                     }
 
@@ -241,7 +257,8 @@ final class AppListViewModel: AppListViewModelProtocol {
                         appStoreState: latestVersion?.appStoreState,
                         versionString: latestVersion?.versionString,
                         lastModifiedDate: latestVersion?.createdDate,
-                        platformVersions: platformVersions
+                        platformVersions: platformVersions,
+                        awaitingVersions: awaitingVersions
                     )
                 }
             }
@@ -262,7 +279,10 @@ final class AppListViewModel: AppListViewModelProtocol {
                 if let state = e.appStoreState { enriched.appStoreState = state }
                 if let ver = e.versionString { enriched.versionString = ver }
                 if let date = e.lastModifiedDate { enriched.lastModifiedDate = date }
-                if !e.platformVersions.isEmpty { enriched.platformVersions = e.platformVersions }
+                if !e.platformVersions.isEmpty {
+                    enriched.platformVersions = e.platformVersions
+                    enriched.awaitingVersions = e.awaitingVersions
+                }
                 enriched.hasReviewPending = enriched.appStoreState?.isReviewPending ?? false
             }
             return enriched

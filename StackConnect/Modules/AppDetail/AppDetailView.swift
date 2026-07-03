@@ -65,6 +65,16 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
         .sheet(isPresented: $viewModel.uiState.showCreatePlatform) {
             CreatePlatformSheet(viewModel: viewModel)
         }
+        .sheet(isPresented: $viewModel.uiState.showPreSubmitSheet) {
+            if let checklist = viewModel.uiState.preSubmitChecklist {
+                PreSubmitChecklistSheet(
+                    checklist: checklist,
+                    isSubmitting: viewModel.uiState.isPerformingAction,
+                    onSubmit: { Task { await viewModel.confirmPreSubmit() } },
+                    onCancel: { viewModel.uiState.showPreSubmitSheet = false }
+                )
+            }
+        }
         .alert(
             viewModel.uiState.confirmAction?.title ?? "",
             isPresented: Binding(
@@ -101,6 +111,11 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             }
         }
         .toast(message: $viewModel.uiState.toastMessage)
+        .overlay {
+            if viewModel.uiState.isValidatingSubmit {
+                buildValidatingOverlay()
+            }
+        }
         .alert(
             String(localized: "Permission Denied"),
             isPresented: $showPermissionDenied
@@ -114,6 +129,20 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
     private func denyPermission(_ message: String) {
         permissionDeniedMessage = message
         showPermissionDenied = true
+    }
+
+    private func buildValidatingOverlay() -> some View {
+        ZStack {
+            Color.black.opacity(0.15).ignoresSafeArea()
+            VStack(spacing: 12) {
+                ProgressView()
+                Text(String(localized: "Checking submission…"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(24)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        }
     }
 
     // MARK: - Header
@@ -270,6 +299,12 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                 if let state = version.appStoreState {
                     buildStatusBadge(state: state, version: nil)
                 }
+
+                if let phased = viewModel.uiState.phasedByVersionId[version.id],
+                   phased.state == .active || phased.state == .paused,
+                   let day = phased.currentDayNumber {
+                    buildPhasedReleaseLabel(day: day, paused: phased.state == .paused)
+                }
             }
 
             Spacer()
@@ -286,7 +321,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
         case .prepareForSubmission:
             if account.canEdit(.version) {
                 Button {
-                    viewModel.uiState.confirmAction = .submitForReview(version)
+                    Task { await viewModel.startSubmitForReview(version) }
                 } label: {
                     Label(String(localized: "Submit"), systemImage: "paperplane.fill")
                 }
@@ -516,6 +551,24 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
         }
     }
 
+    private func buildPhasedReleaseLabel(day: Int, paused: Bool) -> some View {
+        HStack(spacing: 4) {
+            if paused {
+                Circle()
+                    .fill(.orange)
+                    .frame(width: 6, height: 6)
+            } else {
+                Circle()
+                    .fill(.green)
+                    .frame(width: 6, height: 6)
+            }
+
+            Text(String(localized: "Phased release: \(day) of 7 days"))
+                .font(.caption)
+                .foregroundStyle(.primary)
+        }
+    }
+
     private func statusColor(_ color: AppStoreStateColor) -> Color {
         switch color {
         case .green:  return .green
@@ -567,7 +620,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
         if account.canAdd(.version) {
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    viewModel.uiState.showCreatePlatform = true
+                    viewModel.prepareCreatePlatform()
                 } label: {
                     Image(systemName: "plus")
                 }

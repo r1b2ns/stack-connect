@@ -14,12 +14,16 @@ protocol VersionDetailViewModelProtocol: ObservableObject {
     func saveReleaseType() async
     func savePhasedRelease(usePhased: Bool) async
     func setPhasedReleasePaused(_ paused: Bool) async
+    func startSubmitForReview() async
+    func confirmPreSubmit() async
     func submitForReview() async
     func cancelReview() async
     func cancelSubmission() async
     func releaseVersion() async
     func rejectVersion() async
     func completePhasedRelease() async
+    func loadAvailableBuilds() async
+    func attachBuild(_ build: BuildModel) async
     func requestField(_ field: VersionDetailLocalizableField)
     func selectLocalization(_ localization: AppStoreLocalizationModel, for field: VersionDetailLocalizableField)
 }
@@ -35,6 +39,12 @@ struct VersionDetailUiState {
     var editingLocalization: AppStoreLocalizationModel?
     var localizationPickerField: VersionDetailLocalizableField?
     var currentBuild: BuildModel?
+
+    // Build picker
+    var showBuildPicker = false
+    var availableBuilds: [BuildModel] = []
+    var isLoadingBuilds = false
+    var isAttachingBuild = false
 
     // Text editing sheets
     var showPromotionalText = false
@@ -65,6 +75,11 @@ struct VersionDetailUiState {
     var actionError: String?
     var confirmAction: VersionDetailAction?
     var toastMessage: ToastMessage?
+
+    // Pre-submit checklist
+    var isValidatingSubmit = false
+    var preSubmitChecklist: PreSubmitChecklist?
+    var showPreSubmitSheet = false
 
     // Phased release
     var phasedRelease: PhasedReleaseModel?
@@ -525,7 +540,86 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         uiState.isSavingPhasedRelease = false
     }
 
+    // MARK: - Build Selection
+
+    /// Loads the app's builds for the build picker sheet.
+    func loadAvailableBuilds() async {
+        uiState.isLoadingBuilds = true
+        defer { uiState.isLoadingBuilds = false }
+
+        guard let connection = createConnection() else { return }
+        do {
+            uiState.availableBuilds = try await connection.fetchBuilds(appId: uiState.version.appId, limit: 50)
+        } catch {
+            uiState.actionError = error.localizedDescription
+            Log.print.error("[VersionDetail] Load builds failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Attaches the picked build to this version. Tapping the already-attached
+    /// build just closes the picker.
+    func attachBuild(_ build: BuildModel) async {
+        guard build.id != uiState.currentBuild?.id else {
+            uiState.showBuildPicker = false
+            return
+        }
+
+        uiState.isAttachingBuild = true
+        do {
+            guard let connection = createConnection() else {
+                uiState.isAttachingBuild = false
+                return
+            }
+            try await connection.attachBuild(versionId: uiState.version.id, buildId: build.id)
+            uiState.showBuildPicker = false
+            uiState.toastMessage = ToastMessage(String(localized: "Build selected"), icon: "hammer.fill")
+            Log.print.info("[VersionDetail] Attached build \(build.version ?? build.id)")
+            await refresh()
+        } catch {
+            uiState.actionError = error.localizedDescription
+            Log.print.error("[VersionDetail] Attach build failed: \(error.localizedDescription)")
+        }
+        uiState.isAttachingBuild = false
+    }
+
     // MARK: - Version Actions
+
+    /// Entry point for "Submit for Review". Always loads and validates the
+    /// pre-submit checklist first; blocks with an error listing anything missing.
+    /// When valid, presents the checklist sheet (setting on) or the plain
+    /// confirmation (setting off).
+    func startSubmitForReview() async {
+        uiState.actionError = nil
+        uiState.isValidatingSubmit = true
+
+        guard let connection = createConnection() else {
+            uiState.isValidatingSubmit = false
+            return
+        }
+
+        let checklist = await PreSubmitChecklistLoader.load(source: connection, version: uiState.version)
+        uiState.isValidatingSubmit = false
+
+        if let message = checklist.validationMessage {
+            uiState.actionError = message
+            Log.print.info("[VersionDetail] Submit blocked: missing \(checklist.missingRequirements.map(\.rawValue))")
+            return
+        }
+
+        if AppSettings.shared.isEnabled(.preReviewChecklistEnabled) {
+            uiState.preSubmitChecklist = checklist
+            uiState.showPreSubmitSheet = true
+        } else {
+            uiState.confirmAction = .submitForReview
+        }
+    }
+
+    /// Confirms submission from the pre-submit checklist sheet.
+    func confirmPreSubmit() async {
+        uiState.showPreSubmitSheet = false
+        await submitForReview()
+        uiState.preSubmitChecklist = nil
+    }
 
     func submitForReview() async {
         uiState.isPerformingAction = true
