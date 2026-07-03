@@ -57,13 +57,22 @@ enum HomeWidgetDataLoader {
     }
 
     /// Resolves the phased release for a single awaiting-release entry from a
-    /// version-id-keyed map. An expanded entry carries the app's `platformVersions`
-    /// plus its own `platform`, so we find the matching version id and look it up.
-    /// Falls back to the app id for single-platform apps (empty `platformVersions`).
+    /// version-id-keyed map. An expanded entry keeps the app's full
+    /// `awaitingVersions`, and its own `platform`/`versionString` identify which
+    /// one it represents — so an app exposing two versions for one platform (a
+    /// still-phasing `readyForSale` one behind a newer prepared one) resolves each
+    /// to its own phased release. Falls back to the latest-per-platform
+    /// `platformVersions` (legacy data), then the app id (single-platform apps).
     static func phasedRelease(
         for entry: AppModel,
         in phasedByVersionId: [String: PhasedReleaseModel]
     ) -> PhasedReleaseModel? {
+        if let awaitingVersions = entry.awaitingVersions {
+            let versionId = awaitingVersions.first {
+                $0.platform == entry.platform && $0.versionString == entry.versionString
+            }?.id
+            return versionId.flatMap { phasedByVersionId[$0] }
+        }
         if let platformVersions = entry.platformVersions, !platformVersions.isEmpty {
             let versionId = platformVersions.first { $0.platform == entry.platform }?.id
             return versionId.flatMap { phasedByVersionId[$0] }

@@ -96,10 +96,13 @@ enum AppStatusCategorizer {
     }
 
     /// Builds an awaiting-release entry for a single per-platform version, or
-    /// `nil` when that version isn't awaiting. The entry carries only this version
-    /// in `platformVersions` so the widget resolves its phased release by the
-    /// exact version id — an app can now expose two versions for one platform (a
-    /// phasing `readyForSale` one plus a newer prepared one).
+    /// `nil` when that version isn't awaiting. The entry keeps the app's full
+    /// `platformVersions` (so App Detail still shows every platform the app ships)
+    /// and its `awaitingVersions`; its own `platform`/`versionString` identify
+    /// which version this entry represents, so the widget resolves the exact
+    /// phased release via `HomeWidgetDataLoader.phasedRelease(for:in:)` — an app
+    /// can expose two versions for one platform (a phasing `readyForSale` one plus
+    /// a newer prepared one).
     private static func awaitingEntry(
         app: AppModel,
         version: AppPlatformVersion,
@@ -112,7 +115,6 @@ enum AppStatusCategorizer {
         entry.appStoreState = state
         entry.platform = version.platform
         entry.versionString = version.versionString
-        entry.platformVersions = [version]
         return entry
     }
 
