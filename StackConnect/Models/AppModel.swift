@@ -55,6 +55,23 @@ struct AppPlatformVersion: Codable, Hashable {
     let platform: String
     var appStoreState: AppStoreState?
     var versionString: String?
+    /// The App Store version id for this platform. Optional for backward
+    /// compatibility with data persisted before this field existed (old JSON
+    /// simply decodes it as `nil`). Used to fetch/look up the per-version phased
+    /// release so each platform's phased state is tracked independently.
+    var id: String?
+
+    init(
+        platform: String,
+        appStoreState: AppStoreState? = nil,
+        versionString: String? = nil,
+        id: String? = nil
+    ) {
+        self.platform = platform
+        self.appStoreState = appStoreState
+        self.versionString = versionString
+        self.id = id
+    }
 }
 
 // MARK: - AppStoreState
@@ -127,6 +144,13 @@ enum AppStoreState: String, Codable, Hashable {
         default:
             return false
         }
+    }
+
+    /// Whether this state is eligible to appear in the "Awaiting Release" bucket.
+    /// `pendingDeveloperRelease` always qualifies; `readyForSale` only qualifies
+    /// when it has an active/paused phased release (checked by the caller).
+    var isAwaitingReleaseEligible: Bool {
+        self == .pendingDeveloperRelease || self == .readyForSale
     }
 
     var color: AppStoreStateColor {

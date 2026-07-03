@@ -31,6 +31,10 @@ struct WidgetPlatformVersion: Codable, Hashable {
     let platform: String
     var appStoreState: String?
     var versionString: String?
+    /// The App Store version id for this platform. Optional for backward
+    /// compatibility with previously persisted data. Used to look up the
+    /// per-version phased release under the "phased.{versionId}" key.
+    var id: String?
 }
 
 struct WidgetReview: Codable, Identifiable, Hashable {

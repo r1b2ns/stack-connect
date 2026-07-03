@@ -27,17 +27,48 @@ enum HomeWidgetDataLoader {
         }
     }
 
+    /// Loads phased releases keyed by version id (matching the
+    /// `"phased.{versionId}"` storage scheme written by `SyncService.syncPhased`).
+    /// For each app it looks up every per-platform version id, plus the app id
+    /// itself as a fallback for single-platform apps that predate per-version ids.
     static func loadPhasedReleases(
         for apps: [AppModel],
         storage: PersistentStorable
     ) async -> [String: PhasedReleaseModel] {
-        var result: [String: PhasedReleaseModel] = [:]
+        // Build the deduplicated set of keys to look up.
+        var keys = Set<String>()
         for app in apps {
-            if let phased: PhasedReleaseModel = try? await storage.fetch(PhasedReleaseModel.self, id: "phased.\(app.id)") {
-                result[app.id] = phased
+            if let platformVersions = app.platformVersions, !platformVersions.isEmpty {
+                for version in platformVersions {
+                    if let id = version.id { keys.insert(id) }
+                }
+            } else {
+                keys.insert(app.id)
+            }
+        }
+
+        var result: [String: PhasedReleaseModel] = [:]
+        for key in keys {
+            if let phased: PhasedReleaseModel = try? await storage.fetch(PhasedReleaseModel.self, id: "phased.\(key)") {
+                result[key] = phased
             }
         }
         return result
+    }
+
+    /// Resolves the phased release for a single awaiting-release entry from a
+    /// version-id-keyed map. An expanded entry carries the app's `platformVersions`
+    /// plus its own `platform`, so we find the matching version id and look it up.
+    /// Falls back to the app id for single-platform apps (empty `platformVersions`).
+    static func phasedRelease(
+        for entry: AppModel,
+        in phasedByVersionId: [String: PhasedReleaseModel]
+    ) -> PhasedReleaseModel? {
+        if let platformVersions = entry.platformVersions, !platformVersions.isEmpty {
+            let versionId = platformVersions.first { $0.platform == entry.platform }?.id
+            return versionId.flatMap { phasedByVersionId[$0] }
+        }
+        return phasedByVersionId[entry.id]
     }
 
     static func sortByRecency(_ a: AppModel, _ b: AppModel) -> Bool {

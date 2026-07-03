@@ -41,6 +41,21 @@ private func groupByPlatform(_ apps: [WidgetApp]) -> [(platform: String?, apps: 
         .map { ($0, groups[$0] ?? []) }
 }
 
+/// Resolves the phased release for a single awaiting-release entry from a
+/// version-id-keyed map. An expanded entry carries the app's `platformVersions`
+/// plus its own `platform`, so we find the matching version id and look it up.
+/// Falls back to the app id for single-platform apps (empty `platformVersions`).
+private func phasedRelease(
+    for entry: WidgetApp,
+    in phasedByVersionId: [String: WidgetPhasedRelease]
+) -> WidgetPhasedRelease? {
+    if let platformVersions = entry.platformVersions, !platformVersions.isEmpty {
+        let versionId = platformVersions.first { $0.platform == entry.platform }?.id
+        return versionId.flatMap { phasedByVersionId[$0] }
+    }
+    return phasedByVersionId[entry.id]
+}
+
 // MARK: - In Review
 
 struct InReviewWidget: Widget {
@@ -142,14 +157,32 @@ private struct AwaitingReleaseWidgetView: View {
                 WidgetEmptyRow(icon: "checkmark.circle", text: String(localized: "Nothing awaiting release"))
                 Spacer(minLength: 0)
             } else {
-                ForEach(apps) { app in
-                    VStack(alignment: .leading, spacing: 4) {
-                        WidgetAppRow(app: app)
-                        if let phased = entry.snapshot.phasedByAppId[app.id],
-                           phased.state == "ACTIVE" || phased.state == "PAUSED",
-                           let day = phased.currentDayNumber {
-                            WidgetPhasedProgress(day: day, total: 7, paused: phased.state == "PAUSED")
-                                .padding(.leading, 38)
+                let groups = groupByPlatform(apps)
+                let showsHeaders = groups.count > 1
+                ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
+                    if showsHeaders,
+                       let name = WidgetPlatform.displayName(for: group.platform),
+                       group.platform != nil {
+                        HStack(spacing: 4) {
+                            if let icon = WidgetPlatform.icon(for: group.platform) {
+                                Image(systemName: icon)
+                            }
+                            Text(name)
+                        }
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                    }
+
+                    ForEach(group.apps) { app in
+                        VStack(alignment: .leading, spacing: 4) {
+                            WidgetAppRow(app: app, showsPlatform: true)
+                            if let phased = phasedRelease(for: app, in: entry.snapshot.phasedByVersionId),
+                               phased.state == "ACTIVE" || phased.state == "PAUSED",
+                               let day = phased.currentDayNumber {
+                                WidgetPhasedProgress(day: day, total: 7, paused: phased.state == "PAUSED")
+                                    .padding(.leading, 38)
+                            }
                         }
                     }
                 }

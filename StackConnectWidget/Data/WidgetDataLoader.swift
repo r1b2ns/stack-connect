@@ -6,7 +6,9 @@ import StackCore
 struct WidgetSnapshot: Sendable {
     var inReview: [WidgetApp] = []
     var awaitingRelease: [WidgetApp] = []
-    var phasedByAppId: [String: WidgetPhasedRelease] = [:]
+    /// Phased releases keyed by version id (matches the `"phased.{versionId}"`
+    /// storage scheme). Resolve per awaiting entry via `phasedRelease(for:in:)`.
+    var phasedByVersionId: [String: WidgetPhasedRelease] = [:]
     var recentReviews: [WidgetReviewItem] = []
 
     static let empty = WidgetSnapshot()
@@ -26,19 +28,31 @@ enum WidgetDataLoader {
             let apps = try await storage.fetchAll(WidgetApp.self, typeName: "AppModel")
             let active = apps.filter { $0.isArchived != true }
 
-            // Phased releases are stored under identifier "phased.{appId}".
-            var phasedByAppId: [String: WidgetPhasedRelease] = [:]
+            // Phased releases are stored under identifier "phased.{versionId}".
+            // Collect every per-platform version id (plus the app id as a fallback
+            // for single-platform apps that predate per-version ids).
+            var phasedKeys = Set<String>()
             for app in active {
+                if let platformVersions = app.platformVersions, !platformVersions.isEmpty {
+                    for version in platformVersions {
+                        if let id = version.id { phasedKeys.insert(id) }
+                    }
+                } else {
+                    phasedKeys.insert(app.id)
+                }
+            }
+            var phasedByVersionId: [String: WidgetPhasedRelease] = [:]
+            for key in phasedKeys {
                 if let phased = try? await storage.fetch(
                     WidgetPhasedRelease.self,
-                    id: "phased.\(app.id)",
+                    id: "phased.\(key)",
                     typeName: "PhasedReleaseModel"
                 ) {
-                    phasedByAppId[app.id] = phased
+                    phasedByVersionId[key] = phased
                 }
             }
 
-            let (inReview, awaiting) = categorize(active, phasedByAppId: phasedByAppId)
+            let (inReview, awaiting) = categorize(active, phasedByVersionId: phasedByVersionId)
 
             let reviews = try await storage.fetchAll(WidgetReview.self, typeName: "CustomerReviewModel")
             // Match reviews only against active (non-archived) apps so reviews
@@ -56,7 +70,7 @@ enum WidgetDataLoader {
             return WidgetSnapshot(
                 inReview: inReview.sorted(by: sortByRecency).map(withIcon),
                 awaitingRelease: awaiting.sorted(by: sortByRecency).map(withIcon),
-                phasedByAppId: phasedByAppId,
+                phasedByVersionId: phasedByVersionId,
                 recentReviews: recent
             )
         } catch {
@@ -89,36 +103,57 @@ enum WidgetDataLoader {
 
     private static func categorize(
         _ apps: [WidgetApp],
-        phasedByAppId: [String: WidgetPhasedRelease]
+        phasedByVersionId: [String: WidgetPhasedRelease]
     ) -> (inReview: [WidgetApp], awaitingRelease: [WidgetApp]) {
         var inReview: [WidgetApp] = []
         var awaiting: [WidgetApp] = []
         for app in apps {
-            // In Review is expanded per platform: an app with an iOS version in
-            // review and a tvOS version with an invalid binary yields two rows.
+            // Both buckets are expanded per platform: an app with an iOS version
+            // in review and a tvOS version with an invalid binary yields two In
+            // Review rows; an app phasing on both iOS and tvOS yields two
+            // Awaiting rows.
             if let platformVersions = app.platformVersions, !platformVersions.isEmpty {
-                for version in platformVersions where WidgetAppStatus.isInReview(version.appStoreState) {
-                    var entry = app
-                    entry.appStoreState = version.appStoreState
-                    entry.platform = version.platform
-                    entry.versionString = version.versionString
-                    inReview.append(entry)
+                for version in platformVersions {
+                    if WidgetAppStatus.isInReview(version.appStoreState) {
+                        inReview.append(expand(app, with: version))
+                    }
+                    if isAwaiting(state: version.appStoreState, phased: phasedByVersionId[version.id ?? ""]) {
+                        awaiting.append(expand(app, with: version))
+                    }
                 }
-            } else if WidgetAppStatus.isInReview(app.appStoreState) {
-                inReview.append(app)
-            }
-
-            // Awaiting Release stays on the app's primary (most-recent) state.
-            let state = app.appStoreState
-            if state == "PENDING_DEVELOPER_RELEASE" {
-                awaiting.append(app)
-            } else if state == "READY_FOR_SALE",
-                      let phased = phasedByAppId[app.id],
-                      phased.state == "ACTIVE" || phased.state == "PAUSED" {
-                awaiting.append(app)
+            } else {
+                if WidgetAppStatus.isInReview(app.appStoreState) {
+                    inReview.append(app)
+                }
+                if isAwaiting(state: app.appStoreState, phased: phasedByVersionId[app.id]) {
+                    awaiting.append(app)
+                }
             }
         }
         return (inReview, awaiting)
+    }
+
+    /// Produces an app copy with the given platform version's state/platform/version.
+    private static func expand(_ app: WidgetApp, with version: WidgetPlatformVersion) -> WidgetApp {
+        var entry = app
+        entry.appStoreState = version.appStoreState
+        entry.platform = version.platform
+        entry.versionString = version.versionString
+        return entry
+    }
+
+    /// The awaiting-release decision on raw API strings: `PENDING_DEVELOPER_RELEASE`
+    /// always awaits; `READY_FOR_SALE` awaits only with an active/paused phased release.
+    private static func isAwaiting(state: String?, phased: WidgetPhasedRelease?) -> Bool {
+        switch state {
+        case "PENDING_DEVELOPER_RELEASE":
+            return true
+        case "READY_FOR_SALE":
+            guard let phased else { return false }
+            return phased.state == "ACTIVE" || phased.state == "PAUSED"
+        default:
+            return false
+        }
     }
 
     private static func sortByRecency(_ a: WidgetApp, _ b: WidgetApp) -> Bool {

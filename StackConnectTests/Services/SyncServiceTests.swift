@@ -423,7 +423,76 @@ final class SyncServiceTests: XCTestCase {
         XCTAssertEqual(updated?.pendingAgreementsDetectedAt, detectedAt)
     }
 
+    // MARK: - Phased release (per-platform)
+
+    /// The reported bug at the sync layer: an app whose overall-latest version is
+    /// iOS (readyForSale, no phased) also ships a tvOS version that is
+    /// readyForSale with an active phased release. Sync must fetch the phased
+    /// release using the *tvOS* version's own id and store it under
+    /// "phased.{tvOSVersionId}", not the app id.
+    func testSyncFetchesAndStoresPhasedPerPlatformVersion() async throws {
+        let account = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(account, id: account.id)
+        setCredentials(issuerID: "issuer-1", for: account)
+
+        let connection = MockAppleAccountSyncing()
+        connection.apps = [
+            StackProtocols.AppInfo(id: "app-1", name: "Multi", bundleId: "com.multi", platform: nil)
+        ]
+        // iOS is the most-recent version overall; tvOS is older but still awaiting.
+        connection.versions = [
+            "app-1": [
+                makePlatformVersion(id: "v-ios", appId: "app-1", platform: .ios, state: .readyForSale, createdOffset: 0),
+                makePlatformVersion(id: "v-tv", appId: "app-1", platform: .tvOs, state: .readyForSale, createdOffset: -100)
+            ]
+        ]
+        // Only the tvOS version is phasing.
+        connection.phasedReleases = [
+            "v-tv": PhasedReleaseModel(id: "phased.v-tv", state: .active, currentDayNumber: 3)
+        ]
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        // Both awaiting-eligible version ids were queried for phased data.
+        XCTAssertTrue(connection.fetchedPhasedForVersionIds.contains("v-ios"))
+        XCTAssertTrue(connection.fetchedPhasedForVersionIds.contains("v-tv"))
+
+        // The tvOS phased release is stored under the version-id key.
+        let phasedTv: PhasedReleaseModel? = try await mockStorage.fetch(
+            PhasedReleaseModel.self, id: "phased.v-tv"
+        )
+        XCTAssertEqual(phasedTv?.state, .active)
+        XCTAssertEqual(phasedTv?.currentDayNumber, 3)
+
+        // The persisted app carries the per-platform version ids so the widgets
+        // can resolve phased per platform.
+        let saved: AppModel? = try await mockStorage.fetch(AppModel.self, id: "\(account.id).app-1")
+        let byPlatform = Dictionary(
+            uniqueKeysWithValues: (saved?.platformVersions ?? []).map { ($0.platform, $0.id) }
+        )
+        XCTAssertEqual(byPlatform[AppPlatform.ios.rawValue] ?? nil, "v-ios")
+        XCTAssertEqual(byPlatform[AppPlatform.tvOs.rawValue] ?? nil, "v-tv")
+    }
+
     // MARK: - Helpers
+
+    private func makePlatformVersion(
+        id: String,
+        appId: String,
+        platform: AppPlatform,
+        state: AppStoreState,
+        createdOffset: TimeInterval
+    ) -> AppStoreVersionModel {
+        AppStoreVersionModel(
+            id: id,
+            platform: platform,
+            appStoreState: state,
+            versionString: "1.0-\(platform.rawValue)",
+            createdDate: Date(timeIntervalSinceReferenceDate: 1_000_000 + createdOffset),
+            appId: appId
+        )
+    }
 
     private func makeAgreementError() -> Error {
         StackCoreRust.StackError.PendingAgreements(message: "You must accept the latest agreements.")
