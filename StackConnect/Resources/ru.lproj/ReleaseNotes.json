@@ -1,7 +1,25 @@
 {
-  "version": "2.1.0",
+  "version": "2.2.0",
   "title": "Что нового",
   "highlights": [
+    {
+      "icon": "photo.on.rectangle.angled",
+      "color": "blue",
+      "title": "Предпросмотр скриншотов",
+      "description": "Просматривайте скриншоты App Store по версии, устройству и разрешению прямо в приложении."
+    },
+    {
+      "icon": "chart.line.uptrend.xyaxis",
+      "color": "green",
+      "title": "Ход поэтапного выпуска",
+      "description": "Следите за текущим поэтапным выпуском прямо в каждой версии в сведениях о приложении."
+    },
+    {
+      "icon": "checklist",
+      "color": "purple",
+      "title": "Контрольный список перед отправкой",
+      "description": "Проверяйте сборку, скриншоты, «Что нового» и другое перед отправкой на проверку."
+    },
     {
       "icon": "ladybug.fill",
       "color": "red",

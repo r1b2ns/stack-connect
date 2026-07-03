@@ -1,7 +1,25 @@
 {
-  "version": "2.1.0",
+  "version": "2.2.0",
   "title": "Neuigkeiten",
   "highlights": [
+    {
+      "icon": "photo.on.rectangle.angled",
+      "color": "blue",
+      "title": "Screenshot-Vorschau",
+      "description": "Durchsuche deine App-Store-Screenshots nach Version, Gerät und Auflösung – direkt in der App."
+    },
+    {
+      "icon": "chart.line.uptrend.xyaxis",
+      "color": "green",
+      "title": "Fortschritt der stufenweisen Freigabe",
+      "description": "Verfolge eine laufende stufenweise Freigabe direkt bei jeder Version in den App-Details."
+    },
+    {
+      "icon": "checklist",
+      "color": "purple",
+      "title": "Checkliste vor dem Einreichen",
+      "description": "Prüfe Build, Screenshots, Neuigkeiten und mehr, bevor du zur Überprüfung einreichst."
+    },
     {
       "icon": "ladybug.fill",
       "color": "red",
