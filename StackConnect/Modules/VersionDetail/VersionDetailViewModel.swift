@@ -22,6 +22,8 @@ protocol VersionDetailViewModelProtocol: ObservableObject {
     func releaseVersion() async
     func rejectVersion() async
     func completePhasedRelease() async
+    func loadAvailableBuilds() async
+    func attachBuild(_ build: BuildModel) async
     func requestField(_ field: VersionDetailLocalizableField)
     func selectLocalization(_ localization: AppStoreLocalizationModel, for field: VersionDetailLocalizableField)
 }
@@ -37,6 +39,12 @@ struct VersionDetailUiState {
     var editingLocalization: AppStoreLocalizationModel?
     var localizationPickerField: VersionDetailLocalizableField?
     var currentBuild: BuildModel?
+
+    // Build picker
+    var showBuildPicker = false
+    var availableBuilds: [BuildModel] = []
+    var isLoadingBuilds = false
+    var isAttachingBuild = false
 
     // Text editing sheets
     var showPromotionalText = false
@@ -530,6 +538,48 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         }
 
         uiState.isSavingPhasedRelease = false
+    }
+
+    // MARK: - Build Selection
+
+    /// Loads the app's builds for the build picker sheet.
+    func loadAvailableBuilds() async {
+        uiState.isLoadingBuilds = true
+        defer { uiState.isLoadingBuilds = false }
+
+        guard let connection = createConnection() else { return }
+        do {
+            uiState.availableBuilds = try await connection.fetchBuilds(appId: uiState.version.appId, limit: 50)
+        } catch {
+            uiState.actionError = error.localizedDescription
+            Log.print.error("[VersionDetail] Load builds failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Attaches the picked build to this version. Tapping the already-attached
+    /// build just closes the picker.
+    func attachBuild(_ build: BuildModel) async {
+        guard build.id != uiState.currentBuild?.id else {
+            uiState.showBuildPicker = false
+            return
+        }
+
+        uiState.isAttachingBuild = true
+        do {
+            guard let connection = createConnection() else {
+                uiState.isAttachingBuild = false
+                return
+            }
+            try await connection.attachBuild(versionId: uiState.version.id, buildId: build.id)
+            uiState.showBuildPicker = false
+            uiState.toastMessage = ToastMessage(String(localized: "Build selected"), icon: "hammer.fill")
+            Log.print.info("[VersionDetail] Attached build \(build.version ?? build.id)")
+            await refresh()
+        } catch {
+            uiState.actionError = error.localizedDescription
+            Log.print.error("[VersionDetail] Attach build failed: \(error.localizedDescription)")
+        }
+        uiState.isAttachingBuild = false
     }
 
     // MARK: - Version Actions

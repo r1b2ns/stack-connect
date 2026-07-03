@@ -395,8 +395,6 @@ private extension View {
                 VersionListViewFactory.build(appId: appId, platform: platform, account: account)
             case .versionDetail(let version, let account):
                 VersionDetailViewFactory.build(version: version, account: account)
-            case .buildSelection(let versionId, let appId, let account):
-                BuildSelectionViewFactory.build(versionId: versionId, appId: appId, account: account)
             case .screenshotPreview(let versionId, let localizationId, let platform, let appStoreState, let account):
                 ScreenshotPreviewViewFactory.build(versionId: versionId, account: account, localizationId: localizationId, platform: platform, appStoreState: appStoreState)
             case .screenshotResolution(let device, let sets, let account, let appStoreState):

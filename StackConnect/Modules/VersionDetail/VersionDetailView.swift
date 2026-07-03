@@ -112,6 +112,22 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         .sheet(isPresented: $viewModel.uiState.showReleaseSheet) {
             VersionReleaseSheet(viewModel: viewModel)
         }
+        .sheet(isPresented: $viewModel.uiState.showBuildPicker) {
+            BuildPickerSheet(
+                title: String(localized: "Select Build"),
+                appId: viewModel.uiState.version.appId,
+                account: viewModel.uiState.account,
+                assignedBuildIds: Set([viewModel.uiState.currentBuild?.id].compactMap { $0 }),
+                builds: viewModel.uiState.availableBuilds,
+                isLoading: viewModel.uiState.isLoadingBuilds,
+                isBusy: viewModel.uiState.isAttachingBuild
+            ) { build in
+                Task { await viewModel.attachBuild(build) }
+            } onCancel: {
+                viewModel.uiState.showBuildPicker = false
+            }
+            .task { await viewModel.loadAvailableBuilds() }
+        }
         .sheet(isPresented: $viewModel.uiState.showPhasedReleaseSheet) {
             PhasedReleaseSheet(viewModel: viewModel)
         }
@@ -219,11 +235,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             // Build row
             Button {
                 if canEditMetadata {
-                    homeCoordinator.navigateToBuildSelection(
-                        versionId: viewModel.uiState.version.id,
-                        appId: viewModel.uiState.version.appId,
-                        account: viewModel.uiState.account
-                    )
+                    viewModel.uiState.showBuildPicker = true
                 } else {
                     showBuildBlockedAlert = true
                 }

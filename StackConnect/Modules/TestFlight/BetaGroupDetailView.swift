@@ -51,13 +51,14 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
         .onAppear { Task { await viewModel.loadTestInformation() } }
         .refreshable { await viewModel.load() }
         .sheet(isPresented: $viewModel.uiState.showAddBuild) {
-            AddBuildSheet(
+            BuildPickerSheet(
+                title: String(localized: "Add Build"),
                 appId: viewModel.uiState.appId,
                 account: viewModel.uiState.account,
                 assignedBuildIds: Set(viewModel.uiState.builds.map(\.id)),
                 builds: viewModel.uiState.allBuilds,
                 isLoading: viewModel.uiState.isLoadingBuilds,
-                isAdding: viewModel.uiState.isAddingBuild
+                isBusy: viewModel.uiState.isAddingBuild
             ) { build in
                 Task { await viewModel.addBuildToGroup(buildId: build.id) }
             } onCancel: {
@@ -894,171 +895,5 @@ struct InternalTesterPickerSheet: View {
                 }
             }
         }
-    }
-}
-
-// MARK: - Add Build Sheet
-
-private struct AddBuildPlatformRoute: Hashable {
-    let platform: String
-}
-
-struct AddBuildSheet: View {
-
-    let appId: String
-    let account: AccountModel
-    let assignedBuildIds: Set<String>
-    let builds: [BuildModel]
-    let isLoading: Bool
-    var isAdding: Bool = false
-    let onAdd: (BuildModel) -> Void
-    let onCancel: () -> Void
-
-    @Environment(\.dismiss) private var dismiss
-    @State private var path = NavigationPath()
-
-    private var buildsByPlatform: [PlatformBuildGroup] {
-        let sorted = builds.sorted { ($0.uploadedDate ?? .distantPast) > ($1.uploadedDate ?? .distantPast) }
-        let dict = Dictionary(grouping: sorted) { $0.platform ?? "" }
-        return dict
-            .map { PlatformBuildGroup(platform: $0.key, builds: $0.value) }
-            .sorted { BuildPlatform.sortOrder($0.platform) < BuildPlatform.sortOrder($1.platform) }
-    }
-
-    var body: some View {
-        NavigationStack(path: $path) {
-            Group {
-                if isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if builds.isEmpty {
-                    ContentUnavailableView {
-                        Label(String(localized: "No Builds"), systemImage: "hammer")
-                    } description: {
-                        Text("No builds are available to add.")
-                    }
-                } else {
-                    buildList
-                }
-            }
-            .navigationTitle(String(localized: "Add Build"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
-                        dismiss()
-                        onCancel()
-                    }
-                }
-            }
-            .navigationDestination(for: AddBuildPlatformRoute.self) { route in
-                AvailableBuildsForPlatformViewFactory.build(
-                    appId: appId,
-                    platform: route.platform,
-                    account: account,
-                    assignedBuildIds: assignedBuildIds,
-                    isAdding: isAdding,
-                    onSelect: onAdd
-                )
-            }
-            .overlay {
-                if isAdding {
-                    ZStack {
-                        Color.black.opacity(0.1)
-                        ProgressView()
-                            .scaleEffect(1.2)
-                    }
-                    .ignoresSafeArea()
-                }
-            }
-        }
-    }
-
-    private var buildList: some View {
-        List {
-            ForEach(buildsByPlatform, id: \.platform) { group in
-                Section {
-                    ForEach(group.builds.prefix(5)) { build in
-                        Button {
-                            onAdd(build)
-                        } label: {
-                            buildRow(build)
-                        }
-                    }
-
-                    if group.builds.count > 5 {
-                        Button {
-                            path.append(AddBuildPlatformRoute(platform: group.platform))
-                        } label: {
-                            HStack {
-                                Text(String(localized: "See More"))
-                                    .font(.body)
-                                    .fontWeight(.medium)
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                            }
-                        }
-                        .foregroundStyle(.tint)
-                    }
-                } header: {
-                    Label(
-                        BuildPlatform.label(for: group.platform),
-                        systemImage: BuildPlatform.icon(for: group.platform)
-                    )
-                }
-            }
-        }
-        .disabled(isAdding)
-    }
-
-    private func buildRow(_ build: BuildModel) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(build.displayVersion)
-                    .font(.body)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.primary)
-
-                if let date = build.uploadedDate {
-                    Text(formatDate(date))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Spacer()
-
-            buildStateLabel(build.processingState)
-        }
-    }
-
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
-    }
-
-    private func buildStateLabel(_ state: String?) -> some View {
-        let (text, color): (String, Color) = {
-            switch state {
-            case "VALID":      return (String(localized: "Ready"), .green)
-            case "PROCESSING": return (String(localized: "Processing"), .orange)
-            case "FAILED":     return (String(localized: "Failed"), .red)
-            case "INVALID":    return (String(localized: "Invalid"), .red)
-            default:           return ("–", .gray)
-            }
-        }()
-
-        return Text(text)
-            .font(.caption)
-            .fontWeight(.medium)
-            .foregroundStyle(color)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(color.opacity(0.12))
-            .clipShape(Capsule())
     }
 }
