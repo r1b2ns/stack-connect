@@ -6,6 +6,7 @@ import Foundation
 protocol SettingsViewModelProtocol: ObservableObject {
     var uiState: SettingsUiState { get set }
     func deleteAllAccounts() async
+    func setPreReviewChecklistEnabled(_ enabled: Bool)
 }
 
 // MARK: - UiState
@@ -13,6 +14,7 @@ protocol SettingsViewModelProtocol: ObservableObject {
 struct SettingsUiState {
     var appVersion: String = ""
     var buildNumber: String = ""
+    var preReviewChecklistEnabled: Bool = true
 }
 
 // MARK: - Implementation
@@ -24,17 +26,27 @@ final class SettingsViewModel: SettingsViewModelProtocol {
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
+    private let appSettings: AppSettings
 
     init(
         storage: PersistentStorable? = nil,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        appSettings: AppSettings = .shared
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
+        self.appSettings = appSettings
 
         let info = Bundle.main.infoDictionary
         uiState.appVersion = info?["CFBundleShortVersionString"] as? String ?? "1.0"
         uiState.buildNumber = info?["CFBundleVersion"] as? String ?? "1"
+        uiState.preReviewChecklistEnabled = appSettings.isEnabled(.preReviewChecklistEnabled)
+    }
+
+    func setPreReviewChecklistEnabled(_ enabled: Bool) {
+        uiState.preReviewChecklistEnabled = enabled
+        appSettings.setEnabled(enabled, for: .preReviewChecklistEnabled)
+        Log.print.info("[Settings] Pre-review checklist enabled: \(enabled)")
     }
 
     func deleteAllAccounts() async {

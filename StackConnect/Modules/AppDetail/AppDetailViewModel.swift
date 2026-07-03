@@ -9,6 +9,8 @@ protocol AppDetailViewModelProtocol: ObservableObject {
     func refresh() async
     func createVersions() async
     func deleteVersion(id: String) async
+    func startSubmitForReview(_ version: AppStoreVersionModel) async
+    func confirmPreSubmit() async
     func submitForReview(version: AppStoreVersionModel) async
     func cancelReview(version: AppStoreVersionModel) async
     func releaseVersion(_ version: AppStoreVersionModel) async
@@ -32,6 +34,12 @@ struct AppDetailUiState {
     var actionError: String?
     var confirmAction: VersionAction?
     var toastMessage: ToastMessage?
+
+    // Pre-submit checklist
+    var isValidatingSubmit = false
+    var preSubmitChecklist: PreSubmitChecklist?
+    var preSubmitVersion: AppStoreVersionModel?
+    var showPreSubmitSheet = false
 
     // Review issues
     var hasReviewIssues = false
@@ -278,6 +286,46 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             uiState.actionError = error.localizedDescription
             Log.print.error("[AppDetail] Delete version failed: \(error.localizedDescription)")
         }
+    }
+
+    /// Entry point for "Submit for Review". Always loads and validates the
+    /// pre-submit checklist first: if anything required is missing, it surfaces an
+    /// error instead of submitting. When valid, it either presents the checklist
+    /// sheet (when the setting is on) or falls back to the plain confirmation.
+    func startSubmitForReview(_ version: AppStoreVersionModel) async {
+        uiState.actionError = nil
+        uiState.isValidatingSubmit = true
+
+        guard let connection = createConnection() else {
+            uiState.isValidatingSubmit = false
+            return
+        }
+
+        let checklist = await PreSubmitChecklistLoader.load(source: connection, version: version)
+        uiState.isValidatingSubmit = false
+
+        if let message = checklist.validationMessage {
+            uiState.actionError = message
+            Log.print.info("[AppDetail] Submit blocked for \(version.id): missing \(checklist.missingRequirements.map(\.rawValue))")
+            return
+        }
+
+        if AppSettings.shared.isEnabled(.preReviewChecklistEnabled) {
+            uiState.preSubmitChecklist = checklist
+            uiState.preSubmitVersion = version
+            uiState.showPreSubmitSheet = true
+        } else {
+            uiState.confirmAction = .submitForReview(version)
+        }
+    }
+
+    /// Confirms submission from the pre-submit checklist sheet.
+    func confirmPreSubmit() async {
+        uiState.showPreSubmitSheet = false
+        guard let version = uiState.preSubmitVersion else { return }
+        await submitForReview(version: version)
+        uiState.preSubmitChecklist = nil
+        uiState.preSubmitVersion = nil
     }
 
     func submitForReview(version: AppStoreVersionModel) async {

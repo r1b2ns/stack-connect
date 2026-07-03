@@ -14,6 +14,8 @@ protocol VersionDetailViewModelProtocol: ObservableObject {
     func saveReleaseType() async
     func savePhasedRelease(usePhased: Bool) async
     func setPhasedReleasePaused(_ paused: Bool) async
+    func startSubmitForReview() async
+    func confirmPreSubmit() async
     func submitForReview() async
     func cancelReview() async
     func cancelSubmission() async
@@ -65,6 +67,11 @@ struct VersionDetailUiState {
     var actionError: String?
     var confirmAction: VersionDetailAction?
     var toastMessage: ToastMessage?
+
+    // Pre-submit checklist
+    var isValidatingSubmit = false
+    var preSubmitChecklist: PreSubmitChecklist?
+    var showPreSubmitSheet = false
 
     // Phased release
     var phasedRelease: PhasedReleaseModel?
@@ -526,6 +533,43 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
     }
 
     // MARK: - Version Actions
+
+    /// Entry point for "Submit for Review". Always loads and validates the
+    /// pre-submit checklist first; blocks with an error listing anything missing.
+    /// When valid, presents the checklist sheet (setting on) or the plain
+    /// confirmation (setting off).
+    func startSubmitForReview() async {
+        uiState.actionError = nil
+        uiState.isValidatingSubmit = true
+
+        guard let connection = createConnection() else {
+            uiState.isValidatingSubmit = false
+            return
+        }
+
+        let checklist = await PreSubmitChecklistLoader.load(source: connection, version: uiState.version)
+        uiState.isValidatingSubmit = false
+
+        if let message = checklist.validationMessage {
+            uiState.actionError = message
+            Log.print.info("[VersionDetail] Submit blocked: missing \(checklist.missingRequirements.map(\.rawValue))")
+            return
+        }
+
+        if AppSettings.shared.isEnabled(.preReviewChecklistEnabled) {
+            uiState.preSubmitChecklist = checklist
+            uiState.showPreSubmitSheet = true
+        } else {
+            uiState.confirmAction = .submitForReview
+        }
+    }
+
+    /// Confirms submission from the pre-submit checklist sheet.
+    func confirmPreSubmit() async {
+        uiState.showPreSubmitSheet = false
+        await submitForReview()
+        uiState.preSubmitChecklist = nil
+    }
 
     func submitForReview() async {
         uiState.isPerformingAction = true

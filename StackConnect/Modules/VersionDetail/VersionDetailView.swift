@@ -115,8 +115,23 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         .sheet(isPresented: $viewModel.uiState.showPhasedReleaseSheet) {
             PhasedReleaseSheet(viewModel: viewModel)
         }
+        .sheet(isPresented: $viewModel.uiState.showPreSubmitSheet) {
+            if let checklist = viewModel.uiState.preSubmitChecklist {
+                PreSubmitChecklistSheet(
+                    checklist: checklist,
+                    isSubmitting: viewModel.uiState.isPerformingAction,
+                    onSubmit: { Task { await viewModel.confirmPreSubmit() } },
+                    onCancel: { viewModel.uiState.showPreSubmitSheet = false }
+                )
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             buildBottomBar()
+        }
+        .overlay {
+            if viewModel.uiState.isValidatingSubmit {
+                buildValidatingOverlay()
+            }
         }
         .alert(
             String(localized: "Build Selection"),
@@ -455,6 +470,20 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         }
     }
 
+    private func buildValidatingOverlay() -> some View {
+        ZStack {
+            Color.black.opacity(0.15).ignoresSafeArea()
+            VStack(spacing: 12) {
+                ProgressView()
+                Text(String(localized: "Checking submission…"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(24)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        }
+    }
+
     @ViewBuilder
     private func buildBottomBarContent() -> some View {
         let state = viewModel.uiState.version.appStoreState
@@ -468,7 +497,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                         icon: "paperplane.fill",
                         color: .blue
                     ) {
-                        viewModel.uiState.confirmAction = .submitForReview
+                        Task { await viewModel.startSubmitForReview() }
                     }
                 }
             }
