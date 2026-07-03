@@ -8,8 +8,12 @@ final class AwaitingReleaseWidget: HomeWidget, ObservableObject {
 
     let configuration: HomeWidgetConfiguration
 
+    /// Awaiting-release entries, expanded per platform (an app phasing on both
+    /// iOS and tvOS yields two entries).
     @Published private(set) var apps: [AppModel] = []
-    @Published private(set) var phasedByAppId: [String: PhasedReleaseModel] = [:]
+    /// Phased releases keyed by version id (matches the `"phased.{versionId}"`
+    /// storage scheme). Look up per entry via `HomeWidgetDataLoader.phasedRelease`.
+    @Published private(set) var phasedByVersionId: [String: PhasedReleaseModel] = [:]
     @Published private(set) var accountsMap: [String: AccountModel] = [:]
     @Published private(set) var isLoading: Bool = false
 
@@ -28,9 +32,9 @@ final class AwaitingReleaseWidget: HomeWidget, ObservableObject {
             let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
             let active = allApps.filter { !$0.isArchived }
             let phased = await HomeWidgetDataLoader.loadPhasedReleases(for: active, storage: storage)
-            let (_, awaiting) = AppStatusCategorizer.categorize(active, phasedByAppId: phased)
+            let awaiting = AppStatusCategorizer.awaitingReleaseEntries(active, phasedByVersionId: phased)
             apps = awaiting.sorted(by: HomeWidgetDataLoader.sortByRecency)
-            phasedByAppId = phased
+            phasedByVersionId = phased
             accountsMap = await HomeWidgetDataLoader.loadAccounts(storage: storage)
         } catch {
             Log.print.error("[Widget][AwaitingRelease] Failed to load apps: \(error.localizedDescription)")
@@ -65,17 +69,32 @@ private struct AwaitingReleaseWidgetView: View {
                     text: String(localized: "Nothing awaiting release")
                 )
             } else {
-                ForEach(widget.apps) { app in
-                    Button {
-                        coordinator.navigateToAppDetail(
-                            app,
-                            account: HomeWidgetDataLoader.account(for: app, in: widget.accountsMap)
-                        )
-                    } label: {
-                        buildRow(app)
+                let groups = HomeWidgetDataLoader.groupByPlatform(widget.apps)
+                let showsHeaders = groups.count > 1
+                ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
+                    if showsHeaders, let platform = group.platform {
+                        HStack(spacing: 6) {
+                            Image(systemName: platform.icon)
+                            Text(platform.displayName)
+                        }
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 4)
                     }
-                    .buttonStyle(.borderless)
-                    .foregroundStyle(.primary)
+
+                    ForEach(group.apps) { app in
+                        Button {
+                            coordinator.navigateToAppDetail(
+                                app,
+                                account: HomeWidgetDataLoader.account(for: app, in: widget.accountsMap)
+                            )
+                        } label: {
+                            buildRow(app)
+                        }
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(.primary)
+                    }
                 }
             }
         }
@@ -84,8 +103,8 @@ private struct AwaitingReleaseWidgetView: View {
 
     private func buildRow(_ app: AppModel) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HomeAppRowView(app: app)
-            if let phased = widget.phasedByAppId[app.id],
+            HomeAppRowView(app: app, showsPlatform: true)
+            if let phased = HomeWidgetDataLoader.phasedRelease(for: app, in: widget.phasedByVersionId),
                phased.state == .active || phased.state == .paused,
                let day = phased.currentDayNumber {
                 HomePhasedProgressView(day: day, total: 7, paused: phased.state == .paused)

@@ -401,7 +401,8 @@ final class SyncService: ObservableObject {
                             AppPlatformVersion(
                                 platform: platform,
                                 appStoreState: version.appStoreState,
-                                versionString: version.versionString
+                                versionString: version.versionString,
+                                id: version.id
                             )
                         )
                     }
@@ -525,30 +526,54 @@ final class SyncService: ObservableObject {
         }
     }
 
+    /// Fetches phased release data for every awaiting-eligible version and stores
+    /// each under `"phased.{versionId}"`. Multi-platform apps (e.g. an iOS and a
+    /// tvOS version both phasing) get one entry per platform version, so the
+    /// widgets can surface each independently. Apps without per-platform data fall
+    /// back to the overall-latest version id from `versionIdByAppId`.
+    ///
+    /// A phased release is only meaningful once a version is `readyForSale`;
+    /// `pendingDeveloperRelease` versions are still fetched because the previous
+    /// behavior did, and the API returns `nil` when there is nothing to cache.
     private nonisolated static func syncPhased(
         for apps: [AppModel],
         versionIdByAppId: [String: String],
         connection: any AppleAccountSyncing,
         storage: PersistentStorable
     ) async -> Int {
-        let candidates = apps.filter { app in
-            guard let state = app.appStoreState else { return false }
-            return state == .pendingDeveloperRelease || state == .readyForSale
+        // Collect the set of (appName, versionId) pairs to fetch, deduplicated by
+        // versionId so we never fetch/store the same version twice.
+        var targets: [(appName: String, versionId: String)] = []
+        var seenVersionIds = Set<String>()
+
+        for app in apps {
+            if let platformVersions = app.platformVersions, !platformVersions.isEmpty {
+                for version in platformVersions where isAwaitingEligible(version.appStoreState) {
+                    guard let versionId = version.id, !seenVersionIds.contains(versionId) else { continue }
+                    seenVersionIds.insert(versionId)
+                    targets.append((app.name, versionId))
+                }
+            } else if isAwaitingEligible(app.appStoreState) {
+                // No per-platform data: fall back to the overall-latest version id.
+                guard let versionId = versionIdByAppId[app.id], !seenVersionIds.contains(versionId) else { continue }
+                seenVersionIds.insert(versionId)
+                targets.append((app.name, versionId))
+            }
         }
-        guard !candidates.isEmpty else { return 0 }
+
+        guard !targets.isEmpty else { return 0 }
 
         var saved = 0
         await withTaskGroup(of: Bool.self) { group in
-            for app in candidates {
-                guard let versionId = versionIdByAppId[app.id] else { continue }
+            for target in targets {
                 group.addTask {
                     do {
-                        if let phased = try await connection.fetchPhasedRelease(versionId: versionId) {
-                            try await storage.save(phased, id: "phased.\(app.id)")
+                        if let phased = try await connection.fetchPhasedRelease(versionId: target.versionId) {
+                            try await storage.save(phased, id: "phased.\(target.versionId)")
                             return true
                         }
                     } catch {
-                        Log.print.error("[Sync] Phased release failed for \(app.name): \(error.localizedDescription)")
+                        Log.print.error("[Sync] Phased release failed for \(target.appName): \(error.localizedDescription)")
                     }
                     return false
                 }
@@ -558,6 +583,10 @@ final class SyncService: ObservableObject {
             }
         }
         return saved
+    }
+
+    private nonisolated static func isAwaitingEligible(_ state: AppStoreState?) -> Bool {
+        state == .pendingDeveloperRelease || state == .readyForSale
     }
 
     private nonisolated static func saveMetadata(
