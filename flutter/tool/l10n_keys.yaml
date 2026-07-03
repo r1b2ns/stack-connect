@@ -1,0 +1,316 @@
+# l10n key mapping — single source of truth: the iOS String Catalog at
+# ../StackConnect/Resources/Localizable.xcstrings (READ-ONLY).
+#
+# The generator `gen_l10n_from_xcstrings.dart` reads this file and produces the
+# Flutter ARB files for stack_core_dart. The iOS catalog's KEYS are the English
+# source text (its `sourceLanguage` is `en` and it stores no explicit `en`
+# localization), so for each entry below the English value is the catalog key
+# itself, and the Portuguese value is taken from the catalog's `pt-BR`
+# localization.
+#
+# ── Schema ───────────────────────────────────────────────────────────────────
+#
+# strings:
+#   "<English source text>": <dartKey>        # simple 1:1 string
+#   "<English source text>":                   # explicit form (lets you add a
+#     key: <dartKey>                           #   pt fallback for catalog-missing
+#     pt: "<Portuguese fallback>"              #   strings, or a description)
+#     description: "<ARB @description>"
+#
+# placeholders:                               # interpolated (ICU {name}) strings
+#   <dartKey>:
+#     template: "{a} · {b}"                    # English/source ICU template
+#     pt: "{a} · {b}"                          # optional pt override (else =template)
+#     description: "..."
+#     args:
+#       a: String
+#       b: String
+#
+# Resolution rules applied by the generator:
+#   • English value  = the catalog key (the map key here), or `template` for
+#     placeholder entries.
+#   • Portuguese value = catalog `pt-BR` if the key exists there; otherwise the
+#     inline `pt:` here; otherwise it falls back to English (reported on stdout
+#     as "untranslated pt"). The catalog is never written to.
+#   • iOS `%@` / `%lld` / `%1$@` tokens found in catalog values are converted to
+#     ICU `{name}` placeholders (only relevant for the placeholder entries).
+#
+# NOTE: the literal "Archived" is ambiguous in the UI — it is both a screen
+# title and a past-tense success toast. Two distinct Dart keys map to it
+# (`archived` / `archivedToast`); they happen to share the same en/pt text.
+
+strings:
+  # ── Apps list (apps_pane / apps_screen) ──────────────────────────────────
+  "Apps": appsTitle
+  "Refresh": refresh
+  "Archived": archived                 # toolbar command + archived screen title
+  "Favorites": favoritesSection
+  "All apps": allAppsSection            # Flutter-only (not in catalog)
+  "No apps found for this account.": noAppsForAccount
+  "Add to favorites": addToFavorites    # Flutter-only (not in catalog)
+  "Remove from favorites": removeFromFavorites  # Flutter-only (not in catalog)
+  "Archive": archiveAction
+
+  # ── Toasts / snackbars ───────────────────────────────────────────────────
+  "Added to favorites": addedToFavorites
+  "Removed from favorites": removedFromFavorites
+  "Archived ":                          # trailing space disambiguates the map
+    key: archivedToast                  #   key from the title "Archived" above
+    pt: "Arquivado"                     # mirrors catalog pt-BR for "Archived"
+    description: "Success toast shown after archiving an app."
+  "Unarchived": unarchivedToast
+  "Could not update app":               # Flutter-only (not in catalog)
+    key: couldNotUpdateApp
+    pt: "Não foi possível atualizar o app"
+  "Could not load apps":                # Flutter-only (not in catalog)
+    key: couldNotLoadApps
+    pt: "Não foi possível carregar os apps"
+
+  # ── Archived apps (archived_apps_pane / archived_apps_screen) ────────────
+  "No archived apps.":                  # Flutter-only (not in catalog)
+    key: noArchivedApps
+    pt: "Nenhum app arquivado."
+  "Unarchive": unarchiveAction
+
+  # ── App detail (app_detail_pane / app_detail_screen) ─────────────────────
+  "App":                                # fallback title while the app loads
+    key: appFallbackTitle
+    pt: "App"
+  "App not found.":                     # Flutter-only (not in catalog)
+    key: appNotFound
+    pt: "App não encontrado."
+  "Favorite": favoriteAction
+  "Unfavorite": unfavoriteAction
+  "Name": fieldName
+  "Bundle ID": fieldBundleId
+  "Platform": fieldPlatform
+  "Ratings & Reviews": ratingsAndReviews
+
+  # ══ Phase 2 — remaining screens ══════════════════════════════════════════
+
+  # ── Desktop shell + mobile home shell (home_shell / home_screen) ─────────
+  "Home":
+    key: navHome
+    pt: "Início"
+  "Mobile":
+    key: navMobileSection
+    pt: "Mobile"
+  "App Store Connect": navAppStoreConnect          # catalog pt-BR
+  "Development": navDevelopmentSection              # catalog pt-BR
+  "Soon":
+    key: soonTag
+    pt: "Em breve"
+  "Collapse sidebar":
+    key: collapseSidebar
+    pt: "Recolher barra lateral"
+  "Expand sidebar":
+    key: expandSidebar
+    pt: "Expandir barra lateral"
+  "Add account":
+    key: addAccount
+    pt: "Adicionar conta"
+  "No accounts yet. Use \"Add account\" above to connect one.":
+    key: noAccountsYetDesktop
+    pt: "Nenhuma conta ainda. Use \"Adicionar conta\" acima para conectar uma."
+  "Could not load accounts":
+    key: couldNotLoadAccounts
+    pt: "Não foi possível carregar as contas"
+
+  # ── Desktop Home dashboard (home_view) ───────────────────────────────────
+  "No widgets yet": noWidgetsYet                    # catalog pt-BR
+  "Widgets to keep an eye on your apps will live here.":
+    key: noWidgetsDescription
+    pt: "Os widgets para acompanhar seus apps vão aparecer aqui."
+
+  # ── Accounts management dialog (accounts_dialog) ─────────────────────────
+  "Accounts": accountsTitle                         # catalog pt-BR
+  "No accounts connected yet.":
+    key: noAccountsConnected
+    pt: "Nenhuma conta conectada ainda."
+  "Close": close                                    # catalog pt-BR
+  "Remove account":
+    key: removeAccountTitle
+    pt: "Remover conta"
+  "Remove": removeAction                            # catalog pt-BR
+  "Could not remove account":
+    key: couldNotRemoveAccount
+    pt: "Não foi possível remover a conta"
+
+  # ── Reviews (reviews_pane / reviews_screen) ──────────────────────────────
+  "Could not load reviews":
+    key: couldNotLoadReviews
+    pt: "Não foi possível carregar as avaliações"
+  "No reviews yet.":
+    key: noReviewsYet
+    pt: "Nenhuma avaliação ainda."
+  "Reply": replyAction                              # catalog pt-BR
+  "Edit reply":
+    key: editReplyAction
+    pt: "Editar resposta"
+  "Reply to review":
+    key: replyToReviewTitle
+    pt: "Responder à avaliação"
+  "Write your response…":
+    key: writeYourResponse
+    pt: "Escreva sua resposta…"
+  "Cancel": cancel                                  # catalog pt-BR
+  "Submit": submit                                  # catalog pt-BR
+  "Reply submitted":
+    key: replySubmitted
+    pt: "Resposta enviada"
+  "Reply submitted.":                               # mobile keeps trailing dot
+    key: replySubmittedToast
+    pt: "Resposta enviada."
+  "Reply failed":
+    key: replyFailed
+    pt: "Falha ao enviar resposta"
+  "Developer response":
+    key: developerResponse
+    pt: "Resposta do desenvolvedor"
+
+  # ── Settings dialog (settings_dialog) ────────────────────────────────────
+  "Settings": settingsTitle                         # catalog pt-BR
+  "General": settingsGeneral                        # catalog pt-BR
+  "About":
+    key: settingsAbout
+    pt: "Sobre"
+  "GitHub": github                                  # catalog pt-BR
+  "License": license                                # catalog pt-BR
+  "Danger":
+    key: settingsDanger
+    pt: "Zona de perigo"
+  "Delete All Accounts": deleteAllAccounts          # catalog pt-BR
+  "This will permanently delete all accounts, apps, versions, and credentials from the app. This action cannot be undone.":
+    key: deleteAllAccountsBody
+    pt: "Isso vai excluir permanentemente todas as contas, apps, versões e credenciais do app. Esta ação não pode ser desfeita."
+  "Delete All": deleteAll                           # catalog pt-BR
+  "Could not open GitHub":
+    key: couldNotOpenGitHub
+    pt: "Não foi possível abrir o GitHub"
+  "Done": done                                      # catalog pt-BR
+  "StackConnect": appName                           # catalog pt-BR
+
+  # ── License dialog (license_dialog) ──────────────────────────────────────
+  "Could not load the license text.":
+    key: couldNotLoadLicense
+    pt: "Não foi possível carregar o texto da licença."
+
+  # ── Mobile home shell + settings placeholder (home_screen) ───────────────
+  "Settings coming soon":
+    key: settingsComingSoon
+    pt: "Ajustes em breve"
+
+  # ── Mobile accounts list (accounts_screen) ───────────────────────────────
+  "No accounts yet":
+    key: noAccountsYet
+    pt: "Nenhuma conta ainda"
+  "Connect an App Store Connect account to get started.":
+    key: connectAccountToStart
+    pt: "Conecte uma conta do App Store Connect para começar."
+
+  # ── TestFlight Builds (builds_screen + app_detail nav tile) ──────────────
+  "TestFlight Builds":
+    key: testFlightBuilds
+    pt: "Builds do TestFlight"
+  "No builds yet.":
+    key: noBuildsYet
+    pt: "Nenhum build ainda."
+  "Expired": expired                                # catalog pt-BR
+  "Processing": processing                          # catalog pt-BR
+  "External": external                              # catalog pt-BR
+  "Internal": internal                              # catalog pt-BR
+  "Build":
+    key: buildFallback
+    pt: "Build"
+
+  # ── App Store Versions (versions_screen + app_detail nav tile) ───────────
+  "App Store Versions":
+    key: appStoreVersions
+    pt: "Versões da App Store"
+  "No versions yet.":
+    key: noVersionsYet
+    pt: "Nenhuma versão ainda."
+  "Version": versionFallback                        # catalog pt-BR ("Versão")
+  "State":
+    key: fieldState
+    pt: "Estado"
+  "Release": fieldRelease                           # catalog pt-BR ("Publicar")
+
+  # ── Beta Groups (beta_groups_screen + app_detail nav tile) ───────────────
+  "Beta Groups": betaGroups                         # catalog pt-BR
+  "No beta groups yet.":
+    key: noBetaGroupsYet
+    pt: "Nenhum grupo beta ainda."
+  "Beta Group":
+    key: betaGroupFallback
+    pt: "Grupo beta"
+  "All builds":
+    key: fieldAllBuilds
+    pt: "Todos os builds"
+  "Public link":
+    key: fieldPublicLink
+    pt: "Link público"
+  "Feedback": fieldFeedback                         # catalog pt-BR
+  "Yes": yes                                        # catalog pt-BR ("Sim")
+  "No": no                                          # catalog pt-BR ("Não")
+
+placeholders:
+  # The app row subtitle: "<bundleId> · <platform>". Catalog has no equivalent
+  # interpolated entry, so this is sourced entirely from the template below.
+  appSubtitleWithPlatform:
+    template: "{bundleId} · {platform}"
+    pt: "{bundleId} · {platform}"
+    description: "App row subtitle combining bundle id and platform."
+    args:
+      bundleId: String
+      platform: String
+
+  # Coming-soon pane item title, e.g. "Play Store (soon)".
+  comingSoonLabel:
+    template: "{label} (soon)"
+    pt: "{label} (em breve)"
+    description: "Title for a coming-soon navigation item."
+    args:
+      label: String
+
+  # Remove-account confirmation body, interpolating the account label.
+  removeAccountConfirmBody:
+    template: "Remove \"{label}\"? Its apps, versions, and credentials will be deleted from the app. This cannot be undone."
+    pt: "Remover \"{label}\"? Seus apps, versões e credenciais serão excluídos do app. Esta ação não pode ser desfeita."
+    description: "Confirmation body shown before removing a single account."
+    args:
+      label: String
+
+  # Settings footer, e.g. "StackConnect v1.0.0 (1)".
+  appVersionFooter:
+    template: "StackConnect v{version} ({build})"
+    pt: "StackConnect v{version} ({build})"
+    description: "Settings footer showing the app version and build."
+    args:
+      version: String
+      build: String
+
+  # License load failure, includes the error detail on a new line.
+  couldNotLoadLicenseDetail:
+    template: "Could not load the license text.\n{error}"
+    pt: "Não foi possível carregar o texto da licença.\n{error}"
+    description: "License dialog error with the underlying error appended."
+    args:
+      error: String
+
+  # Build card title when only the build number is known, e.g. "Build 45".
+  buildNumberLabel:
+    template: "Build {number}"
+    pt: "Build {number}"
+    description: "Build title using only the build number."
+    args:
+      number: String
+
+  # Build card title combining marketing + build number, e.g. "1.2.0 (45)".
+  buildVersionLabel:
+    template: "{marketing} ({number})"
+    pt: "{marketing} ({number})"
+    description: "Build title combining marketing version and build number."
+    args:
+      marketing: String
+      number: String

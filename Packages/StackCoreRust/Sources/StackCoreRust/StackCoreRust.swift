@@ -551,6 +551,24 @@ fileprivate struct FfiConverterString: FfiConverter {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterData: FfiConverterRustBuffer {
+    typealias SwiftType = Data
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Data {
+        let len: Int32 = try readInt(&buf)
+        return Data(try readBytes(&buf, count: Int(len)))
+    }
+
+    public static func write(_ value: Data, into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        writeBytes(&buf, value)
+    }
+}
+
 
 
 
@@ -1436,6 +1454,22 @@ public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
     func createPhasedRelease(versionId: String, state: String) async throws  -> PhasedReleaseInfo
     
     /**
+     * Creates a new (empty) screenshot set of `display_type` in the version
+     * localization identified by `localization_id`, returning the created set.
+     *
+     * `display_type` is the raw ASC `screenshotDisplayType` value (e.g.
+     * `APP_IPHONE_67`), passed through verbatim. The returned set has an empty
+     * `screenshots` list — a freshly created set has none until screenshots are
+     * uploaded into it.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * on malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+    func createScreenshotSet(localizationId: String, displayType: String) async throws  -> ScreenshotSetInfo
+    
+    /**
      * Creates a new App Store version for `app_id` on `platform` with
      * `version_string`, returning the created version. `platform` is the raw ASC
      * value (`IOS` / `MAC_OS` / `TV_OS` / `VISION_OS`).
@@ -1455,6 +1489,26 @@ public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
      * [`StackError::Network`] on transport failure.
      */
     func deletePhasedRelease(id: String) async throws 
+    
+    /**
+     * Deletes the screenshot identified by `screenshot_id`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func deleteScreenshot(screenshotId: String) async throws 
+    
+    /**
+     * Deletes the screenshot set identified by `screenshot_set_id`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func deleteScreenshotSet(screenshotSetId: String) async throws 
     
     /**
      * Deletes the version identified by `id`.
@@ -1638,6 +1692,22 @@ public protocol AppStoreVersionsProtocol: AnyObject, Sendable {
      */
     func updateVersion(id: String, versionString: String?, copyright: String?, releaseType: String?, earliestReleaseDate: String?) async throws 
     
+    /**
+     * Uploads the image `file_data` (named `file_name`) into the screenshot set
+     * identified by `screenshot_set_id`, returning the committed screenshot.
+     *
+     * This drives the three-step App Store Connect asset upload: reserve the
+     * screenshot, upload the bytes to the pre-signed URLs, then commit with the
+     * image's MD5 checksum.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response (from any step),
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func uploadScreenshot(screenshotSetId: String, fileName: String, fileData: Data) async throws  -> ScreenshotInfo
+    
 }
 /**
  * UniFFI-exported App Store Versions capability handle. A thin, binding-friendly
@@ -1788,6 +1858,37 @@ open func createPhasedRelease(versionId: String, state: String)async throws  -> 
 }
     
     /**
+     * Creates a new (empty) screenshot set of `display_type` in the version
+     * localization identified by `localization_id`, returning the created set.
+     *
+     * `display_type` is the raw ASC `screenshotDisplayType` value (e.g.
+     * `APP_IPHONE_67`), passed through verbatim. The returned set has an empty
+     * `screenshots` list — a freshly created set has none until screenshots are
+     * uploaded into it.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * on malformed JSON, or [`StackError::Network`] on transport failure.
+     */
+open func createScreenshotSet(localizationId: String, displayType: String)async throws  -> ScreenshotSetInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_create_screenshot_set(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(localizationId),FfiConverterString.lower(displayType)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeScreenshotSetInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
      * Creates a new App Store version for `app_id` on `platform` with
      * `version_string`, returning the created version. `platform` is the raw ASC
      * value (`IOS` / `MAC_OS` / `TV_OS` / `VISION_OS`).
@@ -1828,6 +1929,56 @@ open func deletePhasedRelease(id: String)async throws   {
                 uniffi_stack_core_fn_method_appstoreversions_delete_phased_release(
                     self.uniffiCloneHandle(),
                     FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Deletes the screenshot identified by `screenshot_id`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func deleteScreenshot(screenshotId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_delete_screenshot(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(screenshotId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Deletes the screenshot set identified by `screenshot_set_id`.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func deleteScreenshotSet(screenshotSetId: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_delete_screenshot_set(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(screenshotSetId)
                 )
             },
             pollFunc: ffi_stack_core_rust_future_poll_void,
@@ -2211,6 +2362,37 @@ open func updateVersion(id: String, versionString: String?, copyright: String?, 
             completeFunc: ffi_stack_core_rust_future_complete_void,
             freeFunc: ffi_stack_core_rust_future_free_void,
             liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Uploads the image `file_data` (named `file_name`) into the screenshot set
+     * identified by `screenshot_set_id`, returning the committed screenshot.
+     *
+     * This drives the three-step App Store Connect asset upload: reserve the
+     * screenshot, upload the bytes to the pre-signed URLs, then commit with the
+     * image's MD5 checksum.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response (from any step),
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func uploadScreenshot(screenshotSetId: String, fileName: String, fileData: Data)async throws  -> ScreenshotInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appstoreversions_upload_screenshot(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(screenshotSetId),FfiConverterString.lower(fileName),FfiConverterData.lower(fileData)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeScreenshotInfo_lift,
             errorHandler: FfiConverterTypeStackError_lift
         )
 }
@@ -7428,6 +7610,75 @@ public func FfiConverterTypeAccessibilityDeclarationInfo_lower(_ value: Accessib
 
 
 /**
+ * A decrypted (or to-be-encrypted) `.scexport` account export, in the shape the
+ * Dart host consumes. `credentials` is keyed by the host's *schema* keys — for
+ * App Store Connect that is `issuerId` / `keyId` / `privateKeyP8`, so the host
+ * can feed the map straight into the connect flow. The FRB layer remaps to/from
+ * the iOS on-disk credential keys (`issuerID` / `privateKeyID` / `privateKey`)
+ * at the boundary, keeping the cross-platform file format unchanged.
+ *
+ * `provider_type` is the raw discriminator from the file (`"apple"`,
+ * `"firebase"`, `"googlePlay"`), serialized camelCase as `providerType`.
+ */
+public struct AccountExport: Equatable, Hashable {
+    public var name: String
+    public var providerType: String
+    public var credentials: [String: String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(name: String, providerType: String, credentials: [String: String]) {
+        self.name = name
+        self.providerType = providerType
+        self.credentials = credentials
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AccountExport: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAccountExport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AccountExport {
+        return
+            try AccountExport(
+                name: FfiConverterString.read(from: &buf), 
+                providerType: FfiConverterString.read(from: &buf), 
+                credentials: FfiConverterDictionaryStringString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AccountExport, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.providerType, into: &buf)
+        FfiConverterDictionaryStringString.write(value.credentials, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAccountExport_lift(_ buf: RustBuffer) throws -> AccountExport {
+    return try FfiConverterTypeAccountExport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAccountExport_lower(_ value: AccountExport) -> RustBuffer {
+    return FfiConverterTypeAccountExport.lower(value)
+}
+
+
+/**
  * An App Store age-rating declaration. Every content attribute is a raw ASC
  * enum string (e.g. `NONE` / `INFREQUENT_OR_MILD` / `FREQUENT_OR_INTENSE`)
  * passed through verbatim; the four `is_*` flags are booleans. All attributes
@@ -11606,6 +11857,32 @@ fileprivate struct FfiConverterSequenceTypeServiceKind: FfiConverterRustBuffer {
         return seq
     }
 }
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterDictionaryStringString: FfiConverterRustBuffer {
+    public static func write(_ value: [String: String], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for (key, value) in value {
+            FfiConverterString.write(key, into: &buf)
+            FfiConverterString.write(value, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [String: String] {
+        let len: Int32 = try readInt(&buf)
+        var dict = [String: String]()
+        dict.reserveCapacity(Int(len))
+        for _ in 0..<len {
+            let key = try FfiConverterString.read(from: &buf)
+            let value = try FfiConverterString.read(from: &buf)
+            dict[key] = value
+        }
+        return dict
+    }
+}
 private let UNIFFI_RUST_FUTURE_POLL_READY: Int8 = 0
 private let UNIFFI_RUST_FUTURE_POLL_WAKE: Int8 = 1
 
@@ -11822,10 +12099,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_appstoreversions_create_phased_release() != 55326) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_appstoreversions_create_screenshot_set() != 53917) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_appstoreversions_create_version() != 3970) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appstoreversions_delete_phased_release() != 29412) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appstoreversions_delete_screenshot() != 3060) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appstoreversions_delete_screenshot_set() != 53146) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appstoreversions_delete_version() != 49312) {
@@ -11865,6 +12151,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appstoreversions_update_version() != 58000) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appstoreversions_upload_screenshot() != 64313) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_betaapplocalizations_create_beta_app_localization() != 47633) {
