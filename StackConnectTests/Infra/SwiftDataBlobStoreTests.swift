@@ -237,6 +237,48 @@ final class SwiftDataBlobStoreTests: XCTestCase {
         XCTAssertEqual(nopeCount, 0)
     }
 
+    // MARK: - Per-app export scope (#93)
+
+    /// The Rust-core write path must enforce the account's per-app scope: an app
+    /// whose bundleId is outside the allowlist must never be persisted.
+    func testSaveSkipsAppExcludedByAccountScope() async {
+        let (sut, storage) = makeSUT()
+
+        let account = AccountModel(
+            name: "Scoped",
+            providerType: .apple,
+            origin: .imported,
+            appsBundles: ["com.allowed"]
+        )
+        try? await storage.save(account, id: account.id)
+
+        // Allowed app persists.
+        sut.save(typeName: "app", id: "1", json: json(id: "1", name: "Allowed", bundleId: "com.allowed", platform: nil, accountId: account.id))
+        // Excluded app is dropped.
+        sut.save(typeName: "app", id: "2", json: json(id: "2", name: "Blocked", bundleId: "com.blocked", platform: nil, accountId: account.id))
+
+        let allowed = await storage.appModel(id: "\(account.id).1")
+        let blocked = await storage.appModel(id: "\(account.id).2")
+        XCTAssertNotNil(allowed)
+        XCTAssertNil(blocked, "App outside the per-app scope must not be persisted")
+    }
+
+    /// nil/empty scope ⇒ every app is persisted (backward-compat fast path).
+    func testSaveWithUnrestrictedAccountPersistsAllApps() async {
+        let (sut, storage) = makeSUT()
+
+        let account = AccountModel(name: "Free", providerType: .apple, appsBundles: nil)
+        try? await storage.save(account, id: account.id)
+
+        sut.save(typeName: "app", id: "1", json: json(id: "1", name: "One", bundleId: "com.one", platform: nil, accountId: account.id))
+        sut.save(typeName: "app", id: "2", json: json(id: "2", name: "Two", bundleId: "com.two", platform: nil, accountId: account.id))
+
+        let one = await storage.appModel(id: "\(account.id).1")
+        let two = await storage.appModel(id: "\(account.id).2")
+        XCTAssertNotNil(one)
+        XCTAssertNotNil(two)
+    }
+
     func testMalformedJsonIsIgnored() async {
         let (sut, storage) = makeSUT()
 

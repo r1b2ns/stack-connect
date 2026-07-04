@@ -8,7 +8,8 @@ protocol SettingsAccountsViewModelProtocol: ObservableObject {
     func loadAccounts() async
     func updateAccountName(accountId: String, newName: String) async
     func deleteAccount(_ account: AccountModel) async
-    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String, expirationDate: Date?) -> URL?
+    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL?
+    func appsForExport(accountId: String) async -> [AppModel]
     func importAccount(from url: URL, password: String, customName: String?) async -> String?
 }
 
@@ -123,40 +124,24 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
         }
     }
 
-    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String, expirationDate: Date?) -> URL? {
-        var exportDict: [String: Any] = [
-            "id": account.id,
-            "name": exportName,
-            "providerType": account.providerType.rawValue,
-            "createdAt": ISO8601DateFormatter().string(from: account.createdAt)
-        ]
-
-        exportDict["rules"] = [
-            "apps": rules.apps.map(\.rawValue),
-            "version": rules.version.map(\.rawValue),
-            "users": rules.users.map(\.rawValue),
-            "review": rules.review.map(\.rawValue),
-            "testFlight": rules.testFlight.map(\.rawValue),
-            "analytics": rules.analytics.map(\.rawValue),
-            "provisioning": rules.provisioning.map(\.rawValue)
-        ]
-
-        exportDict["role"] = account.role.rawValue
-
-        if let expirationDate {
-            exportDict["expirationDate"] = ISO8601DateFormatter().string(from: expirationDate)
-        }
-
+    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL? {
+        var credentials: [String: String]?
         if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(account.id)") {
-            exportDict["credentials"] = [
+            credentials = [
                 "issuerID": creds.issuerID,
                 "privateKeyID": creds.privateKeyID,
                 "privateKey": creds.privateKey
             ]
         }
 
-        guard let data = try? JSONSerialization.data(withJSONObject: exportDict, options: .prettyPrinted),
-              let json = String(data: data, encoding: .utf8) else {
+        guard let json = AccountExportPayloadBuilder.makeJSON(
+            account: account,
+            exportName: exportName,
+            rules: rules,
+            expirationDate: expirationDate,
+            appsBundles: appsBundles,
+            credentials: credentials
+        ) else {
             return nil
         }
 
@@ -177,6 +162,14 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             Log.print.error("[SettingsAccounts] Failed to write export file: \(error.localizedDescription)")
             return nil
         }
+    }
+
+    /// Apps belonging to the given account, sorted by name, for the export scope picker.
+    func appsForExport(accountId: String) async -> [AppModel] {
+        let all: [AppModel] = (try? await storage.fetchAll(AppModel.self)) ?? []
+        return all
+            .filter { $0.accountId == accountId }
+            .sorted { $0.name < $1.name }
     }
 
     // MARK: - Import
@@ -239,6 +232,12 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
 
         // 4c. Parse optional role (backward compatible: absent → .unspecified)
         let role = (dict["role"] as? String).flatMap(AccountRole.init(rawValue:)) ?? .unspecified
+
+        // 4d. Parse optional per-app scope. Absent/null ⇒ nil ⇒ no restriction.
+        // Empty ⇒ also no restriction (see AccountModel.allowsApp). Tolerant of a
+        // heterogeneous [Any] shape from JSONSerialization.
+        let appsBundles = (dict["appsBundles"] as? [String])
+            ?? (dict["appsBundles"] as? [Any])?.compactMap { $0 as? String }
 
         // 5. Validate and store credentials
         guard let credsDict = dict["credentials"] as? [String: String] else {
@@ -314,7 +313,8 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             rules: rules,
             origin: .imported,
             role: role,
-            expirationDate: expirationDate
+            expirationDate: expirationDate,
+            appsBundles: appsBundles
         )
 
         do {

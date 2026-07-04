@@ -32,7 +32,8 @@ private struct AccountSettingsEntry: View {
 protocol AccountSettingsViewModelProtocol: ObservableObject {
     var uiState: AccountSettingsUiState { get set }
     func save() async
-    func exportAccountWithRules(exportName: String, rules: AccountRules, password: String, expirationDate: Date?) -> URL?
+    func exportAccountWithRules(exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL?
+    func appsForExport() async -> [AppModel]
 }
 
 // MARK: - UiState
@@ -95,40 +96,24 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
         }
     }
 
-    func exportAccountWithRules(exportName: String, rules: AccountRules, password: String, expirationDate: Date?) -> URL? {
-        var exportDict: [String: Any] = [
-            "id": uiState.account.id,
-            "name": exportName,
-            "providerType": uiState.account.providerType.rawValue,
-            "createdAt": ISO8601DateFormatter().string(from: uiState.account.createdAt)
-        ]
-
-        exportDict["rules"] = [
-            "apps": rules.apps.map(\.rawValue),
-            "version": rules.version.map(\.rawValue),
-            "users": rules.users.map(\.rawValue),
-            "review": rules.review.map(\.rawValue),
-            "testFlight": rules.testFlight.map(\.rawValue),
-            "analytics": rules.analytics.map(\.rawValue),
-            "provisioning": rules.provisioning.map(\.rawValue)
-        ]
-
-        exportDict["role"] = uiState.account.role.rawValue
-
-        if let expirationDate {
-            exportDict["expirationDate"] = ISO8601DateFormatter().string(from: expirationDate)
-        }
-
+    func exportAccountWithRules(exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL? {
+        var credentials: [String: String]?
         if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") {
-            exportDict["credentials"] = [
+            credentials = [
                 "issuerID": creds.issuerID,
                 "privateKeyID": creds.privateKeyID,
                 "privateKey": creds.privateKey
             ]
         }
 
-        guard let data = try? JSONSerialization.data(withJSONObject: exportDict, options: .prettyPrinted),
-              let json = String(data: data, encoding: .utf8) else {
+        guard let json = AccountExportPayloadBuilder.makeJSON(
+            account: uiState.account,
+            exportName: exportName,
+            rules: rules,
+            expirationDate: expirationDate,
+            appsBundles: appsBundles,
+            credentials: credentials
+        ) else {
             return nil
         }
 
@@ -146,6 +131,14 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
         } catch {
             return nil
         }
+    }
+
+    /// Apps belonging to this account, sorted by name, for the export scope picker.
+    func appsForExport() async -> [AppModel] {
+        let all: [AppModel] = (try? await storage.fetchAll(AppModel.self)) ?? []
+        return all
+            .filter { $0.accountId == uiState.account.id }
+            .sorted { $0.name < $1.name }
     }
 }
 
@@ -178,8 +171,9 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
         .sheet(isPresented: $showExport) {
             ExportAccountView(
                 account: viewModel.uiState.account,
-                onExport: { name, rules, password, expirationDate in
-                    let url = viewModel.exportAccountWithRules(exportName: name, rules: rules, password: password, expirationDate: expirationDate)
+                loadApps: { await viewModel.appsForExport() },
+                onExport: { name, rules, password, expirationDate, appsBundles in
+                    let url = viewModel.exportAccountWithRules(exportName: name, rules: rules, password: password, expirationDate: expirationDate, appsBundles: appsBundles)
                     showExport = false
                     if let url {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
