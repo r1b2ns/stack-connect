@@ -218,8 +218,21 @@ final class SyncService: ObservableObject {
             // states. A thrown error is handled by the surrounding catch, which
             // already persists metadata with the error.
             try await connection.validateCredentials()
-            let remoteApps = try await connection.syncApps(accountId: account.id, store: SwiftDataBlobStore(storage: storage))
+            let fetchedApps = try await connection.syncApps(accountId: account.id, store: SwiftDataBlobStore(storage: storage))
+            // Per-app export scope: for imported accounts restricted to a subset,
+            // excluded apps are never derived, enriched, or persisted (nil/empty
+            // ⇒ allowsApp returns true, so unrestricted accounts pay ~zero cost).
+            let remoteApps = fetchedApps.filter { account.allowsApp(bundleId: $0.bundleId) }
             let allCached: [AppModel] = (try? await storage.fetchAll(AppModel.self)) ?? []
+
+            // Purge already-persisted rows that are now excluded (covers a
+            // re-import or a tightened scope), cascading their versions/reviews.
+            await purgeExcludedApps(
+                account: account,
+                cachedApps: allCached.filter { $0.accountId == account.id },
+                storage: storage
+            )
+
             let cachedMap = Dictionary(uniqueKeysWithValues:
                 allCached.filter { $0.accountId == account.id }.map { ($0.id, $0) }
             )
@@ -336,6 +349,33 @@ final class SyncService: ObservableObject {
         } else if case StackCoreRust.StackError.PendingAgreements(let message) = error {
             Log.print.error("[Sync][AgreementProbe] \(accountName): \(message)")
         }
+    }
+
+    /// Deletes cached `AppModel` rows (and their versions/reviews) that the
+    /// account's per-app export scope no longer allows. No-op for unrestricted
+    /// accounts (`allowsApp` returns true for every bundleId). Mirrors the
+    /// cascade idiom in `SettingsAccountsViewModel.deleteAccount`.
+    private nonisolated static func purgeExcludedApps(
+        account: AccountModel,
+        cachedApps: [AppModel],
+        storage: PersistentStorable
+    ) async {
+        let excluded = cachedApps.filter { !account.allowsApp(bundleId: $0.bundleId) }
+        guard !excluded.isEmpty else { return }
+
+        let allVersions: [AppStoreVersionModel] = (try? await storage.fetchAll(AppStoreVersionModel.self)) ?? []
+        let allReviews: [CustomerReviewModel] = (try? await storage.fetchAll(CustomerReviewModel.self)) ?? []
+
+        for app in excluded {
+            for version in allVersions where version.appId == app.id {
+                try? await storage.delete(AppStoreVersionModel.self, id: "version.\(version.id)")
+            }
+            for review in allReviews where review.appId == app.id {
+                try? await storage.delete(CustomerReviewModel.self, id: "review.\(app.id).\(review.id)")
+            }
+            try? await storage.delete(AppModel.self, id: "\(account.id).\(app.id)")
+        }
+        Log.print.notice("[Sync] \(account.name): purged \(excluded.count) apps excluded by per-app scope")
     }
 
     /// Re-fetch-mutate-save the freshest `AccountModel` to flip the pending

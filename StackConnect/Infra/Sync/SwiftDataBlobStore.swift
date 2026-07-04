@@ -58,6 +58,14 @@ final class SwiftDataBlobStore: BlobStore, @unchecked Sendable {
             let compositeId = "\(blob.accountId).\(blob.id)"
             runBlocking { [storage] in
                 do {
+                    // Enforce per-app export scope for imported accounts. This is
+                    // the Rust-core write path (bypasses SyncService.runAccountSync),
+                    // so the allowlist must be applied here too — excluded apps must
+                    // never enter SwiftData. nil/empty scope ⇒ allowsApp true ⇒ no-op.
+                    if let account = try? await storage.fetch(AccountModel.self, id: blob.accountId),
+                       !account.allowsApp(bundleId: blob.bundleId) {
+                        return
+                    }
                     // Merge the core's authoritative base fields into the existing
                     // AppModel (if any), preserving enrichment/user fields so a sync
                     // never drops iconUrl/isFavorite/etc. — mirrors runAccountSync.

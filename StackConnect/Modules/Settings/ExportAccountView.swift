@@ -4,7 +4,9 @@ import UIKit
 struct ExportAccountView: View {
 
     let account: AccountModel
-    let onExport: (String, AccountRules, String, Date?) -> URL?
+    /// Loads the apps belonging to this account (used to build the per-app scope picker).
+    let loadApps: () async -> [AppModel]
+    let onExport: (String, AccountRules, String, Date?, [String]?) -> URL?
     let onDismiss: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -24,6 +26,15 @@ struct ExportAccountView: View {
     @State private var permissions: [AccountRuleResource: [AccountPermission]?] = [:]
     @State private var editingResource: AccountRuleResource?
 
+    /// Selected app bundle ids for the per-app export scope. Empty ⇒ all apps
+    /// (no restriction). Only a non-empty subset restricts.
+    @State private var selectedBundleIds: Set<String> = []
+    @State private var showAppsPicker = false
+
+    /// Apps belonging to this account. Loaded on appear via `loadApps`.
+    /// Empty while loading / when the account has not synced yet.
+    @State private var availableApps: [AppModel] = []
+
     private let resources: [AccountRuleResource] = [
         .apps, .version, .review, .testFlight, .analytics, .users, .provisioning
     ]
@@ -42,6 +53,8 @@ struct ExportAccountView: View {
                 ForEach(resources, id: \.self) { resource in
                     buildResourceSection(resource)
                 }
+
+                buildAppsPermissionSection()
 
                 buildPasswordSection()
                 buildExpirationSection()
@@ -66,12 +79,25 @@ struct ExportAccountView: View {
                 }
                 .presentationDetents([.medium])
             }
+            .sheet(isPresented: $showAppsPicker) {
+                AppsPermissionPickerSheet(
+                    apps: availableApps,
+                    initiallySelected: selectedBundleIds
+                ) { result in
+                    selectedBundleIds = result
+                    showAppsPicker = false
+                }
+                .presentationDetents([.large])
+            }
         }
         .onAppear {
             exportName = account.name
             for resource in resources {
                 permissions[resource] = .some(nil)
             }
+        }
+        .task {
+            availableApps = await loadApps()
         }
     }
 
@@ -133,6 +159,41 @@ struct ExportAccountView: View {
             .foregroundStyle(.primary)
         } footer: {
             Text(resource.footerDescription)
+        }
+    }
+
+    @ViewBuilder
+    private func buildAppsPermissionSection() -> some View {
+        Section {
+            Button {
+                showAppsPicker = true
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(String(localized: "Apps permissions"))
+                            .font(.body)
+                            .foregroundStyle(.primary)
+
+                        Text(appsPermissionSubtitle)
+                            .font(.caption)
+                            .foregroundColor(selectedBundleIds.isEmpty ? .secondary : .accentColor)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .foregroundStyle(.primary)
+            .disabled(availableApps.isEmpty)
+        } footer: {
+            if availableApps.isEmpty {
+                Text(String(localized: "No apps synced yet. Sync this account before scoping by app."))
+            } else {
+                Text(String(localized: "Choose which apps the recipient can access. Leave as All apps to share everything."))
+            }
         }
     }
 
@@ -303,6 +364,14 @@ struct ExportAccountView: View {
         return nameValid && allResourcesConfigured && passwordValid
     }
 
+    private var appsPermissionSubtitle: String {
+        // Empty selection (and the not-synced case) both mean "all apps".
+        if selectedBundleIds.isEmpty {
+            return String(localized: "All apps")
+        }
+        return String(localized: "\(selectedBundleIds.count) of \(availableApps.count) apps")
+    }
+
     private func subtitleForResource(_ resource: AccountRuleResource) -> String {
         if isResourceNil(resource) {
             return String(localized: "Not configured")
@@ -325,7 +394,10 @@ struct ExportAccountView: View {
             provisioning: permissionsFor(.provisioning)
         )
 
-        _ = onExport(exportName, rules, password, enableExpiration ? expirationDate : nil)
+        // Empty selection ⇒ nil ⇒ all apps (no restriction). Only a non-empty
+        // subset restricts (backward-compat contract).
+        let scopedBundles: [String]? = selectedBundleIds.isEmpty ? nil : Array(selectedBundleIds)
+        _ = onExport(exportName, rules, password, enableExpiration ? expirationDate : nil, scopedBundles)
     }
 }
 

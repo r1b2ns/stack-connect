@@ -158,6 +158,10 @@ struct AccountModel: Codable, Identifiable, Hashable {
     /// Timestamp of the first time pending agreements were detected. Kept stable
     /// across re-detections so the banner can show a consistent "since" date.
     var pendingAgreementsDetectedAt: Date?
+    /// Per-app export scope. nil/empty ⇒ no restriction (all apps visible —
+    /// legacy/created accounts). Non-empty ⇒ only apps whose bundleId ∈
+    /// appsBundles are visible for this imported account. See `allowsApp`.
+    var appsBundles: [String]?
 
     init(
         id: String = UUID().uuidString,
@@ -169,7 +173,8 @@ struct AccountModel: Codable, Identifiable, Hashable {
         role: AccountRole = .unspecified,
         expirationDate: Date? = nil,
         hasPendingAgreements: Bool = false,
-        pendingAgreementsDetectedAt: Date? = nil
+        pendingAgreementsDetectedAt: Date? = nil,
+        appsBundles: [String]? = nil
     ) {
         self.id = id
         self.name = name
@@ -181,6 +186,7 @@ struct AccountModel: Codable, Identifiable, Hashable {
         self.expirationDate = expirationDate
         self.hasPendingAgreements = hasPendingAgreements
         self.pendingAgreementsDetectedAt = pendingAgreementsDetectedAt
+        self.appsBundles = appsBundles
     }
 
     var isExportable: Bool {
@@ -197,6 +203,15 @@ struct AccountModel: Codable, Identifiable, Hashable {
         guard let expirationDate else { return false }
         let now = Date()
         return expirationDate > now && expirationDate <= now.addingTimeInterval(24 * 60 * 60)
+    }
+
+    /// Per-app export scope check. nil/empty ⇒ no restriction (all apps visible).
+    /// Non-empty ⇒ only apps whose bundleId ∈ appsBundles are visible for this
+    /// imported account. Single source of truth for backward-compat semantics:
+    /// absent / null / [] all mean "every app is available".
+    func allowsApp(bundleId: String) -> Bool {
+        guard let appsBundles, !appsBundles.isEmpty else { return true }
+        return appsBundles.contains(bundleId)
     }
 
     // MARK: - Permission Checks (respects hierarchy: add→edit→view, delete→edit→view)
@@ -244,10 +259,12 @@ struct AccountModel: Codable, Identifiable, Hashable {
         expirationDate = try container.decodeIfPresent(Date.self, forKey: .expirationDate)
         hasPendingAgreements = try container.decodeIfPresent(Bool.self, forKey: .hasPendingAgreements) ?? false
         pendingAgreementsDetectedAt = try container.decodeIfPresent(Date.self, forKey: .pendingAgreementsDetectedAt)
+        // decodeIfPresent ⇒ absent/null decodes to nil ⇒ no restriction (free backward compat).
+        appsBundles = try container.decodeIfPresent([String].self, forKey: .appsBundles)
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, providerType, createdAt, rules, origin, role, expirationDate
-        case hasPendingAgreements, pendingAgreementsDetectedAt
+        case hasPendingAgreements, pendingAgreementsDetectedAt, appsBundles
     }
 }

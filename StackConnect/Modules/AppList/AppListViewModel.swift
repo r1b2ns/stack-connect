@@ -72,6 +72,9 @@ final class AppListViewModel: AppListViewModelProtocol {
             let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
             let cachedApps = allApps
                 .filter { $0.accountId == self.uiState.account.id }
+                // Defense-in-depth: hide any pre-existing cached row excluded by
+                // the per-app export scope (nil/empty scope ⇒ keeps every app).
+                .filter { self.uiState.account.allowsApp(bundleId: $0.bundleId) }
                 .sorted { a, b in
                     switch (a.lastModifiedDate, b.lastModifiedDate) {
                     case let (dateA?, dateB?): return dateA > dateB
@@ -103,7 +106,11 @@ final class AppListViewModel: AppListViewModelProtocol {
             }
 
             let connection = AppleAccountConnection(credentials: credentials)
-            let remoteApps = try await connection.fetchApps()
+            // Per-app export scope: exclude apps outside the imported account's
+            // allowlist so they are never persisted or shown (nil/empty ⇒ all).
+            let remoteApps = try await connection.fetchApps().filter {
+                self.uiState.account.allowsApp(bundleId: $0.bundleId)
+            }
 
             var appModels = remoteApps.map { appInfo in
                 let cached = self.uiState.apps.first { $0.id == appInfo.id }

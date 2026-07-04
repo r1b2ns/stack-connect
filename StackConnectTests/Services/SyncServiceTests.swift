@@ -475,6 +475,112 @@ final class SyncServiceTests: XCTestCase {
         XCTAssertEqual(byPlatform[AppPlatform.tvOs.rawValue] ?? nil, "v-tv")
     }
 
+    // MARK: - Per-app export scope (#93)
+
+    func testSyncPersistsOnlyAppsAllowedByScope() async throws {
+        let account = AccountModel(
+            name: "Scoped",
+            providerType: .apple,
+            origin: .imported,
+            appsBundles: ["com.a", "com.c"]
+        )
+        try await mockStorage.save(account, id: account.id)
+        setCredentials(issuerID: "issuer-1", for: account)
+
+        let connection = MockAppleAccountSyncing()
+        connection.apps = [
+            StackProtocols.AppInfo(id: "a", name: "A", bundleId: "com.a", platform: nil),
+            StackProtocols.AppInfo(id: "b", name: "B", bundleId: "com.b", platform: nil),
+            StackProtocols.AppInfo(id: "c", name: "C", bundleId: "com.c", platform: nil)
+        ]
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        let savedA: AppModel? = try await mockStorage.fetch(AppModel.self, id: "\(account.id).a")
+        let savedB: AppModel? = try await mockStorage.fetch(AppModel.self, id: "\(account.id).b")
+        let savedC: AppModel? = try await mockStorage.fetch(AppModel.self, id: "\(account.id).c")
+
+        XCTAssertNotNil(savedA)
+        XCTAssertNil(savedB, "App outside the scope must not be persisted")
+        XCTAssertNotNil(savedC)
+
+        let metadata: SyncMetadata? = try await mockStorage.fetch(
+            SyncMetadata.self, id: "sync.account.\(account.id)"
+        )
+        XCTAssertEqual(metadata?.appsSynced, 2)
+    }
+
+    func testSyncNilScopePersistsAllApps() async throws {
+        let account = AccountModel(name: "Unrestricted", providerType: .apple, appsBundles: nil)
+        try await mockStorage.save(account, id: account.id)
+        setCredentials(issuerID: "issuer-1", for: account)
+
+        let connection = MockAppleAccountSyncing()
+        connection.apps = [
+            StackProtocols.AppInfo(id: "a", name: "A", bundleId: "com.a", platform: nil),
+            StackProtocols.AppInfo(id: "b", name: "B", bundleId: "com.b", platform: nil),
+            StackProtocols.AppInfo(id: "c", name: "C", bundleId: "com.c", platform: nil)
+        ]
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        let metadata: SyncMetadata? = try await mockStorage.fetch(
+            SyncMetadata.self, id: "sync.account.\(account.id)"
+        )
+        XCTAssertEqual(metadata?.appsSynced, 3)
+    }
+
+    func testSyncEmptyScopePersistsAllApps() async throws {
+        let account = AccountModel(name: "EmptyScope", providerType: .apple, appsBundles: [])
+        try await mockStorage.save(account, id: account.id)
+        setCredentials(issuerID: "issuer-1", for: account)
+
+        let connection = MockAppleAccountSyncing()
+        connection.apps = [
+            StackProtocols.AppInfo(id: "a", name: "A", bundleId: "com.a", platform: nil),
+            StackProtocols.AppInfo(id: "b", name: "B", bundleId: "com.b", platform: nil)
+        ]
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        let metadata: SyncMetadata? = try await mockStorage.fetch(
+            SyncMetadata.self, id: "sync.account.\(account.id)"
+        )
+        XCTAssertEqual(metadata?.appsSynced, 2)
+    }
+
+    /// Purge: a previously cached app now outside the scope must be deleted on sync.
+    func testSyncPurgesCachedAppExcludedByScope() async throws {
+        let account = AccountModel(
+            name: "Scoped",
+            providerType: .apple,
+            origin: .imported,
+            appsBundles: ["com.a", "com.c"]
+        )
+        try await mockStorage.save(account, id: account.id)
+        setCredentials(issuerID: "issuer-1", for: account)
+
+        // Pre-seed excluded app "b" as if a prior, unrestricted sync had persisted it.
+        let cachedB = AppModel(id: "b", name: "B", bundleId: "com.b", accountId: account.id)
+        try await mockStorage.save(cachedB, id: "\(account.id).b")
+
+        let connection = MockAppleAccountSyncing()
+        connection.apps = [
+            StackProtocols.AppInfo(id: "a", name: "A", bundleId: "com.a", platform: nil),
+            StackProtocols.AppInfo(id: "b", name: "B", bundleId: "com.b", platform: nil),
+            StackProtocols.AppInfo(id: "c", name: "C", bundleId: "com.c", platform: nil)
+        ]
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        let savedB: AppModel? = try await mockStorage.fetch(AppModel.self, id: "\(account.id).b")
+        XCTAssertNil(savedB, "Excluded app must be purged from the cache")
+    }
+
     // MARK: - Helpers
 
     private func makePlatformVersion(

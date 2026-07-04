@@ -106,8 +106,9 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
             .sheet(item: $coordinator.exportingAccount) { account in
                 ExportAccountView(
                     account: account,
-                    onExport: { name, rules, password, expirationDate in
-                        let url = viewModel.exportAccountWithRules(account: account, exportName: name, rules: rules, password: password, expirationDate: expirationDate)
+                    loadApps: { await viewModel.appsForExport(accountId: account.id) },
+                    onExport: { name, rules, password, expirationDate, appsBundles in
+                        let url = viewModel.exportAccountWithRules(account: account, exportName: name, rules: rules, password: password, expirationDate: expirationDate, appsBundles: appsBundles)
                         coordinator.dismissExportAccount()
                         if let url {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
