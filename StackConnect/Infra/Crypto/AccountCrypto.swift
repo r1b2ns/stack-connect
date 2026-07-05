@@ -143,6 +143,17 @@ struct AccountCrypto {
             guard let json = String(data: decryptedData, encoding: .utf8) else {
                 throw AccountCryptoError.decryptionFailed
             }
+#if DEBUG
+            // Debug-only: when the flag is ON, dump the full decrypted payload to the console.
+            // Uses `print` (not `Log.print`/os.Logger, which truncates/redacts) so the whole
+            // payload is visible — same precedent as `RustCoreDebugLogger`. Wrapped in `#if DEBUG`
+            // in addition to the flag check because the payload contains credentials
+            // (issuerID / privateKeyID / the `.p8` private key / serviceAccountJSON): secrets
+            // must never be printable in a release build even if the flag is somehow enabled.
+            if FeatureFlags.shared.isEnabled(.useRustCoreDebugLogging) {
+                print("[AccountCrypto] Decrypted .scexport payload:\n\(json)")
+            }
+#endif
             return json
         } catch {
             throw AccountCryptoError.invalidPassword
