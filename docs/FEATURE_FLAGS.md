@@ -14,7 +14,7 @@ new flag ships **OFF** by default (the safe, fully-reversible value) unless note
 
 | Flag (`FeatureFlag` case) | UserDefaults key | Default | Description |
 | --- | --- | --- | --- |
-| `useRustCoreDebugLogging` | `featureFlag.useRustCoreDebugLogging` | OFF | Debug-only HTTP tracer: logs every Rust-core App Store Connect request/response as a runnable cURL command (with pretty-printed JSON) to the Xcode console. Intended purely for diagnosing the Rust-core ASC integration during development. No effect when OFF (zero overhead). |
+| `useRustCoreDebugLogging` | `featureFlag.useRustCoreDebugLogging` | OFF | Debug-only tracer. (1) HTTP: logs every Rust-core App Store Connect request/response as a runnable cURL command (with pretty-printed JSON) to the Xcode console. (2) Import: also prints the FULL decrypted `.scexport` JSON payload to the Xcode console on account import. Intended purely for diagnosing the Rust-core ASC integration during development. No effect when OFF (zero overhead). Both are additionally gated by `#if DEBUG`, so the credential-bearing payload can never be printed in a release build. |
 
 ## Usage sites
 
@@ -23,6 +23,8 @@ new flag ships **OFF** by default (the safe, fully-reversible value) unless note
 - **Definition:** `StackConnect/Infra/FeatureFlags/FeatureFlags.swift` — `FeatureFlag.useRustCoreDebugLogging`.
 - **Read at:** `StackConnect/Infra/Providers/Apple/AppleAccountConnection.swift`
   - `rustCoreProvider()` — when ON, passes a `RustCoreDebugLogger()` as the `debugLogger:` argument to the Rust core's `connect(...)`, so the core logs every App Store Connect HTTP call it makes as a runnable cURL (pretty JSON request/response) to the Xcode console. When OFF, passes `nil` (no logging, zero overhead).
+- **Read at:** `StackConnect/Infra/Crypto/AccountCrypto.swift`
+  - `decrypt(data:password:)` — when ON, prints the FULL decrypted `.scexport` JSON payload to the Xcode console right before returning it (covers all four call sites that import an account: `SettingsAccountsViewModel`, `SettingsAccountsView`, `AccountsListView`, `AccountsListViewModel`). Uses `print` (not `Log.print`) so the whole payload is visible, and is additionally wrapped in `#if DEBUG` because the payload carries credentials (issuerID / privateKeyID / the `.p8` private key / serviceAccountJSON) that must never be printable in a release build. When OFF, nothing is logged (zero overhead).
 - **Supporting types:**
   - `StackConnect/Infra/Providers/Apple/RustCoreDebugLogger.swift` — a stateless `DebugLogger` that forwards the core's traces straight to the Xcode console via `print` (not `Log.print`, which truncates long messages).
 - **Runtime usage:** enable at launch via the launch argument `-featureFlag.useRustCoreDebugLogging YES` (Xcode scheme → Run → Arguments → *Arguments Passed On Launch*), or programmatically with `FeatureFlags.shared.setEnabled(true, for: .useRustCoreDebugLogging)`.
