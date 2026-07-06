@@ -98,4 +98,50 @@ final class AppleAPIErrorTranslatorTests: XCTestCase {
         let error = NSError(domain: "test", code: 403)
         XCTAssertFalse(AppleAPIErrorTranslator.isForbidden(error))
     }
+
+    // MARK: - isConcurrentSubmissionLimit
+
+    /// The real 409 body Apple returns once 5 unfinished review submissions
+    /// exist. The specific code is nested under `meta.associatedErrors`; the
+    /// top-level code is a generic `STATE_ERROR.ENTITY_STATE_INVALID`.
+    private static let concurrentLimitBody = """
+    {"errors":[{"id":"11a45c25-5f94-4bbc-a7fa-3e0ffeb5fdf1","status":"409","code":"STATE_ERROR.ENTITY_STATE_INVALID","title":"apps with id '1561937578' is not in valid state.","detail":"This resource cannot be reviewed, please check associated errors to see why.","meta":{"associatedErrors":{"/apps/1561937578":[{"id":"f48da25f-527c-41e4-be10-7c4dd7bec324","status":"409","code":"STATE_ERROR.CONCURRENT_REVIEW_SUBMISSION_LIMIT_EXCEEDED","title":"ReviewSubmission creation concurrency limit is reached","detail":"Unable to create reviewSubmission for appId=1561937578 reviewSubmissionType=DEFAULT platform=IOS as maximum limit=5 of concurrency has reached"}]}}}]}
+    """
+
+    private func concurrentLimitError() -> Error {
+        StackCoreRust.StackError.Http(status: 409, message: Self.concurrentLimitBody)
+    }
+
+    func testConcurrentSubmissionLimitDetectedFromNestedCode() {
+        XCTAssertTrue(AppleAPIErrorTranslator.isConcurrentSubmissionLimit(concurrentLimitError()))
+    }
+
+    func testUnrelated409IsNotConcurrentSubmissionLimit() {
+        let error = makeError(
+            status: 409,
+            code: "CONFLICT_ERROR",
+            detail: "An item with the same value already exists."
+        )
+        XCTAssertFalse(AppleAPIErrorTranslator.isConcurrentSubmissionLimit(error))
+    }
+
+    func testConcurrentSubmissionLimitFalseForNonProviderError() {
+        struct Dummy: Error {}
+        XCTAssertFalse(AppleAPIErrorTranslator.isConcurrentSubmissionLimit(Dummy()))
+    }
+
+    func testConcurrentSubmissionLimitFalseForWrongStatus() {
+        // Same code but a 400, not a 409 — must not match.
+        let body = "{\"errors\":[{\"status\":\"400\",\"code\":\"STATE_ERROR.CONCURRENT_REVIEW_SUBMISSION_LIMIT_EXCEEDED\"}]}"
+        let error = StackCoreRust.StackError.Http(status: 400, message: body)
+        XCTAssertFalse(AppleAPIErrorTranslator.isConcurrentSubmissionLimit(error))
+    }
+
+    // MARK: - friendlyMessage for concurrency
+
+    func testFriendlyMessageReturnsConcurrencyCopyForNestedCode() {
+        let message = AppleAPIErrorTranslator.friendlyMessage(for: concurrentLimitError())
+        let expected = String(localized: "You've reached Apple's limit of 5 review submissions in progress for this app. Cancel or submit an existing one before starting a new review.")
+        XCTAssertEqual(message, expected)
+    }
 }

@@ -17,6 +17,15 @@ enum AppleAPIErrorTranslator {
         let code: String?
         let title: String?
         let detail: String?
+        let meta: Meta?
+
+        /// Nested error metadata. Apple hangs the *real* cause of some 409s under
+        /// `meta.associatedErrors`, keyed by the resource path
+        /// (e.g. `"/apps/1561937578"`), with the top-level error being a generic
+        /// `STATE_ERROR.ENTITY_STATE_INVALID`.
+        struct Meta: Decodable {
+            let associatedErrors: [String: [AppleErrorItem]]?
+        }
     }
 
     /// Decodes the raw App Store Connect response body and returns the first error,
@@ -49,8 +58,23 @@ enum AppleAPIErrorTranslator {
         let title  = first?.title  ?? ""
         let detail = first?.detail ?? ""
 
+        // Nested `meta.associatedErrors` often carry the real cause (e.g. the
+        // concurrent-submission limit) while the top-level code is a generic
+        // `ENTITY_STATE_INVALID`. Scan every code — top-level and nested — so
+        // those get humanized too. The concurrency case is checked first because
+        // it has a dedicated, actionable message.
+        let allCodes = allErrorCodes(fromBody: message)
+        if allCodes.contains(concurrentSubmissionLimitCode) {
+            return String(localized: "You've reached Apple's limit of 5 review submissions in progress for this app. Cancel or submit an existing one before starting a new review.")
+        }
+
         if let humanized = humanize(code: code, detail: detail) {
             return humanized
+        }
+        for nestedCode in allCodes where nestedCode != code {
+            if let humanized = humanize(code: nestedCode, detail: detail) {
+                return humanized
+            }
         }
         if let humanized = humanize(status: Int(status)) {
             return humanized
@@ -123,6 +147,56 @@ enum AppleAPIErrorTranslator {
         }
         let code = (decodeFirstError(fromBody: message)?.code ?? "").uppercased()
         return code == "FORBIDDEN_ERROR"
+    }
+
+    // MARK: - Concurrent review-submission limit (the 409 root cause)
+
+    /// The ASC error code Apple returns — nested under `meta.associatedErrors` —
+    /// once an app already has 5 unfinished review submissions.
+    private static let concurrentSubmissionLimitCode = "STATE_ERROR.CONCURRENT_REVIEW_SUBMISSION_LIMIT_EXCEEDED"
+
+    /// True when a "Submit for review" call failed because the app already has
+    /// Apple's maximum of 5 concurrent (unfinished) review submissions.
+    ///
+    /// The top-level error is a generic `STATE_ERROR.ENTITY_STATE_INVALID`; the
+    /// specific code lives under `meta.associatedErrors`. We check both the
+    /// top-level code (defensive, in case Apple ever surfaces it directly) and
+    /// every nested associated error, then fall back to a raw string match.
+    static func isConcurrentSubmissionLimit(_ error: Error) -> Bool {
+        guard case StackCoreRust.StackError.Http(let status, let message) = error,
+              status == 409 else {
+            return false
+        }
+
+        if allErrorCodes(fromBody: message).contains(concurrentSubmissionLimitCode) {
+            return true
+        }
+
+        // Defensive fallback: the code can appear even if the JSON shape shifts.
+        return message.contains(concurrentSubmissionLimitCode)
+    }
+
+    /// Collects the top-level error code plus every `meta.associatedErrors` code
+    /// from a raw ASC error body. Empty on decode failure.
+    private static func allErrorCodes(fromBody body: String) -> Set<String> {
+        guard let data = body.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(AppleErrorPayload.self, from: data),
+              let errors = payload.errors else {
+            return []
+        }
+
+        var codes = Set<String>()
+        for error in errors {
+            if let code = error.code {
+                codes.insert(code)
+            }
+            for nested in error.meta?.associatedErrors?.values.flatMap({ $0 }) ?? [] {
+                if let code = nested.code {
+                    codes.insert(code)
+                }
+            }
+        }
+        return codes
     }
 
     // MARK: - Pattern matching

@@ -439,8 +439,8 @@ private extension View {
                 PlatformBuildsViewFactory.build(appId: appId, platform: platform, account: account)
             case .buildDetail(let build, let appId, let account):
                 BuildDetailViewFactory.build(build: build, appId: appId, account: account)
-            case .appReview(let appId, let appName, let account):
-                AppReviewListViewFactory.build(appId: appId, appName: appName, account: account)
+            case .submissions(let appId, let appName, let platform, let account):
+                SubmissionsViewFactory.build(appId: appId, appName: appName, platform: platform, account: account)
             case .reviewSubmissionDetail(let submission, let account):
                 AppReviewDetailViewFactory.build(submission: submission, account: account)
             case .userDetail(let user, _):

@@ -76,6 +76,12 @@ struct VersionDetailUiState {
     var confirmAction: VersionDetailAction?
     var toastMessage: ToastMessage?
 
+    /// Set when "Submit for review" fails specifically because the app already
+    /// has Apple's max of 5 concurrent review submissions (the 409
+    /// `CONCURRENT_REVIEW_SUBMISSION_LIMIT_EXCEEDED`). Drives the deep-link alert
+    /// to the Submissions screen instead of a generic error.
+    var submissionLimitReached = false
+
     // Pre-submit checklist
     var isValidatingSubmit = false
     var preSubmitChecklist: PreSubmitChecklist?
@@ -636,8 +642,16 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             Log.print.info("[VersionDetail] Submitted for review")
             await refresh()
         } catch {
-            uiState.actionError = error.localizedDescription
-            Log.print.error("[VersionDetail] Submit for review failed: \(error.localizedDescription)")
+            // Apple's 5-concurrent-review-submission limit: instead of a dead-end
+            // error, flag it so the View can deep-link to the Submissions screen
+            // where the user can discard a draft and free a slot.
+            if AppleAPIErrorTranslator.isConcurrentSubmissionLimit(error) {
+                uiState.submissionLimitReached = true
+                Log.print.error("[VersionDetail] Submit blocked: concurrent review submission limit reached")
+            } else {
+                uiState.actionError = error.localizedDescription
+                Log.print.error("[VersionDetail] Submit for review failed: \(error.localizedDescription)")
+            }
         }
 
         uiState.isPerformingAction = false
