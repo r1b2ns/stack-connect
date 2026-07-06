@@ -105,7 +105,7 @@ final class RustCoreStranglerTests: XCTestCase {
             // Any StackError confirms the call crossed into the Rust core. The
             // malformed private key surfaces as .invalidCredentials.
             switch error {
-            case .InvalidCredentials, .Auth, .PendingAgreements, .Network, .Http, .Decode, .Unsupported:
+            case .InvalidCredentials, .Auth, .PendingAgreements, .Network, .Http, .Decode, .Unsupported, .SubmissionNotRemovable:
                 break
             }
         } catch {

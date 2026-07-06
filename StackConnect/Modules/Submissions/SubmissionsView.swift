@@ -46,8 +46,15 @@ struct SubmissionsView<ViewModel: SubmissionsViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
+    @Environment(\.openURL) private var openURL
 
     private var account: AccountModel { viewModel.uiState.account }
+
+    /// App Store Connect distribution page for this app — where the user can
+    /// remove a stuck review submission that the public API can't delete.
+    private var appStoreConnectDistributionURL: URL? {
+        URL(string: "https://appstoreconnect.apple.com/apps/\(viewModel.uiState.appId)/distribution")
+    }
 
     var body: some View {
         buildContent()
@@ -88,6 +95,27 @@ struct SubmissionsView<ViewModel: SubmissionsViewModelProtocol>: View {
             } message: {
                 if let error = viewModel.uiState.error {
                     Text(error)
+                }
+            }
+            .alert(
+                String(localized: "Can't remove via API"),
+                isPresented: Binding(
+                    get: { viewModel.uiState.notRemovable != nil },
+                    set: { if !$0 { viewModel.uiState.notRemovable = nil } }
+                )
+            ) {
+                if let url = appStoreConnectDistributionURL {
+                    Button(String(localized: "Open App Store Connect")) {
+                        openURL(url)
+                        viewModel.uiState.notRemovable = nil
+                    }
+                }
+                Button(String(localized: "Close"), role: .cancel) {
+                    viewModel.uiState.notRemovable = nil
+                }
+            } message: {
+                if let message = viewModel.uiState.notRemovable {
+                    Text(message)
                 }
             }
             .toast(message: $viewModel.uiState.toastMessage)

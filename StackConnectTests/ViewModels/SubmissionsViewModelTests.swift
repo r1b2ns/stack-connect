@@ -1,4 +1,5 @@
 import XCTest
+import StackCoreRust
 @testable import StackConnect
 
 @MainActor
@@ -160,6 +161,25 @@ final class SubmissionsViewModelTests: XCTestCase {
         XCTAssertNotNil(sut.uiState.error)
         XCTAssertNil(sut.uiState.toastMessage)
         XCTAssertTrue(mockService.fetchedAppIds.isEmpty)
+        XCTAssertFalse(sut.uiState.busyIds.contains("42"))
+    }
+
+    func testDiscardNotRemovableRoutesToDedicatedStateNotGenericError() async {
+        let message = "This review submission has no items and can't be removed "
+            + "through the App Store Connect API. Remove it from the App Store Connect website."
+        let target = submission(id: "42", state: "READY_FOR_REVIEW")
+        mockService.discardError = StackCoreRust.StackError.SubmissionNotRemovable(message: message)
+
+        await sut.discard(target)
+
+        // Routed to the dedicated "not removable" state, carrying the exact message…
+        XCTAssertEqual(sut.uiState.notRemovable, message)
+        // …and NOT to the generic error alert, and NO success toast.
+        XCTAssertNil(sut.uiState.error)
+        XCTAssertNil(sut.uiState.toastMessage)
+        XCTAssertEqual(mockService.discardedIds, ["42"])
+        // The list is still reloaded (the version may have been freed).
+        XCTAssertEqual(mockService.fetchedAppIds, ["app-1"])
         XCTAssertFalse(sut.uiState.busyIds.contains("42"))
     }
 

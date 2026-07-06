@@ -1,4 +1,5 @@
 import Foundation
+import StackCoreRust
 @testable import StackConnect
 
 /// Test double for `SubmissionsServicing`. Returns canned submissions, can be

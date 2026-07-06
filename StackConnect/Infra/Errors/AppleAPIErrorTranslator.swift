@@ -181,6 +181,25 @@ enum AppleAPIErrorTranslator {
         return message.contains(concurrentSubmissionLimitCode)
     }
 
+    // MARK: - Submission not removable via the public API
+
+    /// Returns the actionable message when the core reports that a review
+    /// submission cannot be removed through the App Store Connect API, else `nil`.
+    ///
+    /// The core throws `StackError.SubmissionNotRemovable` for an empty
+    /// `READY_FOR_REVIEW` draft: it frees the version by deleting the draft's
+    /// items, but the parent submission itself has no API removal path (DELETE is
+    /// 403, PATCH `canceled: true` is 409). Unlike `Http`, this case carries a
+    /// ready-to-show message, so callers surface it directly (and can pair it with
+    /// an "Open App Store Connect" affordance) instead of running it through
+    /// `friendlyMessage`.
+    static func submissionNotRemovableMessage(_ error: Error) -> String? {
+        guard case StackCoreRust.StackError.SubmissionNotRemovable(let message) = error else {
+            return nil
+        }
+        return message
+    }
+
     /// Collects the top-level error code plus every `meta.associatedErrors` code
     /// from a raw ASC error body. Empty on decode failure.
     private static func allErrorCodes(fromBody body: String) -> Set<String> {

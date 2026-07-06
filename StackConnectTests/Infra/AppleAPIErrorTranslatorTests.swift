@@ -144,4 +144,24 @@ final class AppleAPIErrorTranslatorTests: XCTestCase {
         let expected = String(localized: "You've reached Apple's limit of 5 review submissions in progress for this app. Cancel or submit an existing one before starting a new review.")
         XCTAssertEqual(message, expected)
     }
+
+    // MARK: - submissionNotRemovableMessage
+
+    func testSubmissionNotRemovableMessageReturnsTheMessage() {
+        let expected = "This review submission has no items and can't be removed "
+            + "through the App Store Connect API. Remove it from the App Store Connect website."
+        let error = StackCoreRust.StackError.SubmissionNotRemovable(message: expected)
+
+        XCTAssertEqual(AppleAPIErrorTranslator.submissionNotRemovableMessage(error), expected)
+    }
+
+    func testSubmissionNotRemovableMessageNilForUnrelatedError() {
+        // A different StackError case must not match.
+        let http = StackCoreRust.StackError.Http(status: 403, message: "{}")
+        XCTAssertNil(AppleAPIErrorTranslator.submissionNotRemovableMessage(http))
+
+        // A non-StackError must not match either.
+        struct Dummy: Error {}
+        XCTAssertNil(AppleAPIErrorTranslator.submissionNotRemovableMessage(Dummy()))
+    }
 }

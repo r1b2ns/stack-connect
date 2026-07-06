@@ -73,6 +73,11 @@ struct SubmissionsUiState {
     var submissions: [ReviewSubmissionModel] = []
     var isLoading = false
     var error: String?
+    /// Set when the core reports that an (empty) review submission can't be
+    /// removed through the App Store Connect API — carries the actionable message
+    /// so the View can present a dedicated "Can't remove via API" alert with an
+    /// "Open App Store Connect" affordance instead of the generic error alert.
+    var notRemovable: String?
     /// IDs of submissions with an in-flight discard/submit, so the row can show
     /// a spinner and disable further taps.
     var busyIds: Set<String> = []
@@ -185,8 +190,18 @@ final class SubmissionsViewModel: SubmissionsViewModelProtocol {
             Log.print.info("[Submissions] Discarded submission \(submission.id)")
             await load()
         } catch {
-            uiState.error = error.localizedDescription
-            Log.print.error("[Submissions] Discard failed: \(error.localizedDescription)")
+            // An empty READY_FOR_REVIEW draft can't be removed via the API even
+            // though its items (and thus the version) were freed. Surface the
+            // actionable message in its own alert — not the generic error one —
+            // and still reload so the freed version disappears from the list.
+            if let message = AppleAPIErrorTranslator.submissionNotRemovableMessage(error) {
+                uiState.notRemovable = message
+                Log.print.info("[Submissions] Discard: submission \(submission.id) not removable via API")
+                await load()
+            } else {
+                uiState.error = error.localizedDescription
+                Log.print.error("[Submissions] Discard failed: \(error.localizedDescription)")
+            }
         }
     }
 
@@ -202,8 +217,17 @@ final class SubmissionsViewModel: SubmissionsViewModelProtocol {
             Log.print.info("[Submissions] Submitted submission \(submission.id)")
             await load()
         } catch {
-            uiState.error = error.localizedDescription
-            Log.print.error("[Submissions] Submit failed: \(error.localizedDescription)")
+            // Defensive symmetry with discard(_:): submit doesn't normally throw
+            // this, but if the core ever surfaces it here, route it to the
+            // dedicated alert rather than showing a reflected error wrapper.
+            if let message = AppleAPIErrorTranslator.submissionNotRemovableMessage(error) {
+                uiState.notRemovable = message
+                Log.print.info("[Submissions] Submit: submission \(submission.id) not removable via API")
+                await load()
+            } else {
+                uiState.error = error.localizedDescription
+                Log.print.error("[Submissions] Submit failed: \(error.localizedDescription)")
+            }
         }
     }
 
