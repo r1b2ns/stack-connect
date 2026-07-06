@@ -201,6 +201,27 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 Text(error)
             }
         }
+        .alert(
+            String(localized: "Submission limit reached"),
+            isPresented: Binding(
+                get: { viewModel.uiState.submissionLimitReached },
+                set: { if !$0 { viewModel.uiState.submissionLimitReached = false } }
+            )
+        ) {
+            Button(String(localized: "Manage submissions")) {
+                viewModel.uiState.submissionLimitReached = false
+                homeCoordinator.navigateToSubmissions(
+                    appId: viewModel.uiState.version.appId,
+                    appName: viewModel.uiState.appName,
+                    account: viewModel.uiState.account
+                )
+            }
+            Button(String(localized: "Cancel"), role: .cancel) {
+                viewModel.uiState.submissionLimitReached = false
+            }
+        } message: {
+            Text(AppleAPIErrorTranslator.concurrentSubmissionLimitMessage)
+        }
         .toast(message: $viewModel.uiState.toastMessage)
     }
 

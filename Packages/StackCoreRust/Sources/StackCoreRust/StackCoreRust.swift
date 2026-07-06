@@ -7619,17 +7619,24 @@ public func FfiConverterTypeAccessibilityDeclarationInfo_lower(_ value: Accessib
  *
  * `provider_type` is the raw discriminator from the file (`"apple"`,
  * `"firebase"`, `"googlePlay"`), serialized camelCase as `providerType`.
+ *
+ * `apps_bundles` (serialized `appsBundles`) is the optional per-app export scope:
+ * the list of app bundle ids the file grants access to. The core only carries it
+ * through — it does not interpret it. The host decides what `None`/empty means
+ * (conventionally "all apps").
  */
 public struct AccountExport: Equatable, Hashable {
     public var name: String
     public var providerType: String
+    public var appsBundles: [String]?
     public var credentials: [String: String]
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(name: String, providerType: String, credentials: [String: String]) {
+    public init(name: String, providerType: String, appsBundles: [String]?, credentials: [String: String]) {
         self.name = name
         self.providerType = providerType
+        self.appsBundles = appsBundles
         self.credentials = credentials
     }
 
@@ -7651,6 +7658,7 @@ public struct FfiConverterTypeAccountExport: FfiConverterRustBuffer {
             try AccountExport(
                 name: FfiConverterString.read(from: &buf), 
                 providerType: FfiConverterString.read(from: &buf), 
+                appsBundles: FfiConverterOptionSequenceString.read(from: &buf), 
                 credentials: FfiConverterDictionaryStringString.read(from: &buf)
         )
     }
@@ -7658,6 +7666,7 @@ public struct FfiConverterTypeAccountExport: FfiConverterRustBuffer {
     public static func write(_ value: AccountExport, into buf: inout [UInt8]) {
         FfiConverterString.write(value.name, into: &buf)
         FfiConverterString.write(value.providerType, into: &buf)
+        FfiConverterOptionSequenceString.write(value.appsBundles, into: &buf)
         FfiConverterDictionaryStringString.write(value.credentials, into: &buf)
     }
 }
@@ -10539,6 +10548,16 @@ public enum StackError: Swift.Error, Equatable, Hashable, Foundation.LocalizedEr
     )
     case Unsupported(message: String
     )
+    /**
+     * A review submission cannot be removed through the public App Store Connect
+     * API. This happens for an empty `READY_FOR_REVIEW` draft (zero
+     * `reviewSubmissionItems`): the `reviewSubmissions` resource forbids
+     * `DELETE`, rejects `canceled: true` in this state, and has no items to
+     * remove — so there is no API path to clear it. The host must surface this
+     * honestly (e.g. point the user at the App Store Connect website).
+     */
+    case SubmissionNotRemovable(message: String
+    )
 
     
 
@@ -10590,6 +10609,9 @@ public struct FfiConverterTypeStackError: FfiConverterRustBuffer {
         case 7: return .Unsupported(
             message: try FfiConverterString.read(from: &buf)
             )
+        case 8: return .SubmissionNotRemovable(
+            message: try FfiConverterString.read(from: &buf)
+            )
 
          default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -10635,6 +10657,11 @@ public struct FfiConverterTypeStackError: FfiConverterRustBuffer {
         
         case let .Unsupported(message):
             writeInt(&buf, Int32(7))
+            FfiConverterString.write(message, into: &buf)
+            
+        
+        case let .SubmissionNotRemovable(message):
+            writeInt(&buf, Int32(8))
             FfiConverterString.write(message, into: &buf)
             
         }
@@ -11203,6 +11230,30 @@ fileprivate struct FfiConverterOptionTypeReviewResponse: FfiConverterRustBuffer 
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeReviewResponse.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionSequenceString: FfiConverterRustBuffer {
+    typealias SwiftType = [String]?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterSequenceString.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterSequenceString.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }

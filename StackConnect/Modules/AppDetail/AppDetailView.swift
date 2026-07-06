@@ -405,16 +405,16 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                     denyPermission(String(localized: "You don't have permission to access App Review."))
                     return
                 }
-                homeCoordinator.navigateToAppReview(
+                homeCoordinator.navigateToSubmissions(
                     appId: viewModel.uiState.app.id,
                     appName: viewModel.uiState.app.name,
                     account: account
                 )
             } label: {
                 buildMenuRow(
-                    icon: "checkmark.shield.fill",
-                    color: .green,
-                    title: String(localized: "App Review"),
+                    icon: "paperplane.fill",
+                    color: .blue,
+                    title: String(localized: "Submissions"),
                     badge: viewModel.uiState.hasReviewIssues ? .exclamation : nil
                 )
             }

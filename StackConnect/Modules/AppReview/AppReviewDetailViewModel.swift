@@ -130,7 +130,10 @@ final class AppReviewDetailViewModel: AppReviewDetailViewModelProtocol {
             Log.print.info("[AppReviewDetail] Resubmitted submission \(self.uiState.submission.id)")
             uiState.didComplete = true
         } catch {
-            uiState.actionError = error.localizedDescription
+            // Prefer the core's clean, actionable copy over `StackError`'s reflected
+            // `errorDescription` when a submission can't be removed via the API.
+            uiState.actionError = AppleAPIErrorTranslator.submissionNotRemovableMessage(error)
+                ?? error.localizedDescription
             Log.print.error("[AppReviewDetail] Resubmit failed: \(error.localizedDescription)")
         }
         uiState.isPerformingAction = false
@@ -150,7 +153,11 @@ final class AppReviewDetailViewModel: AppReviewDetailViewModelProtocol {
             Log.print.info("[AppReviewDetail] Discarded submission \(self.uiState.submission.id)")
             uiState.didComplete = true
         } catch {
-            uiState.actionError = error.localizedDescription
+            // An empty READY_FOR_REVIEW draft can't be removed via the API. Show
+            // the core's clean, actionable copy instead of `StackError`'s reflected
+            // `errorDescription`; the existing error alert renders it fine.
+            uiState.actionError = AppleAPIErrorTranslator.submissionNotRemovableMessage(error)
+                ?? error.localizedDescription
             Log.print.error("[AppReviewDetail] Discard failed: \(error.localizedDescription)")
         }
         uiState.isPerformingAction = false
