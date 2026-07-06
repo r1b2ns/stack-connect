@@ -443,8 +443,8 @@ private extension View {
                 SubmissionsViewFactory.build(appId: appId, appName: appName, account: account)
             case .reviewSubmissionDetail(let submission, let account):
                 AppReviewDetailViewFactory.build(submission: submission, account: account)
-            case .userDetail(let user, _):
-                UserDetailViewFactory.build(user: user)
+            case .userDetail(let user, let account):
+                UserDetailViewFactory.build(user: user, account: account)
             }
         }
     }

@@ -30,6 +30,7 @@ enum UserRoleFilter: String, CaseIterable, Identifiable, Hashable {
     case appManager = "APP_MANAGER"
     case customerSupport = "CUSTOMER_SUPPORT"
     case marketing = "MARKETING"
+    case readOnly = "READ_ONLY"
 
     var id: String { rawValue }
 
@@ -45,6 +46,7 @@ enum UserRoleFilter: String, CaseIterable, Identifiable, Hashable {
         case .appManager:       return String(localized: "App Manager")
         case .customerSupport:  return String(localized: "Customer Support")
         case .marketing:        return String(localized: "Marketing")
+        case .readOnly:         return String(localized: "Read Only")
         }
     }
 }

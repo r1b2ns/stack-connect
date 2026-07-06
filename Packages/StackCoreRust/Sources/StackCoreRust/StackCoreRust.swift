@@ -7254,6 +7254,20 @@ public protocol UsersProtocol: AnyObject, Sendable {
     func fetchTeamMembers() async throws  -> [TeamMemberInfo]
     
     /**
+     * Lists the ids of the apps visible to the member `id`. Intended to be
+     * fetched lazily (e.g. when an editor opens) rather than eagerly alongside
+     * the bulk user list. Returns an empty list when the member has no visible
+     * apps (or when `all_apps_visible` makes the relationship moot).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchUserVisibleApps(id: String) async throws  -> [String]
+    
+    /**
      * Lists every user of the connected account: the active members (`users`)
      * followed by the outstanding invitations (`userInvitations`), unified into
      * one list and discriminated by `is_pending`. For active members `email` is
@@ -7281,6 +7295,31 @@ public protocol UsersProtocol: AnyObject, Sendable {
      * [`StackError::Network`] on transport failure.
      */
     func inviteUser(email: String, firstName: String, lastName: String, roles: [String], allAppsVisible: Bool, provisioningAllowed: Bool) async throws 
+    
+    /**
+     * Updates the active member `id`, replacing the raw ASC `roles` (e.g.
+     * `"ADMIN"`, `"DEVELOPER"`, `"APP_MANAGER"`, passed through verbatim) and
+     * setting the `all_apps_visible`/`provisioning_allowed` flags. App Store
+     * Connect returns the updated resource; nothing meaningful is returned here.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func updateUser(id: String, roles: [String], allAppsVisible: Bool, provisioningAllowed: Bool) async throws 
+    
+    /**
+     * Replaces the full set of apps visible to the member `id` with `app_ids`
+     * (full-replace semantics). An empty `app_ids` is valid and clears the
+     * member's visible apps.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func updateUserVisibleApps(id: String, appIds: [String]) async throws 
     
 }
 /**
@@ -7397,6 +7436,35 @@ open func fetchTeamMembers()async throws  -> [TeamMemberInfo]  {
 }
     
     /**
+     * Lists the ids of the apps visible to the member `id`. Intended to be
+     * fetched lazily (e.g. when an editor opens) rather than eagerly alongside
+     * the bulk user list. Returns an empty list when the member has no visible
+     * apps (or when `all_apps_visible` makes the relationship moot).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchUserVisibleApps(id: String)async throws  -> [String]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_users_fetch_user_visible_apps(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceString.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
      * Lists every user of the connected account: the active members (`users`)
      * followed by the outstanding invitations (`userInvitations`), unified into
      * one list and discriminated by `is_pending`. For active members `email` is
@@ -7445,6 +7513,61 @@ open func inviteUser(email: String, firstName: String, lastName: String, roles: 
                 uniffi_stack_core_fn_method_users_invite_user(
                     self.uniffiCloneHandle(),
                     FfiConverterString.lower(email),FfiConverterString.lower(firstName),FfiConverterString.lower(lastName),FfiConverterSequenceString.lower(roles),FfiConverterBool.lower(allAppsVisible),FfiConverterBool.lower(provisioningAllowed)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Updates the active member `id`, replacing the raw ASC `roles` (e.g.
+     * `"ADMIN"`, `"DEVELOPER"`, `"APP_MANAGER"`, passed through verbatim) and
+     * setting the `all_apps_visible`/`provisioning_allowed` flags. App Store
+     * Connect returns the updated resource; nothing meaningful is returned here.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func updateUser(id: String, roles: [String], allAppsVisible: Bool, provisioningAllowed: Bool)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_users_update_user(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id),FfiConverterSequenceString.lower(roles),FfiConverterBool.lower(allAppsVisible),FfiConverterBool.lower(provisioningAllowed)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Replaces the full set of apps visible to the member `id` with `app_ids`
+     * (full-replace semantics). An empty `app_ids` is valid and clears the
+     * member's visible apps.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func updateUserVisibleApps(id: String, appIds: [String])async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_users_update_user_visible_apps(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(id),FfiConverterSequenceString.lower(appIds)
                 )
             },
             pollFunc: ffi_stack_core_rust_future_poll_void,
@@ -12369,10 +12492,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_users_fetch_team_members() != 22425) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_users_fetch_user_visible_apps() != 5856) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_users_fetch_users() != 21183) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_users_invite_user() != 24749) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_users_update_user() != 30967) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_users_update_user_visible_apps() != 21035) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_accessibility_declarations() != 36559) {

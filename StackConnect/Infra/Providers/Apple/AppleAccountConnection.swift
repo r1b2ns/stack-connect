@@ -498,6 +498,55 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         return
     }
 
+    /// Updates an **active** team member's roles and access flags. `roles` are raw
+    /// ASC strings passed verbatim to the core (primary role + additional resources).
+    /// Not valid for pending invitations — the ASC API cannot edit invites.
+    func updateUser(
+        id: String,
+        roles: [String],
+        allAppsVisible: Bool,
+        provisioningAllowed: Bool
+    ) async throws {
+        let provider = try rustCoreProvider()
+        guard let cap = provider.users() else {
+            throw translate(.Unsupported(message: "Users capability is not available for this provider."))
+        }
+        try await callRustCore {
+            try await cap.updateUser(
+                id: id,
+                roles: roles,
+                allAppsVisible: allAppsVisible,
+                provisioningAllowed: provisioningAllowed
+            )
+        }
+        Log.print.info("[Apple] Updated user \(id) (Rust core)")
+        return
+    }
+
+    /// Returns the IDs of the apps a user is scoped to. Empty when the user has no
+    /// visible-apps restriction configured (only meaningful when `allAppsVisible == false`).
+    func fetchUserVisibleApps(id: String) async throws -> [String] {
+        let provider = try rustCoreProvider()
+        guard let cap = provider.users() else {
+            throw translate(.Unsupported(message: "Users capability is not available for this provider."))
+        }
+        let appIds = try await callRustCore { try await cap.fetchUserVisibleApps(id: id) }
+        Log.print.info("[Apple] Fetched \(appIds.count) visible apps for user \(id) (Rust core)")
+        return appIds
+    }
+
+    /// Replaces the user's visible-apps set with `appIds` (**full replace** — an empty
+    /// array clears all scoping). Only meaningful when `allAppsVisible == false`.
+    func updateUserVisibleApps(id: String, appIds: [String]) async throws {
+        let provider = try rustCoreProvider()
+        guard let cap = provider.users() else {
+            throw translate(.Unsupported(message: "Users capability is not available for this provider."))
+        }
+        try await callRustCore { try await cap.updateUserVisibleApps(id: id, appIds: appIds) }
+        Log.print.info("[Apple] Updated visible apps for user \(id) (\(appIds.count) apps) (Rust core)")
+        return
+    }
+
     // MARK: - TestFlight: Builds for Group
 
     func fetchBuildsForGroup(groupId: String) async throws -> [BuildModel] {
