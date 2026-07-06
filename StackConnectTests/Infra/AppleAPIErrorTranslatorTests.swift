@@ -164,4 +164,50 @@ final class AppleAPIErrorTranslatorTests: XCTestCase {
         struct Dummy: Error {}
         XCTAssertNil(AppleAPIErrorTranslator.submissionNotRemovableMessage(Dummy()))
     }
+
+    // MARK: - Role/attribute 409s surface Apple's detail (not the generic 409 copy)
+
+    /// The exact "provisioning privilege" 409 Apple returns for ADMIN +
+    /// provisioningAllowed=true must surface verbatim, not the generic
+    /// "Conflict: an item with the same value already exists."
+    func testProvisioning409SurfacesAppleDetailVerbatim() {
+        let detail = "The user can't have provisioning privilege."
+        let error = makeError(status: 409, code: "ENTITY_ERROR.ATTRIBUTE.INVALID", detail: detail)
+
+        XCTAssertEqual(AppleAPIErrorTranslator.friendlyMessage(for: error), detail)
+    }
+
+    /// ADMIN + CREATE_APPS role rejection surfaces Apple's message verbatim.
+    func testCreateAppsRole409SurfacesAppleDetailVerbatim() {
+        let detail = "The 'CREATE_APPS' role cannot be assigned."
+        let error = makeError(status: 409, code: "ENTITY_ERROR.ATTRIBUTE.INVALID", detail: detail)
+
+        XCTAssertEqual(AppleAPIErrorTranslator.friendlyMessage(for: error), detail)
+    }
+
+    /// The "only these roles are allowed" 409 (cloud-managed add-on on ADMIN) is
+    /// long but still surfaced verbatim rather than shadowed by the 409 copy.
+    func testAllowedRoles409SurfacesAppleDetailVerbatim() {
+        let detail = "Only these roles are allowed for this user: READ_ONLY, SALES, DEVELOPER."
+        let error = makeError(status: 409, code: "ENTITY_ERROR.ATTRIBUTE.INVALID", detail: detail)
+
+        XCTAssertEqual(AppleAPIErrorTranslator.friendlyMessage(for: error), detail)
+    }
+
+    /// With no `detail`, the attribute-invalid case still yields the curated copy
+    /// (not the generic 409 conflict message) — the prefix branch falls through.
+    func testAttributeInvalid409WithoutDetailUsesCuratedCopy() {
+        let error = makeError(status: 409, code: "ENTITY_ERROR.ATTRIBUTE.INVALID", detail: "")
+        let expected = String(localized: "One of the fields has an invalid value.")
+
+        XCTAssertEqual(AppleAPIErrorTranslator.friendlyMessage(for: error), expected)
+    }
+
+    /// A genuine conflict (CONFLICT_ERROR) is unaffected — it keeps its own copy.
+    func testConflictError409KeepsConflictCopy() {
+        let error = makeError(status: 409, code: "CONFLICT_ERROR", detail: "")
+        let expected = String(localized: "An item with the same value already exists.")
+
+        XCTAssertEqual(AppleAPIErrorTranslator.friendlyMessage(for: error), expected)
+    }
 }

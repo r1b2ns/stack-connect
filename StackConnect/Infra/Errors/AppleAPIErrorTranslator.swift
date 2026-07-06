@@ -268,6 +268,17 @@ enum AppleAPIErrorTranslator {
             return String(localized: "A profile with this name already exists. Pick a different name.")
         }
 
+        // Attribute-validation family (e.g. the role/resources 409s like
+        // "The user can't have provisioning privilege." or
+        // "The 'CREATE_APPS' role cannot be assigned."). Apple's `detail` is
+        // already a clear, user-ready sentence, so surface it verbatim. This runs
+        // *before* `humanize(status:)`, so the specific message wins over the
+        // generic 409 copy. Falls through to the switch when there is no detail,
+        // preserving the curated copy for those cases.
+        if code.hasPrefix("ENTITY_ERROR.ATTRIBUTE.") && !detail.isEmpty {
+            return detail
+        }
+
         switch code {
         case concurrentSubmissionLimitCode:
             return concurrentSubmissionLimitMessage

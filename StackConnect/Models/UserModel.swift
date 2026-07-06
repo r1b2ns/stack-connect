@@ -36,6 +36,7 @@ struct UserModel: Codable, Identifiable, Hashable {
         case "DEVELOPER":                       return String(localized: "Developer")
         case "ACCESS_TO_REPORTS":               return String(localized: "Access to Reports")
         case "CUSTOMER_SUPPORT":                return String(localized: "Customer Support")
+        case "READ_ONLY":                       return String(localized: "Read Only")
         case "CREATE_APPS":                     return String(localized: "Create Apps")
         case "CLOUD_MANAGED_DEVELOPER_ID":      return String(localized: "Cloud Managed Developer ID")
         case "CLOUD_MANAGED_APP_DISTRIBUTION":  return String(localized: "Cloud Managed App Distribution")

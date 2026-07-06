@@ -33,6 +33,12 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
+    /// Tracks the first appearance so we can distinguish it (handled by `.task`)
+    /// from a reappearance after popping back from `UserDetail`. On reappear we
+    /// reload so a role change or a user deletion made on the detail screen is
+    /// reflected here without requiring a manual pull-to-refresh.
+    @State private var hasAppeared = false
+
     var body: some View {
         buildContent()
             .searchable(
@@ -41,6 +47,15 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
                 prompt: String(localized: "Search by name or email")
             )
             .task { await viewModel.load() }
+            .onAppear {
+                // Skip the initial appearance (`.task` already loaded); reload on
+                // subsequent reappearances (returning from UserDetail).
+                if hasAppeared {
+                    Task { await viewModel.load() }
+                } else {
+                    hasAppeared = true
+                }
+            }
             .refreshable { await viewModel.load() }
             .sheet(isPresented: $viewModel.uiState.showInviteUser) {
                 InviteUserSheet { email, firstName, lastName, roles, allApps, provisioning in
