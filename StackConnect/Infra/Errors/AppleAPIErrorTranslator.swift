@@ -17,6 +17,15 @@ enum AppleAPIErrorTranslator {
         let code: String?
         let title: String?
         let detail: String?
+        let meta: Meta?
+
+        /// Nested error metadata. Apple hangs the *real* cause of some 409s under
+        /// `meta.associatedErrors`, keyed by the resource path
+        /// (e.g. `"/apps/1561937578"`), with the top-level error being a generic
+        /// `STATE_ERROR.ENTITY_STATE_INVALID`.
+        struct Meta: Decodable {
+            let associatedErrors: [String: [AppleErrorItem]]?
+        }
     }
 
     /// Decodes the raw App Store Connect response body and returns the first error,
@@ -49,8 +58,20 @@ enum AppleAPIErrorTranslator {
         let title  = first?.title  ?? ""
         let detail = first?.detail ?? ""
 
+        // Nested `meta.associatedErrors` often carry the real cause (e.g. the
+        // concurrent-submission limit) while the top-level code is a generic
+        // `ENTITY_STATE_INVALID`. Scan every code — top-level and nested — so
+        // those get humanized too (see the `humanize(code:detail:)` switch,
+        // which handles `concurrentSubmissionLimitCode` among others).
+        let allCodes = allErrorCodes(fromBody: message)
+
         if let humanized = humanize(code: code, detail: detail) {
             return humanized
+        }
+        for nestedCode in allCodes where nestedCode != code {
+            if let humanized = humanize(code: nestedCode, detail: detail) {
+                return humanized
+            }
         }
         if let humanized = humanize(status: Int(status)) {
             return humanized
@@ -125,6 +146,83 @@ enum AppleAPIErrorTranslator {
         return code == "FORBIDDEN_ERROR"
     }
 
+    // MARK: - Concurrent review-submission limit (the 409 root cause)
+
+    /// The ASC error code Apple returns — nested under `meta.associatedErrors` —
+    /// once an app already has the maximum unfinished review submissions.
+    private static let concurrentSubmissionLimitCode = "STATE_ERROR.CONCURRENT_REVIEW_SUBMISSION_LIMIT_EXCEEDED"
+
+    /// Single source of truth for the user-facing concurrency-limit copy. Callers
+    /// that need the message without an `Error` in hand (e.g. the VersionDetail
+    /// 409 deep-link alert) reference this so the copy and the number stay in sync
+    /// with `AppStoreReviewLimits.concurrentSubmissions`.
+    static var concurrentSubmissionLimitMessage: String {
+        String(localized: "You've reached Apple's limit of \(AppStoreReviewLimits.concurrentSubmissions) review submissions in progress for this app. Cancel or submit an existing one before starting a new review.")
+    }
+
+    /// True when a "Submit for review" call failed because the app already has
+    /// Apple's maximum of 5 concurrent (unfinished) review submissions.
+    ///
+    /// The top-level error is a generic `STATE_ERROR.ENTITY_STATE_INVALID`; the
+    /// specific code lives under `meta.associatedErrors`. We check both the
+    /// top-level code (defensive, in case Apple ever surfaces it directly) and
+    /// every nested associated error, then fall back to a raw string match.
+    static func isConcurrentSubmissionLimit(_ error: Error) -> Bool {
+        guard case StackCoreRust.StackError.Http(let status, let message) = error,
+              status == 409 else {
+            return false
+        }
+
+        if allErrorCodes(fromBody: message).contains(concurrentSubmissionLimitCode) {
+            return true
+        }
+
+        // Defensive fallback: the code can appear even if the JSON shape shifts.
+        return message.contains(concurrentSubmissionLimitCode)
+    }
+
+    // MARK: - Submission not removable via the public API
+
+    /// Returns the actionable message when the core reports that a review
+    /// submission cannot be removed through the App Store Connect API, else `nil`.
+    ///
+    /// The core throws `StackError.SubmissionNotRemovable` for an empty
+    /// `READY_FOR_REVIEW` draft: it frees the version by deleting the draft's
+    /// items, but the parent submission itself has no API removal path (DELETE is
+    /// 403, PATCH `canceled: true` is 409). Unlike `Http`, this case carries a
+    /// ready-to-show message, so callers surface it directly (and can pair it with
+    /// an "Open App Store Connect" affordance) instead of running it through
+    /// `friendlyMessage`.
+    static func submissionNotRemovableMessage(_ error: Error) -> String? {
+        guard case StackCoreRust.StackError.SubmissionNotRemovable(let message) = error else {
+            return nil
+        }
+        return message
+    }
+
+    /// Collects the top-level error code plus every `meta.associatedErrors` code
+    /// from a raw ASC error body. Empty on decode failure.
+    private static func allErrorCodes(fromBody body: String) -> Set<String> {
+        guard let data = body.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(AppleErrorPayload.self, from: data),
+              let errors = payload.errors else {
+            return []
+        }
+
+        var codes = Set<String>()
+        for error in errors {
+            if let code = error.code {
+                codes.insert(code)
+            }
+            for nested in error.meta?.associatedErrors?.values.flatMap({ $0 }) ?? [] {
+                if let code = nested.code {
+                    codes.insert(code)
+                }
+            }
+        }
+        return codes
+    }
+
     // MARK: - Pattern matching
 
     private static func humanize(code: String, detail: String) -> String? {
@@ -171,6 +269,8 @@ enum AppleAPIErrorTranslator {
         }
 
         switch code {
+        case concurrentSubmissionLimitCode:
+            return concurrentSubmissionLimitMessage
         case "FORBIDDEN_ERROR":
             return String(localized: "Apple refused this change for security reasons. The operation may only be available on developer.apple.com.")
         case "ENTITY_ERROR.NAME.INVALID":
