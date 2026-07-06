@@ -57,7 +57,7 @@ enum SubmissionsPendingAction: Identifiable {
         let v = version ?? "–"
         switch self {
         case .discard:
-            return String(localized: "Are you sure you want to discard the submission for version \(v)? This frees one of Apple's 5 concurrent review slots.")
+            return String(localized: "Are you sure you want to discard the submission for version \(v)? This frees one of Apple's \(AppStoreReviewLimits.concurrentSubmissions) concurrent review slots.")
         case .submit:
             return String(localized: "Are you sure you want to submit version \(v) for review?")
         }
@@ -69,19 +69,18 @@ enum SubmissionsPendingAction: Identifiable {
 struct SubmissionsUiState {
     var appId: String
     var appName: String?
-    var platform: AppPlatform?
     var account: AccountModel
     var submissions: [ReviewSubmissionModel] = []
     var isLoading = false
     var error: String?
     /// IDs of submissions with an in-flight discard/submit, so the row can show
     /// a spinner and disable further taps.
-    var discardingIds: Set<String> = []
+    var busyIds: Set<String> = []
     var toastMessage: ToastMessage?
     var pendingAction: SubmissionsPendingAction?
 
     /// Apple's hard limit on concurrent (unfinished) review submissions per app.
-    let concurrentLimit = 5
+    let concurrentLimit = AppStoreReviewLimits.concurrentSubmissions
 
     /// Unfinished drafts — the ones that can be submitted or discarded to free a slot.
     var drafts: [ReviewSubmissionModel] {
@@ -119,7 +118,6 @@ final class SubmissionsViewModel: SubmissionsViewModelProtocol {
     init(
         appId: String,
         appName: String?,
-        platform: AppPlatform?,
         account: AccountModel,
         keychain: KeyStorable = KeychainStorable.shared,
         service: SubmissionsServicing? = nil
@@ -127,7 +125,6 @@ final class SubmissionsViewModel: SubmissionsViewModelProtocol {
         self.uiState = SubmissionsUiState(
             appId: appId,
             appName: appName,
-            platform: platform,
             account: account
         )
         self.keychain = keychain
@@ -177,8 +174,8 @@ final class SubmissionsViewModel: SubmissionsViewModelProtocol {
     // MARK: - Actions
 
     func discard(_ submission: ReviewSubmissionModel) async {
-        uiState.discardingIds.insert(submission.id)
-        defer { uiState.discardingIds.remove(submission.id) }
+        uiState.busyIds.insert(submission.id)
+        defer { uiState.busyIds.remove(submission.id) }
 
         guard let service = resolveService() else { return }
 
@@ -194,8 +191,8 @@ final class SubmissionsViewModel: SubmissionsViewModelProtocol {
     }
 
     func submit(_ submission: ReviewSubmissionModel) async {
-        uiState.discardingIds.insert(submission.id)
-        defer { uiState.discardingIds.remove(submission.id) }
+        uiState.busyIds.insert(submission.id)
+        defer { uiState.busyIds.remove(submission.id) }
 
         guard let service = resolveService() else { return }
 

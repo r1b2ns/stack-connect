@@ -40,7 +40,7 @@ enum HomeRoute: Hashable {
     case manageLocalizations(appInfoId: String, primaryLocale: String, account: AccountModel)
     case appCategoryPicker(appInfoId: String, primaryCategoryId: String?, primarySubcategoryId: String?, secondaryCategoryId: String?, secondarySubcategoryId: String?, account: AccountModel)
     case archivedApps(account: AccountModel)
-    case submissions(appId: String, appName: String?, platform: AppPlatform?, account: AccountModel)
+    case submissions(appId: String, appName: String?, account: AccountModel)
     case reviewSubmissionDetail(submission: ReviewSubmissionModel, account: AccountModel)
     case appHistory(appId: String, account: AccountModel)
     case appPrivacy(appId: String, account: AccountModel)
@@ -259,8 +259,8 @@ final class HomeCoordinator: MainCoordinatorProtocol {
         path.append(HomeRoute.userDetail(user: user, account: account))
     }
 
-    func navigateToSubmissions(appId: String, appName: String?, platform: AppPlatform?, account: AccountModel) {
-        path.append(HomeRoute.submissions(appId: appId, appName: appName, platform: platform, account: account))
+    func navigateToSubmissions(appId: String, appName: String?, account: AccountModel) {
+        path.append(HomeRoute.submissions(appId: appId, appName: appName, account: account))
     }
 
     func navigateToReviewSubmissionDetail(submission: ReviewSubmissionModel, account: AccountModel) {

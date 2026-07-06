@@ -24,7 +24,6 @@ final class SubmissionsViewModelTests: XCTestCase {
         SubmissionsViewModel(
             appId: "app-1",
             appName: "MyApp",
-            platform: .ios,
             account: account,
             keychain: MockKeyStorable(),
             service: mockService
@@ -99,6 +98,27 @@ final class SubmissionsViewModelTests: XCTestCase {
         XCTAssertFalse(sut.uiState.isLoading)
     }
 
+    func testLoadWithoutCredentialsSetsNoCredentialsError() async {
+        // No injected service: the VM resolves a real connection from keychain.
+        // An empty MockKeyStorable returns nil for the credentials key, so
+        // resolveService() must surface the "No credentials found" error.
+        let sut = SubmissionsViewModel(
+            appId: "app-1",
+            appName: "MyApp",
+            account: account,
+            keychain: MockKeyStorable()
+        )
+
+        await sut.load()
+
+        XCTAssertEqual(
+            sut.uiState.error,
+            String(localized: "No credentials found for this account.")
+        )
+        XCTAssertTrue(sut.uiState.submissions.isEmpty)
+        XCTAssertFalse(sut.uiState.isLoading)
+    }
+
     func testLoadSortsDraftsFirst() async {
         let older = Date(timeIntervalSince1970: 1_000)
         let newer = Date(timeIntervalSince1970: 2_000)
@@ -127,7 +147,7 @@ final class SubmissionsViewModelTests: XCTestCase {
         // Reloaded after discard: one fetch triggered by discard's success path.
         XCTAssertEqual(mockService.fetchedAppIds, ["app-1"])
         XCTAssertNil(sut.uiState.error)
-        XCTAssertFalse(sut.uiState.discardingIds.contains("42"))
+        XCTAssertFalse(sut.uiState.busyIds.contains("42"))
     }
 
     func testDiscardFailureSetsErrorAndDoesNotReload() async {
@@ -140,7 +160,7 @@ final class SubmissionsViewModelTests: XCTestCase {
         XCTAssertNotNil(sut.uiState.error)
         XCTAssertNil(sut.uiState.toastMessage)
         XCTAssertTrue(mockService.fetchedAppIds.isEmpty)
-        XCTAssertFalse(sut.uiState.discardingIds.contains("42"))
+        XCTAssertFalse(sut.uiState.busyIds.contains("42"))
     }
 
     // MARK: - Submit

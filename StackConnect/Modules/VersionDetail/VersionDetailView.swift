@@ -212,8 +212,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 viewModel.uiState.submissionLimitReached = false
                 homeCoordinator.navigateToSubmissions(
                     appId: viewModel.uiState.version.appId,
-                    appName: nil,
-                    platform: viewModel.uiState.version.platform,
+                    appName: viewModel.uiState.appName,
                     account: viewModel.uiState.account
                 )
             }
@@ -221,7 +220,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 viewModel.uiState.submissionLimitReached = false
             }
         } message: {
-            Text("You've reached Apple's limit of 5 review submissions in progress for this app. Cancel or submit an existing one before starting a new review.")
+            Text(AppleAPIErrorTranslator.concurrentSubmissionLimitMessage)
         }
         .toast(message: $viewModel.uiState.toastMessage)
     }

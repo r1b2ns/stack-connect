@@ -61,12 +61,9 @@ enum AppleAPIErrorTranslator {
         // Nested `meta.associatedErrors` often carry the real cause (e.g. the
         // concurrent-submission limit) while the top-level code is a generic
         // `ENTITY_STATE_INVALID`. Scan every code — top-level and nested — so
-        // those get humanized too. The concurrency case is checked first because
-        // it has a dedicated, actionable message.
+        // those get humanized too (see the `humanize(code:detail:)` switch,
+        // which handles `concurrentSubmissionLimitCode` among others).
         let allCodes = allErrorCodes(fromBody: message)
-        if allCodes.contains(concurrentSubmissionLimitCode) {
-            return String(localized: "You've reached Apple's limit of 5 review submissions in progress for this app. Cancel or submit an existing one before starting a new review.")
-        }
 
         if let humanized = humanize(code: code, detail: detail) {
             return humanized
@@ -152,8 +149,16 @@ enum AppleAPIErrorTranslator {
     // MARK: - Concurrent review-submission limit (the 409 root cause)
 
     /// The ASC error code Apple returns — nested under `meta.associatedErrors` —
-    /// once an app already has 5 unfinished review submissions.
+    /// once an app already has the maximum unfinished review submissions.
     private static let concurrentSubmissionLimitCode = "STATE_ERROR.CONCURRENT_REVIEW_SUBMISSION_LIMIT_EXCEEDED"
+
+    /// Single source of truth for the user-facing concurrency-limit copy. Callers
+    /// that need the message without an `Error` in hand (e.g. the VersionDetail
+    /// 409 deep-link alert) reference this so the copy and the number stay in sync
+    /// with `AppStoreReviewLimits.concurrentSubmissions`.
+    static var concurrentSubmissionLimitMessage: String {
+        String(localized: "You've reached Apple's limit of \(AppStoreReviewLimits.concurrentSubmissions) review submissions in progress for this app. Cancel or submit an existing one before starting a new review.")
+    }
 
     /// True when a "Submit for review" call failed because the app already has
     /// Apple's maximum of 5 concurrent (unfinished) review submissions.
@@ -245,6 +250,8 @@ enum AppleAPIErrorTranslator {
         }
 
         switch code {
+        case concurrentSubmissionLimitCode:
+            return concurrentSubmissionLimitMessage
         case "FORBIDDEN_ERROR":
             return String(localized: "Apple refused this change for security reasons. The operation may only be available on developer.apple.com.")
         case "ENTITY_ERROR.NAME.INVALID":

@@ -7,10 +7,9 @@ struct SubmissionsViewFactory {
     static func build(
         appId: String,
         appName: String?,
-        platform: AppPlatform?,
         account: AccountModel
     ) -> some View {
-        SubmissionsEntry(appId: appId, appName: appName, platform: platform, account: account)
+        SubmissionsEntry(appId: appId, appName: appName, account: account)
     }
 }
 
@@ -19,21 +18,18 @@ struct SubmissionsViewFactory {
 private struct SubmissionsEntry: View {
     let appId: String
     let appName: String?
-    let platform: AppPlatform?
     let account: AccountModel
 
     @StateObject private var viewModel: SubmissionsViewModel
 
-    init(appId: String, appName: String?, platform: AppPlatform?, account: AccountModel) {
+    init(appId: String, appName: String?, account: AccountModel) {
         self.appId = appId
         self.appName = appName
-        self.platform = platform
         self.account = account
         _viewModel = StateObject(
             wrappedValue: SubmissionsViewModel(
                 appId: appId,
                 appName: appName,
-                platform: platform,
                 account: account
             )
         )
@@ -159,7 +155,7 @@ struct SubmissionsView<ViewModel: SubmissionsViewModelProtocol>: View {
         } label: {
             SubmissionRowView(
                 submission: submission,
-                isBusy: viewModel.uiState.discardingIds.contains(submission.id)
+                isBusy: viewModel.uiState.busyIds.contains(submission.id)
             )
         }
         .foregroundStyle(.primary)

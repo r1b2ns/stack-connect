@@ -33,6 +33,9 @@ protocol VersionDetailViewModelProtocol: ObservableObject {
 struct VersionDetailUiState {
     var version: AppStoreVersionModel
     var account: AccountModel
+    /// Cached display name of the owning app, used when deep-linking to the
+    /// Submissions screen (its footer). Populated from local storage on refresh.
+    var appName: String?
     var isLoading = false
     var localization: AppStoreLocalizationModel?
     var localizations: [AppStoreLocalizationModel] = []
@@ -265,6 +268,16 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
 
     func refresh() async {
         uiState.isLoading = true
+
+        // Resolve the owning app's display name from local cache (offline-first),
+        // so a later deep-link to Submissions can label its footer.
+        if uiState.appName == nil,
+           let cachedApp: AppModel = try? await storage.fetch(
+               AppModel.self,
+               id: "\(uiState.account.id).\(uiState.version.appId)"
+           ) {
+            uiState.appName = cachedApp.name
+        }
 
         guard let connection = createConnection() else {
             uiState.isLoading = false

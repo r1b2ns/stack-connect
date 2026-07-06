@@ -408,7 +408,6 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                 homeCoordinator.navigateToSubmissions(
                     appId: viewModel.uiState.app.id,
                     appName: viewModel.uiState.app.name,
-                    platform: nil,
                     account: account
                 )
             } label: {
