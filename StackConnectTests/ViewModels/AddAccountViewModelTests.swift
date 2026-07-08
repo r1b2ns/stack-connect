@@ -37,22 +37,30 @@ final class AddAccountViewModelTests: XCTestCase {
         XCTAssertFalse(sut.uiState.isSaved)
     }
 
-    func testSaveFirebaseAccountSkipsValidation() async {
+    // Firebase save is NOT a no-op: it requires a non-empty Service Account JSON and
+    // then performs a live `APIProviderFirebase.request(...)` network validation, which
+    // (like the Apple `validateCredentials()` call) has no injection seam to stub
+    // offline. We therefore assert the JSON-required guard that runs before any network
+    // call: a valid name but no JSON must surface the "Service Account JSON is required."
+    // error and persist nothing.
+    func testSaveFirebaseAccountWithoutJSONShowsError() async {
         sut = AddAccountViewModel(
             providerType: .firebase,
             storage: mockStorage,
             keychain: mockKeychain
         )
-        sut.uiState.accountName = "My Firebase"
+        sut.uiState.accountName = "My Firebase"   // valid name, but no Service Account JSON
 
         await sut.save()
 
-        XCTAssertTrue(sut.uiState.isSaved)
+        XCTAssertEqual(
+            sut.uiState.validationError,
+            String(localized: "Service Account JSON is required.")
+        )
+        XCTAssertFalse(sut.uiState.isSaved)
 
         let accounts: [AccountModel] = try! await mockStorage.fetchAll(AccountModel.self)
-        XCTAssertEqual(accounts.count, 1)
-        XCTAssertEqual(accounts.first?.name, "My Firebase")
-        XCTAssertEqual(accounts.first?.providerType, .firebase)
+        XCTAssertTrue(accounts.isEmpty)
     }
 
     // MARK: - Apple Duplicate Relaxation (issue #66)

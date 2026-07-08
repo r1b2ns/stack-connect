@@ -15,7 +15,7 @@ final class AccountCryptoTests: XCTestCase {
 
     func test_encrypt_writesCurrentVersionByte() throws {
         let encrypted = try AccountCrypto.encrypt(json: samplePayload, password: password)
-        XCTAssertEqual(encrypted[4], 0x02, "Encryption must always produce v2 files")
+        XCTAssertEqual(encrypted[4], 0x03, "Encryption must always produce v3 files")
     }
 
     func test_encrypt_producesUniqueCiphertextEachCall() throws {
