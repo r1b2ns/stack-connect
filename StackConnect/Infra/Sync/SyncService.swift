@@ -148,7 +148,17 @@ final class SyncService: ObservableObject {
     /// render real icons instead of placeholders.
     private func preloadWidgetIcons() async {
         guard let apps: [AppModel] = try? await storage.fetchAll(AppModel.self) else { return }
-        let iconURLs = apps.compactMap { $0.iconUrl }
+        // Include per-platform icons so the WidgetKit extension (which can't fetch
+        // at render time) has the bytes cached for each awaiting platform's row.
+        // `WidgetIconCache.preload` dedups via a Set.
+        let iconURLs = apps.flatMap { app -> [String] in
+            var urls: [String] = []
+            if let icon = app.iconUrl { urls.append(icon) }
+            for version in (app.platformVersions ?? []) + (app.awaitingVersions ?? []) {
+                if let icon = version.iconUrl { urls.append(icon) }
+            }
+            return urls
+        }
         await WidgetIconCache.preload(iconURLs: iconURLs)
     }
 
@@ -433,6 +443,18 @@ final class SyncService: ObservableObject {
                     let sorted = versions.sorted { ($0.createdDate ?? .distantPast) > ($1.createdDate ?? .distantPast) }
                     let latest = sorted.first
 
+                    // Per-platform icons: a single `app.iconUrl` only represents one
+                    // target, so multi-platform apps resolve each platform's real icon
+                    // from its most-recent build. Bounded to multi-platform apps
+                    // (single-platform apps' per-platform icon equals the app icon) and
+                    // best-effort so a builds failure never aborts enrichment.
+                    let distinctPlatforms = Set(sorted.compactMap { $0.platform })
+                    var platformIcons: [AppPlatform: String] = [:]
+                    if distinctPlatforms.count > 1 {
+                        let builds = (try? await connection.fetchBuilds(appId: appId, limit: 50)) ?? []
+                        platformIcons = PlatformIconResolver.icons(from: builds)
+                    }
+
                     var platformVersions: [AppPlatformVersion] = []
                     var seenPlatforms = Set<String>()
                     for version in sorted {
@@ -443,7 +465,8 @@ final class SyncService: ObservableObject {
                                 platform: platform,
                                 appStoreState: version.appStoreState,
                                 versionString: version.versionString,
-                                id: version.id
+                                id: version.id,
+                                iconUrl: version.platform.flatMap { platformIcons[$0] }
                             )
                         )
                     }
@@ -458,7 +481,8 @@ final class SyncService: ObservableObject {
                             platform: platform,
                             appStoreState: version.appStoreState,
                             versionString: version.versionString,
-                            id: version.id
+                            id: version.id,
+                            iconUrl: version.platform.flatMap { platformIcons[$0] }
                         )
                     }
 

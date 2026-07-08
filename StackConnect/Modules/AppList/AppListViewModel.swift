@@ -23,6 +23,9 @@ struct AppListUiState {
     var account: AccountModel
     var searchQuery = ""
     var toastMessage: ToastMessage?
+    /// Cached phased releases keyed by version id (and app id as a single-platform
+    /// fallback), matching the `"phased.{versionId}"` scheme written by SyncService.
+    var phasedByVersionId: [String: PhasedReleaseModel] = [:]
 
     /// Non-archived apps, filtered by search query.
     var filteredApps: [AppModel] {
@@ -86,6 +89,9 @@ final class AppListViewModel: AppListViewModelProtocol {
             if !cachedApps.isEmpty {
                 uiState.apps = cachedApps
                 uiState.isLoading = false
+                // Offline-first phased read: covers the no-credentials path below,
+                // which returns before the network sync runs.
+                await loadCachedPhased(for: uiState.apps)
             }
         } catch {
             Log.print.error("[AppList] Failed to load cached apps: \(error.localizedDescription)")
@@ -149,6 +155,9 @@ final class AppListViewModel: AppListViewModelProtocol {
 
             uiState.apps = appModels
 
+            // Re-read phased against the freshly enriched per-version ids.
+            await loadCachedPhased(for: uiState.apps)
+
             // 4. Persist enriched models to SwiftData
             for app in appModels {
                 try await storage.save(app, id: "\(self.uiState.account.id).\(app.id)")
@@ -204,6 +213,25 @@ final class AppListViewModel: AppListViewModelProtocol {
     }
 
     // MARK: - Private
+
+    /// Offline read of cached phased releases (keyed by version id, matching the
+    /// `"phased.{versionId}"` scheme written by SyncService) for every per-platform
+    /// version id (plus the app id as a fallback for single-platform apps that
+    /// predate per-version ids). Never throws.
+    private func loadCachedPhased(for apps: [AppModel]) async {
+        var keys = Set<String>()
+        for app in apps {
+            let ids = ((app.awaitingVersions ?? []) + (app.platformVersions ?? [])).compactMap { $0.id }
+            if ids.isEmpty { keys.insert(app.id) } else { keys.formUnion(ids) }
+        }
+        var map: [String: PhasedReleaseModel] = [:]
+        for key in keys {
+            if let phased = try? await storage.fetch(PhasedReleaseModel.self, id: "phased.\(key)") {
+                map[key] = phased
+            }
+        }
+        uiState.phasedByVersionId = map
+    }
 
     private struct AppEnrichment: Sendable {
         let appId: String

@@ -30,6 +30,12 @@ struct AppDetailUiState {
     var isLoading = false
     var syncError: String?
 
+    /// Per-platform app icon URLs, derived from the most-recent build of each
+    /// platform. Used to show each platform's real icon in its section when the
+    /// app ships more than one platform (a single `app.iconUrl` can't represent
+    /// several targets). Empty until builds are fetched.
+    var platformIcons: [AppPlatform: String] = [:]
+
     // Version actions
     var isPerformingAction = false
     var actionError: String?
@@ -196,16 +202,19 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
 
             let connection = AppleAccountConnection(credentials: credentials)
 
-            // Fetch versions + icon/state + review submissions in parallel
+            // Fetch versions + icon/state + review submissions + builds in parallel
             async let versionsResult = connection.fetchAppStoreVersions(appId: self.uiState.app.id, limit: versionsLimit)
             async let iconResult = connection.fetchIconUrl(appId: self.uiState.app.id)
             async let stateResult = connection.fetchAppStoreVersion(appId: self.uiState.app.id)
             async let submissionsResult = connection.fetchReviewSubmissions(appId: self.uiState.app.id)
+            async let buildsResult = connection.fetchBuilds(appId: self.uiState.app.id, limit: 50)
 
             let versions = try await versionsResult
             let icon = await iconResult
             let state = (try? await stateResult) ?? (state: nil, version: nil)
             let submissions = (try? await submissionsResult) ?? []
+            // Builds are best-effort: a failure must never abort the version sync.
+            let builds = (try? await buildsResult) ?? []
 
             uiState.hasReviewIssues = submissions.contains { $0.state == "UNRESOLVED_ISSUES" }
 
@@ -218,6 +227,8 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             uiState.app.hasReviewPending = uiState.app.appStoreState?.isReviewPending ?? false
 
             uiState.versions = versions
+            // Derived/transient — recomputed each refresh, never persisted.
+            uiState.platformIcons = Self.platformIcons(from: builds)
 
             await syncPhased(for: versions, connection: connection)
 
@@ -274,6 +285,20 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             if left != right { return left < right }
         }
         return false
+    }
+
+    /// Derives one app-icon URL per platform from the given builds, so a
+    /// multi-platform app can show each target's real icon (the single
+    /// `app.iconUrl` only ever represents one target).
+    ///
+    /// Builds are inspected newest-first (by `uploadedDate`, nil treated as
+    /// oldest). For each platform the first build carrying a non-empty
+    /// `iconUrl` wins; builds without a usable icon are skipped so an older
+    /// icon-bearing build of that platform can still fill in. Builds whose
+    /// platform string doesn't map to an `AppPlatform` are ignored, and a
+    /// platform with no icon-bearing build simply doesn't appear in the map.
+    static func platformIcons(from builds: [BuildModel]) -> [AppPlatform: String] {
+        PlatformIconResolver.icons(from: builds)
     }
 
     func createVersions() async {

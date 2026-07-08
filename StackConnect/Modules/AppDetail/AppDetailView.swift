@@ -47,6 +47,14 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
         return [.prepareForSubmission, .rejected, .developerRejected, .readyForReview, .waitingForReview, .waitingForExportCompliance].contains(state)
     }
 
+    /// True when the header should hide its single app icon and each platform
+    /// section should show its own real icon instead. Only triggers when the
+    /// platform sections are actually visible (gated behind `.version` view
+    /// permission) and the app ships more than one platform.
+    private var showsPerPlatformIcons: Bool {
+        account.canView(.version) && viewModel.uiState.platformSections.count > 1
+    }
+
     var body: some View {
         List {
             buildHeaderSection()
@@ -150,7 +158,11 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
     private func buildHeaderSection() -> some View {
         Section {
             HStack(spacing: 16) {
-                buildAppIcon(url: viewModel.uiState.app.iconUrl.flatMap { URL(string: $0) }, size: 64, radius: 14)
+                // Multi-platform apps hide this single icon; each platform section
+                // shows its own real icon instead (see `buildPlatformSection`).
+                if !showsPerPlatformIcons {
+                    buildAppIcon(url: viewModel.uiState.app.iconUrl.flatMap { URL(string: $0) }, size: 64, radius: 14)
+                }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(viewModel.uiState.app.name)
@@ -284,26 +296,40 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             }
             .foregroundStyle(.accent)
         } header: {
-            Label(section.platform.displayName, systemImage: section.platform.icon)
+            if showsPerPlatformIcons {
+                HStack(spacing: 8) {
+                    buildAppIcon(url: platformIconURL(for: section.platform), size: 24, radius: 6)
+                    Text(section.platform.displayName)
+                }
+            } else {
+                Label(section.platform.displayName, systemImage: section.platform.icon)
+            }
         }
     }
 
+    /// Resolves the icon URL for a platform section with a graceful fallback:
+    /// the platform's real build icon → the app's single `iconUrl` →
+    /// placeholder (handled by `buildAppIcon` when the URL is nil).
+    private func platformIconURL(for platform: AppPlatform) -> URL? {
+        let raw = viewModel.uiState.platformIcons[platform] ?? viewModel.uiState.app.iconUrl
+        return raw.flatMap { URL(string: $0) }
+    }
+
     private func buildVersionRow(_ version: AppStoreVersionModel) -> some View {
-        HStack(spacing: 12) {
+        let phased = viewModel.uiState.phasedByVersionId[version.id]
+        return HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(version.versionString ?? "–")
                     .font(.body)
                     .fontWeight(.medium)
                     .foregroundStyle(.primary)
 
-                if let state = version.appStoreState {
+                // A readyForSale version that is actively phasing shows ONLY the
+                // phased-release progress line; otherwise the plain status badge.
+                if version.appStoreState == .readyForSale, let phased, let day = phased.displayDayNumber {
+                    buildPhasedReleaseLabel(day: day, paused: phased.isPausedRollout)
+                } else if let state = version.appStoreState {
                     buildStatusBadge(state: state, version: nil)
-                }
-
-                if let phased = viewModel.uiState.phasedByVersionId[version.id],
-                   phased.state == .active || phased.state == .paused,
-                   let day = phased.currentDayNumber {
-                    buildPhasedReleaseLabel(day: day, paused: phased.state == .paused)
                 }
             }
 
