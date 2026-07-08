@@ -320,6 +320,86 @@ final class AppStatusCategorizerTests: XCTestCase {
         XCTAssertEqual(entries.first?.appStoreState, .readyForSale)
     }
 
+    // MARK: - Per-platform icon on awaiting entries
+
+    /// An awaiting entry carries the per-platform icon when the version has one,
+    /// so each platform's row shows its own real icon (not the app's single icon).
+    func testAwaitingEntryUsesPerPlatformIconWhenPresent() {
+        let awaiting = AppPlatformVersion(
+            platform: AppPlatform.tvOs.rawValue,
+            appStoreState: .pendingDeveloperRelease,
+            versionString: "1.0",
+            id: "v-tv",
+            iconUrl: "https://cdn/tv-icon.png"
+        )
+        let app = AppModel(
+            id: "1",
+            name: "App 1",
+            bundleId: "com.test.1",
+            accountId: "acc",
+            iconUrl: "https://cdn/app-icon.png",
+            appStoreState: .pendingDeveloperRelease,
+            awaitingVersions: [awaiting]
+        )
+
+        let entries = AppStatusCategorizer.awaitingReleaseEntries([app], phasedByVersionId: [:])
+
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertEqual(entries.first?.iconUrl, "https://cdn/tv-icon.png")
+    }
+
+    /// When the per-platform icon is nil, the awaiting entry falls back to the
+    /// app's single icon.
+    func testAwaitingEntryFallsBackToAppIconWhenPerPlatformIconNil() {
+        let awaiting = AppPlatformVersion(
+            platform: AppPlatform.ios.rawValue,
+            appStoreState: .pendingDeveloperRelease,
+            versionString: "1.0",
+            id: "v-ios",
+            iconUrl: nil
+        )
+        let app = AppModel(
+            id: "1",
+            name: "App 1",
+            bundleId: "com.test.1",
+            accountId: "acc",
+            iconUrl: "https://cdn/app-icon.png",
+            appStoreState: .pendingDeveloperRelease,
+            awaitingVersions: [awaiting]
+        )
+
+        let entries = AppStatusCategorizer.awaitingReleaseEntries([app], phasedByVersionId: [:])
+
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertEqual(entries.first?.iconUrl, "https://cdn/app-icon.png")
+    }
+
+    /// Scope guard: In Review entries keep the app's single icon even when the
+    /// per-platform version carries its own icon (only Awaiting swaps icons).
+    func testInReviewEntryKeepsAppIconIgnoringPerPlatformIcon() {
+        let version = AppPlatformVersion(
+            platform: AppPlatform.tvOs.rawValue,
+            appStoreState: .inReview,
+            versionString: "1.0",
+            id: "v-tv",
+            iconUrl: "https://cdn/tv-icon.png"
+        )
+        let app = AppModel(
+            id: "1",
+            name: "App 1",
+            bundleId: "com.test.1",
+            accountId: "acc",
+            iconUrl: "https://cdn/app-icon.png",
+            appStoreState: .inReview,
+            platformVersions: [version]
+        )
+
+        let entries = AppStatusCategorizer.inReviewEntries([app])
+
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertEqual(entries.first?.iconUrl, "https://cdn/app-icon.png")
+    }
+
     // MARK: - Helpers
 
     private func makeApp(id: String, state: AppStoreState?) -> AppModel {

@@ -115,6 +115,9 @@ enum AppStatusCategorizer {
         entry.appStoreState = state
         entry.platform = version.platform
         entry.versionString = version.versionString
+        // Awaiting rows show each platform's real icon (falling back to the app's
+        // single icon). In Review rows intentionally keep the app icon.
+        entry.iconUrl = version.iconUrl ?? app.iconUrl
         return entry
     }
 

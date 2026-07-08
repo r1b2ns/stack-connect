@@ -21,6 +21,11 @@ protocol AppleAccountSyncing: Sendable {
     func fetchAppStoreVersions(appId: String, limit: Int) async throws -> [AppStoreVersionModel]
     func fetchRecentReviews(appId: String, limit: Int) async throws -> [CustomerReviewModel]
     func fetchPhasedRelease(versionId: String) async throws -> PhasedReleaseModel?
+
+    /// Fetches an app's builds, the only source of per-platform icons (App Store
+    /// versions carry no icon). Used during enrichment to resolve each platform's
+    /// real icon for multi-platform apps.
+    func fetchBuilds(appId: String, limit: Int) async throws -> [BuildModel]
 }
 
 // MARK: - Default conformance for the real connection

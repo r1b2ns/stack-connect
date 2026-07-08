@@ -475,6 +475,81 @@ final class SyncServiceTests: XCTestCase {
         XCTAssertEqual(byPlatform[AppPlatform.tvOs.rawValue] ?? nil, "v-tv")
     }
 
+    // MARK: - Per-platform icons (multi-platform apps)
+
+    /// A multi-platform app (versions on ≥2 platforms) triggers a builds fetch and
+    /// persists each platform version's icon resolved from that platform's build.
+    func testMultiPlatformAppFetchesBuildsAndPersistsPerPlatformIcons() async throws {
+        let account = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(account, id: account.id)
+        setCredentials(issuerID: "issuer-1", for: account)
+
+        let connection = MockAppleAccountSyncing()
+        connection.apps = [
+            StackProtocols.AppInfo(id: "app-1", name: "Multi", bundleId: "com.multi", platform: nil)
+        ]
+        connection.versions = [
+            "app-1": [
+                makePlatformVersion(id: "v-ios", appId: "app-1", platform: .ios, state: .readyForSale, createdOffset: 0),
+                makePlatformVersion(id: "v-tv", appId: "app-1", platform: .tvOs, state: .readyForSale, createdOffset: -100)
+            ]
+        ]
+        connection.builds = [
+            "app-1": [
+                makeBuild(id: "b-ios", platform: .ios, iconUrl: "https://cdn/ios.png"),
+                makeBuild(id: "b-tv", platform: .tvOs, iconUrl: "https://cdn/tv.png")
+            ]
+        ]
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        // The multi-platform app triggers a builds fetch.
+        XCTAssertTrue(connection.fetchedBuildsForAppIds.contains("app-1"))
+
+        // Each per-platform version carries its own resolved icon.
+        let saved: AppModel? = try await mockStorage.fetch(AppModel.self, id: "\(account.id).app-1")
+        let iconByPlatform = Dictionary(
+            uniqueKeysWithValues: (saved?.platformVersions ?? []).map { ($0.platform, $0.iconUrl) }
+        )
+        XCTAssertEqual(iconByPlatform[AppPlatform.ios.rawValue] ?? nil, "https://cdn/ios.png")
+        XCTAssertEqual(iconByPlatform[AppPlatform.tvOs.rawValue] ?? nil, "https://cdn/tv.png")
+    }
+
+    /// A single-platform app must NOT trigger a builds fetch (its per-platform icon
+    /// equals the app icon anyway), and its per-platform version's icon stays nil.
+    func testSinglePlatformAppSkipsBuildsFetchAndLeavesPerPlatformIconNil() async throws {
+        let account = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(account, id: account.id)
+        setCredentials(issuerID: "issuer-1", for: account)
+
+        let connection = MockAppleAccountSyncing()
+        connection.apps = [
+            StackProtocols.AppInfo(id: "app-1", name: "Single", bundleId: "com.single", platform: nil)
+        ]
+        // Two versions, same platform → single distinct platform.
+        connection.versions = [
+            "app-1": [
+                makePlatformVersion(id: "v-ios-1", appId: "app-1", platform: .ios, state: .readyForSale, createdOffset: 0),
+                makePlatformVersion(id: "v-ios-2", appId: "app-1", platform: .ios, state: .prepareForSubmission, createdOffset: -100)
+            ]
+        ]
+        // Builds exist but must never be fetched for a single-platform app.
+        connection.builds = [
+            "app-1": [makeBuild(id: "b-ios", platform: .ios, iconUrl: "https://cdn/ios.png")]
+        ]
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        XCTAssertFalse(connection.fetchedBuildsForAppIds.contains("app-1"),
+                       "Single-platform apps must not trigger a builds fetch")
+
+        let saved: AppModel? = try await mockStorage.fetch(AppModel.self, id: "\(account.id).app-1")
+        XCTAssertEqual(saved?.platformVersions?.count, 1, "One iOS platform version (deduped)")
+        XCTAssertNil(saved?.platformVersions?.first?.iconUrl)
+    }
+
     // MARK: - Per-app export scope (#93)
 
     func testSyncPersistsOnlyAppsAllowedByScope() async throws {
@@ -598,6 +673,10 @@ final class SyncServiceTests: XCTestCase {
             createdDate: Date(timeIntervalSinceReferenceDate: 1_000_000 + createdOffset),
             appId: appId
         )
+    }
+
+    private func makeBuild(id: String, platform: AppPlatform, iconUrl: String?) -> BuildModel {
+        BuildModel(id: id, iconUrl: iconUrl, platform: platform.rawValue)
     }
 
     private func makeAgreementError() -> Error {

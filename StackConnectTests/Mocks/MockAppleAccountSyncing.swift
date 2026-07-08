@@ -10,6 +10,7 @@ final class MockAppleAccountSyncing: AppleAccountSyncing, @unchecked Sendable {
     var versions: [String: [AppStoreVersionModel]] = [:]
     var reviews: [String: [CustomerReviewModel]] = [:]
     var phasedReleases: [String: PhasedReleaseModel] = [:]
+    var builds: [String: [BuildModel]] = [:]
     /// When set, `fetchApps()` throws this instead of returning `apps`.
     var fetchAppsError: Error?
     /// When set, `validateCredentials()` throws this instead of succeeding.
@@ -21,6 +22,7 @@ final class MockAppleAccountSyncing: AppleAccountSyncing, @unchecked Sendable {
     private(set) var fetchedIconForAppIds: [String] = []
     private(set) var fetchedReviewsForAppIds: [String] = []
     private(set) var fetchedPhasedForVersionIds: [String] = []
+    private(set) var fetchedBuildsForAppIds: [String] = []
 
     private let lock = NSLock()
 
@@ -65,5 +67,11 @@ final class MockAppleAccountSyncing: AppleAccountSyncing, @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }
         fetchedPhasedForVersionIds.append(versionId)
         return phasedReleases[versionId]
+    }
+
+    func fetchBuilds(appId: String, limit: Int) async throws -> [BuildModel] {
+        lock.lock(); defer { lock.unlock() }
+        fetchedBuildsForAppIds.append(appId)
+        return Array((builds[appId] ?? []).prefix(limit))
     }
 }
