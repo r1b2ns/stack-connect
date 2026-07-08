@@ -51,6 +51,25 @@ final class AppDetailViewModelTests: XCTestCase {
         )
     }
 
+    private func makeBuild(
+        id: String,
+        uploadedDate: Date?,
+        iconUrl: String?,
+        platform: String?
+    ) -> BuildModel {
+        BuildModel(
+            id: id,
+            uploadedDate: uploadedDate,
+            iconUrl: iconUrl,
+            platform: platform
+        )
+    }
+
+    /// `Date(timeIntervalSince1970:)` sugar so tests read as relative ages.
+    private func date(_ seconds: TimeInterval) -> Date {
+        Date(timeIntervalSince1970: seconds)
+    }
+
     /// Seeds a cached version under `"version.{id}"`. The mock keys `fetchAll`
     /// by type only, so the id here just mirrors production.
     private func seed(version: AppStoreVersionModel) async throws {
@@ -104,6 +123,41 @@ final class AppDetailViewModelTests: XCTestCase {
         XCTAssertEqual(sut.uiState.phasedByVersionId["v1"]?.currentDayNumber, 5)
     }
 
+    // MARK: - PhasedReleaseModel.displayDayNumber
+
+    func testDisplayDayNumberReturnsDayWhenActive() {
+        let phased = PhasedReleaseModel(id: "p1", state: .active, currentDayNumber: 3)
+        XCTAssertEqual(phased.displayDayNumber, 3)
+        XCTAssertFalse(phased.isPausedRollout)
+    }
+
+    func testDisplayDayNumberReturnsDayWhenPaused() {
+        let phased = PhasedReleaseModel(id: "p1", state: .paused, currentDayNumber: 5)
+        XCTAssertEqual(phased.displayDayNumber, 5)
+        XCTAssertTrue(phased.isPausedRollout)
+    }
+
+    func testDisplayDayNumberNilWhenComplete() {
+        let phased = PhasedReleaseModel(id: "p1", state: .complete, currentDayNumber: 7)
+        XCTAssertNil(phased.displayDayNumber)
+        XCTAssertFalse(phased.isPausedRollout)
+    }
+
+    func testDisplayDayNumberNilWhenInactive() {
+        let phased = PhasedReleaseModel(id: "p1", state: .inactive, currentDayNumber: 2)
+        XCTAssertNil(phased.displayDayNumber)
+    }
+
+    func testDisplayDayNumberNilWhenActiveButNoDay() {
+        let phased = PhasedReleaseModel(id: "p1", state: .active, currentDayNumber: nil)
+        XCTAssertNil(phased.displayDayNumber)
+    }
+
+    func testDisplayDayNumberNilWhenStateNil() {
+        let phased = PhasedReleaseModel(id: "p1", state: nil, currentDayNumber: 3)
+        XCTAssertNil(phased.displayDayNumber)
+    }
+
     // MARK: - Suggested next version
 
     func testSuggestedNextVersionBumpsMinorAndResetsPatch() {
@@ -155,5 +209,74 @@ final class AppDetailViewModelTests: XCTestCase {
         XCTAssertEqual(sut.uiState.newVersionString, "3.2.0")
         XCTAssertTrue(sut.uiState.showCreatePlatform)
         XCTAssertTrue(sut.uiState.selectedPlatforms.isEmpty)
+    }
+
+    // MARK: - Platform icons
+
+    func testPlatformIconsGroupsByPlatformAndPicksNewestIcon() {
+        let builds = [
+            makeBuild(id: "b1", uploadedDate: date(100), iconUrl: "https://cdn/ios-old.png", platform: "IOS"),
+            makeBuild(id: "b2", uploadedDate: date(300), iconUrl: "https://cdn/ios-new.png", platform: "IOS"),
+            makeBuild(id: "b3", uploadedDate: date(200), iconUrl: "https://cdn/tv.png", platform: "TV_OS")
+        ]
+
+        let icons = AppDetailViewModel.platformIcons(from: builds)
+
+        XCTAssertEqual(icons.count, 2)
+        XCTAssertEqual(icons[.ios], "https://cdn/ios-new.png")
+        XCTAssertEqual(icons[.tvOs], "https://cdn/tv.png")
+    }
+
+    func testPlatformIconsSkipsNilOrEmptyIconAndFallsBackToNextNewest() {
+        let builds = [
+            // Newest iOS build has no usable icon → should fall through.
+            makeBuild(id: "b1", uploadedDate: date(400), iconUrl: nil, platform: "IOS"),
+            makeBuild(id: "b2", uploadedDate: date(300), iconUrl: "", platform: "IOS"),
+            makeBuild(id: "b3", uploadedDate: date(200), iconUrl: "https://cdn/ios-fallback.png", platform: "IOS")
+        ]
+
+        let icons = AppDetailViewModel.platformIcons(from: builds)
+
+        XCTAssertEqual(icons[.ios], "https://cdn/ios-fallback.png")
+    }
+
+    func testPlatformIconsExcludesUnmappedPlatformStrings() {
+        let builds = [
+            makeBuild(id: "b1", uploadedDate: date(100), iconUrl: "https://cdn/ios.png", platform: "IOS"),
+            makeBuild(id: "b2", uploadedDate: date(100), iconUrl: "https://cdn/watch.png", platform: "WATCH_OS")
+        ]
+
+        let icons = AppDetailViewModel.platformIcons(from: builds)
+
+        XCTAssertEqual(icons.count, 1)
+        XCTAssertEqual(icons[.ios], "https://cdn/ios.png")
+    }
+
+    func testPlatformIconsTreatsNilUploadedDateAsOldest() {
+        let builds = [
+            makeBuild(id: "b1", uploadedDate: nil, iconUrl: "https://cdn/ios-undated.png", platform: "IOS"),
+            makeBuild(id: "b2", uploadedDate: date(50), iconUrl: "https://cdn/ios-dated.png", platform: "IOS")
+        ]
+
+        let icons = AppDetailViewModel.platformIcons(from: builds)
+
+        // The dated build outranks the undated one even though it appears later.
+        XCTAssertEqual(icons[.ios], "https://cdn/ios-dated.png")
+    }
+
+    func testPlatformIconsWithNoIconBearingBuildOmitsPlatform() {
+        let builds = [
+            makeBuild(id: "b1", uploadedDate: date(100), iconUrl: nil, platform: "IOS"),
+            makeBuild(id: "b2", uploadedDate: date(200), iconUrl: "", platform: "IOS")
+        ]
+
+        let icons = AppDetailViewModel.platformIcons(from: builds)
+
+        XCTAssertNil(icons[.ios])
+        XCTAssertTrue(icons.isEmpty)
+    }
+
+    func testPlatformIconsEmptyInputReturnsEmptyMap() {
+        XCTAssertTrue(AppDetailViewModel.platformIcons(from: []).isEmpty)
     }
 }

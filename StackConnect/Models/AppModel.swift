@@ -70,17 +70,22 @@ struct AppPlatformVersion: Codable, Hashable {
     /// simply decodes it as `nil`). Used to fetch/look up the per-version phased
     /// release so each platform's phased state is tracked independently.
     var id: String?
+    /// Per-platform app icon URL, resolved from the platform's most-recent build
+    /// during sync; nil for single-platform apps or when unavailable.
+    var iconUrl: String?
 
     init(
         platform: String,
         appStoreState: AppStoreState? = nil,
         versionString: String? = nil,
-        id: String? = nil
+        id: String? = nil,
+        iconUrl: String? = nil
     ) {
         self.platform = platform
         self.appStoreState = appStoreState
         self.versionString = versionString
         self.id = id
+        self.iconUrl = iconUrl
     }
 }
 

@@ -115,10 +115,14 @@ enum WidgetDataLoader {
             if let platformVersions = app.platformVersions, !platformVersions.isEmpty {
                 for version in platformVersions {
                     if WidgetAppStatus.isInReview(version.appStoreState) {
+                        // In Review intentionally keeps the app's single icon.
                         inReview.append(expand(app, with: version))
                     }
                     if isAwaiting(state: version.appStoreState, phased: phasedByVersionId[version.id ?? ""]) {
-                        awaiting.append(expand(app, with: version))
+                        // Awaiting rows show each platform's real icon (fallback: app icon).
+                        var entry = expand(app, with: version)
+                        entry.iconUrl = version.iconUrl ?? app.iconUrl
+                        awaiting.append(entry)
                     }
                 }
             } else {
