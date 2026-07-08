@@ -316,21 +316,20 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
     }
 
     private func buildVersionRow(_ version: AppStoreVersionModel) -> some View {
-        HStack(spacing: 12) {
+        let phased = viewModel.uiState.phasedByVersionId[version.id]
+        return HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(version.versionString ?? "–")
                     .font(.body)
                     .fontWeight(.medium)
                     .foregroundStyle(.primary)
 
-                if let state = version.appStoreState {
+                // A readyForSale version that is actively phasing shows ONLY the
+                // phased-release progress line; otherwise the plain status badge.
+                if version.appStoreState == .readyForSale, let phased, let day = phased.displayDayNumber {
+                    buildPhasedReleaseLabel(day: day, paused: phased.isPausedRollout)
+                } else if let state = version.appStoreState {
                     buildStatusBadge(state: state, version: nil)
-                }
-
-                if let phased = viewModel.uiState.phasedByVersionId[version.id],
-                   phased.state == .active || phased.state == .paused,
-                   let day = phased.currentDayNumber {
-                    buildPhasedReleaseLabel(day: day, paused: phased.state == .paused)
                 }
             }
 

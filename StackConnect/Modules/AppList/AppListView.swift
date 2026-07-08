@@ -312,6 +312,22 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
         }
     }
 
+    /// Phased-release progress line (colored dot + "X of 7 days"), mirroring App
+    /// Detail's `buildPhasedReleaseLabel` but styled for the list. Green while
+    /// active, orange while paused.
+    private func buildPhasedLine(day: Int, paused: Bool) -> some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(paused ? Color.orange : Color.green)
+                .frame(width: 6, height: 6)
+
+            Text(String(localized: "Phased release: \(day) of 7 days"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+
     // MARK: - Status Lines
 
     @ViewBuilder
@@ -323,7 +339,15 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
                 }
             }
         } else if let state = app.appStoreState {
-            buildStatusBadge(state: state, version: app.versionString)
+            // Single-platform fallback (looked up by app id, mirroring the widgets'
+            // app-id fallback): a readyForSale app that is actively phasing shows
+            // the phased line instead of the status badge.
+            if state == .readyForSale, let phased = viewModel.uiState.phasedByVersionId[app.id],
+               let day = phased.displayDayNumber {
+                buildPhasedLine(day: day, paused: phased.isPausedRollout)
+            } else {
+                buildStatusBadge(state: state, version: app.versionString)
+            }
         } else {
             Text(app.bundleId)
                 .font(.caption)
@@ -332,22 +356,31 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
     }
 
     private func buildStatusLine(_ entry: AppPlatformVersion) -> some View {
-        HStack(spacing: 4) {
-            if let state = entry.appStoreState {
-                Circle()
-                    .fill(statusColor(state.color))
-                    .frame(width: 6, height: 6)
+        let phased = entry.id.flatMap { viewModel.uiState.phasedByVersionId[$0] }
+        return HStack(spacing: 4) {
+            // A readyForSale version that is actively phasing shows ONLY the
+            // phased-release progress line (matching App Detail); otherwise the
+            // plain state text with its optional version. The platform icon is
+            // always kept as the trailing element.
+            if entry.appStoreState == .readyForSale, let phased, let day = phased.displayDayNumber {
+                buildPhasedLine(day: day, paused: phased.isPausedRollout)
+            } else {
+                if let state = entry.appStoreState {
+                    Circle()
+                        .fill(statusColor(state.color))
+                        .frame(width: 6, height: 6)
 
-                Text(state.displayName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+                    Text(state.displayName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
 
-            if let version = entry.versionString {
-                Text("(\(version))")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                if let version = entry.versionString {
+                    Text("(\(version))")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
             }
 
             buildPlatformIcon(entry.platform)

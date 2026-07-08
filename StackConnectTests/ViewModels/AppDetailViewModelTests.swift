@@ -123,6 +123,41 @@ final class AppDetailViewModelTests: XCTestCase {
         XCTAssertEqual(sut.uiState.phasedByVersionId["v1"]?.currentDayNumber, 5)
     }
 
+    // MARK: - PhasedReleaseModel.displayDayNumber
+
+    func testDisplayDayNumberReturnsDayWhenActive() {
+        let phased = PhasedReleaseModel(id: "p1", state: .active, currentDayNumber: 3)
+        XCTAssertEqual(phased.displayDayNumber, 3)
+        XCTAssertFalse(phased.isPausedRollout)
+    }
+
+    func testDisplayDayNumberReturnsDayWhenPaused() {
+        let phased = PhasedReleaseModel(id: "p1", state: .paused, currentDayNumber: 5)
+        XCTAssertEqual(phased.displayDayNumber, 5)
+        XCTAssertTrue(phased.isPausedRollout)
+    }
+
+    func testDisplayDayNumberNilWhenComplete() {
+        let phased = PhasedReleaseModel(id: "p1", state: .complete, currentDayNumber: 7)
+        XCTAssertNil(phased.displayDayNumber)
+        XCTAssertFalse(phased.isPausedRollout)
+    }
+
+    func testDisplayDayNumberNilWhenInactive() {
+        let phased = PhasedReleaseModel(id: "p1", state: .inactive, currentDayNumber: 2)
+        XCTAssertNil(phased.displayDayNumber)
+    }
+
+    func testDisplayDayNumberNilWhenActiveButNoDay() {
+        let phased = PhasedReleaseModel(id: "p1", state: .active, currentDayNumber: nil)
+        XCTAssertNil(phased.displayDayNumber)
+    }
+
+    func testDisplayDayNumberNilWhenStateNil() {
+        let phased = PhasedReleaseModel(id: "p1", state: nil, currentDayNumber: 3)
+        XCTAssertNil(phased.displayDayNumber)
+    }
+
     // MARK: - Suggested next version
 
     func testSuggestedNextVersionBumpsMinorAndResetsPatch() {
