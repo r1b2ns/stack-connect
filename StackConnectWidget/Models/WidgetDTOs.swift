@@ -35,6 +35,10 @@ struct WidgetPlatformVersion: Codable, Hashable {
     /// compatibility with previously persisted data. Used to look up the
     /// per-version phased release under the "phased.{versionId}" key.
     var id: String?
+    /// Per-platform app icon URL persisted by the app during sync. Decode-only
+    /// mirror; consumed only by the Awaiting Release expansion so each platform's
+    /// row shows its real icon.
+    var iconUrl: String?
 }
 
 struct WidgetReview: Codable, Identifiable, Hashable {
