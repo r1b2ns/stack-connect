@@ -423,7 +423,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                     account: account
                 )
             } label: {
-                buildMenuRow(icon: "info.circle.fill", color: .blue, title: String(localized: "App Information"))
+                StackListRow(icon: "info.circle.fill", iconColor: .blue, title: String(localized: "App Information"))
             }
 
             Button {
@@ -437,11 +437,12 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                     account: account
                 )
             } label: {
-                buildMenuRow(
+                StackListRow(
                     icon: "paperplane.fill",
-                    color: .blue,
+                    iconColor: .blue,
                     title: String(localized: "Submissions"),
-                    badge: viewModel.uiState.hasReviewIssues ? .exclamation : nil
+                    badge: viewModel.uiState.hasReviewIssues ? .exclamation : nil,
+                    showsNewChip: true
                 )
             }
             Button {
@@ -454,7 +455,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                     account: account
                 )
             } label: {
-                buildMenuRow(icon: "clock.fill", color: .orange, title: String(localized: "History"))
+                StackListRow(icon: "clock.fill", iconColor: .orange, title: String(localized: "History"))
             }
         } header: {
             Text("General")
@@ -475,7 +476,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                     account: account
                 )
             } label: {
-                buildMenuRow(icon: "hand.raised.fill", color: .blue, title: String(localized: "App Privacy"))
+                StackListRow(icon: "hand.raised.fill", iconColor: .blue, title: String(localized: "App Privacy"))
             }
             Button {
                 guard account.canEdit(.apps) else {
@@ -487,7 +488,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                     account: account
                 )
             } label: {
-                buildMenuRow(icon: "accessibility", color: .purple, title: String(localized: "App Accessibility"))
+                StackListRow(icon: "accessibility", iconColor: .purple, title: String(localized: "App Accessibility"))
             }
             Button {
                 guard account.canView(.review) else {
@@ -501,7 +502,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                     account: account
                 )
             } label: {
-                buildMenuRow(icon: "star.fill", color: .yellow, title: String(localized: "Ratings and Reviews"))
+                StackListRow(icon: "star.fill", iconColor: .yellow, title: String(localized: "Ratings and Reviews"))
             }
             Button {
                 guard account.canView(.analytics) else {
@@ -514,7 +515,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                     account: account
                 )
             } label: {
-                buildMenuRow(icon: "chart.bar.xaxis", color: .indigo, title: String(localized: "Analytics"))
+                StackListRow(icon: "chart.bar.xaxis", iconColor: .indigo, title: String(localized: "Analytics"), showsNewChip: true)
             }
         } header: {
             Text("App Store")
@@ -535,42 +536,12 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                     account: account
                 )
             } label: {
-                buildMenuRow(icon: "airplane", color: .cyan, title: String(localized: "TestFlight"))
+                StackListRow(icon: "airplane", iconColor: .cyan, title: String(localized: "TestFlight"))
             }
         }
     }
 
     // MARK: - Reusable Components
-
-    enum MenuRowBadge {
-        case exclamation
-    }
-
-    private func buildMenuRow(icon: String, color: Color, title: String, badge: MenuRowBadge? = nil) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.body)
-                .foregroundStyle(.white)
-                .frame(width: 32, height: 32)
-                .background(color)
-                .clipShape(RoundedRectangle(cornerRadius: 7))
-
-            Text(title)
-                .font(.body)
-
-            Spacer()
-
-            if case .exclamation = badge {
-                Image(systemName: "exclamationmark.circle.fill")
-                    .foregroundStyle(.orange)
-                    .font(.body)
-            }
-
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-    }
 
     private func buildStatusBadge(state: AppStoreState, version: String?) -> some View {
         HStack(spacing: 4) {
