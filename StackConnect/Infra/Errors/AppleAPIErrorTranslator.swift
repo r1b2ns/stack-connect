@@ -148,6 +148,17 @@ enum AppleAPIErrorTranslator {
         return false
     }
 
+    // MARK: - Offline detection
+
+    /// True when the error is the local "device is offline" guard
+    /// (`OfflineError.noConnection`) raised by `AppleAccountConnection` before a
+    /// mutating call. Lets callers branch on connectivity without matching the
+    /// error type directly.
+    static func isOffline(_ error: Error) -> Bool {
+        if case OfflineError.noConnection = error { return true }
+        return false
+    }
+
     // MARK: - Forbidden detection
 
     /// True when Apple rejected the request with a 403 `FORBIDDEN_ERROR`.

@@ -1,6 +1,12 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "No internet connection" : {
+      "extractionState" : "manual"
+    },
+    "No internet connection. This action isn't available offline." : {
+      "extractionState" : "manual"
+    },
     "" : {
       "localizations" : {
         "de" : {
