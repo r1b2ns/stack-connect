@@ -245,6 +245,16 @@ enum VersionDetailAction: Identifiable {
     }
 }
 
+// MARK: - Cache Models
+
+/// Wraps a version's App Store localizations for offline persistence, keyed by
+/// the version id. Lets `refresh()` restore the localization editor fields when
+/// the network is unavailable.
+struct CachedVersionLocalizations: Codable, Identifiable {
+    let id: String
+    let localizations: [AppStoreLocalizationModel]
+}
+
 // MARK: - Implementation
 
 @MainActor
@@ -279,6 +289,11 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             uiState.appName = cachedApp.name
         }
 
+        // Offline-first: seed localizations, the attached build, and the phased
+        // release from local cache so a failed (offline) network fetch below
+        // still leaves the screen populated instead of blank.
+        await loadCachedVersionDetails()
+
         guard let connection = createConnection() else {
             uiState.isLoading = false
             return
@@ -303,28 +318,35 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         do {
             let localizations = try await localizationsTask
             uiState.localizations = localizations
-            if let loc = localizations.first {
-                uiState.localization = loc
-                uiState.editingLocalization = loc
-                uiState.editPromotionalText = loc.promotionalText ?? ""
-                uiState.editDescription = loc.description ?? ""
-                uiState.editWhatsNew = loc.whatsNew ?? ""
-                uiState.editKeywords = loc.keywords ?? ""
-                uiState.editSupportUrl = loc.supportUrl ?? ""
-                uiState.editMarketingUrl = loc.marketingUrl ?? ""
-            }
+            applyLocalizations(localizations)
+            try await storage.save(
+                CachedVersionLocalizations(id: uiState.version.id, localizations: localizations),
+                id: uiState.version.id
+            )
         } catch {
             Log.print.error("[VersionDetail] Localizations fetch failed: \(error.localizedDescription)")
         }
 
         do {
-            uiState.currentBuild = try await buildTask
+            let build = try await buildTask
+            uiState.currentBuild = build
+            if let build {
+                try await storage.save(build, id: "build.\(self.uiState.version.id)")
+            } else {
+                try await storage.delete(BuildModel.self, id: "build.\(self.uiState.version.id)")
+            }
         } catch {
             Log.print.error("[VersionDetail] Build fetch failed: \(error.localizedDescription)")
         }
 
         do {
-            uiState.phasedRelease = try await phasedTask
+            let phased = try await phasedTask
+            uiState.phasedRelease = phased
+            if let phased {
+                try await storage.save(phased, id: "phased.\(self.uiState.version.id)")
+            } else {
+                try await storage.delete(PhasedReleaseModel.self, id: "phased.\(self.uiState.version.id)")
+            }
         } catch {
             Log.print.error("[VersionDetail] Phased release fetch failed: \(error.localizedDescription)")
         }
@@ -340,6 +362,50 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         }
 
         uiState.isLoading = false
+    }
+
+    /// Restores the localizations, attached build, and phased release for the
+    /// current version from local cache (offline-first). Populated before the
+    /// network fetch so an offline `refresh()` still renders cached data.
+    private func loadCachedVersionDetails() async {
+        let versionId = uiState.version.id
+
+        if let cached: CachedVersionLocalizations = try? await storage.fetch(
+            CachedVersionLocalizations.self,
+            id: versionId
+        ), !cached.localizations.isEmpty {
+            uiState.localizations = cached.localizations
+            applyLocalizations(cached.localizations)
+        }
+
+        if let cachedBuild: BuildModel = try? await storage.fetch(
+            BuildModel.self,
+            id: "build.\(versionId)"
+        ) {
+            uiState.currentBuild = cachedBuild
+        }
+
+        if let cachedPhased: PhasedReleaseModel = try? await storage.fetch(
+            PhasedReleaseModel.self,
+            id: "phased.\(versionId)"
+        ) {
+            uiState.phasedRelease = cachedPhased
+        }
+    }
+
+    /// Populates the primary localization plus the editable field mirrors from
+    /// the first localization. Shared by the cache-load and network-fetch paths
+    /// so both render identical editor state.
+    private func applyLocalizations(_ localizations: [AppStoreLocalizationModel]) {
+        guard let loc = localizations.first else { return }
+        uiState.localization = loc
+        uiState.editingLocalization = loc
+        uiState.editPromotionalText = loc.promotionalText ?? ""
+        uiState.editDescription = loc.description ?? ""
+        uiState.editWhatsNew = loc.whatsNew ?? ""
+        uiState.editKeywords = loc.keywords ?? ""
+        uiState.editSupportUrl = loc.supportUrl ?? ""
+        uiState.editMarketingUrl = loc.marketingUrl ?? ""
     }
 
     func updatePromotionalText() async throws {
