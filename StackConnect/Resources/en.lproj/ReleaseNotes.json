@@ -1,24 +1,18 @@
 {
-  "version": "2.2.0",
+  "version": "2.3.0",
   "title": "What's New",
   "highlights": [
     {
-      "icon": "photo.on.rectangle.angled",
+      "icon": "chart.bar.xaxis",
+      "color": "indigo",
+      "title": "Analytics",
+      "description": "View and download your App Store analytics reports, trends and metrics."
+    },
+    {
+      "icon": "paperplane.fill",
       "color": "blue",
-      "title": "Screenshot Preview",
-      "description": "Browse your App Store screenshots by version, device and resolution, right inside the app."
-    },
-    {
-      "icon": "chart.line.uptrend.xyaxis",
-      "color": "green",
-      "title": "Phased Release Progress",
-      "description": "Follow an in-progress phased release right on each version row in App Details."
-    },
-    {
-      "icon": "checklist",
-      "color": "purple",
-      "title": "Pre-Submit Checklist",
-      "description": "Validate build, screenshots, What's New and more before submitting for review."
+      "title": "Submissions",
+      "description": "Track and manage your App Review submissions and their status."
     },
     {
       "icon": "ladybug.fill",

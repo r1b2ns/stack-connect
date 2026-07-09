@@ -1,24 +1,18 @@
 {
-  "version": "2.2.0",
+  "version": "2.3.0",
   "title": "Neuigkeiten",
   "highlights": [
     {
-      "icon": "photo.on.rectangle.angled",
+      "icon": "chart.bar.xaxis",
+      "color": "indigo",
+      "title": "Analytics",
+      "description": "Rufen Sie die Analytics-Berichte, Trends und Kennzahlen Ihrer App ab und laden Sie sie herunter."
+    },
+    {
+      "icon": "paperplane.fill",
       "color": "blue",
-      "title": "Screenshot-Vorschau",
-      "description": "Durchsuche deine App-Store-Screenshots nach Version, Gerät und Auflösung – direkt in der App."
-    },
-    {
-      "icon": "chart.line.uptrend.xyaxis",
-      "color": "green",
-      "title": "Fortschritt der stufenweisen Freigabe",
-      "description": "Verfolge eine laufende stufenweise Freigabe direkt bei jeder Version in den App-Details."
-    },
-    {
-      "icon": "checklist",
-      "color": "purple",
-      "title": "Checkliste vor dem Einreichen",
-      "description": "Prüfe Build, Screenshots, Neuigkeiten und mehr, bevor du zur Überprüfung einreichst."
+      "title": "Submissions",
+      "description": "Verfolgen und verwalten Sie Ihre App-Review-Einreichungen und deren Status."
     },
     {
       "icon": "ladybug.fill",

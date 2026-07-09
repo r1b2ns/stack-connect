@@ -1,24 +1,18 @@
 {
-  "version": "2.2.0",
+  "version": "2.3.0",
   "title": "Novità",
   "highlights": [
     {
-      "icon": "photo.on.rectangle.angled",
+      "icon": "chart.bar.xaxis",
+      "color": "indigo",
+      "title": "Analytics",
+      "description": "Visualizza e scarica i report di Analytics, le tendenze e le metriche della tua app."
+    },
+    {
+      "icon": "paperplane.fill",
       "color": "blue",
-      "title": "Anteprima Screenshot",
-      "description": "Sfoglia gli screenshot dell'App Store per versione, dispositivo e risoluzione, direttamente nell'app."
-    },
-    {
-      "icon": "chart.line.uptrend.xyaxis",
-      "color": "green",
-      "title": "Avanzamento del rilascio graduale",
-      "description": "Segui un rilascio graduale in corso direttamente su ogni versione nei Dettagli dell'app."
-    },
-    {
-      "icon": "checklist",
-      "color": "purple",
-      "title": "Lista di controllo pre-invio",
-      "description": "Verifica build, screenshot, novità e altro prima di inviare per la revisione."
+      "title": "Submissions",
+      "description": "Monitora e gestisci le tue candidature alla revisione dell'app e il loro stato."
     },
     {
       "icon": "ladybug.fill",
