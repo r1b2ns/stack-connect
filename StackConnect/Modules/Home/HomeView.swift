@@ -445,6 +445,10 @@ private extension View {
                 AppReviewDetailViewFactory.build(submission: submission, account: account)
             case .userDetail(let user, let account):
                 UserDetailViewFactory.build(user: user, account: account)
+            case .analyticsReports(let appId, let appName, let account):
+                AnalyticsReportsViewFactory.build(appId: appId, appName: appName, account: account)
+            case .analyticsReportDetail(let appId, let appName, let report, let account):
+                AnalyticsReportDetailViewFactory.build(appId: appId, appName: appName, report: report, account: account)
             }
         }
     }
