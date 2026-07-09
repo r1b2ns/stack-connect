@@ -9,6 +9,11 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     /// Resolves feature flags (e.g. `useRustCoreDebugLogging`). Injected for testability.
     private let featureFlags: FeatureFlags
 
+    /// Synchronous connectivity probe. Gates every mutating (POST/PUT/PATCH/DELETE)
+    /// call via `requireOnline()` so write actions fail fast offline instead of
+    /// timing out. Injected (defaults to the shared monitor) for testability.
+    private let connectivity: ConnectivityProviding
+
     /// Lazily-built Rust core provider, reused across `validateCredentials()` and
     /// `fetchApps()` within a single connection. Only created when the flag is ON.
     private var rustProvider: StackCoreRust.Provider?
@@ -19,15 +24,27 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
 
     init(
         credentials: AppleCredentials,
-        featureFlags: FeatureFlags = .shared
+        featureFlags: FeatureFlags = .shared,
+        connectivity: ConnectivityProviding = ConnectivityMonitor.shared
     ) {
         self.credentials = credentials
         self.featureFlags = featureFlags
+        self.connectivity = connectivity
+    }
+
+    /// Guards mutating operations: throws `OfflineError.noConnection` when the
+    /// device is offline so writes fail fast (and with friendly copy) instead of
+    /// hanging until a network timeout. Read/fetch methods never call this.
+    private func requireOnline() throws {
+        if !connectivity.isCurrentlyOnline() {
+            throw OfflineError.noConnection
+        }
     }
 
     // MARK: - AccountConnectionProtocol
 
     func validateCredentials() async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         try await callRustCore { try await provider.validate() }
         Log.print.info("[Apple] Credentials validated successfully (Rust core)")
@@ -87,6 +104,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func createAppStoreVersion(request: CreateAppVersionRequest) async throws -> AppStoreVersionModel {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let versions = provider.appStoreVersions() else {
             throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
@@ -111,6 +129,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - Delete Version
 
     func deleteAppStoreVersion(id: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let versions = provider.appStoreVersions() else {
             throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
@@ -129,6 +148,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         releaseType: String? = nil,
         earliestReleaseDate: Date? = nil
     ) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let versions = provider.appStoreVersions() else {
             throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
@@ -169,6 +189,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         marketingUrl: String? = nil,
         whatsNew: String? = nil
     ) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let versions = provider.appStoreVersions() else {
             throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
@@ -233,6 +254,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func expireBuild(buildId: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let builds = provider.builds() else {
             throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
@@ -257,6 +279,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func attachBuild(versionId: String, buildId: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let builds = provider.builds() else {
             throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
@@ -291,6 +314,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func submitReviewSubmission(id: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let reviews = provider.reviews() else {
             throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
@@ -301,6 +325,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func discardReviewSubmission(id: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let reviews = provider.reviews() else {
             throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
@@ -330,6 +355,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         isPublicLinkEnabled: Bool = false,
         hasAccessToAllBuilds: Bool = false
     ) async throws -> BetaGroupModel {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let bg = provider.betaGroups() else {
             throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
@@ -349,6 +375,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateBetaGroup(id: String, name: String?, isPublicLinkEnabled: Bool?, publicLinkLimit: Int?, isFeedbackEnabled: Bool?) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let bg = provider.betaGroups() else {
             throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
@@ -367,6 +394,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deleteBetaGroup(id: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let bg = provider.betaGroups() else {
             throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
@@ -400,6 +428,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func addTesterToGroup(email: String, firstName: String?, lastName: String?, groupId: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let bg = provider.betaGroups() else {
             throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
@@ -417,6 +446,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func removeTesterFromGroup(testerId: String, groupId: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let bg = provider.betaGroups() else {
             throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
@@ -427,6 +457,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func resendInvite(testerId: String, appId: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let bg = provider.betaGroups() else {
             throw translate(.Unsupported(message: "Beta Groups capability is not available for this provider."))
@@ -470,6 +501,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         allAppsVisible: Bool,
         provisioningAllowed: Bool
     ) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let cap = provider.users() else {
             throw translate(.Unsupported(message: "Users capability is not available for this provider."))
@@ -489,6 +521,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deleteUser(id: String, isPending: Bool) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let cap = provider.users() else {
             throw translate(.Unsupported(message: "Users capability is not available for this provider."))
@@ -507,6 +540,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         allAppsVisible: Bool,
         provisioningAllowed: Bool
     ) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let cap = provider.users() else {
             throw translate(.Unsupported(message: "Users capability is not available for this provider."))
@@ -538,6 +572,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     /// Replaces the user's visible-apps set with `appIds` (**full replace** — an empty
     /// array clears all scoping). Only meaningful when `allAppsVisible == false`.
     func updateUserVisibleApps(id: String, appIds: [String]) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let cap = provider.users() else {
             throw translate(.Unsupported(message: "Users capability is not available for this provider."))
@@ -563,6 +598,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - TestFlight: Beta Review Submission
 
     func submitBuildForBetaReview(buildId: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let builds = provider.builds() else {
             throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
@@ -586,6 +622,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func createBetaBuildLocalization(buildId: String, locale: String, whatsNew: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let bbl = provider.betaBuildLocalizations() else {
             throw translate(.Unsupported(message: "Beta Build Localizations capability is not available for this provider."))
@@ -598,6 +635,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateBetaBuildLocalization(id: String, whatsNew: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let bbl = provider.betaBuildLocalizations() else {
             throw translate(.Unsupported(message: "Beta Build Localizations capability is not available for this provider."))
@@ -612,6 +650,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - TestFlight: Builds for Group (continued)
 
     func removeBuildFromGroup(buildId: String, groupId: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let builds = provider.builds() else {
             throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
@@ -622,6 +661,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func addBuildToGroups(buildId: String, groupIds: [String]) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let builds = provider.builds() else {
             throw translate(.Unsupported(message: "Builds capability is not available for this provider."))
@@ -680,6 +720,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func replyToReview(reviewId: String, responseBody: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let reviews = provider.reviews() else {
             throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
@@ -694,6 +735,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deleteReviewResponse(responseId: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let reviews = provider.reviews() else {
             throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
@@ -721,6 +763,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateAccessibilityDeclaration(_ model: AccessibilityDeclarationModel, publish: Bool = false) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let cap = provider.accessibilityDeclarations() else {
             throw translate(.Unsupported(message: "Accessibility Declarations capability is not available for this provider."))
@@ -745,6 +788,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func createAccessibilityDeclaration(appId: String, deviceFamily: String) async throws -> AccessibilityDeclarationModel {
+        try requireOnline()
         // Validate the device family up front against the ASC-accepted values.
         guard Self.validDeviceFamilies.contains(deviceFamily) else {
             throw NSError(domain: "Accessibility", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid device family"])
@@ -763,6 +807,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deleteAccessibilityDeclaration(id: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let cap = provider.accessibilityDeclarations() else {
             throw translate(.Unsupported(message: "Accessibility Declarations capability is not available for this provider."))
@@ -789,6 +834,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateAppReviewDetail(model: AppReviewDetailModel) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let versions = provider.appStoreVersions() else {
             throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
@@ -827,6 +873,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateBetaAppReviewDetail(model: BetaAppReviewDetailModel) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let detail = provider.betaAppReviewDetail() else {
             throw translate(.Unsupported(message: "Beta App Review Detail capability is not available for this provider."))
@@ -864,6 +911,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateBetaAppLocalization(id: String, feedbackEmail: String?, description: String?) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let bal = provider.betaAppLocalizations() else {
             throw translate(.Unsupported(message: "Beta App Localizations capability is not available for this provider."))
@@ -881,6 +929,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         feedbackEmail: String?,
         description: String?
     ) async throws -> BetaAppLocalizationModel {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let bal = provider.betaAppLocalizations() else {
             throw translate(.Unsupported(message: "Beta App Localizations capability is not available for this provider."))
@@ -907,6 +956,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deleteScreenshotSet(screenshotSetId: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let versions = provider.appStoreVersions() else {
             throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
@@ -916,6 +966,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deleteScreenshot(screenshotId: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let versions = provider.appStoreVersions() else {
             throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
@@ -941,6 +992,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func createPhasedRelease(versionId: String, state: String) async throws -> PhasedReleaseModel {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let versions = provider.appStoreVersions() else {
             throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
@@ -954,6 +1006,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deletePhasedRelease(id: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let versions = provider.appStoreVersions() else {
             throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
@@ -965,6 +1018,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
 
     @discardableResult
     func updatePhasedReleaseState(id: String, state: String) async throws -> PhasedReleaseModel {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let versions = provider.appStoreVersions() else {
             throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
@@ -1007,6 +1061,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateAppInfoLocalization(id: String, name: String, subtitle: String?) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let meta = provider.appMetadata() else {
             throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
@@ -1024,6 +1079,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         privacyChoicesUrl: String?,
         privacyPolicyText: String?
     ) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let meta = provider.appMetadata() else {
             throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
@@ -1041,6 +1097,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         name: String,
         subtitle: String?
     ) async throws -> AppInfoLocalizationModel {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let meta = provider.appMetadata() else {
             throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
@@ -1054,6 +1111,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deleteAppInfoLocalization(id: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let meta = provider.appMetadata() else {
             throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
@@ -1087,6 +1145,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         secondaryCategoryId: String?,
         secondarySubcategoryOneId: String?
     ) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let meta = provider.appMetadata() else {
             throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
@@ -1105,6 +1164,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateApp(id: String, contentRightsDeclaration: String? = nil, primaryLocale: String? = nil) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let meta = provider.appMetadata() else {
             throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
@@ -1137,6 +1197,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         isUserGeneratedContent: Bool,
         ageRatingOverride: String
     ) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let meta = provider.appMetadata() else {
             throw translate(.Unsupported(message: "App Metadata capability is not available for this provider."))
@@ -1171,6 +1232,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     // MARK: - Review Submissions
 
     func submitForReview(appId: String, versionId: String, platform: AppPlatform?) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let versions = provider.appStoreVersions() else {
             throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
@@ -1181,6 +1243,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func cancelReview(appId: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let versions = provider.appStoreVersions() else {
             throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
@@ -1191,6 +1254,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func releaseVersion(versionId: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let versions = provider.appStoreVersions() else {
             throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
@@ -1201,6 +1265,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func cancelSubmission(appId: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let versions = provider.appStoreVersions() else {
             throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
@@ -1211,6 +1276,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func rejectVersion(versionId: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let versions = provider.appStoreVersions() else {
             throw translate(.Unsupported(message: "App Store Versions capability is not available for this provider."))
@@ -1261,6 +1327,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         passTypeId: String? = nil,
         merchantId: String? = nil
     ) async throws -> CreatedCertificate {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let cap = provider.certificates() else {
             throw translate(.Unsupported(message: "Certificates capability is not available for this provider."))
@@ -1279,6 +1346,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func revokeCertificate(id: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let cap = provider.certificates() else {
             throw translate(.Unsupported(message: "Certificates capability is not available for this provider."))
@@ -1308,6 +1376,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         name: String,
         platformRaw: String
     ) async throws -> BundleIdentifierModel {
+        try requireOnline()
         // Validate the platform up front against the ASC-accepted values.
         guard Self.validBundleIdPlatforms.contains(platformRaw) else {
             throw NSError(domain: "BundleId", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid platform: \(platformRaw)"])
@@ -1326,6 +1395,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateBundleId(id: String, name: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let cap = provider.bundleIds() else {
             throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
@@ -1336,6 +1406,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deleteBundleId(id: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let cap = provider.bundleIds() else {
             throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
@@ -1373,6 +1444,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func enableCapability(bundleId: String, capabilityTypeRaw: String) async throws -> BundleIdentifierCapabilityModel {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let cap = provider.bundleIds() else {
             throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
@@ -1386,6 +1458,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func disableCapability(capabilityId: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let cap = provider.bundleIds() else {
             throw translate(.Unsupported(message: "BundleIds capability is not available for this provider."))
@@ -1415,6 +1488,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         platformRaw: String,
         udid: String
     ) async throws -> DeviceModel {
+        try requireOnline()
         // Validate the platform up front against the ASC-accepted values.
         guard Self.validBundleIdPlatforms.contains(platformRaw) else {
             throw NSError(domain: "Device", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid platform: \(platformRaw)"])
@@ -1433,6 +1507,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func updateDevice(id: String, name: String?, status: String?) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let cap = provider.devices() else {
             throw translate(.Unsupported(message: "Devices capability is not available for this provider."))
@@ -1469,6 +1544,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         certificateIds: [String],
         deviceIds: [String]
     ) async throws -> CreatedProfile {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let cap = provider.profiles() else {
             throw translate(.Unsupported(message: "Profiles capability is not available for this provider."))
@@ -1488,6 +1564,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     func deleteProfile(id: String) async throws {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let cap = provider.profiles() else {
             throw translate(.Unsupported(message: "Profiles capability is not available for this provider."))
@@ -2026,6 +2103,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     /// Apple generates *all* report categories for the app; category/granularity
     /// are browsing filters applied later, not parameters of this request.
     func createAnalyticsReportRequest(appId: String, accessType: String) async throws -> AnalyticsReportRequestModel {
+        try requireOnline()
         let provider = try rustCoreProvider()
         guard let analytics = provider.analytics() else {
             throw translate(.Unsupported(message: "Analytics capability is not available for this provider."))

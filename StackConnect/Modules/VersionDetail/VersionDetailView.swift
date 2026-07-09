@@ -293,7 +293,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             Button {
                 handlePreviewTap()
             } label: {
-                buildMenuRow(icon: "photo.on.rectangle.angled", color: .blue, title: String(localized: "Preview and Screenshots"))
+                StackListRow(icon: "photo.on.rectangle.angled", iconColor: .blue, title: String(localized: "Preview and Screenshots"))
             }
         }
     }
@@ -344,15 +344,15 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
     private func buildTextContentSection() -> some View {
         Section {
             Button { viewModel.requestField(.promotionalText) } label: {
-                buildMenuRow(icon: "text.badge.star", color: .purple, title: String(localized: "Promotional Text"))
+                StackListRow(icon: "text.badge.star", iconColor: .purple, title: String(localized: "Promotional Text"))
             }
 
             Button { viewModel.requestField(.description) } label: {
-                buildMenuRow(icon: "doc.text.fill", color: .indigo, title: String(localized: "Description"))
+                StackListRow(icon: "doc.text.fill", iconColor: .indigo, title: String(localized: "Description"))
             }
 
             Button { viewModel.requestField(.whatsNew) } label: {
-                buildMenuRow(icon: "sparkles", color: .orange, title: String(localized: "What's New"))
+                StackListRow(icon: "sparkles", iconColor: .orange, title: String(localized: "What's New"))
             }
         }
     }
@@ -456,7 +456,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                     account: viewModel.uiState.account
                 )
             } label: {
-                buildMenuRow(icon: "checkmark.shield.fill", color: .green, title: String(localized: "App Review Information"))
+                StackListRow(icon: "checkmark.shield.fill", iconColor: .green, title: String(localized: "App Review Information"))
             }
 
             Button {
@@ -696,19 +696,6 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
             Spacer()
 
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-    }
-
-    private func buildMenuRow(icon: String, color: Color, title: String) -> some View {
-        HStack(spacing: 12) {
-            buildIconSquare(icon: icon, color: color)
-            Text(title)
-                .font(.body)
-                .foregroundStyle(.primary)
-            Spacer()
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(.tertiary)

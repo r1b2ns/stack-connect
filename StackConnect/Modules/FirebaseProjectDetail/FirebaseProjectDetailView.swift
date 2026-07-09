@@ -100,7 +100,7 @@ struct FirebaseProjectDetailView<ViewModel: FirebaseProjectDetailViewModelProtoc
                 Button {
                     handleMenuTap(item)
                 } label: {
-                    buildMenuRow(item: item)
+                    StackListRow(icon: item.icon, iconColor: item.color, title: item.title)
                 }
                 .foregroundStyle(.primary)
             }
@@ -109,26 +109,6 @@ struct FirebaseProjectDetailView<ViewModel: FirebaseProjectDetailViewModelProtoc
             }
         } header: {
             Text("Services")
-        }
-    }
-
-    private func buildMenuRow(item: FirebaseMenuItem) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: item.icon)
-                .font(.body)
-                .foregroundStyle(.white)
-                .frame(width: 32, height: 32)
-                .background(item.color)
-                .clipShape(RoundedRectangle(cornerRadius: 7))
-
-            Text(item.title)
-                .font(.body)
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
         }
     }
 

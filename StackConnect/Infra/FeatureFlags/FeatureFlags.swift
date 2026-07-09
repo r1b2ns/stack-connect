@@ -27,11 +27,7 @@ enum FeatureFlag: String, CaseIterable {
     var defaultValue: Bool {
         switch self {
         case .useRustCoreDebugLogging:
-#if DEBUG
-            return true
-#else
             return false
-#endif
         }
     }
 }

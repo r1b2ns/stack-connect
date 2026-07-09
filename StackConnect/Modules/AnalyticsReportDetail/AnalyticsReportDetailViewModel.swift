@@ -20,7 +20,12 @@ enum AnalyticsDetailPhase: Equatable {
     case loaded
     case empty(title: String?, detail: String)
     case needsRequest
-    case requested(String)
+    /// A report request exists (or was just created) but no chartable data is
+    /// available yet — Apple hasn't produced the report/instance/segment. The
+    /// associated `requestedAt` is the locally-recorded POST time when known,
+    /// else nil (the request may have been created outside the app or before
+    /// request-time logging existed).
+    case awaitingData(requestedAt: Date?)
 }
 
 // MARK: - Protocol
@@ -64,6 +69,7 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
     @Published var uiState: AnalyticsReportDetailUiState
 
     private let keychain: KeyStorable
+    private let defaults: KeyStorable
     private var hasAppeared = false
 
     /// In-memory caches so toggling back to an already-loaded granularity is
@@ -85,7 +91,8 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
         appName: String,
         report: AnalyticsCatalogReport,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        defaults: KeyStorable = UserDefaultsStorable()
     ) {
         self.uiState = AnalyticsReportDetailUiState(
             appId: appId,
@@ -94,6 +101,7 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
             account: account
         )
         self.keychain = keychain
+        self.defaults = defaults
     }
 
     // MARK: - Lifecycle
@@ -152,7 +160,7 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
                 pageToken: nil
             )
             guard let report = matchReport(in: reportsPage.reports) else {
-                uiState.phase = .empty(title: nil, detail: String(localized: "This report isn't available yet (Apple may still be generating it)."))
+                uiState.phase = .awaitingData(requestedAt: requestedAt())
                 return
             }
 
@@ -164,7 +172,7 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
                 pageToken: nil
             )
             guard let instance = latestInstance(in: instancesPage.instances) else {
-                uiState.phase = .empty(title: nil, detail: String(localized: "No data at this granularity yet."))
+                uiState.phase = .awaitingData(requestedAt: requestedAt())
                 return
             }
 
@@ -185,7 +193,7 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
                     pageToken: nil
                 )
                 guard let segment = segmentsPage.segments.first else {
-                    uiState.phase = .empty(title: nil, detail: String(localized: "No data at this granularity yet."))
+                    uiState.phase = .awaitingData(requestedAt: requestedAt())
                     return
                 }
                 let downloaded = try await connection.downloadAnalyticsSegment(
@@ -229,7 +237,8 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
                 accessType: AnalyticsAccessType.ongoing.rawValue
             )
             Log.print.info("[AnalyticsDetail] Created report request \(request.id)")
-            uiState.phase = .requested(String(localized: "Requested — Apple generates the data in 24–48 hours."))
+            recordRequestedNow()
+            uiState.phase = .awaitingData(requestedAt: Date())
         } catch {
             Log.print.error("[AnalyticsDetail] Enable failed: \(error.localizedDescription)")
             uiState.toastMessage = ToastMessage(AppleAPIErrorTranslator.friendlyMessage(for: error), icon: "exclamationmark.triangle.fill")
@@ -257,12 +266,35 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
                 accessType: AnalyticsAccessType.ongoing.rawValue
             )
             Log.print.info("[AnalyticsDetail] Reactivated report request \(request.id)")
+            recordRequestedNow()
             uiState.isReportStopped = false
-            uiState.phase = .requested(String(localized: "Reactivated — Apple generates fresh data in 24–48 hours."))
+            uiState.phase = .awaitingData(requestedAt: Date())
         } catch {
             Log.print.error("[AnalyticsDetail] Reactivate failed: \(error.localizedDescription)")
             uiState.toastMessage = ToastMessage(AppleAPIErrorTranslator.friendlyMessage(for: error), icon: "exclamationmark.triangle.fill")
         }
+    }
+
+    // MARK: - Request-time persistence
+
+    /// Local key for the last recorded POST time of a report request. Scoped by
+    /// app (a request is per-app, not per-report or per-granularity).
+    /// Internal (not private) so `@testable` unit tests can assert the keying.
+    var requestedAtKey: String { "analytics.requestedAt.\(uiState.appId)" }
+
+    /// Records "now" as the local POST time. The ASC API exposes no timestamp on
+    /// analyticsReportRequests, so this is the only way to show "requested X ago".
+    /// Internal (not private) so `@testable` unit tests can drive it.
+    func recordRequestedNow() {
+        defaults.set(Date().timeIntervalSince1970, forKey: requestedAtKey)
+    }
+
+    /// The locally-recorded POST time, or nil if none was ever stored (e.g. the
+    /// request was created outside the app or before this logging existed).
+    /// Internal (not private) so `@testable` unit tests can assert the round-trip.
+    func requestedAt() -> Date? {
+        guard let interval = defaults.double(forKey: requestedAtKey) else { return nil }
+        return Date(timeIntervalSince1970: interval)
     }
 
     // MARK: - Resolution helpers

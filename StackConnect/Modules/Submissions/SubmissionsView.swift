@@ -119,6 +119,7 @@ struct SubmissionsView<ViewModel: SubmissionsViewModelProtocol>: View {
                 }
             }
             .toast(message: $viewModel.uiState.toastMessage)
+            .featureOnboarding(.submissions)
     }
 
     // MARK: - Content
