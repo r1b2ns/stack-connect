@@ -1,4 +1,7 @@
-• Screenshot Preview — browse an app's App Store screenshots by version, device, and resolution, right inside StackConnect
-• Phased Release progress now appears on each version row, so you can follow a staged rollout at a glance
-• Pre-Submit Checklist — validate build, screenshots, What's New, and demo account before submitting for review, with an optional confirmation step
+• Analytics Reports — view and download your App Store Connect analytics right in the app, with reports grouped by category and daily, weekly, or monthly charts. Mark favorites, hide the ones you don't use, and manage downloaded files from a dedicated Files screen
+• Submissions — track, discard, and resubmit your App Review submissions for each app, with clear handling of Apple's concurrent-submission limit
+• Team Management — edit a member's role, resources, and visible apps, review their permissions, and remove members or cancel invitations from the user detail screen
+• Per-Platform Icons — multi-platform apps (like iOS + tvOS) now show each platform's real icon in the app detail and Awaiting Release widgets
+• Offline Mode — an indicator shows when you're offline; your cached data stays viewable and actions that need a connection are safely blocked
+• Scoped Export — limit an account export to specific apps' permissions, with a searchable app picker
 • Bug fixes and stability improvements

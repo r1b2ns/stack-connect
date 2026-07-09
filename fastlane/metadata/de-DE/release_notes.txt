@@ -1,4 +1,7 @@
-• Screenshot-Vorschau — durchsuche die App-Store-Screenshots einer App nach Version, Gerät und Auflösung, direkt in StackConnect
-• Der Fortschritt der stufenweisen Freigabe erscheint jetzt in jeder Version, sodass du den Rollout auf einen Blick verfolgst
-• Checkliste vor dem Einreichen — prüfe Build, Screenshots, Neuigkeiten und Demokonto vor dem Einreichen zur Überprüfung, mit optionaler Bestätigung
+• Analytics-Berichte — sieh dir deine App-Store-Connect-Analytics direkt in der App an und lade sie herunter, mit nach Kategorie gruppierten Berichten und Tages-, Wochen- oder Monatsdiagrammen. Markiere Favoriten, blende ungenutzte aus und verwalte heruntergeladene Dateien in einem eigenen Dateien-Bereich
+• Einreichungen — verfolge, verwirf und reiche deine App-Review-Einreichungen pro App erneut ein, mit klarer Behandlung von Apples Limit gleichzeitiger Einreichungen
+• Team-Verwaltung — bearbeite Rolle, Ressourcen und sichtbare Apps eines Mitglieds, sieh dir seine Berechtigungen an und entferne Mitglieder oder ziehe Einladungen zurück, direkt in der Benutzerdetailansicht
+• Plattformspezifische Symbole — Apps für mehrere Plattformen (z. B. iOS + tvOS) zeigen jetzt das echte Symbol jeder Plattform in den App-Details und in den Widgets „Warten auf Freigabe“
+• Offline-Modus — eine Anzeige zeigt, wenn du offline bist; deine zwischengespeicherten Daten bleiben sichtbar und Aktionen, die eine Verbindung erfordern, werden sicher blockiert
+• Gezielter Export — beschränke den Export eines Kontos auf die Berechtigungen bestimmter Apps, mit durchsuchbarer App-Auswahl
 • Fehlerbehebungen und Stabilitätsverbesserungen

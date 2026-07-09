@@ -13,6 +13,11 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     /// iOS may launch later (or never), depending on usage patterns.
     private static let refreshEarliestInterval: TimeInterval = 30 * 60 // 30 minutes
 
+    /// Versioned flag guarding the one-time purge of analytics CSVs left behind by
+    /// the pre-per-app (category-rooted) storage layout. Bump the `.vN` suffix if a
+    /// future migration needs the cleanup to run again.
+    private static let didPurgeLegacyAnalyticsFilesKey = "analytics.didPurgeLegacyUnscopedFiles.v1"
+
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
@@ -26,6 +31,16 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         // Ask for notification permission on first launch so background sync can
         // surface status changes and new reviews as local "fake push" alerts.
         Task { await LocalNotificationService.requestAuthorizationIfNeeded() }
+
+        // One-time cleanup of analytics CSVs orphaned by the pre-per-app storage
+        // layout. Runs off the launch path (utility priority) so it never blocks
+        // UI, and only once — guarded by a versioned UserDefaults flag.
+        if !UserDefaults.standard.bool(forKey: Self.didPurgeLegacyAnalyticsFilesKey) {
+            Task.detached(priority: .utility) {
+                AnalyticsReportFileStore.purgeLegacyUnscopedFiles()
+                UserDefaults.standard.set(true, forKey: Self.didPurgeLegacyAnalyticsFilesKey)
+            }
+        }
 
         registerBackgroundRefresh()
         scheduleBackgroundRefresh()
