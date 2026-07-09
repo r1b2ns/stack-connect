@@ -45,6 +45,7 @@ private struct AnalyticsReportDetailEntry: View {
 struct AnalyticsReportDetailView<ViewModel: AnalyticsReportDetailViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
+    @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
     private var granularityBinding: Binding<AnalyticsGranularity> {
         Binding(
@@ -66,9 +67,6 @@ struct AnalyticsReportDetailView<ViewModel: AnalyticsReportDetailViewModelProtoc
         .toolbar { buildToolbar() }
         .task { await viewModel.onAppear() }
         .toast(message: $viewModel.uiState.toastMessage)
-        .sheet(item: $viewModel.uiState.shareItem) { item in
-            AnalyticsShareSheet(activityItems: [item.url])
-        }
     }
 
     // MARK: - Chart Section
@@ -304,29 +302,16 @@ struct AnalyticsReportDetailView<ViewModel: AnalyticsReportDetailViewModelProtoc
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
             Button {
-                viewModel.share()
+                homeCoordinator.navigateToAnalyticsReportFiles(
+                    appId: viewModel.uiState.appId,
+                    appName: viewModel.uiState.appName,
+                    report: viewModel.uiState.report,
+                    account: viewModel.uiState.account
+                )
             } label: {
-                Image(systemName: "square.and.arrow.up")
+                Image(systemName: "folder")
             }
-            .disabled(viewModel.uiState.currentFileURL == nil)
-            .accessibilityLabel(String(localized: "Share Report"))
+            .accessibilityLabel(String(localized: "Files"))
         }
     }
-}
-
-// MARK: - Share Sheet
-//
-// Local share sheet that, unlike the account-export one, does NOT delete the
-// shared file on completion — the cached report must stay on disk so it can be
-// re-shared and reused within its 24h window. (Relocated from the retired
-// reports-list module.)
-
-private struct AnalyticsShareSheet: UIViewControllerRepresentable {
-    let activityItems: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

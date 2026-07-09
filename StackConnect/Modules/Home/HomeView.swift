@@ -449,6 +449,8 @@ private extension View {
                 AnalyticsReportsViewFactory.build(appId: appId, appName: appName, account: account)
             case .analyticsReportDetail(let appId, let appName, let report, let account):
                 AnalyticsReportDetailViewFactory.build(appId: appId, appName: appName, report: report, account: account)
+            case .analyticsReportFiles(let appId, let appName, let report, let account):
+                AnalyticsReportFilesViewFactory.build(appId: appId, appName: appName, report: report, account: account)
             }
         }
     }
