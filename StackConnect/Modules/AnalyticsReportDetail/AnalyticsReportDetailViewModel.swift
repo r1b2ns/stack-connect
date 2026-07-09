@@ -32,7 +32,6 @@ protocol AnalyticsReportDetailViewModelProtocol: ObservableObject {
     func selectGranularity(_ granularity: AnalyticsGranularity) async
     func enableReports() async
     func reactivateReports() async
-    func share()
 }
 
 // MARK: - UiState
@@ -47,11 +46,6 @@ struct AnalyticsReportDetailUiState {
     var phase: AnalyticsDetailPhase = .loading
     var series: [AnalyticsDataPoint] = []
 
-    /// On-disk CSV backing the *currently displayed* granularity, used by the
-    /// share button. `nil` until a file exists on disk.
-    var currentFileURL: URL?
-
-    var shareItem: ShareableFileURL?
     var isEnabling = false
     var toastMessage: ToastMessage?
 
@@ -75,11 +69,9 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
     /// In-memory caches so toggling back to an already-loaded granularity is
     /// instant (no re-download, no re-parse).
     private var seriesCache: [AnalyticsGranularity: [AnalyticsDataPoint]] = [:]
-    private var fileCache: [AnalyticsGranularity: URL] = [:]
 
     private static let maxDownloadBytes: UInt64 = 50 * 1024 * 1024
     private static let pageLimit = 50
-    private static let cacheExpiry: TimeInterval = 24 * 60 * 60
 
     /// Case-insensitive priority list of preferred measure-column headers.
     private static let preferredMeasures = [
@@ -109,7 +101,6 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
     func onAppear() async {
         guard !hasAppeared else { return }
         hasAppeared = true
-        sweepExpiredFiles()
         await load(.daily)
     }
 
@@ -125,7 +116,6 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
         // Instant path: previously parsed in this session.
         if let cached = seriesCache[granularity] {
             uiState.series = cached
-            uiState.currentFileURL = fileCache[granularity]
             uiState.phase = cached.isEmpty
                 ? .empty(title: nil, detail: String(localized: "This report has no chartable numeric metric."))
                 : .loaded
@@ -139,7 +129,6 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
 
         uiState.phase = .loading
         uiState.series = []
-        uiState.currentFileURL = nil
 
         do {
             // 1. Resolve a report request (prefer ONGOING, else the first).
@@ -179,14 +168,17 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
                 return
             }
 
-            // 4. File cache with 24h expiry: reuse a fresh file, else (re)download.
-            let fileURL = self.fileURL(for: granularity)
+            // 4. Persistent, per-instance file: dedup the segment GET. Analytics
+            //    instances are immutable, so once an instance is on disk it never
+            //    needs re-downloading — reuse it, otherwise download exactly once.
+            let fileURL = self.fileURL(for: granularity, instance: instance)
+            let instanceKey = AnalyticsReportFileStore.instanceKey(for: instance)
             let content: AnalyticsReportContent
-            if let fresh = validCachedFile(at: fileURL) {
-                content = try parseFile(at: fresh)
-                Log.print.info("[AnalyticsDetail] Loaded \(granularity.rawValue) from cache")
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                content = try parseFile(at: fileURL)
+                Log.print.info("[AnalyticsDetail] Reusing on-disk \(granularity.rawValue) file for instance \(instanceKey) (no download)")
             } else {
-                deleteIfExists(fileURL)
+                Log.print.info("[AnalyticsDetail] No on-disk \(granularity.rawValue) file for instance \(instanceKey) — downloading")
                 let segmentsPage = try await connection.fetchAnalyticsReportSegmentsPage(
                     instanceId: instance.id,
                     limit: 1,
@@ -202,15 +194,13 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
                 )
                 try writeCSV(downloaded, to: fileURL)
                 content = downloaded
-                Log.print.info("[AnalyticsDetail] Downloaded \(granularity.rawValue): \(downloaded.rowCount) rows")
+                Log.print.info("[AnalyticsDetail] Downloaded \(granularity.rawValue) instance \(instanceKey): \(downloaded.rowCount) rows")
             }
 
             // 5. Parse into a plottable series.
             let series = Self.buildSeries(from: content, granularity: granularity)
             seriesCache[granularity] = series
-            fileCache[granularity] = fileURL
             uiState.series = series
-            uiState.currentFileURL = fileURL
             uiState.phase = series.isEmpty
                 ? .empty(title: nil, detail: String(localized: "This report has no chartable numeric metric."))
                 : .loaded
@@ -275,14 +265,6 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
         }
     }
 
-    // MARK: - Share
-
-    func share() {
-        guard let url = uiState.currentFileURL,
-              FileManager.default.fileExists(atPath: url.path) else { return }
-        uiState.shareItem = ShareableFileURL(url: url)
-    }
-
     // MARK: - Resolution helpers
 
     /// Prefers a non-stopped `ONGOING` request (continuously updated), then any
@@ -314,55 +296,17 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
 
     // MARK: - File cache
 
-    private func sweepExpiredFiles() {
-        let fm = FileManager.default
-        for granularity in AnalyticsGranularity.allCases {
-            let url = fileURL(for: granularity)
-            guard fm.fileExists(atPath: url.path),
-                  let attrs = try? fm.attributesOfItem(atPath: url.path),
-                  let modDate = attrs[.modificationDate] as? Date else { continue }
-            if Date().timeIntervalSince(modDate) > Self.cacheExpiry {
-                try? fm.removeItem(at: url)
-                Log.print.info("[AnalyticsDetail] Swept expired cache \(granularity.rawValue)")
-            }
-        }
-    }
-
-    /// Returns the URL only when the file exists and is younger than 24h.
-    private func validCachedFile(at url: URL) -> URL? {
-        let fm = FileManager.default
-        guard fm.fileExists(atPath: url.path),
-              let attrs = try? fm.attributesOfItem(atPath: url.path),
-              let modDate = attrs[.modificationDate] as? Date else { return nil }
-        return Date().timeIntervalSince(modDate) <= Self.cacheExpiry ? url : nil
-    }
-
-    private func deleteIfExists(_ url: URL) {
-        let fm = FileManager.default
-        if fm.fileExists(atPath: url.path) {
-            try? fm.removeItem(at: url)
-        }
-    }
-
-    /// `<Caches>/AnalyticsReports/<category>/<sanitized apiName>/<GRANULARITY>.csv`
-    private func fileURL(for granularity: AnalyticsGranularity) -> URL {
-        Self.reportsDirectory(category: uiState.report.category, apiName: uiState.report.apiName)
-            .appendingPathComponent("\(granularity.rawValue).csv")
-    }
-
-    private static func reportsDirectory(category: AnalyticsCategory, apiName: String) -> URL {
-        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-        return caches
-            .appendingPathComponent("AnalyticsReports", isDirectory: true)
-            .appendingPathComponent(category.rawValue, isDirectory: true)
-            .appendingPathComponent(sanitize(apiName), isDirectory: true)
-    }
-
-    /// Keeps only alphanumerics (e.g. "App Sessions" -> "AppSessions").
-    private static func sanitize(_ value: String) -> String {
-        let allowed = CharacterSet.alphanumerics
-        let scalars = value.unicodeScalars.filter { allowed.contains($0) }
-        return String(String.UnicodeScalarView(scalars))
+    /// The persistent, per-instance CSV path for a granularity:
+    /// `<AppSupport>/AnalyticsReports/<category>/<sanitized apiName>/<GRANULARITY>/<key>.csv`.
+    /// Resolved through `AnalyticsReportFileStore` so the detail and Files screens
+    /// share one scheme.
+    private func fileURL(for granularity: AnalyticsGranularity, instance: AnalyticsReportInstanceModel) -> URL {
+        AnalyticsReportFileStore.fileURL(
+            category: uiState.report.category,
+            apiName: uiState.report.apiName,
+            granularity: granularity,
+            instance: instance
+        )
     }
 
     /// Lowercases and keeps only alphanumerics, for tolerant report-name matching

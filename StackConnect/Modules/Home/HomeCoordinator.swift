@@ -56,6 +56,7 @@ enum HomeRoute: Hashable {
     case userDetail(user: UserModel, account: AccountModel)
     case analyticsReports(appId: String, appName: String, account: AccountModel)
     case analyticsReportDetail(appId: String, appName: String, report: AnalyticsCatalogReport, account: AccountModel)
+    case analyticsReportFiles(appId: String, appName: String, report: AnalyticsCatalogReport, account: AccountModel)
 }
 
 final class HomeCoordinator: MainCoordinatorProtocol {
@@ -275,6 +276,10 @@ final class HomeCoordinator: MainCoordinatorProtocol {
 
     func navigateToAnalyticsReportDetail(appId: String, appName: String, report: AnalyticsCatalogReport, account: AccountModel) {
         path.append(HomeRoute.analyticsReportDetail(appId: appId, appName: appName, report: report, account: account))
+    }
+
+    func navigateToAnalyticsReportFiles(appId: String, appName: String, report: AnalyticsCatalogReport, account: AccountModel) {
+        path.append(HomeRoute.analyticsReportFiles(appId: appId, appName: appName, report: report, account: account))
     }
 
     func navigateToAppCategoryPicker(
