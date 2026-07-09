@@ -99,6 +99,7 @@ final class AnalyticsReportFilesViewModel: AnalyticsReportFilesViewModelProtocol
 
         let fm = FileManager.default
         let reportDir = AnalyticsReportFileStore.reportDirectory(
+            appId: uiState.appId,
             category: uiState.report.category,
             apiName: uiState.report.apiName
         )
@@ -202,7 +203,7 @@ final class AnalyticsReportFilesViewModel: AnalyticsReportFilesViewModelProtocol
         defer { uiState.isProcessing = false }
 
         let fm = FileManager.default
-        let dirName = "\(AnalyticsReportFileStore.sanitize(uiState.report.apiName))-files"
+        let dirName = "\(AnalyticsReportFileStore.sanitize(uiState.appName))-\(AnalyticsReportFileStore.sanitize(uiState.report.apiName))-files"
         let workDir = fm.temporaryDirectory.appendingPathComponent(dirName, isDirectory: true)
 
         do {

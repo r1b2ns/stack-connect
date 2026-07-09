@@ -1,4 +1,7 @@
-• Schermafbeelding-voorbeeld — blader door de App Store-schermafbeeldingen van een app op versie, apparaat en resolutie, direct in StackConnect
-• De voortgang van de gefaseerde release verschijnt nu bij elke versie, zodat je de uitrol in één oogopslag volgt
-• Checklist vóór indienen — valideer build, schermafbeeldingen, nieuwe functies en demoaccount voordat je ter beoordeling indient, met een optionele bevestiging
+• Analytics-rapporten — bekijk en download je App Store Connect-statistieken direct in de app, met rapporten gegroepeerd per categorie en dagelijkse, wekelijkse of maandelijkse grafieken. Markeer favorieten, verberg wat je niet gebruikt en beheer gedownloade bestanden vanuit een apart Bestanden-scherm
+• Inzendingen — volg, verwerp en dien je App Review-inzendingen per app opnieuw in, met een duidelijke afhandeling van Apples limiet voor gelijktijdige inzendingen
+• Teambeheer — bewerk de rol, resources en zichtbare apps van een lid, bekijk zijn rechten en verwijder leden of trek uitnodigingen in vanuit het gebruikersdetailscherm
+• Iconen per platform — multiplatform-apps (zoals iOS + tvOS) tonen nu het echte icoon van elk platform in de app-details en de widgets 'Wacht op release'
+• Offline-modus — een indicator laat zien wanneer je offline bent; je gebufferde gegevens blijven zichtbaar en acties die een verbinding vereisen worden veilig geblokkeerd
+• Gerichte export — beperk een account-export tot de rechten van specifieke apps, met een doorzoekbare app-kiezer
 • Bugfixes en stabiliteitsverbeteringen

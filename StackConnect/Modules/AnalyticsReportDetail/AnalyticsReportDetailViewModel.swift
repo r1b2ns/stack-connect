@@ -328,12 +328,14 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
 
     // MARK: - File cache
 
-    /// The persistent, per-instance CSV path for a granularity:
-    /// `<AppSupport>/AnalyticsReports/<category>/<sanitized apiName>/<GRANULARITY>/<key>.csv`.
+    /// The persistent, per-app, per-instance CSV path for a granularity:
+    /// `<AppSupport>/AnalyticsReports/<appId>/<category>/<sanitized apiName>/<GRANULARITY>/<sanitized appName>-<key>.csv`.
     /// Resolved through `AnalyticsReportFileStore` so the detail and Files screens
     /// share one scheme.
     private func fileURL(for granularity: AnalyticsGranularity, instance: AnalyticsReportInstanceModel) -> URL {
         AnalyticsReportFileStore.fileURL(
+            appId: uiState.appId,
+            appName: uiState.appName,
             category: uiState.report.category,
             apiName: uiState.report.apiName,
             granularity: granularity,

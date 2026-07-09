@@ -1,4 +1,7 @@
-• Förhandsvisning av skärmbilder — bläddra bland en apps App Store-skärmbilder efter version, enhet och upplösning, direkt i StackConnect
-• Förloppet för stegvis lansering visas nu på varje version, så att du kan följa lanseringen med en blick
-• Checklista före inskickning — validera build, skärmbilder, nyheter och demokonto innan du skickar in för granskning, med en valfri bekräftelse
+• Analytics-rapporter — visa och ladda ned din App Store Connect-statistik direkt i appen, med rapporter grupperade efter kategori och diagram per dag, vecka eller månad. Markera favoriter, dölj sådana du inte använder och hantera nedladdade filer från en egen Filer-vy
+• Inskickningar — följ, kasta och skicka in dina App Review-inskickningar på nytt per app, med tydlig hantering av Apples gräns för samtidiga inskickningar
+• Teamhantering — redigera en medlems roll, resurser och synliga appar, se medlemmens behörigheter och ta bort medlemmar eller dra tillbaka inbjudningar direkt i användarens detaljvy
+• Ikoner per plattform — appar för flera plattformar (som iOS + tvOS) visar nu varje plattforms riktiga ikon i appdetaljerna och i widgetarna Väntar på lansering
+• Offline-läge — en indikator visar när du är offline; dina cachade data går fortfarande att visa och åtgärder som kräver anslutning blockeras på ett säkert sätt
+• Riktad export — begränsa en kontoexport till behörigheterna för specifika appar, med en sökbar app-väljare
 • Buggfixar och stabilitetsförbättringar

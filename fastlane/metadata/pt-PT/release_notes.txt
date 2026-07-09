@@ -1,4 +1,7 @@
-• Pré-visualização de Capturas de Ecrã — veja as capturas da App Store por versão, dispositivo e resolução, sem sair do StackConnect
-• O progresso do Lançamento Faseado passa a aparecer em cada versão, para acompanhar o lançamento em fases num relance
-• Lista de Verificação Pré-Envio — valide a build, capturas de ecrã, novidades e conta de demonstração antes de enviar para revisão, com uma confirmação opcional
+• Relatórios de Analytics — veja e transfira os analytics do App Store Connect diretamente na app, com relatórios agrupados por categoria e gráficos diários, semanais ou mensais. Marque favoritos, oculte os que não usa e faça a gestão dos ficheiros transferidos num ecrã de Ficheiros dedicado
+• Envios — acompanhe, elimine e reenvie os seus envios de revisão da App Store por app, com um tratamento claro do limite de envios em simultâneo da Apple
+• Gestão da equipa — edite a função, os recursos e as apps visíveis de um membro, consulte as suas permissões e remova membros ou cancele convites no ecrã de detalhes do utilizador
+• Ícones por plataforma — as apps multiplataforma (como iOS + tvOS) passam a mostrar o ícone real de cada plataforma nos detalhes da app e nos widgets de Aguardar Lançamento
+• Modo offline — um indicador mostra quando está sem ligação; os dados em cache continuam visíveis e as ações que exigem ligação são bloqueadas em segurança
+• Exportação com âmbito — limite a exportação de uma conta às permissões de apps específicas, com um seletor de apps pesquisável
 • Correções de erros e melhorias de estabilidade

@@ -1,4 +1,7 @@
-• Aperçu des captures d'écran — parcourez les captures de l'App Store d'une app par version, appareil et résolution, sans quitter StackConnect
-• La progression du déploiement par phases apparaît désormais sur chaque version, pour suivre le déploiement d'un coup d'œil
-• Liste de vérification avant soumission — validez le build, les captures, les nouveautés et le compte de démonstration avant de soumettre pour examen, avec une confirmation facultative
+• Rapports Analytics — consultez et téléchargez vos statistiques App Store Connect directement dans l'app, avec des rapports regroupés par catégorie et des graphiques quotidiens, hebdomadaires ou mensuels. Marquez des favoris, masquez ceux que vous n'utilisez pas et gérez les fichiers téléchargés depuis un écran Fichiers dédié
+• Soumissions — suivez, annulez et renvoyez vos soumissions d'examen de l'App Store app par app, avec une gestion claire de la limite de soumissions simultanées d'Apple
+• Gestion de l'équipe — modifiez le rôle, les ressources et les apps visibles d'un membre, consultez ses autorisations et supprimez des membres ou annulez des invitations depuis l'écran de détail de l'utilisateur
+• Icônes par plateforme — les apps multiplateformes (comme iOS + tvOS) affichent désormais l'icône réelle de chaque plateforme dans le détail de l'app et dans les widgets En attente de publication
+• Mode hors ligne — un indicateur signale quand vous êtes hors ligne ; vos données en cache restent consultables et les actions nécessitant une connexion sont bloquées en toute sécurité
+• Export ciblé — limitez l'export d'un compte aux autorisations d'apps précises, avec un sélecteur d'apps doté d'une recherche
 • Corrections de bugs et améliorations de la stabilité

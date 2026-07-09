@@ -1,4 +1,7 @@
-• Anteprima screenshot — sfoglia gli screenshot dell'App Store di un'app per versione, dispositivo e risoluzione, senza uscire da StackConnect
-• L'avanzamento del rilascio graduale ora compare su ogni versione, per seguire il rollout a colpo d'occhio
-• Lista di controllo pre-invio — verifica build, screenshot, novità e account demo prima di inviare per la revisione, con una conferma facoltativa
+• Report Analytics — consulta e scarica le analitiche di App Store Connect direttamente nell'app, con report raggruppati per categoria e grafici giornalieri, settimanali o mensili. Segna i preferiti, nascondi quelli che non usi e gestisci i file scaricati da una schermata File dedicata
+• Invii — monitora, annulla e reinvia i tuoi invii di revisione dell'App Store per ogni app, con una gestione chiara del limite di invii simultanei di Apple
+• Gestione del team — modifica ruolo, risorse e app visibili di un membro, consulta i suoi permessi e rimuovi membri o annulla inviti dalla schermata di dettaglio dell'utente
+• Icone per piattaforma — le app multipiattaforma (come iOS + tvOS) ora mostrano l'icona reale di ciascuna piattaforma nel dettaglio dell'app e nei widget In attesa di pubblicazione
+• Modalità offline — un indicatore segnala quando sei offline; i dati in cache restano consultabili e le azioni che richiedono una connessione vengono bloccate in sicurezza
+• Esportazione mirata — limita l'esportazione di un account ai permessi di app specifiche, con un selettore di app con ricerca
 • Correzioni di bug e miglioramenti della stabilità
