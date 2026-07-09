@@ -140,7 +140,7 @@ struct AnalyticsReportDetailView<ViewModel: AnalyticsReportDetailViewModelProtoc
         switch viewModel.uiState.phase {
         case .loaded, .empty:
             return true
-        case .loading, .needsRequest, .requested:
+        case .loading, .needsRequest, .awaitingData:
             return false
         }
     }
@@ -159,8 +159,8 @@ struct AnalyticsReportDetailView<ViewModel: AnalyticsReportDetailViewModelProtoc
             buildChart()
         case .needsRequest:
             buildNeedsRequestState()
-        case .requested(let message):
-            buildMessageState(icon: "clock.badge.checkmark", detail: message)
+        case .awaitingData(let requestedAt):
+            buildAwaitingState(requestedAt: requestedAt)
         case .empty(let title, let detail):
             buildMessageState(icon: "tray", title: title, detail: detail)
         }
@@ -213,6 +213,58 @@ struct AnalyticsReportDetailView<ViewModel: AnalyticsReportDetailViewModelProtoc
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+    }
+
+    /// Shown when a report request exists but Apple hasn't produced chartable
+    /// data yet. Explains the 24–48h publication window (relative to the locally
+    /// recorded POST time when known) and offers a manual re-poll.
+    @ViewBuilder
+    private func buildAwaitingState(requestedAt: Date?) -> some View {
+        let now = Date()
+        let isOverdue = requestedAt.map { AnalyticsAwaitingCopy.isOverdue(requestedAt: $0, now: now) } ?? false
+        let isReloading = viewModel.uiState.phase == .loading
+
+        VStack(spacing: 12) {
+            Image(systemName: "clock.badge.checkmark")
+                .font(.system(size: 40))
+                .foregroundStyle(.secondary)
+
+            Text(String(localized: "Waiting for Apple"))
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(AnalyticsAwaitingCopy.detail(requestedAt: requestedAt, isOverdue: isOverdue, now: now))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let requestedAt, !isOverdue {
+                Text(AnalyticsAwaitingCopy.expectedBy(requestedAt: requestedAt))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Button {
+                Task { await viewModel.selectGranularity(viewModel.uiState.granularity) }
+            } label: {
+                if isReloading {
+                    ProgressView()
+                } else {
+                    Text(String(localized: "Check again"))
+                        .fontWeight(.medium)
+                }
+            }
+            .buttonStyle(.bordered)
+            .disabled(isReloading)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
@@ -288,6 +340,8 @@ struct AnalyticsReportDetailView<ViewModel: AnalyticsReportDetailViewModelProtoc
                 .foregroundStyle(.secondary)
         }
     }
+
+    // MARK: - Value formatting
 
     private static func formatValue(_ value: Double) -> String {
         let formatter = NumberFormatter()

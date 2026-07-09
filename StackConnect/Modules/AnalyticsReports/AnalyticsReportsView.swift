@@ -208,10 +208,18 @@ struct AnalyticsReportsView<ViewModel: AnalyticsReportsViewModelProtocol>: View 
     // MARK: - Rows
 
     private func buildReportRow(_ report: AnalyticsCatalogReport) -> some View {
-        HStack(spacing: 12) {
-            Text(report.displayName)
-                .font(.body)
-                .foregroundStyle(.primary)
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(report.displayName)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+
+                Text(report.subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             Spacer()
 
