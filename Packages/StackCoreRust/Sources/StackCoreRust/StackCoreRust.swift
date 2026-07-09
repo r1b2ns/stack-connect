@@ -473,6 +473,22 @@ fileprivate struct FfiConverterInt32: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
+    typealias FfiType = UInt64
+    typealias SwiftType = UInt64
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt64 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterInt64: FfiConverterPrimitive {
     typealias FfiType = Int64
     typealias SwiftType = Int64
@@ -845,6 +861,390 @@ public func FfiConverterTypeAccessibilityDeclarations_lift(_ handle: UInt64) thr
 #endif
 public func FfiConverterTypeAccessibilityDeclarations_lower(_ value: AccessibilityDeclarations) -> UInt64 {
     return FfiConverterTypeAccessibilityDeclarations.lower(value)
+}
+
+
+
+
+
+
+/**
+ * UniFFI-exported Analytics capability handle. A thin, binding-friendly wrapper
+ * around a boxed [`AnalyticsImpl`]; async work runs on the tokio runtime.
+ * Reached via [`crate::service::provider::Provider::analytics`].
+ */
+public protocol AnalyticsProtocol: AnyObject, Sendable {
+    
+    /**
+     * Creates an analytics report request for `app_id` with `access_type` (the
+     * raw ASC value — `ONGOING` / `ONE_TIME_SNAPSHOT` — passed through verbatim),
+     * returning the created request.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func createAnalyticsReportRequest(appId: String, accessType: String) async throws  -> AnalyticsReportRequest
+    
+    /**
+     * Downloads the analytics segment at the pre-signed `url`, gunzips it, and
+     * parses the tab-delimited payload into generic headers + rows. No bearer
+     * token is sent (the URL is pre-signed). Transfers advertising, or growing
+     * past, `max_bytes` are refused so the host can download such large segments
+     * via the URL directly.
+     *
+     * # Errors
+     * [`StackError::Unsupported`] when the segment exceeds `max_bytes`,
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * when the gzip payload cannot be inflated or is not valid UTF-8, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func downloadAnalyticsSegment(url: String, maxBytes: UInt64) async throws  -> AnalyticsReportData
+    
+    /**
+     * Fetches a single page of the instances of the report `report_id`.
+     *
+     * `filter_granularity` is `None` for no filter, else the raw ASC
+     * `granularity` to include (`DAILY` / `WEEKLY` / `MONTHLY`). Paging semantics
+     * match [`Self::fetch_analytics_report_requests_page`].
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchAnalyticsReportInstancesPage(reportId: String, filterGranularity: String?, limit: UInt32, pageToken: String?) async throws  -> AnalyticsReportInstancesPage
+    
+    /**
+     * Fetches a single page of the analytics report requests for `app_id`.
+     *
+     * `filter_access_type` is `None` for no filter, else the raw ASC
+     * `accessType` to include. `page_token` is `None` for the first page;
+     * otherwise pass back a previous call's `next_token` verbatim. `next_token`
+     * is `None` once the last page has been reached.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchAnalyticsReportRequestsPage(appId: String, filterAccessType: String?, limit: UInt32, pageToken: String?) async throws  -> AnalyticsReportRequestsPage
+    
+    /**
+     * Fetches a single page of the segments of the report instance `instance_id`.
+     *
+     * Paging semantics match [`Self::fetch_analytics_report_requests_page`]
+     * (there is no filter here).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchAnalyticsReportSegmentsPage(instanceId: String, limit: UInt32, pageToken: String?) async throws  -> AnalyticsReportSegmentsPage
+    
+    /**
+     * Fetches a single page of the reports under the report request `request_id`.
+     *
+     * `filter_category` is `None` for no filter, else the raw ASC `category` to
+     * include. Paging semantics match
+     * [`Self::fetch_analytics_report_requests_page`].
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchAnalyticsReportsPage(requestId: String, filterCategory: String?, limit: UInt32, pageToken: String?) async throws  -> AnalyticsReportsPage
+    
+}
+/**
+ * UniFFI-exported Analytics capability handle. A thin, binding-friendly wrapper
+ * around a boxed [`AnalyticsImpl`]; async work runs on the tokio runtime.
+ * Reached via [`crate::service::provider::Provider::analytics`].
+ */
+open class Analytics: AnalyticsProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_analytics(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_analytics(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Creates an analytics report request for `app_id` with `access_type` (the
+     * raw ASC value — `ONGOING` / `ONE_TIME_SNAPSHOT` — passed through verbatim),
+     * returning the created request.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx response,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func createAnalyticsReportRequest(appId: String, accessType: String)async throws  -> AnalyticsReportRequest  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_analytics_create_analytics_report_request(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId),FfiConverterString.lower(accessType)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAnalyticsReportRequest_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Downloads the analytics segment at the pre-signed `url`, gunzips it, and
+     * parses the tab-delimited payload into generic headers + rows. No bearer
+     * token is sent (the URL is pre-signed). Transfers advertising, or growing
+     * past, `max_bytes` are refused so the host can download such large segments
+     * via the URL directly.
+     *
+     * # Errors
+     * [`StackError::Unsupported`] when the segment exceeds `max_bytes`,
+     * [`StackError::PendingAgreements`] on a pending-agreements 403,
+     * [`StackError::Http`] on any other non-2xx response, [`StackError::Decode`]
+     * when the gzip payload cannot be inflated or is not valid UTF-8, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func downloadAnalyticsSegment(url: String, maxBytes: UInt64)async throws  -> AnalyticsReportData  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_analytics_download_analytics_segment(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(url),FfiConverterUInt64.lower(maxBytes)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAnalyticsReportData_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Fetches a single page of the instances of the report `report_id`.
+     *
+     * `filter_granularity` is `None` for no filter, else the raw ASC
+     * `granularity` to include (`DAILY` / `WEEKLY` / `MONTHLY`). Paging semantics
+     * match [`Self::fetch_analytics_report_requests_page`].
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchAnalyticsReportInstancesPage(reportId: String, filterGranularity: String?, limit: UInt32, pageToken: String?)async throws  -> AnalyticsReportInstancesPage  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_analytics_fetch_analytics_report_instances_page(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(reportId),FfiConverterOptionString.lower(filterGranularity),FfiConverterUInt32.lower(limit),FfiConverterOptionString.lower(pageToken)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAnalyticsReportInstancesPage_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Fetches a single page of the analytics report requests for `app_id`.
+     *
+     * `filter_access_type` is `None` for no filter, else the raw ASC
+     * `accessType` to include. `page_token` is `None` for the first page;
+     * otherwise pass back a previous call's `next_token` verbatim. `next_token`
+     * is `None` once the last page has been reached.
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchAnalyticsReportRequestsPage(appId: String, filterAccessType: String?, limit: UInt32, pageToken: String?)async throws  -> AnalyticsReportRequestsPage  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_analytics_fetch_analytics_report_requests_page(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId),FfiConverterOptionString.lower(filterAccessType),FfiConverterUInt32.lower(limit),FfiConverterOptionString.lower(pageToken)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAnalyticsReportRequestsPage_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Fetches a single page of the segments of the report instance `instance_id`.
+     *
+     * Paging semantics match [`Self::fetch_analytics_report_requests_page`]
+     * (there is no filter here).
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchAnalyticsReportSegmentsPage(instanceId: String, limit: UInt32, pageToken: String?)async throws  -> AnalyticsReportSegmentsPage  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_analytics_fetch_analytics_report_segments_page(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(instanceId),FfiConverterUInt32.lower(limit),FfiConverterOptionString.lower(pageToken)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAnalyticsReportSegmentsPage_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Fetches a single page of the reports under the report request `request_id`.
+     *
+     * `filter_category` is `None` for no filter, else the raw ASC `category` to
+     * include. Paging semantics match
+     * [`Self::fetch_analytics_report_requests_page`].
+     *
+     * # Errors
+     * [`StackError::PendingAgreements`] when App Store Connect reports pending
+     * agreements, [`StackError::Http`] on any other non-2xx page,
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchAnalyticsReportsPage(requestId: String, filterCategory: String?, limit: UInt32, pageToken: String?)async throws  -> AnalyticsReportsPage  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_analytics_fetch_analytics_reports_page(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(requestId),FfiConverterOptionString.lower(filterCategory),FfiConverterUInt32.lower(limit),FfiConverterOptionString.lower(pageToken)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAnalyticsReportsPage_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAnalytics: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Analytics
+
+    public static func lift(_ handle: UInt64) throws -> Analytics {
+        return Analytics(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Analytics) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Analytics {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Analytics, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalytics_lift(_ handle: UInt64) throws -> Analytics {
+    return try FfiConverterTypeAnalytics.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalytics_lower(_ value: Analytics) -> UInt64 {
+    return FfiConverterTypeAnalytics.lower(value)
 }
 
 
@@ -6151,6 +6551,14 @@ public protocol ProviderProtocol: AnyObject, Sendable {
     func accessibilityDeclarations()  -> AccessibilityDeclarations?
     
     /**
+     * The Analytics capability handle, or `None` when this provider does not
+     * expose [`Capability::Analytics`]. This is the discovery mechanism: the host
+     * calls `provider.analytics()` and gets `None` when analytics reports are
+     * unsupported.
+     */
+    func analytics()  -> Analytics?
+    
+    /**
      * The App Metadata capability handle, or `None` when this provider does not
      * expose [`Capability::AppMetadata`]. This is the discovery mechanism: the
      * host calls `provider.app_metadata()` and gets `None` when app metadata is
@@ -6350,6 +6758,20 @@ open class Provider: ProviderProtocol, @unchecked Sendable {
 open func accessibilityDeclarations() -> AccessibilityDeclarations?  {
     return try!  FfiConverterOptionTypeAccessibilityDeclarations.lift(try! rustCall() {
     uniffi_stack_core_fn_method_provider_accessibility_declarations(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The Analytics capability handle, or `None` when this provider does not
+     * expose [`Capability::Analytics`]. This is the discovery mechanism: the host
+     * calls `provider.analytics()` and gets `None` when analytics reports are
+     * unsupported.
+     */
+open func analytics() -> Analytics?  {
+    return try!  FfiConverterOptionTypeAnalytics.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_analytics(
             self.uniffiCloneHandle(),$0
     )
 })
@@ -7935,6 +8357,565 @@ public func FfiConverterTypeAgeRatingDeclarationInfo_lift(_ buf: RustBuffer) thr
 #endif
 public func FfiConverterTypeAgeRatingDeclarationInfo_lower(_ value: AgeRatingDeclarationInfo) -> RustBuffer {
     return FfiConverterTypeAgeRatingDeclarationInfo.lower(value)
+}
+
+
+/**
+ * A single analytics report available under a report request. `category` is the
+ * raw ASC `category` value (e.g. `APP_USAGE`, `APP_STORE_ENGAGEMENT`) passed
+ * through verbatim; `name` is the report's display name.
+ */
+public struct AnalyticsReport: Equatable, Hashable {
+    public var id: String
+    public var name: String
+    public var category: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, name: String, category: String) {
+        self.id = id
+        self.name = name
+        self.category = category
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AnalyticsReport: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAnalyticsReport: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AnalyticsReport {
+        return
+            try AnalyticsReport(
+                id: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                category: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AnalyticsReport, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.category, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReport_lift(_ buf: RustBuffer) throws -> AnalyticsReport {
+    return try FfiConverterTypeAnalyticsReport.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReport_lower(_ value: AnalyticsReport) -> RustBuffer {
+    return FfiConverterTypeAnalyticsReport.lower(value)
+}
+
+
+/**
+ * The parsed contents of a downloaded analytics segment: a generic tab-delimited
+ * table of `headers` plus `rows`. The core does no typed per-report parsing —
+ * the host interprets the columns. `row_count` is the number of data rows (it
+ * equals `rows.len()`, surfaced as a convenience for bindings). This record
+ * never crosses the wire to App Store Connect; the serde derives are kept only
+ * for consistency with the other analytics DTOs.
+ */
+public struct AnalyticsReportData: Equatable, Hashable {
+    public var headers: [String]
+    public var rows: [[String]]
+    public var rowCount: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(headers: [String], rows: [[String]], rowCount: UInt32) {
+        self.headers = headers
+        self.rows = rows
+        self.rowCount = rowCount
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AnalyticsReportData: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAnalyticsReportData: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AnalyticsReportData {
+        return
+            try AnalyticsReportData(
+                headers: FfiConverterSequenceString.read(from: &buf), 
+                rows: FfiConverterSequenceSequenceString.read(from: &buf), 
+                rowCount: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AnalyticsReportData, into buf: inout [UInt8]) {
+        FfiConverterSequenceString.write(value.headers, into: &buf)
+        FfiConverterSequenceSequenceString.write(value.rows, into: &buf)
+        FfiConverterUInt32.write(value.rowCount, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReportData_lift(_ buf: RustBuffer) throws -> AnalyticsReportData {
+    return try FfiConverterTypeAnalyticsReportData.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReportData_lower(_ value: AnalyticsReportData) -> RustBuffer {
+    return FfiConverterTypeAnalyticsReportData.lower(value)
+}
+
+
+/**
+ * A generated instance of a report at a given granularity. `granularity` is the
+ * raw ASC value (`DAILY` / `WEEKLY` / `MONTHLY`); `processing_date` is the raw
+ * ISO8601 date the instance covers (host owns parsing), `None` when absent.
+ */
+public struct AnalyticsReportInstance: Equatable, Hashable {
+    public var id: String
+    public var granularity: String
+    public var processingDate: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, granularity: String, processingDate: String?) {
+        self.id = id
+        self.granularity = granularity
+        self.processingDate = processingDate
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AnalyticsReportInstance: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAnalyticsReportInstance: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AnalyticsReportInstance {
+        return
+            try AnalyticsReportInstance(
+                id: FfiConverterString.read(from: &buf), 
+                granularity: FfiConverterString.read(from: &buf), 
+                processingDate: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AnalyticsReportInstance, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.granularity, into: &buf)
+        FfiConverterOptionString.write(value.processingDate, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReportInstance_lift(_ buf: RustBuffer) throws -> AnalyticsReportInstance {
+    return try FfiConverterTypeAnalyticsReportInstance.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReportInstance_lower(_ value: AnalyticsReportInstance) -> RustBuffer {
+    return FfiConverterTypeAnalyticsReportInstance.lower(value)
+}
+
+
+/**
+ * One page of analytics report instances plus an opaque `next_token` (see
+ * [`AnalyticsReportRequestsPage`]).
+ */
+public struct AnalyticsReportInstancesPage: Equatable, Hashable {
+    public var instances: [AnalyticsReportInstance]
+    public var nextToken: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(instances: [AnalyticsReportInstance], nextToken: String?) {
+        self.instances = instances
+        self.nextToken = nextToken
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AnalyticsReportInstancesPage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAnalyticsReportInstancesPage: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AnalyticsReportInstancesPage {
+        return
+            try AnalyticsReportInstancesPage(
+                instances: FfiConverterSequenceTypeAnalyticsReportInstance.read(from: &buf), 
+                nextToken: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AnalyticsReportInstancesPage, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeAnalyticsReportInstance.write(value.instances, into: &buf)
+        FfiConverterOptionString.write(value.nextToken, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReportInstancesPage_lift(_ buf: RustBuffer) throws -> AnalyticsReportInstancesPage {
+    return try FfiConverterTypeAnalyticsReportInstancesPage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReportInstancesPage_lower(_ value: AnalyticsReportInstancesPage) -> RustBuffer {
+    return FfiConverterTypeAnalyticsReportInstancesPage.lower(value)
+}
+
+
+/**
+ * An analytics report request: the container an app opens to start receiving a
+ * family of analytics reports. `access_type` is the raw ASC value (`ONGOING` /
+ * `ONE_TIME_SNAPSHOT`) passed through verbatim; `stopped_due_to_inactivity` is
+ * `true` when Apple stopped an `ONGOING` request because the reports went
+ * unread.
+ */
+public struct AnalyticsReportRequest: Equatable, Hashable {
+    public var id: String
+    public var accessType: String
+    public var stoppedDueToInactivity: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, accessType: String, stoppedDueToInactivity: Bool) {
+        self.id = id
+        self.accessType = accessType
+        self.stoppedDueToInactivity = stoppedDueToInactivity
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AnalyticsReportRequest: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAnalyticsReportRequest: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AnalyticsReportRequest {
+        return
+            try AnalyticsReportRequest(
+                id: FfiConverterString.read(from: &buf), 
+                accessType: FfiConverterString.read(from: &buf), 
+                stoppedDueToInactivity: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AnalyticsReportRequest, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.accessType, into: &buf)
+        FfiConverterBool.write(value.stoppedDueToInactivity, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReportRequest_lift(_ buf: RustBuffer) throws -> AnalyticsReportRequest {
+    return try FfiConverterTypeAnalyticsReportRequest.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReportRequest_lower(_ value: AnalyticsReportRequest) -> RustBuffer {
+    return FfiConverterTypeAnalyticsReportRequest.lower(value)
+}
+
+
+/**
+ * One page of analytics report requests plus an opaque token to fetch the next
+ * page. `next_token` is `None` on the last page; otherwise pass it back verbatim
+ * as the next call's `page_token` (it is the JSON:API `links.next` URL). Mirrors
+ * [`CustomerReviewsPage`].
+ */
+public struct AnalyticsReportRequestsPage: Equatable, Hashable {
+    public var requests: [AnalyticsReportRequest]
+    public var nextToken: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(requests: [AnalyticsReportRequest], nextToken: String?) {
+        self.requests = requests
+        self.nextToken = nextToken
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AnalyticsReportRequestsPage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAnalyticsReportRequestsPage: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AnalyticsReportRequestsPage {
+        return
+            try AnalyticsReportRequestsPage(
+                requests: FfiConverterSequenceTypeAnalyticsReportRequest.read(from: &buf), 
+                nextToken: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AnalyticsReportRequestsPage, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeAnalyticsReportRequest.write(value.requests, into: &buf)
+        FfiConverterOptionString.write(value.nextToken, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReportRequestsPage_lift(_ buf: RustBuffer) throws -> AnalyticsReportRequestsPage {
+    return try FfiConverterTypeAnalyticsReportRequestsPage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReportRequestsPage_lower(_ value: AnalyticsReportRequestsPage) -> RustBuffer {
+    return FfiConverterTypeAnalyticsReportRequestsPage.lower(value)
+}
+
+
+/**
+ * A downloadable segment of a report instance. `url` is a pre-signed download
+ * URL (no bearer auth), `checksum` is Apple's advertised checksum, and
+ * `size_in_bytes` is the compressed size when advertised. Optional fields are
+ * `None` when the corresponding attribute is absent.
+ */
+public struct AnalyticsReportSegment: Equatable, Hashable {
+    public var id: String
+    public var url: String
+    public var checksum: String?
+    public var sizeInBytes: Int64?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, url: String, checksum: String?, sizeInBytes: Int64?) {
+        self.id = id
+        self.url = url
+        self.checksum = checksum
+        self.sizeInBytes = sizeInBytes
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AnalyticsReportSegment: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAnalyticsReportSegment: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AnalyticsReportSegment {
+        return
+            try AnalyticsReportSegment(
+                id: FfiConverterString.read(from: &buf), 
+                url: FfiConverterString.read(from: &buf), 
+                checksum: FfiConverterOptionString.read(from: &buf), 
+                sizeInBytes: FfiConverterOptionInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AnalyticsReportSegment, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.url, into: &buf)
+        FfiConverterOptionString.write(value.checksum, into: &buf)
+        FfiConverterOptionInt64.write(value.sizeInBytes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReportSegment_lift(_ buf: RustBuffer) throws -> AnalyticsReportSegment {
+    return try FfiConverterTypeAnalyticsReportSegment.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReportSegment_lower(_ value: AnalyticsReportSegment) -> RustBuffer {
+    return FfiConverterTypeAnalyticsReportSegment.lower(value)
+}
+
+
+/**
+ * One page of analytics report segments plus an opaque `next_token` (see
+ * [`AnalyticsReportRequestsPage`]).
+ */
+public struct AnalyticsReportSegmentsPage: Equatable, Hashable {
+    public var segments: [AnalyticsReportSegment]
+    public var nextToken: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(segments: [AnalyticsReportSegment], nextToken: String?) {
+        self.segments = segments
+        self.nextToken = nextToken
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AnalyticsReportSegmentsPage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAnalyticsReportSegmentsPage: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AnalyticsReportSegmentsPage {
+        return
+            try AnalyticsReportSegmentsPage(
+                segments: FfiConverterSequenceTypeAnalyticsReportSegment.read(from: &buf), 
+                nextToken: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AnalyticsReportSegmentsPage, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeAnalyticsReportSegment.write(value.segments, into: &buf)
+        FfiConverterOptionString.write(value.nextToken, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReportSegmentsPage_lift(_ buf: RustBuffer) throws -> AnalyticsReportSegmentsPage {
+    return try FfiConverterTypeAnalyticsReportSegmentsPage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReportSegmentsPage_lower(_ value: AnalyticsReportSegmentsPage) -> RustBuffer {
+    return FfiConverterTypeAnalyticsReportSegmentsPage.lower(value)
+}
+
+
+/**
+ * One page of analytics reports plus an opaque `next_token` (see
+ * [`AnalyticsReportRequestsPage`]).
+ */
+public struct AnalyticsReportsPage: Equatable, Hashable {
+    public var reports: [AnalyticsReport]
+    public var nextToken: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(reports: [AnalyticsReport], nextToken: String?) {
+        self.reports = reports
+        self.nextToken = nextToken
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AnalyticsReportsPage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAnalyticsReportsPage: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AnalyticsReportsPage {
+        return
+            try AnalyticsReportsPage(
+                reports: FfiConverterSequenceTypeAnalyticsReport.read(from: &buf), 
+                nextToken: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AnalyticsReportsPage, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeAnalyticsReport.write(value.reports, into: &buf)
+        FfiConverterOptionString.write(value.nextToken, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReportsPage_lift(_ buf: RustBuffer) throws -> AnalyticsReportsPage {
+    return try FfiConverterTypeAnalyticsReportsPage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAnalyticsReportsPage_lower(_ value: AnalyticsReportsPage) -> RustBuffer {
+    return FfiConverterTypeAnalyticsReportsPage.lower(value)
 }
 
 
@@ -10446,6 +11427,7 @@ public enum Capability: Equatable, Hashable {
     case bundleIds
     case certificates
     case profiles
+    case analytics
 
 
 
@@ -10496,6 +11478,8 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         case 14: return .certificates
         
         case 15: return .profiles
+        
+        case 16: return .analytics
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -10563,6 +11547,10 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case .profiles:
             writeInt(&buf, Int32(15))
+        
+        
+        case .analytics:
+            writeInt(&buf, Int32(16))
         
         }
     }
@@ -10833,6 +11821,30 @@ fileprivate struct FfiConverterOptionInt32: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionInt64: FfiConverterRustBuffer {
+    typealias SwiftType = Int64?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterInt64.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterInt64.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionBool: FfiConverterRustBuffer {
     typealias SwiftType = Bool?
 
@@ -10897,6 +11909,30 @@ fileprivate struct FfiConverterOptionTypeAccessibilityDeclarations: FfiConverter
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeAccessibilityDeclarations.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeAnalytics: FfiConverterRustBuffer {
+    typealias SwiftType = Analytics?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAnalytics.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAnalytics.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -11427,6 +12463,106 @@ fileprivate struct FfiConverterSequenceTypeAccessibilityDeclarationInfo: FfiConv
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeAccessibilityDeclarationInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAnalyticsReport: FfiConverterRustBuffer {
+    typealias SwiftType = [AnalyticsReport]
+
+    public static func write(_ value: [AnalyticsReport], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAnalyticsReport.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AnalyticsReport] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AnalyticsReport]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAnalyticsReport.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAnalyticsReportInstance: FfiConverterRustBuffer {
+    typealias SwiftType = [AnalyticsReportInstance]
+
+    public static func write(_ value: [AnalyticsReportInstance], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAnalyticsReportInstance.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AnalyticsReportInstance] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AnalyticsReportInstance]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAnalyticsReportInstance.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAnalyticsReportRequest: FfiConverterRustBuffer {
+    typealias SwiftType = [AnalyticsReportRequest]
+
+    public static func write(_ value: [AnalyticsReportRequest], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAnalyticsReportRequest.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AnalyticsReportRequest] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AnalyticsReportRequest]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAnalyticsReportRequest.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAnalyticsReportSegment: FfiConverterRustBuffer {
+    typealias SwiftType = [AnalyticsReportSegment]
+
+    public static func write(_ value: [AnalyticsReportSegment], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAnalyticsReportSegment.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AnalyticsReportSegment] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AnalyticsReportSegment]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAnalyticsReportSegment.read(from: &buf))
         }
         return seq
     }
@@ -12035,6 +13171,31 @@ fileprivate struct FfiConverterSequenceTypeServiceKind: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceSequenceString: FfiConverterRustBuffer {
+    typealias SwiftType = [[String]]
+
+    public static func write(_ value: [[String]], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterSequenceString.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [[String]] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [[String]]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterSequenceString.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterDictionaryStringString: FfiConverterRustBuffer {
     public static func write(_ value: [String: String], into buf: inout [UInt8]) {
         let len = Int32(value.count)
@@ -12229,6 +13390,24 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_accessibilitydeclarations_update_accessibility_declaration() != 19542) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_analytics_create_analytics_report_request() != 39068) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_analytics_download_analytics_segment() != 36252) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_analytics_fetch_analytics_report_instances_page() != 45314) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_analytics_fetch_analytics_report_requests_page() != 12058) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_analytics_fetch_analytics_report_segments_page() != 62954) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_analytics_fetch_analytics_reports_page() != 35252) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_appmetadata_create_app_info_localization() != 54393) {
@@ -12508,6 +13687,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_accessibility_declarations() != 36559) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_analytics() != 60624) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_app_metadata() != 46670) {

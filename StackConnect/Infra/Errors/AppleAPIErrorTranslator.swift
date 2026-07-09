@@ -48,6 +48,22 @@ enum AppleAPIErrorTranslator {
         return (first.code, first.title, first.detail, first.status)
     }
 
+    // MARK: - Structured user-facing error
+
+    struct Friendly: Equatable { let title: String?; let detail: String }
+
+    /// Structured user-facing error: Apple's short title (if any) plus a detail line.
+    static func friendly(for error: Error) -> Friendly {
+        guard case StackCoreRust.StackError.Http(_, let message) = error else {
+            return Friendly(title: nil, detail: friendlyMessage(for: error))
+        }
+        let first = firstError(fromBody: message)
+        let title = (first?.title?.isEmpty == false) ? first?.title : nil
+        let rawDetail = first?.detail ?? ""
+        let detail = rawDetail.isEmpty ? friendlyMessage(for: error) : rawDetail
+        return Friendly(title: title, detail: detail)
+    }
+
     static func friendlyMessage(for error: Error) -> String {
         guard case StackCoreRust.StackError.Http(let status, let message) = error else {
             return error.localizedDescription

@@ -503,6 +503,19 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             } label: {
                 buildMenuRow(icon: "star.fill", color: .yellow, title: String(localized: "Ratings and Reviews"))
             }
+            Button {
+                guard account.canView(.analytics) else {
+                    denyPermission(String(localized: "You don't have permission to view analytics."))
+                    return
+                }
+                homeCoordinator.navigateToAnalyticsReports(
+                    appId: viewModel.uiState.app.id,
+                    appName: viewModel.uiState.app.name,
+                    account: account
+                )
+            } label: {
+                buildMenuRow(icon: "chart.bar.xaxis", color: .indigo, title: String(localized: "Analytics"))
+            }
         } header: {
             Text("App Store")
         }

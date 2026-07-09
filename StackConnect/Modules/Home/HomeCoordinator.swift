@@ -54,6 +54,8 @@ enum HomeRoute: Hashable {
     case platformBuildsList(appId: String, platform: String, account: AccountModel)
     case buildDetail(build: BuildModel, appId: String, account: AccountModel)
     case userDetail(user: UserModel, account: AccountModel)
+    case analyticsReports(appId: String, appName: String, account: AccountModel)
+    case analyticsReportDetail(appId: String, appName: String, report: AnalyticsCatalogReport, account: AccountModel)
 }
 
 final class HomeCoordinator: MainCoordinatorProtocol {
@@ -265,6 +267,14 @@ final class HomeCoordinator: MainCoordinatorProtocol {
 
     func navigateToReviewSubmissionDetail(submission: ReviewSubmissionModel, account: AccountModel) {
         path.append(HomeRoute.reviewSubmissionDetail(submission: submission, account: account))
+    }
+
+    func navigateToAnalyticsReports(appId: String, appName: String, account: AccountModel) {
+        path.append(HomeRoute.analyticsReports(appId: appId, appName: appName, account: account))
+    }
+
+    func navigateToAnalyticsReportDetail(appId: String, appName: String, report: AnalyticsCatalogReport, account: AccountModel) {
+        path.append(HomeRoute.analyticsReportDetail(appId: appId, appName: appName, report: report, account: account))
     }
 
     func navigateToAppCategoryPicker(

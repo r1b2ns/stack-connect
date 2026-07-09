@@ -1992,6 +1992,151 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         return plain.date(from: string)
     }
 
+    // MARK: - Analytics
+
+    /// A single page of analytics report requests plus the opaque forward
+    /// pagination token. `hasNextPage` mirrors `BuildsPage` so callers can drive
+    /// infinite scroll with the same idiom.
+    struct AnalyticsReportRequestsPageResult {
+        let requests: [AnalyticsReportRequestModel]
+        let hasNextPage: Bool
+        let nextToken: String?
+    }
+
+    struct AnalyticsReportsPageResult {
+        let reports: [AnalyticsReportModel]
+        let hasNextPage: Bool
+        let nextToken: String?
+    }
+
+    struct AnalyticsReportInstancesPageResult {
+        let instances: [AnalyticsReportInstanceModel]
+        let hasNextPage: Bool
+        let nextToken: String?
+    }
+
+    struct AnalyticsReportSegmentsPageResult {
+        let segments: [AnalyticsReportSegmentModel]
+        let hasNextPage: Bool
+        let nextToken: String?
+    }
+
+    /// Requests Apple to start generating analytics reports for `appId`.
+    /// `accessType` is the raw wire value: `ONGOING` or `ONE_TIME_SNAPSHOT`.
+    /// Apple generates *all* report categories for the app; category/granularity
+    /// are browsing filters applied later, not parameters of this request.
+    func createAnalyticsReportRequest(appId: String, accessType: String) async throws -> AnalyticsReportRequestModel {
+        let provider = try rustCoreProvider()
+        guard let analytics = provider.analytics() else {
+            throw translate(.Unsupported(message: "Analytics capability is not available for this provider."))
+        }
+        let core = try await callRustCore { try await analytics.createAnalyticsReportRequest(appId: appId, accessType: accessType) }
+        Log.print.info("[Apple] Created analytics report request \(core.id) (Rust core)")
+        return Self.mapAnalyticsReportRequest(core)
+    }
+
+    func fetchAnalyticsReportRequestsPage(
+        appId: String,
+        filterAccessType: String? = nil,
+        limit: Int = 50,
+        pageToken: String? = nil
+    ) async throws -> AnalyticsReportRequestsPageResult {
+        let provider = try rustCoreProvider()
+        guard let analytics = provider.analytics() else {
+            throw translate(.Unsupported(message: "Analytics capability is not available for this provider."))
+        }
+        let page = try await callRustCore {
+            try await analytics.fetchAnalyticsReportRequestsPage(appId: appId, filterAccessType: filterAccessType, limit: UInt32(limit), pageToken: pageToken)
+        }
+        let models = page.requests.map { Self.mapAnalyticsReportRequest($0) }
+        Log.print.info("[Apple] Fetched \(models.count) analytics report requests page (Rust core)")
+        return AnalyticsReportRequestsPageResult(requests: models, hasNextPage: page.nextToken != nil, nextToken: page.nextToken)
+    }
+
+    func fetchAnalyticsReportsPage(
+        requestId: String,
+        filterCategory: String? = nil,
+        limit: Int = 50,
+        pageToken: String? = nil
+    ) async throws -> AnalyticsReportsPageResult {
+        let provider = try rustCoreProvider()
+        guard let analytics = provider.analytics() else {
+            throw translate(.Unsupported(message: "Analytics capability is not available for this provider."))
+        }
+        let page = try await callRustCore {
+            try await analytics.fetchAnalyticsReportsPage(requestId: requestId, filterCategory: filterCategory, limit: UInt32(limit), pageToken: pageToken)
+        }
+        let models = page.reports.map { Self.mapAnalyticsReport($0) }
+        Log.print.info("[Apple] Fetched \(models.count) analytics reports page (Rust core)")
+        return AnalyticsReportsPageResult(reports: models, hasNextPage: page.nextToken != nil, nextToken: page.nextToken)
+    }
+
+    func fetchAnalyticsReportInstancesPage(
+        reportId: String,
+        filterGranularity: String? = nil,
+        limit: Int = 50,
+        pageToken: String? = nil
+    ) async throws -> AnalyticsReportInstancesPageResult {
+        let provider = try rustCoreProvider()
+        guard let analytics = provider.analytics() else {
+            throw translate(.Unsupported(message: "Analytics capability is not available for this provider."))
+        }
+        let page = try await callRustCore {
+            try await analytics.fetchAnalyticsReportInstancesPage(reportId: reportId, filterGranularity: filterGranularity, limit: UInt32(limit), pageToken: pageToken)
+        }
+        let models = page.instances.map { Self.mapAnalyticsReportInstance($0) }
+        Log.print.info("[Apple] Fetched \(models.count) analytics report instances page (Rust core)")
+        return AnalyticsReportInstancesPageResult(instances: models, hasNextPage: page.nextToken != nil, nextToken: page.nextToken)
+    }
+
+    func fetchAnalyticsReportSegmentsPage(
+        instanceId: String,
+        limit: Int = 50,
+        pageToken: String? = nil
+    ) async throws -> AnalyticsReportSegmentsPageResult {
+        let provider = try rustCoreProvider()
+        guard let analytics = provider.analytics() else {
+            throw translate(.Unsupported(message: "Analytics capability is not available for this provider."))
+        }
+        let page = try await callRustCore {
+            try await analytics.fetchAnalyticsReportSegmentsPage(instanceId: instanceId, limit: UInt32(limit), pageToken: pageToken)
+        }
+        let models = page.segments.map { Self.mapAnalyticsReportSegment($0) }
+        Log.print.info("[Apple] Fetched \(models.count) analytics report segments page (Rust core)")
+        return AnalyticsReportSegmentsPageResult(segments: models, hasNextPage: page.nextToken != nil, nextToken: page.nextToken)
+    }
+
+    /// Downloads and parses a segment's pre-signed S3 URL. The core performs the
+    /// no-auth GET + gunzip and returns the parsed TSV as `headers` + `rows`;
+    /// there is no raw file to persist, so callers reconstruct one (e.g. CSV).
+    func downloadAnalyticsSegment(url: String, maxBytes: UInt64) async throws -> AnalyticsReportContent {
+        let provider = try rustCoreProvider()
+        guard let analytics = provider.analytics() else {
+            throw translate(.Unsupported(message: "Analytics capability is not available for this provider."))
+        }
+        let data = try await callRustCore { try await analytics.downloadAnalyticsSegment(url: url, maxBytes: maxBytes) }
+        Log.print.info("[Apple] Downloaded analytics segment: \(data.rowCount) rows (Rust core)")
+        return AnalyticsReportContent(headers: data.headers, rows: data.rows, rowCount: Int(data.rowCount))
+    }
+
+    // MARK: - Analytics mapping
+
+    static func mapAnalyticsReportRequest(_ core: StackCoreRust.AnalyticsReportRequest) -> AnalyticsReportRequestModel {
+        AnalyticsReportRequestModel(id: core.id, accessType: core.accessType, stoppedDueToInactivity: core.stoppedDueToInactivity)
+    }
+
+    static func mapAnalyticsReport(_ core: StackCoreRust.AnalyticsReport) -> AnalyticsReportModel {
+        AnalyticsReportModel(id: core.id, name: core.name, category: core.category)
+    }
+
+    static func mapAnalyticsReportInstance(_ core: StackCoreRust.AnalyticsReportInstance) -> AnalyticsReportInstanceModel {
+        AnalyticsReportInstanceModel(id: core.id, granularity: core.granularity, processingDate: core.processingDate)
+    }
+
+    static func mapAnalyticsReportSegment(_ core: StackCoreRust.AnalyticsReportSegment) -> AnalyticsReportSegmentModel {
+        AnalyticsReportSegmentModel(id: core.id, url: core.url, checksum: core.checksum, sizeInBytes: core.sizeInBytes.map(Int.init))
+    }
+
     // MARK: - Rust core
 
     /// Lazily builds and caches the Rust core `Provider` for App Store Connect,
@@ -2041,4 +2186,47 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         Log.print.error("[Apple] Rust core error: \(error.localizedDescription)")
         return error
     }
+}
+
+// MARK: - Analytics Models
+
+/// A report request the developer has asked Apple to generate for an app.
+/// `accessType` is the raw wire value (`ONGOING` / `ONE_TIME_SNAPSHOT`).
+struct AnalyticsReportRequestModel: Identifiable, Equatable, Hashable {
+    let id: String
+    let accessType: String
+    let stoppedDueToInactivity: Bool
+}
+
+/// A single report available under a request. `category` is the raw ASC value
+/// (e.g. `APP_USAGE`); `name` is the report's display name.
+struct AnalyticsReportModel: Identifiable, Equatable, Hashable {
+    let id: String
+    let name: String
+    let category: String
+}
+
+/// A dated instance of a report at a given granularity (`DAILY`/`WEEKLY`/`MONTHLY`).
+struct AnalyticsReportInstanceModel: Identifiable, Equatable, Hashable {
+    let id: String
+    let granularity: String
+    let processingDate: String?
+}
+
+/// A downloadable segment of an instance. `url` is a pre-signed S3 URL; the core
+/// handles the no-auth GET + gunzip when downloading.
+struct AnalyticsReportSegmentModel: Identifiable, Equatable, Hashable {
+    let id: String
+    let url: String
+    let checksum: String?
+    let sizeInBytes: Int?
+}
+
+/// The parsed contents of a downloaded segment (generic tab-delimited data
+/// reconstructed as headers + rows). There is no raw file — callers materialize
+/// one (e.g. CSV) from this.
+struct AnalyticsReportContent: Equatable, Hashable {
+    let headers: [String]
+    let rows: [[String]]
+    let rowCount: Int
 }
