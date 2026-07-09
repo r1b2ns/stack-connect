@@ -1,24 +1,18 @@
 {
-  "version": "2.2.0",
+  "version": "2.3.0",
   "title": "新功能",
   "highlights": [
     {
-      "icon": "photo.on.rectangle.angled",
+      "icon": "chart.bar.xaxis",
+      "color": "indigo",
+      "title": "分析",
+      "description": "檢視並下載您 App 的分析報告、趨勢與指標。"
+    },
+    {
+      "icon": "paperplane.fill",
       "color": "blue",
-      "title": "螢幕截圖預覽",
-      "description": "直接在 App 內依版本、裝置與解析度瀏覽你的 App Store 螢幕截圖。"
-    },
-    {
-      "icon": "chart.line.uptrend.xyaxis",
-      "color": "green",
-      "title": "分階段發布進度",
-      "description": "直接在「App 詳細資訊」的每個版本列中追蹤進行中的分階段發布。"
-    },
-    {
-      "icon": "checklist",
-      "color": "purple",
-      "title": "提交前檢查清單",
-      "description": "在提交審查前，驗證組建、螢幕截圖、新功能等項目。"
+      "title": "Submissions",
+      "description": "追蹤並管理您的 App 審核提交項目及其狀態。"
     },
     {
       "icon": "ladybug.fill",

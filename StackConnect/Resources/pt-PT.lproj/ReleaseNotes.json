@@ -1,24 +1,18 @@
 {
-  "version": "2.2.0",
+  "version": "2.3.0",
   "title": "Novidades",
   "highlights": [
     {
-      "icon": "photo.on.rectangle.angled",
+      "icon": "chart.bar.xaxis",
+      "color": "indigo",
+      "title": "Análises",
+      "description": "Veja e transfira os relatórios de análises, tendências e métricas da sua aplicação."
+    },
+    {
+      "icon": "paperplane.fill",
       "color": "blue",
-      "title": "Pré-visualização de Capturas de Ecrã",
-      "description": "Veja as capturas de ecrã da App Store por versão, dispositivo e resolução, diretamente na aplicação."
-    },
-    {
-      "icon": "chart.line.uptrend.xyaxis",
-      "color": "green",
-      "title": "Progresso do Lançamento Faseado",
-      "description": "Acompanhe o lançamento faseado em curso em cada versão nos Detalhes da Aplicação."
-    },
-    {
-      "icon": "checklist",
-      "color": "purple",
-      "title": "Lista de Verificação Pré-Envio",
-      "description": "Valide a build, capturas de ecrã, novidades e mais antes de enviar para revisão."
+      "title": "Submissions",
+      "description": "Acompanhe e faça a gestão dos seus envios para revisão da aplicação e o respetivo estado."
     },
     {
       "icon": "ladybug.fill",

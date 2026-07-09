@@ -88,6 +88,7 @@ enum AnalyticsGranularity: String, CaseIterable, Identifiable {
 struct AnalyticsCatalogReport: Hashable, Identifiable {
     var id: String { apiName }
     let displayName: String
+    let subtitle: String
     let apiName: String
     let category: AnalyticsCategory
 }
@@ -104,50 +105,50 @@ enum AnalyticsCatalog {
         (
             .appStoreEngagement,
             [
-                AnalyticsCatalogReport(displayName: String(localized: "Discovery and Engagement"), apiName: "App Store Discovery and Engagement", category: .appStoreEngagement),
-                AnalyticsCatalogReport(displayName: String(localized: "Web Preview"), apiName: "App Store Web Preview", category: .appStoreEngagement),
-                AnalyticsCatalogReport(displayName: String(localized: "Retention Messaging"), apiName: "App Store Retention Messaging", category: .appStoreEngagement)
+                AnalyticsCatalogReport(displayName: String(localized: "Discovery and Engagement"), subtitle: String(localized: "Impressions, product page views, and how users find and engage with your app on the App Store."), apiName: "App Store Discovery and Engagement", category: .appStoreEngagement),
+                AnalyticsCatalogReport(displayName: String(localized: "Web Preview"), subtitle: String(localized: "Views and engagement from your app's shareable App Store web preview pages."), apiName: "App Store Web Preview", category: .appStoreEngagement),
+                AnalyticsCatalogReport(displayName: String(localized: "Retention Messaging"), subtitle: String(localized: "Performance of re-engagement and retention messages shown on the App Store."), apiName: "App Store Retention Messaging", category: .appStoreEngagement)
             ]
         ),
         (
             .appStoreCommerce,
             [
-                AnalyticsCatalogReport(displayName: String(localized: "Downloads"), apiName: "App Store Downloads", category: .appStoreCommerce),
-                AnalyticsCatalogReport(displayName: String(localized: "Pre-Orders"), apiName: "App Store Pre-orders", category: .appStoreCommerce),
-                AnalyticsCatalogReport(displayName: String(localized: "Purchases"), apiName: "App Store Purchases", category: .appStoreCommerce),
-                AnalyticsCatalogReport(displayName: String(localized: "Subscription State"), apiName: "App Store Subscription State", category: .appStoreCommerce),
-                AnalyticsCatalogReport(displayName: String(localized: "Subscription Events"), apiName: "App Store Subscription Event", category: .appStoreCommerce)
+                AnalyticsCatalogReport(displayName: String(localized: "Downloads"), subtitle: String(localized: "First-time downloads, redownloads, and updates across territories."), apiName: "App Store Downloads", category: .appStoreCommerce),
+                AnalyticsCatalogReport(displayName: String(localized: "Pre-Orders"), subtitle: String(localized: "Pre-orders started and canceled before your app's release."), apiName: "App Store Pre-orders", category: .appStoreCommerce),
+                AnalyticsCatalogReport(displayName: String(localized: "Purchases"), subtitle: String(localized: "Proceeds, sales, and paying users from purchases and in-app purchases."), apiName: "App Store Purchases", category: .appStoreCommerce),
+                AnalyticsCatalogReport(displayName: String(localized: "Subscription State"), subtitle: String(localized: "Active subscriptions by state, including trials and billing retry."), apiName: "App Store Subscription State", category: .appStoreCommerce),
+                AnalyticsCatalogReport(displayName: String(localized: "Subscription Events"), subtitle: String(localized: "Subscription lifecycle events: sign-ups, renewals, cancellations, and refunds."), apiName: "App Store Subscription Event", category: .appStoreCommerce)
             ]
         ),
         (
             .appUsage,
             [
-                AnalyticsCatalogReport(displayName: String(localized: "Shortcut App Usage"), apiName: "Shortcut App Usage", category: .appUsage),
-                AnalyticsCatalogReport(displayName: String(localized: "Installation and Deletion"), apiName: "App Store Installations and Deletions", category: .appUsage),
-                AnalyticsCatalogReport(displayName: String(localized: "Sessions"), apiName: "App Sessions", category: .appUsage),
-                AnalyticsCatalogReport(displayName: String(localized: "Clip Usage"), apiName: "App Clip Usage", category: .appUsage),
-                AnalyticsCatalogReport(displayName: String(localized: "App Crashes"), apiName: "App Crashes", category: .appUsage),
-                AnalyticsCatalogReport(displayName: String(localized: "Platform App Installs"), apiName: "Platform App Installs", category: .appUsage),
-                AnalyticsCatalogReport(displayName: String(localized: "Shortcuts Actions Usage"), apiName: "Shortcuts Actions Usage", category: .appUsage),
-                AnalyticsCatalogReport(displayName: String(localized: "App Opt-In"), apiName: "App Store Opt-in", category: .appUsage),
-                AnalyticsCatalogReport(displayName: String(localized: "CarPlay App Usage"), apiName: "CarPlay App Usage", category: .appUsage)
+                AnalyticsCatalogReport(displayName: String(localized: "Shortcut App Usage"), subtitle: String(localized: "How often your app's shortcuts are run from the Shortcuts app."), apiName: "Shortcut App Usage", category: .appUsage),
+                AnalyticsCatalogReport(displayName: String(localized: "Installation and Deletion"), subtitle: String(localized: "Installations and deletions of your app across devices."), apiName: "App Store Installations and Deletions", category: .appUsage),
+                AnalyticsCatalogReport(displayName: String(localized: "Sessions"), subtitle: String(localized: "Number and duration of active sessions in your app."), apiName: "App Sessions", category: .appUsage),
+                AnalyticsCatalogReport(displayName: String(localized: "Clip Usage"), subtitle: String(localized: "Sessions and installs generated by your App Clip."), apiName: "App Clip Usage", category: .appUsage),
+                AnalyticsCatalogReport(displayName: String(localized: "App Crashes"), subtitle: String(localized: "Crash counts across devices and app versions."), apiName: "App Crashes", category: .appUsage),
+                AnalyticsCatalogReport(displayName: String(localized: "Platform App Installs"), subtitle: String(localized: "Installs broken down by platform and device type."), apiName: "Platform App Installs", category: .appUsage),
+                AnalyticsCatalogReport(displayName: String(localized: "Shortcuts Actions Usage"), subtitle: String(localized: "Usage of the app actions your app exposes to Shortcuts."), apiName: "Shortcuts Actions Usage", category: .appUsage),
+                AnalyticsCatalogReport(displayName: String(localized: "App Opt-In"), subtitle: String(localized: "Rate at which users opt in to share their app analytics data."), apiName: "App Store Opt-in", category: .appUsage),
+                AnalyticsCatalogReport(displayName: String(localized: "CarPlay App Usage"), subtitle: String(localized: "Sessions and engagement while your app runs in CarPlay."), apiName: "CarPlay App Usage", category: .appUsage)
             ]
         ),
         (
             .frameworks,
             [
-                AnalyticsCatalogReport(displayName: String(localized: "Photos Picker"), apiName: "Photos Picker", category: .frameworks),
-                AnalyticsCatalogReport(displayName: String(localized: "Photos Library Access"), apiName: "Photos Library Access", category: .frameworks),
-                AnalyticsCatalogReport(displayName: String(localized: "Home Screen Widgets"), apiName: "Home Screen Widgets", category: .frameworks),
-                AnalyticsCatalogReport(displayName: String(localized: "Home Screen Widget Usage"), apiName: "Home Screen Widget Usage", category: .frameworks),
-                AnalyticsCatalogReport(displayName: String(localized: "Live Activities"), apiName: "Live Activity Use", category: .frameworks),
-                AnalyticsCatalogReport(displayName: String(localized: "Notification Summary Engagement"), apiName: "Notification Summary Engagement", category: .frameworks),
-                AnalyticsCatalogReport(displayName: String(localized: "CarPlay Navigation"), apiName: "CarPlay Navigation", category: .frameworks),
-                AnalyticsCatalogReport(displayName: String(localized: "Core Location Authorization"), apiName: "Core Location Authorization Results", category: .frameworks),
-                AnalyticsCatalogReport(displayName: String(localized: "ARKit World Tracking"), apiName: "ARKit World Tracking", category: .frameworks),
-                AnalyticsCatalogReport(displayName: String(localized: "ShazamKit Usage"), apiName: "ShazamKit Usage", category: .frameworks),
-                AnalyticsCatalogReport(displayName: String(localized: "SharePlay Usage"), apiName: "SharePlay Usage by Activity Type", category: .frameworks),
-                AnalyticsCatalogReport(displayName: String(localized: "Flashlight Usage"), apiName: "Flashlight Usage", category: .frameworks)
+                AnalyticsCatalogReport(displayName: String(localized: "Photos Picker"), subtitle: String(localized: "How often users select media through the system Photos picker."), apiName: "Photos Picker", category: .frameworks),
+                AnalyticsCatalogReport(displayName: String(localized: "Photos Library Access"), subtitle: String(localized: "Requests and grants for access to the user's photo library."), apiName: "Photos Library Access", category: .frameworks),
+                AnalyticsCatalogReport(displayName: String(localized: "Home Screen Widgets"), subtitle: String(localized: "Additions and removals of your Home Screen widgets."), apiName: "Home Screen Widgets", category: .frameworks),
+                AnalyticsCatalogReport(displayName: String(localized: "Home Screen Widget Usage"), subtitle: String(localized: "Interactions and views of your Home Screen widgets."), apiName: "Home Screen Widget Usage", category: .frameworks),
+                AnalyticsCatalogReport(displayName: String(localized: "Live Activities"), subtitle: String(localized: "How often Live Activities from your app are started and viewed."), apiName: "Live Activity Use", category: .frameworks),
+                AnalyticsCatalogReport(displayName: String(localized: "Notification Summary Engagement"), subtitle: String(localized: "Engagement with your notifications delivered in the scheduled summary."), apiName: "Notification Summary Engagement", category: .frameworks),
+                AnalyticsCatalogReport(displayName: String(localized: "CarPlay Navigation"), subtitle: String(localized: "Navigation sessions and usage of your CarPlay app."), apiName: "CarPlay Navigation", category: .frameworks),
+                AnalyticsCatalogReport(displayName: String(localized: "Core Location Authorization"), subtitle: String(localized: "Outcomes of location permission prompts, such as allow, deny, or precise."), apiName: "Core Location Authorization Results", category: .frameworks),
+                AnalyticsCatalogReport(displayName: String(localized: "ARKit World Tracking"), subtitle: String(localized: "Usage of ARKit world-tracking sessions in your app."), apiName: "ARKit World Tracking", category: .frameworks),
+                AnalyticsCatalogReport(displayName: String(localized: "ShazamKit Usage"), subtitle: String(localized: "How often your app matches audio using ShazamKit."), apiName: "ShazamKit Usage", category: .frameworks),
+                AnalyticsCatalogReport(displayName: String(localized: "SharePlay Usage"), subtitle: String(localized: "SharePlay sessions grouped by the activities your app offers."), apiName: "SharePlay Usage by Activity Type", category: .frameworks),
+                AnalyticsCatalogReport(displayName: String(localized: "Flashlight Usage"), subtitle: String(localized: "How often your app turns on the device flashlight."), apiName: "Flashlight Usage", category: .frameworks)
             ]
         )
     ]

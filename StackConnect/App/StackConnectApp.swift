@@ -48,6 +48,7 @@ struct StackConnectApp: App {
     var body: some Scene {
         WindowGroup {
             HomeViewFactory.build()
+                .offlineBanner()
                 .sheet(isPresented: $showWelcome) {
                     WelcomeView {
                         UserDefaults.standard.set(true, forKey: "hasSeenWelcome")

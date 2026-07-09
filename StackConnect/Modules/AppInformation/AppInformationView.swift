@@ -141,7 +141,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
                     )
                 }
             } label: {
-                buildMenuRow(icon: "globe", color: .blue, title: String(localized: "Manage Localizations"))
+                StackListRow(icon: "globe", iconColor: .blue, title: String(localized: "Manage Localizations"))
             }
             .disabled(!canEditApps)
         } header: {
@@ -176,7 +176,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
                 }
             } label: {
                 HStack {
-                    buildMenuRow(icon: "square.grid.2x2.fill", color: .purple, title: String(localized: "Category"))
+                    StackListRow(icon: "square.grid.2x2.fill", iconColor: .purple, title: String(localized: "Category"))
                     if let category = viewModel.uiState.appInfo?.primaryCategoryName {
                         Spacer()
                         Text(category)
@@ -191,7 +191,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
                 viewModel.uiState.showContentRightsSheet = true
             } label: {
                 HStack {
-                    buildMenuRow(icon: "doc.text.fill", color: .orange, title: String(localized: "Content Rights"))
+                    StackListRow(icon: "doc.text.fill", iconColor: .orange, title: String(localized: "Content Rights"))
                     if let declaration = viewModel.uiState.appInfo?.contentRightsDeclaration {
                         Spacer()
                         Text(contentRightsDisplayName(declaration))
@@ -219,7 +219,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
                 }
             } label: {
                 HStack {
-                    buildMenuRow(icon: "shield.lefthalf.filled", color: .red, title: String(localized: "Age Rating"))
+                    StackListRow(icon: "shield.lefthalf.filled", iconColor: .red, title: String(localized: "Age Rating"))
                     if let rating = viewModel.uiState.appInfo?.appStoreAgeRating {
                         Spacer()
                         Text(ageRatingDisplayName(rating))
@@ -240,7 +240,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
         Section {
             if let url = URL(string: "https://apps.apple.com/app/id\(viewModel.uiState.app.id)") {
                 Link(destination: url) {
-                    buildMenuRow(icon: "safari.fill", color: .blue, title: String(localized: "View on App Store"))
+                    StackListRow(icon: "safari.fill", iconColor: .blue, title: String(localized: "View on App Store"))
                 }
                 .foregroundStyle(.primary)
             }
@@ -285,27 +285,6 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
             .buttonStyle(.plain)
         }
         .font(.subheadline)
-    }
-
-    private func buildMenuRow(icon: String, color: Color, title: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.body)
-                .foregroundStyle(.white)
-                .frame(width: 32, height: 32)
-                .background(color)
-                .clipShape(RoundedRectangle(cornerRadius: 7))
-
-            Text(title)
-                .font(.body)
-                .foregroundStyle(.primary)
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
     }
 
     private func localeName(_ code: String) -> String {
