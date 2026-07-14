@@ -24,11 +24,17 @@ final class InReviewWidget: HomeWidget, ObservableObject {
         defer { isLoading = false }
 
         do {
+            // Accounts are loaded *before* categorizing: apps orphaned by an
+            // account that went away must not be expanded, counted, or listed.
+            let accounts = await HomeWidgetDataLoader.loadAccounts(storage: storage)
             let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
-            let active = allApps.filter { !$0.isArchived }
+            let active = HomeWidgetDataLoader.filterKnownAccounts(
+                allApps.filter { !$0.isArchived },
+                accountsMap: accounts
+            )
             let inReview = AppStatusCategorizer.inReviewEntries(active)
             apps = inReview.sorted(by: HomeWidgetDataLoader.sortByRecency)
-            accountsMap = await HomeWidgetDataLoader.loadAccounts(storage: storage)
+            accountsMap = accounts
         } catch {
             Log.print.error("[Widget][InReview] Failed to load apps: \(error.localizedDescription)")
             apps = []
@@ -76,7 +82,9 @@ private struct InReviewWidgetView: View {
                         .padding(.top, 4)
                     }
 
-                    ForEach(group.apps) { app in
+                    // Identified by platform + version, not `AppModel.id`: rows are
+                    // per-version copies of one app, so the bare id repeats.
+                    ForEach(group.apps, id: \.statusEntryID) { app in
                         Button {
                             coordinator.navigateToAppDetail(
                                 app,

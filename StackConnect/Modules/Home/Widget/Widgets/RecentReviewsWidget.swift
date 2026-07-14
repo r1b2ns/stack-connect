@@ -24,9 +24,15 @@ final class RecentReviewsWidget: HomeWidget, ObservableObject {
         defer { isLoading = false }
 
         do {
+            // Accounts are loaded first so reviews belonging to apps orphaned by
+            // an account that went away never resolve into a row.
+            let accounts = await HomeWidgetDataLoader.loadAccounts(storage: storage)
             let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
             // Exclude archived apps so their reviews never appear in the widget.
-            let active = allApps.filter { !$0.isArchived }
+            let active = HomeWidgetDataLoader.filterKnownAccounts(
+                allApps.filter { !$0.isArchived },
+                accountsMap: accounts
+            )
             let appById = Dictionary(
                 active.map { ($0.id, $0) },
                 uniquingKeysWith: { _, new in new }
@@ -42,7 +48,7 @@ final class RecentReviewsWidget: HomeWidget, ObservableObject {
                 }
                 .prefix(5)
                 .map { $0 }
-            accountsMap = await HomeWidgetDataLoader.loadAccounts(storage: storage)
+            accountsMap = accounts
         } catch {
             Log.print.error("[Widget][RecentReviews] Failed to load reviews: \(error.localizedDescription)")
             reviews = []
