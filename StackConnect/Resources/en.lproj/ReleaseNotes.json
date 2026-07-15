@@ -1,18 +1,12 @@
 {
-  "version": "2.3.0",
+  "version": "2.4.0",
   "title": "What's New",
   "highlights": [
     {
-      "icon": "chart.bar.xaxis",
-      "color": "indigo",
-      "title": "Analytics",
-      "description": "View and download your App Store analytics reports, trends and metrics."
-    },
-    {
-      "icon": "paperplane.fill",
-      "color": "blue",
-      "title": "Submissions",
-      "description": "Track and manage your App Review submissions and their status."
+      "icon": "text.bubble",
+      "color": "green",
+      "title": "Reply Templates",
+      "description": "Save the replies you use most and reuse them with a tap when answering reviews."
     },
     {
       "icon": "ladybug.fill",

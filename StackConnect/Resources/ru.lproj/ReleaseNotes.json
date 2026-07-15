@@ -1,18 +1,12 @@
 {
-  "version": "2.3.0",
+  "version": "2.4.0",
   "title": "Что нового",
   "highlights": [
     {
-      "icon": "chart.bar.xaxis",
-      "color": "indigo",
-      "title": "Аналитика",
-      "description": "Просматривайте и скачивайте отчёты аналитики, тренды и показатели вашего приложения."
-    },
-    {
-      "icon": "paperplane.fill",
-      "color": "blue",
-      "title": "Submissions",
-      "description": "Отслеживайте отправки приложения на проверку и управляйте их статусом."
+      "icon": "text.bubble",
+      "color": "green",
+      "title": "Шаблоны ответов",
+      "description": "Сохраняйте часто используемые ответы и применяйте их одним касанием при ответе на отзывы."
     },
     {
       "icon": "ladybug.fill",

@@ -1,18 +1,12 @@
 {
-  "version": "2.3.0",
+  "version": "2.4.0",
   "title": "Novidades",
   "highlights": [
     {
-      "icon": "chart.bar.xaxis",
-      "color": "indigo",
-      "title": "Análises",
-      "description": "Visualize e baixe os relatórios de análises, tendências e métricas do seu app."
-    },
-    {
-      "icon": "paperplane.fill",
-      "color": "blue",
-      "title": "Submissions",
-      "description": "Acompanhe e gerencie seus envios para revisão do app e seus status."
+      "icon": "text.bubble",
+      "color": "green",
+      "title": "Modelos de Resposta",
+      "description": "Salve as respostas que você mais usa e reutilize-as com um toque ao responder avaliações."
     },
     {
       "icon": "ladybug.fill",

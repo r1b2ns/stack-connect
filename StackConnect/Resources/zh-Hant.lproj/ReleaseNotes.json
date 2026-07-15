@@ -1,18 +1,12 @@
 {
-  "version": "2.3.0",
+  "version": "2.4.0",
   "title": "新功能",
   "highlights": [
     {
-      "icon": "chart.bar.xaxis",
-      "color": "indigo",
-      "title": "分析",
-      "description": "檢視並下載您 App 的分析報告、趨勢與指標。"
-    },
-    {
-      "icon": "paperplane.fill",
-      "color": "blue",
-      "title": "Submissions",
-      "description": "追蹤並管理您的 App 審核提交項目及其狀態。"
+      "icon": "text.bubble",
+      "color": "green",
+      "title": "回覆範本",
+      "description": "儲存最常使用的回覆，在回應評論時輕點一下即可重複使用。"
     },
     {
       "icon": "ladybug.fill",

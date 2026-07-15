@@ -1,18 +1,12 @@
 {
-  "version": "2.3.0",
+  "version": "2.4.0",
   "title": "Neuigkeiten",
   "highlights": [
     {
-      "icon": "chart.bar.xaxis",
-      "color": "indigo",
-      "title": "Analytics",
-      "description": "Rufen Sie die Analytics-Berichte, Trends und Kennzahlen Ihrer App ab und laden Sie sie herunter."
-    },
-    {
-      "icon": "paperplane.fill",
-      "color": "blue",
-      "title": "Submissions",
-      "description": "Verfolgen und verwalten Sie Ihre App-Review-Einreichungen und deren Status."
+      "icon": "text.bubble",
+      "color": "green",
+      "title": "Antwortvorlagen",
+      "description": "Sichern Sie häufig verwendete Antworten und setzen Sie sie beim Beantworten von Rezensionen mit einem Tippen ein."
     },
     {
       "icon": "ladybug.fill",

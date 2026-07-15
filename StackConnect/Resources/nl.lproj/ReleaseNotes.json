@@ -1,18 +1,12 @@
 {
-  "version": "2.3.0",
+  "version": "2.4.0",
   "title": "Nieuw",
   "highlights": [
     {
-      "icon": "chart.bar.xaxis",
-      "color": "indigo",
-      "title": "Analytics",
-      "description": "Bekijk en download de Analytics-rapporten, trends en statistieken van je app."
-    },
-    {
-      "icon": "paperplane.fill",
-      "color": "blue",
-      "title": "Submissions",
-      "description": "Volg en beheer je App Review-inzendingen en hun status."
+      "icon": "text.bubble",
+      "color": "green",
+      "title": "Antwoordsjablonen",
+      "description": "Bewaar de antwoorden die je het vaakst gebruikt en hergebruik ze met één tik bij het beantwoorden van recensies."
     },
     {
       "icon": "ladybug.fill",
