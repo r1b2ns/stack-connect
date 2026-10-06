@@ -186,37 +186,16 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                     .fontWeight(.medium)
                     .foregroundStyle(.primary)
 
-                if account.role != .unspecified {
-                    Text(account.role.displayName)
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.blue)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.15))
-                        .clipShape(Capsule())
+                if let role = account.displayedRole {
+                    StackCapsuleBadge(title: role.displayName, color: .blue)
                 }
 
                 if account.origin == .imported {
-                    Text(String(localized: "imported"))
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.yellow)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.yellow.opacity(0.15))
-                        .clipShape(Capsule())
+                    StackCapsuleBadge(title: String(localized: "imported"), color: .yellow)
                 }
 
                 if account.isExpired {
-                    Text(String(localized: "expired"))
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.red)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.red.opacity(0.15))
-                        .clipShape(Capsule())
+                    StackCapsuleBadge(title: String(localized: "expired"), color: .red)
                 }
 
                 Spacer()
@@ -240,7 +219,7 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                     Label(String(localized: "Create New"), systemImage: "plus.circle.fill")
                 }
 
-                if viewModel.uiState.providerType == .apple {
+                if viewModel.uiState.providerType.supportsImport {
                     Button {
                         viewModel.uiState.replacingAccountId = nil
                         coordinator.presentImport()

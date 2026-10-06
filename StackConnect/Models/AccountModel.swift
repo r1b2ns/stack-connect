@@ -19,6 +19,20 @@ enum AccountRuleResource: String, Codable, CaseIterable, Hashable {
     case testFlight
     case analytics
     case provisioning
+
+    /// Rule resources that gate something for accounts of `provider`, in display
+    /// order. Drives the permission pickers (export) and the permissions summary
+    /// (Account Settings), so only meaningful resources are offered.
+    ///
+    /// Google Play only has an app list for now (manual add / remove of apps), so
+    /// `apps` is its only resource. Firebase accounts have no rules.
+    static func resources(for provider: ProviderType) -> [AccountRuleResource] {
+        switch provider {
+        case .apple:      return [.apps, .version, .review, .testFlight, .analytics, .users, .provisioning]
+        case .googlePlay: return [.apps]
+        case .firebase:   return []
+        }
+    }
 }
 
 // MARK: - Rules
@@ -189,8 +203,22 @@ struct AccountModel: Codable, Identifiable, Hashable {
         self.appsBundles = appsBundles
     }
 
+    /// Only accounts created on this device, of a provider that supports export,
+    /// can be exported (an imported account can't be re-shared).
     var isExportable: Bool {
-        origin == .created
+        origin == .created && providerType.supportsExport
+    }
+
+    /// Rule resources that apply to this account's provider.
+    var ruleResources: [AccountRuleResource] {
+        AccountRuleResource.resources(for: providerType)
+    }
+
+    /// Role to show next to the account name, or `nil` when there is none to show
+    /// (unspecified, or a provider without roles such as Google Play).
+    var displayedRole: AccountRole? {
+        guard providerType.supportsAccountRole, role != .unspecified else { return nil }
+        return role
     }
 
     var isExpired: Bool {
@@ -232,6 +260,24 @@ struct AccountModel: Codable, Identifiable, Hashable {
 
     func canAdd(_ resource: AccountRuleResource) -> Bool {
         rules[resource].contains(.add)
+    }
+
+    /// A copy with a new name and/or role that keeps every other field —
+    /// including the per-app scope (`appsBundles`), which must survive a rename.
+    func updating(name: String? = nil, role: AccountRole? = nil) -> AccountModel {
+        AccountModel(
+            id: id,
+            name: name ?? self.name,
+            providerType: providerType,
+            createdAt: createdAt,
+            rules: rules,
+            origin: origin,
+            role: role ?? self.role,
+            expirationDate: expirationDate,
+            hasPendingAgreements: hasPendingAgreements,
+            pendingAgreementsDetectedAt: pendingAgreementsDetectedAt,
+            appsBundles: appsBundles
+        )
     }
 
     /// Ensures all rule resources have values for created accounts.

@@ -56,7 +56,10 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
     @ViewBuilder
     private func buildContent() -> some View {
         List {
-            if viewModel.uiState.account.canView(.provisioning) {
+            // Certificates, Identifiers, Devices & Profiles are App Store Connect
+            // only: hidden for providers whose rules don't include them (Google Play).
+            if viewModel.uiState.account.ruleResources.contains(.provisioning),
+               viewModel.uiState.account.canView(.provisioning) {
                 Section {
                     buildRow(
                         icon: "lock.shield",

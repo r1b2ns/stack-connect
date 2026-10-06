@@ -48,15 +48,18 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
+    private let importer: AccountImporter
 
     init(
         providerType: ProviderType,
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared
     ) {
+        let storage: PersistentStorable = storage ?? SwiftDataStorable.shared
         self.uiState = AccountsListUiState(providerType: providerType)
-        self.storage = storage ?? SwiftDataStorable.shared
+        self.storage = storage
         self.keychain = keychain
+        self.importer = AccountImporter(storage: storage, keychain: keychain)
     }
 
     func loadAccounts() async {
@@ -134,142 +137,23 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
 
     // MARK: - Import
 
+    /// Only accepts files of this list's provider. A pending re-import replaces
+    /// that account in place (see `AccountImporter.Options`).
     func importAccount(from url: URL, password: String, customName: String?) async -> String? {
-        let accessing = url.startAccessingSecurityScopedResource()
-        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-
-        let data: Data
-        do {
-            data = try Data(contentsOf: url)
-        } catch {
-            return String(localized: "Failed to read file.")
-        }
-
-        let jsonString: String
-        do {
-            jsonString = try AccountCrypto.decrypt(data: data, password: password)
-        } catch {
-            return error.localizedDescription
-        }
-
-        guard let jsonData = jsonString.data(using: .utf8),
-              let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
-            return String(localized: "Invalid JSON format.")
-        }
-
-        guard let name = dict["name"] as? String, !name.isEmpty else {
-            return String(localized: "Missing or invalid 'name' field.")
-        }
-        guard let providerRaw = dict["providerType"] as? String,
-              let providerType = ProviderType(rawValue: providerRaw) else {
-            return String(localized: "Missing or invalid 'providerType' field.")
-        }
-
-        // Validate provider matches this list
-        guard providerType == uiState.providerType else {
-            return String(localized: "This file contains a \(providerType.displayName) account, but this is the \(uiState.providerType.displayName) section.")
-        }
-
-        let emptyRules = AccountRules()
-        var rules = emptyRules
-        if let rulesDict = dict["rules"] as? [String: [String]] {
-            rules = AccountRules(
-                apps: rulesDict["apps"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
-                version: rulesDict["version"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
-                users: rulesDict["users"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
-                review: rulesDict["review"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
-                testFlight: rulesDict["testFlight"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
-                analytics: rulesDict["analytics"]?.compactMap { AccountPermission(rawValue: $0) } ?? [],
-                provisioning: rulesDict["provisioning"]?.compactMap { AccountPermission(rawValue: $0) } ?? []
-            )
-        }
-
-        var expirationDate: Date?
-        if let expirationRaw = dict["expirationDate"] as? String {
-            expirationDate = ISO8601DateFormatter().date(from: expirationRaw)
-        }
-
-        // Parse optional role (backward compatible: absent → .unspecified)
-        let role = (dict["role"] as? String).flatMap(AccountRole.init(rawValue:)) ?? .unspecified
-
-        guard let credsDict = dict["credentials"] as? [String: String] else {
-            return String(localized: "Missing or invalid 'credentials' field.")
-        }
-
-        // When re-importing, reuse the expired account's id so its offline apps stay linked.
-        let accountId = uiState.replacingAccountId ?? UUID().uuidString
-
-        // Check for duplicate credentials (ignore the account being replaced)
-        let allAccounts = (try? await storage.fetchAll(AccountModel.self)) ?? []
-        let sameTypeAccounts = allAccounts.filter { $0.providerType == providerType && $0.id != accountId }
-
-        // Effective name used both for the duplicate check and the saved account.
-        let accountName = (customName?.trimmingCharacters(in: .whitespaces).isEmpty == false)
-            ? customName!.trimmingCharacters(in: .whitespaces)
-            : name
-
-        switch providerType {
-        case .apple:
-            guard let issuerID = credsDict["issuerID"], !issuerID.isEmpty,
-                  let privateKeyID = credsDict["privateKeyID"], !privateKeyID.isEmpty,
-                  let privateKey = credsDict["privateKey"], !privateKey.isEmpty else {
-                return String(localized: "Invalid Apple credentials. Required: issuerID, privateKeyID, privateKey.")
-            }
-            // Same team key may be re-registered under a different name/role.
-            // Only block an EXACT duplicate: same private key AND same account name.
-            for existing in sameTypeAccounts {
-                if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(existing.id)"),
-                   creds.privateKey == privateKey, existing.name == accountName {
-                    return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
-                }
-            }
-            let credentials = AppleCredentials(issuerID: issuerID, privateKeyID: privateKeyID, privateKey: privateKey)
-            keychain.setObject(credentials, forKey: "credentials.\(accountId)")
-        case .firebase:
-            guard let json = credsDict["serviceAccountJSON"], !json.isEmpty else {
-                return String(localized: "Invalid Firebase credentials. Required: serviceAccountJSON.")
-            }
-            for existing in sameTypeAccounts {
-                if let creds: FirebaseCredentials = keychain.object(forKey: "credentials.\(existing.id)"),
-                   creds.serviceAccountJSON == json {
-                    return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
-                }
-            }
-            let credentials = FirebaseCredentials(serviceAccountJSON: json)
-            keychain.setObject(credentials, forKey: "credentials.\(accountId)")
-        case .googlePlay:
-            guard let json = credsDict["serviceAccountJSON"], !json.isEmpty else {
-                return String(localized: "Invalid Google Play credentials. Required: serviceAccountJSON.")
-            }
-            for existing in sameTypeAccounts {
-                if let creds: GooglePlayCredentials = keychain.object(forKey: "credentials.\(existing.id)"),
-                   creds.serviceAccountJSON == json {
-                    return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
-                }
-            }
-            let credentials = GooglePlayCredentials(serviceAccountJSON: json)
-            keychain.setObject(credentials, forKey: "credentials.\(accountId)")
-        }
-
-        let account = AccountModel(
-            id: accountId,
-            name: accountName,
-            providerType: providerType,
-            rules: rules,
-            origin: .imported,
-            role: role,
-            expirationDate: expirationDate
+        let options = AccountImporter.Options(
+            expectedProvider: uiState.providerType,
+            replacingAccountId: uiState.replacingAccountId
         )
 
-        do {
-            try await storage.save(account, id: account.id)
+        switch await importer.importAccount(from: url, password: password, customName: customName, options: options) {
+        case .success(let account):
             let wasReimport = uiState.replacingAccountId != nil
             uiState.replacingAccountId = nil
-            Log.print.info("[AccountsList] \(wasReimport ? "Re-imported" : "Imported") account: \(accountName)")
+            Log.print.info("[AccountsList] \(wasReimport ? "Re-imported" : "Imported") account: \(account.name)")
             await loadAccounts()
             return nil
-        } catch {
-            return String(localized: "Failed to save imported account: \(error.localizedDescription)")
+        case .failure(let error):
+            return error.message
         }
     }
 }

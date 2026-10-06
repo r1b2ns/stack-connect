@@ -31,6 +31,7 @@ private struct GooglePlayAppListEntry: View {
 struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
+    @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
     var body: some View {
         buildContent()
@@ -76,11 +77,22 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
                     Task { await viewModel.load() }
                 }
 
-                Button(String(localized: "Add Manually")) {
-                    viewModel.uiState.showAddApp = true
+                if viewModel.uiState.canAddApps {
+                    Button(String(localized: "Add Manually")) {
+                        viewModel.uiState.showAddApp = true
+                    }
                 }
             }
         } else if viewModel.uiState.apps.isEmpty {
+            buildEmptyState()
+        } else {
+            buildList()
+        }
+    }
+
+    @ViewBuilder
+    private func buildEmptyState() -> some View {
+        if viewModel.uiState.canAddApps {
             ContentUnavailableView {
                 Label(String(localized: "No Apps"), systemImage: "ipod.and.applewatch")
             } description: {
@@ -92,7 +104,11 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
                 .buttonStyle(.borderedProminent)
             }
         } else {
-            buildList()
+            ContentUnavailableView {
+                Label(String(localized: "No Apps"), systemImage: "ipod.and.applewatch")
+            } description: {
+                Text("No apps found for this account.")
+            }
         }
     }
 
@@ -153,7 +169,7 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
                 .foregroundStyle(.tertiary)
         }
         .contextMenu {
-            if app.isManuallyAdded {
+            if app.isManuallyAdded && viewModel.uiState.canDeleteApps {
                 Button(role: .destructive) {
                     Task { await viewModel.removeApp(app) }
                 } label: {
@@ -167,11 +183,25 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
 
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
+        // Account-level actions (settings, rename, export, delete), as on the
+        // App Store app list.
+        ToolbarItem(placement: .topBarTrailing) {
             Button {
-                viewModel.uiState.showAddApp = true
+                homeCoordinator.navigateToAccountManagement(viewModel.uiState.account)
             } label: {
-                Image(systemName: "plus")
+                Image(systemName: "gearshape")
+            }
+            .accessibilityLabel(String(localized: "Manage Account"))
+        }
+
+        if viewModel.uiState.canAddApps {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    viewModel.uiState.showAddApp = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel(String(localized: "Add App"))
             }
         }
     }

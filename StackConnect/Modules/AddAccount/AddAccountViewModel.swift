@@ -70,10 +70,12 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
                 return
             }
 
+            // The role picker is hidden for providers without roles (Google
+            // Play): those accounts always keep the default role.
             let account = AccountModel(
                 name: uiState.accountName.trimmingCharacters(in: .whitespaces),
                 providerType: uiState.providerType,
-                role: uiState.role
+                role: uiState.providerType.supportsAccountRole ? uiState.role : .unspecified
             )
 
             switch uiState.providerType {
@@ -162,6 +164,20 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
         let sameTypeAccounts = allAccounts.filter { $0.providerType == uiState.providerType }
         let newName = uiState.accountName.trimmingCharacters(in: .whitespaces)
 
+        // Google Play: same service account = same `client_email` (plan D4), so a
+        // re-formatted or re-downloaded key of that account is caught too. An
+        // unparseable new key is not a duplicate: save() reports why.
+        if uiState.providerType == .googlePlay {
+            guard let existing = GooglePlayDuplicateAccountFinder.existingAccount(
+                matching: uiState.googlePlayJSON,
+                in: sameTypeAccounts,
+                keychain: keychain
+            ) else {
+                return nil
+            }
+            return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
+        }
+
         for existing in sameTypeAccounts {
             switch uiState.providerType {
             case .apple:
@@ -181,24 +197,10 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
                     }
                 }
             case .googlePlay:
-                // Same service account = same `client_email` (plan D4), so a
-                // re-formatted or re-downloaded key of that account is caught too.
-                // An unparseable new key is not a duplicate: save() reports why.
-                guard let newEmail = googlePlayClientEmail(of: uiState.googlePlayJSON),
-                      let creds: GooglePlayCredentials = keychain.object(forKey: "credentials.\(existing.id)"),
-                      googlePlayClientEmail(of: creds.serviceAccountJSON) == newEmail else {
-                    continue
-                }
-                return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
+                break // Handled above.
             }
         }
 
         return nil
-    }
-
-    /// Lower-cased `client_email` of a service-account key, or `nil` when the key
-    /// can't be parsed.
-    private func googlePlayClientEmail(of json: String) -> String? {
-        (try? GooglePlayServiceAccount(json: json))?.clientEmail.lowercased()
     }
 }

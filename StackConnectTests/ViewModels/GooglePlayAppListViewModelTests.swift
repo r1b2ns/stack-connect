@@ -35,8 +35,17 @@ final class GooglePlayAppListViewModelTests: XCTestCase {
 
     // MARK: - Helpers
 
-    private func makeSUT() -> GooglePlayAppListViewModel {
+    /// - Parameter account: defaults to the created, unrestricted `account`.
+    ///   Any other account gets the same stored credentials.
+    private func makeSUT(account: AccountModel? = nil) -> GooglePlayAppListViewModel {
         let checker = accessChecker!
+        let account = account ?? self.account
+        if account.id != self.account.id {
+            keychain.setObject(
+                GooglePlayCredentials(serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON()),
+                forKey: "credentials.\(account.id)"
+            )
+        }
         return GooglePlayAppListViewModel(
             account: account,
             keychain: keychain,
@@ -46,16 +55,30 @@ final class GooglePlayAppListViewModelTests: XCTestCase {
         )
     }
 
+    /// An imported account with the given `apps` permissions and per-app scope.
+    private func importedAccount(
+        apps: [AccountPermission] = AccountPermission.allCases,
+        appsBundles: [String]? = nil
+    ) -> AccountModel {
+        AccountModel(
+            name: "Imported Play",
+            providerType: .googlePlay,
+            rules: AccountRules(apps: apps),
+            origin: .imported,
+            appsBundles: appsBundles
+        )
+    }
+
     private var cacheKey: String {
         GooglePlayAppItem.cacheKey(accountId: account.id)
     }
 
-    private func seedCache(_ apps: [GooglePlayAppItem]) async throws {
-        try await storage.save(apps, id: cacheKey)
+    private func seedCache(_ apps: [GooglePlayAppItem], accountId: String? = nil) async throws {
+        try await storage.save(apps, id: GooglePlayAppItem.cacheKey(accountId: accountId ?? account.id))
     }
 
-    private func cachedApps() async throws -> [GooglePlayAppItem]? {
-        try await storage.fetch([GooglePlayAppItem].self, id: cacheKey)
+    private func cachedApps(accountId: String? = nil) async throws -> [GooglePlayAppItem]? {
+        try await storage.fetch([GooglePlayAppItem].self, id: GooglePlayAppItem.cacheKey(accountId: accountId ?? account.id))
     }
 
     // MARK: - Offline-first load
@@ -257,6 +280,133 @@ final class GooglePlayAppListViewModelTests: XCTestCase {
         XCTAssertEqual(sut.uiState.apps, [keep])
         let cached = try await cachedApps()
         XCTAssertEqual(cached, [keep])
+    }
+}
+
+// MARK: - Per-app scope & rules (imported accounts)
+
+extension GooglePlayAppListViewModelTests {
+
+    func testNilScopeShowsEveryApp() async {
+        connection.fetchAppsHandler = { [playApp("com.a", name: "A"), playApp("com.b", name: "B")] }
+        let sut = makeSUT(account: importedAccount(appsBundles: nil))
+
+        await sut.load()
+
+        XCTAssertEqual(sut.uiState.apps.map(\.packageName), ["com.a", "com.b"])
+    }
+
+    func testEmptyScopeShowsEveryApp() async {
+        connection.fetchAppsHandler = { [playApp("com.a", name: "A"), playApp("com.b", name: "B")] }
+        let sut = makeSUT(account: importedAccount(appsBundles: []))
+
+        await sut.load()
+
+        XCTAssertEqual(sut.uiState.apps.map(\.packageName), ["com.a", "com.b"])
+    }
+
+    func testNonEmptyScopeShowsAndPersistsOnlyTheSharedApps() async throws {
+        let scoped = importedAccount(appsBundles: ["com.b"])
+        connection.fetchAppsHandler = { [playApp("com.a", name: "A"), playApp("com.b", name: "B")] }
+        let sut = makeSUT(account: scoped)
+
+        await sut.load()
+
+        XCTAssertEqual(sut.uiState.apps.map(\.packageName), ["com.b"])
+        let cached = try await cachedApps(accountId: scoped.id)
+        XCTAssertEqual(cached?.map(\.packageName), ["com.b"], "Apps outside the scope are never persisted")
+    }
+
+    func testNonEmptyScopeHidesCachedAppsOutsideItOffline() async throws {
+        let scoped = importedAccount(appsBundles: ["com.b"])
+        try await seedCache(
+            [playItem("com.a", manual: true), playItem("com.b", manual: false)],
+            accountId: scoped.id
+        )
+        connection.fetchAppsHandler = { throw OfflineError.noConnection }
+        let sut = makeSUT(account: scoped)
+
+        await sut.load()
+
+        XCTAssertEqual(sut.uiState.apps.map(\.packageName), ["com.b"])
+    }
+
+    func testRulesDriveTheAddAndDeleteCapabilities() {
+        XCTAssertTrue(makeSUT().uiState.canAddApps, "Created accounts have every permission")
+        XCTAssertTrue(makeSUT().uiState.canDeleteApps)
+
+        let viewOnly = makeSUT(account: importedAccount(apps: [.view]))
+        XCTAssertFalse(viewOnly.uiState.canAddApps)
+        XCTAssertFalse(viewOnly.uiState.canDeleteApps)
+
+        let addOnly = makeSUT(account: importedAccount(apps: [.add]))
+        XCTAssertTrue(addOnly.uiState.canAddApps)
+        XCTAssertFalse(addOnly.uiState.canDeleteApps)
+    }
+
+    func testAddAppWithoutAddPermissionIsRejectedWithoutACheck() async throws {
+        let account = importedAccount(apps: [.view, .delete])
+        let sut = makeSUT(account: account)
+
+        await sut.addApp(packageName: "com.example.new")
+
+        XCTAssertEqual(sut.uiState.addError, String(localized: "This account doesn't have permission to add apps."))
+        XCTAssertTrue(accessChecker.checkedPackageNames.isEmpty)
+        XCTAssertTrue(sut.uiState.apps.isEmpty)
+        let cached = try await cachedApps(accountId: account.id)
+        XCTAssertNil(cached)
+    }
+
+    func testAddAppOutsideTheScopeIsRejectedWithoutACheck() async {
+        let sut = makeSUT(account: importedAccount(apps: [.add], appsBundles: ["com.shared"]))
+
+        await sut.addApp(packageName: "com.not.shared")
+
+        XCTAssertEqual(
+            sut.uiState.addError,
+            String(localized: "This app isn't included in the apps shared with this account.")
+        )
+        XCTAssertTrue(accessChecker.checkedPackageNames.isEmpty)
+        XCTAssertTrue(sut.uiState.apps.isEmpty)
+    }
+
+    func testAddAppInsideTheScopeWithAddPermissionIsAdded() async {
+        let sut = makeSUT(account: importedAccount(apps: [.add], appsBundles: ["com.shared"]))
+
+        await sut.addApp(packageName: "com.shared")
+
+        XCTAssertNil(sut.uiState.addError)
+        XCTAssertEqual(accessChecker.checkedPackageNames, ["com.shared"])
+        XCTAssertEqual(sut.uiState.apps, [playItem("com.shared", manual: true)])
+    }
+
+    func testRemoveAppWithoutDeletePermissionKeepsTheApp() async throws {
+        let account = importedAccount(apps: [.view, .add])
+        let manual = playItem("com.manual", manual: true)
+        try await seedCache([manual], accountId: account.id)
+        let sut = makeSUT(account: account)
+        sut.uiState.apps = [manual]
+
+        await sut.removeApp(manual)
+
+        XCTAssertEqual(sut.uiState.apps, [manual])
+        XCTAssertNotNil(sut.uiState.toastMessage)
+        let cached = try await cachedApps(accountId: account.id)
+        XCTAssertEqual(cached, [manual], "Nothing persisted")
+    }
+
+    func testRemoveAppWithDeletePermissionRemovesIt() async throws {
+        let account = importedAccount(apps: [.delete])
+        let manual = playItem("com.manual", manual: true)
+        try await seedCache([manual], accountId: account.id)
+        let sut = makeSUT(account: account)
+        sut.uiState.apps = [manual]
+
+        await sut.removeApp(manual)
+
+        XCTAssertTrue(sut.uiState.apps.isEmpty)
+        let cached = try await cachedApps(accountId: account.id)
+        XCTAssertEqual(cached, [])
     }
 }
 

@@ -249,7 +249,7 @@ final class AddAccountViewModelTests: XCTestCase {
         sut = makeGooglePlaySUT(connection: connection)
         let json = GooglePlayTestFixtures.serviceAccountJSON()
         sut.uiState.accountName = "  My Play  "
-        sut.uiState.role = .developer
+        sut.uiState.role = .developer // Picker hidden for Google Play: ignored.
         sut.uiState.googlePlayJSON = "\n" + json + "\n"
 
         await sut.save()
@@ -264,7 +264,7 @@ final class AddAccountViewModelTests: XCTestCase {
         XCTAssertEqual(accounts.count, 2)
         XCTAssertEqual(created.name, "My Play")
         XCTAssertEqual(created.providerType, .googlePlay)
-        XCTAssertEqual(created.role, .developer)
+        XCTAssertEqual(created.role, .unspecified, "Google Play accounts keep the default role")
 
         // Storage format unchanged (plan D2): the whole trimmed JSON file.
         let saved: GooglePlayCredentials? = mockKeychain.object(forKey: "credentials.\(created.id)")

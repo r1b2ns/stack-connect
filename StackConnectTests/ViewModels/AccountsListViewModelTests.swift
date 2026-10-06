@@ -207,4 +207,142 @@ final class AccountsListViewModelTests: XCTestCase {
         XCTAssertEqual(sut.uiState.groups.count, 1)
         XCTAssertEqual(sut.uiState.groups.first?.issuerID, "issuer-bbb")
     }
+
+    // MARK: - Google Play import (Phase 2)
+
+    private let password = "aVeryStrongPass123"
+
+    private func makeGooglePlaySUT() -> AccountsListViewModel {
+        AccountsListViewModel(providerType: .googlePlay, storage: mockStorage, keychain: mockKeychain)
+    }
+
+    private func makeImportFile(_ payload: [String: Any]) throws -> URL {
+        let jsonData = try JSONSerialization.data(withJSONObject: payload)
+        let encrypted = try AccountCrypto.encrypt(json: String(decoding: jsonData, as: UTF8.self), password: password)
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("import-\(UUID().uuidString).scexport")
+        try encrypted.write(to: url)
+        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
+        return url
+    }
+
+    private func googlePlayPayload(serviceAccountJSON: String = GooglePlayTestFixtures.serviceAccountJSON()) -> [String: Any] {
+        [
+            "name": "Shared Play",
+            "providerType": "googlePlay",
+            "createdAt": ISO8601DateFormatter().string(from: .now),
+            "rules": ["apps": ["view"]],
+            "role": "admin",
+            "credentials": ["serviceAccountJSON": serviceAccountJSON],
+            "appsBundles": ["com.example.one"]
+        ]
+    }
+
+    func testImportGooglePlayAccountRestoresCredentialsAndScope() async throws {
+        let json = GooglePlayTestFixtures.serviceAccountJSON()
+        let sut = makeGooglePlaySUT()
+        let url = try makeImportFile(googlePlayPayload(serviceAccountJSON: json))
+
+        let error = await sut.importAccount(from: url, password: password, customName: nil)
+
+        XCTAssertNil(error)
+        let imported = try XCTUnwrap(sut.uiState.accounts.first)
+        XCTAssertEqual(imported.providerType, .googlePlay)
+        XCTAssertEqual(imported.origin, .imported)
+        XCTAssertEqual(imported.role, .unspecified, "Google Play accounts keep the default role")
+        XCTAssertEqual(imported.appsBundles, ["com.example.one"])
+        let stored: GooglePlayCredentials? = mockKeychain.object(forKey: "credentials.\(imported.id)")
+        XCTAssertEqual(stored?.serviceAccountJSON, json)
+    }
+
+    func testImportGooglePlayDuplicateByClientEmailIsRejected() async throws {
+        let existing = AccountModel(name: "Existing", providerType: .googlePlay)
+        try await mockStorage.save(existing, id: existing.id)
+        let storedJSON = #"{"type":"service_account","client_email":"STACK-CONNECT@my-project.iam.gserviceaccount.com","private_key_id":"old","private_key":"-----BEGIN PRIVATE KEY-----\nA\n-----END PRIVATE KEY-----\n"}"#
+        mockKeychain.setObject(GooglePlayCredentials(serviceAccountJSON: storedJSON), forKey: "credentials.\(existing.id)")
+        let sut = makeGooglePlaySUT()
+        let url = try makeImportFile(googlePlayPayload(
+            serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON(privateKeyId: "new")
+        ))
+
+        let error = await sut.importAccount(from: url, password: password, customName: "Another name")
+
+        XCTAssertEqual(error, String(localized: "An account with these credentials already exists: \"Existing\"."))
+        let saved = try await mockStorage.fetchAll(AccountModel.self)
+        XCTAssertEqual(saved.map(\.id), [existing.id])
+    }
+
+    func testImportGooglePlayWithMalformedKeyIsRejectedAndSavesNothing() async throws {
+        let sut = makeGooglePlaySUT()
+        let url = try makeImportFile(googlePlayPayload(serviceAccountJSON: #"{"type": "service_account""#))
+
+        let error = await sut.importAccount(from: url, password: password, customName: nil)
+
+        XCTAssertEqual(
+            error,
+            String(localized: "The Google Play service account key in this file is invalid. Ask the sender to export the account again.")
+        )
+        let saved = try await mockStorage.fetchAll(AccountModel.self)
+        XCTAssertTrue(saved.isEmpty)
+        XCTAssertTrue(mockKeychain.storedKeys.isEmpty)
+    }
+
+    func testGooglePlayListRejectsAppleFiles() async throws {
+        let sut = makeGooglePlaySUT()
+        let url = try makeImportFile([
+            "name": "Team",
+            "providerType": "apple",
+            "createdAt": ISO8601DateFormatter().string(from: .now),
+            "credentials": ["issuerID": "i", "privateKeyID": "k", "privateKey": "p"]
+        ])
+
+        let error = await sut.importAccount(from: url, password: password, customName: nil)
+
+        XCTAssertEqual(
+            error,
+            String(localized: "This file contains a \(ProviderType.apple.displayName) account, but this is the \(ProviderType.googlePlay.displayName) section.")
+        )
+        XCTAssertTrue(mockKeychain.storedKeys.isEmpty)
+    }
+
+    func testReimportGooglePlayReplacesTheExpiredAccountInPlace() async throws {
+        let expired = AccountModel(
+            name: "Expired",
+            providerType: .googlePlay,
+            origin: .imported,
+            expirationDate: Date(timeIntervalSinceNow: -60)
+        )
+        try await mockStorage.save(expired, id: expired.id)
+        mockKeychain.setObject(
+            GooglePlayCredentials(serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON()),
+            forKey: "credentials.\(expired.id)"
+        )
+        let sut = makeGooglePlaySUT()
+        sut.beginReimport(accountId: expired.id)
+        let url = try makeImportFile(googlePlayPayload())
+
+        let error = await sut.importAccount(from: url, password: password, customName: nil)
+
+        XCTAssertNil(error, "Re-importing the same service account is not a duplicate")
+        XCTAssertNil(sut.uiState.replacingAccountId)
+        XCTAssertEqual(sut.uiState.accounts.map(\.id), [expired.id])
+        XCTAssertNil(sut.uiState.accounts.first?.expirationDate)
+    }
+
+    // MARK: - Apple import now honors the per-app scope
+
+    func testImportAppleAccountParsesAppsBundles() async throws {
+        let url = try makeImportFile([
+            "name": "Team",
+            "providerType": "apple",
+            "createdAt": ISO8601DateFormatter().string(from: .now),
+            "credentials": ["issuerID": "i", "privateKeyID": "k", "privateKey": "p"],
+            "appsBundles": ["com.a"]
+        ])
+
+        let error = await sut.importAccount(from: url, password: password, customName: nil)
+
+        XCTAssertNil(error)
+        XCTAssertEqual(sut.uiState.accounts.first?.appsBundles, ["com.a"])
+    }
 }

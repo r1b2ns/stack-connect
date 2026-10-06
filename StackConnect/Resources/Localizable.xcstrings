@@ -1,6 +1,338 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "The Google Play service account key in this file is invalid. Ask the sender to export the account again." : {
+      "comment" : "Error shown when an imported .scexport file carries a Google Play service account key that can't be parsed.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Google-Play-Dienstkontoschlüssel in dieser Datei ist ungültig. Bitten Sie den Absender, das Konto erneut zu exportieren."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clave de la cuenta de servicio de Google Play de este archivo no es válida. Pide al remitente que vuelva a exportar la cuenta."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clave de la cuenta de servicio de Google Play de este archivo no es válida. Pídele al remitente que vuelva a exportar la cuenta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clé du compte de service Google Play de ce fichier n'est pas valide. Demandez à l'expéditeur d'exporter à nouveau le compte."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La chiave dell'account di servizio Google Play in questo file non è valida. Chiedi al mittente di esportare di nuovo l'account."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このファイルの Google Play サービスアカウントキーは無効です。送信者にアカウントをもう一度書き出すよう依頼してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 파일의 Google Play 서비스 계정 키가 올바르지 않습니다. 보낸 사람에게 계정을 다시 내보내 달라고 요청하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De Google Play-serviceaccountsleutel in dit bestand is ongeldig. Vraag de afzender om het account opnieuw te exporteren."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A chave da conta de serviço do Google Play neste arquivo é inválida. Peça ao remetente para exportar a conta novamente."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A chave da conta de serviço do Google Play neste ficheiro é inválida. Peça ao remetente para exportar novamente a conta."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ключ сервисного аккаунта Google Play в этом файле недействителен. Попросите отправителя экспортировать аккаунт ещё раз."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play-tjänstkontonyckeln i den här filen är ogiltig. Be avsändaren att exportera kontot igen."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此檔案中的 Google Play 服務帳戶金鑰無效。請要求傳送者重新匯出帳戶。"
+          }
+        }
+      }
+    },
+    "This account doesn't have permission to add apps." : {
+      "comment" : "Error shown in the Google Play app list when the account's rules don't allow adding apps manually.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Konto hat keine Berechtigung, Apps hinzuzufügen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta cuenta no tiene permiso para añadir apps."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta cuenta no tiene permiso para agregar apps."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce compte n'a pas l'autorisation d'ajouter des apps."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questo account non ha l'autorizzazione per aggiungere app."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアカウントにはアプリを追加する権限がありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 계정에는 앱을 추가할 권한이 없습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dit account heeft geen toestemming om apps toe te voegen."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta conta não tem permissão para adicionar apps."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta conta não tem permissão para adicionar apps."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У этого аккаунта нет разрешения на добавление приложений."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det här kontot har inte behörighet att lägga till appar."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此帳戶沒有新增 App 的權限。"
+          }
+        }
+      }
+    },
+    "This app isn't included in the apps shared with this account." : {
+      "comment" : "Error shown when manually adding a Google Play app that is outside the per-app scope of an imported account.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese App gehört nicht zu den Apps, die für dieses Konto freigegeben wurden."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta app no está incluida en las apps compartidas con esta cuenta."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta app no está incluida en las apps compartidas con esta cuenta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette app ne fait pas partie des apps partagées avec ce compte."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questa app non è inclusa tra le app condivise con questo account."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアプリは、このアカウントと共有されているアプリに含まれていません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 앱은 이 계정에 공유된 앱에 포함되어 있지 않습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deze app hoort niet bij de apps die met dit account zijn gedeeld."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este app não está incluído nos apps compartilhados com esta conta."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta app não está incluída nas apps partilhadas com esta conta."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это приложение не входит в список приложений, открытых для этого аккаунта."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den här appen ingår inte bland apparna som delats med det här kontot."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此 App 不在與此帳戶共享的 App 之中。"
+          }
+        }
+      }
+    },
+    "This account doesn't have permission to remove apps." : {
+      "comment" : "Toast shown in the Google Play app list when the account's rules don't allow removing apps.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Konto hat keine Berechtigung, Apps zu entfernen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta cuenta no tiene permiso para eliminar apps."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta cuenta no tiene permiso para eliminar apps."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce compte n'a pas l'autorisation de supprimer des apps."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questo account non ha l'autorizzazione per rimuovere app."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアカウントにはアプリを削除する権限がありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 계정에는 앱을 제거할 권한이 없습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dit account heeft geen toestemming om apps te verwijderen."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta conta não tem permissão para remover apps."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta conta não tem permissão para remover apps."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У этого аккаунта нет разрешения на удаление приложений."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det här kontot har inte behörighet att ta bort appar."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此帳戶沒有移除 App 的權限。"
+          }
+        }
+      }
+    },
     "This isn't a valid JSON file. Paste or import the full service account key downloaded from Google Cloud." : {
       "comment" : "Error shown when the pasted or imported Google Play service account key is not valid JSON.",
       "localizations" : {
@@ -47139,6 +47471,12 @@
             "value" : "Gestionar cuenta"
           }
         },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Administrar cuenta"
+          }
+        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -47173,6 +47511,30 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gerenciar conta"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gerir conta"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Управление аккаунтом"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hantera konto"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "管理帳戶"
           }
         }
       }

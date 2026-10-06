@@ -41,6 +41,12 @@ Google-side setup the user must do: enable the **Google Play Developer Reporting
 | D5 | `APIProviderPlay` is **kept only** for the manual "add app by package name" access check (androidpublisher `edits`) until the core gains an androidpublisher capability; then it is removed (Phase 3). | Avoids regressing manual add; the core has no androidpublisher capability yet. |
 | D6 | Play apps are **not** written into `AppModel` / `SyncService` in Phase 1; they stay in the `googleplay-apps.{accountId}` cache. | `AppModel`, widgets, AllReviews and SyncService are App Store–centric; mixing Android apps there needs its own phase (Phase 4). |
 | D7 | No feature flag: the feature branch is the gate. | The type was already modelled; the branch only merges when Phase 1 is complete. (If incremental merges to `master` are wanted, add `FeatureFlag.googlePlayAccounts` OFF and update `docs/FEATURE_FLAGS.md`.) |
+| D8 | Export / import live in one shared place (`StackConnect/Infra/AccountTransfer/`): `AccountExporter` (keychain → `AccountExportPayloadBuilder` → `AccountCrypto` → temp file), `AccountTransferCredentials` (the `credentials` payload keys + keychain read), `AccountImporter` (both import paths) and `ExportableAppsLoader` (per-app scope picker). | Both export ViewModels and both import ViewModels were copy-pasted; Play support would have meant a third/fourth copy. One implementation keeps every entry point byte-compatible. |
+| D9 | Provider capabilities on `ProviderType`: `supportsExport`, `supportsImport` (Apple + Play), `supportsAccountRole` (Apple + Firebase). `AccountModel.isExportable` = created **and** `supportsExport`; `AccountRuleResource.resources(for:)` = rule resources per provider (Play: `[.apps]`, Firebase: `[]`). | Replaces scattered `== .apple` checks; each UI entry point asks one question. |
+| D10 | `.scexport` import of a Play account validates **offline only**: `serviceAccountJSON` must parse with `GooglePlayServiceAccount`, otherwise a friendly error and nothing is stored. Duplicates are detected by `client_email` (D4) in both import paths and Add Account through `GooglePlayDuplicateAccountFinder`. | Same policy as the Apple import (shape check, no network). A re-import that replaces an expired account is never its own duplicate. |
+| D11 | Play accounts always keep `AccountRole.unspecified`: the role picker is hidden (Add Account, Account Settings), the role badge is hidden (`AccountModel.displayedRole`) and a `role` in an imported file is ignored. Firebase keeps its picker. | The role is an App Store Connect concept. Firebase behaviour left untouched in a Play-focused phase. |
+| D12 | Export refuses (no file) when the keychain has no credentials, and for imported accounts. | Before, a credential-less file was written that no importer accepts; imported accounts were already hidden from the UI — now enforced in the exporter too. |
+| D13 | Play app list enforces the imported account's scope like the App Store list: apps outside `appsBundles` are filtered on cache read and on sync (never persisted); manual add needs `canAdd(.apps)` and an in-scope package name; remove needs `canDelete(.apps)`. The View hides the entry points, the ViewModel guards are the source of truth. | Issue #93 scope contract must hold for Play too. |
 
 ## 2. Phases
 
@@ -67,11 +73,23 @@ Google-side setup the user must do: enable the **Google Play Developer Reporting
   - `AccountCascadeDeleter` also deletes `googleplay-apps.{accountId}`.
   - Tests: VM load/cache/merge/error paths, cascade delete.
 
-### Phase 2 — Export / import parity
-- Export Play accounts (`serviceAccountJSON`) from Settings and AccountSettings (today Apple-only), import option in AccountsList for Play.
-- `.scexport` import duplicate check for Play by `client_email` (D4) in `AccountsListViewModel` and `SettingsAccountsViewModel` (still raw-JSON equality).
-- Account-level settings that make sense for Play (rename, delete); hide the ASC-specific role picker for Play.
-- Native-speaker review of the new Google Cloud / Play Console strings (menu names were translated best-effort).
+### Phase 2 — Export / import parity + account polish — implemented, pending manual UI check
+
+> T5–T7 implemented; `xcodebuild test` 667/667 green (76 new tests). Not yet validated on device with a real Google service account.
+
+- **T5 — Export Play accounts** ✅:
+  - Shared `AccountExporter` + `AccountTransferCredentials` (D8) used by `SettingsAccountsViewModel` and `AccountSettingsViewModel`; Apple payload unchanged (regression test compares it with the pre-Phase-2 builder output), Play writes `credentials.serviceAccountJSON`.
+  - Every export entry point (Settings › Accounts swipe + edit sheet, Account Settings) is driven by `AccountModel.isExportable` (D9).
+  - `ExportAccountView` shows only `AccountRuleResource.resources(for:)` (Play: Apps) and feeds the per-app scope picker through `ExportableAppsLoader` (Play: cached `GooglePlayAppItem` list, package name as scope key).
+- **T6 — Import Play accounts + enforce scope** ✅:
+  - "Import" offered in the Play Accounts list (`supportsImport`); both import paths go through `AccountImporter` (D8, D10).
+  - Side effect of sharing the importer: the per-provider Accounts list now also restores `appsBundles` (it used to drop it — for Apple too).
+  - `GooglePlayAppList` enforces scope and `apps` rules (D13).
+- **T7 — Account polish** ✅:
+  - Role picker / badge hidden for Play (D11).
+  - Rename keeps the per-app scope: `SettingsAccountsViewModel.updateAccountName` and `AccountSettingsViewModel.save` rebuilt the account without `appsBundles`, silently widening an imported account's scope (fixed with `AccountModel.updating(name:role:)`, all providers).
+  - Play accounts reach Account Management from a gear in `GooglePlayAppList` (same as the App Store list): Account Settings (rename, permissions, export) and Delete Account; the ASC-only Certificates/Identifiers/Devices/Profiles section is hidden for Play. Settings › Accounts rename / delete already worked (cascade delete covers the Play app cache since Phase 1).
+- Still open: native-speaker review of the Google Cloud / Play Console strings (Phase 1 + the four Phase 2 strings were translated best-effort).
 
 ### Phase 3 — App detail on the core (needs new core capabilities)
 - Core: androidpublisher capabilities — app details/listings, tracks/releases, reviews (list + reply).

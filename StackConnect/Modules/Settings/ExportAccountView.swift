@@ -5,7 +5,7 @@ struct ExportAccountView: View {
 
     let account: AccountModel
     /// Loads the apps belonging to this account (used to build the per-app scope picker).
-    let loadApps: () async -> [AppModel]
+    let loadApps: () async -> [ExportableApp]
     let onExport: (String, AccountRules, String, Date?, [String]?) -> URL?
     let onDismiss: () -> Void
 
@@ -33,11 +33,12 @@ struct ExportAccountView: View {
 
     /// Apps belonging to this account. Loaded on appear via `loadApps`.
     /// Empty while loading / when the account has not synced yet.
-    @State private var availableApps: [AppModel] = []
+    @State private var availableApps: [ExportableApp] = []
 
-    private let resources: [AccountRuleResource] = [
-        .apps, .version, .review, .testFlight, .analytics, .users, .provisioning
-    ]
+    /// Only the rule resources that apply to the account's provider.
+    private var resources: [AccountRuleResource] {
+        account.ruleResources
+    }
 
     var body: some View {
         NavigationStack {

@@ -106,7 +106,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
             .sheet(item: $coordinator.exportingAccount) { account in
                 ExportAccountView(
                     account: account,
-                    loadApps: { await viewModel.appsForExport(accountId: account.id) },
+                    loadApps: { await viewModel.appsForExport(account: account) },
                     onExport: { name, rules, password, expirationDate, appsBundles in
                         let url = viewModel.exportAccountWithRules(account: account, exportName: name, rules: rules, password: password, expirationDate: expirationDate, appsBundles: appsBundles)
                         coordinator.dismissExportAccount()
@@ -220,26 +220,12 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                             .font(.body)
                             .foregroundStyle(.primary)
 
-                        if account.role != .unspecified {
-                            Text(account.role.displayName)
-                                .font(.caption2)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(.blue)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.blue.opacity(0.15))
-                                .clipShape(Capsule())
+                        if let role = account.displayedRole {
+                            StackCapsuleBadge(title: role.displayName, color: .blue)
                         }
 
                         if account.origin == .imported {
-                            Text(String(localized: "imported"))
-                                .font(.caption2)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(.yellow)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.yellow.opacity(0.15))
-                                .clipShape(Capsule())
+                            StackCapsuleBadge(title: String(localized: "imported"), color: .yellow)
                         }
 
                         Spacer()
@@ -258,7 +244,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                         Label(String(localized: "Delete"), systemImage: "trash")
                     }
 
-                    if account.isExportable && account.providerType == .apple {
+                    if account.isExportable {
                         Button {
                             coordinator.presentExportAccount(account)
                         } label: {
@@ -609,7 +595,7 @@ private struct EditAccountSheetContent: View {
                     Text("Name")
                 }
 
-                if account.isExportable && account.providerType == .apple {
+                if account.isExportable {
                     Section {
                         Button {
                             onExportRequested()

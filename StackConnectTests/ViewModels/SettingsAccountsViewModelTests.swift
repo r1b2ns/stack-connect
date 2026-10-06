@@ -194,4 +194,163 @@ final class SettingsAccountsViewModelTests: XCTestCase {
         let imported = try XCTUnwrap(saved.first { $0.origin == .imported })
         XCTAssertTrue(imported.allowsApp(bundleId: "com.whatever"))
     }
+
+    // MARK: - Google Play (Phase 2)
+
+    private func makeGooglePlayAccount(
+        name: String = "Play Team",
+        json: String = GooglePlayTestFixtures.serviceAccountJSON()
+    ) -> AccountModel {
+        let account = AccountModel(name: name, providerType: .googlePlay)
+        keychain.setObject(GooglePlayCredentials(serviceAccountJSON: json), forKey: "credentials.\(account.id)")
+        return account
+    }
+
+    private func googlePlayImportPayload(serviceAccountJSON: String) -> [String: Any] {
+        [
+            "name": "Shared Play",
+            "providerType": "googlePlay",
+            "createdAt": ISO8601DateFormatter().string(from: .now),
+            "rules": ["apps": ["view"]],
+            "credentials": ["serviceAccountJSON": serviceAccountJSON],
+            "appsBundles": ["com.example.one"]
+        ]
+    }
+
+    func testExportGooglePlayAccountWritesTheServiceAccountJSON() throws {
+        let json = GooglePlayTestFixtures.serviceAccountJSON()
+        let account = makeGooglePlayAccount(json: json)
+        let password = "aVeryStrongPass123"
+
+        let url = try XCTUnwrap(sut.exportAccountWithRules(
+            account: account,
+            exportName: "Play Team",
+            rules: AccountRules(apps: [.view]),
+            password: password,
+            expirationDate: nil,
+            appsBundles: ["com.example.one"]
+        ))
+
+        let dict = try decryptPayload(at: url, password: password)
+        XCTAssertEqual(dict["credentials"] as? [String: String], ["serviceAccountJSON": json])
+        XCTAssertEqual(dict["appsBundles"] as? [String], ["com.example.one"])
+    }
+
+    func testExportFirebaseAccountProducesNoFile() {
+        let account = AccountModel(name: "Firebase", providerType: .firebase)
+        keychain.setObject(FirebaseCredentials(serviceAccountJSON: "{}"), forKey: "credentials.\(account.id)")
+
+        let url = sut.exportAccountWithRules(
+            account: account,
+            exportName: "Firebase",
+            rules: .allPermissions,
+            password: "aVeryStrongPass123",
+            expirationDate: nil,
+            appsBundles: nil
+        )
+
+        XCTAssertNil(url)
+    }
+
+    func testAppsForExportOfAGooglePlayAccountReadsItsCachedAppList() async throws {
+        let account = makeGooglePlayAccount()
+        try await storage.save(
+            [GooglePlayAppItem(id: "com.example.one", packageName: "com.example.one", title: "One", isManuallyAdded: false)],
+            id: GooglePlayAppItem.cacheKey(accountId: account.id)
+        )
+
+        let apps = await sut.appsForExport(account: account)
+
+        XCTAssertEqual(apps.map(\.bundleId), ["com.example.one"])
+        XCTAssertEqual(apps.map(\.name), ["One"])
+    }
+
+    func testImportGooglePlayAccountRestoresScope() async throws {
+        let password = "aVeryStrongPass123"
+        let url = try makeImportFile(
+            payload: googlePlayImportPayload(serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON()),
+            password: password
+        )
+
+        let error = await sut.importAccount(from: url, password: password, customName: nil)
+
+        XCTAssertNil(error)
+        let imported = try XCTUnwrap(sut.uiState.googlePlayAccounts.first)
+        XCTAssertEqual(imported.origin, .imported)
+        XCTAssertEqual(imported.appsBundles, ["com.example.one"])
+    }
+
+    func testImportGooglePlayDuplicateByClientEmailIsRejected() async throws {
+        let existing = makeGooglePlayAccount(
+            name: "Existing",
+            json: #"{"type":"service_account","client_email":"STACK-CONNECT@my-project.iam.gserviceaccount.com","private_key_id":"old","private_key":"-----BEGIN PRIVATE KEY-----\nA\n-----END PRIVATE KEY-----\n"}"#
+        )
+        try await storage.save(existing, id: existing.id)
+        let password = "aVeryStrongPass123"
+        let url = try makeImportFile(
+            payload: googlePlayImportPayload(serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON()),
+            password: password
+        )
+
+        let error = await sut.importAccount(from: url, password: password, customName: "Another name")
+
+        XCTAssertEqual(error, String(localized: "An account with these credentials already exists: \"Existing\"."))
+        let saved = try await storage.fetchAll(AccountModel.self)
+        XCTAssertEqual(saved.map(\.id), [existing.id])
+    }
+
+    func testImportGooglePlayWithMalformedKeyIsRejectedAndSavesNothing() async throws {
+        let password = "aVeryStrongPass123"
+        let url = try makeImportFile(
+            payload: googlePlayImportPayload(serviceAccountJSON: "{ not a key"),
+            password: password
+        )
+
+        let error = await sut.importAccount(from: url, password: password, customName: nil)
+
+        XCTAssertEqual(
+            error,
+            String(localized: "The Google Play service account key in this file is invalid. Ask the sender to export the account again.")
+        )
+        let saved = try await storage.fetchAll(AccountModel.self)
+        XCTAssertTrue(saved.isEmpty)
+        XCTAssertTrue(keychain.storedKeys.isEmpty)
+    }
+
+    // MARK: - Rename
+
+    func testRenameKeepsTheImportedScope() async throws {
+        let account = AccountModel(
+            name: "Old",
+            providerType: .googlePlay,
+            rules: AccountRules(apps: [.view]),
+            origin: .imported,
+            appsBundles: ["com.example.one"]
+        )
+        try await storage.save(account, id: account.id)
+        await sut.loadAccounts()
+
+        await sut.updateAccountName(accountId: account.id, newName: "  New  ")
+
+        let saved = try await storage.fetch(AccountModel.self, id: account.id)
+        XCTAssertEqual(saved?.name, "New")
+        XCTAssertEqual(saved?.appsBundles, ["com.example.one"], "A rename must never widen the per-app scope")
+        XCTAssertEqual(saved?.origin, .imported)
+        XCTAssertEqual(sut.uiState.googlePlayAccounts.map(\.name), ["New"])
+    }
+
+    func testDeleteGooglePlayAccountRemovesItsCachedAppsAndCredentials() async throws {
+        let account = makeGooglePlayAccount()
+        try await storage.save(account, id: account.id)
+        let cacheKey = GooglePlayAppItem.cacheKey(accountId: account.id)
+        try await storage.save([GooglePlayAppItem(id: "com.a", packageName: "com.a", title: nil, isManuallyAdded: true)], id: cacheKey)
+        await sut.loadAccounts()
+
+        await sut.deleteAccount(account)
+
+        let cached = try await storage.fetch([GooglePlayAppItem].self, id: cacheKey)
+        XCTAssertNil(cached)
+        XCTAssertNil(keychain.data(forKey: "credentials.\(account.id)"))
+        XCTAssertTrue(sut.uiState.googlePlayAccounts.isEmpty)
+    }
 }

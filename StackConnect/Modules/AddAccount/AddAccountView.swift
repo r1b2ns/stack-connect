@@ -91,15 +91,18 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
             )
             .textContentType(.name)
 
-            Picker(
-                String(localized: "Role"),
-                selection: $viewModel.uiState.role
-            ) {
-                ForEach(AccountRole.allCases, id: \.self) { role in
-                    Text(role.displayName).tag(role)
+            // App Store Connect role; Google Play accounts keep the default role.
+            if viewModel.uiState.providerType.supportsAccountRole {
+                Picker(
+                    String(localized: "Role"),
+                    selection: $viewModel.uiState.role
+                ) {
+                    ForEach(AccountRole.allCases, id: \.self) { role in
+                        Text(role.displayName).tag(role)
+                    }
                 }
+                .pickerStyle(.menu)
             }
-            .pickerStyle(.menu)
         } header: {
             Text("General")
         }

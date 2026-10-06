@@ -33,7 +33,7 @@ protocol AccountSettingsViewModelProtocol: ObservableObject {
     var uiState: AccountSettingsUiState { get set }
     func save() async
     func exportAccountWithRules(exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL?
-    func appsForExport() async -> [AppModel]
+    func appsForExport() async -> [ExportableApp]
 }
 
 // MARK: - UiState
@@ -53,12 +53,13 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
     @Published var uiState: AccountSettingsUiState
 
     private let storage: PersistentStorable
-    private let keychain: KeyStorable
+    private let exporter: AccountExporting
 
     init(
         account: AccountModel,
         storage: PersistentStorable? = nil,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        exporter: AccountExporting? = nil
     ) {
         self.uiState = AccountSettingsUiState(
             account: account,
@@ -66,25 +67,17 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
             editingRole: account.role
         )
         self.storage = storage ?? SwiftDataStorable.shared
-        self.keychain = keychain
+        self.exporter = exporter ?? AccountExporter(keychain: keychain)
     }
 
     func save() async {
         let trimmed = uiState.editingName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
 
-        let updated = AccountModel(
-            id: uiState.account.id,
-            name: trimmed,
-            providerType: uiState.account.providerType,
-            createdAt: uiState.account.createdAt,
-            rules: uiState.account.rules,
-            origin: uiState.account.origin,
-            role: uiState.editingRole,
-            expirationDate: uiState.account.expirationDate,
-            hasPendingAgreements: uiState.account.hasPendingAgreements,
-            pendingAgreementsDetectedAt: uiState.account.pendingAgreementsDetectedAt
-        )
+        // `updating` keeps every other field — notably the per-app scope. The
+        // role is only editable for providers that have one (not Google Play).
+        let role = uiState.account.providerType.supportsAccountRole ? uiState.editingRole : uiState.account.role
+        let updated = uiState.account.updating(name: trimmed, role: role)
 
         do {
             try await storage.save(updated, id: updated.id)
@@ -97,48 +90,24 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
     }
 
     func exportAccountWithRules(exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL? {
-        var credentials: [String: String]?
-        if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") {
-            credentials = [
-                "issuerID": creds.issuerID,
-                "privateKeyID": creds.privateKeyID,
-                "privateKey": creds.privateKey
-            ]
-        }
-
-        guard let json = AccountExportPayloadBuilder.makeJSON(
-            account: uiState.account,
-            exportName: exportName,
-            rules: rules,
-            expirationDate: expirationDate,
-            appsBundles: appsBundles,
-            credentials: credentials
-        ) else {
-            return nil
-        }
-
-        guard let encryptedData = try? AccountCrypto.encrypt(json: json, password: password) else {
-            return nil
-        }
-
-        // Neutral filename: avoids leaking the account name / provider in the file name.
-        let fileName = "export-\(UUID().uuidString).scexport"
-
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
         do {
-            try encryptedData.write(to: tempURL)
-            return tempURL
+            return try exporter.export(AccountExportRequest(
+                account: uiState.account,
+                exportName: exportName,
+                rules: rules,
+                password: password,
+                expirationDate: expirationDate,
+                appsBundles: appsBundles
+            ))
         } catch {
+            Log.print.error("[AccountSettings] Export failed: \(String(describing: error))")
             return nil
         }
     }
 
     /// Apps belonging to this account, sorted by name, for the export scope picker.
-    func appsForExport() async -> [AppModel] {
-        let all: [AppModel] = (try? await storage.fetchAll(AppModel.self)) ?? []
-        return all
-            .filter { $0.accountId == uiState.account.id }
-            .sorted { $0.name < $1.name }
+    func appsForExport() async -> [ExportableApp] {
+        await ExportableAppsLoader.apps(for: uiState.account, storage: storage)
     }
 }
 
@@ -152,14 +121,18 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
     @State private var shareItem: ShareableFileURL?
     @State private var showNameEdit = false
 
-    private let resources: [AccountRuleResource] = [
-        .apps, .version, .review, .testFlight, .analytics, .users, .provisioning
-    ]
+    /// Only the rule resources that apply to the account's provider.
+    private var resources: [AccountRuleResource] {
+        viewModel.uiState.account.ruleResources
+    }
 
     var body: some View {
         Form {
             buildInfoSection()
-            buildRulesSection()
+
+            if !resources.isEmpty {
+                buildRulesSection()
+            }
 
             if viewModel.uiState.account.isExportable {
                 buildExportSection()
@@ -230,17 +203,8 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
                 Text(viewModel.uiState.account.providerType.displayName)
             }
 
-            Picker(
-                String(localized: "Role"),
-                selection: $viewModel.uiState.editingRole
-            ) {
-                ForEach(AccountRole.allCases, id: \.self) { role in
-                    Text(role.displayName).tag(role)
-                }
-            }
-            .pickerStyle(.menu)
-            .onChange(of: viewModel.uiState.editingRole) { _, _ in
-                Task { await viewModel.save() }
+            if viewModel.uiState.account.providerType.supportsAccountRole {
+                buildRolePicker()
             }
 
             HStack {
@@ -270,6 +234,22 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
             }
         } header: {
             Text(String(localized: "Account"))
+        }
+    }
+
+    /// App Store Connect role. Not shown for providers without roles (Google Play).
+    private func buildRolePicker() -> some View {
+        Picker(
+            String(localized: "Role"),
+            selection: $viewModel.uiState.editingRole
+        ) {
+            ForEach(AccountRole.allCases, id: \.self) { role in
+                Text(role.displayName).tag(role)
+            }
+        }
+        .pickerStyle(.menu)
+        .onChange(of: viewModel.uiState.editingRole) { _, _ in
+            Task { await viewModel.save() }
         }
     }
 

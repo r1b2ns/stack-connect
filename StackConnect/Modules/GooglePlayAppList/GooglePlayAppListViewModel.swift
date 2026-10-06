@@ -26,6 +26,16 @@ struct GooglePlayAppListUiState {
     var isAdding = false
     var addError: String?
     var toastMessage: ToastMessage?
+
+    /// Manual "add app by package name" is allowed by the account's rules.
+    var canAddApps: Bool {
+        account.canAdd(.apps)
+    }
+
+    /// Removing a manually added app is allowed by the account's rules.
+    var canDeleteApps: Bool {
+        account.canDelete(.apps)
+    }
 }
 
 // MARK: - Implementation
@@ -66,11 +76,16 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     /// Offline-first: shows the cached list right away, then syncs it from the
     /// Play Developer Reporting API (via the Rust core) and persists the result.
     /// A failed sync keeps whatever is on screen.
+    ///
+    /// Per-app scope of an imported account (`AccountModel.allowsApp`, nil/empty
+    /// ⇒ every app): apps outside it are never shown nor persisted — mirroring
+    /// the App Store `AppListViewModel`.
     func load() async {
         uiState.error = nil
 
-        // 1. Cached list first (offline-first).
-        if let cached = await loadFromStorage(), !cached.isEmpty {
+        // 1. Cached list first (offline-first). Defense-in-depth: hide any cached
+        //    row outside the scope (the next save drops it from the cache).
+        if let cached = await loadFromStorage()?.filter(isInScope), !cached.isEmpty {
             uiState.apps = Self.sorted(cached)
         }
         uiState.isLoading = uiState.apps.isEmpty
@@ -89,7 +104,9 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         }
 
         do {
-            let remoteApps = try await connectionFactory(credentials).fetchApps()
+            let remoteApps = try await connectionFactory(credentials).fetchApps().filter {
+                self.uiState.account.allowsApp(bundleId: $0.bundleId)
+            }
             uiState.apps = Self.merge(remote: remoteApps, into: uiState.apps)
             await saveToStorage()
             Log.print.info("[GooglePlayAppList] Synced \(remoteApps.count) apps for account: \(self.uiState.account.name)")
@@ -108,9 +125,20 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
 
     // MARK: - Add App Manually
 
+    /// Gated by the account's `apps` rules (`canAdd`) and limited to its per-app
+    /// scope. The View hides the entry points too; these guards are the source
+    /// of truth.
     func addApp(packageName: String) async {
         let trimmed = packageName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
+        guard uiState.canAddApps else {
+            uiState.addError = String(localized: "This account doesn't have permission to add apps.")
+            return
+        }
+        guard uiState.account.allowsApp(bundleId: trimmed) else {
+            uiState.addError = String(localized: "This app isn't included in the apps shared with this account.")
+            return
+        }
         guard !uiState.apps.contains(where: { $0.packageName == trimmed }) else {
             uiState.addError = String(localized: "This app is already in the list.")
             return
@@ -149,7 +177,15 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
 
     // MARK: - Remove
 
+    /// Gated by the account's `apps` rules (`canDelete`).
     func removeApp(_ app: GooglePlayAppItem) async {
+        guard uiState.canDeleteApps else {
+            uiState.toastMessage = ToastMessage(
+                String(localized: "This account doesn't have permission to remove apps."),
+                icon: "exclamationmark.triangle.fill"
+            )
+            return
+        }
         uiState.apps.removeAll { $0.id == app.id }
         await saveToStorage()
     }
@@ -190,6 +226,10 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
 
     private static func sorted(_ apps: [GooglePlayAppItem]) -> [GooglePlayAppItem] {
         apps.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+    }
+
+    private func isInScope(_ app: GooglePlayAppItem) -> Bool {
+        uiState.account.allowsApp(bundleId: app.packageName)
     }
 
     private func storedCredentials() -> GooglePlayCredentials? {
