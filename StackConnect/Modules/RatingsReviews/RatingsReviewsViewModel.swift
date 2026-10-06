@@ -1,22 +1,19 @@
 import Foundation
 
-// MARK: - Models
-
-struct iTunesStorefrontInfo: Equatable {
-    let country: String
-    let averageRating: Double?
-    let ratingCount: Int?
-}
-
 // MARK: - Protocol
 
 @MainActor
 protocol RatingsReviewsViewModelProtocol: ObservableObject {
     var uiState: RatingsReviewsUiState { get set }
+    /// Loads once per screen: returning from a review keeps the list as it was.
+    func loadIfNeeded() async
+    /// Loads the first page again (pull to refresh, sort change).
     func load() async
+    /// Appends the next page. Also the retry after a failed page.
     func loadMore() async
     func applyFilter(rating: Int?) async
     func reply(to review: CustomerReviewModel, body: String) async
+    func cancelReply()
     func deleteResponse(for review: CustomerReviewModel) async
 }
 
@@ -26,11 +23,17 @@ struct RatingsReviewsUiState {
     var appId: String
     var bundleId: String
     var account: AccountModel
+    /// What the account's store supports (sort orders, reply deletion, copy).
+    var traits: CustomerReviewsTraits
     var reviews: [CustomerReviewModel] = []
     var isLoading = false
     var isLoadingMore = false
     var hasMorePages = false
+    /// Last failed next page, shown with a retry where the next page goes.
+    var loadMoreError: String?
     var isSending = false
+    /// Cached reviews are on screen while the API is being asked for fresh ones.
+    var showSyncToast = false
     var toastMessage: ToastMessage?
     var error: String?
 
@@ -46,9 +49,8 @@ struct RatingsReviewsUiState {
     // Reply sheet
     var replyingTo: CustomerReviewModel?
     var replyText: String = ""
-
-    // Detail
-    var selectedReview: CustomerReviewModel?
+    /// Last reply failure, shown inside the reply composer.
+    var replyError: String?
 
     /// Average rating from the App Store (iTunes Lookup API).
     var averageRating: Double {
@@ -65,6 +67,28 @@ struct RatingsReviewsUiState {
     /// Total ratings across every storefront (matches what is shown on the App Store).
     var totalRatingCount: Int {
         storeRatingCount ?? 0
+    }
+
+    /// Replying is gated by the account's `review` rules (edit), for every store.
+    var canReply: Bool {
+        account.canEdit(.review)
+    }
+
+    /// Needs the account's `review` delete rule and a store that can delete
+    /// replies (Google Play can't).
+    var canDeleteReplies: Bool {
+        traits.canDeleteReplies && account.canDelete(.review)
+    }
+
+    /// The sort menu only appears when the store serves more than one order.
+    var showsSortMenu: Bool {
+        traits.sortOptions.count > 1
+    }
+
+    /// Another page can be asked for (offered as "Load More" when the list
+    /// doesn't fill the screen, e.g. a rating filter on Google Play).
+    var canLoadMore: Bool {
+        hasMorePages && !isLoadingMore
     }
 }
 
@@ -88,171 +112,280 @@ enum ReviewSortOption: String, CaseIterable, Identifiable {
 
 // MARK: - Implementation
 
+/// Ratings & Reviews of one app, for any store behind `CustomerReviewsServicing`
+/// (App Store Connect, Google Play).
+///
+/// Stores with a `cache` (Google Play) are offline-first: the cached first page
+/// is shown while the API is asked for a fresh one, and kept when that fails.
+///
+/// Loads run in tasks this ViewModel owns, not in the caller's: the screen's
+/// `.task` is cancelled when a review is pushed, and a cancelled iTunes sweep
+/// would leave a partial rating summary behind.
 @MainActor
 final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
 
+    /// Reviews requested per page.
+    static let pageSize = 50
+
+    /// Google Play filters each page by rating on the client, so a filtered page
+    /// can come back empty while more pages exist. Up to this many such pages are
+    /// skipped per request, so the list (and its load-more trigger) isn't left
+    /// empty — bounded because each page counts against Google's hourly quota.
+    static let maxEmptyPagesSkipped = 4
+
     @Published var uiState: RatingsReviewsUiState
 
-    private let keychain: KeyStorable
-    private var lastPageResponse: Any?
+    private let service: (any CustomerReviewsServicing)?
+    private let cache: (any CustomerReviewsCaching)?
+    private let ratingSummaryFetcher: any AppStoreRatingSummaryFetching
+    private var nextPageToken: String?
+    /// The latest load. Non-`nil` once the screen has loaded (or is loading).
+    private var loadTask: Task<Void, Never>?
+    /// The rating summary on screen came from a sweep of every storefront.
+    private var hasCompleteRatingSummary = false
+    /// Bumped whenever the list starts over (load, sort, filter): a page asked
+    /// for an older list is dropped instead of landing on the new one.
+    private var listGeneration = 0
 
+    /// - Parameters:
+    ///   - service: the account's reviews backend; `nil` when its credentials are
+    ///     missing (the screen then explains it instead of loading).
+    ///   - cache: offline cache of the first page, for stores that have one.
+    ///   - ratingSummaryFetcher: App Store rating summary, for stores that show
+    ///     one (`traits.showsStoreRatingSummary`).
     init(
         appId: String,
         bundleId: String,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        service: (any CustomerReviewsServicing)?,
+        cache: (any CustomerReviewsCaching)? = nil,
+        ratingSummaryFetcher: any AppStoreRatingSummaryFetching = ITunesRatingSummaryFetcher()
     ) {
-        self.uiState = RatingsReviewsUiState(appId: appId, bundleId: bundleId, account: account)
-        self.keychain = keychain
-        Task {
-            await load()
+        self.uiState = RatingsReviewsUiState(
+            appId: appId,
+            bundleId: bundleId,
+            account: account,
+            traits: service?.traits ?? .appStore
+        )
+        self.service = service
+        self.cache = cache
+        self.ratingSummaryFetcher = ratingSummaryFetcher
+    }
+
+    func loadIfNeeded() async {
+        if let loadTask {
+            // Already loaded, or still loading: wait for it, never load again.
+            await loadTask.value
+            return
         }
+        await load()
     }
 
     func load() async {
-        uiState.isLoading = true
-        uiState.error = nil
-        uiState.reviews = []
-        lastPageResponse = nil
-
-        // Fetch App Store rating and reviews in parallel
-        async let ratingTask: () = fetchAppStoreRating()
-        async let reviewsTask: () = fetchFirstPage()
-
-        _ = await (ratingTask, reviewsTask)
-
-        uiState.isLoading = false
+        let task = Task { await self.performLoad() }
+        loadTask = task
+        await task.value
     }
 
-    /// Aggregates iTunes Lookup data across every storefront where the app is available.
-    /// `averageRating` is a count-weighted mean and `ratingCount` is the global sum,
-    /// matching what users see on the App Store.
-    private func fetchAppStoreRating() async {
-        let storefronts = await iTunesLookupAvailableStorefronts(bundleId: uiState.bundleId)
-        uiState.storefronts = storefronts
+    private func performLoad() async {
+        listGeneration += 1
+        let generation = listGeneration
+        uiState.error = nil
+        uiState.loadMoreError = nil
+        uiState.hasMorePages = false
+        nextPageToken = nil
 
-        let totalCount = storefronts.reduce(0) { $0 + ($1.ratingCount ?? 0) }
-        guard totalCount > 0 else {
-            uiState.storeAverageRating = nil
-            uiState.storeRatingCount = 0
-            Log.print.info("[RatingsReviews] iTunes storefronts: \(storefronts.count) found, no ratings yet")
+        // Per-app scope of an imported account: an app outside it is never loaded.
+        guard uiState.account.allowsApp(bundleId: uiState.bundleId) else {
+            uiState.reviews = []
+            uiState.error = String(localized: "This app isn't included in the apps shared with this account.")
             return
         }
 
-        let weightedSum = storefronts.reduce(0.0) { acc, info in
-            guard let avg = info.averageRating, let count = info.ratingCount else { return acc }
-            return acc + avg * Double(count)
+        // Defense in depth (D16): every entry point checks the `review` view rule
+        // before opening this screen; an account without it never loads reviews.
+        guard uiState.account.canView(.review) else {
+            uiState.reviews = []
+            uiState.error = String(localized: "You don't have permission to view ratings and reviews.")
+            return
         }
-        let weightedAverage = weightedSum / Double(totalCount)
 
-        uiState.storeAverageRating = weightedAverage
-        uiState.storeRatingCount = totalCount
-        Log.print.info("[RatingsReviews] iTunes aggregate across \(storefronts.count) storefronts: avg \(weightedAverage), count \(totalCount)")
+        // Offline-first: the cached first page (unfiltered, newest first) while
+        // the API answers.
+        let cached = isShowingDefaultList ? await cache?.cachedReviews() : nil
+        guard generation == listGeneration else { return }
+        let isShowingCache = !(cached?.isEmpty ?? true)
+        uiState.reviews = cached ?? []
+        uiState.showSyncToast = isShowingCache
+        uiState.isLoading = true
+
+        if uiState.traits.showsStoreRatingSummary {
+            // Fetch App Store rating and reviews in parallel
+            async let ratingTask: () = fetchAppStoreRating()
+            async let reviewsTask: () = fetchFirstPage(isShowingCache: isShowingCache, generation: generation)
+            _ = await (ratingTask, reviewsTask)
+        } else {
+            await fetchFirstPage(isShowingCache: isShowingCache, generation: generation)
+        }
+
+        if generation == listGeneration {
+            uiState.isLoading = false
+        }
     }
 
-    private func fetchFirstPage() async {
+    /// App Store rating across every storefront: `averageRating` is a
+    /// count-weighted mean and `ratingCount` the global sum, matching what users
+    /// see on the App Store. A cancelled sweep changes nothing, and a partial one
+    /// (some storefronts failed) never replaces a complete summary.
+    private func fetchAppStoreRating() async {
+        guard let summary = await ratingSummaryFetcher.fetchSummary(bundleId: uiState.bundleId) else {
+            Log.print.info("[RatingsReviews] Rating summary cancelled; keeping the current one")
+            return
+        }
+        if !summary.isComplete && hasCompleteRatingSummary {
+            Log.print.info("[RatingsReviews] Partial rating summary (\(summary.storefronts.count) storefronts); keeping the complete one")
+            return
+        }
+
+        hasCompleteRatingSummary = summary.isComplete
+        uiState.storefronts = summary.storefronts
+        uiState.storeAverageRating = summary.averageRating
+        uiState.storeRatingCount = summary.ratingCount
+        Log.print.info("[RatingsReviews] Rating summary across \(summary.storefronts.count) storefronts: avg \(summary.averageRating ?? 0), count \(summary.ratingCount), complete: \(summary.isComplete)")
+    }
+
+    /// - Parameters:
+    ///   - isShowingCache: cached reviews are on screen; an offline failure then
+    ///     keeps them without an extra warning (the global offline banner
+    ///     already says so).
+    ///   - generation: the `listGeneration` this page is for; dropped if the
+    ///     list started over meanwhile.
+    private func fetchFirstPage(isShowingCache: Bool, generation: Int) async {
+        guard let service else {
+            uiState.reviews = []
+            uiState.error = String(localized: "No credentials found for this account.")
+            Log.print.error("[RatingsReviews] No credentials for account: \(self.uiState.account.name)")
+            return
+        }
+
         do {
-            guard let connection = createConnection() else { return }
-
-            let filterRating = uiState.filterRating.map { [String($0)] }
-
-            let page = try await connection.fetchCustomerReviewsPage(
-                appId: uiState.appId,
-                sort: uiState.sortOption.rawValue,
-                filterRating: filterRating,
-                limit: 50,
-                pageAfterResponse: nil
-            )
+            let page = try await fetchPage(after: nil, service: service)
+            guard generation == listGeneration else { return }
 
             uiState.reviews = page.reviews
             uiState.hasMorePages = page.hasNextPage
-            lastPageResponse = page.rawResponse
+            nextPageToken = page.nextPageToken
+            if isShowingDefaultList {
+                await cache?.saveReviews(page.reviews)
+            }
 
             Log.print.info("[RatingsReviews] Loaded \(page.reviews.count) reviews, hasMore: \(page.hasNextPage), filter: \(self.uiState.filterRating?.description ?? "all")")
         } catch {
-            uiState.error = error.localizedDescription
             Log.print.error("[RatingsReviews] Failed to load: \(error.localizedDescription)")
+            guard generation == listGeneration else { return }
+            if !(isShowingCache && OfflineError.isConnectivityFailure(error)) {
+                uiState.error = service.message(for: error, operation: .load)
+            }
         }
     }
 
     func applyFilter(rating: Int?) async {
+        listGeneration += 1
+        let generation = listGeneration
         uiState.filterRating = rating
         uiState.reviews = []
+        uiState.error = nil
+        uiState.loadMoreError = nil
+        uiState.hasMorePages = false
         uiState.isLoading = true
-        lastPageResponse = nil
+        nextPageToken = nil
 
-        await fetchFirstPage()
+        await fetchFirstPage(isShowingCache: false, generation: generation)
 
-        uiState.isLoading = false
+        if generation == listGeneration {
+            uiState.isLoading = false
+        }
     }
 
+    /// Every call asks the store for at most `1 + maxEmptyPagesSkipped` pages,
+    /// and the screen only calls it when the next-page row appears, after a page
+    /// that added reviews, or on "Load More" — never in a loop on its own, since
+    /// Google Play counts every page against an hourly quota.
     func loadMore() async {
-        guard uiState.hasMorePages, !uiState.isLoadingMore, lastPageResponse != nil else { return }
+        guard uiState.canLoadMore, let token = nextPageToken, let service else { return }
+        let generation = listGeneration
         uiState.isLoadingMore = true
+        uiState.loadMoreError = nil
 
-        do {
-            guard let connection = createConnection() else {
-                uiState.isLoadingMore = false
-                return
+        // Owned here like `load()`: the next-page row's `.task` is cancelled as
+        // soon as it scrolls away.
+        await Task {
+            defer { self.uiState.isLoadingMore = false }
+            do {
+                let page = try await self.fetchPage(after: token, service: service)
+                guard generation == self.listGeneration else { return }
+
+                self.uiState.reviews.append(contentsOf: page.reviews)
+                self.uiState.hasMorePages = page.hasNextPage
+                self.nextPageToken = page.nextPageToken
+
+                Log.print.info("[RatingsReviews] Loaded \(page.reviews.count) more reviews, total: \(self.uiState.reviews.count)")
+            } catch {
+                Log.print.error("[RatingsReviews] Failed to load more: \(error.localizedDescription)")
+                guard generation == self.listGeneration else { return }
+                self.uiState.loadMoreError = service.message(for: error, operation: .load)
             }
-
-            let filterRating = uiState.filterRating.map { [String($0)] }
-
-            let page = try await connection.fetchCustomerReviewsPage(
-                appId: uiState.appId,
-                sort: uiState.sortOption.rawValue,
-                filterRating: filterRating,
-                limit: 50,
-                pageAfterResponse: lastPageResponse
-            )
-
-            uiState.reviews.append(contentsOf: page.reviews)
-            uiState.hasMorePages = page.hasNextPage
-            lastPageResponse = page.rawResponse
-
-            Log.print.info("[RatingsReviews] Loaded \(page.reviews.count) more reviews, total: \(self.uiState.reviews.count)")
-        } catch {
-            Log.print.error("[RatingsReviews] Failed to load more: \(error.localizedDescription)")
-        }
-
-        uiState.isLoadingMore = false
+        }.value
     }
 
     func reply(to review: CustomerReviewModel, body: String) async {
+        guard uiState.canReply else {
+            uiState.toastMessage = ToastMessage(
+                String(localized: "This account doesn't have permission to reply to reviews."),
+                icon: "exclamationmark.triangle.fill"
+            )
+            return
+        }
+        guard let service else { return }
+
         uiState.isSending = true
+        uiState.replyError = nil
 
         do {
-            guard let connection = createConnection() else {
-                uiState.isSending = false
-                return
-            }
-
-            try await connection.replyToReview(reviewId: review.id, responseBody: body)
+            let response = try await service.reply(toReviewId: review.id, body: body, replacingResponseId: nil)
 
             if let idx = uiState.reviews.firstIndex(where: { $0.id == review.id }) {
-                uiState.reviews[idx].responseBody = body
-                uiState.reviews[idx].responseState = "PENDING_PUBLISH"
-                uiState.reviews[idx].responseDate = Date()
+                uiState.reviews[idx].applyResponse(response)
             }
 
             uiState.replyingTo = nil
             uiState.replyText = ""
             uiState.toastMessage = ToastMessage(String(localized: "Reply sent"), icon: "paperplane.fill")
             Log.print.info("[RatingsReviews] Replied to review \(review.id)")
+            await cache?.saveResponse(response, forReviewId: review.id)
         } catch {
-            uiState.toastMessage = ToastMessage(String(localized: "Failed to send reply"), icon: "exclamationmark.triangle.fill")
+            let message = service.message(for: error, operation: .reply)
+            uiState.replyError = message
+            uiState.toastMessage = ToastMessage(message, icon: "exclamationmark.triangle.fill")
             Log.print.error("[RatingsReviews] Reply failed: \(error.localizedDescription)")
         }
 
         uiState.isSending = false
     }
 
+    /// Closes the composer and drops its draft and error. Also runs when the
+    /// sheet is swiped away, so the next reply starts clean.
+    func cancelReply() {
+        uiState.replyingTo = nil
+        uiState.replyText = ""
+        uiState.replyError = nil
+    }
+
     func deleteResponse(for review: CustomerReviewModel) async {
-        guard let responseId = review.responseId else { return }
+        guard uiState.canDeleteReplies, let responseId = review.responseId, let service else { return }
 
         do {
-            guard let connection = createConnection() else { return }
-            try await connection.deleteReviewResponse(responseId: responseId)
+            try await service.deleteReply(responseId: responseId)
 
             if let idx = uiState.reviews.firstIndex(where: { $0.id == review.id }) {
                 uiState.reviews[idx].responseId = nil
@@ -264,118 +397,45 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
             uiState.toastMessage = ToastMessage(String(localized: "Reply deleted"), icon: "trash")
             Log.print.info("[RatingsReviews] Deleted response for review \(review.id)")
         } catch {
-            uiState.toastMessage = ToastMessage(String(localized: "Failed to delete reply"), icon: "exclamationmark.triangle.fill")
+            uiState.toastMessage = ToastMessage(
+                service.message(for: error, operation: .deleteReply),
+                icon: "exclamationmark.triangle.fill"
+            )
             Log.print.error("[RatingsReviews] Delete response failed: \(error.localizedDescription)")
         }
     }
 
     // MARK: - Private
 
-    private func createConnection() -> AppleAccountConnection? {
-        guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else {
-            return nil
-        }
-        return AppleAccountConnection(credentials: credentials)
+    /// Only the unfiltered, newest-first list is cached.
+    private var isShowingDefaultList: Bool {
+        uiState.filterRating == nil && uiState.sortOption == .newest
     }
 
-    // MARK: - iTunes Lookup API
-
-    private struct iTunesLookupResult {
-        var averageRating: Double?
-        var ratingCount: Int?
-    }
-
-    private func iTunesLookup(bundleId: String) async throws -> iTunesLookupResult {
-        let urlString = "https://itunes.apple.com/lookup?bundleId=\(bundleId)"
-        guard let url = URL(string: urlString) else {
-            return iTunesLookupResult()
-        }
-
-        let (data, _) = try await URLSession.shared.data(from: url)
-
-        struct LookupResponse: Decodable {
-            let resultCount: Int?
-            let results: [LookupApp]?
-        }
-
-        struct LookupApp: Decodable {
-            let averageUserRating: Double?
-            let userRatingCount: Int?
-            let averageUserRatingForCurrentVersion: Double?
-            let userRatingCountForCurrentVersion: Int?
-        }
-
-        let response = try JSONDecoder().decode(LookupResponse.self, from: data)
-        guard let app = response.results?.first else {
-            return iTunesLookupResult()
-        }
-
-        return iTunesLookupResult(
-            averageRating: app.averageUserRating,
-            ratingCount: app.userRatingCount
+    /// Fetches the page after `token`, skipping (a bounded number of) empty pages
+    /// that still have a successor. See `maxEmptyPagesSkipped`.
+    private func fetchPage(
+        after token: String?,
+        service: any CustomerReviewsServicing
+    ) async throws -> CustomerReviewsPageModel {
+        var page = try await service.fetchReviewsPage(
+            appId: uiState.appId,
+            sort: uiState.sortOption,
+            filterRating: uiState.filterRating,
+            limit: Self.pageSize,
+            pageToken: token
         )
-    }
-
-    // MARK: - iTunes Storefront Availability
-
-    /// All App Store storefront codes (ISO 3166-1 alpha-2, lowercase).
-    /// Source: https://en.wikipedia.org/wiki/App_Store_(Apple)#Distribution
-    private static let appStoreStorefronts: [String] = [
-        "ae", "ag", "ai", "al", "am", "ao", "ar", "at", "au", "az",
-        "bb", "be", "bf", "bg", "bh", "bj", "bm", "bn", "bo", "br",
-        "bs", "bt", "bw", "by", "bz", "ca", "cd", "cg", "ch", "ci",
-        "cl", "cm", "cn", "co", "cr", "cv", "cy", "cz", "de", "dk",
-        "dm", "do", "dz", "ec", "ee", "eg", "es", "fi", "fj", "fm",
-        "fr", "ga", "gb", "gd", "gh", "gm", "gr", "gt", "gw", "gy",
-        "hk", "hn", "hr", "hu", "id", "ie", "il", "in", "iq", "is",
-        "it", "jm", "jo", "jp", "ke", "kg", "kh", "kn", "kr", "kw",
-        "ky", "kz", "la", "lb", "lc", "lk", "lr", "lt", "lu", "lv",
-        "ly", "ma", "md", "me", "mg", "mk", "ml", "mm", "mn", "mo",
-        "mr", "ms", "mt", "mu", "mv", "mw", "mx", "my", "mz", "na",
-        "ne", "ng", "ni", "nl", "no", "np", "nz", "om", "pa", "pe",
-        "pg", "ph", "pk", "pl", "pt", "pw", "py", "qa", "ro", "rs",
-        "ru", "rw", "sa", "sb", "sc", "se", "sg", "si", "sk", "sl",
-        "sn", "sr", "st", "sv", "sz", "tc", "td", "th", "tj", "tm",
-        "tn", "tr", "tt", "tw", "tz", "ua", "ug", "us", "uy", "uz",
-        "vc", "ve", "vg", "vn", "vu", "ye", "za", "zm", "zw"
-    ]
-
-    /// Probes every App Store storefront via iTunes Lookup and returns the ones where the app
-    /// is available. Calls run concurrently with a bounded TaskGroup so the whole sweep
-    /// finishes in a few seconds.
-    private func iTunesLookupAvailableStorefronts(bundleId: String) async -> [iTunesStorefrontInfo] {
-        struct LookupResponse: Decodable {
-            let resultCount: Int?
-            let results: [LookupApp]?
+        var skipped = 0
+        while page.reviews.isEmpty, let next = page.nextPageToken, skipped < Self.maxEmptyPagesSkipped {
+            skipped += 1
+            page = try await service.fetchReviewsPage(
+                appId: uiState.appId,
+                sort: uiState.sortOption,
+                filterRating: uiState.filterRating,
+                limit: Self.pageSize,
+                pageToken: next
+            )
         }
-        struct LookupApp: Decodable {
-            let averageUserRating: Double?
-            let userRatingCount: Int?
-        }
-
-        return await withTaskGroup(of: iTunesStorefrontInfo?.self) { group in
-            for country in Self.appStoreStorefronts {
-                group.addTask {
-                    let urlString = "https://itunes.apple.com/lookup?bundleId=\(bundleId)&country=\(country)"
-                    guard let url = URL(string: urlString) else { return nil }
-                    guard let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
-                    guard let response = try? JSONDecoder().decode(LookupResponse.self, from: data) else { return nil }
-                    guard let app = response.results?.first else { return nil }
-                    return iTunesStorefrontInfo(
-                        country: country,
-                        averageRating: app.averageUserRating,
-                        ratingCount: app.userRatingCount
-                    )
-                }
-            }
-
-            var results: [iTunesStorefrontInfo] = []
-            for await info in group {
-                if let info { results.append(info) }
-            }
-            return results
-                .filter { ($0.averageRating ?? .zero) > .zero }
-                .sorted { $0.country < $1.country }
-        }
+        return page
     }
 }

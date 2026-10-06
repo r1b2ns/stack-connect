@@ -47,7 +47,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     /// tests never touch the network or the core.
     typealias ConnectionFactory = (GooglePlayCredentials) -> any GooglePlayAccountConnecting
 
-    /// Builds the manual-add access check (still native, plan D5). Injected for tests.
+    /// Builds the manual-add access check (Rust core `fetchAppDetails`). Injected for tests.
     typealias AccessCheckerFactory = (GooglePlayCredentials) -> any GooglePlayAppAccessChecking
 
     @Published var uiState: GooglePlayAppListUiState
@@ -62,7 +62,9 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         keychain: KeyStorable = KeychainStorable.shared,
         storage: PersistentStorable? = nil,
         connectionFactory: @escaping ConnectionFactory = { GooglePlayAccountConnection(credentials: $0) },
-        accessCheckerFactory: @escaping AccessCheckerFactory = { GooglePlayEditsAccessChecker(credentials: $0) }
+        accessCheckerFactory: @escaping AccessCheckerFactory = {
+            GooglePlayCoreAccessChecker(appDetails: GooglePlayAccountConnection(credentials: $0))
+        }
     ) {
         self.uiState = GooglePlayAppListUiState(account: account)
         self.keychain = keychain

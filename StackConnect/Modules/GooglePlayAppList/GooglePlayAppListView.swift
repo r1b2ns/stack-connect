@@ -114,36 +114,28 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
 
     private func buildList() -> some View {
         List {
+            // Inline banner for a failed sync while the cached list stays on screen.
             if let error = viewModel.uiState.error {
-                buildSyncErrorSection(error)
+                StackInlineErrorSection(message: error)
             }
 
             Section {
                 ForEach(viewModel.uiState.apps) { app in
-                    buildAppRow(app)
+                    Button {
+                        homeCoordinator.navigateToGooglePlayAppDetail(app, account: viewModel.uiState.account)
+                    } label: {
+                        buildAppRow(app)
+                    }
+                    .foregroundStyle(.primary)
+                    .contextMenu { buildAppContextMenu(app) }
                 }
             }
         }
     }
 
-    /// Inline banner for a failed sync while the cached list stays on screen.
-    private func buildSyncErrorSection(_ error: String) -> some View {
-        Section {
-            Label(error, systemImage: "exclamationmark.triangle.fill")
-                .font(.footnote)
-                .foregroundStyle(.orange)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
     private func buildAppRow(_ app: GooglePlayAppItem) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: "play.fill")
-                .font(.body)
-                .foregroundStyle(.white)
-                .frame(width: 40, height: 40)
-                .background(Color.green)
-                .clipShape(RoundedRectangle(cornerRadius: 9))
+            StackIconTile(systemName: "play.fill", color: .green, size: 40)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(app.displayName)
@@ -168,13 +160,15 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
-        .contextMenu {
-            if app.isManuallyAdded && viewModel.uiState.canDeleteApps {
-                Button(role: .destructive) {
-                    Task { await viewModel.removeApp(app) }
-                } label: {
-                    Label(String(localized: "Remove"), systemImage: "trash")
-                }
+    }
+
+    @ViewBuilder
+    private func buildAppContextMenu(_ app: GooglePlayAppItem) -> some View {
+        if app.isManuallyAdded && viewModel.uiState.canDeleteApps {
+            Button(role: .destructive) {
+                Task { await viewModel.removeApp(app) }
+            } label: {
+                Label(String(localized: "Remove"), systemImage: "trash")
             }
         }
     }

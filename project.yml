@@ -101,8 +101,6 @@ packages:
     path: Packages/StackProtocols
   APIProviderFirebase:
     path: Packages/APIProviderFirebase
-  APIProviderPlay:
-    path: Packages/APIProviderPlay
 
 targets:
   StackConnect:
@@ -168,7 +166,6 @@ targets:
         product: StackCoreRust
       - package: StackProtocols
       - package: APIProviderFirebase
-      - package: APIProviderPlay
       - target: StackConnectWidgetExtension
         embed: true
 

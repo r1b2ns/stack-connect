@@ -1,10 +1,11 @@
 import Foundation
 
-/// A reusable, user-authored reply message for App Store customer reviews.
+/// A reusable, user-authored reply message for customer reviews, in any store
+/// the account belongs to (App Store Connect, Google Play).
 ///
 /// Templates are entirely local: they are persisted through `PersistentStorable`
-/// and never sent to or read from the App Store Connect API. Each template is
-/// scoped to a single account via `accountId`.
+/// and never sent to or read from a store's API. Each template is scoped to a
+/// single account via `accountId`.
 struct ReplyTemplateModel: Codable, Identifiable, Hashable {
     let id: String
     let accountId: String

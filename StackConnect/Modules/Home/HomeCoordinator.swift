@@ -26,6 +26,12 @@ enum HomeRoute: Hashable {
     case analyticsDashboard(project: FirebaseProjectModel, account: AccountModel)
     case messaging(project: FirebaseProjectModel, account: AccountModel)
     case googlePlayAppList(AccountModel)
+    case googlePlayAppDetail(app: GooglePlayAppItem, account: AccountModel)
+    case googlePlayStoreListings(app: GooglePlayAppItem, account: AccountModel)
+    case googlePlayStoreListingDetail(listing: GooglePlayStoreListingModel, isDefaultLanguage: Bool)
+    case googlePlayTracks(app: GooglePlayAppItem, account: AccountModel)
+    case googlePlayReleaseDetail(release: GooglePlayReleaseModel, track: GooglePlayTrackKind)
+    case googlePlayAppInfo(app: GooglePlayAppItem, account: AccountModel)
     case appDetail(app: AppModel, account: AccountModel)
     case versionList(appId: String, platform: AppPlatform, account: AccountModel)
     case versionDetail(version: AppStoreVersionModel, account: AccountModel)
@@ -46,7 +52,10 @@ enum HomeRoute: Hashable {
     case appPrivacy(appId: String, account: AccountModel)
     case appAccessibility(appId: String, account: AccountModel)
     case ratingsReviews(appId: String, bundleId: String, appName: String, account: AccountModel)
-    case reviewDetail(review: CustomerReviewModel, appName: String, account: AccountModel)
+    /// `appId` (the package name for Google Play) lets the detail keep the
+    /// store's offline reviews cache in step after a reply; `nil` from screens
+    /// that aren't an app's review list.
+    case reviewDetail(review: CustomerReviewModel, appName: String, account: AccountModel, appId: String? = nil)
     case allReviews
     case testFlight(appId: String, account: AccountModel)
     case betaGroupDetail(group: BetaGroupModel, appId: String, account: AccountModel)
@@ -162,6 +171,30 @@ final class HomeCoordinator: MainCoordinatorProtocol {
         path.append(HomeRoute.googlePlayAppList(account))
     }
 
+    func navigateToGooglePlayAppDetail(_ app: GooglePlayAppItem, account: AccountModel) {
+        path.append(HomeRoute.googlePlayAppDetail(app: app, account: account))
+    }
+
+    func navigateToGooglePlayStoreListings(_ app: GooglePlayAppItem, account: AccountModel) {
+        path.append(HomeRoute.googlePlayStoreListings(app: app, account: account))
+    }
+
+    func navigateToGooglePlayStoreListingDetail(_ listing: GooglePlayStoreListingModel, isDefaultLanguage: Bool) {
+        path.append(HomeRoute.googlePlayStoreListingDetail(listing: listing, isDefaultLanguage: isDefaultLanguage))
+    }
+
+    func navigateToGooglePlayTracks(_ app: GooglePlayAppItem, account: AccountModel) {
+        path.append(HomeRoute.googlePlayTracks(app: app, account: account))
+    }
+
+    func navigateToGooglePlayReleaseDetail(_ release: GooglePlayReleaseModel, track: GooglePlayTrackKind) {
+        path.append(HomeRoute.googlePlayReleaseDetail(release: release, track: track))
+    }
+
+    func navigateToGooglePlayAppInfo(_ app: GooglePlayAppItem, account: AccountModel) {
+        path.append(HomeRoute.googlePlayAppInfo(app: app, account: account))
+    }
+
     func navigateToAppDetail(_ app: AppModel, account: AccountModel) {
         path.append(HomeRoute.appDetail(app: app, account: account))
     }
@@ -230,8 +263,8 @@ final class HomeCoordinator: MainCoordinatorProtocol {
         path.append(HomeRoute.ratingsReviews(appId: appId, bundleId: bundleId, appName: appName, account: account))
     }
 
-    func navigateToReviewDetail(review: CustomerReviewModel, appName: String, account: AccountModel) {
-        path.append(HomeRoute.reviewDetail(review: review, appName: appName, account: account))
+    func navigateToReviewDetail(review: CustomerReviewModel, appName: String, account: AccountModel, appId: String? = nil) {
+        path.append(HomeRoute.reviewDetail(review: review, appName: appName, account: account, appId: appId))
     }
 
     func navigateToAllReviews() {

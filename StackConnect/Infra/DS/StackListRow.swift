@@ -22,12 +22,7 @@ struct StackListRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.body)
-                .foregroundStyle(.white)
-                .frame(width: 32, height: 32)
-                .background(iconColor)
-                .clipShape(RoundedRectangle(cornerRadius: 7))
+            StackIconTile(systemName: icon, color: iconColor)
 
             Text(title)
                 .font(.body)

@@ -446,6 +446,18 @@ private extension View {
                 MessagingViewFactory.build(project: project, account: account)
             case .googlePlayAppList(let account):
                 GooglePlayAppListViewFactory.build(account: account)
+            case .googlePlayAppDetail(let app, let account):
+                GooglePlayAppDetailViewFactory.build(app: app, account: account)
+            case .googlePlayStoreListings(let app, let account):
+                GooglePlayStoreListingsViewFactory.build(app: app, account: account)
+            case .googlePlayStoreListingDetail(let listing, let isDefaultLanguage):
+                GooglePlayStoreListingDetailViewFactory.build(listing: listing, isDefaultLanguage: isDefaultLanguage)
+            case .googlePlayTracks(let app, let account):
+                GooglePlayTracksViewFactory.build(app: app, account: account)
+            case .googlePlayReleaseDetail(let release, let track):
+                GooglePlayReleaseDetailViewFactory.build(release: release, track: track)
+            case .googlePlayAppInfo(let app, let account):
+                GooglePlayAppInfoViewFactory.build(app: app, account: account)
             case .appDetail(let app, let account):
                 AppDetailViewFactory.build(app: app, account: account)
             case .versionList(let appId, let platform, let account):
@@ -482,8 +494,8 @@ private extension View {
                 AppAccessibilityViewFactory.build(appId: appId, account: account)
             case .ratingsReviews(let appId, let bundleId, let appName, let account):
                 RatingsReviewsViewFactory.build(appId: appId, bundleId: bundleId, appName: appName, account: account)
-            case .reviewDetail(let review, let appName, let account):
-                ReviewDetailViewFactory.build(review: review, appName: appName, account: account)
+            case .reviewDetail(let review, let appName, let account, let appId):
+                ReviewDetailViewFactory.build(review: review, appName: appName, account: account, appId: appId)
             case .allReviews:
                 AllReviewsViewFactory.build()
             case .testFlight(let appId, let account):

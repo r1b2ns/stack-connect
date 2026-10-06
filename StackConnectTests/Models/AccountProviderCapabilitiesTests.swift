@@ -35,8 +35,8 @@ final class AccountProviderCapabilitiesTests: XCTestCase {
         XCTAssertEqual(Set(AccountRuleResource.resources(for: .apple)), Set(AccountRuleResource.allCases))
     }
 
-    func testGooglePlayResourcesAreAppsOnly() {
-        XCTAssertEqual(AccountRuleResource.resources(for: .googlePlay), [.apps])
+    func testGooglePlayResourcesAreAppsAndReviews() {
+        XCTAssertEqual(AccountRuleResource.resources(for: .googlePlay), [.apps, .review])
     }
 
     func testFirebaseHasNoResources() {
@@ -44,7 +44,7 @@ final class AccountProviderCapabilitiesTests: XCTestCase {
     }
 
     func testAccountRuleResourcesFollowItsProvider() {
-        XCTAssertEqual(AccountModel(name: "P", providerType: .googlePlay).ruleResources, [.apps])
+        XCTAssertEqual(AccountModel(name: "P", providerType: .googlePlay).ruleResources, [.apps, .review])
         XCTAssertEqual(AccountModel(name: "A", providerType: .apple).ruleResources.count, 7)
     }
 

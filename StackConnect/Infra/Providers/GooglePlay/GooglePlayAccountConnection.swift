@@ -17,6 +17,56 @@ protocol GooglePlayAccountConnecting: Sendable {
     func fetchApps() async throws -> [StackProtocols.AppInfo]
 }
 
+// MARK: - App content seams (Android Publisher)
+//
+// Edit side effect: the Android Publisher API only serves app details, store
+// listings and tracks inside an *edit*, so each of these reads inserts a
+// temporary edit, reads and deletes it (nothing is committed). Google keeps one
+// open edit per service account and app, so a read cancels any edit the same
+// service account has open for that app elsewhere — e.g. a CI upload in
+// progress. Call them only on an explicit user action (opening that section or
+// pulling to refresh it), never automatically or from a background sync.
+
+/// Reads an app's store details. Opens a temporary Play edit (see above).
+///
+/// Also the "can this service account reach package X?" check: success means
+/// yes, `StackError.Http(404)` means no such package, `StackError.Auth` means no
+/// access (or the Android Publisher API is disabled).
+protocol GooglePlayAppDetailsFetching: Sendable {
+    func fetchAppDetails(packageName: String) async throws -> GooglePlayAppDetailsModel
+}
+
+/// Reads an app's localized store listings. Opens a temporary Play edit (see above).
+protocol GooglePlayStoreListingsFetching: Sendable {
+    func fetchStoreListings(packageName: String) async throws -> [GooglePlayStoreListingModel]
+}
+
+/// Reads an app's release tracks and releases. Opens a temporary Play edit (see above).
+protocol GooglePlayTracksFetching: Sendable {
+    func fetchTracks(packageName: String) async throws -> [GooglePlayTrackModel]
+}
+
+/// Lists and replies to an app's Google Play reviews (no edit involved).
+///
+/// Review ids are opaque composites (`{packageName}/{reviewId}`): pass them back
+/// unchanged, never parse them.
+protocol GooglePlayReviewsConnecting: Sendable {
+    /// One page of reviews, newest first (Google's only order). `filterRating`
+    /// is applied by the core to each fetched page, so a page can come back short
+    /// or even empty while `nextPageToken` is still set. `limit` is clamped to
+    /// 1–100.
+    func fetchCustomerReviewsPage(
+        packageName: String,
+        filterRating: Int?,
+        limit: Int,
+        pageToken: String?
+    ) async throws -> CustomerReviewsPageModel
+
+    /// Creates or replaces (upsert) the developer reply. Google rejects replies
+    /// longer than about 350 characters with an HTTP 400.
+    func replyToReview(reviewId: String, body: String) async throws -> CustomerReviewResponseModel
+}
+
 /// Google Play account connection backed by the shared Rust core (plan D1),
 /// mirroring `AppleAccountConnection`.
 ///
@@ -25,7 +75,13 @@ protocol GooglePlayAccountConnecting: Sendable {
 /// built. Errors are surfaced unchanged (`GooglePlayServiceAccount.ParseError`,
 /// `StackError`, `OfflineError`) — callers turn them into copy with
 /// `GooglePlayErrorTranslator`.
-final class GooglePlayAccountConnection: AccountConnectionProtocol, GooglePlayAccountConnecting, @unchecked Sendable {
+final class GooglePlayAccountConnection: AccountConnectionProtocol,
+    GooglePlayAccountConnecting,
+    GooglePlayAppDetailsFetching,
+    GooglePlayStoreListingsFetching,
+    GooglePlayTracksFetching,
+    GooglePlayReviewsConnecting,
+    @unchecked Sendable {
 
     private let credentials: GooglePlayCredentials
 
@@ -34,8 +90,8 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol, GooglePlayAc
 
     /// Synchronous connectivity probe. Unlike App Store Connect there is no
     /// offline-capable read here — every call is a live Google request — so
-    /// both `validateCredentials()` and `fetchApps()` fail fast offline (callers
-    /// keep their cache) instead of waiting for a network timeout.
+    /// every method fails fast offline (callers keep their cache) instead of
+    /// waiting for a network timeout.
     private let connectivity: ConnectivityProviding
 
     /// Serialises the lazy build of `rustProvider`: `@unchecked Sendable` means
@@ -86,6 +142,90 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol, GooglePlayAc
         }
         Log.print.info("[GooglePlay] Fetched \(apps.count) apps (Rust core)")
         return apps
+    }
+
+    // MARK: - App content (edit-based, see the seam docs)
+
+    func fetchAppDetails(packageName: String) async throws -> GooglePlayAppDetailsModel {
+        try requireOnline()
+        let provider = try rustCoreProvider()
+        guard let appDetails = provider.appDetails() else {
+            throw translate(.Unsupported(message: "App Details capability is not available for this provider."))
+        }
+        let info = try await callRustCore { try await appDetails.fetchAppDetails(appId: packageName) }
+        Log.print.info("[GooglePlay] Fetched app details for \(packageName) (Rust core)")
+        return Self.mapAppDetails(info)
+    }
+
+    func fetchStoreListings(packageName: String) async throws -> [GooglePlayStoreListingModel] {
+        try requireOnline()
+        let provider = try rustCoreProvider()
+        guard let storeListings = provider.storeListings() else {
+            throw translate(.Unsupported(message: "Store Listings capability is not available for this provider."))
+        }
+        let infos = try await callRustCore { try await storeListings.fetchStoreListings(appId: packageName) }
+        Log.print.info("[GooglePlay] Fetched \(infos.count) store listings for \(packageName) (Rust core)")
+        return infos.map(Self.mapStoreListing)
+    }
+
+    func fetchTracks(packageName: String) async throws -> [GooglePlayTrackModel] {
+        try requireOnline()
+        let provider = try rustCoreProvider()
+        guard let tracks = provider.tracks() else {
+            throw translate(.Unsupported(message: "Tracks capability is not available for this provider."))
+        }
+        let infos = try await callRustCore { try await tracks.fetchTracks(appId: packageName) }
+        Log.print.info("[GooglePlay] Fetched \(infos.count) tracks for \(packageName) (Rust core)")
+        return infos.map(Self.mapTrack)
+    }
+
+    // MARK: - Reviews
+
+    /// Google's own order (most recent first) is the only sort Play supports;
+    /// the core rejects anything else with `Unsupported`.
+    static let reviewsSort = "-createdDate"
+
+    /// The core clamps the page size to this range too; clamping here keeps the
+    /// `UInt32` conversion safe.
+    static let reviewsPageSizeRange = 1...100
+
+    func fetchCustomerReviewsPage(
+        packageName: String,
+        filterRating: Int?,
+        limit: Int,
+        pageToken: String?
+    ) async throws -> CustomerReviewsPageModel {
+        try requireOnline()
+        let provider = try rustCoreProvider()
+        guard let reviews = provider.reviews() else {
+            throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
+        }
+        let pageSize = UInt32(min(max(limit, Self.reviewsPageSizeRange.lowerBound), Self.reviewsPageSizeRange.upperBound))
+        let page = try await callRustCore {
+            try await reviews.fetchCustomerReviewsPage(
+                appId: packageName,
+                sort: Self.reviewsSort,
+                filterRating: filterRating.map { [String($0)] } ?? [],
+                limit: pageSize,
+                pageToken: pageToken
+            )
+        }
+        let model = CoreReviewMapper.page(page)
+        Log.print.info("[GooglePlay] Fetched \(model.reviews.count) reviews for \(packageName), hasMore: \(model.hasNextPage) (Rust core)")
+        return model
+    }
+
+    func replyToReview(reviewId: String, body: String) async throws -> CustomerReviewResponseModel {
+        try requireOnline()
+        let provider = try rustCoreProvider()
+        guard let reviews = provider.reviews() else {
+            throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
+        }
+        let response = try await callRustCore { try await reviews.replyToReview(reviewId: reviewId, body: body) }
+        // The review id is an opaque composite that embeds the package name — fine
+        // to log (no secrets), but never parsed.
+        Log.print.info("[GooglePlay] Replied to review \(reviewId) (Rust core)")
+        return CoreReviewMapper.reviewResponse(response)
     }
 
     func disconnect() {
@@ -139,5 +279,47 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol, GooglePlayAc
     private func translate(_ error: StackError) -> Error {
         Log.print.error("[GooglePlay] Rust core error: \(error.localizedDescription)")
         return error
+    }
+
+    // MARK: - Mapping
+
+    /// `AppDetailsInfo.appId` is the package name for Google Play.
+    static func mapAppDetails(_ info: StackCoreRust.AppDetailsInfo) -> GooglePlayAppDetailsModel {
+        GooglePlayAppDetailsModel(
+            packageName: info.appId,
+            defaultLanguage: info.defaultLanguage,
+            contactEmail: info.contactEmail,
+            contactPhone: info.contactPhone,
+            contactWebsite: info.contactWebsite
+        )
+    }
+
+    static func mapStoreListing(_ info: StackCoreRust.StoreListingInfo) -> GooglePlayStoreListingModel {
+        GooglePlayStoreListingModel(
+            language: info.language,
+            title: info.title,
+            shortDescription: info.shortDescription,
+            fullDescription: info.fullDescription,
+            video: info.video
+        )
+    }
+
+    static func mapTrack(_ info: StackCoreRust.TrackInfo) -> GooglePlayTrackModel {
+        GooglePlayTrackModel(track: info.track, releases: info.releases.map(mapRelease))
+    }
+
+    /// Raw Play values pass through; only the status is typed (unknown values
+    /// become `.unknown`) and the priority widened to `Int`.
+    static func mapRelease(_ info: StackCoreRust.TrackReleaseInfo) -> GooglePlayReleaseModel {
+        GooglePlayReleaseModel(
+            name: info.name,
+            status: GooglePlayReleaseStatus(raw: info.status),
+            versionCodes: info.versionCodes,
+            userFraction: info.userFraction,
+            releaseNotes: info.releaseNotes.map {
+                GooglePlayLocalizedTextModel(language: $0.language, text: $0.text)
+            },
+            inAppUpdatePriority: info.inAppUpdatePriority.map(Int.init)
+        )
     }
 }

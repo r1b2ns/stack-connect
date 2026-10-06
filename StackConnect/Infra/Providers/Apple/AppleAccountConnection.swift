@@ -719,19 +719,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         return CustomerReviewsPage(reviews: models, hasNextPage: core.nextToken != nil, rawResponse: core.nextToken)
     }
 
-    func replyToReview(reviewId: String, responseBody: String) async throws {
+    /// Creates (or replaces) the developer response and returns the one App Store
+    /// Connect kept, so callers can show its id and state without a re-fetch.
+    @discardableResult
+    func replyToReview(reviewId: String, responseBody: String) async throws -> CustomerReviewResponseModel {
         try requireOnline()
         let provider = try rustCoreProvider()
         guard let reviews = provider.reviews() else {
             throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
         }
-        // Rust core returns the created/replaced ReviewResponse; this method's contract
-        // is Void, so we discard it (callers re-fetch the review list to see the reply).
-        _ = try await callRustCore {
+        let response = try await callRustCore {
             try await reviews.replyToReview(reviewId: reviewId, body: responseBody)
         }
         Log.print.info("[Apple] Replied to review \(reviewId) (Rust core)")
-        return
+        return CoreReviewMapper.reviewResponse(response)
     }
 
     func deleteReviewResponse(responseId: String) async throws {
@@ -1652,20 +1653,9 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     /// Maps a Rust-core `CustomerReview` to the app's `CustomerReviewModel`.
     /// The core does no date logic, so `createdDate`/response date (raw ISO8601)
     /// are parsed here; the developer response is flattened into the model fields.
+    /// Store-agnostic: shared with Google Play through `CoreReviewMapper`.
     static func mapCustomerReview(_ review: StackCoreRust.CustomerReview) -> CustomerReviewModel {
-        CustomerReviewModel(
-            id: review.id,
-            rating: Int(review.rating),
-            title: review.title,
-            body: review.body,
-            reviewerNickname: review.reviewerNickname,
-            createdDate: review.createdDate.flatMap(parseISO8601Date),
-            territory: review.territory,
-            responseId: review.response?.id,
-            responseBody: review.response?.body,
-            responseState: review.response?.state,
-            responseDate: review.response?.lastModifiedDate.flatMap(parseISO8601Date)
-        )
+        CoreReviewMapper.customerReview(review)
     }
 
     /// Maps a Rust-core `BuildInfo` to the app's `BuildModel`.
@@ -2054,19 +2044,10 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     /// App Store Connect timestamps may or may not include fractional seconds
-    /// (e.g. `2024-01-15T10:30:00Z` vs `2024-01-15T10:30:00.123Z`). A single
-    /// `ISO8601DateFormatter` cannot tolerate both, so we try with fractional
-    /// seconds first, then fall back to the plain internet date-time format.
+    /// (e.g. `2024-01-15T10:30:00Z` vs `2024-01-15T10:30:00.123Z`); see
+    /// `ISO8601DateParser`.
     static func parseISO8601Date(_ string: String) -> Date? {
-        let withFractional = ISO8601DateFormatter()
-        withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = withFractional.date(from: string) {
-            return date
-        }
-
-        let plain = ISO8601DateFormatter()
-        plain.formatOptions = [.withInternetDateTime]
-        return plain.date(from: string)
+        ISO8601DateParser.date(from: string)
     }
 
     // MARK: - Analytics

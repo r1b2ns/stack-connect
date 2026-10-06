@@ -505,6 +505,22 @@ fileprivate struct FfiConverterInt64: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterDouble: FfiConverterPrimitive {
+    typealias FfiType = Double
+    typealias SwiftType = Double
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Double {
+        return try lift(readDouble(&buf))
+    }
+
+    public static func write(_ value: Double, into buf: inout [UInt8]) {
+        writeDouble(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterBool : FfiConverter {
     typealias FfiType = Int8
     typealias SwiftType = Bool
@@ -1245,6 +1261,187 @@ public func FfiConverterTypeAnalytics_lift(_ handle: UInt64) throws -> Analytics
 #endif
 public func FfiConverterTypeAnalytics_lower(_ value: Analytics) -> UInt64 {
     return FfiConverterTypeAnalytics.lower(value)
+}
+
+
+
+
+
+
+/**
+ * UniFFI-exported App Details capability handle. A thin, binding-friendly
+ * wrapper around a boxed [`AppDetailsImpl`]; async work runs on the tokio
+ * runtime. Reached via [`crate::service::provider::Provider::app_details`].
+ */
+public protocol AppDetailsProtocol: AnyObject, Sendable {
+    
+    /**
+     * Reads the store details of `app_id` (for Google Play, the package name,
+     * i.e. `AppInfo.id`): default language and contact email, phone and
+     * website.
+     *
+     * This call also answers "can this account reach the app?" (e.g. before
+     * adding an app by hand): `Ok` means yes; [`StackError::Http`] with status
+     * `404` means there is no such app (an invalid package name is reported
+     * the same way, without contacting Google); [`StackError::Auth`] means the
+     * app exists or may exist but the account has no access to it, or the API
+     * is not enabled.
+     *
+     * Google Play reads it through a throwaway edit (insert, read, delete;
+     * nothing is committed). Google keeps one open edit per service account
+     * and app, so this invalidates any edit the same service account has open
+     * for the app elsewhere (e.g. a CI upload in progress).
+     *
+     * # Errors
+     * [`StackError::Auth`] when Google denies access or the API is disabled,
+     * [`StackError::Http`] on any other non-2xx response (`404`: app not found),
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchAppDetails(appId: String) async throws  -> AppDetailsInfo
+    
+}
+/**
+ * UniFFI-exported App Details capability handle. A thin, binding-friendly
+ * wrapper around a boxed [`AppDetailsImpl`]; async work runs on the tokio
+ * runtime. Reached via [`crate::service::provider::Provider::app_details`].
+ */
+open class AppDetails: AppDetailsProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_appdetails(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_appdetails(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Reads the store details of `app_id` (for Google Play, the package name,
+     * i.e. `AppInfo.id`): default language and contact email, phone and
+     * website.
+     *
+     * This call also answers "can this account reach the app?" (e.g. before
+     * adding an app by hand): `Ok` means yes; [`StackError::Http`] with status
+     * `404` means there is no such app (an invalid package name is reported
+     * the same way, without contacting Google); [`StackError::Auth`] means the
+     * app exists or may exist but the account has no access to it, or the API
+     * is not enabled.
+     *
+     * Google Play reads it through a throwaway edit (insert, read, delete;
+     * nothing is committed). Google keeps one open edit per service account
+     * and app, so this invalidates any edit the same service account has open
+     * for the app elsewhere (e.g. a CI upload in progress).
+     *
+     * # Errors
+     * [`StackError::Auth`] when Google denies access or the API is disabled,
+     * [`StackError::Http`] on any other non-2xx response (`404`: app not found),
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchAppDetails(appId: String)async throws  -> AppDetailsInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appdetails_fetch_app_details(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAppDetailsInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppDetails: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = AppDetails
+
+    public static func lift(_ handle: UInt64) throws -> AppDetails {
+        return AppDetails(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: AppDetails) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppDetails {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: AppDetails, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppDetails_lift(_ handle: UInt64) throws -> AppDetails {
+    return try FfiConverterTypeAppDetails.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppDetails_lower(_ value: AppDetails) -> UInt64 {
+    return FfiConverterTypeAppDetails.lower(value)
 }
 
 
@@ -6575,6 +6772,14 @@ public protocol ProviderProtocol: AnyObject, Sendable {
     func analytics()  -> Analytics?
     
     /**
+     * The App Details capability handle, or `None` when this provider does not
+     * expose [`Capability::AppDetails`]. This is the discovery mechanism: the
+     * host calls `provider.app_details()` and gets `None` when app details are
+     * unsupported.
+     */
+    func appDetails()  -> AppDetails?
+    
+    /**
      * The App Metadata capability handle, or `None` when this provider does not
      * expose [`Capability::AppMetadata`]. This is the discovery mechanism: the
      * host calls `provider.app_metadata()` and gets `None` when app metadata is
@@ -6689,6 +6894,22 @@ public protocol ProviderProtocol: AnyObject, Sendable {
     func reviews()  -> Reviews?
     
     /**
+     * The Store Listings capability handle, or `None` when this provider does
+     * not expose [`Capability::StoreListings`]. This is the discovery
+     * mechanism: the host calls `provider.store_listings()` and gets `None`
+     * when store listings are unsupported.
+     */
+    func storeListings()  -> StoreListings?
+    
+    /**
+     * The Tracks capability handle, or `None` when this provider does not
+     * expose [`Capability::Tracks`]. This is the discovery mechanism: the host
+     * calls `provider.tracks()` and gets `None` when release tracks are
+     * unsupported.
+     */
+    func tracks()  -> Tracks?
+    
+    /**
      * The Users capability handle, or `None` when this provider does not expose
      * [`Capability::Users`]. This is the discovery mechanism: the host calls
      * `provider.users()` and gets `None` when user management is unsupported.
@@ -6792,6 +7013,20 @@ open func accessibilityDeclarations() -> AccessibilityDeclarations?  {
 open func analytics() -> Analytics?  {
     return try!  FfiConverterOptionTypeAnalytics.lift(try! rustCall() {
     uniffi_stack_core_fn_method_provider_analytics(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The App Details capability handle, or `None` when this provider does not
+     * expose [`Capability::AppDetails`]. This is the discovery mechanism: the
+     * host calls `provider.app_details()` and gets `None` when app details are
+     * unsupported.
+     */
+open func appDetails() -> AppDetails?  {
+    return try!  FfiConverterOptionTypeAppDetails.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_app_details(
             self.uniffiCloneHandle(),$0
     )
 })
@@ -7005,6 +7240,34 @@ open func profiles() -> Profiles?  {
 open func reviews() -> Reviews?  {
     return try!  FfiConverterOptionTypeReviews.lift(try! rustCall() {
     uniffi_stack_core_fn_method_provider_reviews(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The Store Listings capability handle, or `None` when this provider does
+     * not expose [`Capability::StoreListings`]. This is the discovery
+     * mechanism: the host calls `provider.store_listings()` and gets `None`
+     * when store listings are unsupported.
+     */
+open func storeListings() -> StoreListings?  {
+    return try!  FfiConverterOptionTypeStoreListings.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_store_listings(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The Tracks capability handle, or `None` when this provider does not
+     * expose [`Capability::Tracks`]. This is the discovery mechanism: the host
+     * calls `provider.tracks()` and gets `None` when release tracks are
+     * unsupported.
+     */
+open func tracks() -> Tracks?  {
+    return try!  FfiConverterOptionTypeTracks.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_tracks(
             self.uniffiCloneHandle(),$0
     )
 })
@@ -7499,6 +7762,171 @@ public func FfiConverterTypeReviews_lower(_ value: Reviews) -> UInt64 {
 
 
 /**
+ * UniFFI-exported Store Listings capability handle. A thin, binding-friendly
+ * wrapper around a boxed [`StoreListingsImpl`]; async work runs on the tokio
+ * runtime. Reached via [`crate::service::provider::Provider::store_listings`].
+ */
+public protocol StoreListingsProtocol: AnyObject, Sendable {
+    
+    /**
+     * Lists every localized store listing of `app_id` (for Google Play, the
+     * package name, i.e. `AppInfo.id`), in the store's order.
+     *
+     * Google Play reads them through a throwaway edit (insert, read, delete;
+     * nothing is committed). Google keeps one open edit per service account
+     * and app, so this invalidates any edit the same service account has open
+     * for the app elsewhere (e.g. a CI upload in progress).
+     *
+     * # Errors
+     * [`StackError::Auth`] when Google denies access or the API is disabled,
+     * [`StackError::Http`] on any other non-2xx response (`404`: app not found),
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchStoreListings(appId: String) async throws  -> [StoreListingInfo]
+    
+}
+/**
+ * UniFFI-exported Store Listings capability handle. A thin, binding-friendly
+ * wrapper around a boxed [`StoreListingsImpl`]; async work runs on the tokio
+ * runtime. Reached via [`crate::service::provider::Provider::store_listings`].
+ */
+open class StoreListings: StoreListingsProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_storelistings(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_storelistings(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Lists every localized store listing of `app_id` (for Google Play, the
+     * package name, i.e. `AppInfo.id`), in the store's order.
+     *
+     * Google Play reads them through a throwaway edit (insert, read, delete;
+     * nothing is committed). Google keeps one open edit per service account
+     * and app, so this invalidates any edit the same service account has open
+     * for the app elsewhere (e.g. a CI upload in progress).
+     *
+     * # Errors
+     * [`StackError::Auth`] when Google denies access or the API is disabled,
+     * [`StackError::Http`] on any other non-2xx response (`404`: app not found),
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchStoreListings(appId: String)async throws  -> [StoreListingInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_storelistings_fetch_store_listings(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeStoreListingInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeStoreListings: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = StoreListings
+
+    public static func lift(_ handle: UInt64) throws -> StoreListings {
+        return StoreListings(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: StoreListings) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StoreListings {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: StoreListings, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStoreListings_lift(_ handle: UInt64) throws -> StoreListings {
+    return try FfiConverterTypeStoreListings.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStoreListings_lower(_ value: StoreListings) -> UInt64 {
+    return FfiConverterTypeStoreListings.lower(value)
+}
+
+
+
+
+
+
+/**
  * Generic sync orchestrator: pulls from a connected [`Provider`] and persists
  * each entity as a JSON blob through the host [`BlobStore`]. The core stays
  * stateless — all persistence lives behind the foreign trait.
@@ -7660,6 +8088,173 @@ public func FfiConverterTypeSyncService_lift(_ handle: UInt64) throws -> SyncSer
 #endif
 public func FfiConverterTypeSyncService_lower(_ value: SyncService) -> UInt64 {
     return FfiConverterTypeSyncService.lower(value)
+}
+
+
+
+
+
+
+/**
+ * UniFFI-exported Tracks capability handle. A thin, binding-friendly wrapper
+ * around a boxed [`TracksImpl`]; async work runs on the tokio runtime. Reached
+ * via [`crate::service::provider::Provider::tracks`].
+ */
+public protocol TracksProtocol: AnyObject, Sendable {
+    
+    /**
+     * Lists every release track of `app_id` (for Google Play, the package
+     * name, i.e. `AppInfo.id`) with its releases, in the store's order. Tracks
+     * without a release are included with an empty `releases`.
+     *
+     * Google Play reads them through a throwaway edit (insert, read, delete;
+     * nothing is committed). Google keeps one open edit per service account
+     * and app, so this invalidates any edit the same service account has open
+     * for the app elsewhere (e.g. a CI upload in progress).
+     *
+     * # Errors
+     * [`StackError::Auth`] when Google denies access or the API is disabled,
+     * [`StackError::Http`] on any other non-2xx response (`404`: app not found),
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+    func fetchTracks(appId: String) async throws  -> [TrackInfo]
+    
+}
+/**
+ * UniFFI-exported Tracks capability handle. A thin, binding-friendly wrapper
+ * around a boxed [`TracksImpl`]; async work runs on the tokio runtime. Reached
+ * via [`crate::service::provider::Provider::tracks`].
+ */
+open class Tracks: TracksProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_tracks(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_tracks(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Lists every release track of `app_id` (for Google Play, the package
+     * name, i.e. `AppInfo.id`) with its releases, in the store's order. Tracks
+     * without a release are included with an empty `releases`.
+     *
+     * Google Play reads them through a throwaway edit (insert, read, delete;
+     * nothing is committed). Google keeps one open edit per service account
+     * and app, so this invalidates any edit the same service account has open
+     * for the app elsewhere (e.g. a CI upload in progress).
+     *
+     * # Errors
+     * [`StackError::Auth`] when Google denies access or the API is disabled,
+     * [`StackError::Http`] on any other non-2xx response (`404`: app not found),
+     * [`StackError::Decode`] on malformed JSON, or [`StackError::Network`] on
+     * transport failure.
+     */
+open func fetchTracks(appId: String)async throws  -> [TrackInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_tracks_fetch_tracks(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeTrackInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTracks: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = Tracks
+
+    public static func lift(_ handle: UInt64) throws -> Tracks {
+        return Tracks(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: Tracks) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Tracks {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: Tracks, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTracks_lift(_ handle: UInt64) throws -> Tracks {
+    return try FfiConverterTypeTracks.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTracks_lower(_ value: Tracks) -> UInt64 {
+    return FfiConverterTypeTracks.lower(value)
 }
 
 
@@ -9000,6 +9595,84 @@ public func FfiConverterTypeAppCategoryInfo_lift(_ buf: RustBuffer) throws -> Ap
 #endif
 public func FfiConverterTypeAppCategoryInfo_lower(_ value: AppCategoryInfo) -> RustBuffer {
     return FfiConverterTypeAppCategoryInfo.lower(value)
+}
+
+
+/**
+ * An app's store contact details and default language, as Google Play keeps
+ * them (`edits.details`). `app_id` is the id the call was made with (for Google
+ * Play, the package name); every other field is `None` when the store has no
+ * value for it.
+ */
+public struct AppDetailsInfo: Equatable, Hashable {
+    public var appId: String
+    /**
+     * BCP-47 language code of the default store listing (e.g. `en-US`).
+     */
+    public var defaultLanguage: String?
+    public var contactEmail: String?
+    public var contactPhone: String?
+    public var contactWebsite: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(appId: String, 
+        /**
+         * BCP-47 language code of the default store listing (e.g. `en-US`).
+         */defaultLanguage: String?, contactEmail: String?, contactPhone: String?, contactWebsite: String?) {
+        self.appId = appId
+        self.defaultLanguage = defaultLanguage
+        self.contactEmail = contactEmail
+        self.contactPhone = contactPhone
+        self.contactWebsite = contactWebsite
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AppDetailsInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppDetailsInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppDetailsInfo {
+        return
+            try AppDetailsInfo(
+                appId: FfiConverterString.read(from: &buf), 
+                defaultLanguage: FfiConverterOptionString.read(from: &buf), 
+                contactEmail: FfiConverterOptionString.read(from: &buf), 
+                contactPhone: FfiConverterOptionString.read(from: &buf), 
+                contactWebsite: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AppDetailsInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.appId, into: &buf)
+        FfiConverterOptionString.write(value.defaultLanguage, into: &buf)
+        FfiConverterOptionString.write(value.contactEmail, into: &buf)
+        FfiConverterOptionString.write(value.contactPhone, into: &buf)
+        FfiConverterOptionString.write(value.contactWebsite, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppDetailsInfo_lift(_ buf: RustBuffer) throws -> AppDetailsInfo {
+    return try FfiConverterTypeAppDetailsInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppDetailsInfo_lower(_ value: AppDetailsInfo) -> RustBuffer {
+    return FfiConverterTypeAppDetailsInfo.lower(value)
 }
 
 
@@ -10558,8 +11231,14 @@ public func FfiConverterTypeCredentialField_lower(_ value: CredentialField) -> R
 
 
 /**
- * A single end-user App Store review, optionally with the developer's response.
+ * A single end-user store review, optionally with the developer's response.
  * Dates are raw ISO8601 strings; the core does no date parsing.
+ *
+ * Per service: for App Store Connect, `id` is the ASC review id. For Google
+ * Play, `id` is an opaque composite (`{packageName}/{reviewId}`) that the core
+ * needs to reply; hosts must treat every review id as opaque. Play has no
+ * territory (`territory` is `None`) and no creation date: `created_date`
+ * carries the last time the user wrote or edited the review.
  */
 public struct CustomerReview: Equatable, Hashable {
     public var id: String
@@ -10642,7 +11321,8 @@ public func FfiConverterTypeCustomerReview_lower(_ value: CustomerReview) -> Rus
 /**
  * One page of customer reviews plus an opaque token to fetch the next page.
  * `next_token` is `None` on the last page; otherwise pass it back verbatim as
- * the next call's `page_token` (it is the JSON:API `links.next` URL).
+ * the next call's `page_token` (for App Store Connect it is the JSON:API
+ * `links.next` URL, for Google Play the API's `nextPageToken`).
  */
 public struct CustomerReviewsPage: Equatable, Hashable {
     public var reviews: [CustomerReview]
@@ -10785,6 +11465,64 @@ public func FfiConverterTypeDeviceInfo_lift(_ buf: RustBuffer) throws -> DeviceI
 #endif
 public func FfiConverterTypeDeviceInfo_lower(_ value: DeviceInfo) -> RustBuffer {
     return FfiConverterTypeDeviceInfo.lower(value)
+}
+
+
+/**
+ * A text in one language, e.g. a release note. `language` is a BCP-47 code.
+ * Google omits empty strings from its JSON, so an absent value is `""`.
+ */
+public struct LocalizedTextInfo: Equatable, Hashable {
+    public var language: String
+    public var text: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(language: String, text: String) {
+        self.language = language
+        self.text = text
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension LocalizedTextInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLocalizedTextInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LocalizedTextInfo {
+        return
+            try LocalizedTextInfo(
+                language: FfiConverterString.read(from: &buf), 
+                text: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LocalizedTextInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.language, into: &buf)
+        FfiConverterString.write(value.text, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLocalizedTextInfo_lift(_ buf: RustBuffer) throws -> LocalizedTextInfo {
+    return try FfiConverterTypeLocalizedTextInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLocalizedTextInfo_lower(_ value: LocalizedTextInfo) -> RustBuffer {
+    return FfiConverterTypeLocalizedTextInfo.lower(value)
 }
 
 
@@ -10977,6 +11715,9 @@ public func FfiConverterTypeProvisioningProfileInfo_lower(_ value: ProvisioningP
 /**
  * The developer's response attached to a [`CustomerReview`]. Dates are raw
  * ISO8601 strings; the core does no date parsing (the host owns that).
+ *
+ * Google Play replies have no id or state of their own: `id` repeats the
+ * review's opaque [`CustomerReview::id`] and `state` is always `None`.
  */
 public struct ReviewResponse: Equatable, Hashable {
     public var id: String
@@ -11271,6 +12012,78 @@ public func FfiConverterTypeScreenshotSetInfo_lower(_ value: ScreenshotSetInfo) 
 
 
 /**
+ * One localized store listing of an app (Google Play `edits.listings`).
+ * `language` is the BCP-47 code that keys the listing (e.g. `de-AT`); `video`
+ * is the promotional YouTube URL. Text fields are `None` when the listing has
+ * no value for them.
+ */
+public struct StoreListingInfo: Equatable, Hashable {
+    public var language: String
+    public var title: String?
+    public var shortDescription: String?
+    public var fullDescription: String?
+    public var video: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(language: String, title: String?, shortDescription: String?, fullDescription: String?, video: String?) {
+        self.language = language
+        self.title = title
+        self.shortDescription = shortDescription
+        self.fullDescription = fullDescription
+        self.video = video
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension StoreListingInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeStoreListingInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StoreListingInfo {
+        return
+            try StoreListingInfo(
+                language: FfiConverterString.read(from: &buf), 
+                title: FfiConverterOptionString.read(from: &buf), 
+                shortDescription: FfiConverterOptionString.read(from: &buf), 
+                fullDescription: FfiConverterOptionString.read(from: &buf), 
+                video: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: StoreListingInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.language, into: &buf)
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.shortDescription, into: &buf)
+        FfiConverterOptionString.write(value.fullDescription, into: &buf)
+        FfiConverterOptionString.write(value.video, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStoreListingInfo_lift(_ buf: RustBuffer) throws -> StoreListingInfo {
+    return try FfiConverterTypeStoreListingInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeStoreListingInfo_lower(_ value: StoreListingInfo) -> RustBuffer {
+    return FfiConverterTypeStoreListingInfo.lower(value)
+}
+
+
+/**
  * A team member of the connected App Store Connect account: the lightweight
  * projection of a `users` resource carrying only `first_name`/`last_name`, the
  * `username` (App Store Connect stores the member's login email here), and the
@@ -11341,6 +12154,151 @@ public func FfiConverterTypeTeamMemberInfo_lift(_ buf: RustBuffer) throws -> Tea
 #endif
 public func FfiConverterTypeTeamMemberInfo_lower(_ value: TeamMemberInfo) -> RustBuffer {
     return FfiConverterTypeTeamMemberInfo.lower(value)
+}
+
+
+/**
+ * A release track of an app (Google Play `edits.tracks`) with its releases.
+ * `track` is the raw track name (`production`, `beta`, `alpha`, `internal`, a
+ * custom closed-testing track, or a form-factor track such as
+ * `wear:production`). `releases` is empty for a track with no release.
+ *
+ * Only `PartialEq` (not `Eq`): [`TrackReleaseInfo::user_fraction`] is a float.
+ */
+public struct TrackInfo: Equatable, Hashable {
+    public var track: String
+    public var releases: [TrackReleaseInfo]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(track: String, releases: [TrackReleaseInfo]) {
+        self.track = track
+        self.releases = releases
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TrackInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTrackInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TrackInfo {
+        return
+            try TrackInfo(
+                track: FfiConverterString.read(from: &buf), 
+                releases: FfiConverterSequenceTypeTrackReleaseInfo.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TrackInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.track, into: &buf)
+        FfiConverterSequenceTypeTrackReleaseInfo.write(value.releases, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTrackInfo_lift(_ buf: RustBuffer) throws -> TrackInfo {
+    return try FfiConverterTypeTrackInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTrackInfo_lower(_ value: TrackInfo) -> RustBuffer {
+    return FfiConverterTypeTrackInfo.lower(value)
+}
+
+
+/**
+ * One release on a [`TrackInfo`], with the raw Google Play values passed
+ * through:
+ *
+ * - `status`: `draft`, `inProgress` (staged rollout), `halted`, `completed`
+ * (or `statusUnspecified`); `None` when absent.
+ * - `version_codes`: the release's version codes as decimal strings (Play's
+ * int64 values; parse them with a 64-bit integer type).
+ * - `user_fraction`: the staged-rollout fraction in `(0, 1)`, set only while a
+ * rollout is `inProgress` or `halted`.
+ * - `release_notes`: the localized "What's new" texts.
+ * - `in_app_update_priority`: `0` to `5`, `None` when unset.
+ */
+public struct TrackReleaseInfo: Equatable, Hashable {
+    public var name: String?
+    public var status: String?
+    public var versionCodes: [String]
+    public var userFraction: Double?
+    public var releaseNotes: [LocalizedTextInfo]
+    public var inAppUpdatePriority: Int32?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(name: String?, status: String?, versionCodes: [String], userFraction: Double?, releaseNotes: [LocalizedTextInfo], inAppUpdatePriority: Int32?) {
+        self.name = name
+        self.status = status
+        self.versionCodes = versionCodes
+        self.userFraction = userFraction
+        self.releaseNotes = releaseNotes
+        self.inAppUpdatePriority = inAppUpdatePriority
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension TrackReleaseInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTrackReleaseInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TrackReleaseInfo {
+        return
+            try TrackReleaseInfo(
+                name: FfiConverterOptionString.read(from: &buf), 
+                status: FfiConverterOptionString.read(from: &buf), 
+                versionCodes: FfiConverterSequenceString.read(from: &buf), 
+                userFraction: FfiConverterOptionDouble.read(from: &buf), 
+                releaseNotes: FfiConverterSequenceTypeLocalizedTextInfo.read(from: &buf), 
+                inAppUpdatePriority: FfiConverterOptionInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TrackReleaseInfo, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.status, into: &buf)
+        FfiConverterSequenceString.write(value.versionCodes, into: &buf)
+        FfiConverterOptionDouble.write(value.userFraction, into: &buf)
+        FfiConverterSequenceTypeLocalizedTextInfo.write(value.releaseNotes, into: &buf)
+        FfiConverterOptionInt32.write(value.inAppUpdatePriority, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTrackReleaseInfo_lift(_ buf: RustBuffer) throws -> TrackReleaseInfo {
+    return try FfiConverterTypeTrackReleaseInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTrackReleaseInfo_lower(_ value: TrackReleaseInfo) -> RustBuffer {
+    return FfiConverterTypeTrackReleaseInfo.lower(value)
 }
 
 
@@ -11444,6 +12402,10 @@ public func FfiConverterTypeUserInfo_lower(_ value: UserInfo) -> RustBuffer {
  * to learn what a connected account can do; capabilities a provider lacks make
  * the corresponding accessor (e.g. [`Provider::reviews`]) return `None`. Grows
  * over time.
+ *
+ * **Append only.** Both bindings encode a variant by its position (UniFFI and
+ * the FRB SSE codec), so inserting or reordering variants would make a host
+ * built against an older binding decode the wrong capability.
  */
 
 public enum Capability: Equatable, Hashable {
@@ -11464,6 +12426,18 @@ public enum Capability: Equatable, Hashable {
     case certificates
     case profiles
     case analytics
+    /**
+     * An app's store contact details and default language ([`AppDetails`]).
+     */
+    case appDetails
+    /**
+     * An app's localized store listings ([`StoreListings`]).
+     */
+    case storeListings
+    /**
+     * An app's release tracks and their releases ([`Tracks`]).
+     */
+    case tracks
 
 
 
@@ -11516,6 +12490,12 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         case 15: return .profiles
         
         case 16: return .analytics
+        
+        case 17: return .appDetails
+        
+        case 18: return .storeListings
+        
+        case 19: return .tracks
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -11587,6 +12567,18 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case .analytics:
             writeInt(&buf, Int32(16))
+        
+        
+        case .appDetails:
+            writeInt(&buf, Int32(17))
+        
+        
+        case .storeListings:
+            writeInt(&buf, Int32(18))
+        
+        
+        case .tracks:
+            writeInt(&buf, Int32(19))
         
         }
     }
@@ -11898,6 +12890,30 @@ fileprivate struct FfiConverterOptionInt64: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionDouble: FfiConverterRustBuffer {
+    typealias SwiftType = Double?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterDouble.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterDouble.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionBool: FfiConverterRustBuffer {
     typealias SwiftType = Bool?
 
@@ -11986,6 +13002,30 @@ fileprivate struct FfiConverterOptionTypeAnalytics: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeAnalytics.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeAppDetails: FfiConverterRustBuffer {
+    typealias SwiftType = AppDetails?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAppDetails.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAppDetails.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -12298,6 +13338,54 @@ fileprivate struct FfiConverterOptionTypeReviews: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeReviews.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeStoreListings: FfiConverterRustBuffer {
+    typealias SwiftType = StoreListings?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeStoreListings.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeStoreListings.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeTracks: FfiConverterRustBuffer {
+    typealias SwiftType = Tracks?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeTracks.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeTracks.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -13024,6 +14112,31 @@ fileprivate struct FfiConverterSequenceTypeDeviceInfo: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeLocalizedTextInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [LocalizedTextInfo]
+
+    public static func write(_ value: [LocalizedTextInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLocalizedTextInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LocalizedTextInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LocalizedTextInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLocalizedTextInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeProvisioningProfileInfo: FfiConverterRustBuffer {
     typealias SwiftType = [ProvisioningProfileInfo]
 
@@ -13124,6 +14237,31 @@ fileprivate struct FfiConverterSequenceTypeScreenshotSetInfo: FfiConverterRustBu
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeStoreListingInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [StoreListingInfo]
+
+    public static func write(_ value: [StoreListingInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeStoreListingInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [StoreListingInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [StoreListingInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeStoreListingInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeTeamMemberInfo: FfiConverterRustBuffer {
     typealias SwiftType = [TeamMemberInfo]
 
@@ -13141,6 +14279,56 @@ fileprivate struct FfiConverterSequenceTypeTeamMemberInfo: FfiConverterRustBuffe
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeTeamMemberInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeTrackInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [TrackInfo]
+
+    public static func write(_ value: [TrackInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTrackInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TrackInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TrackInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTrackInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeTrackReleaseInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [TrackReleaseInfo]
+
+    public static func write(_ value: [TrackReleaseInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTrackReleaseInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TrackReleaseInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TrackReleaseInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTrackReleaseInfo.read(from: &buf))
         }
         return seq
     }
@@ -13470,6 +14658,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_analytics_fetch_analytics_reports_page() != 35252) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_appdetails_fetch_app_details() != 60589) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_appmetadata_create_app_info_localization() != 54393) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -13725,6 +14916,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_reviews_submit_review_submission() != 31458) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_storelistings_fetch_store_listings() != 34771) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_tracks_fetch_tracks() != 40403) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_users_delete_user() != 44147) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -13750,6 +14947,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_analytics() != 60624) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_app_details() != 49218) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_app_metadata() != 46670) {
@@ -13795,6 +14995,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_reviews() != 31339) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_store_listings() != 62524) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_tracks() != 58744) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_users() != 16539) {

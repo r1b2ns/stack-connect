@@ -24,12 +24,13 @@ enum AccountRuleResource: String, Codable, CaseIterable, Hashable {
     /// order. Drives the permission pickers (export) and the permissions summary
     /// (Account Settings), so only meaningful resources are offered.
     ///
-    /// Google Play only has an app list for now (manual add / remove of apps), so
-    /// `apps` is its only resource. Firebase accounts have no rules.
+    /// Google Play gates its app list and the read-only app sections (`apps`:
+    /// manual add / remove, store listings, tracks, app details) and its ratings
+    /// & reviews (`review`: view, reply). Firebase accounts have no rules.
     static func resources(for provider: ProviderType) -> [AccountRuleResource] {
         switch provider {
         case .apple:      return [.apps, .version, .review, .testFlight, .analytics, .users, .provisioning]
-        case .googlePlay: return [.apps]
+        case .googlePlay: return [.apps, .review]
         case .firebase:   return []
         }
     }

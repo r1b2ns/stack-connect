@@ -15,13 +15,16 @@ import Foundation
 ///    other accounts are left untouched;
 /// 3. the account's cached Google Play app list
 ///    (`GooglePlayAppItem.cacheKey(accountId:)`, a no-op for other providers);
-/// 4. the `AccountModel` itself (`account.id`);
-/// 5. the keychain credentials (`"credentials.<accountId>"`).
+/// 4. the account's per-app Google Play caches — app details, store listings,
+///    tracks and reviews (`GooglePlayAppScopedCache`), found by `accountId` so
+///    apps that left the cached list are covered too;
+/// 5. the `AccountModel` itself (`account.id`);
+/// 6. the keychain credentials (`"credentials.<accountId>"`).
 ///
 /// Error semantics:
 /// - Reads propagate. They all run before anything is deleted, so a failed read
 ///   leaves storage untouched and the caller can simply retry.
-/// - Deleting child items (versions, apps, templates, the Play app cache) is
+/// - Deleting child items (versions, apps, templates, the Play caches) is
 ///   best-effort: one failure does not stop the cascade.
 /// - Deleting the `AccountModel` propagates. When it fails the keychain
 ///   credentials are kept, so the still-stored account remains usable.
@@ -51,6 +54,18 @@ enum AccountCascadeDeleter {
         let accountTemplates = try await storage.fetchAll(ReplyTemplateModel.self)
             .filter { $0.accountId == account.id }
 
+        // Only Google Play accounts own per-app Play caches.
+        let googlePlayCacheDeletions: [() async -> Void]
+        if account.providerType == .googlePlay {
+            googlePlayCacheDeletions = try await
+                scopedCacheDeletions(GooglePlayAppDetailsCache.self, accountId: account.id, storage: storage)
+                + scopedCacheDeletions(GooglePlayStoreListingsCache.self, accountId: account.id, storage: storage)
+                + scopedCacheDeletions(GooglePlayTracksCache.self, accountId: account.id, storage: storage)
+                + scopedCacheDeletions(GooglePlayReviewsCache.self, accountId: account.id, storage: storage)
+        } else {
+            googlePlayCacheDeletions = []
+        }
+
         for app in accountApps {
             for version in versionsByAppId[app.id] ?? [] {
                 try? await storage.delete(AppStoreVersionModel.self, id: "version.\(version.id)")
@@ -67,7 +82,26 @@ enum AccountCascadeDeleter {
             id: GooglePlayAppItem.cacheKey(accountId: account.id)
         )
 
+        for deletion in googlePlayCacheDeletions {
+            await deletion()
+        }
+
         try await storage.delete(AccountModel.self, id: account.id)
         keychain.removeObject(forKey: "credentials.\(account.id)")
+    }
+
+    /// Reads every `Entry` of `accountId` now (so a read failure propagates
+    /// before anything is deleted) and returns one best-effort deletion per entry.
+    private static func scopedCacheDeletions<Entry: GooglePlayAppScopedCache>(
+        _ type: Entry.Type,
+        accountId: String,
+        storage: PersistentStorable
+    ) async throws -> [() async -> Void] {
+        try await storage.fetchAll(Entry.self)
+            .filter { $0.accountId == accountId }
+            .map { entry in
+                let id = entry.cacheKey
+                return { try? await storage.delete(Entry.self, id: id) }
+            }
     }
 }
