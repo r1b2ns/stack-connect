@@ -400,7 +400,131 @@ final class AppStatusCategorizerTests: XCTestCase {
         XCTAssertEqual(entries.first?.iconUrl, "https://cdn/app-icon.png")
     }
 
+    // MARK: - Deduplication across accounts
+
+    /// The reported bug: the same ASC team registered twice (allowed on purpose —
+    /// each import mints a fresh account id) stores the same app under two
+    /// `accountId`s. Home reads every account's apps, so the app expanded into one
+    /// iOS + one tvOS row per record, showing 4 rows and a header count of 4.
+    /// Identical (app, platform, version) rows are the same release → 2 rows.
+    func testAwaitingEntriesDeduplicatesSameAppRegisteredUnderTwoAccounts() {
+        let versions = [
+            AppPlatformVersion(platform: AppPlatform.ios.rawValue, appStoreState: .pendingDeveloperRelease, versionString: "3.1.0", id: "v-ios"),
+            AppPlatformVersion(platform: AppPlatform.tvOs.rawValue, appStoreState: .pendingDeveloperRelease, versionString: "3.1.2", id: "v-tv")
+        ]
+        let entries = AppStatusCategorizer.awaitingReleaseEntries(
+            [
+                makeAppForAccount(id: "1", accountId: "acc-a", awaitingVersions: versions),
+                makeAppForAccount(id: "1", accountId: "acc-b", awaitingVersions: versions)
+            ],
+            phasedByVersionId: [:]
+        )
+
+        XCTAssertEqual(entries.count, 2)
+        XCTAssertEqual(entries.map(\.platform), [AppPlatform.ios.rawValue, AppPlatform.tvOs.rawValue])
+        XCTAssertEqual(entries.map(\.versionString), ["3.1.0", "3.1.2"])
+    }
+
+    /// Same duplication, In Review bucket.
+    func testInReviewEntriesDeduplicatesSameAppRegisteredUnderTwoAccounts() {
+        let versions = [
+            AppPlatformVersion(platform: AppPlatform.ios.rawValue, appStoreState: .inReview, versionString: "3.1.0", id: "v-ios"),
+            AppPlatformVersion(platform: AppPlatform.tvOs.rawValue, appStoreState: .waitingForReview, versionString: "3.1.2", id: "v-tv")
+        ]
+        let entries = AppStatusCategorizer.inReviewEntries([
+            makeAppForAccount(id: "1", accountId: "acc-a", platformVersions: versions),
+            makeAppForAccount(id: "1", accountId: "acc-b", platformVersions: versions)
+        ])
+
+        XCTAssertEqual(entries.count, 2)
+        XCTAssertEqual(entries.map(\.platform), [AppPlatform.ios.rawValue, AppPlatform.tvOs.rawValue])
+    }
+
+    /// The fallback path (no per-platform versions) dedupes too.
+    func testAwaitingEntriesFallbackDeduplicatesSameAppAcrossAccounts() {
+        let entries = AppStatusCategorizer.awaitingReleaseEntries(
+            [
+                AppModel(id: "1", name: "App 1", bundleId: "com.test.1", platform: AppPlatform.ios.rawValue, accountId: "acc-a", appStoreState: .pendingDeveloperRelease, versionString: "3.1.0"),
+                AppModel(id: "1", name: "App 1", bundleId: "com.test.1", platform: AppPlatform.ios.rawValue, accountId: "acc-b", appStoreState: .pendingDeveloperRelease, versionString: "3.1.0")
+            ],
+            phasedByVersionId: [:]
+        )
+
+        XCTAssertEqual(entries.count, 1)
+    }
+
+    /// Regression guard for the dedupe key: two versions of the SAME platform are
+    /// legitimate (a still-phasing `readyForSale` behind a newer pending one) and
+    /// must survive even when the app is duplicated across accounts. Keying on
+    /// app id + platform alone would collapse these and hide a live rollout.
+    func testDedupeKeepsDistinctVersionsOfSamePlatformWhenDuplicatedAcrossAccounts() {
+        let pending = AppPlatformVersion(platform: AppPlatform.ios.rawValue, appStoreState: .pendingDeveloperRelease, versionString: "3.1.1", id: "v-311")
+        let phasing = AppPlatformVersion(platform: AppPlatform.ios.rawValue, appStoreState: .readyForSale, versionString: "3.0.3", id: "v-303")
+        let phased = ["v-303": PhasedReleaseModel(id: "phased.v-303", state: .active)]
+
+        let entries = AppStatusCategorizer.awaitingReleaseEntries(
+            [
+                makeAppForAccount(id: "1", accountId: "acc-a", awaitingVersions: [pending, phasing]),
+                makeAppForAccount(id: "1", accountId: "acc-b", awaitingVersions: [pending, phasing])
+            ],
+            phasedByVersionId: phased
+        )
+
+        XCTAssertEqual(entries.count, 2)
+        XCTAssertEqual(entries.map(\.versionString), ["3.1.1", "3.0.3"])
+    }
+
+    /// Distinct apps are never collapsed, and first occurrence wins (stable order).
+    func testDedupePreservesDistinctAppsAndOrder() {
+        let entries = AppStatusCategorizer.awaitingReleaseEntries(
+            [
+                makeApp(id: "1", state: .pendingDeveloperRelease),
+                makeApp(id: "2", state: .pendingDeveloperRelease),
+                makeApp(id: "1", state: .pendingDeveloperRelease)
+            ],
+            phasedByVersionId: [:]
+        )
+
+        XCTAssertEqual(entries.map(\.id), ["1", "2"])
+    }
+
+    /// The entry identity is what the widgets' `ForEach` keys on: rows of the same
+    /// app differ by platform/version, so their identities must not collide.
+    func testStatusEntryIDDistinguishesPlatformAndVersion() {
+        var ios310 = makeApp(id: "1", state: .pendingDeveloperRelease)
+        ios310.platform = AppPlatform.ios.rawValue
+        ios310.versionString = "3.1.0"
+        var tv312 = ios310
+        tv312.platform = AppPlatform.tvOs.rawValue
+        tv312.versionString = "3.1.2"
+        var ios303 = ios310
+        ios303.versionString = "3.0.3"
+
+        XCTAssertEqual(Set([ios310, tv312, ios303].map(\.statusEntryID)).count, 3)
+        // Same app id + platform + version → same identity (the duplicate rows).
+        XCTAssertEqual(ios310.statusEntryID, ios310.statusEntryID)
+    }
+
     // MARK: - Helpers
+
+    private func makeAppForAccount(
+        id: String,
+        accountId: String,
+        platformVersions: [AppPlatformVersion]? = nil,
+        awaitingVersions: [AppPlatformVersion]? = nil
+    ) -> AppModel {
+        AppModel(
+            id: id,
+            name: "App \(id)",
+            bundleId: "com.test.\(id)",
+            platform: AppPlatform.ios.rawValue,
+            accountId: accountId,
+            appStoreState: .pendingDeveloperRelease,
+            versionString: "3.1.0",
+            platformVersions: platformVersions,
+            awaitingVersions: awaitingVersions
+        )
+    }
 
     private func makeApp(id: String, state: AppStoreState?) -> AppModel {
         AppModel(

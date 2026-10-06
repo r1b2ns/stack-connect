@@ -1,18 +1,12 @@
 {
-  "version": "2.3.0",
+  "version": "2.4.0",
   "title": "Novidades",
   "highlights": [
     {
-      "icon": "chart.bar.xaxis",
-      "color": "indigo",
-      "title": "Análises",
-      "description": "Veja e transfira os relatórios de análises, tendências e métricas da sua aplicação."
-    },
-    {
-      "icon": "paperplane.fill",
-      "color": "blue",
-      "title": "Submissions",
-      "description": "Acompanhe e faça a gestão dos seus envios para revisão da aplicação e o respetivo estado."
+      "icon": "text.bubble",
+      "color": "green",
+      "title": "Modelos de Resposta",
+      "description": "Guarde as respostas que mais usa e reutilize-as com um toque ao responder a avaliações."
     },
     {
       "icon": "ladybug.fill",

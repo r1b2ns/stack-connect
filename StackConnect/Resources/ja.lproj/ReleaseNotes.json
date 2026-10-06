@@ -1,18 +1,12 @@
 {
-  "version": "2.3.0",
+  "version": "2.4.0",
   "title": "新機能",
   "highlights": [
     {
-      "icon": "chart.bar.xaxis",
-      "color": "indigo",
-      "title": "Analytics",
-      "description": "アプリの分析レポート、トレンド、指標を表示してダウンロードできます。"
-    },
-    {
-      "icon": "paperplane.fill",
-      "color": "blue",
-      "title": "Submissions",
-      "description": "App の審査申請とそのステータスを確認・管理できます。"
+      "icon": "text.bubble",
+      "color": "green",
+      "title": "返信テンプレート",
+      "description": "よく使う返信を保存して、レビューへの返信時にタップするだけで再利用できます。"
     },
     {
       "icon": "ladybug.fill",

@@ -1,18 +1,12 @@
 {
-  "version": "2.3.0",
+  "version": "2.4.0",
   "title": "Nyheter",
   "highlights": [
     {
-      "icon": "chart.bar.xaxis",
-      "color": "indigo",
-      "title": "Analys",
-      "description": "Visa och ladda ner appens analysrapporter, trender och mätvärden."
-    },
-    {
-      "icon": "paperplane.fill",
-      "color": "blue",
-      "title": "Submissions",
-      "description": "Följ och hantera dina inlämningar för appgranskning och deras status."
+      "icon": "text.bubble",
+      "color": "green",
+      "title": "Svarsmallar",
+      "description": "Spara svaren du använder mest och återanvänd dem med en tryckning när du svarar på recensioner."
     },
     {
       "icon": "ladybug.fill",

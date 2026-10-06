@@ -39,6 +39,8 @@ protocol ReviewDetailViewModelProtocol: ObservableObject {
     func deleteResponse() async
     func startEditingReply()
     func cancelReplySheet()
+    func selectTemplate(_ template: ReplyTemplateModel)
+    func applyPendingTemplate()
 }
 
 // MARK: - UiState
@@ -53,6 +55,12 @@ struct ReviewDetailUiState {
     var replyText = ""
     var isEditingReply = false
     var confirmDeleteResponse = false
+    var showTemplatesSheet = false
+    /// Body of a template picked in the templates sheet, held until that sheet
+    /// has finished dismissing. SwiftUI cannot present two sheets from the same
+    /// view at once, so the reply composer is only opened from the templates
+    /// sheet's `onDismiss`. See `selectTemplate` / `applyPendingTemplate`.
+    var pendingTemplateBody: String?
 
     /// Plain-text payload for the system share sheet.
     var shareText: String {
@@ -166,6 +174,25 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
         uiState.isEditingReply = false
     }
 
+    /// Step 1 of the templates → composer handoff: record the pick and close the
+    /// templates sheet. Opening the composer here would be a no-op, because the
+    /// templates sheet is still presented from the same view.
+    func selectTemplate(_ template: ReplyTemplateModel) {
+        uiState.pendingTemplateBody = template.body
+        uiState.showTemplatesSheet = false
+    }
+
+    /// Step 2, invoked from the templates sheet's `onDismiss` (i.e. once no sheet
+    /// is presented): pre-fill the composer and open it. No-ops when the sheet was
+    /// dismissed without a pick (swipe-down / Done).
+    func applyPendingTemplate() {
+        guard let body = uiState.pendingTemplateBody else { return }
+        uiState.pendingTemplateBody = nil
+        uiState.replyText = body
+        uiState.isEditingReply = false
+        uiState.showReplySheet = true
+    }
+
     func deleteResponse() async {
         guard let responseId = uiState.review.responseId else { return }
 
@@ -213,6 +240,18 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
         }
         .sheet(isPresented: $viewModel.uiState.showReplySheet) {
             buildReplySheet()
+        }
+        .sheet(
+            isPresented: $viewModel.uiState.showTemplatesSheet,
+            // Runs once the templates sheet is fully dismissed, which is the only
+            // point at which the composer sheet can be presented from this view.
+            onDismiss: { viewModel.applyPendingTemplate() }
+        ) {
+            ReplyTemplatesViewFactory.build(
+                accountId: viewModel.uiState.account.id,
+                onSelect: { template in viewModel.selectTemplate(template) }
+            )
+            .presentationDetents([.medium, .large])
         }
         .alert(
             String(localized: "Delete Reply"),
@@ -362,6 +401,12 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
                         viewModel.uiState.showReplySheet = true
                     } label: {
                         Label(String(localized: "Write a Reply"), systemImage: "arrowshape.turn.up.left.fill")
+                    }
+
+                    Button {
+                        viewModel.uiState.showTemplatesSheet = true
+                    } label: {
+                        Label(String(localized: "Reply Templates"), systemImage: "text.bubble")
                     }
                 } footer: {
                     Text("Reply to this review. Your response will be visible on the App Store.")

@@ -29,13 +29,19 @@ final class AwaitingReleaseWidget: HomeWidget, ObservableObject {
         defer { isLoading = false }
 
         do {
+            // Accounts are loaded *before* categorizing: apps orphaned by an
+            // account that went away must not be expanded, counted, or listed.
+            let accounts = await HomeWidgetDataLoader.loadAccounts(storage: storage)
             let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
-            let active = allApps.filter { !$0.isArchived }
+            let active = HomeWidgetDataLoader.filterKnownAccounts(
+                allApps.filter { !$0.isArchived },
+                accountsMap: accounts
+            )
             let phased = await HomeWidgetDataLoader.loadPhasedReleases(for: active, storage: storage)
             let awaiting = AppStatusCategorizer.awaitingReleaseEntries(active, phasedByVersionId: phased)
             apps = awaiting.sorted(by: HomeWidgetDataLoader.sortByRecency)
             phasedByVersionId = phased
-            accountsMap = await HomeWidgetDataLoader.loadAccounts(storage: storage)
+            accountsMap = accounts
         } catch {
             Log.print.error("[Widget][AwaitingRelease] Failed to load apps: \(error.localizedDescription)")
             apps = []
@@ -83,7 +89,9 @@ private struct AwaitingReleaseWidgetView: View {
                         .padding(.top, 4)
                     }
 
-                    ForEach(group.apps) { app in
+                    // Identified by platform + version, not `AppModel.id`: rows are
+                    // per-version copies of one app, so the bare id repeats.
+                    ForEach(group.apps, id: \.statusEntryID) { app in
                         Button {
                             coordinator.navigateToAppDetail(
                                 app,

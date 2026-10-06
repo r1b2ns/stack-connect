@@ -1,5 +1,29 @@
 import Foundation
 
+// MARK: - Entry Identity
+
+/// Identifies a single expanded status row produced by `AppStatusCategorizer`.
+///
+/// Entries are *copies* of an app, one per (platform, version) — so `AppModel.id`
+/// alone repeats across rows of the same app and is not a usable identity for a
+/// `ForEach` or for deduplication. The version is part of the identity on
+/// purpose: one platform legitimately shows two rows when a still-phasing
+/// `readyForSale` version sits behind a newer one.
+struct AppStatusEntryID: Hashable {
+    let appId: String
+    let platform: String?
+    let versionString: String?
+}
+
+extension AppModel {
+    /// Composite identity of this app *as a status entry*. Use it for widget
+    /// `ForEach` identity and for deduplication — never bare `id`, which repeats
+    /// across the platform/version rows expanded from one app.
+    var statusEntryID: AppStatusEntryID {
+        AppStatusEntryID(appId: id, platform: platform, versionString: versionString)
+    }
+}
+
 enum AppStatusCategorizer {
 
     static func categorize(
@@ -50,7 +74,7 @@ enum AppStatusCategorizer {
                 result.append(app)
             }
         }
-        return result
+        return deduplicated(result)
     }
 
     /// Expands apps into "Awaiting Release" entries per platform, mirroring
@@ -92,7 +116,25 @@ enum AppStatusCategorizer {
                 result.append(app)
             }
         }
-        return result
+        return deduplicated(result)
+    }
+
+    /// Collapses entries that repeat the same (app id, platform, version).
+    ///
+    /// Home widgets read *every* account's apps via `fetchAll`, so the same App
+    /// Store app reachable through two registered accounts (the same ASC team
+    /// imported twice under different names is allowed on purpose, and each
+    /// import mints a fresh account id) is stored as two `AppModel` records and
+    /// expands into two identical rows. Those are the same release and collapse
+    /// into one.
+    ///
+    /// The version is part of the key deliberately: two rows for one platform are
+    /// legitimate when the versions differ (a still-phasing `readyForSale` behind
+    /// a newer prepared one), so keying on app id + platform alone would drop a
+    /// real rollout. First occurrence wins; order is preserved.
+    private static func deduplicated(_ entries: [AppModel]) -> [AppModel] {
+        var seen = Set<AppStatusEntryID>()
+        return entries.filter { seen.insert($0.statusEntryID).inserted }
     }
 
     /// Builds an awaiting-release entry for a single per-platform version, or

@@ -32,21 +32,7 @@ final class AccountManagementViewModel: AccountManagementViewModelProtocol {
     func deleteAccount() async -> Bool {
         let account = uiState.account
         do {
-            // Delete all apps belonging to this account, and their versions
-            let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
-            let accountApps = allApps.filter { $0.accountId == account.id }
-            for app in accountApps {
-                let allVersions: [AppStoreVersionModel] = try await storage.fetchAll(AppStoreVersionModel.self)
-                let appVersions = allVersions.filter { $0.appId == app.id }
-                for version in appVersions {
-                    try? await storage.delete(AppStoreVersionModel.self, id: "version.\(version.id)")
-                }
-                try? await storage.delete(AppModel.self, id: "\(account.id).\(app.id)")
-            }
-
-            // Delete account and credentials
-            try await storage.delete(AccountModel.self, id: account.id)
-            keychain.removeObject(forKey: "credentials.\(account.id)")
+            try await AccountCascadeDeleter.delete(account, storage: storage, keychain: keychain)
             Log.print.info("[AccountManagement] Deleted account and related data: \(account.name)")
             return true
         } catch {

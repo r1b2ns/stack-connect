@@ -27,6 +27,27 @@ enum HomeWidgetDataLoader {
         }
     }
 
+    /// Drops apps whose `accountId` matches no known account.
+    ///
+    /// Home widgets are the only place that reads apps across *all* accounts
+    /// (`fetchAll(AppModel.self)`); the rest of the app scopes every list by the
+    /// selected account. An app left behind by an account that went away — each
+    /// import mints a fresh account id, so a re-import orphans the old records —
+    /// is therefore invisible everywhere except here, where it would still be
+    /// listed and counted.
+    ///
+    /// Guard: an empty `accountsMap` means either the fetch failed or the install
+    /// genuinely has no accounts. Neither is a mandate to hide anything, so
+    /// nothing is filtered — a transient storage failure must never blank out the
+    /// whole Home. Filtering only happens against a non-empty account list.
+    static func filterKnownAccounts(
+        _ apps: [AppModel],
+        accountsMap: [String: AccountModel]
+    ) -> [AppModel] {
+        guard !accountsMap.isEmpty else { return apps }
+        return apps.filter { accountsMap[$0.accountId] != nil }
+    }
+
     /// Loads phased releases keyed by version id (matching the
     /// `"phased.{versionId}"` storage scheme written by `SyncService.syncPhased`).
     /// Looks up every version id in `awaitingVersions` (a still-phasing
@@ -91,8 +112,21 @@ enum HomeWidgetDataLoader {
         }
     }
 
+    /// Resolves the account a row belongs to, for navigation into App Detail.
+    ///
+    /// The empty placeholder is a last-resort fallback for a non-optional return:
+    /// rows are filtered by `filterKnownAccounts` before they reach the view, so a
+    /// miss here means either the account list came back empty (the filter's
+    /// guard, so orphans legitimately pass through) or an account disappeared
+    /// between load and tap. It is logged rather than silently fabricated —
+    /// silently minting a blank account is what masked the orphaned records that
+    /// caused duplicate rows in the first place.
     static func account(for app: AppModel, in map: [String: AccountModel]) -> AccountModel {
-        map[app.accountId] ?? AccountModel(id: app.accountId, name: "", providerType: .apple)
+        if let account = map[app.accountId] { return account }
+        Log.print.notice(
+            "[Widget] App '\(app.name, privacy: .public)' (\(app.id, privacy: .public)) references unknown account \(app.accountId, privacy: .public) — using placeholder."
+        )
+        return AccountModel(id: app.accountId, name: "", providerType: .apple)
     }
 
     /// Groups apps by their platform in a canonical order, keeping unknown-platform

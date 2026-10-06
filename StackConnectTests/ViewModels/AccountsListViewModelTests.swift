@@ -62,6 +62,48 @@ final class AccountsListViewModelTests: XCTestCase {
         XCTAssertNil(mockKeychain.string(forKey: "credentials.\(account.id)"))
     }
 
+    // MARK: - Delete cascades to reply templates
+
+    private func seedTemplate(id: String, accountId: String) async throws {
+        let template = ReplyTemplateModel(id: id, accountId: accountId, title: "Title", body: "Body")
+        try await mockStorage.save(template, id: template.id)
+    }
+
+    private func storedTemplates() async throws -> [ReplyTemplateModel] {
+        try await mockStorage.fetchAll(ReplyTemplateModel.self)
+    }
+
+    func testDeleteAccountRemovesItsReplyTemplatesAndKeepsOthers() async throws {
+        let deleted = AccountModel(name: "Deleted", providerType: .apple)
+        let kept = AccountModel(name: "Kept", providerType: .apple)
+        try await mockStorage.save(deleted, id: deleted.id)
+        try await mockStorage.save(kept, id: kept.id)
+        try await seedTemplate(id: "deleted-1", accountId: deleted.id)
+        try await seedTemplate(id: "deleted-2", accountId: deleted.id)
+        try await seedTemplate(id: "kept-1", accountId: kept.id)
+        await sut.loadAccounts()
+
+        await sut.deleteAccount(deleted)
+
+        let remaining = try await storedTemplates()
+        XCTAssertEqual(remaining.map(\.id), ["kept-1"])
+        XCTAssertEqual(remaining.first?.accountId, kept.id)
+        XCTAssertEqual(sut.uiState.accounts.map(\.id), [kept.id])
+    }
+
+    func testDeleteAccountAtOffsetsRemovesItsReplyTemplates() async throws {
+        let account = AccountModel(name: "Swiped", providerType: .apple)
+        try await mockStorage.save(account, id: account.id)
+        try await seedTemplate(id: "t1", accountId: account.id)
+        await sut.loadAccounts()
+
+        await sut.deleteAccount(at: IndexSet(integer: 0))
+
+        let remaining = try await storedTemplates()
+        XCTAssertTrue(remaining.isEmpty)
+        XCTAssertTrue(sut.uiState.accounts.isEmpty)
+    }
+
     // MARK: - Grouping by team / issuerID (issue #66)
 
     private func storeAppleCredentials(issuerID: String, for accountId: String) {
