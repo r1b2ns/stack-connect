@@ -13,14 +13,16 @@ import Foundation
 ///    (`"version.<versionId>"`);
 /// 2. the account's reply templates (`ReplyTemplateModel.id`) — templates of
 ///    other accounts are left untouched;
-/// 3. the `AccountModel` itself (`account.id`);
-/// 4. the keychain credentials (`"credentials.<accountId>"`).
+/// 3. the account's cached Google Play app list
+///    (`GooglePlayAppItem.cacheKey(accountId:)`, a no-op for other providers);
+/// 4. the `AccountModel` itself (`account.id`);
+/// 5. the keychain credentials (`"credentials.<accountId>"`).
 ///
 /// Error semantics:
 /// - Reads propagate. They all run before anything is deleted, so a failed read
 ///   leaves storage untouched and the caller can simply retry.
-/// - Deleting child items (versions, apps, templates) is best-effort: one failure
-///   does not stop the cascade.
+/// - Deleting child items (versions, apps, templates, the Play app cache) is
+///   best-effort: one failure does not stop the cascade.
 /// - Deleting the `AccountModel` propagates. When it fails the keychain
 ///   credentials are kept, so the still-stored account remains usable.
 ///
@@ -59,6 +61,11 @@ enum AccountCascadeDeleter {
         for template in accountTemplates {
             try? await storage.delete(ReplyTemplateModel.self, id: template.id)
         }
+
+        try? await storage.delete(
+            [GooglePlayAppItem].self,
+            id: GooglePlayAppItem.cacheKey(accountId: account.id)
+        )
 
         try await storage.delete(AccountModel.self, id: account.id)
         keychain.removeObject(forKey: "credentials.\(account.id)")

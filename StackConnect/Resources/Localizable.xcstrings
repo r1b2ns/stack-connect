@@ -1,6 +1,2247 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "This isn't a valid JSON file. Paste or import the full service account key downloaded from Google Cloud." : {
+      "comment" : "Error shown when the pasted or imported Google Play service account key is not valid JSON.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dies ist keine gültige JSON-Datei. Fügen Sie den vollständigen, von Google Cloud heruntergeladenen Dienstkontoschlüssel ein oder importieren Sie ihn."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este no es un archivo JSON válido. Pega o importa la clave completa de la cuenta de servicio descargada de Google Cloud."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este no es un archivo JSON válido. Pega o importa la clave completa de la cuenta de servicio descargada de Google Cloud."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce fichier JSON n'est pas valide. Collez ou importez la clé complète du compte de service téléchargée depuis Google Cloud."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questo non è un file JSON valido. Incolla o importa la chiave completa dell'account di servizio scaricata da Google Cloud."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有効な JSON ファイルではありません。Google Cloud からダウンロードしたサービスアカウントキー全体を貼り付けるかインポートしてください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "유효한 JSON 파일이 아닙니다. Google Cloud에서 다운로드한 서비스 계정 키 전체를 붙여넣거나 가져오세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dit is geen geldig JSON-bestand. Plak of importeer de volledige serviceaccountsleutel die je van Google Cloud hebt gedownload."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este não é um arquivo JSON válido. Cole ou importe a chave completa da conta de serviço baixada do Google Cloud."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este não é um ficheiro JSON válido. Cole ou importe a chave completa da conta de serviço transferida do Google Cloud."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это недопустимый файл JSON. Вставьте или импортируйте полный ключ сервисного аккаунта, загруженный из Google Cloud."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det här är inte en giltig JSON-fil. Klistra in eller importera hela tjänstkontonyckeln som du laddade ned från Google Cloud."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這不是有效的 JSON 檔案。請貼上或匯入從 Google Cloud 下載的完整服務帳戶金鑰。"
+          }
+        }
+      }
+    },
+    "This JSON isn't a service account key. In Google Cloud, open IAM & Admin › Service Accounts, pick the account and create a JSON key under Keys." : {
+      "comment" : "Error shown when the pasted JSON is not a Google service account key (e.g. an OAuth client file).",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses JSON ist kein Dienstkontoschlüssel. Öffnen Sie in Google Cloud „IAM & Verwaltung › Dienstkonten“, wählen Sie das Konto aus und erstellen Sie unter „Schlüssel“ einen JSON-Schlüssel."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este JSON no es una clave de cuenta de servicio. En Google Cloud, abre IAM y administración › Cuentas de servicio, elige la cuenta y crea una clave JSON en Claves."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este JSON no es una clave de cuenta de servicio. En Google Cloud, abre IAM y administración › Cuentas de servicio, elige la cuenta y crea una clave JSON en Claves."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce JSON n'est pas une clé de compte de service. Dans Google Cloud, ouvrez IAM et administration › Comptes de service, choisissez le compte et créez une clé JSON dans Clés."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questo JSON non è una chiave di account di servizio. In Google Cloud, apri IAM e amministrazione › Account di servizio, scegli l'account e crea una chiave JSON in Chiavi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この JSON はサービスアカウントキーではありません。Google Cloud で「IAM と管理 › サービス アカウント」を開き、アカウントを選択して「鍵」で JSON キーを作成してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 JSON은 서비스 계정 키가 아닙니다. Google Cloud에서 IAM 및 관리자 › 서비스 계정을 열고 계정을 선택한 다음 키에서 JSON 키를 만드세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deze JSON is geen serviceaccountsleutel. Open in Google Cloud IAM en beheer › Serviceaccounts, kies het account en maak onder Sleutels een JSON-sleutel."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este JSON não é uma chave de conta de serviço. No Google Cloud, abra IAM e administrador › Contas de serviço, escolha a conta e crie uma chave JSON em Chaves."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este JSON não é uma chave de conta de serviço. No Google Cloud, abra IAM e administração › Contas de serviço, escolha a conta e crie uma chave JSON em Chaves."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот JSON не является ключом сервисного аккаунта. В Google Cloud откройте «IAM и администрирование › Сервисные аккаунты», выберите аккаунт и создайте ключ JSON в разделе «Ключи»."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den här JSON-filen är inte en tjänstkontonyckel. Öppna IAM och administration › Tjänstkonton i Google Cloud, välj kontot och skapa en JSON-nyckel under Nycklar."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這個 JSON 不是服務帳戶金鑰。請在 Google Cloud 開啟「IAM 與管理 › 服務帳戶」，選取帳戶後在「金鑰」中建立 JSON 金鑰。"
+          }
+        }
+      }
+    },
+    "The service account key is missing \"%@\". Download a new JSON key from Google Cloud." : {
+      "comment" : "Error shown when a required field is missing from the Google Play service account key. Argument: the JSON field name (e.g. client_email).",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Im Dienstkontoschlüssel fehlt „%@“. Laden Sie einen neuen JSON-Schlüssel aus Google Cloud herunter."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A la clave de la cuenta de servicio le falta «%@». Descarga una clave JSON nueva de Google Cloud."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A la clave de la cuenta de servicio le falta \"%@\". Descarga una clave JSON nueva de Google Cloud."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il manque « %@ » dans la clé du compte de service. Téléchargez une nouvelle clé JSON depuis Google Cloud."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nella chiave dell'account di servizio manca “%@”. Scarica una nuova chiave JSON da Google Cloud."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サービスアカウントキーに「%@」がありません。Google Cloud から新しい JSON キーをダウンロードしてください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서비스 계정 키에 “%@” 항목이 없습니다. Google Cloud에서 새 JSON 키를 다운로드하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De serviceaccountsleutel mist ‘%@’. Download een nieuwe JSON-sleutel van Google Cloud."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A chave da conta de serviço não contém \"%@\". Baixe uma nova chave JSON do Google Cloud."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A chave da conta de serviço não contém \"%@\". Transfira uma nova chave JSON do Google Cloud."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В ключе сервисного аккаунта отсутствует «%@». Загрузите новый ключ JSON из Google Cloud."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tjänstkontonyckeln saknar ”%@”. Ladda ned en ny JSON-nyckel från Google Cloud."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "服務帳戶金鑰缺少「%@」。請從 Google Cloud 下載新的 JSON 金鑰。"
+          }
+        }
+      }
+    },
+    "The service account e-mail (client_email) in this key is invalid." : {
+      "comment" : "Error shown when the client_email of the Google Play service account key is not an e-mail address.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die E-Mail-Adresse des Dienstkontos (client_email) in diesem Schlüssel ist ungültig."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El correo de la cuenta de servicio (client_email) de esta clave no es válido."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El correo de la cuenta de servicio (client_email) de esta clave no es válido."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'adresse e-mail du compte de service (client_email) de cette clé n'est pas valide."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'e-mail dell'account di servizio (client_email) in questa chiave non è valida."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このキーのサービスアカウントのメールアドレス（client_email）が無効です。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 키의 서비스 계정 이메일(client_email)이 올바르지 않습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het e-mailadres van het serviceaccount (client_email) in deze sleutel is ongeldig."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O e-mail da conta de serviço (client_email) desta chave é inválido."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O e-mail da conta de serviço (client_email) desta chave é inválido."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Адрес эл. почты сервисного аккаунта (client_email) в этом ключе недействителен."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tjänstkontots e-postadress (client_email) i den här nyckeln är ogiltig."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此金鑰中的服務帳戶電子郵件 (client_email) 無效。"
+          }
+        }
+      }
+    },
+    "The service account key is invalid. Download a new JSON key from Google Cloud and try again." : {
+      "comment" : "Error shown when the Google Play service account's private key can't be used.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Dienstkontoschlüssel ist ungültig. Laden Sie einen neuen JSON-Schlüssel aus Google Cloud herunter und versuchen Sie es erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clave de la cuenta de servicio no es válida. Descarga una clave JSON nueva de Google Cloud y vuelve a intentarlo."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clave de la cuenta de servicio no es válida. Descarga una clave JSON nueva de Google Cloud y vuelve a intentarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clé du compte de service n'est pas valide. Téléchargez une nouvelle clé JSON depuis Google Cloud et réessayez."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La chiave dell'account di servizio non è valida. Scarica una nuova chiave JSON da Google Cloud e riprova."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サービスアカウントキーが無効です。Google Cloud から新しい JSON キーをダウンロードして、もう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서비스 계정 키가 올바르지 않습니다. Google Cloud에서 새 JSON 키를 다운로드한 후 다시 시도하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De serviceaccountsleutel is ongeldig. Download een nieuwe JSON-sleutel van Google Cloud en probeer het opnieuw."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A chave da conta de serviço é inválida. Baixe uma nova chave JSON do Google Cloud e tente novamente."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A chave da conta de serviço é inválida. Transfira uma nova chave JSON do Google Cloud e tente novamente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ключ сервисного аккаунта недействителен. Загрузите новый ключ JSON из Google Cloud и повторите попытку."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tjänstkontonyckeln är ogiltig. Ladda ned en ny JSON-nyckel från Google Cloud och försök igen."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "服務帳戶金鑰無效。請從 Google Cloud 下載新的 JSON 金鑰後再試一次。"
+          }
+        }
+      }
+    },
+    "Google Play denied access to this service account." : {
+      "comment" : "Lead sentence shown when Google rejects the service account. It is followed by Google's own (English) instructions on how to fix it.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play hat diesem Dienstkonto den Zugriff verweigert."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play denegó el acceso a esta cuenta de servicio."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play denegó el acceso a esta cuenta de servicio."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play a refusé l'accès à ce compte de service."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play ha negato l'accesso a questo account di servizio."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play はこのサービスアカウントへのアクセスを拒否しました。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play에서 이 서비스 계정의 접근을 거부했습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play heeft dit serviceaccount de toegang geweigerd."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Google Play negou o acesso a esta conta de serviço."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Google Play negou o acesso a esta conta de serviço."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play отказал в доступе этому сервисному аккаунту."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play nekade det här tjänstkontot åtkomst."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play 拒絕了此服務帳戶的存取。"
+          }
+        }
+      }
+    },
+    "Couldn't reach Google Play. Check your internet connection and try again." : {
+      "comment" : "Error shown when a Google Play request fails at the network level.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play ist nicht erreichbar. Überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo conectar con Google Play. Revisa tu conexión a internet y vuelve a intentarlo."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo conectar con Google Play. Revisa tu conexión a internet y vuelve a intentarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de joindre Google Play. Vérifiez votre connexion Internet et réessayez."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossibile raggiungere Google Play. Controlla la connessione a Internet e riprova."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play に接続できませんでした。インターネット接続を確認して、もう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play에 연결할 수 없습니다. 인터넷 연결을 확인한 후 다시 시도하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kan Google Play niet bereiken. Controleer je internetverbinding en probeer het opnieuw."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível acessar o Google Play. Verifique sua conexão com a internet e tente novamente."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível contactar o Google Play. Verifique a sua ligação à internet e tente novamente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось подключиться к Google Play. Проверьте подключение к интернету и повторите попытку."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det gick inte att nå Google Play. Kontrollera internetanslutningen och försök igen."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法連線至 Google Play。請檢查網際網路連線後再試一次。"
+          }
+        }
+      }
+    },
+    "Google Play returned an unexpected response. Try again later." : {
+      "comment" : "Error shown when a Google Play response can't be decoded.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play hat eine unerwartete Antwort zurückgegeben. Versuchen Sie es später erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play devolvió una respuesta inesperada. Vuelve a intentarlo más tarde."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play devolvió una respuesta inesperada. Vuelve a intentarlo más tarde."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play a renvoyé une réponse inattendue. Réessayez plus tard."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play ha restituito una risposta imprevista. Riprova più tardi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play から予期しない応答が返されました。しばらくしてからもう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play에서 예상치 못한 응답을 반환했습니다. 나중에 다시 시도하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play gaf een onverwacht antwoord. Probeer het later opnieuw."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Google Play retornou uma resposta inesperada. Tente novamente mais tarde."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Google Play devolveu uma resposta inesperada. Tente novamente mais tarde."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play вернул непредвиденный ответ. Повторите попытку позже."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play returnerade ett oväntat svar. Försök igen senare."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play 傳回了非預期的回應。請稍後再試。"
+          }
+        }
+      }
+    },
+    "This action isn't available for Google Play accounts yet." : {
+      "comment" : "Error shown when an action is not supported for Google Play accounts yet.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Aktion ist für Google Play-Konten noch nicht verfügbar."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta acción aún no está disponible para las cuentas de Google Play."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta acción aún no está disponible para las cuentas de Google Play."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette action n'est pas encore disponible pour les comptes Google Play."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questa azione non è ancora disponibile per gli account Google Play."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この操作は Google Play アカウントではまだ利用できません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 작업은 아직 Google Play 계정에서 사용할 수 없습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deze actie is nog niet beschikbaar voor Google Play-accounts."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta ação ainda não está disponível para contas do Google Play."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta ação ainda não está disponível para contas do Google Play."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это действие пока недоступно для аккаунтов Google Play."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den här åtgärden är inte tillgänglig för Google Play-konton ännu."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play 帳戶目前尚不支援此操作。"
+          }
+        }
+      }
+    },
+    "Something went wrong while talking to Google Play. Try again." : {
+      "comment" : "Generic fallback error for Google Play requests.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei der Kommunikation mit Google Play ist ein Fehler aufgetreten. Versuchen Sie es erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Algo salió mal al comunicarse con Google Play. Vuelve a intentarlo."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Algo salió mal al comunicarse con Google Play. Vuelve a intentarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un problème est survenu lors de la communication avec Google Play. Réessayez."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Si è verificato un problema durante la comunicazione con Google Play. Riprova."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play との通信中に問題が発生しました。もう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play와 통신하는 중 문제가 발생했습니다. 다시 시도하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Er ging iets mis bij de communicatie met Google Play. Probeer het opnieuw."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Algo deu errado ao se comunicar com o Google Play. Tente novamente."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocorreu um erro ao comunicar com o Google Play. Tente novamente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "При обращении к Google Play произошла ошибка. Повторите попытку."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Något gick fel vid kommunikationen med Google Play. Försök igen."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "與 Google Play 通訊時發生問題。請再試一次。"
+          }
+        }
+      }
+    },
+    "You hit Google's rate limit. Wait a moment and try again." : {
+      "comment" : "Error shown when Google Play answers HTTP 429 (too many requests).",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sie haben das Anfragelimit von Google erreicht. Warten Sie einen Moment und versuchen Sie es erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Has alcanzado el límite de solicitudes de Google. Espera un momento e inténtalo de nuevo."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Has alcanzado el límite de solicitudes de Google. Espera un momento e inténtalo de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vous avez atteint la limite de requêtes de Google. Patientez un instant et réessayez."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hai raggiunto il limite di richieste di Google. Attendi un momento e riprova."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google のレート制限に達しました。しばらく待ってから再試行してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google의 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Je hebt de aanvraaglimiet van Google bereikt. Wacht even en probeer het opnieuw."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Você atingiu o limite de requisições do Google. Aguarde um momento e tente novamente."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atingiu o limite de pedidos do Google. Aguarde um momento e tente novamente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Достигнут лимит запросов Google. Подождите немного и повторите попытку."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du har nått Googles gräns för förfrågningar. Vänta en stund och försök igen."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已達到 Google 的請求次數上限。請稍候再試。"
+          }
+        }
+      }
+    },
+    "Google Play is temporarily unavailable. Try again in a few minutes." : {
+      "comment" : "Error shown when Google Play answers with an HTTP 5xx server error.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play ist vorübergehend nicht verfügbar. Versuchen Sie es in einigen Minuten erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play no está disponible temporalmente. Vuelve a intentarlo en unos minutos."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play no está disponible temporalmente. Vuelve a intentarlo en unos minutos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play est temporairement indisponible. Réessayez dans quelques minutes."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play è temporaneamente non disponibile. Riprova tra qualche minuto."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play は一時的に利用できません。数分後にもう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play를 일시적으로 사용할 수 없습니다. 몇 분 후에 다시 시도하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play is tijdelijk niet beschikbaar. Probeer het over een paar minuten opnieuw."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Google Play está temporariamente indisponível. Tente novamente em alguns minutos."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Google Play está temporariamente indisponível. Tente novamente dentro de alguns minutos."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play временно недоступен. Повторите попытку через несколько минут."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play är tillfälligt otillgängligt. Försök igen om några minuter."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play 暫時無法使用。請過幾分鐘後再試。"
+          }
+        }
+      }
+    },
+    "Google Play returned an unexpected error (HTTP %lld)." : {
+      "comment" : "Generic error for an unexpected HTTP status from Google Play. Argument: the HTTP status code.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play hat einen unerwarteten Fehler zurückgegeben (HTTP %lld)."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play devolvió un error inesperado (HTTP %lld)."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play devolvió un error inesperado (HTTP %lld)."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play a renvoyé une erreur inattendue (HTTP %lld)."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play ha restituito un errore imprevisto (HTTP %lld)."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play から予期しないエラーが返されました（HTTP %lld）。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play에서 예상치 못한 오류를 반환했습니다(HTTP %lld)."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play gaf een onverwachte fout (HTTP %lld)."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Google Play retornou um erro inesperado (HTTP %lld)."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Google Play devolveu um erro inesperado (HTTP %lld)."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play вернул непредвиденную ошибку (HTTP %lld)."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play returnerade ett oväntat fel (HTTP %lld)."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play 傳回了非預期的錯誤 (HTTP %lld)。"
+          }
+        }
+      }
+    },
+    "Paste" : {
+      "comment" : "Accessibility label of the button that pastes the clipboard into a credential field.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einsetzen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pegar"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pegar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coller"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incolla"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペースト"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "붙여넣기"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plak"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Colar"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Colar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставить"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klistra in"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "貼上"
+          }
+        }
+      }
+    },
+    "Paste or import the service account's JSON key. Enable the Google Play Developer Reporting API in its Google Cloud project, then invite the service account e-mail in Play Console › Users and permissions with at least \"View app information (read-only)\". Access can take a while to propagate." : {
+      "comment" : "Footer of the Google Play credentials section in Add Account.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fügen Sie den JSON-Schlüssel des Dienstkontos ein oder importieren Sie ihn. Aktivieren Sie die Google Play Developer Reporting API im Google Cloud-Projekt des Kontos und laden Sie dann die E-Mail-Adresse des Dienstkontos in der Play Console unter „Nutzer und Berechtigungen“ mit mindestens „App-Informationen ansehen (Lesezugriff)“ ein. Es kann eine Weile dauern, bis der Zugriff wirksam wird."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pega o importa la clave JSON de la cuenta de servicio. Habilita la Google Play Developer Reporting API en su proyecto de Google Cloud e invita el correo de la cuenta de servicio en Play Console › Usuarios y permisos con al menos «Ver información de la aplicación (solo lectura)». El acceso puede tardar un rato en propagarse."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pega o importa la clave JSON de la cuenta de servicio. Habilita la Google Play Developer Reporting API en su proyecto de Google Cloud e invita el correo de la cuenta de servicio en Play Console › Usuarios y permisos con al menos \"Ver información de la app (solo lectura)\". El acceso puede tardar un rato en propagarse."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collez ou importez la clé JSON du compte de service. Activez l'API Google Play Developer Reporting dans son projet Google Cloud, puis invitez l'adresse e-mail du compte de service dans Play Console › Utilisateurs et autorisations avec au moins « Afficher les informations sur l'application (lecture seule) ». La propagation de l'accès peut prendre un certain temps."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incolla o importa la chiave JSON dell'account di servizio. Attiva la Google Play Developer Reporting API nel suo progetto Google Cloud, poi invita l'e-mail dell'account di servizio in Play Console › Utenti e autorizzazioni con almeno “Visualizza informazioni sull'app (sola lettura)”. La propagazione dell'accesso può richiedere un po' di tempo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サービスアカウントの JSON キーを貼り付けるかインポートします。サービスアカウントの Google Cloud プロジェクトで Google Play Developer Reporting API を有効にし、Play Console の「ユーザーと権限」でサービスアカウントのメールアドレスを招待して、少なくとも「アプリ情報の閲覧（読み取り専用）」を付与してください。アクセスが反映されるまでしばらくかかる場合があります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서비스 계정의 JSON 키를 붙여넣거나 가져오세요. 해당 Google Cloud 프로젝트에서 Google Play Developer Reporting API를 사용 설정한 다음, Play Console › 사용자 및 권한에서 서비스 계정 이메일을 초대하고 최소한 “앱 정보 보기(읽기 전용)” 권한을 부여하세요. 접근 권한이 적용되기까지 시간이 걸릴 수 있습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plak of importeer de JSON-sleutel van het serviceaccount. Schakel de Google Play Developer Reporting API in binnen het Google Cloud-project en nodig daarna het e-mailadres van het serviceaccount uit in Play Console › Gebruikers en rechten met minimaal ‘App-informatie bekijken (alleen-lezen)’. Het kan even duren voordat de toegang actief is."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cole ou importe a chave JSON da conta de serviço. Ative a Google Play Developer Reporting API no projeto do Google Cloud da conta e convide o e-mail da conta de serviço no Play Console › Usuários e permissões com, no mínimo, \"Ver informações do app (somente leitura)\". O acesso pode levar algum tempo para ser propagado."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cole ou importe a chave JSON da conta de serviço. Ative a Google Play Developer Reporting API no projeto do Google Cloud da conta e convide o e-mail da conta de serviço na Play Console › Utilizadores e autorizações com, pelo menos, \"Ver informações da app (só de leitura)\". O acesso pode demorar algum tempo a propagar-se."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вставьте или импортируйте JSON-ключ сервисного аккаунта. Включите Google Play Developer Reporting API в его проекте Google Cloud, затем пригласите адрес эл. почты сервисного аккаунта в Play Console › «Пользователи и разрешения» как минимум с правом «Просмотр информации о приложении (только чтение)». Применение доступа может занять некоторое время."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klistra in eller importera tjänstkontots JSON-nyckel. Aktivera Google Play Developer Reporting API i kontots Google Cloud-projekt och bjud sedan in tjänstkontots e-postadress i Play Console › Användare och behörigheter med minst ”Visa appinformation (skrivskyddad)”. Det kan ta en stund innan åtkomsten börjar gälla."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "貼上或匯入服務帳戶的 JSON 金鑰。請在其 Google Cloud 專案中啟用 Google Play Developer Reporting API，再到 Play Console ›「使用者和權限」邀請服務帳戶的電子郵件，並至少授予「查看應用程式資訊 (唯讀)」權限。存取權可能需要一段時間才會生效。"
+          }
+        }
+      }
+    },
+    "How to set up the service account" : {
+      "comment" : "Title of the Google Play service account setup tutorial in Add Account.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "So richten Sie das Dienstkonto ein"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo configurar la cuenta de servicio"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo configurar la cuenta de servicio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comment configurer le compte de service"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Come configurare l'account di servizio"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サービスアカウントの設定方法"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서비스 계정 설정 방법"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het serviceaccount instellen"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como configurar a conta de serviço"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como configurar a conta de serviço"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как настроить сервисный аккаунт"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Så konfigurerar du tjänstkontot"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如何設定服務帳戶"
+          }
+        }
+      }
+    },
+    "Open Google Cloud Console" : {
+      "comment" : "Google Play setup tutorial step title.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud Console öffnen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Google Cloud Console"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Google Cloud Console"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir Google Cloud Console"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apri Google Cloud Console"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud コンソールを開く"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud 콘솔 열기"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Cloud Console openen"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir o Google Cloud Console"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir a Google Cloud Console"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть Google Cloud Console"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öppna Google Cloud Console"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟 Google Cloud 控制台"
+          }
+        }
+      }
+    },
+    "Go to console.cloud.google.com and select the project that will own the service account." : {
+      "comment" : "Google Play setup tutorial step detail.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rufen Sie console.cloud.google.com auf und wählen Sie das Projekt aus, zu dem das Dienstkonto gehören soll."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ve a console.cloud.google.com y selecciona el proyecto al que pertenecerá la cuenta de servicio."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ve a console.cloud.google.com y selecciona el proyecto al que pertenecerá la cuenta de servicio."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rendez-vous sur console.cloud.google.com et sélectionnez le projet auquel appartiendra le compte de service."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vai su console.cloud.google.com e seleziona il progetto a cui apparterrà l'account di servizio."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "console.cloud.google.com にアクセスし、サービスアカウントを所有するプロジェクトを選択します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "console.cloud.google.com으로 이동해 서비스 계정을 소유할 프로젝트를 선택합니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ga naar console.cloud.google.com en selecteer het project waartoe het serviceaccount gaat behoren."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acesse console.cloud.google.com e selecione o projeto ao qual a conta de serviço pertencerá."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aceda a console.cloud.google.com e selecione o projeto ao qual a conta de serviço vai pertencer."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перейдите на console.cloud.google.com и выберите проект, которому будет принадлежать сервисный аккаунт."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gå till console.cloud.google.com och välj projektet som tjänstkontot ska tillhöra."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前往 console.cloud.google.com，並選取將擁有此服務帳戶的專案。"
+          }
+        }
+      }
+    },
+    "Enable the Reporting API" : {
+      "comment" : "Google Play setup tutorial step title.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reporting API aktivieren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Habilitar la Reporting API"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Habilitar la Reporting API"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activer la Reporting API"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Attiva la Reporting API"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reporting API を有効にする"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reporting API 사용 설정"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reporting API inschakelen"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ativar a Reporting API"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ativar a Reporting API"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включить Reporting API"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktivera Reporting API"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "啟用 Reporting API"
+          }
+        }
+      }
+    },
+    "In APIs & Services › Library, search for \"Google Play Developer Reporting API\" and tap Enable." : {
+      "comment" : "Google Play setup tutorial step detail.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suchen Sie unter „APIs & Dienste › Bibliothek“ nach „Google Play Developer Reporting API“ und tippen Sie auf „Aktivieren“."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En APIs y servicios › Biblioteca, busca «Google Play Developer Reporting API» y toca Habilitar."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En APIs y servicios › Biblioteca, busca \"Google Play Developer Reporting API\" y toca Habilitar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dans API et services › Bibliothèque, recherchez « Google Play Developer Reporting API » et touchez Activer."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In API e servizi › Libreria, cerca “Google Play Developer Reporting API” e tocca Abilita."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「API とサービス › ライブラリ」で「Google Play Developer Reporting API」を検索し、［有効にする］をタップします。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API 및 서비스 › 라이브러리에서 “Google Play Developer Reporting API”를 검색한 후 사용을 탭합니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoek in API's en services › Bibliotheek naar ‘Google Play Developer Reporting API’ en tik op Inschakelen."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Em APIs e serviços › Biblioteca, pesquise \"Google Play Developer Reporting API\" e toque em Ativar."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Em APIs e serviços › Biblioteca, pesquise \"Google Play Developer Reporting API\" e toque em Ativar."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В разделе «API и сервисы › Библиотека» найдите «Google Play Developer Reporting API» и нажмите «Включить»."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sök efter ”Google Play Developer Reporting API” under API:er och tjänster › Bibliotek och tryck på Aktivera."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在「API 和服務 › 程式庫」中搜尋「Google Play Developer Reporting API」，然後輕點「啟用」。"
+          }
+        }
+      }
+    },
+    "Create a service account" : {
+      "comment" : "Google Play setup tutorial step title.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dienstkonto erstellen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crear una cuenta de servicio"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crear una cuenta de servicio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créer un compte de service"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crea un account di servizio"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サービスアカウントを作成"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서비스 계정 만들기"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serviceaccount maken"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Criar uma conta de serviço"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Criar uma conta de serviço"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создать сервисный аккаунт"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skapa ett tjänstkonto"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "建立服務帳戶"
+          }
+        }
+      }
+    },
+    "In IAM & Admin › Service Accounts, create a service account. It doesn't need any Google Cloud role." : {
+      "comment" : "Google Play setup tutorial step detail.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erstellen Sie unter „IAM & Verwaltung › Dienstkonten“ ein Dienstkonto. Es benötigt keine Google Cloud-Rolle."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En IAM y administración › Cuentas de servicio, crea una cuenta de servicio. No necesita ningún rol de Google Cloud."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En IAM y administración › Cuentas de servicio, crea una cuenta de servicio. No necesita ningún rol de Google Cloud."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dans IAM et administration › Comptes de service, créez un compte de service. Il n'a besoin d'aucun rôle Google Cloud."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In IAM e amministrazione › Account di servizio, crea un account di servizio. Non serve alcun ruolo Google Cloud."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「IAM と管理 › サービス アカウント」でサービスアカウントを作成します。Google Cloud のロールは不要です。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "IAM 및 관리자 › 서비스 계정에서 서비스 계정을 만듭니다. Google Cloud 역할은 필요하지 않습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maak in IAM en beheer › Serviceaccounts een serviceaccount. Er is geen Google Cloud-rol nodig."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Em IAM e administrador › Contas de serviço, crie uma conta de serviço. Ela não precisa de nenhum papel do Google Cloud."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Em IAM e administração › Contas de serviço, crie uma conta de serviço. Não precisa de nenhuma função do Google Cloud."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В разделе «IAM и администрирование › Сервисные аккаунты» создайте сервисный аккаунт. Роли Google Cloud ему не нужны."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skapa ett tjänstkonto under IAM och administration › Tjänstkonton. Det behöver ingen Google Cloud-roll."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在「IAM 與管理 › 服務帳戶」中建立服務帳戶。不需要任何 Google Cloud 角色。"
+          }
+        }
+      }
+    },
+    "Create a JSON key" : {
+      "comment" : "Google Play setup tutorial step title.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JSON-Schlüssel erstellen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crear una clave JSON"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crear una clave JSON"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créer une clé JSON"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crea una chiave JSON"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JSON キーを作成"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JSON 키 만들기"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JSON-sleutel maken"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Criar uma chave JSON"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Criar uma chave JSON"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создать ключ JSON"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skapa en JSON-nyckel"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "建立 JSON 金鑰"
+          }
+        }
+      }
+    },
+    "Open the service account, go to Keys › Add key › Create new key, choose JSON and download the file." : {
+      "comment" : "Google Play setup tutorial step detail.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnen Sie das Dienstkonto, gehen Sie zu „Schlüssel › Schlüssel hinzufügen › Neuen Schlüssel erstellen“, wählen Sie JSON und laden Sie die Datei herunter."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre la cuenta de servicio, ve a Claves › Agregar clave › Crear clave nueva, elige JSON y descarga el archivo."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre la cuenta de servicio, ve a Claves › Agregar clave › Crear clave nueva, elige JSON y descarga el archivo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrez le compte de service, accédez à Clés › Ajouter une clé › Créer une clé, choisissez JSON et téléchargez le fichier."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apri l'account di servizio, vai a Chiavi › Aggiungi chiave › Crea nuova chiave, scegli JSON e scarica il file."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サービスアカウントを開き、「鍵 › 鍵を追加 › 新しい鍵を作成」に進み、JSON を選択してファイルをダウンロードします。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서비스 계정을 열고 키 › 키 추가 › 새 키 만들기로 이동한 다음 JSON을 선택해 파일을 다운로드합니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open het serviceaccount, ga naar Sleutels › Sleutel toevoegen › Nieuwe sleutel maken, kies JSON en download het bestand."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abra a conta de serviço, vá em Chaves › Adicionar chave › Criar nova chave, escolha JSON e baixe o arquivo."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abra a conta de serviço, aceda a Chaves › Adicionar chave › Criar nova chave, escolha JSON e transfira o ficheiro."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте сервисный аккаунт, перейдите в «Ключи › Добавить ключ › Создать новый ключ», выберите JSON и загрузите файл."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öppna tjänstkontot, gå till Nycklar › Lägg till nyckel › Skapa ny nyckel, välj JSON och ladda ned filen."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟服務帳戶，前往「金鑰 › 新增金鑰 › 建立新的金鑰」，選擇 JSON 並下載檔案。"
+          }
+        }
+      }
+    },
+    "Invite it in Play Console" : {
+      "comment" : "Google Play setup tutorial step title: invite the service account in Play Console.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In der Play Console einladen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invitarla en Play Console"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invitarla en Play Console"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'inviter dans Play Console"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invitalo in Play Console"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play Console で招待"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play Console에서 초대하기"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uitnodigen in Play Console"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convidar no Play Console"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convidar na Play Console"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пригласить в Play Console"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bjud in i Play Console"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 Play Console 中邀請"
+          }
+        }
+      }
+    },
+    "In play.google.com/console, go to Users and permissions, invite the service account e-mail and grant at least \"View app information (read-only)\"." : {
+      "comment" : "Google Play setup tutorial step detail.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnen Sie in play.google.com/console „Nutzer und Berechtigungen“, laden Sie die E-Mail-Adresse des Dienstkontos ein und gewähren Sie mindestens „App-Informationen ansehen (Lesezugriff)“."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En play.google.com/console, ve a Usuarios y permisos, invita el correo de la cuenta de servicio y concede al menos «Ver información de la aplicación (solo lectura)»."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En play.google.com/console, ve a Usuarios y permisos, invita el correo de la cuenta de servicio y otorga al menos \"Ver información de la app (solo lectura)\"."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dans play.google.com/console, accédez à Utilisateurs et autorisations, invitez l'adresse e-mail du compte de service et accordez au moins « Afficher les informations sur l'application (lecture seule) »."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In play.google.com/console, vai a Utenti e autorizzazioni, invita l'e-mail dell'account di servizio e concedi almeno “Visualizza informazioni sull'app (sola lettura)”."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "play.google.com/console で「ユーザーと権限」に進み、サービスアカウントのメールアドレスを招待して、少なくとも「アプリ情報の閲覧（読み取り専用）」を付与します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "play.google.com/console에서 사용자 및 권한으로 이동해 서비스 계정 이메일을 초대하고 최소한 “앱 정보 보기(읽기 전용)” 권한을 부여합니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ga in play.google.com/console naar Gebruikers en rechten, nodig het e-mailadres van het serviceaccount uit en geef minimaal ‘App-informatie bekijken (alleen-lezen)’."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Em play.google.com/console, vá em Usuários e permissões, convide o e-mail da conta de serviço e conceda, no mínimo, \"Ver informações do app (somente leitura)\"."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Em play.google.com/console, aceda a Utilizadores e autorizações, convide o e-mail da conta de serviço e conceda, pelo menos, \"Ver informações da app (só de leitura)\"."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В play.google.com/console откройте «Пользователи и разрешения», пригласите адрес эл. почты сервисного аккаунта и предоставьте как минимум право «Просмотр информации о приложении (только чтение)»."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gå till Användare och behörigheter i play.google.com/console, bjud in tjänstkontots e-postadress och ge minst ”Visa appinformation (skrivskyddad)”."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 play.google.com/console 前往「使用者和權限」，邀請服務帳戶的電子郵件，並至少授予「查看應用程式資訊 (唯讀)」權限。"
+          }
+        }
+      }
+    },
+    "Play Console access can take a while (sometimes hours) to propagate. If no apps show up right away, try again later." : {
+      "comment" : "Caption at the end of the Google Play setup tutorial.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es kann eine Weile (manchmal Stunden) dauern, bis der Zugriff in der Play Console wirksam wird. Wenn nicht sofort Apps angezeigt werden, versuchen Sie es später erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El acceso en Play Console puede tardar un rato (a veces horas) en propagarse. Si no aparece ninguna app de inmediato, vuelve a intentarlo más tarde."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El acceso en Play Console puede tardar un rato (a veces horas) en propagarse. Si no aparece ninguna app de inmediato, vuelve a intentarlo más tarde."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La propagation de l'accès dans Play Console peut prendre un certain temps (parfois des heures). Si aucune app n'apparaît tout de suite, réessayez plus tard."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La propagazione dell'accesso in Play Console può richiedere un po' di tempo (a volte ore). Se le app non compaiono subito, riprova più tardi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play Console のアクセス権が反映されるまでしばらく（数時間かかることも）かかる場合があります。すぐにアプリが表示されない場合は、後でもう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play Console 접근 권한이 적용되기까지 시간이 걸릴 수 있습니다(때로는 몇 시간). 앱이 바로 표시되지 않으면 나중에 다시 시도하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het kan even duren (soms uren) voordat de toegang in Play Console actief is. Als er niet meteen apps verschijnen, probeer het dan later opnieuw."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O acesso no Play Console pode levar algum tempo (às vezes horas) para ser propagado. Se nenhum app aparecer de imediato, tente novamente mais tarde."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O acesso na Play Console pode demorar algum tempo (por vezes horas) a propagar-se. Se nenhuma app aparecer de imediato, tente novamente mais tarde."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Применение доступа в Play Console может занять некоторое время (иногда несколько часов). Если приложения не появились сразу, повторите попытку позже."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det kan ta en stund (ibland timmar) innan åtkomsten i Play Console börjar gälla. Om inga appar visas direkt kan du försöka igen senare."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play Console 的存取權可能需要一段時間 (有時數小時) 才會生效。如果沒有立即顯示 App，請稍後再試。"
+          }
+        }
+      }
+    },
     "Hi %@, the App Store Connect team \"%@\" has pending agreements. As Account Holder, please review and accept them: %@" : {
       "comment" : "Share message asking a named App Store Connect Account Holder to accept pending agreements. Arguments: Account Holder name, team name, agreements URL.",
       "localizations" : {
@@ -58064,90 +60305,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cole ou importe o conteúdo JSON completo do arquivo de chave da sua conta de serviço do Google."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : ""
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : ""
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : ""
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : ""
-          }
-        }
-      }
-    },
-    "Paste the full JSON content of your Google Service Account key file. The service account must have access to the Google Play Developer API. Create it at console.cloud.google.com and link it in play.google.com/console under Setup > API access." : {
-      "comment" : "A footer description for the Google Play Credentials section in the Add Account view.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Füge den vollständigen JSON-Inhalt deiner Google-Dienstkonto-Schlüsseldatei ein. Das Dienstkonto muss Zugriff auf die Google Play Developer API haben. Erstelle es unter console.cloud.google.com und verknüpfe es unter play.google.com/console im Bereich Einrichtung > API-Zugriff."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pega el contenido JSON completo del archivo de clave de tu cuenta de servicio de Google. La cuenta de servicio debe tener acceso a la Google Play Developer API. Créala en console.cloud.google.com y vincúlala en play.google.com/console en Configuración > Acceso a la API."
-          }
-        },
-        "es-MX" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : ""
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Collez le contenu JSON complet du fichier de clé de votre compte de service Google. Le compte de service doit avoir accès à la Google Play Developer API. Créez-le sur console.cloud.google.com et associez-le sur play.google.com/console dans Configuration > Accès à l'API."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Incolla l'intero contenuto JSON del file di chiave del tuo account di servizio Google. L'account di servizio deve avere accesso alla Google Play Developer API. Crealo su console.cloud.google.com e collegalo su play.google.com/console in Configurazione > Accesso API."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Google サービスアカウントのキーファイルの JSON 内容全体を貼り付けます。サービスアカウントは Google Play Developer API へのアクセス権が必要です。console.cloud.google.com で作成し、play.google.com/console の「設定 > API アクセス」でリンクしてください。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Google 서비스 계정 키 파일의 전체 JSON 내용을 붙여넣으세요. 서비스 계정은 Google Play Developer API에 대한 액세스 권한이 있어야 합니다. console.cloud.google.com에서 생성하고 play.google.com/console의 설정 > API 액세스에서 연결하세요."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Plak de volledige JSON-inhoud van het sleutelbestand van je Google-serviceaccount. Het serviceaccount moet toegang hebben tot de Google Play Developer API. Maak het aan op console.cloud.google.com en koppel het op play.google.com/console onder Instellingen > API-toegang."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cole o conteúdo JSON completo do arquivo de chave da sua conta de serviço do Google. A conta de serviço precisa ter acesso à Google Play Developer API. Crie-a em console.cloud.google.com e vincule-a em play.google.com/console em Configuração > Acesso à API."
           }
         },
         "pt-PT" : {

@@ -24,7 +24,7 @@ protocol HomeViewModelProtocol: ObservableObject {
 // MARK: - UiState
 
 struct HomeUiState {
-    var providers: [ProviderType] = ProviderType.allCases.filter { $0 != .googlePlay }
+    var providers: [ProviderType] = ProviderType.allCases
     var widgets: [any HomeWidget] = []
     var isLoading = false
     var syncState = SyncState()

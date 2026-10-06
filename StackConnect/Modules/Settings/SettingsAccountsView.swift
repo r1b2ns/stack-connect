@@ -560,25 +560,16 @@ private struct ProviderPickerSheetContent: View {
     var body: some View {
         NavigationStack {
             List {
-                Button {
-                    coordinator.presentAddAccount(providerType: .apple)
-                } label: {
-                    Label {
-                        Text(ProviderType.apple.displayName)
-                    } icon: {
-                        Image(systemName: ProviderType.apple.iconName)
-                            .foregroundStyle(ProviderType.apple.color)
-                    }
-                }
-
-                Button {
-                    coordinator.presentAddAccount(providerType: .firebase)
-                } label: {
-                    Label {
-                        Text(ProviderType.firebase.displayName)
-                    } icon: {
-                        Image(systemName: ProviderType.firebase.iconName)
-                            .foregroundStyle(ProviderType.firebase.color)
+                ForEach(ProviderType.allCases, id: \.self) { provider in
+                    Button {
+                        coordinator.presentAddAccount(providerType: provider)
+                    } label: {
+                        Label {
+                            Text(provider.displayName)
+                        } icon: {
+                            Image(systemName: provider.iconName)
+                                .foregroundStyle(provider.color)
+                        }
                     }
                 }
             }

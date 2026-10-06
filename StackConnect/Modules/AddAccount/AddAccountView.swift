@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 import UniformTypeIdentifiers
 
 // MARK: - Factory
@@ -38,8 +37,6 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
     let onDismiss: () -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @State private var showingP8FilePicker = false
-    @State private var showingJSONFilePicker = false
 
     private var p8AllowedTypes: [UTType] {
         var types: [UTType] = []
@@ -65,6 +62,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
 
                 if viewModel.uiState.providerType == .googlePlay {
                     buildGooglePlayCredentialsSection()
+                    buildGooglePlayTutorialSection()
                 }
 
                 if let error = viewModel.uiState.validationError {
@@ -118,7 +116,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
 
-                buildPasteButton { viewModel.uiState.issuerID = $0 }
+                StackPasteButton { viewModel.uiState.issuerID = $0 }
             }
 
             HStack {
@@ -130,42 +128,17 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
 
-                buildPasteButton { viewModel.uiState.privateKeyID = $0 }
+                StackPasteButton { viewModel.uiState.privateKeyID = $0 }
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Private Key (.p8)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Spacer()
-
-                    buildPasteButton { viewModel.uiState.privateKey = $0 }
-                }
-
-                TextEditor(text: $viewModel.uiState.privateKey)
-                    .font(.system(.body, design: .monospaced))
-                    .frame(minHeight: 120)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-
-                Button {
-                    showingP8FilePicker = true
-                } label: {
-                    Label(String(localized: "Import .p8 file"), systemImage: "doc.badge.plus")
-                        .font(.subheadline)
-                }
-                .buttonStyle(.borderless)
-                .fileImporter(
-                    isPresented: $showingP8FilePicker,
-                    allowedContentTypes: p8AllowedTypes
-                ) { result in
-                    handleFileImport(result: result) { content in
-                        viewModel.uiState.privateKey = content
-                    }
-                }
-            }
+            StackKeyFileInput(
+                title: String(localized: "Private Key (.p8)"),
+                text: $viewModel.uiState.privateKey,
+                importTitle: String(localized: "Import .p8 file"),
+                allowedContentTypes: p8AllowedTypes,
+                editorFont: .system(.body, design: .monospaced),
+                minEditorHeight: 120
+            )
         } header: {
             Text("App Store Connect Credentials")
         } footer: {
@@ -214,45 +187,11 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
     }
 
     private func buildFirebaseCredentialsSection() -> some View {
-        Section {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Service Account Key (JSON)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Spacer()
-
-                    buildPasteButton { viewModel.uiState.firebaseJSON = $0 }
-                }
-
-                TextEditor(text: $viewModel.uiState.firebaseJSON)
-                    .font(.system(.caption, design: .monospaced))
-                    .frame(minHeight: 200)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-
-                Button {
-                    showingJSONFilePicker = true
-                } label: {
-                    Label(String(localized: "Import .json file"), systemImage: "doc.badge.plus")
-                        .font(.subheadline)
-                }
-                .buttonStyle(.borderless)
-                .fileImporter(
-                    isPresented: $showingJSONFilePicker,
-                    allowedContentTypes: [.json]
-                ) { result in
-                    handleFileImport(result: result) { content in
-                        viewModel.uiState.firebaseJSON = content
-                    }
-                }
-            }
-        } header: {
-            Text("Firebase Credentials")
-        } footer: {
-            Text("Paste or import the full JSON content of your Google Service Account key file.")
-        }
+        buildServiceAccountKeySection(
+            text: $viewModel.uiState.firebaseJSON,
+            header: String(localized: "Firebase Credentials"),
+            footer: String(localized: "Paste or import the full JSON content of your Google Service Account key file.")
+        )
     }
 
     private func buildFirebaseTutorialSection() -> some View {
@@ -292,62 +231,72 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
     }
 
     private func buildGooglePlayCredentialsSection() -> some View {
+        buildServiceAccountKeySection(
+            text: $viewModel.uiState.googlePlayJSON,
+            header: String(localized: "Google Play Credentials"),
+            footer: String(localized: "Paste or import the service account's JSON key. Enable the Google Play Developer Reporting API in its Google Cloud project, then invite the service account e-mail in Play Console › Users and permissions with at least \"View app information (read-only)\". Access can take a while to propagate.")
+        )
+    }
+
+    private func buildGooglePlayTutorialSection() -> some View {
+        TutorialGuideView(
+            label: String(localized: "How to set up the service account"),
+            systemImage: "questionmark.circle",
+            blocks: [
+                TutorialBlock(
+                    icon: "questionmark.circle",
+                    title: String(localized: "How to set up the service account"),
+                    steps: [
+                        TutorialStep(
+                            text: String(localized: "Open Google Cloud Console"),
+                            detail: String(localized: "Go to console.cloud.google.com and select the project that will own the service account.")
+                        ),
+                        TutorialStep(
+                            text: String(localized: "Enable the Reporting API"),
+                            detail: String(localized: "In APIs & Services › Library, search for \"Google Play Developer Reporting API\" and tap Enable.")
+                        ),
+                        TutorialStep(
+                            text: String(localized: "Create a service account"),
+                            detail: String(localized: "In IAM & Admin › Service Accounts, create a service account. It doesn't need any Google Cloud role.")
+                        ),
+                        TutorialStep(
+                            text: String(localized: "Create a JSON key"),
+                            detail: String(localized: "Open the service account, go to Keys › Add key › Create new key, choose JSON and download the file.")
+                        ),
+                        TutorialStep(
+                            text: String(localized: "Invite it in Play Console"),
+                            detail: String(localized: "In play.google.com/console, go to Users and permissions, invite the service account e-mail and grant at least \"View app information (read-only)\".")
+                        ),
+                        TutorialStep(
+                            text: String(localized: "Import the .json file"),
+                            detail: String(localized: "A .json file will be downloaded. Use \"Import .json file\" above to load it.")
+                        )
+                    ],
+                    isShareable: false
+                )
+            ],
+            caption: String(localized: "Play Console access can take a while (sometimes hours) to propagate. If no apps show up right away, try again later.")
+        )
+    }
+
+    /// Service-account JSON key input shared by the Firebase and Google Play sections.
+    private func buildServiceAccountKeySection(
+        text: Binding<String>,
+        header: String,
+        footer: String
+    ) -> some View {
         Section {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Service Account Key (JSON)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Spacer()
-
-                    buildPasteButton { viewModel.uiState.googlePlayJSON = $0 }
-                }
-
-                TextEditor(text: $viewModel.uiState.googlePlayJSON)
-                    .font(.system(.caption, design: .monospaced))
-                    .frame(minHeight: 200)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-            }
+            StackKeyFileInput(
+                title: String(localized: "Service Account Key (JSON)"),
+                text: text,
+                importTitle: String(localized: "Import .json file"),
+                allowedContentTypes: [.json]
+            )
         } header: {
-            Text("Google Play Credentials")
+            Text(header)
         } footer: {
-            Text("Paste the full JSON content of your Google Service Account key file. The service account must have access to the Google Play Developer API. Create it at console.cloud.google.com and link it in play.google.com/console under Setup > API access.")
+            Text(footer)
         }
-    }
-
-    private func handleFileImport(
-        result: Result<URL, Error>,
-        assign: (String) -> Void
-    ) {
-        guard case .success(let url) = result else {
-            Log.print.error("[AddAccount] File import failed")
-            return
-        }
-        let needsRelease = url.startAccessingSecurityScopedResource()
-        defer {
-            if needsRelease { url.stopAccessingSecurityScopedResource() }
-        }
-        do {
-            let content = try String(contentsOf: url, encoding: .utf8)
-            assign(content)
-        } catch {
-            Log.print.error("[AddAccount] Failed to read imported file: \(error.localizedDescription)")
-        }
-    }
-
-    private func buildPasteButton(onPaste: @escaping (String) -> Void) -> some View {
-        Button {
-            if let text = UIPasteboard.general.string {
-                onPaste(text)
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            }
-        } label: {
-            Image(systemName: "doc.on.clipboard")
-                .foregroundStyle(.secondary)
-        }
-        .buttonStyle(.plain)
     }
 
     private func buildErrorSection(_ error: String) -> some View {

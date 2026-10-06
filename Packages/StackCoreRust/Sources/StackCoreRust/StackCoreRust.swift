@@ -5789,11 +5789,19 @@ public func FfiConverterTypeCredentialStore_lower(_ value: CredentialStore) -> U
 
 /**
  * Optional debug sink for HTTP tracing. When the host injects one (via
- * `connect`), the App Store Connect client logs every request as a runnable
- * cURL (headers + pretty-printed JSON body) and the response (status line +
- * pretty-printed JSON). Off by default — the host only passes a logger when its
- * debug launch flag is set. Implemented natively (the iOS app prints to the
- * Xcode console) and injected across the FFI as a foreign trait.
+ * `connect`), every provider logs each request as a runnable cURL (headers +
+ * body, pretty-printed when JSON) and the response (status line +
+ * pretty-printed JSON): App Store Connect API calls, and for Google Play both
+ * the OAuth token exchange and every API call. Off by default — the host only
+ * passes a logger when its debug launch flag is set. Implemented natively (the
+ * iOS app prints to the Xcode console) and injected across the FFI as a foreign
+ * trait.
+ *
+ * Nothing is redacted, so the log is sensitive: `Authorization` bearer tokens
+ * appear verbatim, and so does Google's signed JWT assertion in the token
+ * request body. Each grants API access until it expires (an assertion can be
+ * exchanged again for a fresh one-hour token until its own `exp`). Private keys
+ * never appear in any request.
  */
 public protocol DebugLogger: AnyObject, Sendable {
     
@@ -5805,11 +5813,19 @@ public protocol DebugLogger: AnyObject, Sendable {
 }
 /**
  * Optional debug sink for HTTP tracing. When the host injects one (via
- * `connect`), the App Store Connect client logs every request as a runnable
- * cURL (headers + pretty-printed JSON body) and the response (status line +
- * pretty-printed JSON). Off by default — the host only passes a logger when its
- * debug launch flag is set. Implemented natively (the iOS app prints to the
- * Xcode console) and injected across the FFI as a foreign trait.
+ * `connect`), every provider logs each request as a runnable cURL (headers +
+ * body, pretty-printed when JSON) and the response (status line +
+ * pretty-printed JSON): App Store Connect API calls, and for Google Play both
+ * the OAuth token exchange and every API call. Off by default — the host only
+ * passes a logger when its debug launch flag is set. Implemented natively (the
+ * iOS app prints to the Xcode console) and injected across the FFI as a foreign
+ * trait.
+ *
+ * Nothing is redacted, so the log is sensitive: `Authorization` bearer tokens
+ * appear verbatim, and so does Google's signed JWT assertion in the token
+ * request body. Each grants API access until it expires (an assertion can be
+ * exchanged again for a fresh one-hour token until its own `exp`). Private keys
+ * never appear in any request.
  */
 open class DebugLoggerImpl: DebugLogger, @unchecked Sendable {
     fileprivate let handle: UInt64
@@ -6682,6 +6698,10 @@ public protocol ProviderProtocol: AnyObject, Sendable {
     /**
      * Verifies the stored credentials against the live service.
      *
+     * For Google Play, `Ok` means the key works and the Play Developer
+     * Reporting API is enabled; it does not guarantee the service account can
+     * see any app yet (Play Console access can take hours to propagate).
+     *
      * # Errors
      * [`StackError::Auth`] when the credentials are rejected (including App Store
      * Connect "pending agreements"), or a transport/decoding error.
@@ -7005,6 +7025,10 @@ open func users() -> Users?  {
     
     /**
      * Verifies the stored credentials against the live service.
+     *
+     * For Google Play, `Ok` means the key works and the Play Developer
+     * Reporting API is enabled; it does not guarantee the service account can
+     * see any app yet (Play Console access can take hours to propagate).
      *
      * # Errors
      * [`StackError::Auth`] when the credentials are rejected (including App Store
@@ -8985,16 +9009,28 @@ public func FfiConverterTypeAppCategoryInfo_lower(_ value: AppCategoryInfo) -> R
  *
  * Serializes camelCase (`bundleId`, not `bundle_id`) so persisted blobs match the
  * iOS-facing contract — see [`crate::service::sync::SyncService`].
+ *
+ * Per service: App Store Connect sets `id` to the app's App Store Connect id
+ * and `bundle_id` to its bundle identifier. Google Play has no separate app id,
+ * so both `id` and `bundle_id` are the package name (e.g. `com.example.app`).
  */
 public struct AppInfo: Equatable, Hashable {
     public var id: String
     public var name: String
     public var bundleId: String
+    /**
+     * The app's platform: `Some("ANDROID")` for Google Play apps, `None` for
+     * App Store Connect apps (an ASC app can span several platforms).
+     */
     public var platform: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(id: String, name: String, bundleId: String, platform: String?) {
+    public init(id: String, name: String, bundleId: String, 
+        /**
+         * The app's platform: `Some("ANDROID")` for Google Play apps, `None` for
+         * App Store Connect apps (an ASC app can span several platforms).
+         */platform: String?) {
         self.id = id
         self.name = name
         self.bundleId = bundleId
@@ -11576,12 +11612,23 @@ public func FfiConverterTypeCapability_lower(_ value: Capability) -> RustBuffer 
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
  * Which external service a connected account talks to. Exported across the FFI;
- * designed to grow as new plugins land (Firebase, Google Play, AWS, GitHub, …).
+ * designed to grow as new plugins land (Firebase, AWS, GitHub, …).
+ *
+ * Both bindings encode variants by position, so new variants are only ever
+ * appended.
  */
 
 public enum ServiceKind: Equatable, Hashable {
     
+    /**
+     * Apple App Store Connect, authenticated with a team API key (`.p8`).
+     */
     case appStoreConnect
+    /**
+     * Google Play Console, authenticated with a Google Cloud service account
+     * key.
+     */
+    case googlePlay
 
 
 
@@ -11605,6 +11652,8 @@ public struct FfiConverterTypeServiceKind: FfiConverterRustBuffer {
         
         case 1: return .appStoreConnect
         
+        case 2: return .googlePlay
+        
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
@@ -11615,6 +11664,10 @@ public struct FfiConverterTypeServiceKind: FfiConverterRustBuffer {
         
         case .appStoreConnect:
             writeInt(&buf, Int32(1))
+        
+        
+        case .googlePlay:
+            writeInt(&buf, Int32(2))
         
         }
     }
@@ -13280,16 +13333,23 @@ public func availableServices() -> [ServiceKind]  {
  * connected [`Provider`].
  *
  * Synchronous on purpose: it only reads secrets through the (synchronous)
- * callback and parses the key material — no network. The returned provider does
+ * callback and builds the provider — no network. The returned provider does
  * the async work (`validate`, `fetch_apps`).
  *
- * When `debug_logger` is `Some`, every App Store Connect HTTP request the
- * provider issues is logged as a runnable cURL (with pretty-printed JSON body)
- * and its response (status + pretty-printed JSON). The host passes `None` in
+ * Key handling differs per service. App Store Connect keeps its `.p8` as-is
+ * and parses it on the first request. Google Play parses its private key here,
+ * including one local test signature, so a blank field or an unusable key is
+ * rejected at connect rather than on the first request.
+ *
+ * When `debug_logger` is `Some`, every HTTP request the provider issues
+ * (App Store Connect calls; for Google Play, the OAuth token exchange and every
+ * API call) is logged as a runnable cURL (with pretty-printed JSON body) and
+ * its response (status + pretty-printed JSON). The host passes `None` in
  * release builds and a native logger only when its debug launch flag is set.
  *
  * # Errors
- * [`StackError::InvalidCredentials`] if a required secret is missing.
+ * [`StackError::InvalidCredentials`] if a required secret is missing, or, for
+ * Google Play, if a field is blank or the private key is not a usable RSA key.
  */
 public func connect(kind: ServiceKind, accountId: String, store: CredentialStore, debugLogger: DebugLogger?)throws  -> Provider  {
     return try  FfiConverterTypeProvider_lift(try rustCallWithError(FfiConverterTypeStackError_lift) {
@@ -13347,7 +13407,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_func_available_services() != 22553) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_stack_core_checksum_func_connect() != 59121) {
+    if (uniffi_stack_core_checksum_func_connect() != 64857) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_func_credential_schema() != 9978) {
@@ -13740,7 +13800,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_provider_users() != 16539) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_stack_core_checksum_method_provider_validate() != 51064) {
+    if (uniffi_stack_core_checksum_method_provider_validate() != 30212) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_syncservice_sync_apps() != 30671) {

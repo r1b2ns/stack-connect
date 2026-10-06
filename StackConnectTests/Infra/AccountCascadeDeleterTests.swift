@@ -165,6 +165,51 @@ final class AccountCascadeDeleterTests: XCTestCase {
         XCTAssertNil(storedAccount)
     }
 
+    // MARK: - Google Play app cache
+
+    private func seedGooglePlayCache(for account: AccountModel, packageNames: [String]) async throws {
+        let apps = packageNames.map {
+            GooglePlayAppItem(id: $0, packageName: $0, title: nil, isManuallyAdded: false)
+        }
+        try await storage.save(apps, id: GooglePlayAppItem.cacheKey(accountId: account.id))
+    }
+
+    private func googlePlayCache(of account: AccountModel) async throws -> [GooglePlayAppItem]? {
+        try await storage.fetch([GooglePlayAppItem].self, id: GooglePlayAppItem.cacheKey(accountId: account.id))
+    }
+
+    func testDeleteRemovesTheGooglePlayAppCacheAndKeepsOtherAccounts() async throws {
+        let playAccount = AccountModel(name: "Play Team", providerType: .googlePlay)
+        let otherPlayAccount = AccountModel(name: "Other Play Team", providerType: .googlePlay)
+        try await storage.save(playAccount, id: playAccount.id)
+        keychain.setObject(GooglePlayCredentials(serviceAccountJSON: "{}"), forKey: "credentials.\(playAccount.id)")
+        try await seedGooglePlayCache(for: playAccount, packageNames: ["com.mine.app"])
+        try await seedGooglePlayCache(for: otherPlayAccount, packageNames: ["com.theirs.app"])
+
+        try await AccountCascadeDeleter.delete(playAccount, storage: storage, keychain: keychain)
+
+        let deletedCache = try await googlePlayCache(of: playAccount)
+        let keptCache = try await googlePlayCache(of: otherPlayAccount)
+        let storedAccount = try await storage.fetch(AccountModel.self, id: playAccount.id)
+        let credentials: GooglePlayCredentials? = keychain.object(forKey: "credentials.\(playAccount.id)")
+        XCTAssertNil(deletedCache)
+        XCTAssertEqual(keptCache?.map(\.packageName), ["com.theirs.app"])
+        XCTAssertNil(storedAccount)
+        XCTAssertNil(credentials)
+    }
+
+    func testGooglePlayCacheDeleteFailureDoesNotStopTheCascade() async throws {
+        let playAccount = AccountModel(name: "Play Team", providerType: .googlePlay)
+        try await storage.save(playAccount, id: playAccount.id)
+        try await seedGooglePlayCache(for: playAccount, packageNames: ["com.mine.app"])
+        await storage.failDelete([GooglePlayAppItem].self, id: GooglePlayAppItem.cacheKey(accountId: playAccount.id))
+
+        try await AccountCascadeDeleter.delete(playAccount, storage: storage, keychain: keychain)
+
+        let storedAccount = try await storage.fetch(AccountModel.self, id: playAccount.id)
+        XCTAssertNil(storedAccount)
+    }
+
     // MARK: - Error semantics
 
     func testChildDeleteFailureDoesNotStopTheCascade() async throws {

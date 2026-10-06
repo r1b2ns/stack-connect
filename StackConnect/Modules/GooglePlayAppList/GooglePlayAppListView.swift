@@ -52,6 +52,10 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
                     }
                 )
             }
+            .toast(
+                isPresented: $viewModel.uiState.showSyncToast,
+                message: String(localized: "Syncing apps...")
+            )
             .toast(message: $viewModel.uiState.toastMessage)
     }
 
@@ -94,9 +98,25 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
 
     private func buildList() -> some View {
         List {
-            ForEach(viewModel.uiState.apps) { app in
-                buildAppRow(app)
+            if let error = viewModel.uiState.error {
+                buildSyncErrorSection(error)
             }
+
+            Section {
+                ForEach(viewModel.uiState.apps) { app in
+                    buildAppRow(app)
+                }
+            }
+        }
+    }
+
+    /// Inline banner for a failed sync while the cached list stays on screen.
+    private func buildSyncErrorSection(_ error: String) -> some View {
+        Section {
+            Label(error, systemImage: "exclamationmark.triangle.fill")
+                .font(.footnote)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
