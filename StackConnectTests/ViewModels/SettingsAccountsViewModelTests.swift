@@ -56,6 +56,28 @@ final class SettingsAccountsViewModelTests: XCTestCase {
         ["issuerID": "issuer", "privateKeyID": "kid", "privateKey": "pk"]
     }
 
+    // MARK: - Delete
+
+    func testDeleteAccountRemovesItsReplyTemplatesAndReloads() async throws {
+        let deleted = makeAppleAccount()
+        let kept = makeAppleAccount()
+        try await storage.save(deleted, id: deleted.id)
+        try await storage.save(kept, id: kept.id)
+        let deletedTemplate = ReplyTemplateModel(id: "deleted", accountId: deleted.id, title: "T", body: "B")
+        let keptTemplate = ReplyTemplateModel(id: "kept", accountId: kept.id, title: "T", body: "B")
+        try await storage.save(deletedTemplate, id: deletedTemplate.id)
+        try await storage.save(keptTemplate, id: keptTemplate.id)
+        await sut.loadAccounts()
+
+        await sut.deleteAccount(deleted)
+
+        let remainingTemplates = try await storage.fetchAll(ReplyTemplateModel.self)
+        let credentials: AppleCredentials? = keychain.object(forKey: "credentials.\(deleted.id)")
+        XCTAssertEqual(remainingTemplates.map(\.id), ["kept"])
+        XCTAssertNil(credentials)
+        XCTAssertEqual(sut.uiState.appleAccounts.map(\.id), [kept.id])
+    }
+
     // MARK: - Export writes appsBundles
 
     func testExportWritesAppsBundlesWhenNonEmpty() throws {

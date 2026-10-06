@@ -115,23 +115,11 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
         await loadAccounts()
     }
 
-    /// Removes an account along with its apps, versions and keychain credentials.
+    /// Removes an account along with its apps, versions, reply templates and
+    /// keychain credentials (see `AccountCascadeDeleter`).
     private func cascadeDelete(_ account: AccountModel) async {
         do {
-            // Delete all apps belonging to this account
-            let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
-            let accountApps = allApps.filter { $0.accountId == account.id }
-            for app in accountApps {
-                let allVersions: [AppStoreVersionModel] = try await storage.fetchAll(AppStoreVersionModel.self)
-                let appVersions = allVersions.filter { $0.appId == app.id }
-                for version in appVersions {
-                    try? await storage.delete(AppStoreVersionModel.self, id: "version.\(version.id)")
-                }
-                try? await storage.delete(AppModel.self, id: "\(account.id).\(app.id)")
-            }
-
-            try await storage.delete(AccountModel.self, id: account.id)
-            keychain.removeObject(forKey: "credentials.\(account.id)")
+            try await AccountCascadeDeleter.delete(account, storage: storage, keychain: keychain)
             Log.print.info("[AccountsList] Deleted account and related data: \(account.name)")
         } catch {
             Log.print.error("[AccountsList] Failed to delete account: \(error.localizedDescription)")
