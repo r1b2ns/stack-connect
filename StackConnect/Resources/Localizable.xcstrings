@@ -1,6 +1,516 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Hi %@, the App Store Connect team \"%@\" has pending agreements. As Account Holder, please review and accept them: %@" : {
+      "comment" : "Share message asking a named App Store Connect Account Holder to accept pending agreements. Arguments: Account Holder name, team name, agreements URL.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hallo %1$@, das App Store Connect-Team „%2$@“ hat ausstehende Vereinbarungen. Als Account-Inhaber prüfe und akzeptiere sie bitte: %3$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hi %1$@, the App Store Connect team \"%2$@\" has pending agreements. As Account Holder, please review and accept them: %3$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hola, %1$@: el equipo de App Store Connect «%2$@» tiene acuerdos pendientes. Como titular de la cuenta, revísalos y acéptalos: %3$@"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hola, %1$@: el equipo de App Store Connect \"%2$@\" tiene acuerdos pendientes. Como titular de la cuenta, revísalos y acéptalos: %3$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bonjour %1$@, l’équipe App Store Connect « %2$@ » a des accords en attente. En tant que titulaire du compte, merci de les examiner et de les accepter : %3$@"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciao %1$@, il team App Store Connect “%2$@” ha contratti in sospeso. In qualità di titolare dell'account, esaminali e accettali: %3$@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ さん、App Store Connect チーム「%2$@」に未承認の契約があります。アカウント所有者として、確認して同意してください: %3$@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@님, App Store Connect 팀 “%2$@”에 보류 중인 계약이 있습니다. 계정 소유자로서 검토하고 동의해 주세요: %3$@"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoi %1$@, het App Store Connect-team ‘%2$@’ heeft openstaande overeenkomsten. Bekijk en accepteer ze als accounthouder: %3$@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Olá, %1$@! A equipe \"%2$@\" do App Store Connect tem contratos pendentes. Como Titular da conta, revise e aceite-os: %3$@"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Olá, %1$@! A equipa \"%2$@\" do App Store Connect tem contratos pendentes. Como titular da conta, reveja e aceite-os: %3$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здравствуйте, %1$@! У команды App Store Connect «%2$@» есть непринятые соглашения. Как владелец аккаунта, просмотрите и примите их: %3$@"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hej %1$@! App Store Connect-teamet ”%2$@” har väntande avtal. Som kontoinnehavare behöver du granska och godkänna dem: %3$@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ 您好，App Store Connect 團隊「%2$@」有待處理的協議。身為帳號持有人，請檢閱並接受：%3$@"
+          }
+        }
+      }
+    },
+    "Hi, the App Store Connect team \"%@\" has pending agreements that must be accepted by its Account Holder: %@" : {
+      "comment" : "Fallback share message used when the Account Holder could not be determined. Arguments: team name, agreements URL.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hallo, das App Store Connect-Team „%1$@“ hat ausstehende Vereinbarungen, die vom Account-Inhaber akzeptiert werden müssen: %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hi, the App Store Connect team \"%1$@\" has pending agreements that must be accepted by its Account Holder: %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hola: el equipo de App Store Connect «%1$@» tiene acuerdos pendientes que debe aceptar el titular de la cuenta: %2$@"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hola: el equipo de App Store Connect \"%1$@\" tiene acuerdos pendientes que debe aceptar el titular de la cuenta: %2$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bonjour, l’équipe App Store Connect « %1$@ » a des accords en attente qui doivent être acceptés par le titulaire du compte : %2$@"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciao, il team App Store Connect “%1$@” ha contratti in sospeso che devono essere accettati dal titolare dell'account: %2$@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "こんにちは。App Store Connect チーム「%1$@」に、アカウント所有者による同意が必要な未承認の契約があります: %2$@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "안녕하세요. App Store Connect 팀 “%1$@”에 계정 소유자가 동의해야 하는 보류 중인 계약이 있습니다: %2$@"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoi, het App Store Connect-team ‘%1$@’ heeft openstaande overeenkomsten die door de accounthouder moeten worden geaccepteerd: %2$@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Olá! A equipe \"%1$@\" do App Store Connect tem contratos pendentes que precisam ser aceitos pelo Titular da conta: %2$@"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Olá! A equipa \"%1$@\" do App Store Connect tem contratos pendentes que têm de ser aceites pelo titular da conta: %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здравствуйте! У команды App Store Connect «%1$@» есть непринятые соглашения, которые должен принять владелец аккаунта: %2$@"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hej! App Store Connect-teamet ”%1$@” har väntande avtal som måste godkännas av kontoinnehavaren: %2$@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "您好，App Store Connect 團隊「%1$@」有待處理的協議，須由帳號持有人接受：%2$@"
+          }
+        }
+      }
+    },
+    "Action needed: App Store Connect agreements" : {
+      "comment" : "Subject line (e.g. for Mail) of the message asking the Account Holder to accept pending agreements.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktion erforderlich: App Store Connect-Vereinbarungen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acción necesaria: acuerdos de App Store Connect"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acción necesaria: acuerdos de App Store Connect"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Action requise : accords App Store Connect"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Azione richiesta: contratti di App Store Connect"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "対応が必要: App Store Connect の契約"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "조치 필요: App Store Connect 계약"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actie vereist: App Store Connect-overeenkomsten"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ação necessária: contratos do App Store Connect"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ação necessária: contratos do App Store Connect"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Требуется действие: соглашения App Store Connect"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Åtgärd krävs: App Store Connect-avtal"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要處理：App Store Connect 協議"
+          }
+        }
+      }
+    },
+    "Account Holder of \"%@\"" : {
+      "comment" : "Share sheet header title used when the Account Holder could not be determined. Argument: team name.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Account-Inhaber von „%@“"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titular de la cuenta de «%@»"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titular de la cuenta de \"%@\""
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titulaire du compte de « %@ »"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titolare dell'account di “%@”"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」のアカウント所有者"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”의 계정 소유자"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accounthouder van ‘%@’"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titular da conta de \"%@\""
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titular da conta de \"%@\""
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Владелец аккаунта «%@»"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontoinnehavare för ”%@”"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」的帳號持有人"
+          }
+        }
+      }
+    },
+    "Share with Account Holder" : {
+      "comment" : "Accessibility label of the Home agreements banner button that shares a request with the team's Account Holder.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit Account-Inhaber teilen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compartir con el titular de la cuenta"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compartir con el titular de la cuenta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Partager avec le titulaire du compte"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Condividi con il titolare dell'account"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アカウント所有者に共有"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "계정 소유자에게 공유"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delen met accounthouder"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compartilhar com o Titular da conta"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Partilhar com o titular da conta"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поделиться с владельцем аккаунта"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dela med kontoinnehavaren"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分享給帳號持有人"
+          }
+        }
+      }
+    },
+    "Opens the share sheet with a message asking the team's Account Holder to accept the pending agreements." : {
+      "comment" : "Accessibility hint of the Home agreements banner button that shares a request with the team's Account Holder.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffnet das Teilen-Menü mit einer Nachricht, die den Account-Inhaber des Teams bittet, die ausstehenden Vereinbarungen zu akzeptieren."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre el menú para compartir con un mensaje que pide al titular de la cuenta del equipo que acepte los acuerdos pendientes."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre el menú para compartir con un mensaje que pide al titular de la cuenta del equipo que acepte los acuerdos pendientes."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvre la feuille de partage avec un message demandant au titulaire du compte de l’équipe d’accepter les accords en attente."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apre il foglio di condivisione con un messaggio che chiede al titolare dell'account del team di accettare i contratti in sospeso."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "チームのアカウント所有者に未承認の契約への同意を依頼するメッセージを添えて共有シートを開きます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "팀의 계정 소유자에게 보류 중인 계약에 동의해 달라고 요청하는 메시지와 함께 공유 시트를 엽니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opent het deelmenu met een bericht waarin de accounthouder van het team wordt gevraagd de openstaande overeenkomsten te accepteren."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre o menu de compartilhamento com uma mensagem pedindo ao Titular da conta da equipe que aceite os contratos pendentes."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abre a folha de partilha com uma mensagem a pedir ao titular da conta da equipa que aceite os contratos pendentes."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывает меню «Поделиться» с сообщением, в котором владельца аккаунта команды просят принять непринятые соглашения."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öppnar delningsbladet med ett meddelande som ber teamets kontoinnehavare att godkänna de väntande avtalen."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開啟分享表單，並附上請團隊帳號持有人接受待處理協議的訊息。"
+          }
+        }
+      }
+    },
     "Edit Template" : {
       "comment" : "The title of the form used to modify an existing reply template.",
       "localizations" : {

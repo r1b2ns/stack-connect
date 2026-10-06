@@ -100,6 +100,9 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
             }
             .navigationTitle("StackConnect")
             .navigationDestinations()
+            .stackShareSheet(item: $viewModel.uiState.agreementShare) { payload in
+                payload.shareActivityItems
+            }
             .toolbar { buildToolbar() }
             .refreshable { await viewModel.refresh() }
             .task {
@@ -184,13 +187,6 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
 
     // MARK: - Pending Agreements Banner
 
-    /// App Store Connect's agreements console. Force-unwrap is safe: this is a
-    /// fixed, compile-time-constant, well-formed URL that can never be nil.
-    /// (Computed, not stored, because `HomeView` is generic over its ViewModel.)
-    private static var agreementsURL: URL {
-        URL(string: "https://appstoreconnect.apple.com/agreements/")!
-    }
-
     @ViewBuilder
     private func buildAgreementsBanner() -> some View {
         ForEach(viewModel.uiState.pendingAgreementsAccounts, id: \.id) { account in
@@ -222,15 +218,53 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
                     .accessibilityLabel(String(localized: "Dismiss"))
                 }
 
-                Link(destination: Self.agreementsURL) {
-                    Text(String(localized: "Review Agreements"))
-                        .font(.footnote)
-                        .fontWeight(.semibold)
+                HStack(spacing: 16) {
+                    Link(destination: AppStoreConnectLinks.agreements) {
+                        Text(String(localized: "Review Agreements"))
+                            .font(.footnote)
+                            .fontWeight(.semibold)
+                    }
+
+                    buildAgreementShareButton(for: account)
                 }
             }
             .padding(.vertical, 8)
             .listRowSeparator(.hidden)
         }
+    }
+
+    /// Asks the ViewModel to look up the Account Holder and prepare the share
+    /// payload; the share sheet itself is presented by `stackShareSheet` once
+    /// `uiState.agreementShare` is set. Shows a spinner and stays disabled while
+    /// that account's lookup is in flight.
+    private func buildAgreementShareButton(for account: AccountModel) -> some View {
+        let isPreparing = viewModel.uiState.preparingAgreementShareAccountIds.contains(account.id)
+        return Button {
+            Task { await viewModel.prepareAgreementShare(accountId: account.id) }
+        } label: {
+            ZStack {
+                // Keeps the label's size stable while swapping icon and spinner.
+                Image(systemName: "square.and.arrow.up")
+                    .font(.footnote.weight(.semibold))
+                    .opacity(isPreparing ? 0 : 1)
+
+                if isPreparing {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+        .disabled(isPreparing)
+        .accessibilityLabel(String(
+            localized: "Share with Account Holder",
+            comment: "Accessibility label of the Home agreements banner button that shares a request with the team's Account Holder."
+        ))
+        .accessibilityHint(String(
+            localized: "Opens the share sheet with a message asking the team's Account Holder to accept the pending agreements.",
+            comment: "Accessibility hint of the Home agreements banner button that shares a request with the team's Account Holder."
+        ))
     }
 
     // MARK: - Widgets Section
@@ -330,6 +364,29 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
         }
     }
 
+}
+
+// MARK: - Agreement Share Activity Items
+
+extension AgreementSharePayload {
+
+    /// Activity items for the "ask the Account Holder" share sheet: the message
+    /// text, with the recipient ("Name <email>") as the share sheet's header title
+    /// and a subject for Mail. View-layer mapping (UIKit), kept out of the ViewModel.
+    var shareActivityItems: [Any] {
+        let icon = UIImage(systemName: "person.crop.circle.badge.exclamationmark.fill")?
+            .applyingSymbolConfiguration(UIImage.SymbolConfiguration(pointSize: 60))?
+            .withTintColor(.systemOrange, renderingMode: .alwaysOriginal)
+        return [
+            StackShareTextItemSource(
+                text: message.text,
+                subject: message.subject,
+                previewTitle: message.recipientTitle,
+                previewURL: message.url,
+                previewIcon: icon
+            )
+        ]
+    }
 }
 
 // MARK: - Navigation Destinations
