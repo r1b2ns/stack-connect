@@ -11,8 +11,19 @@ struct GooglePlayAppItem: Codable, Identifiable, Hashable {
     var title: String?
     var isManuallyAdded: Bool
 
+    /// Store icon from the app's public Google Play page (plan D18), fetched
+    /// once when missing and cached with the list; `nil` until then and for apps
+    /// that aren't public on Google Play (the UI shows the Play tile instead).
+    /// Optional, so lists cached before icons existed still decode.
+    var iconUrl: String? = nil
+
     var displayName: String {
         title ?? packageName
+    }
+
+    /// `iconUrl` as a `URL`, for the icon views.
+    var iconURL: URL? {
+        iconUrl.flatMap { URL(string: $0) }
     }
 
     /// Storage id of an account's cached Play app list (`[GooglePlayAppItem]`).

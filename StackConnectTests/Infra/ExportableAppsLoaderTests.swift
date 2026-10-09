@@ -48,6 +48,40 @@ final class ExportableAppsLoaderTests: XCTestCase {
         XCTAssertTrue(exportable.allSatisfy { $0.iconURL == nil })
     }
 
+    func testGooglePlayAppIconsAreShownInThePicker() async throws {
+        let account = AccountModel(name: "Play", providerType: .googlePlay)
+        let cached = [
+            GooglePlayAppItem(
+                id: "com.a",
+                packageName: "com.a",
+                title: "A",
+                isManuallyAdded: false,
+                iconUrl: "https://play-lh.googleusercontent.com/a=s512"
+            ),
+            GooglePlayAppItem(id: "com.b", packageName: "com.b", title: "B", isManuallyAdded: true)
+        ]
+        try await storage.save(cached, id: GooglePlayAppItem.cacheKey(accountId: account.id))
+
+        let exportable = await ExportableAppsLoader.apps(for: account, storage: storage)
+
+        XCTAssertEqual(exportable.map(\.iconURL), [URL(string: "https://play-lh.googleusercontent.com/a=s512"), nil])
+    }
+
+    func testExportableAppMapsThePlayIcon() {
+        let withIcon = ExportableApp(playApp: GooglePlayAppItem(
+            id: "com.a",
+            packageName: "com.a",
+            title: "A",
+            isManuallyAdded: false,
+            iconUrl: "https://play-lh.googleusercontent.com/a=s512"
+        ))
+        let withoutIcon = ExportableApp(playApp: GooglePlayAppItem(id: "com.b", packageName: "com.b", title: nil, isManuallyAdded: true))
+
+        XCTAssertEqual(withIcon.iconURL, URL(string: "https://play-lh.googleusercontent.com/a=s512"))
+        XCTAssertEqual(withIcon.bundleId, "com.a")
+        XCTAssertNil(withoutIcon.iconURL)
+    }
+
     func testGooglePlayWithoutACachedListHasNoApps() async {
         let account = AccountModel(name: "Play", providerType: .googlePlay)
 

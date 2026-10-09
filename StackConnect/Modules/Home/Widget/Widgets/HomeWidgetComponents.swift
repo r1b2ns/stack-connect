@@ -259,24 +259,12 @@ struct HomeAppIconView: View {
     private var cornerRadius: CGFloat { size * 0.227 }
 
     var body: some View {
-        Group {
-            if let url {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    default:
-                        placeholder
-                    }
-                }
-            } else {
-                placeholder
-            }
+        // The gray placeholder also stands in while the icon downloads (no spinner).
+        StackAppIcon(url: url, size: size, cornerRadius: cornerRadius) {
+            placeholder
+        } loading: {
+            placeholder
         }
-        .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
     }
 
     private var placeholder: some View {

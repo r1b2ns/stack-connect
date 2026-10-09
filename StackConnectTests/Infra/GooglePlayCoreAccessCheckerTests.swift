@@ -73,8 +73,9 @@ final class GooglePlayCoreAccessCheckerTests: XCTestCase {
             account: account,
             keychain: keychain,
             storage: MockPersistentStorable(),
-            connectionFactory: connection.factory,
-            accessCheckerFactory: { GooglePlayCoreAccessChecker(appDetails: connection.appDetailsFactory($0)) }
+            connectionFactory: connection.appListFactory,
+            accessCheckerFactory: { GooglePlayCoreAccessChecker(appDetails: connection.appDetailsFactory($0)) },
+            connectivity: MockConnectivityProviding(online: true)
         )
 
         await sut.addApp(packageName: "com.nope")
@@ -85,5 +86,6 @@ final class GooglePlayCoreAccessCheckerTests: XCTestCase {
         )
         XCTAssertTrue(sut.uiState.apps.isEmpty)
         XCTAssertEqual(connection.appDetailsRequests, ["com.nope"])
+        XCTAssertTrue(connection.iconRequests.isEmpty, "No icon lookup for an app that wasn't added")
     }
 }

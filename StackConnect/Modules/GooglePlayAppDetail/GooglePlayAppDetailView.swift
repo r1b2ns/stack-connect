@@ -78,7 +78,9 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol>:
     private func buildHeaderSection() -> some View {
         Section {
             HStack(spacing: 16) {
-                StackIconTile(systemName: "play.fill", color: .green, size: 64, font: .title2)
+                StackAppIcon(url: app.iconURL, size: 64) {
+                    StackIconTile(systemName: "play.fill", color: .green, size: 64, font: .title2)
+                }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(app.displayName)

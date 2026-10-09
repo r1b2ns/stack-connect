@@ -3,6 +3,36 @@ import XCTest
 
 final class GooglePlayAppModelsTests: XCTestCase {
 
+    // MARK: - App list item
+
+    func testAppItemCachedBeforeIconsExistedStillDecodes() throws {
+        // The exact shape lists were cached in before `iconUrl` was added.
+        let json = #"[{"id":"com.a","packageName":"com.a","title":"A","isManuallyAdded":false},{"id":"com.b","packageName":"com.b","isManuallyAdded":true}]"#
+
+        let items = try JSONDecoder().decode([GooglePlayAppItem].self, from: Data(json.utf8))
+
+        XCTAssertEqual(items, [
+            GooglePlayAppItem(id: "com.a", packageName: "com.a", title: "A", isManuallyAdded: false),
+            GooglePlayAppItem(id: "com.b", packageName: "com.b", title: nil, isManuallyAdded: true)
+        ])
+        XCTAssertTrue(items.allSatisfy { $0.iconUrl == nil && $0.iconURL == nil })
+    }
+
+    func testAppItemIconSurvivesACacheRoundTrip() throws {
+        let item = GooglePlayAppItem(
+            id: "com.a",
+            packageName: "com.a",
+            title: "A",
+            isManuallyAdded: false,
+            iconUrl: "https://play-lh.googleusercontent.com/abc=s512"
+        )
+
+        let decoded = try JSONDecoder().decode(GooglePlayAppItem.self, from: JSONEncoder().encode(item))
+
+        XCTAssertEqual(decoded, item)
+        XCTAssertEqual(decoded.iconURL, URL(string: "https://play-lh.googleusercontent.com/abc=s512"))
+    }
+
     // MARK: - Tracks
 
     func testTrackKindsFollowPlayConsoleNames() {

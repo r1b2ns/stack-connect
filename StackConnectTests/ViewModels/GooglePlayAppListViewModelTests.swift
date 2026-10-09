@@ -35,9 +35,11 @@ final class GooglePlayAppListViewModelTests: XCTestCase {
 
     // MARK: - Helpers
 
-    /// - Parameter account: defaults to the created, unrestricted `account`.
-    ///   Any other account gets the same stored credentials.
-    private func makeSUT(account: AccountModel? = nil) -> GooglePlayAppListViewModel {
+    /// - Parameters:
+    ///   - account: defaults to the created, unrestricted `account`. Any other
+    ///     account gets the same stored credentials.
+    ///   - online: what the injected connectivity probe answers.
+    private func makeSUT(account: AccountModel? = nil, online: Bool = true) -> GooglePlayAppListViewModel {
         let checker = accessChecker!
         let account = account ?? self.account
         if account.id != self.account.id {
@@ -50,8 +52,9 @@ final class GooglePlayAppListViewModelTests: XCTestCase {
             account: account,
             keychain: keychain,
             storage: storage,
-            connectionFactory: connection.factory,
-            accessCheckerFactory: { _ in checker }
+            connectionFactory: connection.appListFactory,
+            accessCheckerFactory: { _ in checker },
+            connectivity: MockConnectivityProviding(online: online)
         )
     }
 
@@ -79,6 +82,11 @@ final class GooglePlayAppListViewModelTests: XCTestCase {
 
     private func cachedApps(accountId: String? = nil) async throws -> [GooglePlayAppItem]? {
         try await storage.fetch([GooglePlayAppItem].self, id: GooglePlayAppItem.cacheKey(accountId: accountId ?? account.id))
+    }
+
+    /// How many times the Play app list was written to storage so far.
+    private func listSaveCount() async -> Int {
+        await storage.saveCallCount[String(describing: [GooglePlayAppItem].self)] ?? 0
     }
 
     // MARK: - Offline-first load
@@ -237,7 +245,8 @@ final class GooglePlayAppListViewModelTests: XCTestCase {
         await sut.addApp(packageName: "  com.example.new ")
 
         XCTAssertEqual(accessChecker.checkedPackageNames, ["com.example.new"])
-        XCTAssertEqual(sut.uiState.apps, [playItem("com.example.new", manual: true)])
+        XCTAssertEqual(sut.uiState.apps, [playItem("com.example.new", manual: true)], "No public icon: placeholder")
+        XCTAssertEqual(connection.iconRequests, ["com.example.new"])
         XCTAssertFalse(sut.uiState.showAddApp)
         XCTAssertNil(sut.uiState.addError)
         XCTAssertNotNil(sut.uiState.toastMessage)
@@ -254,6 +263,7 @@ final class GooglePlayAppListViewModelTests: XCTestCase {
         XCTAssertEqual(sut.uiState.addError, "No access")
         XCTAssertTrue(sut.uiState.apps.isEmpty)
         XCTAssertFalse(sut.uiState.isAdding)
+        XCTAssertTrue(connection.iconRequests.isEmpty)
         let cached = try await cachedApps()
         XCTAssertNil(cached)
     }
@@ -410,6 +420,236 @@ extension GooglePlayAppListViewModelTests {
     }
 }
 
+// MARK: - App icons (public store page, plan D18)
+
+extension GooglePlayAppListViewModelTests {
+
+    func testMergeCarriesCachedIconsOverByPackageName() {
+        let current = [
+            playItem("com.api", title: "Api", manual: false, icon: iconURL("com.api")),
+            playItem("com.manual.listed", manual: true, icon: iconURL("com.manual.listed")),
+            playItem("com.manual.only", manual: true, icon: iconURL("com.manual.only")),
+            playItem("com.no.icon", manual: false)
+        ]
+
+        let merged = GooglePlayAppListViewModel.merge(
+            remote: [
+                playApp("com.api", name: "Api"),
+                playApp("com.manual.listed", name: "Listed"),
+                playApp("com.no.icon", name: "No Icon"),
+                playApp("com.new", name: "New")
+            ],
+            into: current
+        )
+
+        let byPackage = Dictionary(uniqueKeysWithValues: merged.map { ($0.packageName, $0) })
+        XCTAssertEqual(Set(byPackage.keys), ["com.api", "com.manual.listed", "com.manual.only", "com.no.icon", "com.new"])
+        XCTAssertEqual(byPackage["com.api"]?.iconUrl, iconURL("com.api"))
+        XCTAssertEqual(byPackage["com.manual.listed"]?.iconUrl, iconURL("com.manual.listed"), "The API entry wins but keeps the icon")
+        XCTAssertEqual(byPackage["com.manual.listed"]?.isManuallyAdded, false)
+        XCTAssertEqual(byPackage["com.manual.only"]?.iconUrl, iconURL("com.manual.only"))
+        XCTAssertNil(byPackage["com.no.icon"]?.iconUrl)
+        XCTAssertNil(byPackage["com.new"]?.iconUrl)
+    }
+
+    func testLoadFetchesOnlyMissingIconsAndPersistsThemOnce() async throws {
+        try await seedCache([
+            playItem("com.has.icon", title: "Has", manual: false, icon: "https://example.com/cached.png"),
+            playItem("com.missing", title: "Missing", manual: false)
+        ])
+        connection.fetchAppsHandler = {
+            [playApp("com.has.icon", name: "Has"), playApp("com.missing", name: "Missing"), playApp("com.new", name: "New")]
+        }
+        connection.fetchIconUrlHandler = { iconURL($0) }
+        let sut = makeSUT()
+        let savesBefore = await listSaveCount()
+
+        await sut.load()
+
+        XCTAssertEqual(connection.iconRequests.sorted(), ["com.missing", "com.new"], "Apps with an icon are never asked again")
+        let byPackage = Dictionary(uniqueKeysWithValues: sut.uiState.apps.map { ($0.packageName, $0) })
+        XCTAssertEqual(byPackage["com.has.icon"]?.iconUrl, "https://example.com/cached.png")
+        XCTAssertEqual(byPackage["com.missing"]?.iconUrl, iconURL("com.missing"))
+        XCTAssertEqual(byPackage["com.new"]?.iconUrl, iconURL("com.new"))
+        XCTAssertFalse(sut.uiState.isSyncing)
+        XCTAssertFalse(sut.uiState.isLoading)
+
+        let cached = try await cachedApps()
+        XCTAssertEqual(cached, sut.uiState.apps, "The icons are persisted with the list")
+        let saves = await listSaveCount()
+        XCTAssertEqual(saves - savesBefore, 2, "One save for the sync, one for all the icons")
+
+        // Cached icons are reused on the next load: nothing is fetched again.
+        await sut.load()
+        XCTAssertEqual(connection.iconRequests.count, 2)
+    }
+
+    func testIconsArriveAfterTheListIsShown() async {
+        let iconRequestSawTheList = LockedFlag()
+        connection.fetchAppsHandler = { [playApp("com.a", name: "A")] }
+        let sut = makeSUT()
+        connection.fetchIconUrlHandler = { _ in
+            let (visible, loading) = await MainActor.run { (sut.uiState.apps.map(\.packageName), sut.uiState.isLoading) }
+            iconRequestSawTheList.set(visible == ["com.a"] && !loading)
+            return nil
+        }
+
+        await sut.load()
+
+        XCTAssertTrue(iconRequestSawTheList.value, "Icons must never hold the list back")
+    }
+
+    func testMissingPublicIconKeepsThePlaceholderAndIsAskedAgainNextLoad() async throws {
+        connection.fetchAppsHandler = { [playApp("com.unpublished", name: "Draft")] }
+        let sut = makeSUT()   // default icon handler: no public icon
+
+        await sut.load()
+
+        XCTAssertEqual(connection.iconRequests, ["com.unpublished"])
+        XCTAssertNil(sut.uiState.apps.first?.iconUrl)
+        let savesAfterFirstLoad = await listSaveCount()
+        XCTAssertEqual(savesAfterFirstLoad, 1, "Nothing to persist when no icon was found")
+
+        await sut.load()
+
+        XCTAssertEqual(connection.iconRequests, ["com.unpublished", "com.unpublished"])
+    }
+
+    func testIconsAreFetchedForTheCachedListWhenTheSyncFails() async throws {
+        try await seedCache([playItem("com.cached", title: "Cached", manual: false)])
+        connection.fetchAppsHandler = { throw StackError.Http(status: 503, message: "backend error") }
+        connection.fetchIconUrlHandler = { iconURL($0) }
+        let sut = makeSUT()
+
+        await sut.load()
+
+        XCTAssertNotNil(sut.uiState.error, "The sync failure is still reported")
+        XCTAssertEqual(connection.iconRequests, ["com.cached"])
+        XCTAssertEqual(sut.uiState.apps.first?.iconUrl, iconURL("com.cached"))
+        let cached = try await cachedApps()
+        XCTAssertEqual(cached?.first?.iconUrl, iconURL("com.cached"))
+    }
+
+    func testNoIconsAreFetchedWhenTheSyncFailsOffline() async throws {
+        try await seedCache([playItem("com.cached", manual: false)])
+        connection.fetchAppsHandler = { throw OfflineError.noConnection }
+        let sut = makeSUT()
+
+        await sut.load()
+
+        XCTAssertTrue(connection.iconRequests.isEmpty)
+        XCTAssertFalse(sut.uiState.isSyncing)
+    }
+
+    func testNoIconsAreFetchedWhileTheDeviceIsOffline() async {
+        connection.fetchAppsHandler = { [playApp("com.a", name: "A")] }
+        connection.fetchIconUrlHandler = { iconURL($0) }
+        let sut = makeSUT(online: false)
+
+        await sut.load()
+
+        XCTAssertEqual(sut.uiState.apps.map(\.packageName), ["com.a"])
+        XCTAssertTrue(connection.iconRequests.isEmpty)
+        XCTAssertNil(sut.uiState.apps.first?.iconUrl)
+    }
+
+    func testIconsAreNeverFetchedForAppsOutsideTheScope() async throws {
+        let scoped = importedAccount(appsBundles: ["com.a", "com.b"])
+        try await seedCache(
+            [playItem("com.a", manual: false), playItem("com.out", manual: true)],
+            accountId: scoped.id
+        )
+        connection.fetchAppsHandler = {
+            [playApp("com.a", name: "A"), playApp("com.b", name: "B"), playApp("com.out", name: "Out")]
+        }
+        connection.fetchIconUrlHandler = { iconURL($0) }
+        let sut = makeSUT(account: scoped)
+
+        await sut.load()
+
+        XCTAssertEqual(connection.iconRequests.sorted(), ["com.a", "com.b"])
+        XCTAssertEqual(sut.uiState.apps.map(\.packageName), ["com.a", "com.b"])
+    }
+
+    func testIconFetchesAreBoundedInFlight() async {
+        let packages = (0..<10).map { "com.app\($0)" }
+        connection.fetchAppsHandler = { packages.map { playApp($0, name: $0) } }
+        let gate = AsyncGate()
+        connection.fetchIconUrlHandler = { packageName in
+            await gate.wait()
+            return iconURL(packageName)
+        }
+        let sut = makeSUT()
+        let limit = GooglePlayAppListViewModel.maxConcurrentIconFetches
+
+        let loading = Task { await sut.load() }
+        await gate.waitForArrivals(limit + 1)   // bounded: returns once nothing else can arrive
+        let startedWhileBlocked = await gate.arrivals
+        await gate.open()
+        await loading.value
+
+        XCTAssertEqual(startedWhileBlocked, limit, "No more than \(limit) lookups at once")
+        XCTAssertLessThanOrEqual(connection.maxIconFetchesInFlight, limit)
+        XCTAssertEqual(connection.iconRequests.sorted(), packages.sorted(), "Every app is still asked once")
+        XCTAssertTrue(sut.uiState.apps.allSatisfy { $0.iconUrl == iconURL($0.packageName) })
+    }
+
+    func testIconsAreAppliedOntoTheCurrentListWithoutClobberingAConcurrentAddOrRemoval() async throws {
+        connection.fetchAppsHandler = { [playApp("com.keep", name: "Keep"), playApp("com.drop", name: "Drop")] }
+        let gate = AsyncGate()
+        connection.fetchIconUrlHandler = { packageName in
+            await gate.wait()
+            return iconURL(packageName)
+        }
+        let sut = makeSUT()
+
+        // The load's icon pass is in flight for both apps…
+        let loading = Task { await sut.load() }
+        await gate.waitForArrivals(2)
+        // …while the user adds an app (its own icon lookup joins in) and removes another.
+        let adding = Task { await sut.addApp(packageName: "com.added") }
+        await gate.waitForArrivals(3)
+        let drop = try XCTUnwrap(sut.uiState.apps.first { $0.packageName == "com.drop" })
+        await sut.removeApp(drop)
+
+        await gate.open()
+        await loading.value
+        await adding.value
+
+        XCTAssertEqual(connection.iconRequests.sorted(), ["com.added", "com.drop", "com.keep"], "Each app asked once")
+        XCTAssertEqual(sut.uiState.apps.map(\.packageName), ["com.added", "com.keep"], "The removal and the addition both survive")
+        XCTAssertTrue(sut.uiState.apps.allSatisfy { $0.iconUrl == iconURL($0.packageName) })
+        let cached = try await cachedApps()
+        XCTAssertEqual(cached, sut.uiState.apps)
+    }
+
+    func testAddAppFetchesOnlyTheNewAppsIconAndPersistsIt() async throws {
+        connection.fetchIconUrlHandler = { iconURL($0) }
+        let sut = makeSUT()
+        sut.uiState.apps = [playItem("com.other", manual: false)]
+
+        await sut.addApp(packageName: "com.example.new")
+
+        XCTAssertEqual(connection.iconRequests, ["com.example.new"])
+        let added = sut.uiState.apps.first { $0.packageName == "com.example.new" }
+        XCTAssertEqual(added?.iconUrl, iconURL("com.example.new"))
+        XCTAssertNil(sut.uiState.apps.first { $0.packageName == "com.other" }?.iconUrl)
+        XCTAssertFalse(sut.uiState.isAdding)
+        let cached = try await cachedApps()
+        XCTAssertEqual(cached?.first { $0.packageName == "com.example.new" }?.iconUrl, iconURL("com.example.new"))
+    }
+
+    func testAddAppWhileOfflineSkipsTheIconLookup() async {
+        connection.fetchIconUrlHandler = { iconURL($0) }
+        let sut = makeSUT(online: false)
+
+        await sut.addApp(packageName: "com.example.new")
+
+        XCTAssertEqual(sut.uiState.apps, [playItem("com.example.new", manual: true)])
+        XCTAssertTrue(connection.iconRequests.isEmpty)
+    }
+}
+
 // MARK: - Fixtures
 
 /// File-scope (nonisolated) so the `@Sendable` mock handlers can build them too.
@@ -417,6 +657,11 @@ private func playApp(_ packageName: String, name: String) -> StackProtocols.AppI
     StackProtocols.AppInfo(id: packageName, name: name, bundleId: packageName, platform: "ANDROID")
 }
 
-private func playItem(_ packageName: String, title: String? = nil, manual: Bool) -> GooglePlayAppItem {
-    GooglePlayAppItem(id: packageName, packageName: packageName, title: title, isManuallyAdded: manual)
+private func playItem(_ packageName: String, title: String? = nil, manual: Bool, icon: String? = nil) -> GooglePlayAppItem {
+    GooglePlayAppItem(id: packageName, packageName: packageName, title: title, isManuallyAdded: manual, iconUrl: icon)
+}
+
+/// The icon URL the mock "store page" hands out for `packageName`.
+private func iconURL(_ packageName: String) -> String {
+    "https://play-lh.googleusercontent.com/\(packageName)=s512"
 }

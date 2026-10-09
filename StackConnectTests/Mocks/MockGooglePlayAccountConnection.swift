@@ -3,12 +3,13 @@ import StackProtocols
 @testable import StackConnect
 
 /// In-memory Google Play connection implementing every seam the Play screens use
-/// (`GooglePlayAccountConnecting`, the edit-based app-content reads and the
-/// reviews). Each call runs its handler, so a test can return canned data,
+/// (`GooglePlayAccountConnecting`, the public icon lookup, the edit-based
+/// app-content reads and the reviews). Each call runs its handler, so a test can return canned data,
 /// throw, or inspect the caller while it is suspended mid-call (e.g. to assert
 /// the cached data is already on screen). Calls are counted and their arguments
 /// recorded; `credentials` records what the factory was given.
 final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
+    GooglePlayAppIconFetching,
     GooglePlayAppDetailsFetching,
     GooglePlayStoreListingsFetching,
     GooglePlayTracksFetching,
@@ -28,6 +29,9 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
 
     /// What `fetchApps()` does. Defaults to an empty list.
     var fetchAppsHandler: @Sendable () async throws -> [StackProtocols.AppInfo] = { [] }
+
+    /// What `fetchIconUrl(packageName:)` does. Defaults to "no public icon".
+    var fetchIconUrlHandler: @Sendable (String) async -> String? = { _ in nil }
 
     /// What `fetchAppDetails(packageName:)` does. Defaults to empty details.
     var fetchAppDetailsHandler: @Sendable (String) async throws -> GooglePlayAppDetailsModel = {
@@ -54,6 +58,9 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
     private let lock = NSLock()
     private var _validateCallCount = 0
     private var _fetchAppsCallCount = 0
+    private var _iconRequests: [String] = []
+    private var _iconFetchesInFlight = 0
+    private var _maxIconFetchesInFlight = 0
     private var _appDetailsRequests: [String] = []
     private var _storeListingsRequests: [String] = []
     private var _tracksRequests: [String] = []
@@ -63,6 +70,10 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
 
     var validateCallCount: Int { lock.withLock { _validateCallCount } }
     var fetchAppsCallCount: Int { lock.withLock { _fetchAppsCallCount } }
+    /// Package names passed to `fetchIconUrl`, in call order.
+    var iconRequests: [String] { lock.withLock { _iconRequests } }
+    /// Most `fetchIconUrl` calls that were running at the same time.
+    var maxIconFetchesInFlight: Int { lock.withLock { _maxIconFetchesInFlight } }
     var appDetailsRequests: [String] { lock.withLock { _appDetailsRequests } }
     var storeListingsRequests: [String] { lock.withLock { _storeListingsRequests } }
     var tracksRequests: [String] { lock.withLock { _tracksRequests } }
@@ -78,6 +89,12 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
     /// Factory closure for the ViewModels' `connectionFactory` parameters: records
     /// the credentials and hands back this mock.
     func factory(_ credentials: GooglePlayCredentials) -> any GooglePlayAccountConnecting {
+        record(credentials)
+        return self
+    }
+
+    /// Same as `factory`, typed for the app list (listing + icon lookup).
+    func appListFactory(_ credentials: GooglePlayCredentials) -> any GooglePlayAppListConnecting {
         record(credentials)
         return self
     }
@@ -114,6 +131,19 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
     func fetchApps() async throws -> [StackProtocols.AppInfo] {
         lock.withLock { _fetchAppsCallCount += 1 }
         return try await fetchAppsHandler()
+    }
+
+    // MARK: - App icon
+
+    func fetchIconUrl(packageName: String) async -> String? {
+        lock.withLock {
+            _iconRequests.append(packageName)
+            _iconFetchesInFlight += 1
+            _maxIconFetchesInFlight = max(_maxIconFetchesInFlight, _iconFetchesInFlight)
+        }
+        let iconUrl = await fetchIconUrlHandler(packageName)
+        lock.withLock { _iconFetchesInFlight -= 1 }
+        return iconUrl
     }
 
     // MARK: - App content

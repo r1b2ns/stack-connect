@@ -135,7 +135,10 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
 
     private func buildAppRow(_ app: GooglePlayAppItem) -> some View {
         HStack(spacing: 12) {
-            StackIconTile(systemName: "play.fill", color: .green, size: 40)
+            // The green Play tile stands in until (or unless) the store icon loads.
+            StackAppIcon(url: app.iconURL, size: 40) {
+                StackIconTile(systemName: "play.fill", color: .green, size: 40)
+            }
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(app.displayName)

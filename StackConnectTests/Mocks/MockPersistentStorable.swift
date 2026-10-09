@@ -8,6 +8,8 @@ actor MockPersistentStorable: PersistentStorable {
 
     private var store: [String: [String: Data]] = [:]
     private(set) var fetchAllCallCount: [String: Int] = [:]
+    /// Successful `save` calls per stored type name (`String(describing: T.self)`).
+    private(set) var saveCallCount: [String: Int] = [:]
     private var failingFetchAllTypes: Set<String> = []
     private var failingDeletes: Set<String> = []
 
@@ -39,6 +41,7 @@ actor MockPersistentStorable: PersistentStorable {
             store[typeName] = [:]
         }
         store[typeName]?[id] = data
+        saveCallCount[typeName, default: 0] += 1
     }
 
     func fetch<T: Codable>(_ type: T.Type, id: String) throws -> T? {

@@ -29,7 +29,7 @@ extension ExportableApp {
             id: playApp.id,
             name: playApp.displayName,
             bundleId: playApp.packageName,
-            iconURL: nil
+            iconURL: playApp.iconURL
         )
     }
 }

@@ -1450,6 +1450,189 @@ public func FfiConverterTypeAppDetails_lower(_ value: AppDetails) -> UInt64 {
 
 
 /**
+ * UniFFI-exported App Icons capability handle. A thin, binding-friendly
+ * wrapper around a boxed [`AppIconsImpl`]; async work runs on the tokio
+ * runtime. Reached via [`crate::service::provider::Provider::app_icons`].
+ */
+public protocol AppIconsProtocol: AnyObject, Sendable {
+    
+    /**
+     * Resolves a URL for the square icon of `app_id` (`AppInfo.id`), or `None`
+     * when the store has no icon to offer for it.
+     *
+     * - **App Store Connect:** computed from the `iconAssetToken` of the app's
+     * most recent build (the same lookup as `AppMetadata::fetch_icon_url`),
+     * at the size the asset declares (512 px when it declares none); `None`
+     * when the app has no build or the build has no icon.
+     * - **Google Play** (`app_id` is the package name): read from the app's
+     * **public** store page (`play.google.com/store/apps/details`), sized to
+     * 512 px, with no credentials and no Android Publisher call. Opening an
+     * edit to list the app's images would invalidate any edit the same
+     * service account has open (e.g. a CI upload), so icons never go through
+     * edits. `None` when the app is not visible in the store (unpublished,
+     * unknown, or an invalid package name, which is answered without a
+     * request) or when the page has no usable icon (e.g. a consent page
+     * served instead).
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx answer that does not mean "no such app"
+     * (e.g. `429`, `5xx`), [`StackError::Network`] on transport failure. App
+     * Store Connect can also return [`StackError::PendingAgreements`] and
+     * [`StackError::Decode`] (malformed JSON).
+     */
+    func fetchIconUrl(appId: String) async throws  -> String?
+    
+}
+/**
+ * UniFFI-exported App Icons capability handle. A thin, binding-friendly
+ * wrapper around a boxed [`AppIconsImpl`]; async work runs on the tokio
+ * runtime. Reached via [`crate::service::provider::Provider::app_icons`].
+ */
+open class AppIcons: AppIconsProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_appicons(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_appicons(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Resolves a URL for the square icon of `app_id` (`AppInfo.id`), or `None`
+     * when the store has no icon to offer for it.
+     *
+     * - **App Store Connect:** computed from the `iconAssetToken` of the app's
+     * most recent build (the same lookup as `AppMetadata::fetch_icon_url`),
+     * at the size the asset declares (512 px when it declares none); `None`
+     * when the app has no build or the build has no icon.
+     * - **Google Play** (`app_id` is the package name): read from the app's
+     * **public** store page (`play.google.com/store/apps/details`), sized to
+     * 512 px, with no credentials and no Android Publisher call. Opening an
+     * edit to list the app's images would invalidate any edit the same
+     * service account has open (e.g. a CI upload), so icons never go through
+     * edits. `None` when the app is not visible in the store (unpublished,
+     * unknown, or an invalid package name, which is answered without a
+     * request) or when the page has no usable icon (e.g. a consent page
+     * served instead).
+     *
+     * # Errors
+     * [`StackError::Http`] on a non-2xx answer that does not mean "no such app"
+     * (e.g. `429`, `5xx`), [`StackError::Network`] on transport failure. App
+     * Store Connect can also return [`StackError::PendingAgreements`] and
+     * [`StackError::Decode`] (malformed JSON).
+     */
+open func fetchIconUrl(appId: String)async throws  -> String?  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appicons_fetch_icon_url(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionString.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppIcons: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = AppIcons
+
+    public static func lift(_ handle: UInt64) throws -> AppIcons {
+        return AppIcons(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: AppIcons) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppIcons {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: AppIcons, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppIcons_lift(_ handle: UInt64) throws -> AppIcons {
+    return try FfiConverterTypeAppIcons.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppIcons_lower(_ value: AppIcons) -> UInt64 {
+    return FfiConverterTypeAppIcons.lower(value)
+}
+
+
+
+
+
+
+/**
  * UniFFI-exported App Metadata capability handle. A thin, binding-friendly
  * wrapper around a boxed [`AppMetadataImpl`]; async work runs on the tokio
  * runtime. Reached via [`crate::service::provider::Provider::app_metadata`].
@@ -6780,6 +6963,14 @@ public protocol ProviderProtocol: AnyObject, Sendable {
     func appDetails()  -> AppDetails?
     
     /**
+     * The App Icons capability handle, or `None` when this provider does not
+     * expose [`Capability::AppIcons`]. This is the discovery mechanism: the
+     * host calls `provider.app_icons()` and gets `None` when app icons are
+     * unsupported.
+     */
+    func appIcons()  -> AppIcons?
+    
+    /**
      * The App Metadata capability handle, or `None` when this provider does not
      * expose [`Capability::AppMetadata`]. This is the discovery mechanism: the
      * host calls `provider.app_metadata()` and gets `None` when app metadata is
@@ -7027,6 +7218,20 @@ open func analytics() -> Analytics?  {
 open func appDetails() -> AppDetails?  {
     return try!  FfiConverterOptionTypeAppDetails.lift(try! rustCall() {
     uniffi_stack_core_fn_method_provider_app_details(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The App Icons capability handle, or `None` when this provider does not
+     * expose [`Capability::AppIcons`]. This is the discovery mechanism: the
+     * host calls `provider.app_icons()` and gets `None` when app icons are
+     * unsupported.
+     */
+open func appIcons() -> AppIcons?  {
+    return try!  FfiConverterOptionTypeAppIcons.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_app_icons(
             self.uniffiCloneHandle(),$0
     )
 })
@@ -12438,6 +12643,10 @@ public enum Capability: Equatable, Hashable {
      * An app's release tracks and their releases ([`Tracks`]).
      */
     case tracks
+    /**
+     * Where to load an app's icon from ([`AppIcons`]).
+     */
+    case appIcons
 
 
 
@@ -12496,6 +12705,8 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         case 18: return .storeListings
         
         case 19: return .tracks
+        
+        case 20: return .appIcons
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -12579,6 +12790,10 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         
         case .tracks:
             writeInt(&buf, Int32(19))
+        
+        
+        case .appIcons:
+            writeInt(&buf, Int32(20))
         
         }
     }
@@ -13026,6 +13241,30 @@ fileprivate struct FfiConverterOptionTypeAppDetails: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeAppDetails.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeAppIcons: FfiConverterRustBuffer {
+    typealias SwiftType = AppIcons?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeAppIcons.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeAppIcons.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -14661,6 +14900,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_appdetails_fetch_app_details() != 60589) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_appicons_fetch_icon_url() != 2557) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_appmetadata_create_app_info_localization() != 54393) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -14950,6 +15192,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_app_details() != 49218) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_app_icons() != 48266) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_app_metadata() != 46670) {

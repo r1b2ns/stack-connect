@@ -161,7 +161,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                 // Multi-platform apps hide this single icon; each platform section
                 // shows its own real icon instead (see `buildPlatformSection`).
                 if !showsPerPlatformIcons {
-                    buildAppIcon(url: viewModel.uiState.app.iconUrl.flatMap { URL(string: $0) }, size: 64, radius: 14)
+                    StackAppIcon(url: viewModel.uiState.app.iconUrl.flatMap { URL(string: $0) }, size: 64, cornerRadius: 14)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -298,7 +298,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
         } header: {
             if showsPerPlatformIcons {
                 HStack(spacing: 8) {
-                    buildAppIcon(url: platformIconURL(for: section.platform), size: 24, radius: 6)
+                    StackAppIcon(url: platformIconURL(for: section.platform), size: 24, cornerRadius: 6)
                     Text(section.platform.displayName)
                 }
             } else {
@@ -309,7 +309,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
 
     /// Resolves the icon URL for a platform section with a graceful fallback:
     /// the platform's real build icon → the app's single `iconUrl` →
-    /// placeholder (handled by `buildAppIcon` when the URL is nil).
+    /// placeholder (handled by `StackAppIcon` when the URL is nil).
     private func platformIconURL(for platform: AppPlatform) -> URL? {
         let raw = viewModel.uiState.platformIcons[platform] ?? viewModel.uiState.app.iconUrl
         return raw.flatMap { URL(string: $0) }
@@ -588,39 +588,6 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
         case .blue:   return .blue
         case .yellow: return .yellow
         }
-    }
-
-    private func buildAppIcon(url: URL?, size: CGFloat, radius: CGFloat) -> some View {
-        Group {
-            if let url {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().scaledToFill()
-                    case .failure:
-                        appIconPlaceholder(size: size, radius: radius)
-                    case .empty:
-                        ProgressView().frame(width: size, height: size)
-                    @unknown default:
-                        appIconPlaceholder(size: size, radius: radius)
-                    }
-                }
-            } else {
-                appIconPlaceholder(size: size, radius: radius)
-            }
-        }
-        .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: radius))
-    }
-
-    private func appIconPlaceholder(size: CGFloat, radius: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: radius)
-            .fill(Color.blue.opacity(0.15))
-            .overlay {
-                Image(systemName: "app.fill")
-                    .foregroundStyle(.blue)
-                    .font(size > 50 ? .title : .title3)
-            }
     }
 
     // MARK: - Toolbar

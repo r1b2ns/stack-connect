@@ -17,6 +17,26 @@ protocol GooglePlayAccountConnecting: Sendable {
     func fetchApps() async throws -> [StackProtocols.AppInfo]
 }
 
+// MARK: - App icon seam (public store page, no edit)
+
+/// Looks up an app's store icon on its **public** Google Play page (the core's
+/// `AppIcons` capability reads the page's `og:image`).
+///
+/// Unlike the edit-based reads below, this sends no credentials, mints no OAuth
+/// token and never opens a Play edit, so it can't cancel an edit in progress
+/// (e.g. a CI upload): it is safe to call automatically, e.g. while the app list
+/// loads (plan D18). Best effort: it never throws.
+protocol GooglePlayAppIconFetching: Sendable {
+    /// A 512 px `https` icon URL (`https://play-lh.googleusercontent.com/…=s512`),
+    /// or `nil` when the app isn't public on Google Play (unpublished or unknown
+    /// package), the page has no icon, the device is offline or the lookup failed.
+    func fetchIconUrl(packageName: String) async -> String?
+}
+
+/// What the Play app list needs from one connection: the app listing plus the
+/// icon lookup, so a load goes through a single core provider.
+typealias GooglePlayAppListConnecting = GooglePlayAccountConnecting & GooglePlayAppIconFetching
+
 // MARK: - App content seams (Android Publisher)
 //
 // Edit side effect: the Android Publisher API only serves app details, store
@@ -77,6 +97,7 @@ protocol GooglePlayReviewsConnecting: Sendable {
 /// `GooglePlayErrorTranslator`.
 final class GooglePlayAccountConnection: AccountConnectionProtocol,
     GooglePlayAccountConnecting,
+    GooglePlayAppIconFetching,
     GooglePlayAppDetailsFetching,
     GooglePlayStoreListingsFetching,
     GooglePlayTracksFetching,
@@ -142,6 +163,37 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
         }
         Log.print.info("[GooglePlay] Fetched \(apps.count) apps (Rust core)")
         return apps
+    }
+
+    // MARK: - App icon (public store page, see the seam docs)
+
+    /// Mirrors `AppleAccountConnection.fetchIconUrl(appId:)`: best effort, so an
+    /// unsupported capability, an offline device or any core error is logged at
+    /// info level (a missing icon is cosmetic, not a failure) and becomes `nil`.
+    /// Uses the connection's single lazily-built provider.
+    func fetchIconUrl(packageName: String) async -> String? {
+        do {
+            try requireOnline()
+            let provider = try rustCoreProvider()
+            guard let appIcons = provider.appIcons() else {
+                Log.print.info("[GooglePlay] App Icons capability is not available; no icon for \(packageName)")
+                return nil
+            }
+            guard let iconUrl = try await appIcons.fetchIconUrl(appId: packageName) else {
+                Log.print.info("[GooglePlay] No public store icon for \(packageName) (Rust core)")
+                return nil
+            }
+            // Defense in depth: the icon is loaded straight into an image view,
+            // so only ever hand back a remote https URL.
+            guard URL(string: iconUrl)?.scheme?.lowercased() == "https" else {
+                Log.print.info("[GooglePlay] Ignoring non-https icon URL for \(packageName)")
+                return nil
+            }
+            return iconUrl
+        } catch {
+            Log.print.info("[GooglePlay] Icon fetch failed for \(packageName) (Rust core): \(error.localizedDescription)")
+            return nil
+        }
     }
 
     // MARK: - App content (edit-based, see the seam docs)

@@ -79,6 +79,26 @@ final class GooglePlayAccountConnectionTests: XCTestCase {
         }
     }
 
+    // MARK: - App icon (best effort: never throws)
+
+    func testFetchIconUrlIsNilWhenOffline() async {
+        let connection = makeConnection(online: false)
+
+        let iconUrl = await connection.fetchIconUrl(packageName: "com.example.app")
+
+        XCTAssertNil(iconUrl, "Offline: no lookup, the placeholder stays")
+    }
+
+    func testFetchIconUrlWithGarbageKeyIsNilInsteadOfThrowing() async {
+        // Online, but the core rejects the key inside `connect` (offline), so
+        // nothing reaches Google; the failure is swallowed into "no icon".
+        let connection = makeConnection(online: true)
+
+        let iconUrl = await connection.fetchIconUrl(packageName: "com.example.app")
+
+        XCTAssertNil(iconUrl)
+    }
+
     func testMalformedStoredJSONSurfacesParseError() async {
         let connection = makeConnection(json: "{ not json", online: true)
         do {

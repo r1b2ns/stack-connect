@@ -37,7 +37,7 @@ struct AppsPermissionPickerSheet: View {
                         toggle(app.bundleId)
                     } label: {
                         HStack(spacing: 12) {
-                            buildAppIcon(url: app.iconURL)
+                            StackAppIcon(url: app.iconURL, size: 44, cornerRadius: 10)
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(app.name)
@@ -97,43 +97,5 @@ struct AppsPermissionPickerSheet: View {
         } else {
             selected.insert(bundleId)
         }
-    }
-
-    // MARK: - App Icon
-
-    private func buildAppIcon(url: URL?) -> some View {
-        Group {
-            if let url {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    case .failure:
-                        appIconPlaceholder
-                    case .empty:
-                        ProgressView()
-                            .frame(width: 44, height: 44)
-                    @unknown default:
-                        appIconPlaceholder
-                    }
-                }
-            } else {
-                appIconPlaceholder
-            }
-        }
-        .frame(width: 44, height: 44)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-    }
-
-    private var appIconPlaceholder: some View {
-        RoundedRectangle(cornerRadius: 10)
-            .fill(Color.blue.opacity(0.15))
-            .overlay {
-                Image(systemName: "app.fill")
-                    .foregroundStyle(.blue)
-                    .font(.title3)
-            }
     }
 }
