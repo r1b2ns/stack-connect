@@ -68,15 +68,11 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = viewModel.uiState.error, viewModel.uiState.apps.isEmpty {
-            ContentUnavailableView {
-                Label(String(localized: "Error"), systemImage: "exclamationmark.triangle")
-            } description: {
-                Text(error)
-            } actions: {
-                Button(String(localized: "Retry")) {
-                    Task { await viewModel.load() }
-                }
-
+            StackErrorContentView(
+                message: error,
+                reportContext: errorReportContext,
+                onRetry: { Task { await viewModel.load() } }
+            ) {
                 if viewModel.uiState.canAddApps {
                     Button(String(localized: "Add Manually")) {
                         viewModel.uiState.showAddApp = true
@@ -88,6 +84,12 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
         } else {
             buildList()
         }
+    }
+
+    /// Where an error on this screen happened, for its shared report (the
+    /// account's app list: no app yet).
+    private var errorReportContext: ErrorReportContext {
+        ErrorReportContext(screen: String(localized: "Apps"), account: viewModel.uiState.account)
     }
 
     @ViewBuilder
@@ -116,7 +118,7 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
         List {
             // Inline banner for a failed sync while the cached list stays on screen.
             if let error = viewModel.uiState.error {
-                StackInlineErrorSection(message: error)
+                StackInlineErrorSection(message: error, reportContext: errorReportContext)
             }
 
             Section {

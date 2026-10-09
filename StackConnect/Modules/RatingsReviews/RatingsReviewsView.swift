@@ -51,7 +51,7 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
 
     var body: some View {
         buildContent()
-            .navigationTitle(String(localized: "Ratings & Reviews"))
+            .navigationTitle(screenTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
             .task { await viewModel.loadIfNeeded() }
@@ -95,11 +95,7 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
     @ViewBuilder
     private func buildEmptyState() -> some View {
         if let error = viewModel.uiState.error {
-            ContentUnavailableView {
-                Label(String(localized: "Error"), systemImage: "exclamationmark.triangle")
-            } description: {
-                Text(error)
-            }
+            StackErrorContentView(message: error, reportContext: errorReportContext)
         } else if viewModel.uiState.hasMorePages {
             // Nothing so far, but the store has more pages (e.g. a rating filter
             // on Google Play, applied per page): offer the next one.
@@ -151,7 +147,7 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
         List {
             // A failed sync while cached reviews stay on screen.
             if let error = viewModel.uiState.error {
-                StackInlineErrorSection(message: error)
+                StackInlineErrorSection(message: error, reportContext: errorReportContext)
             }
             buildSummarySection()
             buildFilterSection()
@@ -379,6 +375,20 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
     }
 
     // MARK: - Helpers
+
+    private var screenTitle: String {
+        String(localized: "Ratings & Reviews")
+    }
+
+    /// Where an error on this screen happened, for its shared report.
+    private var errorReportContext: ErrorReportContext {
+        ErrorReportContext(
+            screen: screenTitle,
+            account: viewModel.uiState.account,
+            appName: appName,
+            appIdentifier: viewModel.uiState.bundleId
+        )
+    }
 
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()

@@ -96,9 +96,11 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol>:
                         CopyButton(text: app.packageName)
                     }
 
-                    Label(String(localized: "Android"), systemImage: "smartphone")
+                    // Platform icon only; VoiceOver still names the platform.
+                    Image(systemName: "smartphone")
                         .font(.caption)
                         .foregroundStyle(.green)
+                        .accessibilityLabel(String(localized: "Android"))
 
                     if let language = viewModel.uiState.defaultLanguage {
                         Text("Default language: \(GooglePlayLanguage.displayName(for: language))")

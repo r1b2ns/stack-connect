@@ -35,11 +35,12 @@ struct GooglePlayAppInfoView<ViewModel: GooglePlayAppInfoViewModelProtocol>: Vie
             isLoading: viewModel.uiState.isLoading,
             hasContent: viewModel.uiState.hasContent,
             error: viewModel.uiState.error,
+            errorReportContext: errorReportContext,
             onRetry: { Task { await viewModel.load() } }
         ) {
             buildContent()
         }
-        .navigationTitle(String(localized: "App Details"))
+        .navigationTitle(screenTitle)
         .navigationBarTitleDisplayMode(.inline)
         // Opening this screen is the explicit action that reads through a Play
         // edit — once: coming back from a pushed screen restarts `.task`, which
@@ -52,12 +53,21 @@ struct GooglePlayAppInfoView<ViewModel: GooglePlayAppInfoViewModelProtocol>: Vie
         )
     }
 
+    private var screenTitle: String {
+        String(localized: "App Details")
+    }
+
+    /// Where an error on this screen happened, for its shared report.
+    private var errorReportContext: ErrorReportContext {
+        ErrorReportContext(screen: screenTitle, account: viewModel.uiState.account, app: viewModel.uiState.app)
+    }
+
     // MARK: - Content
 
     private func buildContent() -> some View {
         List {
             if let error = viewModel.uiState.error {
-                StackInlineErrorSection(message: error)
+                StackInlineErrorSection(message: error, reportContext: errorReportContext)
             }
 
             if let details = viewModel.uiState.details {

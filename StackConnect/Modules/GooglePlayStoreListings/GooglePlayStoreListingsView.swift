@@ -36,11 +36,12 @@ struct GooglePlayStoreListingsView<ViewModel: GooglePlayStoreListingsViewModelPr
             isLoading: viewModel.uiState.isLoading,
             hasContent: viewModel.uiState.hasContent,
             error: viewModel.uiState.error,
+            errorReportContext: errorReportContext,
             onRetry: { Task { await viewModel.load() } }
         ) {
             buildContent()
         }
-        .navigationTitle(String(localized: "Store Listings"))
+        .navigationTitle(screenTitle)
         .navigationBarTitleDisplayMode(.inline)
         // Opening this screen is the explicit action that reads through a Play
         // edit — once: coming back from a pushed screen restarts `.task`, which
@@ -51,6 +52,15 @@ struct GooglePlayStoreListingsView<ViewModel: GooglePlayStoreListingsViewModelPr
             isPresented: $viewModel.uiState.showSyncToast,
             message: String(localized: "Syncing store listings...")
         )
+    }
+
+    private var screenTitle: String {
+        String(localized: "Store Listings")
+    }
+
+    /// Where an error on this screen happened, for its shared report.
+    private var errorReportContext: ErrorReportContext {
+        ErrorReportContext(screen: screenTitle, account: viewModel.uiState.account, app: viewModel.uiState.app)
     }
 
     // MARK: - Content
@@ -67,7 +77,7 @@ struct GooglePlayStoreListingsView<ViewModel: GooglePlayStoreListingsViewModelPr
         } else {
             List {
                 if let error = viewModel.uiState.error {
-                    StackInlineErrorSection(message: error)
+                    StackInlineErrorSection(message: error, reportContext: errorReportContext)
                 }
 
                 Section {

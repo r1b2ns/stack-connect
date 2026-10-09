@@ -10,6 +10,8 @@ struct StackLoadableContent<Content: View>: View {
     let isLoading: Bool
     let hasContent: Bool
     let error: String?
+    /// Where the screen is, for the shared error report.
+    let errorReportContext: ErrorReportContext
     let onRetry: () -> Void
     @ViewBuilder var content: () -> Content
 
@@ -18,13 +20,7 @@ struct StackLoadableContent<Content: View>: View {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error, !hasContent {
-            ContentUnavailableView {
-                Label(String(localized: "Error"), systemImage: "exclamationmark.triangle")
-            } description: {
-                Text(error)
-            } actions: {
-                Button(String(localized: "Retry"), action: onRetry)
-            }
+            StackErrorContentView(message: error, reportContext: errorReportContext, onRetry: onRetry)
         } else {
             content()
         }
