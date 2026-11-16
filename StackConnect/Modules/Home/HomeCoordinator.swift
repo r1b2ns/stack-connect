@@ -199,6 +199,54 @@ final class HomeCoordinator: MainCoordinatorProtocol {
         path.append(HomeRoute.appDetail(app: app, account: account))
     }
 
+    /// Opens a dashboard row's app in its own store's detail (plan H7).
+    func navigate(to target: DashboardTarget, account: AccountModel) {
+        switch target {
+        case .appStore(let app):
+            navigateToAppDetail(app, account: account)
+        case .googlePlay(let app):
+            navigateToGooglePlayAppDetail(app, account: account)
+        }
+    }
+
+    /// Opens a dashboard row; when the widget couldn't read the accounts, the
+    /// row's account is resolved from storage first (a row whose account is
+    /// gone does nothing, logged).
+    @MainActor
+    func open(_ target: DashboardTarget, accountId: String, account: AccountModel?, storage: PersistentStorable? = SwiftDataStorable.shared) {
+        if let account {
+            navigate(to: target, account: account)
+            return
+        }
+        Task { @MainActor in
+            guard var resolved = try? await storage?.fetch(AccountModel.self, id: accountId) else {
+                Log.print.notice("[Home] Dashboard row references unknown account \(accountId, privacy: .public)")
+                return
+            }
+            resolved.fillMissingRules()
+            navigate(to: target, account: resolved)
+        }
+    }
+
+    /// Opens a dashboard review in Review Detail (Play reviews carry their
+    /// package so the detail keeps the Play reviews cache in step).
+    @MainActor
+    func open(_ item: DashboardReview, storage: PersistentStorable? = SwiftDataStorable.shared) {
+        let appId = item.provider == .googlePlay ? item.appId : nil
+        if let account = item.account {
+            navigateToReviewDetail(review: item.review, appName: item.appName, account: account, appId: appId)
+            return
+        }
+        Task { @MainActor in
+            guard var resolved = try? await storage?.fetch(AccountModel.self, id: item.accountId) else {
+                Log.print.notice("[Home] Dashboard review references unknown account \(item.accountId, privacy: .public)")
+                return
+            }
+            resolved.fillMissingRules()
+            navigateToReviewDetail(review: item.review, appName: item.appName, account: resolved, appId: appId)
+        }
+    }
+
     func navigateToVersionList(appId: String, platform: AppPlatform, account: AccountModel) {
         path.append(HomeRoute.versionList(appId: appId, platform: platform, account: account))
     }

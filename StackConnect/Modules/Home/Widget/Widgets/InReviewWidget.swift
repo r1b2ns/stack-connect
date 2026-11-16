@@ -8,8 +8,8 @@ final class InReviewWidget: HomeWidget, ObservableObject {
 
     let configuration: HomeWidgetConfiguration
 
-    @Published private(set) var apps: [AppModel] = []
-    @Published private(set) var accountsMap: [String: AccountModel] = [:]
+    /// In Review rows, expanded per platform version.
+    @Published private(set) var entries: [DashboardEntry] = []
     @Published private(set) var isLoading: Bool = false
 
     private let storage: PersistentStorable
@@ -32,12 +32,10 @@ final class InReviewWidget: HomeWidget, ObservableObject {
                 allApps.filter { !$0.isArchived },
                 accountsMap: accounts
             )
-            let inReview = AppStatusCategorizer.inReviewEntries(active)
-            apps = inReview.sorted(by: HomeWidgetDataLoader.sortByRecency)
-            accountsMap = accounts
+            entries = DashboardEntryBuilder.appStoreInReview(active, accounts: accounts)
         } catch {
             Log.print.error("[Widget][InReview] Failed to load apps: \(error.localizedDescription)")
-            apps = []
+            entries = []
         }
     }
 
@@ -58,44 +56,18 @@ private struct InReviewWidgetView: View {
             HomeWidgetSectionHeader(
                 icon: "magnifyingglass.circle.fill",
                 title: String(localized: "In Review"),
-                count: widget.apps.count,
+                count: widget.entries.count,
                 tint: .orange
             )
 
-            if widget.apps.isEmpty {
+            if widget.entries.isEmpty {
                 HomeWidgetEmptyRow(
                     icon: "checkmark.circle",
                     text: String(localized: "No apps in review")
                 )
             } else {
-                let groups = HomeWidgetDataLoader.groupByPlatform(widget.apps)
-                let showsHeaders = groups.count > 1
-                ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
-                    if showsHeaders, let platform = group.platform {
-                        HStack(spacing: 6) {
-                            Image(systemName: platform.icon)
-                            Text(platform.displayName)
-                        }
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
-                        .padding(.top, 4)
-                    }
-
-                    // Identified by platform + version, not `AppModel.id`: rows are
-                    // per-version copies of one app, so the bare id repeats.
-                    ForEach(group.apps, id: \.statusEntryID) { app in
-                        StackTrackedButton(.widgetApp, on: .home) {
-                            coordinator.navigateToAppDetail(
-                                app,
-                                account: HomeWidgetDataLoader.account(for: app, in: widget.accountsMap)
-                            )
-                        } label: {
-                            HomeAppRowView(app: app, showsPlatform: true)
-                        }
-                        .buttonStyle(.borderless)
-                        .foregroundStyle(.primary)
-                    }
+                HomeDashboardEntryList(entries: widget.entries) { entry in
+                    coordinator.open(entry.target, accountId: entry.accountId, account: entry.account)
                 }
             }
         }

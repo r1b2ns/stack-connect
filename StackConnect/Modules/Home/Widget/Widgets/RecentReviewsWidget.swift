@@ -8,8 +8,7 @@ final class RecentReviewsWidget: HomeWidget, ObservableObject {
 
     let configuration: HomeWidgetConfiguration
 
-    @Published private(set) var reviews: [HomeRecentReview] = []
-    @Published private(set) var accountsMap: [String: AccountModel] = [:]
+    @Published private(set) var reviews: [DashboardReview] = []
     @Published private(set) var isLoading: Bool = false
 
     private let storage: PersistentStorable
@@ -33,22 +32,14 @@ final class RecentReviewsWidget: HomeWidget, ObservableObject {
                 allApps.filter { !$0.isArchived },
                 accountsMap: accounts
             )
-            let appById = Dictionary(
-                active.map { ($0.id, $0) },
-                uniquingKeysWith: { _, new in new }
-            )
             let allReviews: [CustomerReviewModel] = try await storage.fetchAll(CustomerReviewModel.self)
-            reviews = allReviews
-                .compactMap { review -> HomeRecentReview? in
-                    guard let appId = review.appId, let app = appById[appId] else { return nil }
-                    return HomeRecentReview(review: review, app: app)
-                }
-                .sorted { (a, b) in
-                    (a.review.createdDate ?? .distantPast) > (b.review.createdDate ?? .distantPast)
-                }
-                .prefix(5)
-                .map { $0 }
-            accountsMap = accounts
+            reviews = DashboardEntryBuilder.reviews(
+                allReviews,
+                appStoreApps: active,
+                googlePlaySources: [],
+                accounts: accounts,
+                limit: 5
+            )
         } catch {
             Log.print.error("[Widget][RecentReviews] Failed to load reviews: \(error.localizedDescription)")
             reviews = []
@@ -84,11 +75,7 @@ private struct RecentReviewsWidgetView: View {
             } else {
                 ForEach(Array(widget.reviews.enumerated()), id: \.element.id) { index, item in
                     StackTrackedButton(.widgetReview, on: .home) {
-                        coordinator.navigateToReviewDetail(
-                            review: item.review,
-                            appName: item.app.name,
-                            account: HomeWidgetDataLoader.account(for: item.app, in: widget.accountsMap)
-                        )
+                        coordinator.open(item)
                     } label: {
                         HomeReviewRowView(item: item)
                     }

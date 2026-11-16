@@ -70,7 +70,17 @@ struct AllReviewsView<ViewModel: AllReviewsViewModelProtocol>: View {
                             )
                         } label: {
                             HomeReviewRowView(
-                                item: HomeRecentReview(review: review, app: group.app),
+                                item: DashboardReview(
+                                    review: review,
+                                    provider: .apple,
+                                    accountId: group.app.accountId,
+                                    appId: group.app.id,
+                                    appName: group.app.name,
+                                    iconUrl: group.app.iconUrl,
+                                    platform: DashboardPlatform(raw: group.app.platform),
+                                    target: .appStore(group.app),
+                                    account: group.account
+                                ),
                                 showsApp: false
                             )
                         }

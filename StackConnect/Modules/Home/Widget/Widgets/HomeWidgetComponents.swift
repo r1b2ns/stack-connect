@@ -1,13 +1,5 @@
 import SwiftUI
 
-// MARK: - Models
-
-struct HomeRecentReview: Identifiable, Hashable {
-    let review: CustomerReviewModel
-    let app: AppModel
-    var id: String { review.id }
-}
-
 // MARK: - Shared Data Loading
 
 enum HomeWidgetDataLoader {
@@ -103,6 +95,40 @@ enum HomeWidgetDataLoader {
         return phasedByVersionId[entry.id]
     }
 
+    /// The Google Play apps the dashboard may show: every app cached for a
+    /// known Play account allowed to `resource` (`.version` for the status
+    /// widgets, `.review` for reviews), inside the account's per-app scope.
+    /// With `includesReleaseCaches` each app also carries its release
+    /// summaries and tracks caches. Never opens an edit nor hits the network.
+    static func loadGooglePlaySources(
+        storage: PersistentStorable,
+        accounts: [String: AccountModel],
+        requiring resource: AccountRuleResource,
+        includesReleaseCaches: Bool
+    ) async -> [GooglePlayDashboardSource] {
+        let playAccounts = accounts.values
+            .filter { $0.providerType == .googlePlay && $0.canView(resource) }
+            .sorted { $0.createdAt < $1.createdAt }
+        var sources: [GooglePlayDashboardSource] = []
+        for account in playAccounts {
+            let apps = ((try? await storage.fetch([GooglePlayAppItem].self, id: GooglePlayAppItem.cacheKey(accountId: account.id))) ?? nil) ?? []
+            for app in apps where account.allowsApp(bundleId: app.packageName) {
+                var summaries: GooglePlayReleaseSummariesCache?
+                var tracks: GooglePlayTracksCache?
+                if includesReleaseCaches {
+                    summaries = await GooglePlayAppCacheStore<GooglePlayReleaseSummariesCache>(
+                        storage: storage, accountId: account.id, packageName: app.packageName
+                    ).load()
+                    tracks = await GooglePlayAppCacheStore<GooglePlayTracksCache>(
+                        storage: storage, accountId: account.id, packageName: app.packageName
+                    ).load()
+                }
+                sources.append(GooglePlayDashboardSource(account: account, app: app, summaries: summaries, tracks: tracks))
+            }
+        }
+        return sources
+    }
+
     static func sortByRecency(_ a: AppModel, _ b: AppModel) -> Bool {
         switch (a.lastModifiedDate, b.lastModifiedDate) {
         case let (dateA?, dateB?): return dateA > dateB
@@ -129,25 +155,6 @@ enum HomeWidgetDataLoader {
         return AccountModel(id: app.accountId, name: "", providerType: .apple)
     }
 
-    /// Groups apps by their platform in a canonical order, keeping unknown-platform
-    /// apps in a trailing `nil` group. Order within each group is preserved.
-    static func groupByPlatform(_ apps: [AppModel]) -> [(platform: AppPlatform?, apps: [AppModel])] {
-        let order: [AppPlatform] = [.ios, .macOs, .tvOs, .visionOs]
-        var groups: [AppPlatform?: [AppModel]] = [:]
-        for app in apps {
-            let platform = app.platform.flatMap { AppPlatform(rawValue: $0) }
-            groups[platform, default: []].append(app)
-        }
-
-        var result: [(AppPlatform?, [AppModel])] = []
-        for platform in order where !(groups[platform] ?? []).isEmpty {
-            result.append((platform, groups[platform] ?? []))
-        }
-        if let unknown = groups[nil], !unknown.isEmpty {
-            result.append((nil, unknown))
-        }
-        return result
-    }
 }
 
 // MARK: - Header
@@ -197,57 +204,70 @@ struct HomeWidgetEmptyRow: View {
 
 // MARK: - App Row
 
+/// One In Review / Awaiting Release row: icon, name (with the platform glyph
+/// when the list shows no platform headers), status line and, for an awaiting
+/// release, its phased-release or staged-rollout progress.
 struct HomeAppRowView: View {
-    let app: AppModel
+    let entry: DashboardEntry
     var showsPlatform: Bool = false
-
-    private var platform: AppPlatform? {
-        app.platform.flatMap { AppPlatform(rawValue: $0) }
-    }
 
     var body: some View {
         HStack(spacing: 12) {
-            HomeAppIconView(url: app.iconUrl.flatMap { URL(string: $0) })
+            HomeAppIconView(url: entry.iconURL)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(app.name)
+                    Text(entry.name)
                         .font(.body)
                         .fontWeight(.medium)
                         .lineLimit(1)
 
-                    if showsPlatform, let platform {
-                        Image(systemName: platform.icon)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    if showsPlatform, let platform = entry.platform {
+                        StackPlatformGlyphView(platform: platform)
                     }
                 }
 
-                if let state = app.appStoreState {
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(state.color.swiftUIColor)
-                            .frame(width: 6, height: 6)
+                StackStatusLine(color: entry.statusColor.color, text: entry.statusText, detail: entry.versionText, wraps: true)
 
-                        Text(state.displayName)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.leading)
-
-                        if let version = app.versionString {
-                            Text("(\(version))")
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
+                if let progress = entry.progress {
+                    HomeDashboardProgressView(progress: progress)
+                        .padding(.top, 4)
                 }
             }
 
-            Spacer()
+            Spacer(minLength: 0)
 
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
+        }
+    }
+}
+
+/// Rows grouped by platform (App Store platforms, then Android) with a glyph
+/// header per group when there is more than one. Shared by the In Review and
+/// Awaiting Release widgets.
+struct HomeDashboardEntryList: View {
+    let entries: [DashboardEntry]
+    let onSelect: (DashboardEntry) -> Void
+
+    var body: some View {
+        let groups = DashboardEntryBuilder.groupByPlatform(entries)
+        let showsHeaders = groups.count > 1
+        ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
+            if showsHeaders, let platform = group.platform {
+                StackPlatformLabel(platform: platform)
+                    .padding(.top, 4)
+            }
+            ForEach(group.entries) { entry in
+                StackTrackedButton(.widgetApp, on: .home) {
+                    onSelect(entry)
+                } label: {
+                    HomeAppRowView(entry: entry, showsPlatform: !showsHeaders)
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.primary)
+            }
         }
     }
 }
@@ -278,34 +298,46 @@ struct HomeAppIconView: View {
     }
 }
 
-// MARK: - Phased Progress
+// MARK: - Progress
 
-struct HomePhasedProgressView: View {
-    let day: Int
-    let total: Int
-    let paused: Bool
+/// The bar under an Awaiting Release row: App Store phased release ("Day 3 of
+/// 7", orange when paused) or Google Play staged rollout (the percentage is in
+/// the status line; the caption dates the last value read, plan H3).
+struct HomeDashboardProgressView: View {
+    let progress: DashboardProgress
 
     var body: some View {
-        let progress = Double(min(day, total)) / Double(total)
         VStack(alignment: .leading, spacing: 4) {
-            ProgressView(value: progress)
-                .tint(paused ? .orange : .blue)
-            HStack(spacing: 6) {
-                if paused {
-                    Image(systemName: "pause.circle.fill")
+            ProgressView(value: progress.value)
+                .tint(progress.isPaused ? .orange : .blue)
+            switch progress {
+            case let .phased(day, total, paused):
+                HStack(spacing: 6) {
+                    if paused {
+                        Image(systemName: "pause.circle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                        Text(String(localized: "Paused"))
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.orange)
+                        Text(verbatim: "·")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    Text(String(localized: "Day \(day) of \(total)"))
                         .font(.caption2)
-                        .foregroundStyle(.orange)
-                    Text(String(localized: "Paused"))
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.orange)
-                    Text(verbatim: "·")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                 }
-                Text(String(localized: "Day \(day) of \(total)"))
+            case let .rollout(_, _, asOf):
+                if let asOf {
+                    Text(String(
+                        localized: "Rollout as of \(asOf.formatted(.dateTime.month(.abbreviated).day()))",
+                        comment: "Caption under a Google Play staged rollout bar on the Home: when the percentage was last read."
+                    ))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                }
             }
         }
     }
@@ -313,30 +345,32 @@ struct HomePhasedProgressView: View {
 
 // MARK: - Review Row
 
+/// One review: app icon, name and platform glyph with the date, stars, title,
+/// body and a "Replied" caption. Used by Recent Reviews and All Reviews (where
+/// the app is in the section header, `showsApp: false`).
 struct HomeReviewRowView: View {
-    let item: HomeRecentReview
+    let item: DashboardReview
     var showsApp: Bool = true
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
+        HStack(alignment: .top, spacing: 12) {
+            if showsApp {
+                HomeAppIconView(url: item.iconURL, size: 24)
+                    .padding(.top, 2)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
                     if showsApp {
-                        HomeAppIconView(
-                            url: item.app.iconUrl.flatMap { URL(string: $0) },
-                            size: 24
-                        )
-                        Text(item.app.name)
-                            .font(.caption)
+                        Text(item.appName)
+                            .font(.subheadline)
                             .fontWeight(.medium)
-                            .foregroundStyle(.secondary)
                             .lineLimit(1)
-                    }
-
-                    HomeStarsView(rating: item.review.rating)
-
-                    if item.review.hasResponse {
-                        HomeReviewAnsweredBadge()
+                        if let platform = item.platform {
+                            StackPlatformGlyphView(platform: platform)
+                        }
+                    } else {
+                        HomeStarsView(rating: item.review.rating)
                     }
 
                     Spacer(minLength: 0)
@@ -348,10 +382,14 @@ struct HomeReviewRowView: View {
                     }
                 }
 
+                if showsApp {
+                    HomeStarsView(rating: item.review.rating)
+                }
+
                 if let title = item.review.title, !title.isEmpty {
                     Text(title)
                         .font(.subheadline)
-                        .fontWeight(.medium)
+                        .fontWeight(.semibold)
                         .lineLimit(1)
                 }
                 if let body = item.review.body, !body.isEmpty {
@@ -361,11 +399,15 @@ struct HomeReviewRowView: View {
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                 }
+                if item.review.hasResponse {
+                    HomeReviewAnsweredBadge()
+                }
             }
 
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
+                .padding(.top, 2)
         }
         .padding(.vertical, 2)
     }
@@ -375,9 +417,9 @@ struct HomeReviewAnsweredBadge: View {
     var body: some View {
         Label(String(localized: "Replied"), systemImage: "checkmark.bubble.fill")
             .font(.caption2)
+            .fontWeight(.medium)
             .foregroundStyle(.green)
-            .labelStyle(.iconOnly)
-            .accessibilityLabel(String(localized: "Replied"))
+            .labelStyle(.titleAndIcon)
     }
 }
 
