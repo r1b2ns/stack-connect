@@ -23,7 +23,8 @@ enum GooglePlayReleaseWriteError: LocalizedError, Equatable {
 /// - On success the committed track replaces that track in the tracks cache
 ///   (`googleplay-tracks.*`) and the track's edit-free release summaries are
 ///   read again into `googleplay-releases.*`, so the app list, app detail and
-///   release detail show the new state without another Play edit.
+///   release detail show the new state without another Play edit; the
+///   WidgetKit snapshot is rewritten from them.
 /// - On failure nothing is written: both caches keep what they had.
 @MainActor
 final class GooglePlayReleaseWriter {
@@ -37,6 +38,7 @@ final class GooglePlayReleaseWriter {
     private let keychain: KeyStorable
     private let storage: PersistentStorable
     private let connectionFactory: ConnectionFactory
+    private let dashboardDidChange: @MainActor (PersistentStorable) async -> Void
     private var connection: (any GooglePlayReleaseWriteConnecting)?
 
     init(
@@ -45,7 +47,8 @@ final class GooglePlayReleaseWriter {
         featureFlags: FeatureFlags = .shared,
         keychain: KeyStorable = KeychainStorable.shared,
         storage: PersistentStorable? = nil,
-        connectionFactory: @escaping ConnectionFactory = { GooglePlayAccountConnection(credentials: $0) }
+        connectionFactory: @escaping ConnectionFactory = { GooglePlayAccountConnection(credentials: $0) },
+        dashboardDidChange: @escaping @MainActor (PersistentStorable) async -> Void = { await WidgetDashboardSnapshotWriter.write(storage: $0) }
     ) {
         self.account = account
         self.app = app
@@ -53,6 +56,7 @@ final class GooglePlayReleaseWriter {
         self.keychain = keychain
         self.storage = storage ?? SwiftDataStorable.shared
         self.connectionFactory = connectionFactory
+        self.dashboardDidChange = dashboardDidChange
     }
 
     func isAllowed(_ kind: GooglePlayReleaseWriteAccess.Kind) -> Bool {
@@ -81,6 +85,8 @@ final class GooglePlayReleaseWriter {
 
         await saveTrack(committed)
         await refreshSummaries(track: track, connection: connection)
+        // The Home widgets (and the WidgetKit snapshot) read these caches (plan H6).
+        await dashboardDidChange(storage)
         return committed
     }
 

@@ -16,7 +16,8 @@ import SwiftData
 /// | App Store Connect / Google Play | Rust core | `FakeCoreProviderFactory` |
 /// | Firebase REST APIs | URLSession + OAuth | `FakeFirebaseServer` |
 /// | App Store rating summary | iTunes Lookup | `FakeRatingSummaryFetcher` |
-/// | Widget icon cache | App Group container | private folder |
+/// | Widget icon cache | App Group container | private folder (App Group with `-StackFakeDataWidgets YES`) |
+/// | WidgetKit snapshot | App Group container | private folder (App Group with `-StackFakeDataWidgets YES`) |
 /// | `URLSession.shared` | network | `FakeNetworkURLProtocol` (fake images, everything else refused) |
 enum FakeDataBootstrap {
 
@@ -52,10 +53,19 @@ enum FakeDataBootstrap {
         // Release writes run against the in-memory Play backend (plan R6).
         FeatureFlags.sessionDefaults[.googlePlayReleaseWrites] = true
 
-        WidgetIconCache.directoryOverride = directory.appendingPathComponent("WidgetIcons", isDirectory: true)
+        if mode.feedsHomeScreenWidgets {
+            // `-StackFakeDataWidgets YES`: the WidgetKit extension can only read
+            // the App Group, so the snapshot and the icons go there (they replace
+            // the real widget snapshot until the next real sync).
+            WidgetIconCache.directoryOverride = nil
+            WidgetDashboardSnapshotStore.directoryOverride = nil
+        } else {
+            WidgetIconCache.directoryOverride = directory.appendingPathComponent("WidgetIcons", isDirectory: true)
+            WidgetDashboardSnapshotStore.directoryOverride = directory.appendingPathComponent("Widget", isDirectory: true)
+        }
         URLProtocol.registerClass(FakeNetworkURLProtocol.self)
 
-        Log.print.notice("[FakeData] Fake data mode ON (store: \(directory.path, privacy: .public), reset: \(mode.shouldReset))")
+        Log.print.notice("[FakeData] Fake data mode ON (store: \(directory.path, privacy: .public), reset: \(mode.shouldReset), home-screen widgets: \(mode.feedsHomeScreenWidgets))")
         return container
     }
 

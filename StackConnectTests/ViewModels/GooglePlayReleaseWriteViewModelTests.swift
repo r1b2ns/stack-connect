@@ -25,8 +25,11 @@ final class GooglePlayReleaseWriteViewModelTests: XCTestCase {
         name: "4.1.2", status: .completed, versionCodes: ["4122"], userFraction: nil, releaseNotes: [], inAppUpdatePriority: nil
     )
 
+    private var dashboardRefreshes = 0
+
     override func setUp() async throws {
         try await super.setUp()
+        dashboardRefreshes = 0
         storage = MockPersistentStorable()
         keychain = MockKeyStorable()
         connection = MockGooglePlayAccountConnection()
@@ -58,7 +61,8 @@ final class GooglePlayReleaseWriteViewModelTests: XCTestCase {
             featureFlags: FeatureFlags(defaults: defaults),
             keychain: keychain,
             storage: storage,
-            connectionFactory: connection.releaseWriteFactory
+            connectionFactory: connection.releaseWriteFactory,
+            dashboardDidChange: { [weak self] _ in self?.dashboardRefreshes += 1 }
         )
         return GooglePlayReleaseWriteViewModel(writer: writer)
     }
@@ -380,6 +384,7 @@ final class GooglePlayReleaseWriteViewModelTests: XCTestCase {
         XCTAssertEqual(summaries?.first { $0.track == "production" }?.lifecycleState, .notSentForReview)
         XCTAssertEqual(summaries?.first { $0.track == "internal" }?.lifecycleState, .draft, "Other tracks' summaries are kept")
         XCTAssertEqual(connection.releaseSummaryRequests.map(\.track), ["production"])
+        XCTAssertEqual(dashboardRefreshes, 1, "The WidgetKit snapshot is rewritten after a write")
     }
 
     func testFailedCommitLeavesTheCachesUntouched() async throws {
@@ -403,6 +408,7 @@ final class GooglePlayReleaseWriteViewModelTests: XCTestCase {
         XCTAssertEqual(tracks?.first?.releases, [rolling, published])
         XCTAssertEqual(summaries?.first?.lifecycleState, .inReview)
         XCTAssertTrue(connection.releaseSummaryRequests.isEmpty)
+        XCTAssertEqual(dashboardRefreshes, 0)
     }
 
     func testAFailedSummariesRefreshStillKeepsTheCommittedTrack() async throws {

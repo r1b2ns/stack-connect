@@ -13,6 +13,7 @@ All the code lives in `StackConnect/Infra/FakeData/` and is wrapped in
 |---|---|
 | `-StackFakeData YES` (launch argument) or `STACK_FAKE_DATA=1` (environment) | Run on fake data. |
 | `-StackFakeDataReset YES` or `STACK_FAKE_DATA_RESET=1` | Wipe the fake store, icon cache and preferences, then seed again. Only applies together with the switch above. |
+| `-StackFakeDataWidgets YES` or `STACK_FAKE_DATA_WIDGETS=1` | Also feed the **home-screen widgets**: the WidgetKit snapshot (`WidgetDashboard.json`) and the widget icons are written to the App Group instead of the private fake folder. Use it to capture App Store screenshots of the widgets. It replaces the real widget snapshot until the next sync with real accounts (launch without the switch to restore it). Only applies together with `-StackFakeData YES`. |
 
 The argument wins over the environment variable (`-StackFakeData NO` turns the
 mode off even when `STACK_FAKE_DATA=1` is set). Parsing lives in
@@ -44,11 +45,22 @@ screen exists, and swaps every seam:
 | `BackendEnvironment.coreProviders` (App Store Connect, Google Play) | Rust core | `FakeCoreProviderFactory` |
 | `BackendEnvironment.firebaseProviders` | URLSession + service-account OAuth | `FakeFirebaseProviderFactory` → `FakeFirebaseServer` |
 | `BackendEnvironment.ratingSummaryFetcher` | iTunes Lookup | `FakeRatingSummaryFetcher` |
-| `WidgetIconCache.directoryOverride` | App Group container | `Application Support/FakeData/WidgetIcons` |
+| `WidgetIconCache.directoryOverride` | App Group container | `Application Support/FakeData/WidgetIcons` (App Group with `-StackFakeDataWidgets YES`) |
+| `WidgetDashboardSnapshotStore.directoryOverride` (WidgetKit snapshot) | App Group container | `Application Support/FakeData/Widget` (App Group with `-StackFakeDataWidgets YES`) |
 | `URLSession.shared` | network | `FakeNetworkURLProtocol`: renders fake icons / screenshots, refuses (and logs) everything else |
 
 Real accounts, Keychain items and widget data are never read or written. The
-WidgetKit extension keeps showing the real store.
+WidgetKit extension can only read the App Group, so it keeps showing the real
+snapshot — unless the app was launched with `-StackFakeDataWidgets YES`:
+
+```bash
+xcrun simctl launch <sim-id> zeroSixteen.stackconnect -StackFakeData YES -StackFakeDataReset YES -StackFakeDataWidgets YES
+```
+
+then add the In Review, Awaiting Release and Recent Reviews widgets to the home
+screen. To look at the widget layouts without placing them, run
+`WidgetRenderingTests` with `TEST_RUNNER_STACK_RENDER_WIDGETS_DIR=<folder>`: it
+renders every widget family from the App Group snapshot into PNG files.
 
 Only the `AccountModel`s are seeded into SwiftData, plus the Google Play
 tracks cache of each Play app (as if Tracks had been opened the day before:

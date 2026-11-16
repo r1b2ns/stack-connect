@@ -1,60 +1,6 @@
 import WidgetKit
 import SwiftUI
-
-// MARK: - Row limits per family
-
-private func rowLimit(for family: WidgetFamily) -> Int {
-    switch family {
-    case .systemMedium: return 3
-    case .systemLarge:  return 6
-    default:            return 6
-    }
-}
-
-/// Review rows are taller (app name + stars + date, title and body), so fewer
-/// fit per family than the compact app rows.
-private func reviewRowLimit(for family: WidgetFamily) -> Int {
-    switch family {
-    case .systemMedium: return 2
-    case .systemLarge:  return 4
-    default:            return 4
-    }
-}
-
-/// Groups apps by platform in canonical order (unknown platform last), keeping
-/// each group's order intact.
-private func groupByPlatform(_ apps: [WidgetApp]) -> [(platform: String?, apps: [WidgetApp])] {
-    var groups: [String?: [WidgetApp]] = [:]
-    var seen: [String?] = []
-    for app in apps {
-        if groups[app.platform] == nil {
-            groups[app.platform] = []
-            seen.append(app.platform)
-        }
-        groups[app.platform]?.append(app)
-    }
-    func rank(_ platform: String?) -> Int {
-        platform.flatMap { WidgetPlatform.order.firstIndex(of: $0) } ?? Int.max
-    }
-    return seen
-        .sorted { rank($0) < rank($1) }
-        .map { ($0, groups[$0] ?? []) }
-}
-
-/// Resolves the phased release for a single awaiting-release entry from a
-/// version-id-keyed map. An expanded entry carries the app's `platformVersions`
-/// plus its own `platform`, so we find the matching version id and look it up.
-/// Falls back to the app id for single-platform apps (empty `platformVersions`).
-private func phasedRelease(
-    for entry: WidgetApp,
-    in phasedByVersionId: [String: WidgetPhasedRelease]
-) -> WidgetPhasedRelease? {
-    if let platformVersions = entry.platformVersions, !platformVersions.isEmpty {
-        let versionId = platformVersions.first { $0.platform == entry.platform }?.id
-        return versionId.flatMap { phasedByVersionId[$0] }
-    }
-    return phasedByVersionId[entry.id]
-}
+import StackCore
 
 // MARK: - In Review
 
@@ -63,63 +9,23 @@ struct InReviewWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: WidgetProvider()) { entry in
-            InReviewWidgetView(entry: entry)
-                .containerBackground(.background, for: .widget)
+            WidgetFamilyReader { family in
+                WidgetAppListView(
+                    family: family,
+                    title: String(localized: "In Review"),
+                    tint: WidgetTint.inReview,
+                    rows: entry.snapshot.dashboard.inReview,
+                    totalCount: entry.snapshot.dashboard.inReviewCount,
+                    emptyText: String(localized: "No apps in review"),
+                    snapshot: entry.snapshot
+                )
+            }
+            .widgetURL(WidgetDeepLink.home)
+            .containerBackground(.background, for: .widget)
         }
         .configurationDisplayName(String(localized: "In Review"))
-        .description(String(localized: "Apps currently in App Store review."))
+        .description(String(localized: "Apps waiting on App Store or Google Play review."))
         .supportedFamilies([.systemMedium, .systemLarge])
-    }
-}
-
-private struct InReviewWidgetView: View {
-    @Environment(\.widgetFamily) private var family
-    let entry: WidgetEntry
-
-    var body: some View {
-        let apps = Array(entry.snapshot.inReview.prefix(rowLimit(for: family)))
-        VStack(alignment: .leading, spacing: 8) {
-            WidgetSectionHeader(
-                icon: "magnifyingglass.circle.fill",
-                title: String(localized: "In Review"),
-                count: entry.snapshot.inReview.count,
-                tint: .orange
-            )
-
-            if apps.isEmpty {
-                WidgetEmptyRow(icon: "checkmark.circle", text: String(localized: "No apps in review"))
-                Spacer(minLength: 0)
-            } else {
-                let groups = groupByPlatform(apps)
-                let showsHeaders = groups.count > 1
-                ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
-                    if showsHeaders,
-                       let name = WidgetPlatform.displayName(for: group.platform),
-                       group.platform != nil {
-                        HStack(spacing: 4) {
-                            if let icon = WidgetPlatform.icon(for: group.platform) {
-                                Image(systemName: icon)
-                            }
-                            Text(name)
-                        }
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
-                    }
-
-                    ForEach(group.apps) { app in
-                        WidgetAppRow(app: app, showsPlatform: true)
-                    }
-                }
-                let remaining = entry.snapshot.inReview.count - apps.count
-                if remaining > 0 {
-                    WidgetMoreRow(remaining: remaining)
-                }
-                Spacer(minLength: 0)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .widgetURL(WidgetDeepLink.home)
     }
 }
 
@@ -130,71 +36,23 @@ struct AwaitingReleaseWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: WidgetProvider()) { entry in
-            AwaitingReleaseWidgetView(entry: entry)
-                .containerBackground(.background, for: .widget)
+            WidgetFamilyReader { family in
+                WidgetAppListView(
+                    family: family,
+                    title: String(localized: "Awaiting Release"),
+                    tint: WidgetTint.awaiting,
+                    rows: entry.snapshot.dashboard.awaitingRelease,
+                    totalCount: entry.snapshot.dashboard.awaitingReleaseCount,
+                    emptyText: String(localized: "Nothing awaiting release"),
+                    snapshot: entry.snapshot
+                )
+            }
+            .widgetURL(WidgetDeepLink.home)
+            .containerBackground(.background, for: .widget)
         }
         .configurationDisplayName(String(localized: "Awaiting Release"))
-        .description(String(localized: "Apps approved and awaiting release."))
+        .description(String(localized: "Approved releases and staged rollouts."))
         .supportedFamilies([.systemMedium, .systemLarge])
-    }
-}
-
-private struct AwaitingReleaseWidgetView: View {
-    @Environment(\.widgetFamily) private var family
-    let entry: WidgetEntry
-
-    var body: some View {
-        let apps = Array(entry.snapshot.awaitingRelease.prefix(rowLimit(for: family)))
-        VStack(alignment: .leading, spacing: 8) {
-            WidgetSectionHeader(
-                icon: "paperplane.circle.fill",
-                title: String(localized: "Awaiting Release"),
-                count: entry.snapshot.awaitingRelease.count,
-                tint: .blue
-            )
-
-            if apps.isEmpty {
-                WidgetEmptyRow(icon: "checkmark.circle", text: String(localized: "Nothing awaiting release"))
-                Spacer(minLength: 0)
-            } else {
-                let groups = groupByPlatform(apps)
-                let showsHeaders = groups.count > 1
-                ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
-                    if showsHeaders,
-                       let name = WidgetPlatform.displayName(for: group.platform),
-                       group.platform != nil {
-                        HStack(spacing: 4) {
-                            if let icon = WidgetPlatform.icon(for: group.platform) {
-                                Image(systemName: icon)
-                            }
-                            Text(name)
-                        }
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
-                    }
-
-                    ForEach(group.apps) { app in
-                        VStack(alignment: .leading, spacing: 4) {
-                            WidgetAppRow(app: app, showsPlatform: true)
-                            if let phased = phasedRelease(for: app, in: entry.snapshot.phasedByVersionId),
-                               phased.state == "ACTIVE" || phased.state == "PAUSED",
-                               let day = phased.currentDayNumber {
-                                WidgetPhasedProgress(day: day, total: 7, paused: phased.state == "PAUSED")
-                                    .padding(.leading, 38)
-                            }
-                        }
-                    }
-                }
-                let remaining = entry.snapshot.awaitingRelease.count - apps.count
-                if remaining > 0 {
-                    WidgetMoreRow(remaining: remaining)
-                }
-                Spacer(minLength: 0)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .widgetURL(WidgetDeepLink.home)
     }
 }
 
@@ -205,8 +63,11 @@ struct RecentReviewsWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: WidgetProvider()) { entry in
-            RecentReviewsWidgetView(entry: entry)
-                .containerBackground(.background, for: .widget)
+            WidgetFamilyReader { family in
+                RecentReviewsWidgetView(family: family, snapshot: entry.snapshot)
+            }
+            .widgetURL(WidgetDeepLink.reviews)
+            .containerBackground(.background, for: .widget)
         }
         .configurationDisplayName(String(localized: "Recent Reviews"))
         .description(String(localized: "Latest customer reviews across your apps."))
@@ -214,39 +75,35 @@ struct RecentReviewsWidget: Widget {
     }
 }
 
-private struct RecentReviewsWidgetView: View {
+/// Hands the environment's widget family to views that take it as a value (so
+/// they can also be rendered outside WidgetKit).
+private struct WidgetFamilyReader<Content: View>: View {
     @Environment(\.widgetFamily) private var family
-    let entry: WidgetEntry
+    @ViewBuilder var content: (WidgetFamily) -> Content
 
     var body: some View {
-        let reviews = Array(entry.snapshot.recentReviews.prefix(reviewRowLimit(for: family)))
-        VStack(alignment: .leading, spacing: 8) {
-            WidgetSectionHeader(
-                icon: "star.bubble.fill",
-                title: String(localized: "Recent Reviews"),
-                count: entry.snapshot.recentReviews.count,
-                tint: .yellow
-            )
-
-            if reviews.isEmpty {
-                WidgetEmptyRow(
-                    icon: "clock.arrow.circlepath",
-                    text: String(localized: "Reviews will appear after the next sync")
-                )
-                Spacer(minLength: 0)
-            } else {
-                ForEach(Array(reviews.enumerated()), id: \.element.id) { index, item in
-                    WidgetReviewRow(item: item)
-                    if index < reviews.count - 1 {
-                        Divider()
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .widgetURL(WidgetDeepLink.reviews)
+        content(family)
     }
+}
+
+// MARK: - Previews
+
+#Preview("In Review", as: .systemMedium) {
+    InReviewWidget()
+} timeline: {
+    WidgetEntry(date: .now, snapshot: .preview)
+}
+
+#Preview("Awaiting Release", as: .systemLarge) {
+    AwaitingReleaseWidget()
+} timeline: {
+    WidgetEntry(date: .now, snapshot: .preview)
+}
+
+#Preview("Recent Reviews", as: .systemMedium) {
+    RecentReviewsWidget()
+} timeline: {
+    WidgetEntry(date: .now, snapshot: .preview)
 }
 
 // MARK: - Bundle

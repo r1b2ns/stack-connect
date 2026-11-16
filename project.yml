@@ -230,6 +230,10 @@ targets:
 
     sources:
       - path: StackConnectTests
+      # The widget extension's layouts and snapshot loader, compiled into the
+      # tests so WidgetRenderingTests can render the home-screen widgets.
+      - path: StackConnectWidget/Views
+      - path: StackConnectWidget/Data
 
     info:
       path: StackConnectTests/Info.plist

@@ -58,4 +58,11 @@ final class FakeDataModeTests: XCTestCase {
         XCTAssertTrue(BackendEnvironment.coreProviders is RustCoreProviderFactory)
         XCTAssertTrue(BackendEnvironment.firebaseProviders is LiveFirebaseProviderFactory)
     }
+
+    func testHomeScreenWidgetsSwitchNeedsTheMode() {
+        XCTAssertTrue(FakeDataMode(arguments: ["-StackFakeData", "YES", "-StackFakeDataWidgets", "YES"], environment: [:]).feedsHomeScreenWidgets)
+        XCTAssertTrue(FakeDataMode(arguments: ["-StackFakeData", "YES"], environment: ["STACK_FAKE_DATA_WIDGETS": "1"]).feedsHomeScreenWidgets)
+        XCTAssertFalse(FakeDataMode(arguments: ["-StackFakeData", "YES"], environment: [:]).feedsHomeScreenWidgets)
+        XCTAssertFalse(FakeDataMode(arguments: ["-StackFakeDataWidgets", "YES"], environment: [:]).feedsHomeScreenWidgets)
+    }
 }

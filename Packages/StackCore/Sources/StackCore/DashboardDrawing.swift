@@ -95,6 +95,16 @@ public enum DashboardProgress: Codable, Hashable, Sendable {
         }
     }
 
+    /// Bar color (prototype `.prog`): teal for an App Store phased release,
+    /// blue for a Play staged rollout, orange when paused or halted.
+    public var barColor: Color {
+        if isPaused { return .orange }
+        switch self {
+        case .phased:  return .teal
+        case .rollout: return .blue
+        }
+    }
+
     /// Paused phased release or halted rollout.
     public var isPaused: Bool {
         switch self {

@@ -1,29 +1,38 @@
 import SwiftUI
 import UIKit
+import StackCore
 
-// MARK: - Section Header
+// Home-screen widget pieces (prototype screen 20). Rows come ready to draw from
+// the app's dashboard snapshot; these views only lay them out.
 
-struct WidgetSectionHeader: View {
-    let icon: String
+// MARK: - Header
+
+/// Tinted title on the left, "3 apps" (or a trailing view) on the right.
+struct WidgetSectionHeader<Trailing: View>: View {
     let title: String
-    let count: Int
-    var tint: Color = .primary
+    let tint: Color
+    @ViewBuilder var trailing: Trailing
 
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.subheadline)
-                .foregroundStyle(tint)
+        HStack(alignment: .firstTextBaseline) {
             Text(title)
-                .font(.subheadline)
+                .font(.footnote)
                 .fontWeight(.semibold)
-            if count > 0 {
-                Text("(\(count))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
+                .foregroundStyle(tint)
+            Spacer(minLength: 4)
+            trailing
         }
+    }
+}
+
+extension WidgetSectionHeader where Trailing == Text {
+    /// Header with the full list count ("3 apps").
+    init(title: String, tint: Color, count: Int) {
+        self.title = title
+        self.tint = tint
+        self.trailing = Text(String(localized: "\(count) apps", comment: "Home-screen widget header: number of apps in the list."))
+            .font(.caption2)
+            .foregroundStyle(.secondary)
     }
 }
 
@@ -45,11 +54,10 @@ struct WidgetEmptyRow: View {
     }
 }
 
-// MARK: - App Icon Placeholder
-//
-// Widgets cannot load remote images at render time, so we show a tinted glyph.
-// Icon-data preloading can be added later for a richer look.
+// MARK: - App Icon
 
+/// Cached icon bytes from the App Group (WidgetKit can't load remote images at
+/// render time), or a gray placeholder.
 struct WidgetAppIcon: View {
     var data: Data?
     var size: CGFloat = 28
@@ -77,53 +85,128 @@ struct WidgetAppIcon: View {
     }
 }
 
+// MARK: - Platform Glyph
+
+/// The Apple logo (or device symbol) in gray, the Android robot head in green
+/// (prototype `.pi`), never the platform name as text.
+struct WidgetPlatformGlyph: View {
+    let platform: DashboardPlatform
+
+    static let androidGreen = Color(red: 0.10, green: 0.50, blue: 0.22)
+
+    var body: some View {
+        Group {
+            if let symbol = platform.systemImage {
+                Image(systemName: symbol)
+                    .foregroundStyle(.secondary)
+            } else {
+                Image("AndroidGlyph")
+                    .renderingMode(.template)
+                    .foregroundStyle(Self.androidGreen)
+            }
+        }
+        .font(.caption2)
+        .accessibilityLabel(platform.displayName)
+    }
+}
+
+// MARK: - Status Line
+
+struct WidgetStatusLine: View {
+    let color: Color
+    let text: String
+    var detail: String?
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(color)
+                .frame(width: 5, height: 5)
+            Text(text)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            if let detail {
+                Text("(\(detail))")
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+            }
+        }
+        .font(.caption2)
+    }
+}
+
 // MARK: - App Row
 
 struct WidgetAppRow: View {
-    let app: WidgetApp
-    var showsPlatform: Bool = false
+    let row: WidgetDashboardRow
+    let iconData: Data?
+    var iconSize: CGFloat = 28
 
     var body: some View {
         HStack(spacing: 10) {
-            WidgetAppIcon(data: app.iconData, size: 28)
+            WidgetAppIcon(data: iconData, size: iconSize)
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
-                    Text(app.name)
+                    Text(row.name)
                         .font(.caption)
                         .fontWeight(.medium)
                         .lineLimit(1)
-
-                    if showsPlatform, let icon = WidgetPlatform.icon(for: app.platform) {
-                        Image(systemName: icon)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                    if let platform = row.platform {
+                        WidgetPlatformGlyph(platform: platform)
                     }
                 }
-
-                if let state = app.appStoreState {
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(WidgetAppStatus.color(for: state))
-                            .frame(width: 5, height: 5)
-                        if let name = WidgetAppStatus.displayName(for: state) {
-                            Text(name)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                        if let version = app.versionString {
-                            Text("(\(version))")
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                                .lineLimit(1)
-                        }
-                    }
+                WidgetStatusLine(color: row.statusColor.color, text: row.statusText, detail: row.versionText)
+                if let progress = row.progress {
+                    WidgetProgress(progress: progress)
+                        .padding(.top, 2)
                 }
             }
 
             Spacer(minLength: 0)
         }
+    }
+}
+
+// MARK: - Progress
+
+/// Phased release (day x of 7) or staged rollout (the percentage is in the
+/// status line).
+struct WidgetProgress: View {
+    let progress: DashboardProgress
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            WidgetProgressBar(value: progress.value, color: progress.barColor)
+            if case let .phased(day, total, paused) = progress {
+                HStack(spacing: 4) {
+                    if paused {
+                        Image(systemName: "pause.circle.fill")
+                            .foregroundStyle(.orange)
+                    }
+                    Text(String(localized: "Day \(day) of \(total)"))
+                        .foregroundStyle(.secondary)
+                }
+                .font(.caption2)
+            }
+        }
+    }
+}
+
+/// A 4 pt rounded bar on a gray track (prototype `.prog`).
+struct WidgetProgressBar: View {
+    let value: Double
+    let color: Color
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.gray.opacity(0.2))
+                Capsule().fill(color).frame(width: proxy.size.width * min(max(value, 0), 1))
+            }
+        }
+        .frame(height: 4)
+        .accessibilityValue(value.formatted(.percent.precision(.fractionLength(0))))
     }
 }
 
@@ -145,29 +228,16 @@ struct WidgetMoreRow: View {
     }
 }
 
-// MARK: - Phased Progress
+// MARK: - Updated
 
-struct WidgetPhasedProgress: View {
-    let day: Int
-    let total: Int
-    let paused: Bool
+struct WidgetUpdatedFooter: View {
+    let date: Date
 
     var body: some View {
-        let progress = Double(min(day, total)) / Double(total)
-        VStack(alignment: .leading, spacing: 2) {
-            ProgressView(value: progress)
-                .tint(paused ? .orange : .blue)
-            HStack(spacing: 4) {
-                if paused {
-                    Image(systemName: "pause.circle.fill")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                }
-                Text(String(localized: "Day \(day) of \(total)"))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
+        Text(String(localized: "Updated \(date.formatted(date: .omitted, time: .shortened))",
+                    comment: "Home-screen widget footer: when the app last refreshed the data."))
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
     }
 }
 
@@ -180,56 +250,66 @@ struct WidgetStars: View {
         HStack(spacing: 1) {
             ForEach(0..<5, id: \.self) { index in
                 Image(systemName: index < rating ? "star.fill" : "star")
-                    .font(.caption2)
+                    .font(.system(size: 9))
                     .foregroundStyle(.yellow)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "\(rating) out of 5 stars"))
     }
 }
 
 // MARK: - Review Row
 
 struct WidgetReviewRow: View {
-    let item: WidgetReviewItem
+    let review: WidgetDashboardReview
+    let iconData: Data?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 6) {
-                WidgetAppIcon(data: item.app.iconData, size: 18)
-                Text(item.app.name)
-                    .font(.caption2)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+        HStack(alignment: .top, spacing: 10) {
+            WidgetAppIcon(data: iconData, size: 24)
 
-                WidgetStars(rating: item.review.rating)
-
-                if item.review.hasResponse {
-                    Image(systemName: "checkmark.bubble.fill")
-                        .font(.caption2)
-                        .foregroundStyle(.green)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Text(review.appName)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+                    if let platform = review.platform {
+                        WidgetPlatformGlyph(platform: platform)
+                    }
+                    if review.hasResponse {
+                        Image(systemName: "checkmark.bubble.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.green)
+                    }
+                    Spacer(minLength: 4)
+                    WidgetStars(rating: review.rating)
                 }
 
-                Spacer(minLength: 0)
-
-                if let date = item.review.createdDate {
-                    Text(date, style: .relative)
+                if let text = review.title.flatMap({ $0.isEmpty ? nil : $0 }) ?? review.body {
+                    Text(text)
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
             }
+        }
+    }
+}
 
-            if let title = item.review.title, !title.isEmpty {
-                Text(title)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .lineLimit(1)
-            } else if let body = item.review.body, !body.isEmpty {
-                Text(body)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+/// Opens `url` when tapped, or does nothing without one.
+struct WidgetRowLink<Content: View>: View {
+    let url: String?
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        // Explicit primary style: a link would otherwise tint its label.
+        if let url = url.flatMap(URL.init(string:)) {
+            Link(destination: url) { content.foregroundStyle(.primary) }
+                .tint(.primary)
+        } else {
+            content
         }
     }
 }

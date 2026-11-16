@@ -307,7 +307,7 @@ struct HomeDashboardProgressView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             ProgressView(value: progress.value)
-                .tint(progress.isPaused ? .orange : .blue)
+                .tint(progress.barColor)
             switch progress {
             case let .phased(day, total, paused):
                 HStack(spacing: 6) {

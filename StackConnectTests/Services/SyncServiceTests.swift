@@ -11,12 +11,14 @@ final class SyncServiceTests: XCTestCase {
     private var mockKeychain: MockKeyStorable!
     private var connections: [String: MockAppleAccountSyncing] = [:]
     private var playConnection: MockGooglePlayAccountConnection!
+    private var snapshotWrites = 0
 
     override func setUp() async throws {
         try await super.setUp()
         mockStorage = MockPersistentStorable()
         mockKeychain = MockKeyStorable()
         connections = [:]
+        snapshotWrites = 0
         let playConnection = MockGooglePlayAccountConnection()
         self.playConnection = playConnection
         sut = StackConnect.SyncService(
@@ -25,7 +27,8 @@ final class SyncServiceTests: XCTestCase {
             appleConnectionFactory: { [weak self] credentials in
                 self?.connections[credentials.issuerID] ?? MockAppleAccountSyncing()
             },
-            googlePlayConnectionFactory: playConnection.syncFactory
+            googlePlayConnectionFactory: playConnection.syncFactory,
+            widgetSnapshotWriter: { [weak self] _ in self?.snapshotWrites += 1 }
         )
     }
 
@@ -130,6 +133,15 @@ final class SyncServiceTests: XCTestCase {
         XCTAssertNotNil(playMetadata?.lastError)
         XCTAssertNil(appleMetadata?.lastError)
         XCTAssertEqual(appleMetadata?.appsSynced, 1)
+    }
+
+    func testEverySyncRewritesTheWidgetSnapshot() async throws {
+        await sut.syncAll().value
+        let apple = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(apple, id: apple.id)
+        await sut.syncAll().value
+
+        XCTAssertEqual(snapshotWrites, 2)
     }
 
     func testInProgressCountsArePerProvider() {

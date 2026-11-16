@@ -50,6 +50,8 @@ final class SyncService: ObservableObject {
 
     typealias AppleConnectionFactory = (AppleCredentials) -> any AppleAccountSyncing
     typealias GooglePlayConnectionFactory = (GooglePlayCredentials) -> any GooglePlaySyncConnecting
+    /// Rewrites the WidgetKit snapshot and reloads the timelines (plan H6).
+    typealias WidgetSnapshotWriting = @MainActor (PersistentStorable) async -> Void
 
     static let shared = SyncService()
 
@@ -59,18 +61,21 @@ final class SyncService: ObservableObject {
     private let keychain: KeyStorable
     private let appleConnectionFactory: AppleConnectionFactory
     private let googlePlayConnectionFactory: GooglePlayConnectionFactory
+    private let widgetSnapshotWriter: WidgetSnapshotWriting
     private var rootTask: Task<Void, Never>?
 
     init(
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
         appleConnectionFactory: AppleConnectionFactory? = nil,
-        googlePlayConnectionFactory: GooglePlayConnectionFactory? = nil
+        googlePlayConnectionFactory: GooglePlayConnectionFactory? = nil,
+        widgetSnapshotWriter: WidgetSnapshotWriting? = nil
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
         self.appleConnectionFactory = appleConnectionFactory ?? { AppleAccountConnection(credentials: $0) }
         self.googlePlayConnectionFactory = googlePlayConnectionFactory ?? { GooglePlayAccountConnection(credentials: $0) }
+        self.widgetSnapshotWriter = widgetSnapshotWriter ?? { await WidgetDashboardSnapshotWriter.write(storage: $0) }
     }
 
     /// One account of a sync run with the connection built for it (`nil` when
@@ -123,7 +128,7 @@ final class SyncService: ObservableObject {
         guard !accounts.isEmpty else {
             state.isSyncing = false
             state.lastSyncedAt = .now
-            WidgetCenter.shared.reloadAllTimelines()
+            await widgetSnapshotWriter(storage)
             return
         }
 
@@ -183,7 +188,7 @@ final class SyncService: ObservableObject {
         state.lastSyncedAt = .now
         state.isSyncing = false
         await preloadWidgetIcons()
-        WidgetCenter.shared.reloadAllTimelines()
+        await widgetSnapshotWriter(storage)
 
         // "Fake push": surface status changes and new reviews as local
         // notifications, but only for background (lightweight) syncs — in the

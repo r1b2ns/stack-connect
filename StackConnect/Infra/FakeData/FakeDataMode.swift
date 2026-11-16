@@ -8,6 +8,10 @@ import Foundation
 ///   on invented data: no network, no Keychain, no App Group store.
 /// - `-StackFakeDataReset YES` or `STACK_FAKE_DATA_RESET=1` wipes the fake store
 ///   and seeds it again. It only has an effect together with the mode itself.
+/// - `-StackFakeDataWidgets YES` or `STACK_FAKE_DATA_WIDGETS=1` also writes the
+///   WidgetKit snapshot and the widget icons into the App Group, so the
+///   home-screen widgets show the fake data (App Store screenshots). Without it
+///   they stay on the real data. Only with the mode itself.
 ///
 /// The scheme "StackConnect Fake Data" (project.yml) pre-fills both arguments so
 /// they can be toggled in Xcode's scheme editor. See `docs/FAKE_DATA.md`.
@@ -17,6 +21,8 @@ struct FakeDataMode: Equatable, Sendable {
     static let resetArgumentKey = "StackFakeDataReset"
     static let environmentKey = "STACK_FAKE_DATA"
     static let resetEnvironmentKey = "STACK_FAKE_DATA_RESET"
+    static let widgetsArgumentKey = "StackFakeDataWidgets"
+    static let widgetsEnvironmentKey = "STACK_FAKE_DATA_WIDGETS"
 
     /// Run on fake data.
     let isEnabled: Bool
@@ -24,15 +30,20 @@ struct FakeDataMode: Equatable, Sendable {
     /// Wipe the fake store and seed it again (only meaningful when enabled).
     let shouldReset: Bool
 
+    /// Feed the home-screen widgets (App Group) with the fake data (only
+    /// meaningful when enabled).
+    let feedsHomeScreenWidgets: Bool
+
     /// The switches this process was launched with.
     static let current = FakeDataMode(
         arguments: ProcessInfo.processInfo.arguments,
         environment: ProcessInfo.processInfo.environment
     )
 
-    init(isEnabled: Bool, shouldReset: Bool) {
+    init(isEnabled: Bool, shouldReset: Bool, feedsHomeScreenWidgets: Bool = false) {
         self.isEnabled = isEnabled
         self.shouldReset = isEnabled && shouldReset
+        self.feedsHomeScreenWidgets = isEnabled && feedsHomeScreenWidgets
     }
 
     /// Parses the launch arguments (`-Key value`, the `UserDefaults` argument
@@ -45,7 +56,10 @@ struct FakeDataMode: Equatable, Sendable {
         let reset = Self.flag(Self.resetArgumentKey, in: arguments)
             ?? Self.truthy(environment[Self.resetEnvironmentKey])
             ?? false
-        self.init(isEnabled: enabled, shouldReset: reset)
+        let widgets = Self.flag(Self.widgetsArgumentKey, in: arguments)
+            ?? Self.truthy(environment[Self.widgetsEnvironmentKey])
+            ?? false
+        self.init(isEnabled: enabled, shouldReset: reset, feedsHomeScreenWidgets: widgets)
     }
 
     // MARK: - Parsing
