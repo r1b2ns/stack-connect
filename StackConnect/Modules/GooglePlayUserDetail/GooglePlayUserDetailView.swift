@@ -54,6 +54,9 @@ struct GooglePlayUserDetailView<ViewModel: GooglePlayUserDetailViewModelProtocol
                 viewModel.uiState.draftExpiration = expiration
             }
         }
+        .sheet(item: $viewModel.uiState.grantEditor) { request in
+            buildAppPermissionsSheet(request)
+        }
         .toast(message: $viewModel.uiState.toastMessage)
         .alert(
             user.accessState.isPendingInvitation ? String(localized: "Cancel Invitation") : String(localized: "Remove User"),
@@ -108,6 +111,27 @@ struct GooglePlayUserDetailView<ViewModel: GooglePlayUserDetailViewModelProtocol
         } message: { message in
             Text(message)
         }
+    }
+
+    // MARK: - App Permissions sheet (plan U7)
+
+    private func buildAppPermissionsSheet(_ request: GooglePlayGrantEditorRequest) -> some View {
+        let grant = request.packageName.flatMap { user.grant(for: $0) }
+        return GooglePlayAppPermissionsSheet(
+            form: GooglePlayGrantForm(
+                packageName: request.packageName,
+                values: request.permissions,
+                accountValues: user.developerAccountPermissions
+            ),
+            apps: state.availableAppsForNewGrant,
+            editedApp: request.packageName.flatMap { state.app(for: $0) },
+            onSave: { packageName, values in
+                await viewModel.saveGrant(packageName: packageName, permissions: values)
+            },
+            onRemove: grant.map { grant in
+                { await viewModel.removeGrant(grant) }
+            }
+        )
     }
 
     // MARK: - Toolbar
