@@ -8,10 +8,19 @@ final class AwaitingReleaseWidget: HomeWidget, ObservableObject {
 
     let configuration: HomeWidgetConfiguration
 
-    /// Awaiting-release rows, expanded per platform version (an app phasing on
-    /// both iOS and tvOS yields two rows), each with its progress.
+    /// Awaiting-release rows of both stores, each with its progress: App Store
+    /// versions expanded per platform (an app phasing on both iOS and tvOS
+    /// yields two rows), then Google Play approved releases and staged rollouts.
     @Published private(set) var entries: [DashboardEntry] = []
     @Published private(set) var isLoading: Bool = false
+
+    /// A Play rollout percentage is shown: say how fresh it is (plan H3).
+    var showsRolloutFootnote: Bool {
+        entries.contains {
+            if case .rollout = $0.progress { return true }
+            return false
+        }
+    }
 
     private let storage: PersistentStorable
 
@@ -34,7 +43,13 @@ final class AwaitingReleaseWidget: HomeWidget, ObservableObject {
                 accountsMap: accounts
             )
             let phased = await HomeWidgetDataLoader.loadPhasedReleases(for: active, storage: storage)
-            entries = DashboardEntryBuilder.appStoreAwaitingRelease(active, phasedByVersionId: phased, accounts: accounts)
+            let googlePlay = await HomeWidgetDataLoader.loadGooglePlaySources(
+                storage: storage, accounts: accounts, requiring: .version, includesReleaseCaches: true
+            )
+            entries = DashboardEntryBuilder.merged(
+                appStore: DashboardEntryBuilder.appStoreAwaitingRelease(active, phasedByVersionId: phased, accounts: accounts),
+                googlePlay: DashboardEntryBuilder.googlePlayAwaitingRelease(googlePlay)
+            )
         } catch {
             Log.print.error("[Widget][AwaitingRelease] Failed to load apps: \(error.localizedDescription)")
             entries = []
@@ -70,6 +85,12 @@ private struct AwaitingReleaseWidgetView: View {
             } else {
                 HomeDashboardEntryList(entries: widget.entries) { entry in
                     coordinator.open(entry.target, accountId: entry.accountId, account: entry.account)
+                }
+                if widget.showsRolloutFootnote {
+                    HomeWidgetFootnote(text: String(
+                        localized: "The Android rollout percentage is the last value read in the app; background sync can't read it without opening a Play edit.",
+                        comment: "Home Awaiting Release footnote under Google Play staged rollout rows."
+                    ))
                 }
             }
         }

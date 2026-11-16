@@ -665,6 +665,172 @@
         }
       }
     },
+    "Approved releases and staged rollouts" : {
+      "comment" : "Customize Widgets: summary of the Awaiting Release widget (App Store and Google Play).",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freigegebene Releases und gestaffelte Einführungen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versiones aprobadas y lanzamientos graduales"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versiones aprobadas y lanzamientos graduales"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versions approuvées et déploiements progressifs"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Release approvate e rollout graduali"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "承認済みのリリースと段階的な公開"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "승인된 출시 및 단계적 출시"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Goedgekeurde releases en gefaseerde uitrol"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versões aprovadas e lançamentos graduais"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versões aprovadas e lançamentos graduais"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Одобренные выпуски и поэтапные развертывания"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Godkända versioner och stegvisa lanseringar"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已核准的版本與分階段發布"
+          }
+        }
+      }
+    },
+    "Apps waiting on review" : {
+      "comment" : "Customize Widgets: summary of the In Review widget (App Store and Google Play).",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apps, die auf die Prüfung warten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apps en espera de revisión"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apps en espera de revisión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apps en attente de vérification"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App in attesa di revisione"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "審査待ちのアプリ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "심사 대기 중인 앱"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apps die wachten op beoordeling"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apps aguardando revisão"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apps a aguardar revisão"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложения, ожидающие проверки"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appar som väntar på granskning"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "等待審查的 App"
+          }
+        }
+      }
+    },
     "Closed testing" : {
       "comment" : "Google Play track name (the 'alpha' track), as Play Console shows it.",
       "localizations" : {
@@ -1574,6 +1740,89 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Google Play 找不到使用此套件名稱的 App。請在 Play Console 中確認後再試一次。"
+          }
+        }
+      }
+    },
+    "Google Play only shares reviews with a comment from the last 7 days." : {
+      "comment" : "Home Recent Reviews footnote when Google Play reviews are listed.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play gibt nur Rezensionen mit Kommentar aus den letzten 7 Tagen weiter."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play solo comparte reseñas con comentario de los últimos 7 días."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play solo comparte reseñas con comentario de los últimos 7 días."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play ne partage que les avis avec commentaire des 7 derniers jours."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play condivide solo le recensioni con un commento degli ultimi 7 giorni."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play が共有するのは、過去 7 日間のコメント付きレビューのみです。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play는 최근 7일 이내의 댓글이 있는 리뷰만 공유합니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play deelt alleen recensies met een opmerking van de afgelopen 7 dagen."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Google Play só compartilha avaliações com comentário dos últimos 7 dias."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Google Play só partilha avaliações com comentário dos últimos 7 dias."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play передает только отзывы с комментарием за последние 7 дней."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play delar bara recensioner med en kommentar från de senaste 7 dagarna."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play 只會分享過去 7 天內附有評論的評價。"
           }
         }
       }
@@ -4894,6 +5143,89 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在同步發布管道..."
+          }
+        }
+      }
+    },
+    "The Android rollout percentage is the last value read in the app; background sync can't read it without opening a Play edit." : {
+      "comment" : "Home Awaiting Release footnote under Google Play staged rollout rows.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Android-Einführungsanteil ist der zuletzt in der App gelesene Wert; die Hintergrundsynchronisierung kann ihn nicht lesen, ohne eine Play-Bearbeitung zu öffnen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El porcentaje de lanzamiento de Android es el último valor leído en la app; la sincronización en segundo plano no puede leerlo sin abrir una edición de Play."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El porcentaje de lanzamiento de Android es el último valor leído en la app; la sincronización en segundo plano no puede leerlo sin abrir una edición de Play."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le pourcentage de déploiement Android est la dernière valeur lue dans l'app ; la synchronisation en arrière-plan ne peut pas le lire sans ouvrir une modification Play."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La percentuale di rollout Android è l'ultimo valore letto nell'app; la sincronizzazione in background non può leggerla senza aprire una modifica di Play."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Android の公開率はアプリで最後に読み込んだ値です。バックグラウンド同期では Play の編集を開かずに読み込むことはできません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Android 출시 비율은 앱에서 마지막으로 읽은 값입니다. 백그라운드 동기화는 Play 편집을 열지 않고는 이 값을 읽을 수 없습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het Android-uitrolpercentage is de laatst in de app gelezen waarde; achtergrondsynchronisatie kan het niet lezen zonder een Play-bewerking te openen."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A porcentagem de lançamento do Android é o último valor lido no app; a sincronização em segundo plano não consegue lê-la sem abrir uma edição do Play."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A percentagem de lançamento do Android é o último valor lido na app; a sincronização em segundo plano não a consegue ler sem abrir uma edição do Play."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Процент развертывания Android — последнее значение, прочитанное в приложении; фоновая синхронизация не может прочитать его, не открыв правку Play."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Androids lanseringsandel är det senaste värdet som lästes i appen; bakgrundssynkroniseringen kan inte läsa den utan att öppna en Play-redigering."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Android 發布百分比是 App 中最後讀取的值；背景同步必須開啟 Play 編輯才能讀取。"
           }
         }
       }

@@ -50,10 +50,13 @@ screen exists, and swaps every seam:
 Real accounts, Keychain items and widget data are never read or written. The
 WidgetKit extension keeps showing the real store.
 
-Only the `AccountModel`s are seeded into SwiftData. Apps, versions, phased
-releases, reviews and every per-screen cache are filled by the app's own sync
-paths from the fake providers (Home sync and widgets included), exactly like
-with real accounts. Writes (replies, version edits, submissions, TestFlight,
+Only the `AccountModel`s are seeded into SwiftData, plus the Google Play
+tracks cache of each Play app (as if Tracks had been opened the day before:
+only an edit-based read fills it, so the background sync never does, and the
+Home needs it to draw the staged rollout percentages). Apps, versions, phased
+releases, reviews (both stores) and every other per-screen cache are filled by
+the app's own sync paths from the fake providers (Home sync and widgets
+included), exactly like with real accounts. Writes (replies, version edits, submissions, TestFlight,
 users, provisioning, Remote Config publish, Firebase app edits…) succeed
 against the in-memory backends and show up on the next read; they last until
 the app quits. Dates are relative to the launch time, so the data stays fresh.
@@ -104,7 +107,7 @@ apps (sending a message succeeds).
 
 | App | Package | Tracks (release lifecycle state from `releases.list`) |
 |---|---|---|
-| Trailhead | `com.northwind.trailhead` | production 4.2.0 rolling out 20%, **in review** (+ 4.1.2 completed), open testing 4.3.0-beta2, internal 4.3.0 (4305) **draft** + 4.3.0 (4303) |
+| Trailhead | `com.northwind.trailhead` | production 4.2.0 rolling out 20% (+ 4.1.2 completed), open testing 4.3.0-beta2 **in review**, internal 4.3.0 (4305) **draft** + 4.3.0 (4303) |
 | Ledger Pocket | `com.northwind.ledger` | production 2.8.1 **approved, not published** (managed publishing) + 2.7.0 **halted** at 10% + 2.6.3, closed testing, internal |
 | Mosaic Notes | `com.northwind.mosaic` | production 5.2.0 **not approved** (+ 5.1.0 published), open testing 5.2.0 draft, internal |
 | Harbor Transit | `com.northwind.harbor` | production 1.9.0 published, custom track `city-partners` (US + CA only), internal 2.0.0 **not sent for review** |

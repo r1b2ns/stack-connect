@@ -8,7 +8,8 @@ final class InReviewWidget: HomeWidget, ObservableObject {
 
     let configuration: HomeWidgetConfiguration
 
-    /// In Review rows, expanded per platform version.
+    /// In Review rows of both stores: App Store versions expanded per platform,
+    /// then Google Play releases in review, not approved or not sent (plan H3).
     @Published private(set) var entries: [DashboardEntry] = []
     @Published private(set) var isLoading: Bool = false
 
@@ -32,7 +33,13 @@ final class InReviewWidget: HomeWidget, ObservableObject {
                 allApps.filter { !$0.isArchived },
                 accountsMap: accounts
             )
-            entries = DashboardEntryBuilder.appStoreInReview(active, accounts: accounts)
+            let googlePlay = await HomeWidgetDataLoader.loadGooglePlaySources(
+                storage: storage, accounts: accounts, requiring: .version, includesReleaseCaches: true
+            )
+            entries = DashboardEntryBuilder.merged(
+                appStore: DashboardEntryBuilder.appStoreInReview(active, accounts: accounts),
+                googlePlay: DashboardEntryBuilder.googlePlayInReview(googlePlay)
+            )
         } catch {
             Log.print.error("[Widget][InReview] Failed to load apps: \(error.localizedDescription)")
             entries = []

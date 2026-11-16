@@ -7,11 +7,14 @@ import SwiftData
 ///
 /// Only the `AccountModel`s are written to the fake SwiftData store; apps,
 /// versions, reviews, caches… are filled by the app's own sync paths from the
-/// fake providers, exactly as with real accounts.
+/// fake providers, exactly as with real accounts. One exception: the Google
+/// Play tracks cache, which only an edit-based read fills (the user opening
+/// Tracks), is seeded as if Tracks had been opened yesterday, so the Home shows
+/// the staged rollout percentages (plan H3).
 enum FakeDataSeeder {
 
     /// Bump to re-seed existing fake stores after the seeded accounts change.
-    static let seedVersion = "v1"
+    static let seedVersion = "v2"
     static let markerTypeName = "FakeDataSeedMarker"
 
     enum AccountID {
@@ -50,9 +53,25 @@ enum FakeDataSeeder {
             context.insert(PersistedItem(typeName: String(describing: AccountModel.self), identifier: account.id,
                                          payload: try encoder.encode(account)))
         }
+        for cache in googlePlayTracksCaches(clock: clock) {
+            context.insert(PersistedItem(typeName: String(describing: GooglePlayTracksCache.self), identifier: cache.cacheKey,
+                                         payload: try encoder.encode(cache)))
+        }
         context.insert(PersistedItem(typeName: markerTypeName, identifier: seedVersion, payload: Data()))
         try context.save()
         Log.print.notice("[FakeData] Seeded \(accounts(clock: clock).count) fake accounts")
+    }
+
+    /// The tracks of every fake Play app, read "yesterday".
+    static func googlePlayTracksCaches(clock: FakeClock) -> [GooglePlayTracksCache] {
+        FakeGooglePlayCatalog.apps.map { app in
+            GooglePlayTracksCache(
+                accountId: AccountID.northwindGooglePlay,
+                packageName: app.packageName,
+                tracks: app.tracks.map(GooglePlayAccountConnection.mapTrack),
+                fetchedAt: clock.date(daysAgo: 1)
+            )
+        }
     }
 
     // MARK: - Credentials

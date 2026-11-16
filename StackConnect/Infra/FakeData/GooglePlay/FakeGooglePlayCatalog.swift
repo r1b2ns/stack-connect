@@ -182,7 +182,7 @@ enum FakeGooglePlayCatalog {
                                  inAppUpdatePriority: nil, countryTargeting: nil)
             ])
         ],
-        lifecycles: ["4210": "RELEASE_LIFECYCLE_STATE_IN_REVIEW"],
+        lifecycles: ["4302": "RELEASE_LIFECYCLE_STATE_IN_REVIEW"],
         unreleasedBundles: ["4306"],
         reviews: [
             ReviewSeed(rating: 5, body: "Funciona perfeitamente offline. Fiz a travessia da Serra Fina sem sinal e o mapa não falhou nenhuma vez.", author: "Camila Ferreira", daysAgo: 0.2),

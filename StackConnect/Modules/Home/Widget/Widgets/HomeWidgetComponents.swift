@@ -202,6 +202,21 @@ struct HomeWidgetEmptyRow: View {
     }
 }
 
+// MARK: - Footnote
+
+/// A secondary note at the bottom of a widget card (prototype `.sf`).
+struct HomeWidgetFootnote: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.top, 2)
+    }
+}
+
 // MARK: - App Row
 
 /// One In Review / Awaiting Release row: icon, name (with the platform glyph
@@ -376,7 +391,8 @@ struct HomeReviewRowView: View {
                     Spacer(minLength: 0)
 
                     if let date = item.review.createdDate {
-                        Text(date, style: .relative)
+                        // "2 hr. ago", "yesterday" (prototype: "2h ago").
+                        Text(date, format: .relative(presentation: .named, unitsStyle: .abbreviated))
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                     }
