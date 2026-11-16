@@ -71,6 +71,9 @@ struct GooglePlayReleaseWriteModifier<ViewModel: GooglePlayReleaseWriteViewModel
             .sheet(item: inSheet ? .constant(nil) : $viewModel.uiState.rolloutTarget) { target in
                 GooglePlayRolloutSheet(target: target, increasing: viewModel.uiState.rolloutIncreasing, writes: viewModel)
             }
+            .sheet(item: inSheet ? .constant(nil) : $viewModel.uiState.newRelease) { request in
+                GooglePlayNewReleaseSheet(request: request, writes: viewModel)
+            }
             .sheet(item: checklistSheet) { write in
                 NavigationStack {
                     GooglePlayReviewChecklistView(write: write, writes: viewModel, isRoot: true)

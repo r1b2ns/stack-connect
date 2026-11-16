@@ -13,6 +13,10 @@ protocol GooglePlayReleaseWriteViewModelProtocol: ObservableObject {
     func canPerform(_ kind: GooglePlayReleaseWriteAccess.Kind) -> Bool
     /// Starts `action` on `release` of `track` (a bar button, a swipe action).
     func start(_ action: GooglePlayReleaseAction, release: GooglePlayReleaseModel, track: String)
+    /// Opens the New Release sheet, on `track` when given.
+    func openNewRelease(track: String?)
+    /// Bundles uploaded to Google Play (a temporary Play edit).
+    func fetchBundles() async throws -> [GooglePlayBundleModel]
     /// Opens the Staged Rollout sheet on the release's current state.
     func openRollout(release: GooglePlayReleaseModel, track: String)
     /// Asks the user to confirm `write`. Nothing is sent until `confirm()`.
@@ -57,8 +61,11 @@ struct GooglePlayReleaseWriteUiState {
 
     /// A write sheet is open: confirmations show over it, not the screen.
     var isPresentingSheet: Bool {
-        rolloutTarget != nil
+        rolloutTarget != nil || newRelease != nil
     }
+
+    /// New Release / Promote sheet (prototype screen 5).
+    var newRelease: GooglePlayNewReleaseRequest?
 
     /// The pending write when it is confirmed through the checklist.
     var checklistWrite: GooglePlayPendingWrite? {
@@ -106,9 +113,20 @@ final class GooglePlayReleaseWriteViewModel: GooglePlayReleaseWriteViewModelProt
             uiState.rolloutTarget = GooglePlayRolloutTarget(track: track, release: release)
             return
         case .promote:
+            guard canPerform(.add) else { return }
+            uiState.newRelease = GooglePlayNewReleaseRequest(source: .promote(fromTrack: track, release: release))
             return
         }
         request(GooglePlayPendingWrite(track: track, change: change, releaseTitle: release.shortName, release: release))
+    }
+
+    func openNewRelease(track: String?) {
+        guard canPerform(.add) else { return }
+        uiState.newRelease = GooglePlayNewReleaseRequest(source: .bundle(track: track))
+    }
+
+    func fetchBundles() async throws -> [GooglePlayBundleModel] {
+        try await writer.fetchBundles()
     }
 
     func openRollout(release: GooglePlayReleaseModel, track: String) {

@@ -41,9 +41,27 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol, 
         buildContent()
             .navigationTitle(app.displayName)
             .navigationBarTitleDisplayMode(.inline)
-            .task { await viewModel.load() }
+            .task {
+                await viewModel.load()
+                await writes.loadContext()
+            }
             .onChange(of: writes.uiState.revision) {
-                Task { await viewModel.load() }
+                Task {
+                    await viewModel.load()
+                    await writes.loadContext()
+                }
+            }
+            .toolbar {
+                if viewModel.uiState.isAppInScope && writes.canPerform(.add) {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            writes.openNewRelease(track: nil)
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .accessibilityLabel(Text("New Release"))
+                    }
+                }
             }
             .googlePlayReleaseWrites(writes)
             .alert(
@@ -189,7 +207,7 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol, 
                     } footer: {
                         if section.id == sections.last?.id {
                             if writes.canPerform(.edit) {
-                                Text("Swipe a release to halt, resume or complete its rollout. Opening all tracks or a release briefly opens a Play edit, like the store presence sections below.")
+                                Text("Swipe a release to promote it, or to halt, resume or complete its rollout. Opening all tracks or a release briefly opens a Play edit, like the store presence sections below.")
                             } else {
                                 Text("Opening all tracks or a release briefly opens a Play edit, like the store presence sections below.")
                             }

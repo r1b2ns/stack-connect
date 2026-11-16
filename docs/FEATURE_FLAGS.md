@@ -35,6 +35,12 @@ new flag ships **OFF** by default (the safe, fully-reversible value) unless note
 - **Definition:** `StackConnect/Infra/FeatureFlags/FeatureFlags.swift` — `FeatureFlag.googlePlayReleaseWrites`.
 - **Read at:** `StackConnect/Infra/Providers/GooglePlay/GooglePlayReleaseWriteAccess.swift`
   - `denialMessage(_:account:app:featureFlags:)` / `isAllowed(...)` — the single policy every write entry point asks (flag ON, app in the account's scope, `canEdit(.version)` to change a release, `canAdd(.version)` to create or promote one). When OFF, every write entry point is hidden and a write is refused before any edit is opened.
+- **Entry points gated through it:**
+  - `StackConnect/Infra/Providers/GooglePlay/GooglePlayReleaseWriter.swift` — `apply(_:track:options:)` and `fetchBundles()` refuse before any request when denied (defense in depth).
+  - `StackConnect/Modules/GooglePlayReleaseWrites/GooglePlayReleaseWriteViewModel.swift` — `canPerform(_:)`, `start(_:release:track:)`, `request(_:)`, `confirm(_:)`, `openNewRelease(track:)`, `openRollout(release:track:)`.
+  - `StackConnect/Modules/GooglePlayTracks/GooglePlayReleaseDetailViewModel.swift` — bottom bar actions and editable name / notes / priority (`canEditMetadata`).
+  - `StackConnect/Modules/GooglePlayAppDetail/GooglePlayAppDetailViewModel.swift` — `releaseActions(for:in:)` (swipe actions); `GooglePlayAppDetailView` — the "+" New Release button.
+  - `StackConnect/Modules/GooglePlayTracks/GooglePlayTracksView.swift` — the "+" on each track header.
 - **Session default:** `StackConnect/Infra/FakeData/FakeDataBootstrap.swift` — `install(mode:clock:)` sets `FeatureFlags.sessionDefaults[.googlePlayReleaseWrites] = true`, so the fake data mode runs with writes ON without persisting anything (a stored value still wins).
 - **Runtime usage:** `-featureFlag.googlePlayReleaseWrites YES` as a launch argument, or `FeatureFlags.shared.setEnabled(true, for: .googlePlayReleaseWrites)`.
 

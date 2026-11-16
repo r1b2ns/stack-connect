@@ -250,6 +250,5 @@ final class GooglePlayAppDetailViewModel: GooglePlayAppDetailViewModelProtocol {
         let app = uiState.app
         return GooglePlayReleaseActions.actions(for: release, on: section.kind, lifecycleState: row.lifecycleState)
             .filter { GooglePlayReleaseWriteAccess.isAllowed($0.writeKind, account: account, app: app, featureFlags: featureFlags) }
-            .filter { $0 != .promote }
     }
 }

@@ -261,6 +261,35 @@ final class GooglePlayReleaseWriteViewModelTests: XCTestCase {
         XCTAssertEqual(checklist.items.first { $0.id == "versionCode" }?.state, .warning)
     }
 
+    // MARK: - New release / promote
+
+    func testPromoteAndNewReleaseOpenTheSheetOnlyWithTheAddRule() {
+        let sut = makeSUT()
+        sut.start(.promote, release: published, track: "internal")
+        XCTAssertEqual(sut.uiState.newRelease?.source, .promote(fromTrack: "internal", release: published))
+        XCTAssertTrue(sut.uiState.isPresentingSheet)
+
+        let editor = makeSUT(account: imported(version: [.view, .edit]))
+        editor.start(.promote, release: published, track: "internal")
+        editor.openNewRelease(track: "production")
+        XCTAssertNil(editor.uiState.newRelease)
+        XCTAssertTrue(connection.releaseChanges.isEmpty)
+    }
+
+    func testBundlesNeedTheAddRule() async {
+        connection.fetchBundlesHandler = { _ in [GooglePlayBundleModel(versionCode: "1", sha256: nil), GooglePlayBundleModel(versionCode: "3", sha256: nil)] }
+        let sut = makeSUT()
+        let bundles = try? await sut.fetchBundles()
+        XCTAssertEqual(bundles?.map(\.versionCode), ["3", "1"], "Newest first")
+
+        let editor = makeSUT(account: imported(version: [.view, .edit]))
+        do {
+            _ = try await editor.fetchBundles()
+            XCTFail("Expected a denial")
+        } catch {}
+        XCTAssertEqual(connection.bundlesRequests.count, 1)
+    }
+
     // MARK: - Access
 
     func testWritesAreDeniedWithTheFlagOff() async {

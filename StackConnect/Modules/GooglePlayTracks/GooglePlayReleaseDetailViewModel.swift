@@ -154,6 +154,5 @@ final class GooglePlayReleaseDetailViewModel: GooglePlayReleaseDetailViewModelPr
         uiState.canEditMetadata = GooglePlayReleaseWriteAccess.isAllowed(.edit, account: account, app: app, featureFlags: featureFlags)
         uiState.actions = GooglePlayReleaseActions.actions(for: release, on: uiState.trackKind, lifecycleState: lifecycleState)
             .filter { GooglePlayReleaseWriteAccess.isAllowed($0.writeKind, account: account, app: app, featureFlags: featureFlags) }
-            .filter { $0 != .promote }
     }
 }

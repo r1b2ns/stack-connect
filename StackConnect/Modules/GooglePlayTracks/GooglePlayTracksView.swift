@@ -14,21 +14,24 @@ struct GooglePlayTracksViewFactory {
 private struct GooglePlayTracksEntry: View {
 
     @StateObject private var viewModel: GooglePlayTracksViewModel
+    @StateObject private var writes: GooglePlayReleaseWriteViewModel
 
     init(app: GooglePlayAppItem, account: AccountModel) {
         _viewModel = StateObject(wrappedValue: GooglePlayTracksViewModel(app: app, account: account))
+        _writes = StateObject(wrappedValue: GooglePlayReleaseWriteViewModel(app: app, account: account))
     }
 
     var body: some View {
-        GooglePlayTracksView(viewModel: viewModel)
+        GooglePlayTracksView(viewModel: viewModel, writes: writes)
     }
 }
 
 // MARK: - View
 
-struct GooglePlayTracksView<ViewModel: GooglePlayTracksViewModelProtocol>: View {
+struct GooglePlayTracksView<ViewModel: GooglePlayTracksViewModelProtocol, Writes: GooglePlayReleaseWriteViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
+    @ObservedObject var writes: Writes
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
     var body: some View {
@@ -48,6 +51,13 @@ struct GooglePlayTracksView<ViewModel: GooglePlayTracksViewModelProtocol>: View 
         // must not open another edit (D14).
         .task { await viewModel.loadIfNeeded() }
         .refreshable { await viewModel.load() }
+        .onChange(of: writes.uiState.revision) {
+            Task { await viewModel.reloadFromCache() }
+        }
+        .onChange(of: viewModel.uiState.tracks) {
+            Task { await writes.loadContext() }
+        }
+        .googlePlayReleaseWrites(writes)
         .toast(
             isPresented: $viewModel.uiState.showSyncToast,
             message: String(localized: "Syncing tracks...")
@@ -103,7 +113,19 @@ struct GooglePlayTracksView<ViewModel: GooglePlayTracksViewModelProtocol>: View 
                 }
             }
         } header: {
-            Label(track.kind.displayName, systemImage: track.kind.icon)
+            HStack {
+                Label(track.kind.displayName, systemImage: track.kind.icon)
+                Spacer()
+                if writes.canPerform(.add) {
+                    Button {
+                        writes.openNewRelease(track: track.track)
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.body)
+                    }
+                    .accessibilityLabel(Text("New release on \(track.kind.displayName)"))
+                }
+            }
         }
     }
 }

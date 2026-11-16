@@ -47,6 +47,7 @@ struct GooglePlayReleaseDetailView<ViewModel: GooglePlayReleaseDetailViewModelPr
                 buildContentSection(release)
                 buildReleaseNotesSections(release)
                 buildRolloutSection(release)
+                buildActionsSection(release)
                 buildPlayConsoleSection()
             }
         }
@@ -57,14 +58,20 @@ struct GooglePlayReleaseDetailView<ViewModel: GooglePlayReleaseDetailViewModelPr
         .googlePlayReleaseWrites(writes)
         .safeAreaInset(edge: .bottom) {
             if !state.hasChanges, let release = state.release {
-                GooglePlayReleaseActionBar(actions: state.actions, isBusy: writes.uiState.isWriting) { action in
+                GooglePlayReleaseActionBar(actions: state.actions.filter { $0 != .promote }, isBusy: writes.uiState.isWriting) { action in
                     writes.start(action, release: release, track: state.track)
                 }
             }
         }
-        .task { await viewModel.load() }
+        .task {
+            await viewModel.load()
+            await writes.loadContext()
+        }
         .onChange(of: writes.uiState.revision) {
-            Task { await viewModel.load() }
+            Task {
+                await viewModel.load()
+                await writes.loadContext()
+            }
         }
     }
 
@@ -251,6 +258,22 @@ struct GooglePlayReleaseDetailView<ViewModel: GooglePlayReleaseDetailViewModelPr
 
     // MARK: - Play Console
 
+    @ViewBuilder
+    private func buildActionsSection(_ release: GooglePlayReleaseModel) -> some View {
+        if state.actions.contains(.promote) {
+            Section {
+                Button {
+                    writes.start(.promote, release: release, track: state.track)
+                } label: {
+                    StackSubtitleRow(icon: "arrow.up", iconColor: .green, title: String(localized: "Promote to Another Track"))
+                }
+                .foregroundStyle(.primary)
+            } header: {
+                Text("Actions")
+            }
+        }
+    }
+
     private func buildPlayConsoleSection() -> some View {
         Section {
             if let url = URL(string: "https://play.google.com/console") {
@@ -276,6 +299,10 @@ struct GooglePlayReleaseDetailView<ViewModel: GooglePlayReleaseDetailViewModelPr
     private func notesSummary(_ release: GooglePlayReleaseModel) -> String {
         let count = state.draft?.languages.count ?? release.releaseNotes.count
         guard count > 0 else { return String(localized: "No release notes") }
+        if count == 1 {
+            return String(localized: "1 language · \(GooglePlayReleaseDetailUiState.releaseNotesLimit) characters",
+                          comment: "Google Play release notes summary. Argument: character limit.")
+        }
         return String(localized: "\(count) languages · \(GooglePlayReleaseDetailUiState.releaseNotesLimit) characters each",
                       comment: "Google Play release notes summary. Arguments: number of languages, character limit.")
     }

@@ -9,6 +9,9 @@ protocol GooglePlayTracksViewModelProtocol: ObservableObject {
     func loadIfNeeded() async
     /// Reads again (pull to refresh, Retry).
     func load() async
+    /// Shows the cached tracks again (after a release write updated them).
+    /// Never a Play edit.
+    func reloadFromCache() async
 }
 
 // MARK: - UiState
@@ -39,6 +42,7 @@ final class GooglePlayTracksViewModel: GooglePlayTracksViewModelProtocol, Google
     @Published var uiState: GooglePlayTracksUiState
 
     private let loader: GooglePlayAppSectionLoader<GooglePlayTracksCache, any GooglePlayTracksFetching>
+    private let cache: GooglePlayAppCacheStore<GooglePlayTracksCache>
 
     init(
         app: GooglePlayAppItem,
@@ -48,6 +52,7 @@ final class GooglePlayTracksViewModel: GooglePlayTracksViewModelProtocol, Google
         connectionFactory: @escaping ConnectionFactory = { GooglePlayAccountConnection(credentials: $0) }
     ) {
         self.uiState = GooglePlayTracksUiState(account: account, app: app)
+        self.cache = GooglePlayAppCacheStore(storage: storage ?? SwiftDataStorable.shared, accountId: account.id, packageName: app.packageName)
         self.loader = GooglePlayAppSectionLoader(
             account: account,
             app: app,
@@ -68,6 +73,12 @@ final class GooglePlayTracksViewModel: GooglePlayTracksViewModelProtocol, Google
 
     func load() async {
         await loader.load(into: self)
+    }
+
+    func reloadFromCache() async {
+        if let cached = await cache.load() {
+            uiState.section.content = present(cached.tracks)
+        }
     }
 
     // MARK: - GooglePlayAppSectionHosting
