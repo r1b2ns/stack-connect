@@ -199,6 +199,7 @@ final class FakePlayTracks: Tracks, @unchecked Sendable {
                 markChanged(release)
             case .updateMetadata(let versionCodes, let update):
                 try update.inAppUpdatePriority.map(FakePlayReleaseRules.validate(priority:))
+                try update.releaseNotes.map(FakePlayReleaseRules.validate(releaseNotes:))
                 let at = try position(of: versionCodes)
                 if let name = update.name { releases[at].name = name }
                 if let notes = update.releaseNotes { releases[at].releaseNotes = notes }
@@ -260,9 +261,18 @@ enum FakePlayReleaseRules {
         }
     }
 
+    /// Google refuses release notes over 500 characters in any language when
+    /// it validates the edit.
+    static func validate(releaseNotes: [LocalizedTextInfo]) throws {
+        if let long = releaseNotes.first(where: { $0.text.count > 500 }) {
+            throw badRequest("Release notes for language \(long.language) are too long. The maximum length is 500 characters")
+        }
+    }
+
     /// A track release for `release`; every version code must be an uploaded bundle.
     static func release(from release: NewRelease, bundles: [BundleInfo]) throws -> TrackReleaseInfo {
         try validate(versionCodes: release.versionCodes)
+        try validate(releaseNotes: release.releaseNotes)
         try release.inAppUpdatePriority.map(validate(priority:))
         let uploaded = Set(bundles.map(\.versionCode))
         if let missing = release.versionCodes.first(where: { !uploaded.contains($0) }) {

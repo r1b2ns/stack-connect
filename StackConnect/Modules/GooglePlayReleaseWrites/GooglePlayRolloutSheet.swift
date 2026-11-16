@@ -86,6 +86,7 @@ struct GooglePlayRolloutSheet<Writes: GooglePlayReleaseWriteViewModelProtocol>: 
             .navigationTitle(String(localized: "Staged Rollout"))
             .navigationBarTitleDisplayMode(.inline)
             .googlePlayReleaseWrites(writes, inSheet: true)
+            .googlePlayReviewChecklistDestination(writes)
             .onChange(of: writes.uiState.revision) { dismiss() }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -202,6 +203,6 @@ struct GooglePlayRolloutSheet<Writes: GooglePlayReleaseWriteViewModelProtocol>: 
     /// Asks for confirmation over the sheet; the sheet closes once the write
     /// succeeded (`revision` changes).
     private func request(_ change: GooglePlayReleaseChange) {
-        writes.request(GooglePlayPendingWrite(track: target.track, change: change, releaseTitle: release.shortName))
+        writes.request(GooglePlayPendingWrite(track: target.track, change: change, releaseTitle: release.shortName, release: release))
     }
 }

@@ -134,7 +134,8 @@ final class GooglePlayReleaseDetailViewModel: GooglePlayReleaseDetailViewModelPr
         return GooglePlayPendingWrite(
             track: uiState.track,
             change: .updateMetadata(versionCodes: release.versionCodes, update: update),
-            releaseTitle: release.shortName
+            releaseTitle: release.shortName,
+            release: release
         )
     }
 

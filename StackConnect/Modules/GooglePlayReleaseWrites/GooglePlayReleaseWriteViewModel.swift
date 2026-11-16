@@ -22,6 +22,13 @@ protocol GooglePlayReleaseWriteViewModelProtocol: ObservableObject {
     @discardableResult
     func confirm(_ write: GooglePlayPendingWrite) async -> Bool
     func cancelPendingWrite()
+    /// Reads what the checklist compares against (cached tracks and store
+    /// listing languages). Never a Play edit.
+    func loadContext() async
+    /// The Review Checklist of `write`.
+    func checklist(for write: GooglePlayPendingWrite) -> GooglePlayReviewChecklist
+    /// Account and app of a shared error report.
+    var errorContext: ErrorReportContext { get }
 }
 
 // MARK: - UiState
@@ -41,9 +48,22 @@ struct GooglePlayReleaseWriteUiState {
     /// The sheet opened from "Increase Rollout": it starts on the next step.
     var rolloutIncreasing = false
 
+    /// A failed write confirmed from the checklist: shown in the checklist
+    /// (with Share Error), which stays open.
+    var checklistError: String?
+    /// Cached context of the checklist.
+    var cachedTracks: [GooglePlayTrackModel] = []
+    var listingLanguages: [String] = []
+
     /// A write sheet is open: confirmations show over it, not the screen.
     var isPresentingSheet: Bool {
         rolloutTarget != nil
+    }
+
+    /// The pending write when it is confirmed through the checklist.
+    var checklistWrite: GooglePlayPendingWrite? {
+        guard let pendingWrite, pendingWrite.usesChecklist else { return nil }
+        return pendingWrite
     }
 }
 
@@ -88,7 +108,7 @@ final class GooglePlayReleaseWriteViewModel: GooglePlayReleaseWriteViewModelProt
         case .promote:
             return
         }
-        request(GooglePlayPendingWrite(track: track, change: change, releaseTitle: release.shortName))
+        request(GooglePlayPendingWrite(track: track, change: change, releaseTitle: release.shortName, release: release))
     }
 
     func openRollout(release: GooglePlayReleaseModel, track: String) {
@@ -100,6 +120,7 @@ final class GooglePlayReleaseWriteViewModel: GooglePlayReleaseWriteViewModelProt
     func request(_ write: GooglePlayPendingWrite) {
         guard canPerform(.init(write.change)) else { return }
         uiState.errorMessage = nil
+        uiState.checklistError = nil
         uiState.pendingWrite = write
     }
 
@@ -107,6 +128,7 @@ final class GooglePlayReleaseWriteViewModel: GooglePlayReleaseWriteViewModelProt
     func confirm(_ write: GooglePlayPendingWrite) async -> Bool {
         guard !uiState.isWriting, canPerform(.init(write.change)) else { return false }
         uiState.isWriting = true
+        uiState.checklistError = nil
         defer { uiState.isWriting = false }
         do {
             try await writer.apply(write.change, track: write.track, options: uiState.commitOptions)
@@ -116,14 +138,40 @@ final class GooglePlayReleaseWriteViewModel: GooglePlayReleaseWriteViewModelProt
             return true
         } catch {
             Log.print.error("[GooglePlayReleaseWrite] Write failed: \(error.localizedDescription)")
-            uiState.pendingWrite = nil
-            uiState.errorMessage = (error as? GooglePlayReleaseWriteError)?.errorDescription
+            let message = (error as? GooglePlayReleaseWriteError)?.errorDescription
                 ?? GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .releaseChange)
+            if write.usesChecklist {
+                // The checklist stays open with the error (and Share Error).
+                uiState.checklistError = message
+            } else {
+                uiState.pendingWrite = nil
+                uiState.errorMessage = message
+            }
             return false
         }
     }
 
     func cancelPendingWrite() {
         uiState.pendingWrite = nil
+        uiState.checklistError = nil
+    }
+
+    func loadContext() async {
+        let context = await writer.cachedContext()
+        uiState.cachedTracks = context.tracks
+        uiState.listingLanguages = context.listingLanguages
+    }
+
+    func checklist(for write: GooglePlayPendingWrite) -> GooglePlayReviewChecklist {
+        let track = uiState.cachedTracks.first { $0.track == write.track }
+        return GooglePlayReviewChecklist.make(
+            write: write,
+            listingLanguages: uiState.listingLanguages,
+            liveVersionCode: GooglePlayReviewChecklist.liveVersionCode(on: track, excluding: write.change.versionCodes)
+        )
+    }
+
+    var errorContext: ErrorReportContext {
+        ErrorReportContext(screen: String(localized: "Review Checklist"), account: writer.account, app: writer.app)
     }
 }

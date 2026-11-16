@@ -10,6 +10,18 @@ struct GooglePlayPendingWrite: Identifiable, Hashable {
     let change: GooglePlayReleaseChange
     /// Short name of the release ("4.2.0").
     let releaseTitle: String
+    /// The release as it is now (the source of a promotion), for the
+    /// checklist; `nil` for a new release.
+    var release: GooglePlayReleaseModel? = nil
+
+    /// Publishing changes go through the Review Checklist (prototype screen
+    /// 6), which is their confirmation; halting and resuming use an alert.
+    var usesChecklist: Bool {
+        switch change {
+        case .halt, .resume: return false
+        default:             return true
+        }
+    }
 
     var trackKind: GooglePlayTrackKind { GooglePlayTrackKind(track: track) }
 

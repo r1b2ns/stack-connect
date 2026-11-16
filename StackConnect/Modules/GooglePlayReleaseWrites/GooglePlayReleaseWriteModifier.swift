@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Attaches the release write flow to a screen: the confirmation (plan R4),
-/// the failure alert and the success toast.
+/// Attaches the release write flow to a screen: the confirmations (plan R4:
+/// an alert for halt / resume, the Review Checklist for everything that
+/// publishes), the failure alert, the success toast and the write sheets.
 struct GooglePlayReleaseWriteModifier<ViewModel: GooglePlayReleaseWriteViewModelProtocol>: ViewModifier {
 
     @ObservedObject var viewModel: ViewModel
@@ -13,15 +14,29 @@ struct GooglePlayReleaseWriteModifier<ViewModel: GooglePlayReleaseWriteViewModel
         inSheet || !viewModel.uiState.isPresentingSheet
     }
 
+    private var alertWrite: GooglePlayPendingWrite? {
+        guard showsAlerts, let write = viewModel.uiState.pendingWrite, !write.usesChecklist else { return nil }
+        return write
+    }
+
+    /// The checklist as the screen's own sheet, when no write sheet is open
+    /// (an open sheet pushes it instead).
+    private var checklistSheet: Binding<GooglePlayPendingWrite?> {
+        Binding(
+            get: { inSheet || viewModel.uiState.isPresentingSheet ? nil : viewModel.uiState.checklistWrite },
+            set: { if $0 == nil { viewModel.cancelPendingWrite() } }
+        )
+    }
+
     func body(content: Content) -> some View {
         content
             .alert(
-                viewModel.uiState.pendingWrite?.title ?? "",
+                alertWrite?.title ?? "",
                 isPresented: Binding(
-                    get: { showsAlerts && viewModel.uiState.pendingWrite != nil },
+                    get: { alertWrite != nil },
                     set: { if !$0 { viewModel.cancelPendingWrite() } }
                 ),
-                presenting: viewModel.uiState.pendingWrite
+                presenting: alertWrite
             ) { write in
                 Button(write.confirmLabel, role: write.isDestructive ? .destructive : nil) {
                     Task { await viewModel.confirm(write) }
@@ -56,10 +71,25 @@ struct GooglePlayReleaseWriteModifier<ViewModel: GooglePlayReleaseWriteViewModel
             .sheet(item: inSheet ? .constant(nil) : $viewModel.uiState.rolloutTarget) { target in
                 GooglePlayRolloutSheet(target: target, increasing: viewModel.uiState.rolloutIncreasing, writes: viewModel)
             }
+            .sheet(item: checklistSheet) { write in
+                NavigationStack {
+                    GooglePlayReviewChecklistView(write: write, writes: viewModel, isRoot: true)
+                }
+            }
     }
 }
 
 extension View {
+    /// Pushes the Review Checklist inside a write sheet's NavigationStack.
+    func googlePlayReviewChecklistDestination<ViewModel: GooglePlayReleaseWriteViewModelProtocol>(_ viewModel: ViewModel) -> some View {
+        navigationDestination(item: Binding(
+            get: { viewModel.uiState.checklistWrite },
+            set: { if $0 == nil { viewModel.cancelPendingWrite() } }
+        )) { write in
+            GooglePlayReviewChecklistView(write: write, writes: viewModel, isRoot: false)
+        }
+    }
+
     func googlePlayReleaseWrites<ViewModel: GooglePlayReleaseWriteViewModelProtocol>(_ viewModel: ViewModel, inSheet: Bool = false) -> some View {
         modifier(GooglePlayReleaseWriteModifier(viewModel: viewModel, inSheet: inSheet))
     }

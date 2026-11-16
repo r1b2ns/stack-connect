@@ -217,6 +217,20 @@ final class FakeDataBackendsTests: XCTestCase {
         } catch let StackError.Http(status, _) {
             XCTAssertEqual(status, 400)
         }
+        do {
+            _ = try await tracks.applyReleaseChange(
+                appId: "com.northwind.trailhead", track: "production",
+                change: .updateMetadata(versionCodes: ["4210"], update: ReleaseMetadataUpdate(
+                    name: nil, releaseNotes: [LocalizedTextInfo(language: "en-US", text: String(repeating: "a", count: 501))],
+                    inAppUpdatePriority: nil, countryTargeting: nil
+                )),
+                options: CommitOptions(sendForReview: true, changesInReviewBehavior: nil)
+            )
+            XCTFail("Expected Google's release notes validation")
+        } catch let StackError.Http(status, message) {
+            XCTAssertEqual(status, 400)
+            XCTAssertTrue(message.contains("en-US"))
+        }
     }
 
     func testGooglePlayCreateReleaseOnInternalReplacesTheDraft() async throws {

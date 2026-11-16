@@ -177,6 +177,90 @@ final class GooglePlayReleaseWriteViewModelTests: XCTestCase {
         XCTAssertEqual(form.change(for: target), .complete(versionCodes: ["4305"]))
     }
 
+    // MARK: - Review checklist
+
+    func testPublishingWritesUseTheChecklistAndHaltUsesAnAlert() {
+        let sut = makeSUT()
+
+        sut.start(.releaseToAll, release: rolling, track: "production")
+        XCTAssertEqual(sut.uiState.checklistWrite?.change, .complete(versionCodes: ["4210"]))
+
+        sut.start(.halt, release: rolling, track: "production")
+        XCTAssertNil(sut.uiState.checklistWrite)
+        XCTAssertNotNil(sut.uiState.pendingWrite)
+    }
+
+    func testChecklistFailureStaysInTheChecklistWithGooglesMessage() async throws {
+        try await seedCaches()
+        connection.applyReleaseChangeHandler = { _ in
+            throw StackError.Http(status: 400, message: "Changes cannot be sent for review automatically. Please set the query parameter changesNotSentForReview to true.")
+        }
+        let sut = makeSUT()
+        sut.start(.releaseToAll, release: rolling, track: "production")
+        let write = try XCTUnwrap(sut.uiState.checklistWrite)
+        sut.uiState.commitOptions.reviewInProgress = .cancelAndResubmit
+
+        let ok = await sut.confirm(write)
+
+        XCTAssertFalse(ok)
+        XCTAssertEqual(connection.releaseChanges.first?.options, GooglePlayCommitOptions(sendForReview: true, reviewInProgress: .cancelAndResubmit))
+        XCTAssertEqual(sut.uiState.checklistWrite, write, "The checklist stays open")
+        XCTAssertEqual(sut.uiState.checklistError, String(localized: "Google Play requires these changes to be saved without sending them for review. Turn off “Send changes for review” and try again."))
+        XCTAssertNil(sut.uiState.errorMessage)
+        let tracks = try await cachedTracks()
+        XCTAssertEqual(tracks?.first?.releases, [rolling, published])
+
+        sut.uiState.commitOptions.sendForReview = false
+        connection.applyReleaseChangeHandler = { request in GooglePlayTrackModel(track: request.track, releases: []) }
+        let retried = await sut.confirm(write)
+        XCTAssertTrue(retried)
+        XCTAssertEqual(connection.releaseChanges.last?.options.sendForReview, false)
+        XCTAssertNil(sut.uiState.checklistWrite)
+        XCTAssertNil(sut.uiState.checklistError)
+    }
+
+    func testChecklistItems() async throws {
+        try await seedCaches()
+        let listings = GooglePlayStoreListingsCache(accountId: owner.id, packageName: app.packageName, listings: [
+            GooglePlayStoreListingModel(language: "en-US", title: "Example", shortDescription: "", fullDescription: "", video: nil),
+            GooglePlayStoreListingModel(language: "pt-BR", title: "Exemplo", shortDescription: "", fullDescription: "", video: nil)
+        ])
+        try await storage.save(listings, id: listings.cacheKey)
+        let sut = makeSUT()
+        await sut.loadContext()
+        let promote = GooglePlayPendingWrite(
+            track: "production",
+            change: .promote(fromTrack: "internal", versionCodes: ["4305"], status: .inProgress(userFraction: 0.1), name: "4.3.0", releaseNotes: nil, inAppUpdatePriority: nil),
+            releaseTitle: "4.3.0",
+            release: GooglePlayReleaseModel(name: "4.3.0", status: .draft, versionCodes: ["4305"], userFraction: nil,
+                                            releaseNotes: [GooglePlayLocalizedTextModel(language: "en-US", text: "New")], inAppUpdatePriority: nil)
+        )
+
+        let checklist = sut.checklist(for: promote)
+
+        XCTAssertEqual(checklist.items.map(\.id), ["bundle", "name", "notes", "rollout", "versionCode"])
+        let notes = try XCTUnwrap(checklist.items.first { $0.id == "notes" })
+        XCTAssertEqual(notes.state, .warning, "Missing in Portuguese")
+        XCTAssertEqual(notes.value, String(localized: "\(1) of \(2)"))
+        let versionCode = try XCTUnwrap(checklist.items.first { $0.id == "versionCode" })
+        XCTAssertEqual(versionCode.state, .satisfied)
+        XCTAssertEqual(versionCode.value, "4305 > 4210")
+        XCTAssertTrue(checklist.hasWarnings)
+    }
+
+    func testChecklistFlagsAVersionCodeNotAboveTheLiveOne() {
+        let track = GooglePlayTrackModel(track: "production", releases: [rolling, published])
+        let create = GooglePlayPendingWrite(
+            track: "production",
+            change: .create(GooglePlayNewRelease(versionCodes: ["4200"], name: "4.2.0", releaseNotes: [], status: .completed, inAppUpdatePriority: nil)),
+            releaseTitle: "4.2.0"
+        )
+
+        let checklist = GooglePlayReviewChecklist.make(write: create, listingLanguages: [], liveVersionCode: GooglePlayReviewChecklist.liveVersionCode(on: track))
+
+        XCTAssertEqual(checklist.items.first { $0.id == "versionCode" }?.state, .warning)
+    }
+
     // MARK: - Access
 
     func testWritesAreDeniedWithTheFlagOff() async {

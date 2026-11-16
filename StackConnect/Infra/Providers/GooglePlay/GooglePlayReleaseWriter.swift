@@ -96,6 +96,23 @@ final class GooglePlayReleaseWriter {
 
     // MARK: - Caches
 
+    /// Cached tracks and store listing languages (default language first
+    /// when known), for the checklist and the New Release sheet.
+    func cachedContext() async -> (tracks: [GooglePlayTrackModel], listingLanguages: [String]) {
+        let tracks = await tracksCache.load()?.tracks ?? []
+        let listings = await GooglePlayAppCacheStore<GooglePlayStoreListingsCache>(
+            storage: storage, accountId: account.id, packageName: app.packageName
+        ).load()?.listings ?? []
+        let defaultLanguage = await GooglePlayAppCacheStore<GooglePlayAppDetailsCache>(
+            storage: storage, accountId: account.id, packageName: app.packageName
+        ).load()?.details.defaultLanguage
+        var languages = listings.map(\.language)
+        if let defaultLanguage, let index = languages.firstIndex(of: defaultLanguage) {
+            languages.insert(languages.remove(at: index), at: 0)
+        }
+        return (tracks, languages)
+    }
+
     private var tracksCache: GooglePlayAppCacheStore<GooglePlayTracksCache> {
         GooglePlayAppCacheStore(storage: storage, accountId: account.id, packageName: app.packageName)
     }
