@@ -27,6 +27,59 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
             .refreshable { await viewModel.refresh() }
             .toast(isPresented: $viewModel.uiState.showSyncToast, message: String(localized: "Syncing users..."))
             .toast(message: $viewModel.uiState.toastMessage)
+            .alert(
+                viewModel.uiState.confirmRemove?.accessState.isPendingInvitation == true
+                    ? String(localized: "Cancel Invitation")
+                    : String(localized: "Remove User"),
+                isPresented: isPresented(\.confirmRemove),
+                presenting: viewModel.uiState.confirmRemove
+            ) { user in
+                Button(user.accessState.isPendingInvitation ? String(localized: "Cancel Invitation") : String(localized: "Remove"),
+                       role: .destructive) {
+                    Task { await viewModel.remove(user) }
+                }
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .googlePlayUsers, role: .cancel) {}
+            } message: { user in
+                Text("\(user.email) loses access to this Play Console developer account right away.")
+            }
+            .alert(
+                String(localized: "Resend Invitation"),
+                isPresented: isPresented(\.confirmResend),
+                presenting: viewModel.uiState.confirmResend
+            ) { user in
+                Button(String(localized: "Resend")) {
+                    Task { await viewModel.resend(user) }
+                }
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .googlePlayUsers, role: .cancel) {}
+            } message: { user in
+                Text("Google Play can't resend an invitation. StackConnect removes the expired one and invites \(user.email) again with the same permissions and app access.")
+            }
+            .alert(
+                String(localized: "Can't Make This Change"),
+                isPresented: isPresented(\.refusalMessage),
+                presenting: viewModel.uiState.refusalMessage
+            ) { _ in
+                StackTrackedButton(String(localized: "OK"), button: .ok, on: .googlePlayUsers, role: .cancel) {}
+            } message: { message in
+                Text(message)
+            }
+            .alert(
+                String(localized: "Error"),
+                isPresented: isPresented(\.actionError),
+                presenting: viewModel.uiState.actionError
+            ) { _ in
+                StackTrackedButton(String(localized: "OK"), button: .ok, on: .googlePlayUsers, role: .cancel) {}
+            } message: { message in
+                Text(message)
+            }
+    }
+
+    /// A Bool binding over an optional piece of state, cleared on dismiss.
+    private func isPresented<Value>(_ keyPath: WritableKeyPath<GooglePlayUsersUiState, Value?>) -> Binding<Bool> {
+        Binding(
+            get: { viewModel.uiState[keyPath: keyPath] != nil },
+            set: { if !$0 { viewModel.uiState[keyPath: keyPath] = nil } }
+        )
     }
 
     // MARK: - Content
@@ -36,7 +89,7 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
         let state = viewModel.uiState
         if state.showsSetup {
             buildSetup()
-        } else if state.isLoading && state.users.isEmpty {
+        } else if state.users.isEmpty && (state.isLoading || !state.hasLoaded) {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = state.error, state.users.isEmpty {
@@ -54,6 +107,11 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
             }
         } else {
             buildList()
+                .searchable(
+                    text: $viewModel.uiState.searchQuery,
+                    placement: .navigationBarDrawer(displayMode: .always),
+                    prompt: String(localized: "Search by name or email")
+                )
         }
     }
 
@@ -63,17 +121,72 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
 
     private func buildList() -> some View {
         List {
+            StackFilterChips(
+                items: GooglePlayUsersFilter.allCases,
+                selection: viewModel.uiState.selectedFilter,
+                title: \.title
+            ) { filter in
+                analytics.track(.buttonTap(.filter, on: .googlePlayUsers))
+                viewModel.uiState.selectedFilter = filter
+            }
+
             if let error = viewModel.uiState.error {
                 StackInlineErrorSection(message: error, reportContext: errorReportContext)
             }
 
-            Section {
-                ForEach(viewModel.uiState.users) { user in
-                    buildRow(user)
+            let users = viewModel.uiState.filteredUsers
+            if users.isEmpty {
+                buildEmptySection()
+            } else {
+                Section {
+                    ForEach(users) { user in
+                        buildRow(user)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) { buildSwipeActions(user) }
+                    }
+                } header: {
+                    Text("Users (\(users.count))")
+                } footer: {
+                    Text("Swipe a user to Remove them, or to Resend an invitation that expired. Changes apply to your Play Console developer account right away.")
                 }
-            } header: {
-                Text("Users (\(viewModel.uiState.users.count))")
             }
+        }
+    }
+
+    @ViewBuilder
+    private func buildEmptySection() -> some View {
+        Section {
+            if !viewModel.uiState.searchQuery.trimmingCharacters(in: .whitespaces).isEmpty {
+                ContentUnavailableView.search(text: viewModel.uiState.searchQuery)
+            } else {
+                ContentUnavailableView {
+                    Label(String(localized: "No Users"), systemImage: "person.slash")
+                } description: {
+                    Text("No users found matching the selected filter.")
+                }
+            }
+        }
+        .listRowBackground(Color.clear)
+    }
+
+    /// Remove for everyone the account may remove; Resend on an expired
+    /// invitation. Refusals (self, scope) explain themselves when tapped.
+    @ViewBuilder
+    private func buildSwipeActions(_ user: GooglePlayUserModel) -> some View {
+        let access = viewModel.uiState.access
+        if access.canDelete {
+            Button(role: .destructive) {
+                viewModel.requestRemove(user)
+            } label: {
+                Label(String(localized: "Remove"), systemImage: "person.badge.minus")
+            }
+        }
+        if user.accessState == .invitationExpired, access.canInvite, access.canDelete {
+            Button {
+                viewModel.requestResend(user)
+            } label: {
+                Label(String(localized: "Resend"), systemImage: "envelope.arrow.triangle.branch")
+            }
+            .tint(.blue)
         }
     }
 
@@ -85,6 +198,11 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
             detail: GooglePlayPermissionCatalog.summary(for: user),
             badge: user.listBadge
         )
+        .overlay(alignment: .trailing) {
+            if viewModel.uiState.workingEmail == user.email {
+                ProgressView().padding(.trailing, 24)
+            }
+        }
     }
 
     // MARK: - Setup (plan U3)

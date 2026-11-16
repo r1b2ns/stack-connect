@@ -12,6 +12,45 @@ protocol GooglePlayUsersViewModelProtocol: ObservableObject {
     /// which keeps the cache in step with its writes).
     func reloadFromCache() async
     func saveDeveloperId() async
+    /// Asks to remove `user`: a confirmation, or the reason it is refused.
+    func requestRemove(_ user: GooglePlayUserModel)
+    /// Asks to resend an expired invitation: a confirmation, or the reason it is refused.
+    func requestResend(_ user: GooglePlayUserModel)
+    func remove(_ user: GooglePlayUserModel) async
+    func resend(_ user: GooglePlayUserModel) async
+}
+
+// MARK: - Filter
+
+/// The chips above the list (prototype 16).
+enum GooglePlayUsersFilter: String, CaseIterable, Identifiable {
+    case all
+    case admins
+    case invited
+    case expired
+    case serviceAccounts
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all:             return String(localized: "All")
+        case .admins:          return String(localized: "Admins", comment: "Google Play users filter.")
+        case .invited:         return String(localized: "Invited", comment: "Google Play users list badge.")
+        case .expired:         return String(localized: "Expired", comment: "Google Play users list badge.")
+        case .serviceAccounts: return String(localized: "Service accounts", comment: "Google Play users filter.")
+        }
+    }
+
+    func includes(_ user: GooglePlayUserModel) -> Bool {
+        switch self {
+        case .all:             return true
+        case .admins:          return user.isAdmin
+        case .invited:         return user.accessState == .invited
+        case .expired:         return user.accessState.isExpired
+        case .serviceAccounts: return user.isServiceAccount
+        }
+    }
 }
 
 // MARK: - UiState
@@ -20,6 +59,8 @@ struct GooglePlayUsersUiState {
     var account: AccountModel
     var users: [GooglePlayUserModel] = []
     var isLoading = false
+    /// A load ran at least once (until then the list shows a spinner, not "No Users").
+    var hasLoaded = false
     var isSyncing = false
     var showSyncToast = false
     /// Last load failure, user-facing.
@@ -36,6 +77,29 @@ struct GooglePlayUsersUiState {
     var toastMessage: ToastMessage?
     /// The calling service account's `client_email` (self-protection, U7).
     var serviceAccountEmail: String?
+    var searchQuery = ""
+    var selectedFilter: GooglePlayUsersFilter = .all
+    /// Remove confirmation on screen.
+    var confirmRemove: GooglePlayUserModel?
+    /// Resend confirmation on screen (plan U8).
+    var confirmResend: GooglePlayUserModel?
+    /// Why a requested change is refused (rules, scope, self-protection).
+    var refusalMessage: String?
+    /// A failed write, user-facing.
+    var actionError: String?
+    /// E-mail of the user a write is running for.
+    var workingEmail: String?
+    var showInvite = false
+
+    /// `users` narrowed by the filter chip and the search text (e-mail or name).
+    var filteredUsers: [GooglePlayUserModel] {
+        let query = searchQuery.trimmingCharacters(in: .whitespaces)
+        return users.filter { user in
+            selectedFilter.includes(user)
+                && (query.isEmpty || user.email.localizedCaseInsensitiveContains(query)
+                    || user.displayName.localizedCaseInsensitiveContains(query))
+        }
+    }
 
     var developerId: String? { account.googlePlayDeveloperId }
 
@@ -101,6 +165,7 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
     }
 
     private func performLoad() async {
+        defer { uiState.hasLoaded = true }
         await refreshAccount()
         guard uiState.access.canView else { return }
         guard let developerId = uiState.developerId else {
@@ -176,6 +241,97 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
             try? await storage.delete(GooglePlayUsersCache.self, id: cacheKey)
         }
         await performLoad()
+    }
+
+    // MARK: - Remove / Resend (plan U4, U8)
+
+    func requestRemove(_ user: GooglePlayUserModel) {
+        analytics.track(.buttonTap(.remove, on: .googlePlayUsers))
+        if let refusal = uiState.access.removeRefusal(for: user) {
+            uiState.refusalMessage = GooglePlayUsersAccess.message(for: refusal)
+        } else {
+            uiState.confirmRemove = user
+        }
+    }
+
+    func requestResend(_ user: GooglePlayUserModel) {
+        analytics.track(.buttonTap(.resendInvite, on: .googlePlayUsers))
+        if let refusal = uiState.access.resendRefusal(for: user) {
+            uiState.refusalMessage = GooglePlayUsersAccess.message(for: refusal)
+        } else {
+            uiState.confirmResend = user
+        }
+    }
+
+    /// Deletes the user on Google Play, then from the list and the cache. A
+    /// failure changes nothing locally.
+    func remove(_ user: GooglePlayUserModel) async {
+        uiState.confirmRemove = nil
+        guard uiState.access.removeRefusal(for: user) == nil,
+              let developerId = uiState.developerId, let connection = makeConnection() else { return }
+        uiState.workingEmail = user.email
+        defer { uiState.workingEmail = nil }
+        do {
+            try await connection.deleteUser(developerId: developerId, email: user.email)
+            uiState.users.removeAll { $0.id == user.id }
+            await saveCache()
+            uiState.toastMessage = ToastMessage(user.accessState.isPendingInvitation
+                                                ? String(localized: "Invitation cancelled")
+                                                : String(localized: "User removed"))
+            analytics.track(.action(.deleteUser, on: .googlePlayUsers, result: .success))
+        } catch {
+            Log.print.error("[GooglePlayUsers] Remove failed: \(error.localizedDescription)")
+            uiState.actionError = GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .userChange)
+            analytics.track(.action(.deleteUser, on: .googlePlayUsers, result: .failure))
+        }
+    }
+
+    /// Google has no resend: the expired invitation is deleted and the same
+    /// permissions, app access and (future) expiry are invited again (plan U8).
+    func resend(_ user: GooglePlayUserModel) async {
+        uiState.confirmResend = nil
+        guard uiState.access.resendRefusal(for: user) == nil,
+              let developerId = uiState.developerId, let connection = makeConnection() else { return }
+        uiState.workingEmail = user.email
+        defer { uiState.workingEmail = nil }
+
+        do {
+            try await connection.deleteUser(developerId: developerId, email: user.email)
+        } catch {
+            Log.print.error("[GooglePlayUsers] Resend failed removing the old invitation: \(error.localizedDescription)")
+            uiState.actionError = GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .userChange)
+            analytics.track(.action(.resendInvite, on: .googlePlayUsers, result: .failure))
+            return
+        }
+
+        let expiration = user.expirationTime.flatMap { $0 > Date() ? $0 : nil }
+        do {
+            let invited = try await connection.inviteUser(
+                developerId: developerId,
+                email: user.email,
+                accountPermissions: user.developerAccountPermissions,
+                grants: user.grants,
+                expiration: expiration
+            )
+            replace(user, with: invited)
+            await saveCache()
+            uiState.toastMessage = ToastMessage(String(localized: "Invitation sent again to \(user.email)"), icon: "envelope.fill")
+            analytics.track(.action(.resendInvite, on: .googlePlayUsers, result: .success))
+        } catch {
+            // The old invitation is gone: the list must say so too.
+            Log.print.error("[GooglePlayUsers] Resend failed sending the new invitation: \(error.localizedDescription)")
+            uiState.users.removeAll { $0.id == user.id }
+            await saveCache()
+            let reason = GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .inviteUser)
+            uiState.actionError = String(localized: "The expired invitation was removed, but the new one couldn't be sent. Invite \(user.email) again.\n\(reason)")
+            analytics.track(.action(.resendInvite, on: .googlePlayUsers, result: .failure))
+        }
+    }
+
+    private func replace(_ user: GooglePlayUserModel, with updated: GooglePlayUserModel) {
+        var users = uiState.users.filter { $0.id != user.id && $0.id != updated.id }
+        users.append(updated)
+        uiState.users = Self.sorted(users)
     }
 
     // MARK: - Private

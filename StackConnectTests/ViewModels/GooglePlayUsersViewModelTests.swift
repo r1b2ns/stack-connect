@@ -165,4 +165,139 @@ final class GooglePlayUsersViewModelTests: XCTestCase {
             "dana@x.example", "support@x.example", "kai@x.example", "joana@x.example", "lena@x.example", selfEmail
         ])
     }
+
+    // MARK: - Filters and search (plan U4)
+
+    func testFiltersAndSearch() async throws {
+        let sut = try await makeSUT()
+        await sut.load()
+
+        sut.uiState.selectedFilter = .admins
+        XCTAssertEqual(Set(sut.uiState.filteredUsers.map(\.email)), ["dana@x.example", selfEmail])
+        sut.uiState.selectedFilter = .invited
+        XCTAssertEqual(sut.uiState.filteredUsers.map(\.email), ["kai@x.example"])
+        sut.uiState.selectedFilter = .expired
+        XCTAssertEqual(sut.uiState.filteredUsers.map(\.email), ["joana@x.example", "lena@x.example"])
+        sut.uiState.selectedFilter = .serviceAccounts
+        XCTAssertEqual(sut.uiState.filteredUsers.map(\.email), [selfEmail])
+
+        sut.uiState.selectedFilter = .all
+        sut.uiState.searchQuery = "SUPP"
+        XCTAssertEqual(sut.uiState.filteredUsers.map(\.email), ["support@x.example"])
+    }
+
+    // MARK: - Remove
+
+    func testRemoveAsksForConfirmationThenDeletesAndUpdatesTheCache() async throws {
+        let sut = try await makeSUT()
+        await sut.load()
+        let support = try XCTUnwrap(sut.uiState.users.first { $0.email == "support@x.example" })
+
+        sut.requestRemove(support)
+        XCTAssertEqual(sut.uiState.confirmRemove, support)
+        await sut.remove(support)
+
+        XCTAssertTrue(connection.calls.contains(.delete(email: "support@x.example")))
+        XCTAssertFalse(sut.uiState.users.contains(support))
+        let cached = try await cachedUsers()
+        XCTAssertEqual(cached?.contains(support), false)
+        XCTAssertNotNil(sut.uiState.toastMessage)
+    }
+
+    func testAFailedRemoveLeavesTheListAndTheCacheUntouched() async throws {
+        let sut = try await makeSUT()
+        await sut.load()
+        let support = try XCTUnwrap(sut.uiState.users.first { $0.email == "support@x.example" })
+        connection.failNext(.delete, with: StackError.Http(status: 500, message: ""))
+
+        await sut.remove(support)
+
+        XCTAssertTrue(sut.uiState.users.contains(support))
+        let cached = try await cachedUsers()
+        XCTAssertEqual(cached?.count, Self.seedUsers.count)
+        XCTAssertNotNil(sut.uiState.actionError)
+    }
+
+    func testTheServiceAccountItselfCantBeRemoved() async throws {
+        let sut = try await makeSUT()
+        await sut.load()
+        let me = try XCTUnwrap(sut.uiState.users.first { $0.email == selfEmail })
+
+        sut.requestRemove(me)
+        await sut.remove(me)
+
+        XCTAssertNil(sut.uiState.confirmRemove)
+        XCTAssertEqual(sut.uiState.refusalMessage, GooglePlayUsersAccess.message(for: .selfProtected))
+        XCTAssertFalse(connection.calls.contains(.delete(email: selfEmail)))
+    }
+
+    func testRemoveNeedsTheDeleteRule() async throws {
+        let sut = try await makeSUT(makeAccount(rules: AccountRules(users: [.view, .edit]), origin: .imported))
+        await sut.load()
+        let support = try XCTUnwrap(sut.uiState.users.first { $0.email == "support@x.example" })
+
+        sut.requestRemove(support)
+        await sut.remove(support)
+
+        XCTAssertEqual(sut.uiState.refusalMessage, GooglePlayUsersAccess.message(for: .notPermitted))
+        XCTAssertFalse(connection.calls.contains(.delete(email: "support@x.example")))
+    }
+
+    func testAScopedAccountCantRemoveSomeoneWithAccessOutsideItsApps() async throws {
+        let sut = try await makeSUT(makeAccount(origin: .imported, appsBundles: ["com.x.one"]))
+        await sut.load()
+        let lena = try XCTUnwrap(sut.uiState.users.first { $0.email == "lena@x.example" })
+        let support = try XCTUnwrap(sut.uiState.users.first { $0.email == "support@x.example" })
+
+        sut.requestRemove(lena)
+        XCTAssertEqual(sut.uiState.refusalMessage, GooglePlayUsersAccess.message(for: .outsideScope))
+        sut.requestRemove(support)
+        XCTAssertEqual(sut.uiState.confirmRemove, support, "Only in-scope apps: allowed")
+    }
+
+    // MARK: - Resend (plan U8)
+
+    func testResendIsDeletePlusInviteWithTheSamePermissions() async throws {
+        let sut = try await makeSUT()
+        await sut.load()
+        let joana = try XCTUnwrap(sut.uiState.users.first { $0.email == "joana@x.example" })
+
+        sut.requestResend(joana)
+        XCTAssertEqual(sut.uiState.confirmResend, joana)
+        await sut.resend(joana)
+
+        let writes = connection.calls.filter { if case .fetch = $0 { return false } else { return true } }
+        XCTAssertEqual(writes, [
+            .delete(email: "joana@x.example"),
+            .invite(email: "joana@x.example", accountPermissions: [], grants: joana.grants, expiration: joana.expirationTime)
+        ])
+        XCTAssertEqual(sut.uiState.users.first { $0.email == "joana@x.example" }?.accessState, .invited)
+        let cached = try await cachedUsers()
+        XCTAssertEqual(cached?.first { $0.email == "joana@x.example" }?.accessState, .invited)
+    }
+
+    func testResendIsOnlyForExpiredInvitations() async throws {
+        let sut = try await makeSUT()
+        await sut.load()
+        let kai = try XCTUnwrap(sut.uiState.users.first { $0.email == "kai@x.example" })
+
+        sut.requestResend(kai)
+        await sut.resend(kai)
+
+        XCTAssertNil(sut.uiState.confirmResend)
+        XCTAssertNotNil(sut.uiState.refusalMessage)
+        XCTAssertFalse(connection.calls.contains(.delete(email: "kai@x.example")))
+    }
+
+    func testAResendWhoseInviteFailsDropsTheRemovedInvitation() async throws {
+        let sut = try await makeSUT()
+        await sut.load()
+        let joana = try XCTUnwrap(sut.uiState.users.first { $0.email == "joana@x.example" })
+        connection.failNext(.invite, with: StackError.Http(status: 400, message: "not a Google account"))
+
+        await sut.resend(joana)
+
+        XCTAssertFalse(sut.uiState.users.contains { $0.email == "joana@x.example" })
+        XCTAssertNotNil(sut.uiState.actionError)
+    }
 }
