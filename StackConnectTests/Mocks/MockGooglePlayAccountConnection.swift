@@ -14,8 +14,18 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
     GooglePlayStoreListingsFetching,
     GooglePlayTracksFetching,
     GooglePlayReleaseSummariesFetching,
+    GooglePlayBundlesFetching,
+    GooglePlayReleaseManaging,
     GooglePlayReviewsConnecting,
     @unchecked Sendable {
+
+    /// Arguments of one `applyReleaseChange` call.
+    struct ReleaseChangeRequest: Equatable {
+        let packageName: String
+        let track: String
+        let change: GooglePlayReleaseChange
+        let options: GooglePlayCommitOptions
+    }
 
     /// Arguments of one `fetchCustomerReviewsPage` call.
     struct ReviewsPageRequest: Equatable {
@@ -48,6 +58,14 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
     /// What `fetchReleaseSummaries(packageName:track:)` does. Defaults to no release.
     var fetchReleaseSummariesHandler: @Sendable (String, String) async throws -> [GooglePlayReleaseSummaryModel] = { _, _ in [] }
 
+    /// What `fetchBundles(packageName:)` does. Defaults to no bundle.
+    var fetchBundlesHandler: @Sendable (String) async throws -> [GooglePlayBundleModel] = { _ in [] }
+
+    /// What `applyReleaseChange(...)` does. Defaults to an empty committed track.
+    var applyReleaseChangeHandler: @Sendable (ReleaseChangeRequest) async throws -> GooglePlayTrackModel = {
+        GooglePlayTrackModel(track: $0.track, releases: [])
+    }
+
     /// What `fetchCustomerReviewsPage(...)` does. Defaults to an empty last page.
     var fetchReviewsPageHandler: @Sendable (ReviewsPageRequest) async throws -> CustomerReviewsPageModel = { _ in
         CustomerReviewsPageModel(reviews: [], nextPageToken: nil)
@@ -73,6 +91,8 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
     private var _maxSummaryFetchesInFlight = 0
     private var _reviewsPageRequests: [ReviewsPageRequest] = []
     private var _replies: [(reviewId: String, body: String)] = []
+    private var _bundlesRequests: [String] = []
+    private var _releaseChanges: [ReleaseChangeRequest] = []
     private var _credentials: [GooglePlayCredentials] = []
 
     var validateCallCount: Int { lock.withLock { _validateCallCount } }
@@ -90,6 +110,9 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
     /// Most `fetchReleaseSummaries` calls that were running at the same time.
     var maxSummaryFetchesInFlight: Int { lock.withLock { _maxSummaryFetchesInFlight } }
     var replies: [(reviewId: String, body: String)] { lock.withLock { _replies } }
+    var bundlesRequests: [String] { lock.withLock { _bundlesRequests } }
+    /// Every `applyReleaseChange` call, in call order.
+    var releaseChanges: [ReleaseChangeRequest] { lock.withLock { _releaseChanges } }
     var credentials: [GooglePlayCredentials] { lock.withLock { _credentials } }
 
     /// Every edit-based read (app details, listings, tracks) made so far.
@@ -124,6 +147,12 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
 
     /// Same as `factory`, typed for the tracks seam.
     func tracksFactory(_ credentials: GooglePlayCredentials) -> any GooglePlayTracksFetching {
+        record(credentials)
+        return self
+    }
+
+    /// Same as `factory`, typed for the release write flows.
+    func releaseWriteFactory(_ credentials: GooglePlayCredentials) -> any GooglePlayReleaseWriteConnecting {
         record(credentials)
         return self
     }
@@ -184,6 +213,24 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
         }
         defer { lock.withLock { _summaryFetchesInFlight -= 1 } }
         return try await fetchReleaseSummariesHandler(packageName, track)
+    }
+
+    // MARK: - Bundles and release writes
+
+    func fetchBundles(packageName: String) async throws -> [GooglePlayBundleModel] {
+        lock.withLock { _bundlesRequests.append(packageName) }
+        return try await fetchBundlesHandler(packageName)
+    }
+
+    func applyReleaseChange(
+        packageName: String,
+        track: String,
+        change: GooglePlayReleaseChange,
+        options: GooglePlayCommitOptions
+    ) async throws -> GooglePlayTrackModel {
+        let request = ReleaseChangeRequest(packageName: packageName, track: track, change: change, options: options)
+        lock.withLock { _releaseChanges.append(request) }
+        return try await applyReleaseChangeHandler(request)
     }
 
     // MARK: - Reviews

@@ -22,11 +22,22 @@ enum FeatureFlag: String, CaseIterable {
     /// Default: OFF.
     case useRustCoreDebugLogging = "featureFlag.useRustCoreDebugLogging"
 
+    /// Gates every Google Play release write entry point (plan R6): the release
+    /// detail's bottom bar and editable metadata, the swipe actions on release
+    /// rows, the staged rollout sheet, the review checklist and the New Release
+    /// / Promote sheet ("+" on the app detail and on a track). Read-only release
+    /// status and detail are not gated. A wrong tap changes production for real
+    /// users, so writes stay OFF until validated against a real account.
+    /// Default: OFF; ON while the DEBUG fake data mode runs (in memory only,
+    /// see `FeatureFlags.sessionDefaults`). Toggle at launch with
+    /// `-featureFlag.googlePlayReleaseWrites YES`.
+    case googlePlayReleaseWrites = "featureFlag.googlePlayReleaseWrites"
+
     /// The compiled-in default used when no value is stored in `UserDefaults`.
     /// New flags ship OFF by default — the safe, fully-reversible value.
     var defaultValue: Bool {
         switch self {
-        case .useRustCoreDebugLogging:
+        case .useRustCoreDebugLogging, .googlePlayReleaseWrites:
             return false
         }
     }
@@ -43,6 +54,12 @@ struct FeatureFlags: @unchecked Sendable {
 
     static let shared = FeatureFlags()
 
+    /// Defaults for this launch only, applied between a stored value and the
+    /// compiled-in default. Never persisted, so nothing leaks into a later
+    /// launch. Set once at startup, before any screen exists — the DEBUG fake
+    /// data mode turns `googlePlayReleaseWrites` ON this way.
+    nonisolated(unsafe) static var sessionDefaults: [FeatureFlag: Bool] = [:]
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
     }
@@ -51,7 +68,7 @@ struct FeatureFlags: @unchecked Sendable {
     /// default when nothing is stored.
     func isEnabled(_ flag: FeatureFlag) -> Bool {
         if defaults.object(forKey: flag.rawValue) == nil {
-            return flag.defaultValue
+            return Self.sessionDefaults[flag] ?? flag.defaultValue
         }
         return defaults.bool(forKey: flag.rawValue)
     }

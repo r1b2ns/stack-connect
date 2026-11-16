@@ -82,6 +82,37 @@ protocol GooglePlayTracksFetching: Sendable {
     func fetchTracks(packageName: String) async throws -> [GooglePlayTrackModel]
 }
 
+/// Lists the app bundles already uploaded to Google Play, the sources of a new
+/// release. Opens a temporary Play edit (see above): call it only when the
+/// user opens the bundle picker.
+protocol GooglePlayBundlesFetching: Sendable {
+    func fetchBundles(packageName: String) async throws -> [GooglePlayBundleModel]
+}
+
+// MARK: - Release writes (plan R2, R4)
+
+/// Changes a track: rollout, halt, resume, complete, metadata, new release,
+/// promote. The core opens an edit, reads the track fresh, applies the change,
+/// updates, validates and commits it; on any failure the edit is deleted and
+/// nothing changes.
+///
+/// A write **commits** an edit, so it cancels any edit this service account has
+/// open for the app elsewhere (e.g. a CI upload). Only ever call it after the
+/// user confirmed an explicit action (R4), never automatically.
+protocol GooglePlayReleaseManaging: Sendable {
+    /// Returns the committed track.
+    func applyReleaseChange(
+        packageName: String,
+        track: String,
+        change: GooglePlayReleaseChange,
+        options: GooglePlayCommitOptions
+    ) async throws -> GooglePlayTrackModel
+}
+
+/// Everything the release write flows use from one connection: the write, the
+/// bundle picker and the edit-free summaries refreshed after a write.
+typealias GooglePlayReleaseWriteConnecting = GooglePlayReleaseManaging & GooglePlayBundlesFetching & GooglePlayReleaseSummariesFetching
+
 /// Lists and replies to an app's Google Play reviews (no edit involved).
 ///
 /// Review ids are opaque composites (`{packageName}/{reviewId}`): pass them back
@@ -118,6 +149,8 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
     GooglePlayStoreListingsFetching,
     GooglePlayTracksFetching,
     GooglePlayReleaseSummariesFetching,
+    GooglePlayBundlesFetching,
+    GooglePlayReleaseManaging,
     GooglePlayReviewsConnecting,
     @unchecked Sendable {
 
@@ -267,6 +300,42 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
         return infos.map(Self.mapReleaseSummary)
     }
 
+    // MARK: - Bundles (edit-based) and release writes
+
+    func fetchBundles(packageName: String) async throws -> [GooglePlayBundleModel] {
+        try requireOnline()
+        let provider = try rustCoreProvider()
+        guard let tracks = provider.tracks() else {
+            throw translate(.Unsupported(message: "Tracks capability is not available for this provider."))
+        }
+        let infos = try await callRustCore { try await tracks.fetchBundles(appId: packageName) }
+        Log.print.info("[GooglePlay] Fetched \(infos.count) bundles for \(packageName) (Rust core)")
+        return infos.map { GooglePlayBundleModel(versionCode: $0.versionCode, sha256: $0.sha256) }
+    }
+
+    func applyReleaseChange(
+        packageName: String,
+        track: String,
+        change: GooglePlayReleaseChange,
+        options: GooglePlayCommitOptions
+    ) async throws -> GooglePlayTrackModel {
+        try requireOnline()
+        let provider = try rustCoreProvider()
+        guard let tracks = provider.tracks() else {
+            throw translate(.Unsupported(message: "Tracks capability is not available for this provider."))
+        }
+        let info = try await callRustCore {
+            try await tracks.applyReleaseChange(
+                appId: packageName,
+                track: track,
+                change: Self.coreChange(change),
+                options: Self.coreOptions(options)
+            )
+        }
+        Log.print.info("[GooglePlay] Committed a release change on \(track) for \(packageName) (Rust core)")
+        return Self.mapTrack(info)
+    }
+
     // MARK: - Reviews
 
     /// Google's own order (most recent first) is the only sort Play supports;
@@ -412,6 +481,66 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
                 GooglePlayCountryTargetingModel(countries: $0.countries, includeRestOfWorld: $0.includeRestOfWorld)
             }
         )
+    }
+
+    // MARK: Writes (app → core)
+
+    static func coreChange(_ change: GooglePlayReleaseChange) -> StackCoreRust.ReleaseChange {
+        switch change {
+        case .setRollout(let codes, let fraction):
+            return .setRollout(versionCodes: codes, userFraction: fraction)
+        case .halt(let codes):
+            return .halt(versionCodes: codes)
+        case .resume(let codes):
+            return .resume(versionCodes: codes)
+        case .complete(let codes):
+            return .complete(versionCodes: codes)
+        case .updateMetadata(let codes, let update):
+            return .updateMetadata(versionCodes: codes, update: ReleaseMetadataUpdate(
+                name: update.name,
+                releaseNotes: update.releaseNotes.map(coreTexts),
+                inAppUpdatePriority: update.inAppUpdatePriority.map(Int32.init),
+                countryTargeting: nil
+            ))
+        case .create(let release):
+            return .createRelease(release: NewRelease(
+                versionCodes: release.versionCodes,
+                name: release.name,
+                releaseNotes: coreTexts(release.releaseNotes),
+                status: coreStatus(release.status),
+                inAppUpdatePriority: release.inAppUpdatePriority.map(Int32.init),
+                countryTargeting: nil
+            ))
+        case .promote(let fromTrack, let codes, let status, let name, let notes, let priority):
+            return .promote(
+                fromTrack: fromTrack,
+                versionCodes: codes,
+                status: coreStatus(status),
+                name: name,
+                releaseNotes: notes.map(coreTexts),
+                inAppUpdatePriority: priority.map(Int32.init),
+                countryTargeting: nil
+            )
+        }
+    }
+
+    static func coreOptions(_ options: GooglePlayCommitOptions) -> StackCoreRust.CommitOptions {
+        CommitOptions(
+            sendForReview: options.sendForReview,
+            changesInReviewBehavior: options.reviewInProgress == .cancelAndResubmit ? .cancelInReviewAndSubmit : .errorIfInReview
+        )
+    }
+
+    private static func coreStatus(_ status: GooglePlayNewReleaseStatus) -> StackCoreRust.NewReleaseStatus {
+        switch status {
+        case .draft:                        return .draft
+        case .inProgress(let userFraction): return .inProgress(userFraction: userFraction)
+        case .completed:                    return .completed
+        }
+    }
+
+    private static func coreTexts(_ texts: [GooglePlayLocalizedTextModel]) -> [LocalizedTextInfo] {
+        texts.map { LocalizedTextInfo(language: $0.language, text: $0.text) }
     }
 
     /// The lifecycle state is typed (unknown values kept as `.unknown(raw)`).

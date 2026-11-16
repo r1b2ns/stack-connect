@@ -49,6 +49,9 @@ enum FakeDataBootstrap {
         BackendEnvironment.firebaseProviders = FakeFirebaseProviderFactory(server: FakeFirebaseServer(clock: clock))
         BackendEnvironment.ratingSummaryFetcher = FakeRatingSummaryFetcher()
 
+        // Release writes run against the in-memory Play backend (plan R6).
+        FeatureFlags.sessionDefaults[.googlePlayReleaseWrites] = true
+
         WidgetIconCache.directoryOverride = directory.appendingPathComponent("WidgetIcons", isDirectory: true)
         URLProtocol.registerClass(FakeNetworkURLProtocol.self)
 

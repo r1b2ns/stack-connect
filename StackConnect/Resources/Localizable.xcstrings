@@ -98193,6 +98193,670 @@
           }
         }
       }
+    },
+    "Stop and report" : {
+      "comment" : "Google Play commit option: what to do when another change is already in review — refuse the commit and report it.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abbrechen und melden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detener e informar"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detener e informar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêter et signaler"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interrompi e segnala"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止して報告"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "중지하고 알림"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stoppen en melden"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parar e avisar"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parar e avisar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Остановить и сообщить"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stoppa och rapportera"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止並回報"
+          }
+        }
+      }
+    },
+    "Cancel review and resubmit" : {
+      "comment" : "Google Play commit option: cancel the review in progress and send every change for review.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Überprüfung abbrechen und neu senden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar la revisión y reenviar"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar la revisión y reenviar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler l’examen et renvoyer"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annulla la revisione e invia di nuovo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "審査をキャンセルして再提出"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "검토 취소 후 다시 제출"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beoordeling annuleren en opnieuw indienen"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar a revisão e reenviar"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar a revisão e reenviar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить проверку и отправить снова"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avbryt granskningen och skicka igen"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取消審查並重新提交"
+          }
+        }
+      }
+    },
+    "Google Play requires these changes to be saved without sending them for review. Turn off “Send changes for review” and try again." : {
+      "comment" : "Error when Google Play refuses a commit that was sent for review but must not be.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play verlangt, dass diese Änderungen gespeichert werden, ohne sie zur Überprüfung zu senden. Deaktiviere „Änderungen zur Überprüfung senden“ und versuche es erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play exige guardar estos cambios sin enviarlos a revisión. Desactiva «Enviar cambios a revisión» e inténtalo de nuevo."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play exige guardar estos cambios sin enviarlos a revisión. Desactiva «Enviar cambios a revisión» e inténtalo de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play exige que ces modifications soient enregistrées sans être envoyées pour examen. Désactivez « Envoyer les modifications pour examen » et réessayez."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play richiede che queste modifiche vengano salvate senza inviarle per la revisione. Disattiva “Invia le modifiche per la revisione” e riprova."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play では、これらの変更を審査に送信せずに保存する必要があります。「変更を審査に送信」をオフにしてもう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play에서는 이 변경 사항을 검토에 보내지 않고 저장해야 합니다. ‘변경 사항을 검토에 보내기’를 끄고 다시 시도하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play vereist dat deze wijzigingen worden opgeslagen zonder ze ter beoordeling te sturen. Zet ‘Wijzigingen ter beoordeling sturen’ uit en probeer het opnieuw."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Google Play exige que essas alterações sejam salvas sem enviá-las para revisão. Desative “Enviar alterações para revisão” e tente novamente."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Google Play exige que estas alterações sejam guardadas sem as enviar para revisão. Desative “Enviar alterações para revisão” e tente novamente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play требует сохранить эти изменения без отправки на проверку. Выключите «Отправить изменения на проверку» и повторите попытку."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play kräver att ändringarna sparas utan att skickas för granskning. Stäng av ”Skicka ändringar för granskning” och försök igen."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play 要求儲存這些變更但不送交審查。請關閉「將變更送交審查」後再試一次。"
+          }
+        }
+      }
+    },
+    "Another change to this app is in review. Choose “Cancel review and resubmit” under “If a review is in progress”, or try again when the review ends." : {
+      "comment" : "Error when a Google Play commit is refused because another change is in review.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine andere Änderung dieser App wird gerade überprüft. Wähle unter „Wenn eine Überprüfung läuft“ die Option „Überprüfung abbrechen und neu senden“ oder versuche es nach der Überprüfung erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otro cambio de esta app está en revisión. Elige «Cancelar la revisión y reenviar» en «Si hay una revisión en curso» o vuelve a intentarlo cuando termine la revisión."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otro cambio de esta app está en revisión. Elige «Cancelar la revisión y reenviar» en «Si hay una revisión en curso» o vuelve a intentarlo cuando termine la revisión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une autre modification de cette app est en cours d’examen. Choisissez « Annuler l’examen et renvoyer » sous « Si un examen est en cours », ou réessayez à la fin de l’examen."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un’altra modifica di questa app è in revisione. Scegli “Annulla la revisione e invia di nuovo” in “Se è in corso una revisione” o riprova al termine della revisione."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアプリの別の変更が審査中です。「審査中の場合」で「審査をキャンセルして再提出」を選ぶか、審査の終了後にもう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 앱의 다른 변경 사항이 검토 중입니다. ‘검토가 진행 중인 경우’에서 ‘검토 취소 후 다시 제출’을 선택하거나 검토가 끝난 후 다시 시도하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Er wordt al een andere wijziging van deze app beoordeeld. Kies ‘Beoordeling annuleren en opnieuw indienen’ bij ‘Als er een beoordeling loopt’, of probeer het opnieuw als de beoordeling klaar is."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Outra alteração deste app está em revisão. Escolha “Cancelar a revisão e reenviar” em “Se houver uma revisão em andamento” ou tente novamente quando a revisão terminar."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Outra alteração desta app está em revisão. Escolha “Cancelar a revisão e reenviar” em “Se houver uma revisão em curso” ou tente novamente quando a revisão terminar."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Другое изменение этого приложения уже на проверке. Выберите «Отменить проверку и отправить снова» в разделе «Если идёт проверка» или повторите попытку после её завершения."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En annan ändring av appen granskas redan. Välj ”Avbryt granskningen och skicka igen” under ”Om en granskning pågår”, eller försök igen när granskningen är klar."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此 App 的另一項變更正在審查中。請在「若審查正在進行」中選擇「取消審查並重新提交」，或在審查結束後再試一次。"
+          }
+        }
+      }
+    },
+    "Google Play rejected this change. Nothing was published." : {
+      "comment" : "Lead sentence of a Google Play release change refused by Google; Google's own message follows on the next line.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play hat diese Änderung abgelehnt. Es wurde nichts veröffentlicht."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play rechazó este cambio. No se publicó nada."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play rechazó este cambio. No se publicó nada."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play a refusé cette modification. Rien n’a été publié."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play ha rifiutato questa modifica. Non è stato pubblicato nulla."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play がこの変更を拒否しました。何も公開されていません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play에서 이 변경 사항을 거부했습니다. 아무것도 게시되지 않았습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play heeft deze wijziging geweigerd. Er is niets gepubliceerd."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Google Play recusou esta alteração. Nada foi publicado."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Google Play recusou esta alteração. Nada foi publicado."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play отклонил это изменение. Ничего не опубликовано."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play avvisade ändringen. Inget publicerades."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play 拒絕了這項變更，沒有發布任何內容。"
+          }
+        }
+      }
+    },
+    "Changing Google Play releases isn't available yet." : {
+      "comment" : "Shown when Google Play release writes are turned off by a feature flag.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Ändern von Google Play-Releases ist noch nicht verfügbar."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todavía no se pueden cambiar las versiones de Google Play."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todavía no se pueden cambiar las versiones de Google Play."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La modification des versions Google Play n’est pas encore disponible."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La modifica delle release di Google Play non è ancora disponibile."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play のリリースの変更はまだ利用できません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play 출시 버전 변경은 아직 사용할 수 없습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play-releases wijzigen is nog niet beschikbaar."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ainda não é possível alterar versões do Google Play."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ainda não é possível alterar versões do Google Play."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменение выпусков Google Play пока недоступно."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det går inte att ändra Google Play-versioner än."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目前尚無法變更 Google Play 版本。"
+          }
+        }
+      }
+    },
+    "You don't have permission to change this app's releases." : {
+      "comment" : "Google Play: the account lacks the version edit permission.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du hast keine Berechtigung, die Releases dieser App zu ändern."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No tienes permiso para cambiar las versiones de esta app."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No tienes permiso para cambiar las versiones de esta app."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vous n’avez pas l’autorisation de modifier les versions de cette app."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non hai il permesso di modificare le release di questa app."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアプリのリリースを変更する権限がありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 앱의 출시 버전을 변경할 권한이 없습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Je hebt geen toestemming om de releases van deze app te wijzigen."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Você não tem permissão para alterar as versões deste app."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não tem permissão para alterar as versões desta app."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У вас нет прав на изменение выпусков этого приложения."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du har inte behörighet att ändra appens versioner."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你沒有變更此 App 版本的權限。"
+          }
+        }
+      }
+    },
+    "You don't have permission to create releases for this app." : {
+      "comment" : "Google Play: the account lacks the version add permission.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du hast keine Berechtigung, Releases für diese App zu erstellen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No tienes permiso para crear versiones de esta app."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No tienes permiso para crear versiones de esta app."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vous n’avez pas l’autorisation de créer des versions pour cette app."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non hai il permesso di creare release per questa app."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアプリのリリースを作成する権限がありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 앱의 출시 버전을 만들 권한이 없습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Je hebt geen toestemming om releases voor deze app te maken."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Você não tem permissão para criar versões deste app."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não tem permissão para criar versões desta app."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У вас нет прав на создание выпусков этого приложения."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du har inte behörighet att skapa versioner av appen."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你沒有為此 App 建立版本的權限。"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

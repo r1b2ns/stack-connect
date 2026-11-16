@@ -28,6 +28,9 @@ enum GooglePlayErrorTranslator {
         /// (typically longer than about 350 characters); an HTTP 404 is a review
         /// Google no longer shares (deleted, or out of its 7-day window).
         case replyToReview
+        /// `applyReleaseChange` (a committed edit): a refusal carries Google's
+        /// own validation message, which is the only useful detail.
+        case releaseChange
     }
 
     static func friendlyMessage(for error: Error, operation: Operation = .general) -> String {
@@ -53,6 +56,9 @@ enum GooglePlayErrorTranslator {
 
         case .Network:
             return String(localized: "Couldn't reach Google Play. Check your internet connection and try again.")
+
+        case .Http(let status, let message) where operation == .releaseChange:
+            return releaseChangeMessage(status: Int(status), googleMessage: message)
 
         case .Http(let status, _):
             return httpMessage(status: Int(status), operation: operation)
@@ -82,7 +88,39 @@ enum GooglePlayErrorTranslator {
         OfflineError.isConnectivityFailure(error)
     }
 
+    /// Google's own message for a refused release change (validation or
+    /// commit failure), for the checklist's error block and its Share Error.
+    /// `nil` for anything that isn't a refusal by Google.
+    static func googleMessage(for error: Error) -> String? {
+        guard case .Http(let status, let message)? = error as? StackError, (400..<500).contains(Int(status)) else {
+            return nil
+        }
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     // MARK: - Private
+
+    /// Release changes: Google explains every refusal in its message, so the
+    /// known ones get actionable copy and the rest show Google's text.
+    private static func releaseChangeMessage(status: Int, googleMessage: String) -> String {
+        let detail = googleMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowered = detail.lowercased()
+        if lowered.contains("changesnotsentforreview") || lowered.contains("not be sent for review")
+            || lowered.contains("must not be sent") {
+            return String(localized: "Google Play requires these changes to be saved without sending them for review. Turn off “Send changes for review” and try again.")
+        }
+        if lowered.contains("in review") || lowered.contains("in_review") || lowered.contains("being reviewed") {
+            return String(localized: "Another change to this app is in review. Choose “Cancel review and resubmit” under “If a review is in progress”, or try again when the review ends.")
+        }
+        switch status {
+        case 400, 409, 412, 422:
+            let lead = String(localized: "Google Play rejected this change. Nothing was published.")
+            return detail.isEmpty ? lead : "\(lead)\n\(detail)"
+        default:
+            return httpMessage(status: status, operation: .releaseChange)
+        }
+    }
 
     private static var genericMessage: String {
         String(localized: "Something went wrong while talking to Google Play. Try again.")
@@ -98,7 +136,7 @@ enum GooglePlayErrorTranslator {
             return String(localized: "This service account can't access this app. In Play Console › Users and permissions, give it access to the app and try again.")
         case 404 where operation == .replyToReview:
             return String(localized: "This review is no longer available on Google Play.")
-        case 404 where operation == .appContentRead:
+        case 404 where operation == .appContentRead, 404 where operation == .releaseChange:
             return String(localized: "Google Play couldn't load this information. Try again in a moment.")
         case 404:
             // Unknown package, or a package name that breaks Android's naming
