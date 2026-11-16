@@ -13,6 +13,8 @@ protocol GooglePlayReleaseWriteViewModelProtocol: ObservableObject {
     func canPerform(_ kind: GooglePlayReleaseWriteAccess.Kind) -> Bool
     /// Starts `action` on `release` of `track` (a bar button, a swipe action).
     func start(_ action: GooglePlayReleaseAction, release: GooglePlayReleaseModel, track: String)
+    /// Opens the Staged Rollout sheet on the release's current state.
+    func openRollout(release: GooglePlayReleaseModel, track: String)
     /// Asks the user to confirm `write`. Nothing is sent until `confirm()`.
     func request(_ write: GooglePlayPendingWrite)
     /// Commits `write`, the one the user confirmed (an alert clears
@@ -34,6 +36,15 @@ struct GooglePlayReleaseWriteUiState {
     var errorMessage: String?
     /// Bumped after every successful write: screens reload their caches.
     var revision = 0
+    /// Staged Rollout sheet (prototype screen 4).
+    var rolloutTarget: GooglePlayRolloutTarget?
+    /// The sheet opened from "Increase Rollout": it starts on the next step.
+    var rolloutIncreasing = false
+
+    /// A write sheet is open: confirmations show over it, not the screen.
+    var isPresentingSheet: Bool {
+        rolloutTarget != nil
+    }
 }
 
 // MARK: - Implementation
@@ -65,14 +76,25 @@ final class GooglePlayReleaseWriteViewModel: GooglePlayReleaseWriteViewModelProt
             change = .halt(versionCodes: codes)
         case .resume:
             change = .resume(versionCodes: codes)
-        case .releaseToAll, .rollOut:
+        case .releaseToAll:
             change = .complete(versionCodes: codes)
-        case .increaseRollout:
-            change = .setRollout(versionCodes: codes, userFraction: Self.nextStep(after: release.userFraction ?? 0))
+        case .rollOut where !GooglePlayReleaseActions.supportsStagedRollout(GooglePlayTrackKind(track: track)):
+            change = .complete(versionCodes: codes)
+        case .rollOut, .increaseRollout:
+            guard canPerform(.edit) else { return }
+            uiState.rolloutIncreasing = action == .increaseRollout
+            uiState.rolloutTarget = GooglePlayRolloutTarget(track: track, release: release)
+            return
         case .promote:
             return
         }
         request(GooglePlayPendingWrite(track: track, change: change, releaseTitle: release.shortName))
+    }
+
+    func openRollout(release: GooglePlayReleaseModel, track: String) {
+        guard canPerform(.edit) else { return }
+        uiState.rolloutIncreasing = false
+        uiState.rolloutTarget = GooglePlayRolloutTarget(track: track, release: release)
     }
 
     func request(_ write: GooglePlayPendingWrite) {
@@ -103,15 +125,5 @@ final class GooglePlayReleaseWriteViewModel: GooglePlayReleaseWriteViewModelProt
 
     func cancelPendingWrite() {
         uiState.pendingWrite = nil
-    }
-
-    // MARK: - Rollout steps
-
-    /// Steps Play Console suggests for a staged rollout.
-    static let rolloutSteps: [Double] = [0.01, 0.05, 0.1, 0.2, 0.5, 0.99]
-
-    /// The first step above `fraction`, or 99%.
-    static func nextStep(after fraction: Double) -> Double {
-        rolloutSteps.first { $0 > fraction + 0.0001 } ?? 0.99
     }
 }

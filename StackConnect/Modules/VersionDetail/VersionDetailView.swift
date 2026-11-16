@@ -803,50 +803,22 @@ struct PhasedReleaseSheet<ViewModel: VersionDetailViewModelProtocol>: View {
         NavigationStack {
             Form {
                 Section {
-                    Button {
+                    StackChoiceRow(
+                        title: String(localized: "Release update to all users immediately"),
+                        icon: "arrow.up.forward.circle",
+                        isSelected: !isPhasedActive
+                    ) {
                         Task { await viewModel.savePhasedRelease(usePhased: false) }
-                    } label: {
-                        HStack {
-                            Image(systemName: "arrow.up.forward.circle")
-                                .foregroundStyle(.secondary)
-                                .frame(width: 24)
-
-                            Text("Release update to all users immediately")
-                                .font(.body)
-                                .foregroundStyle(isPhasedActive ? .secondary : .primary)
-
-                            Spacer()
-
-                            if !isPhasedActive {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
                     }
                     .disabled(isPhasedActive)
-                    .foregroundStyle(.primary)
 
-                    Button {
+                    StackChoiceRow(
+                        title: String(localized: "Release update over 7-day period using phased release"),
+                        icon: "chart.bar.doc.horizontal.fill",
+                        isSelected: isPhasedActive
+                    ) {
                         Task { await viewModel.savePhasedRelease(usePhased: true) }
-                    } label: {
-                        HStack {
-                            Image(systemName: "chart.bar.doc.horizontal.fill")
-                                .foregroundStyle(.secondary)
-                                .frame(width: 24)
-
-                            Text("Release update over 7-day period using phased release")
-                                .font(.body)
-                                .foregroundStyle(.primary)
-
-                            Spacer()
-
-                            if viewModel.uiState.phasedRelease != nil {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
                     }
-                    .foregroundStyle(.primary)
                 }
 
                 if isPhasedActive, let phased = viewModel.uiState.phasedRelease {

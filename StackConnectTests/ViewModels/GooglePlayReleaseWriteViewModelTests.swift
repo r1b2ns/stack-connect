@@ -124,6 +124,59 @@ final class GooglePlayReleaseWriteViewModelTests: XCTestCase {
         XCTAssertEqual(sut.uiState.pendingWrite?.change, .complete(versionCodes: ["4210"]))
     }
 
+    // MARK: - Staged rollout sheet
+
+    func testIncreaseAndRollOutOpenTheRolloutSheetWithoutWriting() {
+        let sut = makeSUT()
+
+        sut.start(.increaseRollout, release: rolling, track: "production")
+
+        XCTAssertEqual(sut.uiState.rolloutTarget, GooglePlayRolloutTarget(track: "production", release: rolling))
+        XCTAssertTrue(sut.uiState.rolloutIncreasing)
+        XCTAssertTrue(sut.uiState.isPresentingSheet)
+        XCTAssertNil(sut.uiState.pendingWrite)
+        XCTAssertTrue(connection.releaseChanges.isEmpty)
+    }
+
+    func testRollingOutADraftOnATrackWithoutStagedRolloutReleasesToAll() {
+        let sut = makeSUT()
+        let draft = GooglePlayReleaseModel(name: "4.3.0", status: .draft, versionCodes: ["4305"], userFraction: nil, releaseNotes: [], inAppUpdatePriority: nil)
+
+        sut.start(.rollOut, release: draft, track: "internal")
+
+        XCTAssertNil(sut.uiState.rolloutTarget)
+        XCTAssertEqual(sut.uiState.pendingWrite?.change, .complete(versionCodes: ["4305"]))
+    }
+
+    func testRolloutFormStartsOnTheNextStepWhenIncreasing() {
+        let target = GooglePlayRolloutTarget(track: "production", release: rolling)
+
+        XCTAssertEqual(GooglePlayRolloutForm(target: target, increasing: true).percent, 50)
+        XCTAssertEqual(GooglePlayRolloutForm(target: target).percent, 20)
+        XCTAssertEqual(GooglePlayRolloutForm(target: target).method, .percentage)
+    }
+
+    func testRolloutFormChanges() {
+        let target = GooglePlayRolloutTarget(track: "production", release: rolling)
+        var form = GooglePlayRolloutForm(target: target)
+
+        XCTAssertNil(form.change(for: target), "Saving the running fraction changes nothing")
+        form.percent = 50
+        XCTAssertEqual(form.change(for: target), .setRollout(versionCodes: ["4210"], userFraction: 0.5))
+        form.method = .allUsers
+        XCTAssertEqual(form.change(for: target), .complete(versionCodes: ["4210"]))
+    }
+
+    func testRolloutFormOnATrackWithoutStagedRolloutReleasesToAll() {
+        let draft = GooglePlayReleaseModel(name: "4.3.0", status: .draft, versionCodes: ["4305"], userFraction: nil, releaseNotes: [], inAppUpdatePriority: nil)
+        let target = GooglePlayRolloutTarget(track: "alpha", release: draft)
+
+        let form = GooglePlayRolloutForm(target: target)
+
+        XCTAssertEqual(form.method, .allUsers)
+        XCTAssertEqual(form.change(for: target), .complete(versionCodes: ["4305"]))
+    }
+
     // MARK: - Access
 
     func testWritesAreDeniedWithTheFlagOff() async {

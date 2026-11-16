@@ -211,17 +211,29 @@ struct GooglePlayReleaseDetailView<ViewModel: GooglePlayReleaseDetailViewModelPr
 
     // MARK: - Rollout
 
+    /// The rollout row opens the Staged Rollout sheet whenever the bar offers
+    /// a rollout change (prototype screens 3 → 4).
+    private var opensRolloutSheet: Bool {
+        !state.actions.filter { [.rollOut, .increaseRollout, .halt, .resume].contains($0) }.isEmpty
+    }
+
     private func buildRolloutSection(_ release: GooglePlayReleaseModel) -> some View {
         Section {
-            StackSubtitleRow(
-                icon: "chart.bar.fill",
-                iconColor: .teal,
-                title: String(localized: "Staged Rollout"),
-                subtitle: rolloutText(release),
-                progress: release.rolloutFraction,
-                progressTint: release.status == .halted ? .orange : .teal,
-                showsChevron: false
-            )
+            Button {
+                writes.openRollout(release: release, track: state.track)
+            } label: {
+                StackSubtitleRow(
+                    icon: "chart.bar.fill",
+                    iconColor: .teal,
+                    title: String(localized: "Staged Rollout"),
+                    subtitle: rolloutText(release),
+                    progress: release.rolloutFraction,
+                    progressTint: release.status == .halted ? .orange : .teal,
+                    showsChevron: opensRolloutSheet
+                )
+            }
+            .disabled(!opensRolloutSheet)
+            .foregroundStyle(.primary)
 
             StackSubtitleRow(
                 icon: "globe",

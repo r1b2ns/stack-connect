@@ -5,13 +5,20 @@ import SwiftUI
 struct GooglePlayReleaseWriteModifier<ViewModel: GooglePlayReleaseWriteViewModelProtocol>: ViewModifier {
 
     @ObservedObject var viewModel: ViewModel
+    /// The sheets' own copy: alerts only. The screen's copy also presents the
+    /// sheets, and leaves alerts to an open sheet.
+    let inSheet: Bool
+
+    private var showsAlerts: Bool {
+        inSheet || !viewModel.uiState.isPresentingSheet
+    }
 
     func body(content: Content) -> some View {
         content
             .alert(
                 viewModel.uiState.pendingWrite?.title ?? "",
                 isPresented: Binding(
-                    get: { viewModel.uiState.pendingWrite != nil },
+                    get: { showsAlerts && viewModel.uiState.pendingWrite != nil },
                     set: { if !$0 { viewModel.cancelPendingWrite() } }
                 ),
                 presenting: viewModel.uiState.pendingWrite
@@ -28,7 +35,7 @@ struct GooglePlayReleaseWriteModifier<ViewModel: GooglePlayReleaseWriteViewModel
             .alert(
                 String(localized: "Couldn't Change the Release"),
                 isPresented: Binding(
-                    get: { viewModel.uiState.errorMessage != nil },
+                    get: { showsAlerts && viewModel.uiState.errorMessage != nil },
                     set: { if !$0 { viewModel.uiState.errorMessage = nil } }
                 )
             ) {
@@ -45,13 +52,16 @@ struct GooglePlayReleaseWriteModifier<ViewModel: GooglePlayReleaseWriteViewModel
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
                 }
             }
-            .toast(message: $viewModel.uiState.toastMessage)
+            .toast(message: inSheet ? .constant(nil) : $viewModel.uiState.toastMessage)
+            .sheet(item: inSheet ? .constant(nil) : $viewModel.uiState.rolloutTarget) { target in
+                GooglePlayRolloutSheet(target: target, increasing: viewModel.uiState.rolloutIncreasing, writes: viewModel)
+            }
     }
 }
 
 extension View {
-    func googlePlayReleaseWrites<ViewModel: GooglePlayReleaseWriteViewModelProtocol>(_ viewModel: ViewModel) -> some View {
-        modifier(GooglePlayReleaseWriteModifier(viewModel: viewModel))
+    func googlePlayReleaseWrites<ViewModel: GooglePlayReleaseWriteViewModelProtocol>(_ viewModel: ViewModel, inSheet: Bool = false) -> some View {
+        modifier(GooglePlayReleaseWriteModifier(viewModel: viewModel, inSheet: inSheet))
     }
 }
 

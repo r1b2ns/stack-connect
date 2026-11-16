@@ -103228,6 +103228,908 @@
           }
         }
       }
+    },
+    "Saving opens a Play edit, updates the track and commits it. Any edit this service account has open elsewhere (for example a CI upload) is cancelled." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim Sichern wird eine Play-Bearbeitung geöffnet, der Track aktualisiert und die Bearbeitung übernommen. Jede andere offene Bearbeitung dieses Dienstkontos (zum Beispiel ein CI-Upload) wird abgebrochen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al guardar se abre una edición de Play, se actualiza el canal y se confirma. Se cancela cualquier otra edición abierta de esta cuenta de servicio (por ejemplo, una subida de CI)."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al guardar se abre una edición de Play, se actualiza el canal y se confirma. Se cancela cualquier otra edición abierta de esta cuenta de servicio (por ejemplo, una subida de CI)."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’enregistrement ouvre une modification Play, met à jour le canal et la valide. Toute autre modification ouverte par ce compte de service (par exemple un envoi CI) est annulée."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il salvataggio apre una modifica di Play, aggiorna il canale e la conferma. Qualsiasi altra modifica aperta da questo account di servizio (ad esempio un caricamento CI) viene annullata."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存すると Play の編集が開かれ、トラックが更新されて確定されます。このサービスアカウントが開いている他の編集（CI のアップロードなど）はキャンセルされます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장하면 Play 편집이 열리고 트랙이 업데이트된 후 커밋됩니다. 이 서비스 계정이 열어 둔 다른 편집(예: CI 업로드)은 취소됩니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bij bewaren wordt een Play-bewerking geopend, de track bijgewerkt en vastgelegd. Elke andere open bewerking van dit serviceaccount (bijvoorbeeld een CI-upload) wordt geannuleerd."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvar abre uma edição do Play, atualiza a faixa e a confirma. Qualquer outra edição aberta desta conta de serviço (por exemplo, um upload de CI) é cancelada."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar abre uma edição do Play, atualiza a faixa e confirma-a. Qualquer outra edição aberta desta conta de serviço (por exemplo, um carregamento de CI) é cancelada."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "При сохранении открывается правка Play, трек обновляется и правка применяется. Любая другая открытая правка этого сервисного аккаунта (например, загрузка из CI) будет отменена."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "När du sparar öppnas en Play-redigering, spåret uppdateras och redigeringen genomförs. Alla andra öppna redigeringar för tjänstkontot (till exempel en CI-uppladdning) avbryts."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "儲存時會開啟 Play 編輯、更新測試群組並提交。此服務帳號開啟的其他編輯（例如 CI 上傳）都會被取消。"
+          }
+        }
+      }
+    },
+    "Release to a percentage of users" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für einen Prozentsatz der Nutzer veröffentlichen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Publicar para un porcentaje de usuarios"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Publicar para un porcentaje de usuarios"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Publier pour un pourcentage d’utilisateurs"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pubblica per una percentuale di utenti"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一部のユーザーに公開"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "일부 사용자에게 출시"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uitbrengen voor een percentage van de gebruikers"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lançar para uma porcentagem dos usuários"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lançar para uma percentagem dos utilizadores"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выпустить для части пользователей"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Släpp till en andel av användarna"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "向部分使用者發布"
+          }
+        }
+      }
+    },
+    "Release Method" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Veröffentlichungsart"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Método de publicación"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Método de publicación"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mode de publication"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metodo di pubblicazione"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "公開方法"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "출시 방법"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uitbrengmethode"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forma de lançamento"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forma de lançamento"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Способ выпуска"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Släppmetod"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "發布方式"
+          }
+        }
+      }
+    },
+    "Staged rollout is available for production and open testing." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die gestaffelte Einführung gibt es für die Produktion und offene Tests."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El lanzamiento escalonado está disponible para producción y pruebas abiertas."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El lanzamiento escalonado está disponible para producción y pruebas abiertas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le déploiement progressif est disponible pour la production et les tests ouverts."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il rollout graduale è disponibile per produzione e test aperti."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "段階的公開は正式版とオープンテストで利用できます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "단계적 출시는 프로덕션 및 공개 테스트에서 사용할 수 있습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gefaseerde uitrol is beschikbaar voor productie en open tests."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O lançamento gradual está disponível para produção e teste aberto."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O lançamento gradual está disponível para produção e teste aberto."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поэтапное развёртывание доступно для рабочей версии и открытого тестирования."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stegvis utrullning finns för produktion och öppen testning."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "分階段推出僅適用於正式版與開放測試。"
+          }
+        }
+      }
+    },
+    "Drag to change, or pick a step" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zum Ändern ziehen oder eine Stufe wählen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrastra para cambiar o elige un paso"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrastra para cambiar o elige un paso"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faites glisser ou choisissez un palier"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trascina per cambiare o scegli un passo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ドラッグして変更するか、段階を選択"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "드래그하여 변경하거나 단계를 선택하세요"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sleep om te wijzigen of kies een stap"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arraste para alterar ou escolha uma etapa"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arraste para alterar ou escolha um passo"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащите или выберите шаг"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dra för att ändra eller välj ett steg"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "拖曳以變更，或選擇一個階段"
+          }
+        }
+      }
+    },
+    "Rollout percentage" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prozentsatz der Einführung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Porcentaje del lanzamiento"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Porcentaje del lanzamiento"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pourcentage du déploiement"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Percentuale del rollout"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "公開の割合"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "출시 비율"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uitrolpercentage"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Porcentagem do lançamento"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Percentagem do lançamento"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Процент развёртывания"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utrullningsandel"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "推出比例"
+          }
+        }
+      }
+    },
+    "Rollout Percentage" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prozentsatz der Einführung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Porcentaje del lanzamiento"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Porcentaje del lanzamiento"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pourcentage du déploiement"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Percentuale del rollout"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "公開の割合"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "출시 비율"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uitrolpercentage"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Porcentagem do lançamento"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Percentagem do lançamento"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Процент развёртывания"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utrullningsandel"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "推出比例"
+          }
+        }
+      }
+    },
+    "Unlike App Store phased release, Google Play has no fixed 7-day schedule: you choose each step, from 1% to 99%." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anders als die stufenweise Veröffentlichung im App Store hat Google Play keinen festen 7-Tage-Plan: Du wählst jede Stufe selbst, von 1 % bis 99 %."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A diferencia de la publicación por fases del App Store, Google Play no tiene un calendario fijo de 7 días: eliges cada paso, del 1 % al 99 %."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A diferencia de la publicación por fases del App Store, Google Play no tiene un calendario fijo de 7 días: eliges cada paso, del 1 % al 99 %."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contrairement à la publication progressive de l’App Store, Google Play n’a pas de calendrier fixe de 7 jours : vous choisissez chaque palier, de 1 % à 99 %."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A differenza del rilascio graduale dell’App Store, Google Play non ha un calendario fisso di 7 giorni: scegli tu ogni passo, dall’1% al 99%."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store の段階的リリースとは異なり、Google Play には決まった 7 日間のスケジュールはありません。1%〜99% の各段階を自分で選びます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store의 단계적 출시와 달리 Google Play에는 정해진 7일 일정이 없습니다. 1%에서 99%까지 각 단계를 직접 선택합니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anders dan de gefaseerde release in de App Store heeft Google Play geen vast schema van 7 dagen: je kiest elke stap zelf, van 1% tot 99%."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diferente do lançamento em fases da App Store, o Google Play não tem um cronograma fixo de 7 dias: você escolhe cada etapa, de 1% a 99%."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ao contrário do lançamento faseado da App Store, o Google Play não tem um calendário fixo de 7 dias: escolhe cada passo, de 1% a 99%."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В отличие от поэтапного выпуска в App Store, у Google Play нет фиксированного 7-дневного графика: вы сами выбираете каждый шаг от 1% до 99%."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Till skillnad från stegvis lansering i App Store har Google Play inget fast 7-dagarsschema: du väljer varje steg själv, från 1 % till 99 %."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "與 App Store 的分階段發布不同，Google Play 沒有固定的 7 天時程：你可以自行選擇每個階段，從 1% 到 99%。"
+          }
+        }
+      }
+    },
+    "Currently live for" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktuell verfügbar für"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disponible ahora para"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disponible ahora para"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actuellement disponible pour"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Attualmente disponibile per"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "現在の公開対象"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "현재 제공 대상"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nu beschikbaar voor"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No ar para"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disponível para"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сейчас доступно для"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tillgänglig nu för"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目前提供給"
+          }
+        }
+      }
+    },
+    "Rollout Status" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status der Einführung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estado del lanzamiento"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estado del lanzamiento"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "État du déploiement"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stato del rollout"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "公開ステータス"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "출시 상태"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uitrolstatus"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status do lançamento"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estado do lançamento"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Статус развёртывания"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utrullningsstatus"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "推出狀態"
+          }
+        }
+      }
+    },
+    "Halting stops new users from getting this release. Users who already updated keep it. You can resume later." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Durch das Anhalten erhalten neue Nutzer dieses Release nicht mehr. Wer bereits aktualisiert hat, behält es. Du kannst später fortsetzen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al detenerlo, los usuarios nuevos dejan de recibir esta versión. Quienes ya actualizaron la conservan. Puedes reanudarlo más tarde."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al detenerlo, los usuarios nuevos dejan de recibir esta versión. Quienes ya actualizaron la conservan. Puedes reanudarlo más tarde."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’interruption empêche les nouveaux utilisateurs de recevoir cette version. Ceux qui ont déjà mis à jour la conservent. Vous pourrez reprendre plus tard."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interrompendo, i nuovi utenti non ricevono più questa release. Chi ha già aggiornato la mantiene. Puoi riprendere in seguito."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "停止すると、新しいユーザーにはこのリリースが配信されなくなります。すでにアップデートしたユーザーはそのまま使えます。後で再開できます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "중단하면 새 사용자는 이 출시 버전을 받지 않습니다. 이미 업데이트한 사용자는 그대로 유지됩니다. 나중에 재개할 수 있습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Door te stoppen krijgen nieuwe gebruikers deze release niet meer. Wie al heeft geüpdatet, houdt hem. Je kunt later hervatten."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interromper impede que novos usuários recebam esta versão. Quem já atualizou mantém a versão. Você pode retomar depois."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interromper impede que novos utilizadores recebam esta versão. Quem já atualizou mantém a versão. Pode retomar mais tarde."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "После остановки новые пользователи не будут получать этот выпуск. Те, кто уже обновился, сохранят его. Развёртывание можно возобновить позже."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Om du pausar får nya användare inte längre versionen. De som redan har uppdaterat behåller den. Du kan återuppta senare."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暫停後，新使用者將不會取得此版本，已更新的使用者會保留它。你之後可以繼續推出。"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"
