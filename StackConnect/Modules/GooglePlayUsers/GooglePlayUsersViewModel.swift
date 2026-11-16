@@ -18,6 +18,8 @@ protocol GooglePlayUsersViewModelProtocol: ObservableObject {
     func requestResend(_ user: GooglePlayUserModel)
     func remove(_ user: GooglePlayUserModel) async
     func resend(_ user: GooglePlayUserModel) async
+    /// Sends an invitation. Returns a user-facing error, `nil` once sent.
+    func invite(_ form: GooglePlayInviteForm) async -> String?
 }
 
 // MARK: - Filter
@@ -90,6 +92,13 @@ struct GooglePlayUsersUiState {
     /// E-mail of the user a write is running for.
     var workingEmail: String?
     var showInvite = false
+    /// The account's apps in scope (cached list), for the invite sheet.
+    var apps: [GooglePlayAppItem] = []
+
+    /// "+" in the toolbar: the `users` add rule and a developer ID.
+    var canShowInvite: Bool {
+        access.canInvite && developerId != nil && !isEditingDeveloperId
+    }
 
     /// `users` narrowed by the filter chip and the search text (e-mail or name).
     var filteredUsers: [GooglePlayUserModel] {
@@ -176,6 +185,7 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
         }
 
         uiState.error = nil
+        await loadApps()
         if let cached = await loadCache() {
             uiState.users = Self.sorted(cached.users)
         }
@@ -326,6 +336,53 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
             uiState.actionError = String(localized: "The expired invitation was removed, but the new one couldn't be sent. Invite \(user.email) again.\n\(reason)")
             analytics.track(.action(.resendInvite, on: .googlePlayUsers, result: .failure))
         }
+    }
+
+    // MARK: - Invite (plan U6)
+
+    func invite(_ form: GooglePlayInviteForm) async -> String? {
+        let access = uiState.access
+        guard access.canInvite else { return GooglePlayUsersAccess.message(for: .notPermitted) }
+        guard form.isEmailValid else { return String(localized: "Enter a valid e-mail address.") }
+        guard form.hasAccess else { return String(localized: "Turn on an account permission or add an app.") }
+        if !form.accountPermissions.isEmpty, !access.canInviteWithAccountPermissions {
+            return GooglePlayUsersAccess.message(for: .outsideScope)
+        }
+        if form.grants.contains(where: { !access.allowsApp($0.packageName) }) {
+            return GooglePlayUsersAccess.message(for: .outsideScope)
+        }
+        let email = form.trimmedEmail
+        if uiState.users.contains(where: { $0.matches(email: email) }) {
+            return String(localized: "This person already has access to this developer account or has a pending invitation.")
+        }
+        guard let developerId = uiState.developerId, let connection = makeConnection() else {
+            return String(localized: "No credentials found for this account.")
+        }
+        do {
+            let invited = try await connection.inviteUser(
+                developerId: developerId,
+                email: email,
+                accountPermissions: form.normalizedAccountPermissions,
+                grants: form.grants,
+                expiration: form.expiration
+            )
+            replace(invited, with: invited)
+            await saveCache()
+            uiState.toastMessage = ToastMessage(String(localized: "Invitation sent to \(email)"), icon: "envelope.fill")
+            analytics.track(.action(.inviteUser, on: .googlePlayInviteUser, result: .success))
+            return nil
+        } catch {
+            Log.print.error("[GooglePlayUsers] Invite failed: \(error.localizedDescription)")
+            analytics.track(.action(.inviteUser, on: .googlePlayInviteUser, result: .failure))
+            return GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .inviteUser)
+        }
+    }
+
+    private func loadApps() async {
+        let apps = (try? await storage.fetch([GooglePlayAppItem].self, id: GooglePlayAppItem.cacheKey(accountId: uiState.account.id))) ?? []
+        uiState.apps = apps
+            .filter { uiState.account.allowsApp(bundleId: $0.packageName) }
+            .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
     }
 
     private func replace(_ user: GooglePlayUserModel, with updated: GooglePlayUserModel) {

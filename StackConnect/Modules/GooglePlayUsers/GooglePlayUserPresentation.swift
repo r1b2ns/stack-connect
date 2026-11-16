@@ -63,3 +63,19 @@ extension GooglePlayUserModel {
         }
     }
 }
+
+extension GooglePlayGrantModel {
+
+    /// "Reply to reviews", or "4 permissions" ("View app information" not counted).
+    var summary: String {
+        let view = GooglePlayPermissionCatalog.viewAppInformation
+        let meaningful = appLevelPermissions.filter { value in
+            value != view.appLevel && !view.legacyValues.contains(value)
+        }
+        switch meaningful.count {
+        case 0: return view.appName
+        case 1: return GooglePlayPermissionCatalog.displayName(forValue: meaningful[0], level: .app)
+        default: return String(localized: "\(meaningful.count) permissions", comment: "Google Play: number of permissions on one app.")
+        }
+    }
+}

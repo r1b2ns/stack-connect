@@ -64,15 +64,27 @@ private struct GooglePlayAppListEntry: View {
             }
         }
 
-        // Account-level actions (settings, rename, export, delete), as on the
-        // App Store app list.
+        // Apps: account-level actions (settings, rename, export, delete), as
+        // on the App Store app list. Users: invite (prototype 16).
         ToolbarItem(placement: .topBarTrailing) {
-            StackTrackedButton(.accountSettings, on: .googlePlayAppList) {
-                homeCoordinator.navigateToAccountManagement(account)
-            } label: {
-                Image(systemName: "gearshape")
+            switch selectedTab {
+            case .apps:
+                StackTrackedButton(.accountSettings, on: .googlePlayAppList) {
+                    homeCoordinator.navigateToAccountManagement(account)
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel(String(localized: "Manage Account"))
+            case .usersAndAccess:
+                if usersViewModel.uiState.canShowInvite {
+                    StackTrackedButton(.inviteUser, on: .googlePlayUsers) {
+                        usersViewModel.uiState.showInvite = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel(String(localized: "Invite User"))
+                }
             }
-            .accessibilityLabel(String(localized: "Manage Account"))
         }
     }
 }

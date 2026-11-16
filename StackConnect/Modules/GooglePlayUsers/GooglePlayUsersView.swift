@@ -28,6 +28,14 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
             .refreshable { await viewModel.refresh() }
             .toast(isPresented: $viewModel.uiState.showSyncToast, message: String(localized: "Syncing users..."))
             .toast(message: $viewModel.uiState.toastMessage)
+            .sheet(isPresented: $viewModel.uiState.showInvite) {
+                GooglePlayInviteUserSheet(
+                    apps: viewModel.uiState.apps,
+                    allowsAccountPermissions: viewModel.uiState.access.canInviteWithAccountPermissions
+                ) { form in
+                    await viewModel.invite(form)
+                }
+            }
             .alert(
                 viewModel.uiState.confirmRemove?.accessState.isPendingInvitation == true
                     ? String(localized: "Cancel Invitation")

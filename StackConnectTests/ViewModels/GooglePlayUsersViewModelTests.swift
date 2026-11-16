@@ -300,4 +300,78 @@ final class GooglePlayUsersViewModelTests: XCTestCase {
         XCTAssertFalse(sut.uiState.users.contains { $0.email == "joana@x.example" })
         XCTAssertNotNil(sut.uiState.actionError)
     }
+
+    // MARK: - Invite (plan U6)
+
+    private func inviteForm(_ email: String, preset: GooglePlayPermissionPreset = .support,
+                            grant: String? = nil) -> GooglePlayInviteForm {
+        var form = GooglePlayInviteForm()
+        form.email = email
+        form.apply(preset)
+        if let grant { form.setGrant(packageName: grant, values: ["CAN_REPLY_TO_REVIEWS"]) }
+        return form
+    }
+
+    func testInviteSendsAndShowsThePendingUser() async throws {
+        let sut = try await makeSUT()
+        await sut.load()
+        var form = inviteForm("new@x.example", grant: "com.x.one")
+        form.expiration = Date(timeIntervalSinceNow: 86_400 * 60)
+
+        let error = await sut.invite(form)
+
+        XCTAssertNil(error)
+        XCTAssertEqual(connection.calls.last, .invite(email: "new@x.example",
+                                                       accountPermissions: ["CAN_VIEW_NON_FINANCIAL_DATA_GLOBAL", "CAN_REPLY_TO_REVIEWS_GLOBAL"],
+                                                       grants: form.grants, expiration: form.expiration))
+        let invited = try XCTUnwrap(sut.uiState.users.first { $0.email == "new@x.example" })
+        XCTAssertEqual(invited.accessState, .invited)
+        let cached = try await cachedUsers()
+        XCTAssertEqual(cached?.contains(invited), true)
+        XCTAssertNotNil(sut.uiState.toastMessage)
+    }
+
+    func testInviteRefusesAnExistingUserWithoutARequest() async throws {
+        let sut = try await makeSUT()
+        await sut.load()
+
+        let error = await sut.invite(inviteForm("SUPPORT@x.example"))
+
+        XCTAssertNotNil(error)
+        XCTAssertFalse(connection.calls.contains { if case .invite = $0 { return true } else { return false } })
+    }
+
+    func testAFailedInviteReturnsTheTranslatedErrorAndChangesNothing() async throws {
+        let sut = try await makeSUT()
+        await sut.load()
+        connection.failNext(.invite, with: StackError.Http(status: 400, message: "Not a valid Google account"))
+
+        let error = await sut.invite(inviteForm("new@x.example"))
+
+        XCTAssertEqual(error, String(localized: "Google Play can only invite Google accounts. Check the address, or ask the person which Google account (Gmail or Google Workspace) to use."))
+        XCTAssertFalse(sut.uiState.users.contains { $0.email == "new@x.example" })
+        let cached = try await cachedUsers()
+        XCTAssertEqual(cached?.count, Self.seedUsers.count)
+    }
+
+    func testAScopedAccountInvitesOnlyToItsAppsWithoutAccountPermissions() async throws {
+        let sut = try await makeSUT(makeAccount(origin: .imported, appsBundles: ["com.x.one"]))
+        await sut.load()
+
+        let accountWide = await sut.invite(inviteForm("a@x.example"))
+        XCTAssertEqual(accountWide, GooglePlayUsersAccess.message(for: .outsideScope))
+        let outside = await sut.invite(inviteForm("b@x.example", preset: .custom, grant: "com.x.two"))
+        XCTAssertEqual(outside, GooglePlayUsersAccess.message(for: .outsideScope))
+        let inside = await sut.invite(inviteForm("c@x.example", preset: .custom, grant: "com.x.one"))
+        XCTAssertNil(inside)
+    }
+
+    func testInviteNeedsTheAddRule() async throws {
+        let sut = try await makeSUT(makeAccount(rules: AccountRules(users: [.view, .edit, .delete]), origin: .imported))
+        await sut.load()
+
+        XCTAssertFalse(sut.uiState.canShowInvite)
+        let error = await sut.invite(inviteForm("a@x.example"))
+        XCTAssertEqual(error, GooglePlayUsersAccess.message(for: .notPermitted))
+    }
 }

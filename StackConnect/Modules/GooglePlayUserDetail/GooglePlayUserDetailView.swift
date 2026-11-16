@@ -288,7 +288,7 @@ struct GooglePlayUserDetailView<ViewModel: GooglePlayUserDetailViewModelProtocol
                         .font(.body)
                         .fontWeight(.medium)
                         .foregroundStyle(.primary)
-                    Text(Self.grantSummary(grant))
+                    Text(grant.summary)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
@@ -302,19 +302,6 @@ struct GooglePlayUserDetailView<ViewModel: GooglePlayUserDetailViewModelProtocol
         }
         .buttonStyle(.plain)
         .disabled(!editable)
-    }
-
-    /// "Reply to reviews", or "4 permissions" ("View app information" not counted).
-    static func grantSummary(_ grant: GooglePlayGrantModel) -> String {
-        let view = GooglePlayPermissionCatalog.viewAppInformation
-        let meaningful = grant.appLevelPermissions.filter { value in
-            value != view.appLevel && !view.legacyValues.contains(value)
-        }
-        switch meaningful.count {
-        case 0: return view.appName
-        case 1: return GooglePlayPermissionCatalog.displayName(forValue: meaningful[0], level: .app)
-        default: return String(localized: "\(meaningful.count) permissions", comment: "Google Play: number of permissions on one app.")
-        }
     }
 
     private func appName(_ packageName: String) -> String {
