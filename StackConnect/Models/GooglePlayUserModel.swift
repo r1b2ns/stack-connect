@@ -126,6 +126,15 @@ struct GooglePlayUserModel: Codable, Hashable, Identifiable, Sendable {
         !developerAccountPermissions.isEmpty
     }
 
+    /// Whether the users-list badge names the access state ("Invited" /
+    /// "Expired") rather than the app scope ("All Apps" / "2 Apps").
+    var listBadgeShowsState: Bool {
+        switch accessState {
+        case .invited, .invitationExpired, .accessExpired: return true
+        case .accessGranted, .unknown: return false
+        }
+    }
+
     /// Same e-mail, ignoring case (Google treats addresses case-insensitively).
     func matches(email other: String) -> Bool {
         email.caseInsensitiveCompare(other) == .orderedSame

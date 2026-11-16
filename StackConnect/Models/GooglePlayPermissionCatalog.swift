@@ -264,7 +264,9 @@ enum GooglePlayPermissionCatalog {
 
     /// One line about what a user can do, for the users list (prototype 16):
     /// "Admin (all permissions)", "Reply to reviews · 1 app", "Releases, Store
-    /// presence · 2 apps", "Service account · Releases", "… · expires Dec 31, 2026".
+    /// presence", "Service account · Releases", "… · expires Dec 31, 2026".
+    /// The app count ("· 1 app") is only added while the row's badge shows the
+    /// state (Invited / Expired); otherwise the badge already says "2 Apps".
     static func summary(for user: GooglePlayUserModel, now: Date = Date()) -> String {
         var parts: [String] = []
         if user.isServiceAccount {
@@ -274,7 +276,7 @@ enum GooglePlayPermissionCatalog {
             parts.append(adminName)
         } else {
             parts.append(permissionsSummary(for: user))
-            if !user.hasAllAppsAccess, !user.grants.isEmpty {
+            if user.listBadgeShowsState, !user.hasAllAppsAccess, !user.grants.isEmpty {
                 parts.append(appCount(user.grants.count))
             }
         }

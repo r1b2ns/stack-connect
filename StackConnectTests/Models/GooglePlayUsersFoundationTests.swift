@@ -134,12 +134,19 @@ final class GooglePlayUsersFoundationTests: XCTestCase {
         let support = GooglePlayUserModel(email: "s@x.example", grants: [
             GooglePlayGrantModel(packageName: "com.a", appLevelPermissions: ["CAN_VIEW_NON_FINANCIAL_DATA", "CAN_REPLY_TO_REVIEWS"])
         ])
-        XCTAssertEqual(Catalog.summary(for: support), "Reply to reviews · 1 app")
+        // Granted: the "1 App" badge carries the scope, so the line doesn't repeat it.
+        XCTAssertEqual(Catalog.summary(for: support), "Reply to reviews")
+        XCTAssertEqual(support.listBadge?.title, "1 App")
+        var invited = support
+        invited.accessStateRaw = GooglePlayUserAccessState.invited.rawValue
+        // Invited: the badge shows the state, so the line keeps the app count.
+        XCTAssertEqual(Catalog.summary(for: invited), "Reply to reviews · 1 app")
         let releases = GooglePlayUserModel(email: "r@x.example", grants: [
             GooglePlayGrantModel(packageName: "com.a", appLevelPermissions: ["CAN_MANAGE_PUBLIC_APKS", "CAN_MANAGE_PUBLIC_LISTING"]),
             GooglePlayGrantModel(packageName: "com.b", appLevelPermissions: ["CAN_MANAGE_TRACK_APKS"])
         ])
-        XCTAssertEqual(Catalog.summary(for: releases), "Releases, Store presence · 2 apps")
+        XCTAssertEqual(Catalog.summary(for: releases), "Releases, Store presence")
+        XCTAssertEqual(releases.listBadge?.title, "2 Apps")
         let service = GooglePlayUserModel(email: "ci@p.iam.gserviceaccount.com", developerAccountPermissions: ["CAN_MANAGE_TRACK_APKS_GLOBAL"])
         XCTAssertEqual(Catalog.summary(for: service), "Service account · Release to testing tracks")
         let expiring = GooglePlayUserModel(email: "e@x.example", expirationTime: now.addingTimeInterval(86_400),
