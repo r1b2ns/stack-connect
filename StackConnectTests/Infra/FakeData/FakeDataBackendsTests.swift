@@ -148,6 +148,113 @@ final class FakeDataBackendsTests: XCTestCase {
         }
     }
 
+    // MARK: - Google Play release management and users (core handles)
+
+    private func playProvider() -> FakeGooglePlayProvider {
+        let developer = FakeGooglePlayBackend(clock: clock, developers: FakeGooglePlayCatalog.makeDevelopers(clock: clock))
+            .developer(clientEmail: FakeGooglePlayCatalog.northwindClientEmail)
+        return FakeGooglePlayProvider(developer: developer)
+    }
+
+    func testGooglePlayCapabilitiesMatchTheCore() throws {
+        let provider = playProvider()
+        XCTAssertEqual(provider.capabilities(), [.apps, .reviews, .appDetails, .storeListings, .tracks, .appIcons, .releaseManagement, .playUsers])
+        XCTAssertNotNil(provider.playUsers())
+    }
+
+    func testGooglePlayReleaseSummariesSpreadEveryLifecycleState() async throws {
+        let tracks = try XCTUnwrap(playProvider().tracks())
+        var states: Set<String> = []
+        for app in FakeGooglePlayCatalog.apps {
+            for track in ["production", "beta", "alpha", "internal"] {
+                for summary in try await tracks.fetchReleaseSummaries(appId: app.packageName, track: track) {
+                    XCTAssertEqual(summary.track, track)
+                    states.insert(try XCTUnwrap(summary.lifecycleState))
+                }
+            }
+        }
+        XCTAssertEqual(states, [
+            "RELEASE_LIFECYCLE_STATE_DRAFT", "RELEASE_LIFECYCLE_STATE_NOT_SENT_FOR_REVIEW", "RELEASE_LIFECYCLE_STATE_IN_REVIEW",
+            "RELEASE_LIFECYCLE_STATE_APPROVED_NOT_PUBLISHED", "RELEASE_LIFECYCLE_STATE_NOT_APPROVED", "RELEASE_LIFECYCLE_STATE_PUBLISHED"
+        ])
+        let unknownTrack = try await tracks.fetchReleaseSummaries(appId: "com.northwind.trailhead", track: "no-such-track")
+        XCTAssertTrue(unknownTrack.isEmpty, "An unknown track is an empty list, like the core's 404 mapping")
+    }
+
+    func testGooglePlayBundlesIncludeAnUnreleasedBuild() async throws {
+        let bundles = try await XCTUnwrap(playProvider().tracks()).fetchBundles(appId: "com.northwind.trailhead")
+        XCTAssertEqual(bundles.first?.versionCode, "4306")
+        XCTAssertTrue(bundles.allSatisfy { $0.sha256?.count == 64 })
+    }
+
+    func testGooglePlayReleaseChangeIsReflectedOnTheNextRead() async throws {
+        let tracks = try XCTUnwrap(playProvider().tracks())
+        let committed = try await tracks.applyReleaseChange(
+            appId: "com.northwind.trailhead", track: "production",
+            change: .setRollout(versionCodes: ["4210"], userFraction: 0.5),
+            options: CommitOptions(sendForReview: true, changesInReviewBehavior: nil)
+        )
+        XCTAssertEqual(committed.releases.first?.userFraction, 0.5)
+        let reread = try await tracks.fetchTracks(appId: "com.northwind.trailhead")
+        XCTAssertEqual(reread.first { $0.track == "production" }?.releases.first?.userFraction, 0.5)
+
+        do {
+            _ = try await tracks.applyReleaseChange(
+                appId: "com.northwind.trailhead", track: "production",
+                change: .halt(versionCodes: ["9999"]),
+                options: CommitOptions(sendForReview: true, changesInReviewBehavior: nil)
+            )
+            XCTFail("Expected ReleaseNotFound")
+        } catch StackError.ReleaseNotFound {
+        }
+        do {
+            _ = try await tracks.applyReleaseChange(
+                appId: "com.northwind.trailhead", track: "production",
+                change: .setRollout(versionCodes: ["4210"], userFraction: 1),
+                options: CommitOptions(sendForReview: true, changesInReviewBehavior: nil)
+            )
+            XCTFail("Expected an HTTP 400")
+        } catch let StackError.Http(status, _) {
+            XCTAssertEqual(status, 400)
+        }
+    }
+
+    func testGooglePlayCreateReleaseOnInternalReplacesTheDraft() async throws {
+        let tracks = try XCTUnwrap(playProvider().tracks())
+        let committed = try await tracks.applyReleaseChange(
+            appId: "com.northwind.trailhead", track: "internal",
+            change: .createRelease(release: NewRelease(versionCodes: ["4306"], name: "4.3.0 (4306)", releaseNotes: [],
+                                                       status: .draft, inAppUpdatePriority: nil, countryTargeting: nil)),
+            options: CommitOptions(sendForReview: false, changesInReviewBehavior: nil)
+        )
+        XCTAssertEqual(committed.releases.map(\.versionCodes), [["4306"], ["4303"]])
+    }
+
+    func testGooglePlayUsersInviteAndDelete() async throws {
+        let users = try XCTUnwrap(playProvider().playUsers())
+        let before = try await users.fetchUsers(developerId: "1234567890")
+        XCTAssertFalse(before.isEmpty)
+
+        _ = try await users.inviteUser(developerId: "1234567890", email: "new@northwind.example",
+                                       accountPermissions: [], grants: [], expirationTime: nil)
+        _ = try await users.setGrant(developerId: "1234567890", email: "new@northwind.example",
+                                     packageName: "com.northwind.mosaic", appLevelPermissions: ["CAN_REPLY_TO_REVIEWS"])
+        let invited = try await users.fetchUsers(developerId: "1234567890").first { $0.email == "new@northwind.example" }
+        XCTAssertEqual(invited?.accessState, "INVITED")
+        XCTAssertEqual(invited?.grants.map(\.packageName), ["com.northwind.mosaic"])
+
+        try await users.deleteUser(developerId: "1234567890", email: "new@northwind.example")
+        let after = try await users.fetchUsers(developerId: "1234567890")
+        XCTAssertEqual(after.count, before.count)
+
+        do {
+            _ = try await users.fetchUsers(developerId: "not-a-number")
+            XCTFail("Expected a 404")
+        } catch let StackError.Http(status, _) {
+            XCTAssertEqual(status, 404)
+        }
+    }
+
     // MARK: - Firebase
 
     func testFirebaseServerListsProjectsThroughTheRealProvider() async throws {

@@ -74,13 +74,14 @@ final class GooglePlayCredentialStoreTests: XCTestCase {
         )
 
         XCTAssertEqual(provider.kind(), .googlePlay)
-        XCTAssertEqual(provider.capabilities(), [.apps, .reviews, .appDetails, .storeListings, .tracks, .appIcons])
+        XCTAssertEqual(provider.capabilities(), [.apps, .reviews, .appDetails, .storeListings, .tracks, .appIcons, .releaseManagement, .playUsers])
         // Phase 3 capabilities (and the public icon lookup) the connection relies on are reachable.
         XCTAssertNotNil(provider.reviews())
         XCTAssertNotNil(provider.appDetails())
         XCTAssertNotNil(provider.storeListings())
         XCTAssertNotNil(provider.tracks())
         XCTAssertNotNil(provider.appIcons())
+        XCTAssertNotNil(provider.playUsers())
     }
 
     func testCoreRejectsAGarbageKeyWithInvalidCredentials() throws {

@@ -102,12 +102,20 @@ apps (sending a message succeeds).
 
 ### Google Play — "Northwind Labs"
 
-| App | Package | Tracks |
+| App | Package | Tracks (release lifecycle state from `releases.list`) |
 |---|---|---|
-| Trailhead | `com.northwind.trailhead` | production 4.2.0 rolling out 20% (+ 4.1.2 completed), open testing, internal |
-| Ledger Pocket | `com.northwind.ledger` | production 2.7.0 **halted** at 10% (+ 2.6.3 completed), closed testing, internal |
-| Mosaic Notes | `com.northwind.mosaic` | production completed, open testing draft, internal |
-| Harbor Transit | `com.northwind.harbor` | production completed, custom track `city-partners`, internal |
+| Trailhead | `com.northwind.trailhead` | production 4.2.0 rolling out 20%, **in review** (+ 4.1.2 completed), open testing 4.3.0-beta2, internal 4.3.0 (4305) **draft** + 4.3.0 (4303) |
+| Ledger Pocket | `com.northwind.ledger` | production 2.8.1 **approved, not published** (managed publishing) + 2.7.0 **halted** at 10% + 2.6.3, closed testing, internal |
+| Mosaic Notes | `com.northwind.mosaic` | production 5.2.0 **not approved** (+ 5.1.0 published), open testing 5.2.0 draft, internal |
+| Harbor Transit | `com.northwind.harbor` | production 1.9.0 published, custom track `city-partners` (US + CA only), internal 2.0.0 **not sent for review** |
+
+Releases not listed as above are published. Every app also has uploaded
+bundles (one newer than any release, for the bundle picker), and the account
+has five users (an Admin, a release manager, a per-app support user, a pending
+invite and a CI service account). Track changes (`applyReleaseChange`) follow
+the core's rules (fraction 0–1 exclusive, priority 0–5, uploaded version codes
+only, `ReleaseNotFound` for a release that is gone) and update the lifecycle
+state (in review when sent for review, not sent for review otherwise).
 
 Each app has store listings in 3–5 languages, app details (contact e-mail,
 phone, website), a locally rendered icon and recent reviews (pt-BR, en-US,

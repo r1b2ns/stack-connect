@@ -169,6 +169,13 @@ final class GooglePlayErrorTranslatorTests: XCTestCase {
         XCTAssertEqual(GooglePlayReviewLimits.replyCharacterLimit, 350)
     }
 
+    func testReleaseNotFoundAsksToRefresh() {
+        XCTAssertEqual(
+            message(for: StackError.ReleaseNotFound(message: "gone")),
+            String(localized: "This release changed on Google Play since it was loaded. Refresh and try again.")
+        )
+    }
+
     func testAppStoreOnlyCasesFallBackToGenericCopy() {
         let generic = String(localized: "Something went wrong while talking to Google Play. Try again.")
         XCTAssertEqual(message(for: StackError.PendingAgreements(message: "x")), generic)
@@ -179,7 +186,7 @@ final class GooglePlayErrorTranslatorTests: XCTestCase {
         let errors: [StackError] = [
             .InvalidCredentials(message: "a"), .Auth(message: "b"), .PendingAgreements(message: "c"),
             .Http(status: 418, message: "d"), .Decode(message: "e"), .Network(message: "f"),
-            .Unsupported(message: "g"), .SubmissionNotRemovable(message: "h")
+            .Unsupported(message: "g"), .SubmissionNotRemovable(message: "h"), .ReleaseNotFound(message: "i")
         ]
         for error in errors {
             XCTAssertFalse(message(for: error).contains("StackError"), "\(error) leaked its debug description")

@@ -82,7 +82,8 @@ final class GooglePlayAppContentConnectionTests: XCTestCase {
                     versionCodes: ["140", "9223372036854775807"],
                     userFraction: 0.2,
                     releaseNotes: [StackCoreRust.LocalizedTextInfo(language: "en-US", text: "Bug fixes")],
-                    inAppUpdatePriority: 3
+                    inAppUpdatePriority: 3,
+                    countryTargeting: nil
                 ),
                 StackCoreRust.TrackReleaseInfo(
                     name: nil,
@@ -90,7 +91,8 @@ final class GooglePlayAppContentConnectionTests: XCTestCase {
                     versionCodes: ["130"],
                     userFraction: nil,
                     releaseNotes: [],
-                    inAppUpdatePriority: nil
+                    inAppUpdatePriority: nil,
+                    countryTargeting: nil
                 )
             ]
         ))
@@ -142,7 +144,8 @@ final class GooglePlayAppContentConnectionTests: XCTestCase {
             versionCodes: [],
             userFraction: nil,
             releaseNotes: [],
-            inAppUpdatePriority: nil
+            inAppUpdatePriority: nil,
+            countryTargeting: nil
         )
     }
 

@@ -96616,6 +96616,89 @@
           }
         }
       }
+    },
+    "This release changed on Google Play since it was loaded. Refresh and try again." : {
+      "comment" : "Error shown when a Google Play track change targets a release that someone else replaced, completed or removed since it was loaded.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Version wurde bei Google Play geändert, seit sie geladen wurde. Aktualisiere und versuche es erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta versión cambió en Google Play desde que se cargó. Actualiza e inténtalo de nuevo."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta versión cambió en Google Play desde que se cargó. Actualiza e inténtalo de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette version a changé sur Google Play depuis son chargement. Actualisez et réessayez."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questa release è cambiata su Google Play da quando è stata caricata. Aggiorna e riprova."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このリリースは読み込み後に Google Play で変更されました。更新してもう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 릴리스는 불러온 후 Google Play에서 변경되었습니다. 새로고침한 후 다시 시도하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deze release is op Google Play gewijzigd sinds hij is geladen. Vernieuw en probeer het opnieuw."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta versão mudou no Google Play desde que foi carregada. Atualize e tente novamente."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta versão mudou no Google Play desde que foi carregada. Atualize e tente novamente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот выпуск изменился в Google Play после загрузки. Обновите и попробуйте снова."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den här versionen har ändrats på Google Play sedan den lästes in. Uppdatera och försök igen."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此版本在載入後已於 Google Play 變更。請重新整理後再試一次。"
+          }
+        }
+      }
     }
   },
   "version" : "1.1"

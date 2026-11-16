@@ -49,6 +49,7 @@ class FakeCoreProvider: StackCoreRust.Provider, @unchecked Sendable {
     override func bundleIds() -> BundleIds? { nil }
     override func certificates() -> Certificates? { nil }
     override func devices() -> Devices? { nil }
+    override func playUsers() -> PlayUsers? { nil }
     override func profiles() -> Profiles? { nil }
     override func reviews() -> Reviews? { nil }
     override func storeListings() -> StoreListings? { nil }

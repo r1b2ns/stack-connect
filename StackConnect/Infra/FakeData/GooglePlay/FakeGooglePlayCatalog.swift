@@ -25,6 +25,13 @@ enum FakeGooglePlayCatalog {
         let website: String
         let listings: [StoreListingInfo]
         let tracks: [TrackInfo]
+        /// Review / publishing state (`RELEASE_LIFECYCLE_STATE_*`) per release,
+        /// keyed by the release's first version code. Releases not listed are
+        /// `DRAFT` when their status is `draft`, `PUBLISHED` otherwise.
+        var lifecycles: [String: String] = [:]
+        /// Version codes uploaded but not on any track yet (the bundle picker's
+        /// candidates).
+        var unreleasedBundles: [String] = []
         let reviews: [ReviewSeed]
     }
 
@@ -40,6 +47,7 @@ enum FakeGooglePlayCatalog {
 
     static func northwind(clock: FakeClock) -> FakeGooglePlayState {
         var state = FakeGooglePlayState()
+        state.users = users()
         for app in apps {
             state.apps.append(AppInfo(id: app.packageName, name: app.name, bundleId: app.packageName, platform: "ANDROID"))
             state.iconUrls[app.packageName] = FakeMedia.iconURL(name: app.name, symbol: app.symbol, color: app.color)
@@ -50,6 +58,8 @@ enum FakeGooglePlayCatalog {
             )
             state.listings[app.packageName] = app.listings
             state.tracks[app.packageName] = app.tracks
+            state.lifecycles[app.packageName] = lifecycles(for: app)
+            state.bundles[app.packageName] = bundles(for: app)
             state.reviews[app.packageName] = app.reviews.enumerated().map { index, review in
                 let id = "\(app.packageName)/gp:AOqpTO\(FakeAppStoreConnectCatalog.slug(app.name).prefix(3).uppercased())\(index)x\(abs(FakeAppStoreConnectCatalog.hash(review.body)) % 100_000)"
                 return CustomerReview(
@@ -61,6 +71,57 @@ enum FakeGooglePlayCatalog {
             }
         }
         return state
+    }
+
+    /// Every release's lifecycle state, keyed by `FakeGooglePlayState.releaseKey`.
+    private static func lifecycles(for app: AppSeed) -> [String: String] {
+        var result: [String: String] = [:]
+        for track in app.tracks {
+            for release in track.releases {
+                let seeded = release.versionCodes.first.flatMap { app.lifecycles[$0] }
+                result[FakeGooglePlayState.releaseKey(track: track.track, versionCodes: release.versionCodes)] =
+                    seeded ?? (release.status == "draft" ? FakeGooglePlayState.Lifecycle.draft : FakeGooglePlayState.Lifecycle.published)
+            }
+        }
+        return result
+    }
+
+    /// Bundles for every version code on a track plus the unreleased ones,
+    /// newest first, with a deterministic fake SHA-256.
+    private static func bundles(for app: AppSeed) -> [BundleInfo] {
+        let codes = Set(app.tracks.flatMap { $0.releases.flatMap(\.versionCodes) } + app.unreleasedBundles)
+        return codes.sorted { (Int64($0) ?? 0) > (Int64($1) ?? 0) }.map { code in
+            var random = FakeRandom(seed: "\(app.packageName)/\(code)")
+            let sha = (0..<8).map { _ in String(format: "%08x", UInt32(truncatingIfNeeded: random.next())) }.joined()
+            return BundleInfo(versionCode: code, sha256: sha)
+        }
+    }
+
+    /// The account's users (`developers/{id}/users`).
+    static func users() -> [PlayUserInfo] {
+        let all = apps.map(\.packageName)
+        return [
+            PlayUserInfo(email: "dana.whitfield@northwind.example", name: "developers/0/users/dana.whitfield@northwind.example",
+                         accessState: "ACCESS_GRANTED", expirationTime: nil,
+                         developerAccountPermissions: ["CAN_MANAGE_PERMISSIONS_GLOBAL"], grants: [], partial: false),
+            PlayUserInfo(email: "omar.haddad@northwind.example", name: "developers/0/users/omar.haddad@northwind.example",
+                         accessState: "ACCESS_GRANTED", expirationTime: nil,
+                         developerAccountPermissions: ["CAN_VIEW_NON_FINANCIAL_DATA_GLOBAL", "CAN_MANAGE_PUBLIC_APKS_GLOBAL",
+                                                       "CAN_MANAGE_TRACK_APKS_GLOBAL", "CAN_MANAGE_PUBLIC_LISTING_GLOBAL"],
+                         grants: [], partial: false),
+            PlayUserInfo(email: "support@northwind.example", name: "developers/0/users/support@northwind.example",
+                         accessState: "ACCESS_GRANTED", expirationTime: nil, developerAccountPermissions: [],
+                         grants: all.prefix(2).map { PlayGrantInfo(packageName: $0, appLevelPermissions: ["CAN_VIEW_NON_FINANCIAL_DATA", "CAN_REPLY_TO_REVIEWS"]) },
+                         partial: false),
+            PlayUserInfo(email: "kai.nakamura@contractor.example", name: "developers/0/users/kai.nakamura@contractor.example",
+                         accessState: "INVITED", expirationTime: nil, developerAccountPermissions: [],
+                         grants: [PlayGrantInfo(packageName: "com.northwind.harbor", appLevelPermissions: ["CAN_MANAGE_TRACK_APKS", "CAN_VIEW_NON_FINANCIAL_DATA"])],
+                         partial: false),
+            PlayUserInfo(email: "ci-publisher@northwind-labs.iam.example", name: "developers/0/users/ci-publisher@northwind-labs.iam.example",
+                         accessState: "ACCESS_GRANTED", expirationTime: nil,
+                         developerAccountPermissions: ["CAN_MANAGE_TRACK_APKS_GLOBAL", "CAN_VIEW_NON_FINANCIAL_DATA_GLOBAL"],
+                         grants: [], partial: false)
+        ]
     }
 
     private static func notes(_ entries: [(String, String)]) -> [LocalizedTextInfo] {
@@ -101,23 +162,28 @@ enum FakeGooglePlayCatalog {
                                     ("en-US", "• Shade forecast along every route\n• Up to 2× faster offline map downloads\n• Fixed elevation profile glitches"),
                                     ("pt-BR", "• Previsão de sombra ao longo da rota\n• Downloads de mapas até 2× mais rápidos"),
                                     ("de-DE", "• Schattenprognose entlang der Route\n• Schnellere Offline-Downloads")
-                                 ]), inAppUpdatePriority: 2),
+                                 ]), inAppUpdatePriority: 2, countryTargeting: nil),
                 TrackReleaseInfo(name: "4.1.2 (4122)", status: "completed", versionCodes: ["4122"], userFraction: nil,
                                  releaseNotes: notes([("en-US", "Bug fixes and stability improvements."),
                                                       ("pt-BR", "Correções de bugs e melhorias de estabilidade.")]),
-                                 inAppUpdatePriority: 0)
+                                 inAppUpdatePriority: 0, countryTargeting: nil)
             ]),
             TrackInfo(track: "beta", releases: [
                 TrackReleaseInfo(name: "4.3.0-beta2 (4302)", status: "completed", versionCodes: ["4302"], userFraction: nil,
                                  releaseNotes: notes([("en-US", "Beta: low-power tracking mode and dark map style. Tell us how the battery holds up!")]),
-                                 inAppUpdatePriority: 1)
+                                 inAppUpdatePriority: 1, countryTargeting: nil)
             ]),
             TrackInfo(track: "internal", releases: [
+                TrackReleaseInfo(name: "4.3.0 (4305)", status: "draft", versionCodes: ["4305"], userFraction: nil,
+                                 releaseNotes: notes([("en-US", "Internal build: offline search and the new trail cards.")]),
+                                 inAppUpdatePriority: nil, countryTargeting: nil),
                 TrackReleaseInfo(name: "4.3.0 (4303)", status: "completed", versionCodes: ["4303"], userFraction: nil,
                                  releaseNotes: notes([("en-US", "Internal build: release candidate for 4.3.0.")]),
-                                 inAppUpdatePriority: nil)
+                                 inAppUpdatePriority: nil, countryTargeting: nil)
             ])
         ],
+        lifecycles: ["4210": "RELEASE_LIFECYCLE_STATE_IN_REVIEW"],
+        unreleasedBundles: ["4306"],
         reviews: [
             ReviewSeed(rating: 5, body: "Funciona perfeitamente offline. Fiz a travessia da Serra Fina sem sinal e o mapa não falhou nenhuma vez.", author: "Camila Ferreira", daysAgo: 0.2),
             ReviewSeed(rating: 4, body: "Great maps and the Wear OS app is handy. Battery use is a bit high during long hikes.", author: "Marcus Bell", daysAgo: 0.9, reply: "Thanks Marcus! A low-power tracking mode is in our beta right now — join from the Play Store listing to try it."),
@@ -151,25 +217,31 @@ enum FakeGooglePlayCatalog {
         ],
         tracks: [
             TrackInfo(track: "production", releases: [
+                TrackReleaseInfo(name: "2.8.1 (2811)", status: "completed", versionCodes: ["2811"], userFraction: nil,
+                                 releaseNotes: notes([("en-US", "• Multi-currency ledgers\n• Faster bank sync"),
+                                                      ("pt-BR", "• Livros-caixa em várias moedas\n• Sincronização bancária mais rápida")]),
+                                 inAppUpdatePriority: 2, countryTargeting: nil),
                 TrackReleaseInfo(name: "2.7.0 (2704)", status: "halted", versionCodes: ["2704"], userFraction: 0.1,
                                  releaseNotes: notes([("en-US", "• Settle up shared ledgers in one tap\n• Monthly report with category trends"),
                                                       ("pt-BR", "• Acerto de contas com um toque\n• Novo relatório mensal")]),
-                                 inAppUpdatePriority: 1),
+                                 inAppUpdatePriority: 1, countryTargeting: nil),
                 TrackReleaseInfo(name: "2.6.3 (2631)", status: "completed", versionCodes: ["2631"], userFraction: nil,
                                  releaseNotes: notes([("en-US", "Sync status is clearer and CSV import supports more banks.")]),
-                                 inAppUpdatePriority: 0)
+                                 inAppUpdatePriority: 0, countryTargeting: nil)
             ]),
             TrackInfo(track: "alpha", releases: [
                 TrackReleaseInfo(name: "2.8.0 (2801)", status: "completed", versionCodes: ["2801"], userFraction: nil,
                                  releaseNotes: notes([("en-US", "Closed test: multi-currency ledgers.")]),
-                                 inAppUpdatePriority: nil)
+                                 inAppUpdatePriority: nil, countryTargeting: nil)
             ]),
             TrackInfo(track: "internal", releases: [
                 TrackReleaseInfo(name: "2.8.0 (2802)", status: "completed", versionCodes: ["2802"], userFraction: nil,
                                  releaseNotes: notes([("en-US", "Internal: fixes rounding in converted totals.")]),
-                                 inAppUpdatePriority: nil)
+                                 inAppUpdatePriority: nil, countryTargeting: nil)
             ])
         ],
+        lifecycles: ["2811": "RELEASE_LIFECYCLE_STATE_APPROVED_NOT_PUBLISHED"],
+        unreleasedBundles: ["2812"],
         reviews: [
             ReviewSeed(rating: 5, body: "Finally an app that makes envelope budgeting easy. The rollover is genius.", author: "Hannah Price", daysAgo: 0.5),
             ReviewSeed(rating: 1, body: "Depois da atualização meus lançamentos sumiram! Já é a segunda vez.", author: "Patrícia Lima", daysAgo: 1.1, reply: "Oi Patrícia, seus dados estão seguros: pausamos a versão 2.7.0 enquanto corrigimos a sincronização. Puxe para atualizar na aba Lançamentos."),
@@ -204,22 +276,27 @@ enum FakeGooglePlayCatalog {
         ],
         tracks: [
             TrackInfo(track: "production", releases: [
+                TrackReleaseInfo(name: "5.2.0 (5206)", status: "completed", versionCodes: ["5206"], userFraction: nil,
+                                 releaseNotes: notes([("en-US", "• Tags across boards\n• Handwriting search")]),
+                                 inAppUpdatePriority: 1, countryTargeting: nil),
                 TrackReleaseInfo(name: "5.1.0 (5106)", status: "completed", versionCodes: ["5106"], userFraction: nil,
                                  releaseNotes: notes([("en-US", "• 24 new board templates\n• Link previews for videos and maps"),
                                                       ("es-ES", "• 24 plantillas nuevas\n• Vista previa de enlaces")]),
-                                 inAppUpdatePriority: 0)
+                                 inAppUpdatePriority: 0, countryTargeting: nil)
             ]),
             TrackInfo(track: "beta", releases: [
                 TrackReleaseInfo(name: "5.2.0 (5201)", status: "draft", versionCodes: ["5201"], userFraction: nil,
                                  releaseNotes: notes([("en-US", "Open beta: tags across boards.")]),
-                                 inAppUpdatePriority: nil)
+                                 inAppUpdatePriority: nil, countryTargeting: nil)
             ]),
             TrackInfo(track: "internal", releases: [
                 TrackReleaseInfo(name: "5.2.0 (5202)", status: "completed", versionCodes: ["5202"], userFraction: nil,
                                  releaseNotes: notes([("en-US", "Internal: tag browser and sync fixes.")]),
-                                 inAppUpdatePriority: nil)
+                                 inAppUpdatePriority: nil, countryTargeting: nil)
             ])
         ],
+        lifecycles: ["5206": "RELEASE_LIFECYCLE_STATE_NOT_APPROVED"],
+        unreleasedBundles: ["5207"],
         reviews: [
             ReviewSeed(rating: 5, body: "Best whiteboard app on Android, and the outline view is brilliant for studying.", author: "Aarav Sharma", daysAgo: 0.7, reply: "Thank you Aarav! Tags across boards are coming in 5.2."),
             ReviewSeed(rating: 4, body: "Uso com a caneta do meu tablet Samsung e funciona muito bem.", author: "Juliana Alves", daysAgo: 1.9),
@@ -252,19 +329,22 @@ enum FakeGooglePlayCatalog {
             TrackInfo(track: "production", releases: [
                 TrackReleaseInfo(name: "1.9.0 (190)", status: "completed", versionCodes: ["190"], userFraction: nil,
                                  releaseNotes: notes([("en-US", "• Ferry departures with live positions\n• Offline timetables for 12 more cities")]),
-                                 inAppUpdatePriority: 0)
+                                 inAppUpdatePriority: 0, countryTargeting: nil)
             ]),
             TrackInfo(track: "city-partners", releases: [
                 TrackReleaseInfo(name: "2.0.0 (200)", status: "completed", versionCodes: ["200"], userFraction: nil,
                                  releaseNotes: notes([("en-US", "Partner preview: accessibility routing and step-free stations.")]),
-                                 inAppUpdatePriority: nil)
+                                 inAppUpdatePriority: nil,
+                                 countryTargeting: CountryTargetingInfo(countries: ["US", "CA"], includeRestOfWorld: false))
             ]),
             TrackInfo(track: "internal", releases: [
                 TrackReleaseInfo(name: "2.0.0 (201)", status: "completed", versionCodes: ["201"], userFraction: nil,
                                  releaseNotes: notes([("en-US", "Internal: new map renderer.")]),
-                                 inAppUpdatePriority: nil)
+                                 inAppUpdatePriority: nil, countryTargeting: nil)
             ])
         ],
+        lifecycles: ["201": "RELEASE_LIFECYCLE_STATE_NOT_SENT_FOR_REVIEW"],
+        unreleasedBundles: ["202"],
         reviews: [
             ReviewSeed(rating: 4, body: "Live ferry positions are great. Wish it had a home-screen widget.", author: "Sanne de Vries", daysAgo: 1.3),
             ReviewSeed(rating: 5, body: "Os horários offline salvam-me no metro todos os dias.", author: "Tiago Mendes", daysAgo: 2.8, reply: "Obrigado, Tiago! Boas viagens."),

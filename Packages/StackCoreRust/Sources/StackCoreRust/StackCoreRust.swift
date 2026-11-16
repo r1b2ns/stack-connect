@@ -6638,6 +6638,350 @@ public func FfiConverterTypeDevices_lower(_ value: Devices) -> UInt64 {
 
 
 /**
+ * UniFFI-exported PlayUsers capability handle, reached via
+ * [`crate::service::provider::Provider::play_users`]. Every call addresses
+ * one Play developer account by its ID (the number in a Play Console URL
+ * after `/developers/`), which the API cannot discover: the host asks the
+ * user for it. None of these calls opens an edit.
+ *
+ * The calling service account needs the "Admin (all permissions)" account
+ * permission (`CAN_MANAGE_PERMISSIONS_GLOBAL`) for all of them.
+ */
+public protocol PlayUsersProtocol: AnyObject, Sendable {
+    
+    /**
+     * Removes the user's access to one app.
+     *
+     * # Errors
+     * As [`Self::update_user`]; `404` (Google's message) for a grant that does
+     * not exist.
+     */
+    func deleteGrant(developerId: String, email: String, packageName: String) async throws 
+    
+    /**
+     * Removes the user (or cancels the invitation) from the developer account.
+     *
+     * # Errors
+     * As [`Self::update_user`].
+     */
+    func deleteUser(developerId: String, email: String) async throws 
+    
+    /**
+     * Lists every user of the developer account (all pages), in Google's
+     * order, with their account permissions and per-app grants.
+     *
+     * # Errors
+     * [`StackError::Http`] `404` for a developer account Google does not know
+     * (or an ID that cannot be one, checked locally), [`StackError::Auth`]
+     * when Google denies access (Google's message, which may name the missing
+     * permission, is kept), [`StackError::Decode`] on malformed JSON or
+     * endless paging, [`StackError::Network`] on transport failure.
+     */
+    func fetchUsers(developerId: String) async throws  -> [PlayUserInfo]
+    
+    /**
+     * Invites `email` to the developer account with `account_permissions`,
+     * then gives it each of `grants` (Google only accepts grants after the
+     * user exists). `expiration_time` (RFC 3339, in the future) limits the
+     * access; `None` never expires. If a grant fails, the just-created
+     * invitation is removed again (best effort) and the grant's error is
+     * returned, so an invite is all or nothing. Returns the invited user.
+     *
+     * # Errors
+     * As [`Self::fetch_users`]; [`StackError::Http`] `400` for an e-mail or
+     * package name that cannot be valid (checked locally) or with Google's
+     * message when it refuses the invitation (e.g. the user already exists).
+     */
+    func inviteUser(developerId: String, email: String, accountPermissions: [String], grants: [PlayGrantInfo], expirationTime: String?) async throws  -> PlayUserInfo
+    
+    /**
+     * Sets the user's permissions for one app: updates the grant when it
+     * exists, creates it otherwise. Returns the stored grant.
+     *
+     * # Errors
+     * As [`Self::update_user`].
+     */
+    func setGrant(developerId: String, email: String, packageName: String, appLevelPermissions: [String]) async throws  -> PlayGrantInfo
+    
+    /**
+     * Replaces the user's account permissions **and** expiry (both are in the
+     * update mask): `expiration_time: None` removes the expiry. Grants are
+     * changed with [`Self::set_grant`] / [`Self::delete_grant`].
+     *
+     * # Errors
+     * As [`Self::invite_user`]; `404` (Google's message) for an unknown user.
+     */
+    func updateUser(developerId: String, email: String, accountPermissions: [String], expirationTime: String?) async throws  -> PlayUserInfo
+    
+}
+/**
+ * UniFFI-exported PlayUsers capability handle, reached via
+ * [`crate::service::provider::Provider::play_users`]. Every call addresses
+ * one Play developer account by its ID (the number in a Play Console URL
+ * after `/developers/`), which the API cannot discover: the host asks the
+ * user for it. None of these calls opens an edit.
+ *
+ * The calling service account needs the "Admin (all permissions)" account
+ * permission (`CAN_MANAGE_PERMISSIONS_GLOBAL`) for all of them.
+ */
+open class PlayUsers: PlayUsersProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_playusers(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_playusers(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Removes the user's access to one app.
+     *
+     * # Errors
+     * As [`Self::update_user`]; `404` (Google's message) for a grant that does
+     * not exist.
+     */
+open func deleteGrant(developerId: String, email: String, packageName: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_playusers_delete_grant(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(developerId),FfiConverterString.lower(email),FfiConverterString.lower(packageName)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Removes the user (or cancels the invitation) from the developer account.
+     *
+     * # Errors
+     * As [`Self::update_user`].
+     */
+open func deleteUser(developerId: String, email: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_playusers_delete_user(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(developerId),FfiConverterString.lower(email)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_void,
+            completeFunc: ffi_stack_core_rust_future_complete_void,
+            freeFunc: ffi_stack_core_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists every user of the developer account (all pages), in Google's
+     * order, with their account permissions and per-app grants.
+     *
+     * # Errors
+     * [`StackError::Http`] `404` for a developer account Google does not know
+     * (or an ID that cannot be one, checked locally), [`StackError::Auth`]
+     * when Google denies access (Google's message, which may name the missing
+     * permission, is kept), [`StackError::Decode`] on malformed JSON or
+     * endless paging, [`StackError::Network`] on transport failure.
+     */
+open func fetchUsers(developerId: String)async throws  -> [PlayUserInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_playusers_fetch_users(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(developerId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypePlayUserInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Invites `email` to the developer account with `account_permissions`,
+     * then gives it each of `grants` (Google only accepts grants after the
+     * user exists). `expiration_time` (RFC 3339, in the future) limits the
+     * access; `None` never expires. If a grant fails, the just-created
+     * invitation is removed again (best effort) and the grant's error is
+     * returned, so an invite is all or nothing. Returns the invited user.
+     *
+     * # Errors
+     * As [`Self::fetch_users`]; [`StackError::Http`] `400` for an e-mail or
+     * package name that cannot be valid (checked locally) or with Google's
+     * message when it refuses the invitation (e.g. the user already exists).
+     */
+open func inviteUser(developerId: String, email: String, accountPermissions: [String], grants: [PlayGrantInfo], expirationTime: String?)async throws  -> PlayUserInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_playusers_invite_user(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(developerId),FfiConverterString.lower(email),FfiConverterSequenceString.lower(accountPermissions),FfiConverterSequenceTypePlayGrantInfo.lower(grants),FfiConverterOptionString.lower(expirationTime)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypePlayUserInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Sets the user's permissions for one app: updates the grant when it
+     * exists, creates it otherwise. Returns the stored grant.
+     *
+     * # Errors
+     * As [`Self::update_user`].
+     */
+open func setGrant(developerId: String, email: String, packageName: String, appLevelPermissions: [String])async throws  -> PlayGrantInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_playusers_set_grant(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(developerId),FfiConverterString.lower(email),FfiConverterString.lower(packageName),FfiConverterSequenceString.lower(appLevelPermissions)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypePlayGrantInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Replaces the user's account permissions **and** expiry (both are in the
+     * update mask): `expiration_time: None` removes the expiry. Grants are
+     * changed with [`Self::set_grant`] / [`Self::delete_grant`].
+     *
+     * # Errors
+     * As [`Self::invite_user`]; `404` (Google's message) for an unknown user.
+     */
+open func updateUser(developerId: String, email: String, accountPermissions: [String], expirationTime: String?)async throws  -> PlayUserInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_playusers_update_user(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(developerId),FfiConverterString.lower(email),FfiConverterSequenceString.lower(accountPermissions),FfiConverterOptionString.lower(expirationTime)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypePlayUserInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePlayUsers: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = PlayUsers
+
+    public static func lift(_ handle: UInt64) throws -> PlayUsers {
+        return PlayUsers(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: PlayUsers) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PlayUsers {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: PlayUsers, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlayUsers_lift(_ handle: UInt64) throws -> PlayUsers {
+    return try FfiConverterTypePlayUsers.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlayUsers_lower(_ value: PlayUsers) -> UInt64 {
+    return FfiConverterTypePlayUsers.lower(value)
+}
+
+
+
+
+
+
+/**
  * UniFFI-exported Profiles capability handle. A thin, binding-friendly wrapper
  * around a boxed [`ProfilesImpl`]; async work runs on the tokio runtime.
  * Reached via [`crate::service::provider::Provider::profiles`].
@@ -7070,6 +7414,14 @@ public protocol ProviderProtocol: AnyObject, Sendable {
     func kind()  -> ServiceKind
     
     /**
+     * The Play Users capability handle, or `None` when this provider does not
+     * expose [`Capability::PlayUsers`]. This is the discovery mechanism: the
+     * host calls `provider.play_users()` and gets `None` when Google Play user
+     * management is unsupported.
+     */
+    func playUsers()  -> PlayUsers?
+    
+    /**
      * The Profiles capability handle, or `None` when this provider does not
      * expose [`Capability::Profiles`]. This is the discovery mechanism: the host
      * calls `provider.profiles()` and gets `None` when provisioning profile
@@ -7418,6 +7770,20 @@ open func fetchApps()async throws  -> [AppInfo]  {
 open func kind() -> ServiceKind  {
     return try!  FfiConverterTypeServiceKind_lift(try! rustCall() {
     uniffi_stack_core_fn_method_provider_kind(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+    /**
+     * The Play Users capability handle, or `None` when this provider does not
+     * expose [`Capability::PlayUsers`]. This is the discovery mechanism: the
+     * host calls `provider.play_users()` and gets `None` when Google Play user
+     * management is unsupported.
+     */
+open func playUsers() -> PlayUsers?  {
+    return try!  FfiConverterOptionTypePlayUsers.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_provider_play_users(
             self.uniffiCloneHandle(),$0
     )
 })
@@ -8308,6 +8674,75 @@ public func FfiConverterTypeSyncService_lower(_ value: SyncService) -> UInt64 {
 public protocol TracksProtocol: AnyObject, Sendable {
     
     /**
+     * Applies `change` to the release track `track` of `app_id` and
+     * **publishes it**: for Google Play, one edit that reads the track fresh,
+     * applies the change, writes the whole track back (`edits.tracks.update`),
+     * validates and commits (`edits.commit`). On any failure the edit is
+     * deleted and nothing is published. Returns the track as Google stored it.
+     *
+     * The release is identified by its version codes (see [`ReleaseChange`]);
+     * one that is no longer on the track is
+     * [`StackError::ReleaseNotFound`], and nothing is written. `options`
+     * decides whether the changes go to review right away
+     * (`send_for_review`) and what happens to changes already in review.
+     *
+     * This is a real, user-visible store change. Like every edit it also
+     * cancels any edit the service account has open for the app elsewhere
+     * (e.g. a CI upload), so hosts should only call it on an explicit,
+     * confirmed user action. Hosts should also check
+     * [`crate::service::provider::Capability::ReleaseManagement`] before offering it.
+     *
+     * # Errors
+     * [`StackError::Http`] `400` for an invalid value checked locally (a
+     * rollout fraction outside `(0, 1)`, a priority outside `0..=5`, a
+     * version code that is not a positive integer; nothing is sent) or with
+     * Google's message when it refuses the change (`edits.validate` /
+     * `edits.commit`, e.g. changes already in review, or
+     * `changesNotSentForReview` not matching the app's state);
+     * [`StackError::ReleaseNotFound`]; [`StackError::Auth`] when Google denies
+     * access (naming the release permission the track needs) or the API is
+     * disabled; [`StackError::Decode`] on a malformed response or an unusable
+     * track name; [`StackError::Network`] on transport failure.
+     */
+    func applyReleaseChange(appId: String, track: String, change: ReleaseChange, options: CommitOptions) async throws  -> TrackInfo
+    
+    /**
+     * Lists the app bundles uploaded to `app_id` (for Google Play,
+     * `edits.bundles.list`), in the store's order: version code and SHA-256.
+     * These are the bundles a new release can be made from.
+     *
+     * Reads through a throwaway edit like [`Self::fetch_tracks`] (insert,
+     * read, delete; nothing is committed), with the same side effect: it
+     * invalidates any edit the service account has open for the app elsewhere.
+     *
+     * # Errors
+     * As [`Self::fetch_tracks`].
+     */
+    func fetchBundles(appId: String) async throws  -> [BundleInfo]
+    
+    /**
+     * Lists the summaries of the releases on `track` of `app_id` (for Google
+     * Play, `tracks.releases.list`), in the store's order: name, raw
+     * lifecycle (review) state and version codes. Google returns at most 20
+     * and leaves out obsolete releases.
+     *
+     * **Opens no edit**, unlike [`Self::fetch_tracks`], so it never cancels an
+     * edit the service account has open elsewhere (e.g. a CI upload) and is
+     * safe to call automatically. It has no rollout fraction or status: those
+     * only come from [`Self::fetch_tracks`].
+     *
+     * A track Google does not know (`404`) yields an empty list.
+     *
+     * # Errors
+     * [`StackError::Auth`] when Google denies access or the API is disabled,
+     * [`StackError::Http`] on any other non-2xx response (`404` only for an
+     * invalid package name, checked locally), [`StackError::Decode`] on
+     * malformed JSON or a blank / `.` / `..` track name, or
+     * [`StackError::Network`] on transport failure.
+     */
+    func fetchReleaseSummaries(appId: String, track: String) async throws  -> [ReleaseSummaryInfo]
+    
+    /**
      * Lists every release track of `app_id` (for Google Play, the package
      * name, i.e. `AppInfo.id`) with its releases, in the store's order. Tracks
      * without a release are included with an empty `releases`.
@@ -8383,6 +8818,120 @@ open class Tracks: TracksProtocol, @unchecked Sendable {
 
     
 
+    
+    /**
+     * Applies `change` to the release track `track` of `app_id` and
+     * **publishes it**: for Google Play, one edit that reads the track fresh,
+     * applies the change, writes the whole track back (`edits.tracks.update`),
+     * validates and commits (`edits.commit`). On any failure the edit is
+     * deleted and nothing is published. Returns the track as Google stored it.
+     *
+     * The release is identified by its version codes (see [`ReleaseChange`]);
+     * one that is no longer on the track is
+     * [`StackError::ReleaseNotFound`], and nothing is written. `options`
+     * decides whether the changes go to review right away
+     * (`send_for_review`) and what happens to changes already in review.
+     *
+     * This is a real, user-visible store change. Like every edit it also
+     * cancels any edit the service account has open for the app elsewhere
+     * (e.g. a CI upload), so hosts should only call it on an explicit,
+     * confirmed user action. Hosts should also check
+     * [`crate::service::provider::Capability::ReleaseManagement`] before offering it.
+     *
+     * # Errors
+     * [`StackError::Http`] `400` for an invalid value checked locally (a
+     * rollout fraction outside `(0, 1)`, a priority outside `0..=5`, a
+     * version code that is not a positive integer; nothing is sent) or with
+     * Google's message when it refuses the change (`edits.validate` /
+     * `edits.commit`, e.g. changes already in review, or
+     * `changesNotSentForReview` not matching the app's state);
+     * [`StackError::ReleaseNotFound`]; [`StackError::Auth`] when Google denies
+     * access (naming the release permission the track needs) or the API is
+     * disabled; [`StackError::Decode`] on a malformed response or an unusable
+     * track name; [`StackError::Network`] on transport failure.
+     */
+open func applyReleaseChange(appId: String, track: String, change: ReleaseChange, options: CommitOptions)async throws  -> TrackInfo  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_tracks_apply_release_change(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId),FfiConverterString.lower(track),FfiConverterTypeReleaseChange_lower(change),FfiConverterTypeCommitOptions_lower(options)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeTrackInfo_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists the app bundles uploaded to `app_id` (for Google Play,
+     * `edits.bundles.list`), in the store's order: version code and SHA-256.
+     * These are the bundles a new release can be made from.
+     *
+     * Reads through a throwaway edit like [`Self::fetch_tracks`] (insert,
+     * read, delete; nothing is committed), with the same side effect: it
+     * invalidates any edit the service account has open for the app elsewhere.
+     *
+     * # Errors
+     * As [`Self::fetch_tracks`].
+     */
+open func fetchBundles(appId: String)async throws  -> [BundleInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_tracks_fetch_bundles(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeBundleInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Lists the summaries of the releases on `track` of `app_id` (for Google
+     * Play, `tracks.releases.list`), in the store's order: name, raw
+     * lifecycle (review) state and version codes. Google returns at most 20
+     * and leaves out obsolete releases.
+     *
+     * **Opens no edit**, unlike [`Self::fetch_tracks`], so it never cancels an
+     * edit the service account has open elsewhere (e.g. a CI upload) and is
+     * safe to call automatically. It has no rollout fraction or status: those
+     * only come from [`Self::fetch_tracks`].
+     *
+     * A track Google does not know (`404`) yields an empty list.
+     *
+     * # Errors
+     * [`StackError::Auth`] when Google denies access or the API is disabled,
+     * [`StackError::Http`] on any other non-2xx response (`404` only for an
+     * invalid package name, checked locally), [`StackError::Decode`] on
+     * malformed JSON or a blank / `.` / `..` track name, or
+     * [`StackError::Network`] on transport failure.
+     */
+open func fetchReleaseSummaries(appId: String, track: String)async throws  -> [ReleaseSummaryInfo]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_tracks_fetch_release_summaries(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(appId),FfiConverterString.lower(track)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeReleaseSummaryInfo.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
     
     /**
      * Lists every release track of `app_id` (for Google Play, the package
@@ -11269,6 +11818,70 @@ public func FfiConverterTypeBundleIdInfo_lower(_ value: BundleIdInfo) -> RustBuf
 
 
 /**
+ * An Android App Bundle uploaded to a Google Play app (`edits.bundles`), i.e.
+ * one that can go into a release.
+ *
+ * - `version_code`: the bundle's version code as a decimal string (the same
+ * encoding as [`TrackReleaseInfo::version_codes`]).
+ * - `sha256`: Google's hex SHA-256 of the uploaded file; `None` when absent.
+ *
+ * The API has no upload date and no version name for a bundle.
+ */
+public struct BundleInfo: Equatable, Hashable {
+    public var versionCode: String
+    public var sha256: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(versionCode: String, sha256: String?) {
+        self.versionCode = versionCode
+        self.sha256 = sha256
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BundleInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBundleInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BundleInfo {
+        return
+            try BundleInfo(
+                versionCode: FfiConverterString.read(from: &buf), 
+                sha256: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BundleInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.versionCode, into: &buf)
+        FfiConverterOptionString.write(value.sha256, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBundleInfo_lift(_ buf: RustBuffer) throws -> BundleInfo {
+    return try FfiConverterTypeBundleInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBundleInfo_lower(_ value: BundleInfo) -> RustBuffer {
+    return FfiConverterTypeBundleInfo.lower(value)
+}
+
+
+/**
  * A signing certificate registered for the connected App Store Connect account
  * (development, distribution, push, Pass Type ID, or Apple Pay merchant
  * certificate).
@@ -11365,6 +11978,129 @@ public func FfiConverterTypeCertificateInfo_lift(_ buf: RustBuffer) throws -> Ce
 #endif
 public func FfiConverterTypeCertificateInfo_lower(_ value: CertificateInfo) -> RustBuffer {
     return FfiConverterTypeCertificateInfo.lower(value)
+}
+
+
+/**
+ * How `Tracks::apply_release_change` commits its edit (`edits.commit`).
+ *
+ * - `send_for_review`: `false` sets `changesNotSentForReview=true`, so the
+ * changes wait in the Play Console until someone sends them for review
+ * there. Google rejects the commit with an explanatory message when the
+ * flag does not match the app's state.
+ * - `changes_in_review_behavior`: what to do when other changes are in
+ * review; `None` leaves it to Google (which cancels the review and submits).
+ */
+public struct CommitOptions: Equatable, Hashable {
+    public var sendForReview: Bool
+    public var changesInReviewBehavior: ChangesInReviewBehavior?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(sendForReview: Bool, changesInReviewBehavior: ChangesInReviewBehavior?) {
+        self.sendForReview = sendForReview
+        self.changesInReviewBehavior = changesInReviewBehavior
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CommitOptions: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCommitOptions: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CommitOptions {
+        return
+            try CommitOptions(
+                sendForReview: FfiConverterBool.read(from: &buf), 
+                changesInReviewBehavior: FfiConverterOptionTypeChangesInReviewBehavior.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CommitOptions, into buf: inout [UInt8]) {
+        FfiConverterBool.write(value.sendForReview, into: &buf)
+        FfiConverterOptionTypeChangesInReviewBehavior.write(value.changesInReviewBehavior, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCommitOptions_lift(_ buf: RustBuffer) throws -> CommitOptions {
+    return try FfiConverterTypeCommitOptions.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCommitOptions_lower(_ value: CommitOptions) -> RustBuffer {
+    return FfiConverterTypeCommitOptions.lower(value)
+}
+
+
+/**
+ * The countries a Google Play release is restricted to (`CountryTargeting`).
+ * `countries` are two-letter CLDR region codes (e.g. `BR`), in Google's order;
+ * `include_rest_of_world` also serves every country not listed.
+ */
+public struct CountryTargetingInfo: Equatable, Hashable {
+    public var countries: [String]
+    public var includeRestOfWorld: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(countries: [String], includeRestOfWorld: Bool) {
+        self.countries = countries
+        self.includeRestOfWorld = includeRestOfWorld
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CountryTargetingInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCountryTargetingInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CountryTargetingInfo {
+        return
+            try CountryTargetingInfo(
+                countries: FfiConverterSequenceString.read(from: &buf), 
+                includeRestOfWorld: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CountryTargetingInfo, into buf: inout [UInt8]) {
+        FfiConverterSequenceString.write(value.countries, into: &buf)
+        FfiConverterBool.write(value.includeRestOfWorld, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCountryTargetingInfo_lift(_ buf: RustBuffer) throws -> CountryTargetingInfo {
+    return try FfiConverterTypeCountryTargetingInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCountryTargetingInfo_lower(_ value: CountryTargetingInfo) -> RustBuffer {
+    return FfiConverterTypeCountryTargetingInfo.lower(value)
 }
 
 
@@ -11732,6 +12468,89 @@ public func FfiConverterTypeLocalizedTextInfo_lower(_ value: LocalizedTextInfo) 
 
 
 /**
+ * A release [`ReleaseChange::CreateRelease`] adds to a track.
+ *
+ * What it replaces on the track depends on `status`, following the Play
+ * Console's one-pending-release model:
+ * - `Draft`: replaces any other draft; a running rollout and the completed
+ * release keep serving.
+ * - `InProgress`: replaces drafts and any running or halted rollout; the
+ * completed release keeps serving the rest of the users.
+ * - `Completed`: replaces every release on the track.
+ *
+ * `name: None` lets Google derive a name; `release_notes` may be empty.
+ */
+public struct NewRelease: Equatable, Hashable {
+    public var versionCodes: [String]
+    public var name: String?
+    public var releaseNotes: [LocalizedTextInfo]
+    public var status: NewReleaseStatus
+    public var inAppUpdatePriority: Int32?
+    public var countryTargeting: CountryTargetingInfo?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(versionCodes: [String], name: String?, releaseNotes: [LocalizedTextInfo], status: NewReleaseStatus, inAppUpdatePriority: Int32?, countryTargeting: CountryTargetingInfo?) {
+        self.versionCodes = versionCodes
+        self.name = name
+        self.releaseNotes = releaseNotes
+        self.status = status
+        self.inAppUpdatePriority = inAppUpdatePriority
+        self.countryTargeting = countryTargeting
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension NewRelease: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNewRelease: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NewRelease {
+        return
+            try NewRelease(
+                versionCodes: FfiConverterSequenceString.read(from: &buf), 
+                name: FfiConverterOptionString.read(from: &buf), 
+                releaseNotes: FfiConverterSequenceTypeLocalizedTextInfo.read(from: &buf), 
+                status: FfiConverterTypeNewReleaseStatus.read(from: &buf), 
+                inAppUpdatePriority: FfiConverterOptionInt32.read(from: &buf), 
+                countryTargeting: FfiConverterOptionTypeCountryTargetingInfo.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NewRelease, into buf: inout [UInt8]) {
+        FfiConverterSequenceString.write(value.versionCodes, into: &buf)
+        FfiConverterOptionString.write(value.name, into: &buf)
+        FfiConverterSequenceTypeLocalizedTextInfo.write(value.releaseNotes, into: &buf)
+        FfiConverterTypeNewReleaseStatus.write(value.status, into: &buf)
+        FfiConverterOptionInt32.write(value.inAppUpdatePriority, into: &buf)
+        FfiConverterOptionTypeCountryTargetingInfo.write(value.countryTargeting, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNewRelease_lift(_ buf: RustBuffer) throws -> NewRelease {
+    return try FfiConverterTypeNewRelease.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNewRelease_lower(_ value: NewRelease) -> RustBuffer {
+    return FfiConverterTypeNewRelease.lower(value)
+}
+
+
+/**
  * An App Store version's phased (staged) release. App Store Connect exposes
  * exactly one per version via the singular `appStoreVersionPhasedRelease`
  * relationship. `state` carries the raw ASC `phasedReleaseState` value
@@ -11803,6 +12622,158 @@ public func FfiConverterTypePhasedReleaseInfo_lift(_ buf: RustBuffer) throws -> 
 #endif
 public func FfiConverterTypePhasedReleaseInfo_lower(_ value: PhasedReleaseInfo) -> RustBuffer {
     return FfiConverterTypePhasedReleaseInfo.lower(value)
+}
+
+
+/**
+ * One app a Google Play user has access to (`developers.users.grants`).
+ * `package_name` is the app's package name (for a draft app without one,
+ * Google's app ID from the grant's resource name); `app_level_permissions`
+ * are raw strings such as `CAN_REPLY_TO_REVIEWS`.
+ */
+public struct PlayGrantInfo: Equatable, Hashable {
+    public var packageName: String
+    public var appLevelPermissions: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(packageName: String, appLevelPermissions: [String]) {
+        self.packageName = packageName
+        self.appLevelPermissions = appLevelPermissions
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension PlayGrantInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePlayGrantInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PlayGrantInfo {
+        return
+            try PlayGrantInfo(
+                packageName: FfiConverterString.read(from: &buf), 
+                appLevelPermissions: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PlayGrantInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.packageName, into: &buf)
+        FfiConverterSequenceString.write(value.appLevelPermissions, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlayGrantInfo_lift(_ buf: RustBuffer) throws -> PlayGrantInfo {
+    return try FfiConverterTypePlayGrantInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlayGrantInfo_lower(_ value: PlayGrantInfo) -> RustBuffer {
+    return FfiConverterTypePlayGrantInfo.lower(value)
+}
+
+
+/**
+ * A user of a Google Play developer account (`developers.users`), with the
+ * raw Google values passed through:
+ *
+ * - `email`: the user's (or service account's) e-mail; it identifies the user
+ * in every other call.
+ * - `name`: Google's resource name, `developers/{developer}/users/{email}`.
+ * - `access_state`: `INVITED`, `INVITATION_EXPIRED`, `ACCESS_GRANTED`,
+ * `ACCESS_EXPIRED` (or `ACCESS_STATE_UNSPECIFIED`); `None` when absent. A
+ * state Google adds later passes through unchanged.
+ * - `expiration_time`: when the access expires, as Google's RFC 3339 text
+ * (e.g. `2027-01-01T00:00:00Z`); `None` when it never does.
+ * - `developer_account_permissions`: account-wide permissions such as
+ * `CAN_MANAGE_PERMISSIONS_GLOBAL` (Admin), as raw strings.
+ * - `grants`: per-app access.
+ * - `partial`: `true` when the caller cannot see (and so cannot manage) every
+ * permission of this user, e.g. the account owner.
+ */
+public struct PlayUserInfo: Equatable, Hashable {
+    public var email: String
+    public var name: String?
+    public var accessState: String?
+    public var expirationTime: String?
+    public var developerAccountPermissions: [String]
+    public var grants: [PlayGrantInfo]
+    public var partial: Bool
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(email: String, name: String?, accessState: String?, expirationTime: String?, developerAccountPermissions: [String], grants: [PlayGrantInfo], partial: Bool) {
+        self.email = email
+        self.name = name
+        self.accessState = accessState
+        self.expirationTime = expirationTime
+        self.developerAccountPermissions = developerAccountPermissions
+        self.grants = grants
+        self.partial = partial
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension PlayUserInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePlayUserInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PlayUserInfo {
+        return
+            try PlayUserInfo(
+                email: FfiConverterString.read(from: &buf), 
+                name: FfiConverterOptionString.read(from: &buf), 
+                accessState: FfiConverterOptionString.read(from: &buf), 
+                expirationTime: FfiConverterOptionString.read(from: &buf), 
+                developerAccountPermissions: FfiConverterSequenceString.read(from: &buf), 
+                grants: FfiConverterSequenceTypePlayGrantInfo.read(from: &buf), 
+                partial: FfiConverterBool.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PlayUserInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.email, into: &buf)
+        FfiConverterOptionString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.accessState, into: &buf)
+        FfiConverterOptionString.write(value.expirationTime, into: &buf)
+        FfiConverterSequenceString.write(value.developerAccountPermissions, into: &buf)
+        FfiConverterSequenceTypePlayGrantInfo.write(value.grants, into: &buf)
+        FfiConverterBool.write(value.partial, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlayUserInfo_lift(_ buf: RustBuffer) throws -> PlayUserInfo {
+    return try FfiConverterTypePlayUserInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePlayUserInfo_lower(_ value: PlayUserInfo) -> RustBuffer {
+    return FfiConverterTypePlayUserInfo.lower(value)
 }
 
 
@@ -11914,6 +12885,156 @@ public func FfiConverterTypeProvisioningProfileInfo_lift(_ buf: RustBuffer) thro
 #endif
 public func FfiConverterTypeProvisioningProfileInfo_lower(_ value: ProvisioningProfileInfo) -> RustBuffer {
     return FfiConverterTypeProvisioningProfileInfo.lower(value)
+}
+
+
+/**
+ * The fields [`ReleaseChange::UpdateMetadata`] changes. `None` leaves a field
+ * as it is.
+ *
+ * - `name`: a blank name removes it (Google then derives one).
+ * - `release_notes`: replaces every language; an empty list removes them all.
+ * - `in_app_update_priority`: `0..=5`. Google refuses to change it once the
+ * release is rolled out.
+ * - `country_targeting`: replaces the targeting. It cannot be removed through
+ * this record (Google only allows it on `inProgress` production releases).
+ */
+public struct ReleaseMetadataUpdate: Equatable, Hashable {
+    public var name: String?
+    public var releaseNotes: [LocalizedTextInfo]?
+    public var inAppUpdatePriority: Int32?
+    public var countryTargeting: CountryTargetingInfo?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(name: String?, releaseNotes: [LocalizedTextInfo]?, inAppUpdatePriority: Int32?, countryTargeting: CountryTargetingInfo?) {
+        self.name = name
+        self.releaseNotes = releaseNotes
+        self.inAppUpdatePriority = inAppUpdatePriority
+        self.countryTargeting = countryTargeting
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ReleaseMetadataUpdate: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeReleaseMetadataUpdate: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ReleaseMetadataUpdate {
+        return
+            try ReleaseMetadataUpdate(
+                name: FfiConverterOptionString.read(from: &buf), 
+                releaseNotes: FfiConverterOptionSequenceTypeLocalizedTextInfo.read(from: &buf), 
+                inAppUpdatePriority: FfiConverterOptionInt32.read(from: &buf), 
+                countryTargeting: FfiConverterOptionTypeCountryTargetingInfo.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ReleaseMetadataUpdate, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.name, into: &buf)
+        FfiConverterOptionSequenceTypeLocalizedTextInfo.write(value.releaseNotes, into: &buf)
+        FfiConverterOptionInt32.write(value.inAppUpdatePriority, into: &buf)
+        FfiConverterOptionTypeCountryTargetingInfo.write(value.countryTargeting, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReleaseMetadataUpdate_lift(_ buf: RustBuffer) throws -> ReleaseMetadataUpdate {
+    return try FfiConverterTypeReleaseMetadataUpdate.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReleaseMetadataUpdate_lower(_ value: ReleaseMetadataUpdate) -> RustBuffer {
+    return FfiConverterTypeReleaseMetadataUpdate.lower(value)
+}
+
+
+/**
+ * The summary of one release on a track, as Google Play's edit-free
+ * `tracks.releases.list` returns it. Carries the review / lifecycle state that
+ * [`TrackReleaseInfo`] lacks (and none of its rollout details).
+ *
+ * - `track`: the track name the release is on.
+ * - `name`: the release name; `None` when Google has none.
+ * - `lifecycle_state`: Google's raw `releaseLifecycleState`, passed through
+ * verbatim so a state added later still reaches the host:
+ * `RELEASE_LIFECYCLE_STATE_DRAFT`, `…_NOT_SENT_FOR_REVIEW`, `…_IN_REVIEW`,
+ * `…_APPROVED_NOT_PUBLISHED`, `…_NOT_APPROVED`, `…_PUBLISHED` (or
+ * `…_UNSPECIFIED`); `None` when absent.
+ * - `version_codes`: the version codes of the release's active artifacts, as
+ * decimal strings (the same encoding as [`TrackReleaseInfo::version_codes`]).
+ */
+public struct ReleaseSummaryInfo: Equatable, Hashable {
+    public var track: String
+    public var name: String?
+    public var lifecycleState: String?
+    public var versionCodes: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(track: String, name: String?, lifecycleState: String?, versionCodes: [String]) {
+        self.track = track
+        self.name = name
+        self.lifecycleState = lifecycleState
+        self.versionCodes = versionCodes
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ReleaseSummaryInfo: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeReleaseSummaryInfo: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ReleaseSummaryInfo {
+        return
+            try ReleaseSummaryInfo(
+                track: FfiConverterString.read(from: &buf), 
+                name: FfiConverterOptionString.read(from: &buf), 
+                lifecycleState: FfiConverterOptionString.read(from: &buf), 
+                versionCodes: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ReleaseSummaryInfo, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.track, into: &buf)
+        FfiConverterOptionString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.lifecycleState, into: &buf)
+        FfiConverterSequenceString.write(value.versionCodes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReleaseSummaryInfo_lift(_ buf: RustBuffer) throws -> ReleaseSummaryInfo {
+    return try FfiConverterTypeReleaseSummaryInfo.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReleaseSummaryInfo_lower(_ value: ReleaseSummaryInfo) -> RustBuffer {
+    return FfiConverterTypeReleaseSummaryInfo.lower(value)
 }
 
 
@@ -12436,6 +13557,9 @@ public func FfiConverterTypeTrackInfo_lower(_ value: TrackInfo) -> RustBuffer {
  * rollout is `inProgress` or `halted`.
  * - `release_notes`: the localized "What's new" texts.
  * - `in_app_update_priority`: `0` to `5`, `None` when unset.
+ * - `country_targeting`: the countries the release is restricted to; `None`
+ * when it is not restricted (Google only allows it on `inProgress`
+ * production releases).
  */
 public struct TrackReleaseInfo: Equatable, Hashable {
     public var name: String?
@@ -12444,16 +13568,24 @@ public struct TrackReleaseInfo: Equatable, Hashable {
     public var userFraction: Double?
     public var releaseNotes: [LocalizedTextInfo]
     public var inAppUpdatePriority: Int32?
+    /**
+     * `#[serde(default)]` so JSON written before the field existed decodes.
+     */
+    public var countryTargeting: CountryTargetingInfo?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(name: String?, status: String?, versionCodes: [String], userFraction: Double?, releaseNotes: [LocalizedTextInfo], inAppUpdatePriority: Int32?) {
+    public init(name: String?, status: String?, versionCodes: [String], userFraction: Double?, releaseNotes: [LocalizedTextInfo], inAppUpdatePriority: Int32?, 
+        /**
+         * `#[serde(default)]` so JSON written before the field existed decodes.
+         */countryTargeting: CountryTargetingInfo?) {
         self.name = name
         self.status = status
         self.versionCodes = versionCodes
         self.userFraction = userFraction
         self.releaseNotes = releaseNotes
         self.inAppUpdatePriority = inAppUpdatePriority
+        self.countryTargeting = countryTargeting
     }
 
     
@@ -12477,7 +13609,8 @@ public struct FfiConverterTypeTrackReleaseInfo: FfiConverterRustBuffer {
                 versionCodes: FfiConverterSequenceString.read(from: &buf), 
                 userFraction: FfiConverterOptionDouble.read(from: &buf), 
                 releaseNotes: FfiConverterSequenceTypeLocalizedTextInfo.read(from: &buf), 
-                inAppUpdatePriority: FfiConverterOptionInt32.read(from: &buf)
+                inAppUpdatePriority: FfiConverterOptionInt32.read(from: &buf), 
+                countryTargeting: FfiConverterOptionTypeCountryTargetingInfo.read(from: &buf)
         )
     }
 
@@ -12488,6 +13621,7 @@ public struct FfiConverterTypeTrackReleaseInfo: FfiConverterRustBuffer {
         FfiConverterOptionDouble.write(value.userFraction, into: &buf)
         FfiConverterSequenceTypeLocalizedTextInfo.write(value.releaseNotes, into: &buf)
         FfiConverterOptionInt32.write(value.inAppUpdatePriority, into: &buf)
+        FfiConverterOptionTypeCountryTargetingInfo.write(value.countryTargeting, into: &buf)
     }
 }
 
@@ -12647,6 +13781,20 @@ public enum Capability: Equatable, Hashable {
      * Where to load an app's icon from ([`AppIcons`]).
      */
     case appIcons
+    /**
+     * Changing an app's releases: rollout, halt, resume, complete, metadata,
+     * new release and promotion through
+     * [`Tracks::apply_release_change`](crate::service::capabilities::tracks::Tracks::apply_release_change),
+     * plus the bundles a release can be made from. Hosts hide every release
+     * write on providers without it. Served by the [`Tracks`] handle.
+     */
+    case releaseManagement
+    /**
+     * The users of a Google Play developer account and their per-app grants
+     * ([`PlayUsers`]). Distinct from [`Capability::Users`], whose App Store
+     * shape (roles, visible apps) does not fit Google Play.
+     */
+    case playUsers
 
 
 
@@ -12707,6 +13855,10 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         case 19: return .tracks
         
         case 20: return .appIcons
+        
+        case 21: return .releaseManagement
+        
+        case 22: return .playUsers
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -12795,6 +13947,14 @@ public struct FfiConverterTypeCapability: FfiConverterRustBuffer {
         case .appIcons:
             writeInt(&buf, Int32(20))
         
+        
+        case .releaseManagement:
+            writeInt(&buf, Int32(21))
+        
+        
+        case .playUsers:
+            writeInt(&buf, Int32(22))
+        
         }
     }
 }
@@ -12812,6 +13972,354 @@ public func FfiConverterTypeCapability_lift(_ buf: RustBuffer) throws -> Capabil
 #endif
 public func FfiConverterTypeCapability_lower(_ value: Capability) -> RustBuffer {
     return FfiConverterTypeCapability.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * `changesInReviewBehavior` of `edits.commit`.
+ */
+
+public enum ChangesInReviewBehavior: Equatable, Hashable {
+    
+    /**
+     * Cancel the review in progress, then submit everything
+     * (`CANCEL_IN_REVIEW_AND_SUBMIT`).
+     */
+    case cancelInReviewAndSubmit
+    /**
+     * Fail the commit if changes are in review (`ERROR_IF_IN_REVIEW`); the
+     * edit is then deleted like after any other failure.
+     */
+    case errorIfInReview
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ChangesInReviewBehavior: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChangesInReviewBehavior: FfiConverterRustBuffer {
+    typealias SwiftType = ChangesInReviewBehavior
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChangesInReviewBehavior {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .cancelInReviewAndSubmit
+        
+        case 2: return .errorIfInReview
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ChangesInReviewBehavior, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .cancelInReviewAndSubmit:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .errorIfInReview:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChangesInReviewBehavior_lift(_ buf: RustBuffer) throws -> ChangesInReviewBehavior {
+    return try FfiConverterTypeChangesInReviewBehavior.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChangesInReviewBehavior_lower(_ value: ChangesInReviewBehavior) -> RustBuffer {
+    return FfiConverterTypeChangesInReviewBehavior.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * The status a new release starts in.
+ */
+
+public enum NewReleaseStatus: Equatable, Hashable {
+    
+    /**
+     * Not served to anyone (`draft`).
+     */
+    case draft
+    /**
+     * A staged rollout to `user_fraction` of the users (`inProgress`,
+     * `0 < f < 1`).
+     */
+    case inProgress(userFraction: Double
+    )
+    /**
+     * Served to everyone (`completed`).
+     */
+    case completed
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension NewReleaseStatus: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNewReleaseStatus: FfiConverterRustBuffer {
+    typealias SwiftType = NewReleaseStatus
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NewReleaseStatus {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .draft
+        
+        case 2: return .inProgress(userFraction: try FfiConverterDouble.read(from: &buf)
+        )
+        
+        case 3: return .completed
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: NewReleaseStatus, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .draft:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .inProgress(userFraction):
+            writeInt(&buf, Int32(2))
+            FfiConverterDouble.write(userFraction, into: &buf)
+            
+        
+        case .completed:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNewReleaseStatus_lift(_ buf: RustBuffer) throws -> NewReleaseStatus {
+    return try FfiConverterTypeNewReleaseStatus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNewReleaseStatus_lower(_ value: NewReleaseStatus) -> RustBuffer {
+    return FfiConverterTypeNewReleaseStatus.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * One change to a release on a Google Play track, applied by
+ * `Tracks::apply_release_change` inside a single edit (read the track fresh,
+ * apply, update, validate, commit).
+ *
+ * The target release is identified by its `version_codes` (decimal strings,
+ * compared as a set of 64-bit integers, so order and leading zeros do not
+ * matter), never by name or position: names are optional and editable, and
+ * positions change when Google drops obsolete releases. A target that is not
+ * on the track any more is `StackError::ReleaseNotFound`.
+ *
+ * Which status transitions are allowed is Google's call (`edits.validate`):
+ * the core only rejects values Google documents as invalid (a rollout
+ * fraction outside `(0, 1)`, an in-app update priority outside `0..=5`, a
+ * version code that is not an integer) before opening the edit.
+ */
+
+public enum ReleaseChange: Equatable, Hashable {
+    
+    /**
+     * Staged rollout to `user_fraction` (`0 < f < 1`): status `inProgress`.
+     * Starts a rollout from a draft, changes the fraction of a running one,
+     * or restarts a halted one at a new fraction.
+     */
+    case setRollout(versionCodes: [String], userFraction: Double
+    )
+    /**
+     * Stops serving the release to new users: status `halted` (the fraction
+     * is kept, so a resume picks up where it stopped).
+     */
+    case halt(versionCodes: [String]
+    )
+    /**
+     * Resumes a halted release: `inProgress` when it has a rollout fraction,
+     * `completed` when it has none.
+     */
+    case resume(versionCodes: [String]
+    )
+    /**
+     * Releases to everyone: status `completed`, no fraction. Every other
+     * `completed` release on the track is dropped, as it is superseded.
+     */
+    case complete(versionCodes: [String]
+    )
+    /**
+     * Changes the release's name, notes, priority or country targeting; the
+     * status and rollout are left alone.
+     */
+    case updateMetadata(versionCodes: [String], update: ReleaseMetadataUpdate
+    )
+    /**
+     * Adds a new release to the track (see [`NewRelease`] for what it
+     * replaces).
+     */
+    case createRelease(release: NewRelease
+    )
+    /**
+     * Copies the release with `version_codes` from `from_track` to the target
+     * track as a new release with `status`, read in the same edit. Its name,
+     * release notes and in-app update priority are kept unless overridden;
+     * country targeting is never copied (it is per track), only set through
+     * `country_targeting`. Replaces releases on the target track like
+     * [`ReleaseChange::CreateRelease`].
+     */
+    case promote(fromTrack: String, versionCodes: [String], status: NewReleaseStatus, name: String?, releaseNotes: [LocalizedTextInfo]?, inAppUpdatePriority: Int32?, countryTargeting: CountryTargetingInfo?
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension ReleaseChange: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeReleaseChange: FfiConverterRustBuffer {
+    typealias SwiftType = ReleaseChange
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ReleaseChange {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .setRollout(versionCodes: try FfiConverterSequenceString.read(from: &buf), userFraction: try FfiConverterDouble.read(from: &buf)
+        )
+        
+        case 2: return .halt(versionCodes: try FfiConverterSequenceString.read(from: &buf)
+        )
+        
+        case 3: return .resume(versionCodes: try FfiConverterSequenceString.read(from: &buf)
+        )
+        
+        case 4: return .complete(versionCodes: try FfiConverterSequenceString.read(from: &buf)
+        )
+        
+        case 5: return .updateMetadata(versionCodes: try FfiConverterSequenceString.read(from: &buf), update: try FfiConverterTypeReleaseMetadataUpdate.read(from: &buf)
+        )
+        
+        case 6: return .createRelease(release: try FfiConverterTypeNewRelease.read(from: &buf)
+        )
+        
+        case 7: return .promote(fromTrack: try FfiConverterString.read(from: &buf), versionCodes: try FfiConverterSequenceString.read(from: &buf), status: try FfiConverterTypeNewReleaseStatus.read(from: &buf), name: try FfiConverterOptionString.read(from: &buf), releaseNotes: try FfiConverterOptionSequenceTypeLocalizedTextInfo.read(from: &buf), inAppUpdatePriority: try FfiConverterOptionInt32.read(from: &buf), countryTargeting: try FfiConverterOptionTypeCountryTargetingInfo.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ReleaseChange, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .setRollout(versionCodes,userFraction):
+            writeInt(&buf, Int32(1))
+            FfiConverterSequenceString.write(versionCodes, into: &buf)
+            FfiConverterDouble.write(userFraction, into: &buf)
+            
+        
+        case let .halt(versionCodes):
+            writeInt(&buf, Int32(2))
+            FfiConverterSequenceString.write(versionCodes, into: &buf)
+            
+        
+        case let .resume(versionCodes):
+            writeInt(&buf, Int32(3))
+            FfiConverterSequenceString.write(versionCodes, into: &buf)
+            
+        
+        case let .complete(versionCodes):
+            writeInt(&buf, Int32(4))
+            FfiConverterSequenceString.write(versionCodes, into: &buf)
+            
+        
+        case let .updateMetadata(versionCodes,update):
+            writeInt(&buf, Int32(5))
+            FfiConverterSequenceString.write(versionCodes, into: &buf)
+            FfiConverterTypeReleaseMetadataUpdate.write(update, into: &buf)
+            
+        
+        case let .createRelease(release):
+            writeInt(&buf, Int32(6))
+            FfiConverterTypeNewRelease.write(release, into: &buf)
+            
+        
+        case let .promote(fromTrack,versionCodes,status,name,releaseNotes,inAppUpdatePriority,countryTargeting):
+            writeInt(&buf, Int32(7))
+            FfiConverterString.write(fromTrack, into: &buf)
+            FfiConverterSequenceString.write(versionCodes, into: &buf)
+            FfiConverterTypeNewReleaseStatus.write(status, into: &buf)
+            FfiConverterOptionString.write(name, into: &buf)
+            FfiConverterOptionSequenceTypeLocalizedTextInfo.write(releaseNotes, into: &buf)
+            FfiConverterOptionInt32.write(inAppUpdatePriority, into: &buf)
+            FfiConverterOptionTypeCountryTargetingInfo.write(countryTargeting, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReleaseChange_lift(_ buf: RustBuffer) throws -> ReleaseChange {
+    return try FfiConverterTypeReleaseChange.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeReleaseChange_lower(_ value: ReleaseChange) -> RustBuffer {
+    return FfiConverterTypeReleaseChange.lower(value)
 }
 
 
@@ -12929,6 +14437,16 @@ public enum StackError: Swift.Error, Equatable, Hashable, Foundation.LocalizedEr
      */
     case SubmissionNotRemovable(message: String
     )
+    /**
+     * The release a Google Play track change targets (identified by its
+     * version codes) is not on the track any more: someone else replaced,
+     * completed or removed it since the host read the track. Nothing was
+     * changed; the host should reload the track and let the user decide again.
+     *
+     * Appended last: both bindings encode a variant by its position.
+     */
+    case ReleaseNotFound(message: String
+    )
 
     
 
@@ -12983,6 +14501,9 @@ public struct FfiConverterTypeStackError: FfiConverterRustBuffer {
         case 8: return .SubmissionNotRemovable(
             message: try FfiConverterString.read(from: &buf)
             )
+        case 9: return .ReleaseNotFound(
+            message: try FfiConverterString.read(from: &buf)
+            )
 
          default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -13033,6 +14554,11 @@ public struct FfiConverterTypeStackError: FfiConverterRustBuffer {
         
         case let .SubmissionNotRemovable(message):
             writeInt(&buf, Int32(8))
+            FfiConverterString.write(message, into: &buf)
+            
+        
+        case let .ReleaseNotFound(message):
+            writeInt(&buf, Int32(9))
             FfiConverterString.write(message, into: &buf)
             
         }
@@ -13537,6 +15063,30 @@ fileprivate struct FfiConverterOptionTypeDevices: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypePlayUsers: FfiConverterRustBuffer {
+    typealias SwiftType = PlayUsers?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypePlayUsers.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypePlayUsers.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeProfiles: FfiConverterRustBuffer {
     typealias SwiftType = Profiles?
 
@@ -13729,6 +15279,30 @@ fileprivate struct FfiConverterOptionTypeBuildInfo: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeCountryTargetingInfo: FfiConverterRustBuffer {
+    typealias SwiftType = CountryTargetingInfo?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeCountryTargetingInfo.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeCountryTargetingInfo.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypePhasedReleaseInfo: FfiConverterRustBuffer {
     typealias SwiftType = PhasedReleaseInfo?
 
@@ -13777,6 +15351,30 @@ fileprivate struct FfiConverterOptionTypeReviewResponse: FfiConverterRustBuffer 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeChangesInReviewBehavior: FfiConverterRustBuffer {
+    typealias SwiftType = ChangesInReviewBehavior?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeChangesInReviewBehavior.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeChangesInReviewBehavior.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionSequenceString: FfiConverterRustBuffer {
     typealias SwiftType = [String]?
 
@@ -13793,6 +15391,30 @@ fileprivate struct FfiConverterOptionSequenceString: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterSequenceString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionSequenceTypeLocalizedTextInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [LocalizedTextInfo]?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterSequenceTypeLocalizedTextInfo.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterSequenceTypeLocalizedTextInfo.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -14251,6 +15873,31 @@ fileprivate struct FfiConverterSequenceTypeBundleIdInfo: FfiConverterRustBuffer 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeBundleInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [BundleInfo]
+
+    public static func write(_ value: [BundleInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeBundleInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [BundleInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [BundleInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeBundleInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeCertificateInfo: FfiConverterRustBuffer {
     typealias SwiftType = [CertificateInfo]
 
@@ -14376,6 +16023,56 @@ fileprivate struct FfiConverterSequenceTypeLocalizedTextInfo: FfiConverterRustBu
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypePlayGrantInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [PlayGrantInfo]
+
+    public static func write(_ value: [PlayGrantInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypePlayGrantInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [PlayGrantInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [PlayGrantInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypePlayGrantInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypePlayUserInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [PlayUserInfo]
+
+    public static func write(_ value: [PlayUserInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypePlayUserInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [PlayUserInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [PlayUserInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypePlayUserInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeProvisioningProfileInfo: FfiConverterRustBuffer {
     typealias SwiftType = [ProvisioningProfileInfo]
 
@@ -14393,6 +16090,31 @@ fileprivate struct FfiConverterSequenceTypeProvisioningProfileInfo: FfiConverter
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeProvisioningProfileInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeReleaseSummaryInfo: FfiConverterRustBuffer {
+    typealias SwiftType = [ReleaseSummaryInfo]
+
+    public static func write(_ value: [ReleaseSummaryInfo], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeReleaseSummaryInfo.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ReleaseSummaryInfo] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ReleaseSummaryInfo]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeReleaseSummaryInfo.read(from: &buf))
         }
         return seq
     }
@@ -15125,6 +16847,24 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_devices_update_device() != 7570) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_method_playusers_delete_grant() != 43602) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_playusers_delete_user() != 42597) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_playusers_fetch_users() != 47485) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_playusers_invite_user() != 5761) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_playusers_set_grant() != 56277) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_playusers_update_user() != 52194) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_profiles_create_profile() != 3058) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -15159,6 +16899,15 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_storelistings_fetch_store_listings() != 34771) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_tracks_apply_release_change() != 7518) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_tracks_fetch_bundles() != 54470) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_tracks_fetch_release_summaries() != 34991) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_tracks_fetch_tracks() != 40403) {
@@ -15234,6 +16983,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_kind() != 47339) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_provider_play_users() != 5953) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_provider_profiles() != 1805) {

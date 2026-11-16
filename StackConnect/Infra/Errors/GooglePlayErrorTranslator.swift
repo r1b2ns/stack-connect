@@ -65,6 +65,11 @@ enum GooglePlayErrorTranslator {
             // first: Google Play's API has no equivalent.
             return String(localized: "Google Play doesn't support this action.")
 
+        case .ReleaseNotFound:
+            // A track change targeted a release someone else replaced, completed
+            // or removed since the track was read. Nothing was changed.
+            return String(localized: "This release changed on Google Play since it was loaded. Refresh and try again.")
+
         case .PendingAgreements, .SubmissionNotRemovable:
             // App Store Connect–only cases; never expected from the Play provider.
             return genericMessage

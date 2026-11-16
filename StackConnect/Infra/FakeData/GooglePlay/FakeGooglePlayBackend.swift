@@ -15,10 +15,45 @@ struct FakeGooglePlayState {
     var listings: [String: [StoreListingInfo]] = [:]         // package name
     var tracks: [String: [TrackInfo]] = [:]                  // package name
     var reviews: [String: [CustomerReview]] = [:]            // package name
+    /// Lifecycle state (`RELEASE_LIFECYCLE_STATE_*`) of every release, keyed by
+    /// package name, then by `releaseKey(track:versionCodes:)`.
+    var lifecycles: [String: [String: String]] = [:]
+    var bundles: [String: [BundleInfo]] = [:]                // package name
+    /// Users of the developer account (`developers/{id}/users`).
+    var users: [PlayUserInfo] = []
 
     /// The package name embedded in a composite review id (`{package}/{id}`).
     func packageName(forReview reviewId: String) -> String? {
         reviews.first { $0.value.contains { $0.id == reviewId } }?.key
+    }
+
+    /// Raw `releaseLifecycleState` values of `tracks.releases.list`.
+    enum Lifecycle {
+        static let draft = "RELEASE_LIFECYCLE_STATE_DRAFT"
+        static let notSentForReview = "RELEASE_LIFECYCLE_STATE_NOT_SENT_FOR_REVIEW"
+        static let inReview = "RELEASE_LIFECYCLE_STATE_IN_REVIEW"
+        static let published = "RELEASE_LIFECYCLE_STATE_PUBLISHED"
+    }
+
+    /// A release is identified by its track and sorted version codes (plan R7).
+    static func releaseKey(track: String, versionCodes: [String]) -> String {
+        "\(track)|\(versionCodes.sorted().joined(separator: ","))"
+    }
+
+    /// `tracks.releases.list` for one track: one summary per release, in track
+    /// order. An unknown track has no releases (Google answers 404, which the
+    /// core maps to an empty list).
+    func releaseSummaries(packageName: String, track: String) -> [ReleaseSummaryInfo] {
+        guard let releases = tracks[packageName]?.first(where: { $0.track == track })?.releases else { return [] }
+        let states = lifecycles[packageName] ?? [:]
+        return releases.map { release in
+            ReleaseSummaryInfo(
+                track: track,
+                name: release.name,
+                lifecycleState: states[Self.releaseKey(track: track, versionCodes: release.versionCodes)],
+                versionCodes: release.versionCodes
+            )
+        }
     }
 }
 
