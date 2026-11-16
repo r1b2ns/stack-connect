@@ -37,10 +37,8 @@ private struct HomeEntry: View {
         case .reviews:
             coordinator.path = NavigationPath()
             coordinator.navigateToAllReviews()
-        case let .app(accountId, appId):
-            Task { await openAppDetail(accountId: accountId, appId: appId) }
-        case let .review(accountId, appId, reviewId):
-            Task { await openReviewDetail(accountId: accountId, appId: appId, reviewId: reviewId) }
+        case .app, .review:
+            Task { await open(link) }
         case let .reimport(accountId):
             Task { await openReimport(accountId: accountId) }
         }
@@ -55,25 +53,21 @@ private struct HomeEntry: View {
         ReimportRouter.shared.request(accountId: accountId, providerType: account.providerType)
     }
 
+    /// `app` and `review` links resolve their account first and open the
+    /// screen of its store (plan H7).
     @MainActor
-    private func openAppDetail(accountId: String, appId: String) async {
+    private func open(_ link: DeepLink) async {
         guard let storage = SwiftDataStorable.shared,
-              var account: AccountModel = try? await storage.fetch(AccountModel.self, id: accountId),
-              let app: AppModel = try? await storage.fetch(AppModel.self, id: "\(accountId).\(appId)") else { return }
-        account.fillMissingRules()
+              let destination = await DeepLinkResolver(storage: storage).resolve(link) else { return }
         coordinator.path = NavigationPath()
-        coordinator.navigateToAppDetail(app, account: account)
-    }
-
-    @MainActor
-    private func openReviewDetail(accountId: String, appId: String, reviewId: String) async {
-        guard let storage = SwiftDataStorable.shared,
-              var account: AccountModel = try? await storage.fetch(AccountModel.self, id: accountId),
-              let app: AppModel = try? await storage.fetch(AppModel.self, id: "\(accountId).\(appId)"),
-              let review: CustomerReviewModel = try? await storage.fetch(CustomerReviewModel.self, id: "review.\(appId).\(reviewId)") else { return }
-        account.fillMissingRules()
-        coordinator.path = NavigationPath()
-        coordinator.navigateToReviewDetail(review: review, appName: app.name, account: account)
+        switch destination {
+        case let .appStoreApp(app, account):
+            coordinator.navigateToAppDetail(app, account: account)
+        case let .googlePlayApp(app, account):
+            coordinator.navigateToGooglePlayAppDetail(app, account: account)
+        case let .review(review, appName, account, appId):
+            coordinator.navigateToReviewDetail(review: review, appName: appName, account: account, appId: appId)
+        }
     }
 }
 
