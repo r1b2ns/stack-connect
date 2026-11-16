@@ -11,18 +11,69 @@ struct GooglePlayAppListViewFactory {
 
 // MARK: - Entry
 
+/// Owns both tabs of a Google Play account (plan U9, prototype 1 / 16): the
+/// "Apps | Users" switch, the account title and the trailing toolbar button,
+/// like the App Store `AppListEntry`. Users shows only with `canView(.users)`.
 private struct GooglePlayAppListEntry: View {
     let account: AccountModel
 
     @StateObject private var viewModel: GooglePlayAppListViewModel
+    @StateObject private var usersViewModel: GooglePlayUsersViewModel
+    @EnvironmentObject private var homeCoordinator: HomeCoordinator
+    @State private var selectedTab: AppListTab = .apps
 
     init(account: AccountModel) {
         self.account = account
         _viewModel = StateObject(wrappedValue: GooglePlayAppListViewModel(account: account))
+        _usersViewModel = StateObject(wrappedValue: GooglePlayUsersViewModel(account: account))
+    }
+
+    private var availableTabs: [AppListTab] {
+        AppListTab.allCases.filter { tab in
+            switch tab {
+            case .apps: return true
+            case .usersAndAccess: return account.canView(.users)
+            }
+        }
     }
 
     var body: some View {
-        GooglePlayAppListView(viewModel: viewModel)
+        Group {
+            switch selectedTab {
+            case .apps:
+                GooglePlayAppListView(viewModel: viewModel)
+            case .usersAndAccess:
+                GooglePlayUsersView(viewModel: usersViewModel)
+            }
+        }
+        .navigationTitle(account.name)
+        .toolbar { buildToolbar() }
+    }
+
+    @ToolbarContentBuilder
+    private func buildToolbar() -> some ToolbarContent {
+        if availableTabs.count > 1 {
+            ToolbarItem(placement: .principal) {
+                Picker(String(localized: "Section"), selection: $selectedTab) {
+                    ForEach(availableTabs, id: \.self) { tab in
+                        Text(tab.displayName).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 220)
+            }
+        }
+
+        // Account-level actions (settings, rename, export, delete), as on the
+        // App Store app list.
+        ToolbarItem(placement: .topBarTrailing) {
+            StackTrackedButton(.accountSettings, on: .googlePlayAppList) {
+                homeCoordinator.navigateToAccountManagement(account)
+            } label: {
+                Image(systemName: "gearshape")
+            }
+            .accessibilityLabel(String(localized: "Manage Account"))
+        }
     }
 }
 
@@ -38,7 +89,6 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
         // iOS 26 chrome of the App Store app list (prototype screen 1): large
         // account title, search drawer, round glass toolbar buttons.
         buildContent()
-            .navigationTitle(viewModel.uiState.account.name)
             .trackScreen(.googlePlayAppList)
             .searchable(
                 text: $viewModel.uiState.searchQuery,
@@ -219,17 +269,7 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
 
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
-        // Account-level actions (settings, rename, export, delete), as on the
-        // App Store app list.
-        ToolbarItem(placement: .topBarTrailing) {
-            StackTrackedButton(.accountSettings, on: .googlePlayAppList) {
-                homeCoordinator.navigateToAccountManagement(viewModel.uiState.account)
-            } label: {
-                Image(systemName: "gearshape")
-            }
-            .accessibilityLabel(String(localized: "Manage Account"))
-        }
-
+        // The title, the tab switch and the gear belong to the entry.
         // "Add by package name" floats bottom-leading, where the App Store
         // list keeps Archived (archive stays out for Play, plan R9).
         if viewModel.uiState.canAddApps {

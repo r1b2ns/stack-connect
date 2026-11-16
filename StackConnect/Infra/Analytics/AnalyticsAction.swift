@@ -113,6 +113,10 @@ enum AnalyticsAction: String, CaseIterable, Sendable {
     case updateUserRole = "update_user_role"
     case updateUserAccess = "update_user_access"
     case updateVisibleApps = "update_visible_apps"
+    case updateUserPermissions = "update_user_permissions"
+    case updateAppAccess = "update_app_access"
+    case removeAppAccess = "remove_app_access"
+    case saveDeveloperId = "save_developer_id"
 
     // MARK: Analytics reports
     case toggleHidden = "toggle_hidden"
