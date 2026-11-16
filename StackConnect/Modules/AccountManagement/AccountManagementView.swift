@@ -35,12 +35,13 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Manage Account"))
+            .trackScreen(.accountManagement)
             .navigationBarTitleDisplayMode(.inline)
             .alert(
                 String(localized: "Delete Account"),
                 isPresented: $viewModel.uiState.showDeleteConfirmation
             ) {
-                Button(String(localized: "Cancel"), role: .cancel) {}
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .accountManagement, role: .cancel) {}
                 Button(String(localized: "Delete"), role: .destructive) {
                     Task {
                         if await viewModel.deleteAccount() {
@@ -62,6 +63,7 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
                viewModel.uiState.account.canView(.provisioning) {
                 Section {
                     buildRow(
+                        .certificates,
                         icon: "lock.shield",
                         title: String(localized: "Certificates"),
                         subtitle: String(localized: "Signing certificates for this account")
@@ -70,6 +72,7 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
                     }
 
                     buildRow(
+                        .identifiers,
                         icon: "ipod.and.applewatch",
                         title: String(localized: "Identifiers"),
                         subtitle: String(localized: "Bundle IDs and their capabilities")
@@ -78,6 +81,7 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
                     }
 
                     buildRow(
+                        .devices,
                         icon: "iphone.gen3",
                         title: String(localized: "Devices"),
                         subtitle: String(localized: "Registered devices for testing")
@@ -86,6 +90,7 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
                     }
 
                     buildRow(
+                        .profiles,
                         icon: "doc.badge.gearshape",
                         title: String(localized: "Profiles"),
                         subtitle: String(localized: "Provisioning profiles for this account")
@@ -97,6 +102,7 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
 
             Section {
                 buildRow(
+                    .export,
                     icon: "square.and.arrow.up",
                     title: String(localized: "Export Account"),
                     subtitle: String(localized: "Share credentials and rules with others")
@@ -106,7 +112,7 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
             }
 
             Section {
-                Button(role: .destructive) {
+                StackTrackedButton(.delete, on: .accountManagement, role: .destructive) {
                     viewModel.uiState.showDeleteConfirmation = true
                 } label: {
                     HStack(spacing: 14) {
@@ -132,12 +138,13 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
     }
 
     private func buildRow(
+        _ button: AnalyticsButton,
         icon: String,
         title: String,
         subtitle: String,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
+        StackTrackedButton(button, on: .accountManagement, action: action) {
             HStack(spacing: 14) {
                 Image(systemName: icon)
                     .font(.title3)

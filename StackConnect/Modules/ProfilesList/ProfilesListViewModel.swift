@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -6,6 +7,7 @@ import Foundation
 protocol ProfilesListViewModelProtocol: ObservableObject {
     var uiState: ProfilesListUiState { get set }
     func load() async
+    func refresh() async
     func insertProfile(_ profile: ProvisioningProfileModel)
     func removeProfile(id: String)
 }
@@ -46,13 +48,16 @@ final class ProfilesListViewModel: ProfilesListViewModelProtocol {
     @Published var uiState: ProfilesListUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = ProfilesListUiState(account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func removeProfile(id: String) {
@@ -80,6 +85,17 @@ final class ProfilesListViewModel: ProfilesListViewModelProtocol {
     }
 
     func load() async {
+        _ = await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let succeeded = await performLoad()
+        analytics.track(.action(.refresh, on: .profilesList, result: succeeded ? .success : .failure))
+    }
+
+    private func performLoad() async -> Bool {
+        var succeeded = true
         uiState.isLoading = true
         uiState.errorMessage = nil
         uiState.pendingAgreement = false
@@ -88,7 +104,7 @@ final class ProfilesListViewModel: ProfilesListViewModelProtocol {
             uiState.errorMessage = String(localized: "No credentials found for this account")
             uiState.isLoading = false
             Log.print.error("[Profiles] No credentials for account: \(self.uiState.account.name)")
-            return
+            return false
         }
 
         let connection = AppleAccountConnection(credentials: credentials)
@@ -98,10 +114,12 @@ final class ProfilesListViewModel: ProfilesListViewModelProtocol {
             uiState.profiles = profiles
             Log.print.info("[Profiles] Loaded \(profiles.count) for account: \(self.uiState.account.name)")
         } catch {
+            succeeded = false
             handleLoadError(error)
             Log.print.error("[Profiles] Load failed: \(error.localizedDescription)")
         }
 
         uiState.isLoading = false
+        return succeeded
     }
 }

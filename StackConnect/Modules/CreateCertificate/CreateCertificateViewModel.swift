@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Notifications
 
@@ -171,13 +172,16 @@ final class CreateCertificateViewModel: CreateCertificateViewModelProtocol {
     @Published var uiState: CreateCertificateUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = CreateCertificateUiState(account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     // MARK: - Step navigation
@@ -216,7 +220,9 @@ final class CreateCertificateViewModel: CreateCertificateViewModelProtocol {
             uiState.csrContent = Self.normalizeCSR(raw)
             uiState.csrFileName = url.lastPathComponent
             Log.print.info("[CreateCertificate] Loaded CSR: \(url.lastPathComponent) (\(raw.count) bytes)")
+            analytics.track(.action(.importCsr, on: .createCertificate, result: .success))
         } catch {
+            analytics.track(.action(.importCsr, on: .createCertificate, result: .failure))
             uiState.errorMessage = String(localized: "Failed to read CSR file: \(error.localizedDescription)")
             Log.print.error("[CreateCertificate] CSR read failed: \(error.localizedDescription)")
         }
@@ -225,15 +231,19 @@ final class CreateCertificateViewModel: CreateCertificateViewModelProtocol {
     // MARK: - Submit
 
     func submit() async {
+        analytics.track(.buttonTap(.create, on: .createCertificate))
         guard let selectedType = uiState.selectedType,
               let apiType = selectedType.apiType,
               let csrContent = uiState.csrContent, !csrContent.isEmpty else {
             uiState.errorMessage = String(localized: "Select a type and load a valid CSR file")
             return
         }
+        // `apiType` is Apple's certificate type constant (e.g. `IOS_DISTRIBUTION`), never user data.
+        let parameters: [String: AnalyticsValue] = [AnalyticsParameterKey.kind: .string(apiType)]
 
         guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else {
             uiState.errorMessage = String(localized: "No credentials found for this account")
+            analytics.track(.action(.createCertificate, on: .createCertificate, result: .failure, parameters: parameters))
             return
         }
 
@@ -261,7 +271,9 @@ final class CreateCertificateViewModel: CreateCertificateViewModelProtocol {
             )
 
             Log.print.info("[CreateCertificate] Success: \(result.certificate.id)")
+            analytics.track(.action(.createCertificate, on: .createCertificate, result: .success, parameters: parameters))
         } catch {
+            analytics.track(.action(.createCertificate, on: .createCertificate, result: .failure, parameters: parameters))
             uiState.errorMessage = error.localizedDescription
             Log.print.error("[CreateCertificate] Create failed: \(error.localizedDescription)")
         }
@@ -272,6 +284,13 @@ final class CreateCertificateViewModel: CreateCertificateViewModelProtocol {
     // MARK: - Download
 
     func prepareDownload() -> URL? {
+        analytics.track(.buttonTap(.download, on: .createCertificate))
+        let url = writeCreatedCertificate()
+        analytics.track(.action(.downloadCertificate, on: .createCertificate, result: url != nil ? .success : .failure))
+        return url
+    }
+
+    private func writeCreatedCertificate() -> URL? {
         guard let base64 = uiState.createdContentBase64,
               let data = Data(base64Encoded: base64),
               let certificate = uiState.createdCertificate else {

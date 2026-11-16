@@ -40,20 +40,34 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
     private let storage: PersistentStorable
     private let keychain: KeyStorable
     private let googlePlayConnectionFactory: GooglePlayConnectionFactory
+    private let analytics: AnalyticsTracking
 
     init(
         providerType: ProviderType,
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
-        googlePlayConnectionFactory: @escaping GooglePlayConnectionFactory = { GooglePlayAccountConnection(credentials: $0) }
+        googlePlayConnectionFactory: @escaping GooglePlayConnectionFactory = { GooglePlayAccountConnection(credentials: $0) },
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = AddAccountUiState(providerType: providerType)
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
         self.googlePlayConnectionFactory = googlePlayConnectionFactory
+        self.analytics = analytics
     }
 
     func save() async {
+        analytics.track(.buttonTap(.save, on: .addAccount))
+        await performSave()
+        analytics.track(.action(
+            .createAccount,
+            on: .addAccount,
+            result: uiState.isSaved ? .success : .failure,
+            parameters: [AnalyticsParameterKey.kind: .string(uiState.providerType.rawValue)]
+        ))
+    }
+
+    private func performSave() async {
         guard !uiState.accountName.trimmingCharacters(in: .whitespaces).isEmpty else {
             uiState.validationError = String(localized: "Account name is required.")
             return

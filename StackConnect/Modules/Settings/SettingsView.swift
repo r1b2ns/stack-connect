@@ -32,16 +32,18 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
         List {
             buildGeneralSection()
             buildAppStoreConnectSection()
+            buildPrivacySection()
             buildAboutSection()
             buildDangerSection()
             buildFooterSection()
         }
         .navigationTitle(String(localized: "Settings"))
+        .trackScreen(.settings)
         .alert(
             String(localized: "Delete All Accounts"),
             isPresented: $showDeleteAllConfirmation
         ) {
-            Button(String(localized: "Cancel"), role: .cancel) {}
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .settings, role: .cancel) {}
             Button(String(localized: "Delete All"), role: .destructive) {
                 Task {
                     await viewModel.deleteAllAccounts()
@@ -57,7 +59,7 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
 
     private func buildGeneralSection() -> some View {
         Section {
-            Button {
+            StackTrackedButton(.accounts, on: .settings) {
                 homeCoordinator.navigateToSettingsAccounts()
             } label: {
                 HStack {
@@ -99,6 +101,28 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
         }
     }
 
+    private func buildPrivacySection() -> some View {
+        Section {
+            Toggle(isOn: Binding(
+                get: { viewModel.uiState.analyticsEnabled },
+                set: { viewModel.setAnalyticsEnabled($0) }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(String(localized: "Share usage analytics"))
+                        .foregroundStyle(.primary)
+
+                    Text(String(localized: "Sends anonymous usage data to help improve StackConnect"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text(String(localized: "Privacy"))
+        } footer: {
+            Text(String(localized: "Only screens visited and buttons tapped are collected. Account names, keys, bundle IDs and your app data are never sent."))
+        }
+    }
+
     private func buildAboutSection() -> some View {
         Section {
             Link(destination: URL(string: "https://github.com/r1b2ns/stack-connect")!) {
@@ -117,8 +141,9 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
                         .foregroundStyle(.tertiary)
                 }
             }
+            .trackOpenURL(.github, on: .settings)
 
-            Button {
+            StackTrackedButton(.license, on: .settings) {
                 homeCoordinator.navigateToLicense()
             } label: {
                 HStack {
@@ -142,7 +167,7 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
 
     private func buildDangerSection() -> some View {
         Section {
-            Button(role: .destructive) {
+            StackTrackedButton(.deleteAllAccounts, on: .settings, role: .destructive) {
                 showDeleteAllConfirmation = true
             } label: {
                 HStack {

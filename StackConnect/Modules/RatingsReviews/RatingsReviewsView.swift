@@ -52,10 +52,11 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(screenTitle)
+            .trackScreen(.ratingsReviews)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
             .task { await viewModel.loadIfNeeded() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             // Swiping the composer away drops its draft and error too.
             .sheet(item: $viewModel.uiState.replyingTo, onDismiss: { viewModel.cancelReply() }) { review in
                 ReplySheet(
@@ -154,7 +155,7 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
 
             Section {
                 ForEach(viewModel.uiState.reviews) { review in
-                    Button {
+                    StackTrackedButton(.review, on: .ratingsReviews) {
                         homeCoordinator.navigateToReviewDetail(
                             review: review,
                             appName: appName,
@@ -167,7 +168,7 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
                     .foregroundStyle(.primary)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         if !review.hasResponse && viewModel.uiState.canReply {
-                            Button {
+                            StackTrackedButton(.reply, on: .ratingsReviews) {
                                 viewModel.uiState.replyingTo = review
                             } label: {
                                 Label(String(localized: "Reply"), systemImage: "arrowshape.turn.up.left.fill")
@@ -357,7 +358,7 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
         ToolbarItem(placement: .primaryAction) {
             Menu {
                 ForEach(viewModel.uiState.traits.sortOptions) { option in
-                    Button {
+                    StackTrackedButton(.sort, on: .ratingsReviews) {
                         viewModel.uiState.sortOption = option
                         Task { await viewModel.load() }
                     } label: {
@@ -421,6 +422,7 @@ struct ReplySheet: View {
             characterLimit: characterLimit,
             error: error,
             editorMinHeight: 120,
+            trackingScreen: .reviewReply,
             isSending: isSending,
             onSend: onSend,
             onCancel: onCancel

@@ -1,4 +1,5 @@
 import XCTest
+import StackProtocols
 @testable import StackConnect
 
 @MainActor
@@ -6,6 +7,7 @@ final class AccountManagementViewModelTests: XCTestCase {
 
     private var storage: MockPersistentStorable!
     private var keychain: MockKeyStorable!
+    private var analytics: MockAnalyticsTracker!
     private var sut: AccountManagementViewModel!
 
     private let account = AccountModel(name: "Managed", providerType: .apple)
@@ -14,7 +16,8 @@ final class AccountManagementViewModelTests: XCTestCase {
         try await super.setUp()
         storage = MockPersistentStorable()
         keychain = MockKeyStorable()
-        sut = AccountManagementViewModel(account: account, storage: storage, keychain: keychain)
+        analytics = MockAnalyticsTracker()
+        sut = AccountManagementViewModel(account: account, storage: storage, keychain: keychain, analytics: analytics)
 
         try await storage.save(account, id: account.id)
         keychain.set("secret", forKey: "credentials.\(account.id)")
@@ -22,6 +25,7 @@ final class AccountManagementViewModelTests: XCTestCase {
 
     override func tearDown() async throws {
         sut = nil
+        analytics = nil
         storage = nil
         keychain = nil
         try await super.tearDown()
@@ -52,5 +56,26 @@ final class AccountManagementViewModelTests: XCTestCase {
         XCTAssertFalse(deleted)
         XCTAssertNotNil(storedAccount)
         XCTAssertEqual(keychain.string(forKey: "credentials.\(account.id)"), "secret")
+    }
+
+    // MARK: - Analytics events
+
+    func testDeleteAccountTracksConfirmTapAndSuccess() async {
+        _ = await sut.deleteAccount()
+
+        XCTAssertEqual(analytics.taps(of: .confirmDelete), [.buttonTap(.confirmDelete, on: .accountManagement)])
+        XCTAssertEqual(analytics.actions(of: .deleteAccount), [
+            .action(.deleteAccount, on: .accountManagement, result: .success, parameters: [
+                AnalyticsParameterKey.kind: .string(ProviderType.apple.rawValue)
+            ])
+        ])
+    }
+
+    func testDeleteAccountTracksFailure() async {
+        await storage.failDelete(AccountModel.self, id: account.id)
+
+        _ = await sut.deleteAccount()
+
+        XCTAssertEqual(analytics.results(of: .deleteAccount), [.failure])
     }
 }

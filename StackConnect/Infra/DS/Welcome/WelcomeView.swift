@@ -21,6 +21,7 @@ struct WelcomeView: View {
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 32)
+        .trackScreen(.welcome)
     }
 
     // MARK: - Title
@@ -96,7 +97,7 @@ struct WelcomeView: View {
     // MARK: - Continue button
 
     private func buildContinueButton() -> some View {
-        Button(action: onContinue) {
+        StackTrackedButton(.continue, on: .welcome, action: onContinue) {
             Text("Continue")
                 .font(.headline)
                 .foregroundStyle(.white)

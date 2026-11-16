@@ -42,12 +42,13 @@ struct VersionListView<ViewModel: VersionListViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(viewModel.uiState.platform.displayName)
+            .trackScreen(.versionList)
             .toast(
                 isPresented: $viewModel.uiState.showSyncToast,
                 message: String(localized: "Syncing versions...")
             )
             .task { await viewModel.loadVersions() }
-            .refreshable { await viewModel.loadVersions() }
+            .refreshable { await viewModel.refresh() }
     }
 
     @ViewBuilder
@@ -72,7 +73,7 @@ struct VersionListView<ViewModel: VersionListViewModelProtocol>: View {
 
     private func buildList() -> some View {
         List(viewModel.uiState.versions) { version in
-            Button {
+            StackTrackedButton(.version, on: .versionList) {
                 homeCoordinator.navigateToVersionDetail(version, account: viewModel.uiState.account)
             } label: {
                 buildVersionRow(version)

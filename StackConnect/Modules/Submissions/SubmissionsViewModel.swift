@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -6,6 +7,7 @@ import Foundation
 protocol SubmissionsViewModelProtocol: ObservableObject {
     var uiState: SubmissionsUiState { get set }
     func load() async
+    func refresh() async
     func discard(_ submission: ReviewSubmissionModel) async
     func submit(_ submission: ReviewSubmissionModel) async
 }
@@ -116,6 +118,7 @@ final class SubmissionsViewModel: SubmissionsViewModelProtocol {
     @Published var uiState: SubmissionsUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
     /// Injected service seam. When `nil`, a real `AppleAccountConnection` is
     /// resolved from keychain credentials on demand (see `resolveService`).
     private let injectedService: SubmissionsServicing?
@@ -125,7 +128,8 @@ final class SubmissionsViewModel: SubmissionsViewModelProtocol {
         appName: String?,
         account: AccountModel,
         keychain: KeyStorable = KeychainStorable.shared,
-        service: SubmissionsServicing? = nil
+        service: SubmissionsServicing? = nil,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = SubmissionsUiState(
             appId: appId,
@@ -134,6 +138,7 @@ final class SubmissionsViewModel: SubmissionsViewModelProtocol {
         )
         self.keychain = keychain
         self.injectedService = service
+        self.analytics = analytics
     }
 
     // MARK: - Service resolution
@@ -156,12 +161,23 @@ final class SubmissionsViewModel: SubmissionsViewModelProtocol {
     // MARK: - Load
 
     func load() async {
+        _ = await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let succeeded = await performLoad()
+        analytics.track(.action(.refresh, on: .submissions, result: succeeded ? .success : .failure))
+    }
+
+    private func performLoad() async -> Bool {
+        var succeeded = true
         uiState.isLoading = true
         uiState.error = nil
 
         guard let service = resolveService() else {
             uiState.isLoading = false
-            return
+            return false
         }
 
         do {
@@ -169,11 +185,13 @@ final class SubmissionsViewModel: SubmissionsViewModelProtocol {
             uiState.submissions = Self.sorted(submissions)
             Log.print.info("[Submissions] Loaded \(self.uiState.submissions.count) submissions for \(self.uiState.appId)")
         } catch {
+            succeeded = false
             uiState.error = error.localizedDescription
             Log.print.error("[Submissions] Failed to load submissions: \(error.localizedDescription)")
         }
 
         uiState.isLoading = false
+        return succeeded
     }
 
     // MARK: - Actions
@@ -182,14 +200,19 @@ final class SubmissionsViewModel: SubmissionsViewModelProtocol {
         uiState.busyIds.insert(submission.id)
         defer { uiState.busyIds.remove(submission.id) }
 
-        guard let service = resolveService() else { return }
+        guard let service = resolveService() else {
+            analytics.track(.action(.discardSubmission, on: .submissions, result: .failure))
+            return
+        }
 
         do {
             try await service.discardReviewSubmission(id: submission.id)
             uiState.toastMessage = ToastMessage(String(localized: "Submission discarded"), icon: "trash.fill")
             Log.print.info("[Submissions] Discarded submission \(submission.id)")
             await load()
+            analytics.track(.action(.discardSubmission, on: .submissions, result: .success))
         } catch {
+            analytics.track(.action(.discardSubmission, on: .submissions, result: .failure))
             // An empty READY_FOR_REVIEW draft can't be removed via the API even
             // though its items (and thus the version) were freed. Surface the
             // actionable message in its own alert — not the generic error one —
@@ -209,14 +232,19 @@ final class SubmissionsViewModel: SubmissionsViewModelProtocol {
         uiState.busyIds.insert(submission.id)
         defer { uiState.busyIds.remove(submission.id) }
 
-        guard let service = resolveService() else { return }
+        guard let service = resolveService() else {
+            analytics.track(.action(.submitSubmission, on: .submissions, result: .failure))
+            return
+        }
 
         do {
             try await service.submitReviewSubmission(id: submission.id)
             uiState.toastMessage = ToastMessage(String(localized: "Submission submitted"), icon: "paperplane.fill")
             Log.print.info("[Submissions] Submitted submission \(submission.id)")
             await load()
+            analytics.track(.action(.submitSubmission, on: .submissions, result: .success))
         } catch {
+            analytics.track(.action(.submitSubmission, on: .submissions, result: .failure))
             // Defensive symmetry with discard(_:): submit doesn't normally throw
             // this, but if the core ever surfaces it here, route it to the
             // dedicated alert rather than showing a reflected error wrapper.

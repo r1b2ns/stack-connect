@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -6,6 +7,7 @@ import Foundation
 protocol AvailableBuildsForPlatformViewModelProtocol: ObservableObject {
     var uiState: AvailableBuildsForPlatformUiState { get set }
     func load() async
+    func refresh() async
     func loadMore() async
 }
 
@@ -31,6 +33,7 @@ final class AvailableBuildsForPlatformViewModel: AvailableBuildsForPlatformViewM
     @Published var uiState: AvailableBuildsForPlatformUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
     private var lastPageResponse: Any?
 
     init(
@@ -38,7 +41,8 @@ final class AvailableBuildsForPlatformViewModel: AvailableBuildsForPlatformViewM
         platform: String,
         account: AccountModel,
         assignedBuildIds: Set<String>,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = AvailableBuildsForPlatformUiState(
             appId: appId,
@@ -47,9 +51,21 @@ final class AvailableBuildsForPlatformViewModel: AvailableBuildsForPlatformViewM
             assignedBuildIds: assignedBuildIds
         )
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func load() async {
+        _ = await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let succeeded = await performLoad()
+        analytics.track(.action(.refresh, on: .availableBuilds, result: succeeded ? .success : .failure))
+    }
+
+    private func performLoad() async -> Bool {
+        var succeeded = true
         uiState.isLoading = true
         uiState.error = nil
         uiState.builds = []
@@ -58,7 +74,7 @@ final class AvailableBuildsForPlatformViewModel: AvailableBuildsForPlatformViewM
         do {
             guard let connection = createConnection() else {
                 uiState.isLoading = false
-                return
+                return false
             }
 
             let page = try await connection.fetchBuildsPage(
@@ -75,11 +91,13 @@ final class AvailableBuildsForPlatformViewModel: AvailableBuildsForPlatformViewM
 
             Log.print.info("[AvailableBuilds] Loaded \(self.uiState.builds.count) builds for \(self.uiState.platform), hasMore: \(page.hasNextPage)")
         } catch {
+            succeeded = false
             uiState.error = error.localizedDescription
             Log.print.error("[AvailableBuilds] Load failed: \(error.localizedDescription)")
         }
 
         uiState.isLoading = false
+        return succeeded
     }
 
     func loadMore() async {

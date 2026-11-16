@@ -12,12 +12,18 @@ actor MockPersistentStorable: PersistentStorable {
     private(set) var saveCallCount: [String: Int] = [:]
     private var failingFetchAllTypes: Set<String> = []
     private var failingDeletes: Set<String> = []
+    private var failingSaveTypes: Set<String> = []
 
     // MARK: - Failure injection
 
     /// Makes every subsequent `fetchAll` of `type` throw `InjectedFailure`.
     func failFetchAll<T>(_ type: T.Type) {
         failingFetchAllTypes.insert(String(describing: T.self))
+    }
+
+    /// Makes every subsequent `save` of `type` throw `InjectedFailure`.
+    func failSave<T>(_ type: T.Type) {
+        failingSaveTypes.insert(String(describing: T.self))
     }
 
     /// Makes every subsequent `delete` of the `type` item stored under `id`
@@ -34,6 +40,7 @@ actor MockPersistentStorable: PersistentStorable {
 
     func save<T: Codable>(_ item: T, id: String) throws {
         let typeName = String(describing: T.self)
+        if failingSaveTypes.contains(typeName) { throw InjectedFailure() }
         guard let data = try? JSONEncoder().encode(item) else {
             throw PersistentStorableError.encodingFailed
         }

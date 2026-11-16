@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 import SwiftUI
 
 // MARK: - Protocol
@@ -81,14 +82,17 @@ final class AppReviewDetailViewModel: AppReviewDetailViewModelProtocol {
     @Published var uiState: AppReviewDetailUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         submission: ReviewSubmissionModel,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = AppReviewDetailUiState(submission: submission, account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func loadDetail() async {
@@ -122,6 +126,7 @@ final class AppReviewDetailViewModel: AppReviewDetailViewModelProtocol {
         do {
             guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else {
                 uiState.isPerformingAction = false
+                analytics.track(.action(.submitSubmission, on: .appReviewDetail, result: .failure))
                 return
             }
             let connection = AppleAccountConnection(credentials: credentials)
@@ -129,7 +134,9 @@ final class AppReviewDetailViewModel: AppReviewDetailViewModelProtocol {
             uiState.toastMessage = ToastMessage(String(localized: "Submission resubmitted"), icon: "paperplane.fill")
             Log.print.info("[AppReviewDetail] Resubmitted submission \(self.uiState.submission.id)")
             uiState.didComplete = true
+            analytics.track(.action(.submitSubmission, on: .appReviewDetail, result: .success))
         } catch {
+            analytics.track(.action(.submitSubmission, on: .appReviewDetail, result: .failure))
             // Prefer the core's clean, actionable copy over `StackError`'s reflected
             // `errorDescription` when a submission can't be removed via the API.
             uiState.actionError = AppleAPIErrorTranslator.submissionNotRemovableMessage(error)
@@ -145,6 +152,7 @@ final class AppReviewDetailViewModel: AppReviewDetailViewModelProtocol {
         do {
             guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else {
                 uiState.isPerformingAction = false
+                analytics.track(.action(.discardSubmission, on: .appReviewDetail, result: .failure))
                 return
             }
             let connection = AppleAccountConnection(credentials: credentials)
@@ -152,7 +160,9 @@ final class AppReviewDetailViewModel: AppReviewDetailViewModelProtocol {
             uiState.toastMessage = ToastMessage(String(localized: "Submission discarded"), icon: "trash.fill")
             Log.print.info("[AppReviewDetail] Discarded submission \(self.uiState.submission.id)")
             uiState.didComplete = true
+            analytics.track(.action(.discardSubmission, on: .appReviewDetail, result: .success))
         } catch {
+            analytics.track(.action(.discardSubmission, on: .appReviewDetail, result: .failure))
             // An empty READY_FOR_REVIEW draft can't be removed via the API. Show
             // the core's clean, actionable copy instead of `StackError`'s reflected
             // `errorDescription`; the existing error alert renders it fine.

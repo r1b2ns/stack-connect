@@ -33,7 +33,7 @@ struct AppsPermissionPickerSheet: View {
                 ForEach(filteredApps, id: \.id) { app in
                     let isSelected = selected.contains(app.bundleId)
 
-                    Button {
+                    StackTrackedButton(.toggleApp, on: .appsPermissionPicker) {
                         toggle(app.bundleId)
                     } label: {
                         HStack(spacing: 12) {
@@ -63,22 +63,23 @@ struct AppsPermissionPickerSheet: View {
                 prompt: String(localized: "Search apps")
             )
             .navigationTitle(String(localized: "Apps permissions"))
+            .trackScreen(.appsPermissionPicker)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     if selected.count == apps.count {
-                        Button(String(localized: "Select None")) {
+                        StackTrackedButton(String(localized: "Select None"), button: .selectNone, on: .appsPermissionPicker) {
                             selected.removeAll()
                         }
                     } else {
-                        Button(String(localized: "Select All")) {
+                        StackTrackedButton(String(localized: "Select All"), button: .selectAll, on: .appsPermissionPicker) {
                             selected = Set(apps.map(\.bundleId))
                         }
                     }
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "OK")) {
+                    StackTrackedButton(String(localized: "OK"), button: .ok, on: .appsPermissionPicker) {
                         onDismiss(selected)
                     }
                 }

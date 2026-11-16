@@ -92,7 +92,7 @@ private struct AwaitingReleaseWidgetView: View {
                     // Identified by platform + version, not `AppModel.id`: rows are
                     // per-version copies of one app, so the bare id repeats.
                     ForEach(group.apps, id: \.statusEntryID) { app in
-                        Button {
+                        StackTrackedButton(.widgetApp, on: .home) {
                             coordinator.navigateToAppDetail(
                                 app,
                                 account: HomeWidgetDataLoader.account(for: app, in: widget.accountsMap)

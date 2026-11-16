@@ -67,10 +67,11 @@ struct BuildPickerSheet: View {
                 }
             }
             .navigationTitle(title)
+            .trackScreen(.buildPicker)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .buildPicker) {
                         dismiss()
                         onCancel()
                     }
@@ -104,7 +105,7 @@ struct BuildPickerSheet: View {
             ForEach(buildsByPlatform, id: \.platform) { group in
                 Section {
                     ForEach(group.builds.prefix(5)) { build in
-                        Button {
+                        StackTrackedButton(.build, on: .buildPicker) {
                             onSelect(build)
                         } label: {
                             buildRow(build)
@@ -112,7 +113,7 @@ struct BuildPickerSheet: View {
                     }
 
                     if group.builds.count > 5 {
-                        Button {
+                        StackTrackedButton(.seeMore, on: .buildPicker) {
                             path.append(BuildPickerPlatformRoute(platform: group.platform))
                         } label: {
                             HStack {

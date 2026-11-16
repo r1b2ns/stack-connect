@@ -40,13 +40,14 @@ struct PlatformBuildsView<ViewModel: PlatformBuildsViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(BuildPlatform.label(for: viewModel.uiState.platform))
+            .trackScreen(.platformBuilds)
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 if viewModel.uiState.builds.isEmpty {
                     await viewModel.load()
                 }
             }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .toast(message: $viewModel.uiState.toastMessage)
             .alert(
                 String(localized: "Expire Build"),
@@ -60,7 +61,7 @@ struct PlatformBuildsView<ViewModel: PlatformBuildsViewModelProtocol>: View {
                         Task { await viewModel.expireBuild(build) }
                     }
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {}
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .platformBuilds, role: .cancel) {}
             } message: {
                 if let build = viewModel.uiState.confirmExpireBuild {
                     Text("Expire build \(build.displayVersion)? Testers will no longer be able to install it. This cannot be undone via the API.")
@@ -73,7 +74,7 @@ struct PlatformBuildsView<ViewModel: PlatformBuildsViewModelProtocol>: View {
                     set: { if !$0 { viewModel.uiState.expireError = nil } }
                 )
             ) {
-                Button(String(localized: "OK"), role: .cancel) {}
+                StackTrackedButton(String(localized: "OK"), button: .ok, on: .platformBuilds, role: .cancel) {}
             } message: {
                 if let message = viewModel.uiState.expireError {
                     Text(message)
@@ -124,7 +125,7 @@ struct PlatformBuildsView<ViewModel: PlatformBuildsViewModelProtocol>: View {
         List {
             Section {
                 ForEach(viewModel.uiState.builds) { build in
-                    Button {
+                    StackTrackedButton(.build, on: .platformBuilds) {
                         homeCoordinator.navigateToBuildDetail(
                             build: build,
                             appId: viewModel.uiState.appId,
@@ -136,7 +137,7 @@ struct PlatformBuildsView<ViewModel: PlatformBuildsViewModelProtocol>: View {
                     .foregroundStyle(.primary)
                     .swipeActions(edge: .trailing) {
                         if !build.isExpired && viewModel.uiState.account.canDelete(.testFlight) {
-                            Button {
+                            StackTrackedButton(.expire, on: .platformBuilds) {
                                 viewModel.uiState.confirmExpireBuild = build
                             } label: {
                                 Label(String(localized: "Expire"), systemImage: "clock.badge.xmark")

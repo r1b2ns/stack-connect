@@ -67,6 +67,7 @@ struct CertificateDetailView<ViewModel: CertificateDetailViewModelProtocol>: Vie
             }
         }
         .navigationTitle(String(localized: "Certificate"))
+        .trackScreen(.certificateDetail)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $shareItem) { item in
             ShareSheet(activityItems: [item.url])
@@ -75,7 +76,7 @@ struct CertificateDetailView<ViewModel: CertificateDetailViewModelProtocol>: Vie
             String(localized: "Revoke this certificate?"),
             isPresented: $showRevokeConfirmation
         ) {
-            Button(String(localized: "Cancel"), role: .cancel) {}
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .certificateDetail, role: .cancel) {}
             Button(String(localized: "Revoke"), role: .destructive) {
                 Task {
                     let success = await viewModel.revoke()
@@ -167,7 +168,7 @@ struct CertificateDetailView<ViewModel: CertificateDetailViewModelProtocol>: Vie
             }
             .disabled(viewModel.uiState.isPreparingDownload || viewModel.uiState.isRevoking)
 
-            Button(role: .destructive) {
+            StackTrackedButton(.revoke, on: .certificateDetail, role: .destructive) {
                 showRevokeConfirmation = true
             } label: {
                 HStack {

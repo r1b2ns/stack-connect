@@ -1,4 +1,5 @@
 import XCTest
+import StackProtocols
 @testable import StackConnect
 
 @MainActor
@@ -6,6 +7,7 @@ final class AppDetailViewModelTests: XCTestCase {
 
     private var mockStorage: MockPersistentStorable!
     private var mockKeychain: MockKeyStorable!
+    private var analytics: MockAnalyticsTracker!
 
     private let account = AccountModel(name: "Apple", providerType: .apple)
     private lazy var app = AppModel(
@@ -19,11 +21,13 @@ final class AppDetailViewModelTests: XCTestCase {
         try await super.setUp()
         mockStorage = MockPersistentStorable()
         mockKeychain = MockKeyStorable()
+        analytics = MockAnalyticsTracker()
     }
 
     override func tearDown() async throws {
         mockStorage = nil
         mockKeychain = nil
+        analytics = nil
         try await super.tearDown()
     }
 
@@ -34,7 +38,8 @@ final class AppDetailViewModelTests: XCTestCase {
             app: app,
             account: account,
             storage: mockStorage,
-            keychain: mockKeychain
+            keychain: mockKeychain,
+            analytics: analytics
         )
     }
 
@@ -278,5 +283,88 @@ final class AppDetailViewModelTests: XCTestCase {
 
     func testPlatformIconsEmptyInputReturnsEmptyMap() {
         XCTAssertTrue(AppDetailViewModel.platformIcons(from: []).isEmpty)
+    }
+
+    // MARK: - Analytics events
+    //
+    // No credentials are stored, so every API-backed action deterministically
+    // takes its failure path offline; success paths need a live connection.
+
+    func testRefreshTracksNothing() async {
+        let sut = makeSUT()
+
+        await sut.refresh()
+
+        XCTAssertTrue(analytics.trackedEvents.isEmpty)
+    }
+
+    func testPullToRefreshWithoutCredentialsTracksFailure() async {
+        let sut = makeSUT()
+
+        await sut.pullToRefresh()
+
+        XCTAssertEqual(analytics.actions(of: .refresh), [.action(.refresh, on: .appDetail, result: .failure)])
+    }
+
+    func testVersionActionsWithoutCredentialsTrackFailure() async {
+        let sut = makeSUT()
+        let version = makeVersion(id: "v1", appStoreState: .prepareForSubmission, versionString: "1.0.0")
+
+        await sut.submitForReview(version: version)
+        await sut.cancelReview(version: version)
+        await sut.releaseVersion(version)
+        await sut.rejectVersion(version)
+        await sut.deleteVersion(id: version.id)
+
+        XCTAssertEqual(analytics.results(of: .submitForReview), [.failure])
+        XCTAssertEqual(analytics.results(of: .cancelReview), [.failure])
+        XCTAssertEqual(analytics.results(of: .releaseVersion), [.failure])
+        XCTAssertEqual(analytics.results(of: .rejectVersion), [.failure])
+        XCTAssertEqual(analytics.results(of: .deleteVersion), [.failure])
+    }
+
+    func testStartSubmitTracksTapAndValidationFailureWithoutCredentials() async {
+        let sut = makeSUT()
+        let version = makeVersion(id: "v1", appStoreState: .prepareForSubmission, versionString: "1.0.0")
+
+        await sut.startSubmitForReview(version)
+
+        XCTAssertEqual(analytics.taps(of: .submitForReview), [.buttonTap(.submitForReview, on: .appDetail)])
+        XCTAssertEqual(analytics.results(of: .preSubmitValidation), [.failure])
+    }
+
+    func testCreateVersionsTracksTapAndFailureWithoutCredentials() async {
+        let sut = makeSUT()
+        sut.uiState.selectedPlatforms = [.ios]
+        sut.uiState.newVersionString = "2.0.0"
+
+        await sut.createVersions()
+
+        XCTAssertEqual(analytics.taps(of: .add), [.buttonTap(.add, on: .createPlatform)])
+        XCTAssertEqual(analytics.actions(of: .createVersion), [
+            .action(.createVersion, on: .createPlatform, result: .failure, parameters: [AnalyticsParameterKey.count: .int(1)])
+        ])
+    }
+
+    func testToggleFavoriteTracksTapAndSuccess() async {
+        let sut = makeSUT()
+
+        await sut.toggleFavorite()
+
+        XCTAssertEqual(analytics.taps(of: .favorite), [.buttonTap(.favorite, on: .appDetail)])
+        XCTAssertEqual(analytics.actions(of: .toggleFavorite), [
+            .action(.toggleFavorite, on: .appDetail, result: .success, parameters: [AnalyticsParameterKey.enabled: .bool(true)])
+        ])
+    }
+
+    func testToggleArchiveTracksFailureWhenSaveFails() async {
+        let sut = makeSUT()
+        await mockStorage.failSave(AppModel.self)
+
+        await sut.toggleArchive()
+
+        XCTAssertEqual(analytics.actions(of: .toggleArchive), [
+            .action(.toggleArchive, on: .appDetail, result: .failure, parameters: [AnalyticsParameterKey.enabled: .bool(true)])
+        ])
     }
 }

@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -66,6 +67,7 @@ final class HomeViewModel: HomeViewModelProtocol {
     private let preferences: KeyStorable
     private let syncService: SyncService
     private let teamUsersFetcherFactory: TeamUsersFetcherFactory
+    private let analytics: AnalyticsTracking
     private var cancellables = Set<AnyCancellable>()
 
     private static let widgetsStorageKey = "home.widget.configurations"
@@ -81,9 +83,11 @@ final class HomeViewModel: HomeViewModelProtocol {
         keychain: KeyStorable = KeychainStorable.shared,
         preferences: KeyStorable = UserDefaultsStorable(),
         syncService: SyncService = .shared,
-        teamUsersFetcherFactory: TeamUsersFetcherFactory? = nil
+        teamUsersFetcherFactory: TeamUsersFetcherFactory? = nil,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
+        self.analytics = analytics
         self.keychain = keychain
         self.preferences = preferences
         self.syncService = syncService
@@ -115,9 +119,11 @@ final class HomeViewModel: HomeViewModelProtocol {
         syncService.syncAll()
     }
 
+    /// Pull-to-refresh. Tracked as a `refresh` action with the sync outcome.
     func refresh() async {
         await syncService.syncAll().value
         await loadDashboard()
+        analytics.track(.action(.refresh, on: .home, result: syncService.state.lastError == nil ? .success : .failure))
     }
 
     func loadDashboard() async {
@@ -152,11 +158,13 @@ final class HomeViewModel: HomeViewModelProtocol {
     // MARK: - Pending Agreements
 
     func dismissPendingAgreements(accountId: String) {
+        analytics.track(.buttonTap(.dismissAgreementsBanner, on: .home))
         dismissedAgreementAccountIds.insert(accountId)
         uiState.pendingAgreementsAccounts.removeAll { $0.id == accountId }
     }
 
     func prepareAgreementShare(accountId: String) async {
+        analytics.track(.buttonTap(.shareAgreementsRequest, on: .home))
         // Ignore re-taps while this account's lookup is still running.
         guard !uiState.preparingAgreementShareAccountIds.contains(accountId),
               let account = uiState.pendingAgreementsAccounts.first(where: { $0.id == accountId }) else { return }
@@ -171,6 +179,12 @@ final class HomeViewModel: HomeViewModelProtocol {
             accountId: accountId,
             message: AgreementShareMessage.make(teamName: account.name, accountHolder: accountHolder)
         )
+        analytics.track(.action(
+            .shareAgreementsRequest,
+            on: .home,
+            result: .success,
+            parameters: [AnalyticsParameterKey.hasAccountHolder: .bool(accountHolder != nil)]
+        ))
     }
 
     /// Returns the team member holding the `ACCOUNT_HOLDER` role, or `nil` when it
@@ -200,6 +214,7 @@ final class HomeViewModel: HomeViewModelProtocol {
 
     func addWidget(_ kind: HomeWidgetKind) {
         guard !uiState.widgets.contains(where: { $0.kind == kind }) else { return }
+        analytics.track(.action(.addWidget, on: .customizeWidgets, parameters: [AnalyticsParameterKey.kind: .string(kind.rawValue)]))
         let config = HomeWidgetConfiguration(kind: kind)
         let widget = HomeWidgetRegistry.make(for: config, storage: storage)
         uiState.widgets.append(widget)
@@ -208,11 +223,15 @@ final class HomeViewModel: HomeViewModelProtocol {
     }
 
     func removeWidget(id: UUID) {
+        if let kind = uiState.widgets.first(where: { $0.id == id })?.kind {
+            analytics.track(.action(.removeWidget, on: .customizeWidgets, parameters: [AnalyticsParameterKey.kind: .string(kind.rawValue)]))
+        }
         uiState.widgets.removeAll { $0.id == id }
         saveWidgetConfigurations()
     }
 
     func moveWidgets(from source: IndexSet, to destination: Int) {
+        analytics.track(.action(.reorderWidgets, on: .customizeWidgets))
         uiState.widgets.move(fromOffsets: source, toOffset: destination)
         saveWidgetConfigurations()
     }

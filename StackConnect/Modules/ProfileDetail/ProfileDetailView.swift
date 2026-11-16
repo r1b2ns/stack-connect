@@ -60,6 +60,7 @@ struct ProfileDetailView<ViewModel: ProfileDetailViewModelProtocol>: View {
             }
         }
         .navigationTitle(String(localized: "Profile"))
+        .trackScreen(.profileDetail)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $shareItem) { item in
             ShareSheet(activityItems: [item.url])
@@ -68,7 +69,7 @@ struct ProfileDetailView<ViewModel: ProfileDetailViewModelProtocol>: View {
             String(localized: "Delete this profile?"),
             isPresented: $showDeleteConfirmation
         ) {
-            Button(String(localized: "Cancel"), role: .cancel) {}
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .profileDetail, role: .cancel) {}
             Button(String(localized: "Delete"), role: .destructive) {
                 Task {
                     let ok = await viewModel.delete()
@@ -87,7 +88,7 @@ struct ProfileDetailView<ViewModel: ProfileDetailViewModelProtocol>: View {
                 }
             )
         ) {
-            Button(String(localized: "OK"), role: .cancel) {}
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .profileDetail, role: .cancel) {}
         } message: {
             Text(viewModel.uiState.errorMessage ?? "")
         }
@@ -179,7 +180,7 @@ struct ProfileDetailView<ViewModel: ProfileDetailViewModelProtocol>: View {
             }
             .disabled(viewModel.uiState.isPreparingDownload || viewModel.uiState.isDeleting)
 
-            Button(role: .destructive) {
+            StackTrackedButton(.delete, on: .profileDetail, role: .destructive) {
                 showDeleteConfirmation = true
             } label: {
                 HStack {
@@ -197,7 +198,7 @@ struct ProfileDetailView<ViewModel: ProfileDetailViewModelProtocol>: View {
     /// For expired/invalid profiles, only the Delete action is offered (download yields nothing useful).
     private func buildDeleteOnlySection() -> some View {
         Section {
-            Button(role: .destructive) {
+            StackTrackedButton(.delete, on: .profileDetail, role: .destructive) {
                 showDeleteConfirmation = true
             } label: {
                 HStack {

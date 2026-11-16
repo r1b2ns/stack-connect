@@ -66,9 +66,10 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
         }
         .foregroundStyle(.primary)
         .navigationTitle(viewModel.uiState.app.name)
+        .trackScreen(.appDetail)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { buildToolbar() }
-        .refreshable { await viewModel.refresh() }
+        .refreshable { await viewModel.pullToRefresh() }
         .task { await viewModel.refresh() }
         .sheet(isPresented: $viewModel.uiState.showCreatePlatform) {
             CreatePlatformSheet(viewModel: viewModel)
@@ -91,10 +92,10 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             )
         ) {
             if let action = viewModel.uiState.confirmAction {
-                Button(action.confirmLabel, role: action.isDestructive ? .destructive : nil) {
+                StackTrackedButton(action.confirmLabel, button: action.analyticsConfirmButton, on: .appDetail, role: action.isDestructive ? .destructive : nil) {
                     Task { await performAction(action) }
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .appDetail, role: .cancel) {
                     viewModel.uiState.confirmAction = nil
                 }
             }
@@ -110,7 +111,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                 set: { if !$0 { viewModel.uiState.actionError = nil } }
             )
         ) {
-            Button(String(localized: "OK"), role: .cancel) {
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .appDetail, role: .cancel) {
                 viewModel.uiState.actionError = nil
             }
         } message: {
@@ -128,7 +129,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             String(localized: "Permission Denied"),
             isPresented: $showPermissionDenied
         ) {
-            Button(String(localized: "OK"), role: .cancel) {}
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .appDetail, role: .cancel) {}
         } message: {
             Text(permissionDeniedMessage)
         }
@@ -217,6 +218,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                         .foregroundStyle(.blue)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
+                    .trackOpenURL(.resolutionCenter, on: .appDetail)
                 }
                 .padding(.vertical, 4)
             }
@@ -273,7 +275,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
         let versions: [AppStoreVersionModel] = section.versions
         Section {
             ForEach(versions) { version in
-                Button {
+                StackTrackedButton(.version, on: .appDetail) {
                     homeCoordinator.navigateToVersionDetail(version, account: viewModel.uiState.account)
                 } label: {
                     buildVersionRow(version)
@@ -283,7 +285,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                 }
             }
 
-            Button {
+            StackTrackedButton(.seeAll, on: .appDetail) {
                 homeCoordinator.navigateToVersionList(
                     appId: viewModel.uiState.app.id,
                     platform: section.platform,
@@ -355,7 +357,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             }
 
             if account.canDelete(.version) {
-                Button(role: .destructive) {
+                StackTrackedButton(.delete, on: .appDetail, role: .destructive) {
                     viewModel.uiState.confirmAction = .delete(version)
                 } label: {
                     Label(String(localized: "Delete"), systemImage: "trash")
@@ -364,7 +366,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
 
         case .pendingDeveloperRelease:
             if account.canEdit(.version) {
-                Button {
+                StackTrackedButton(.release, on: .appDetail) {
                     viewModel.uiState.confirmAction = .release(version)
                 } label: {
                     Label(String(localized: "Release"), systemImage: "arrow.up.circle.fill")
@@ -373,7 +375,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             }
 
             if account.canDelete(.version) {
-                Button(role: .destructive) {
+                StackTrackedButton(.reject, on: .appDetail, role: .destructive) {
                     viewModel.uiState.confirmAction = .reject(version)
                 } label: {
                     Label(String(localized: "Reject"), systemImage: "xmark.circle.fill")
@@ -382,7 +384,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
 
         case .inReview, .waitingForReview:
             if account.canEdit(.version) {
-                Button(role: .destructive) {
+                StackTrackedButton(.cancelReview, on: .appDetail, role: .destructive) {
                     viewModel.uiState.confirmAction = .cancelReview(version)
                 } label: {
                     Label(String(localized: "Cancel"), systemImage: "xmark.circle.fill")
@@ -413,7 +415,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
 
     private func buildGeneralSection() -> some View {
         Section {
-            Button {
+            StackTrackedButton(.appInformation, on: .appDetail) {
                 guard account.canEdit(.apps) else {
                     denyPermission(String(localized: "You don't have permission to edit app information."))
                     return
@@ -426,7 +428,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                 StackListRow(icon: "info.circle.fill", iconColor: .blue, title: String(localized: "App Information"))
             }
 
-            Button {
+            StackTrackedButton(.submissions, on: .appDetail) {
                 guard account.canEdit(.apps) else {
                     denyPermission(String(localized: "You don't have permission to access App Review."))
                     return
@@ -445,7 +447,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                     showsNewChip: true
                 )
             }
-            Button {
+            StackTrackedButton(.history, on: .appDetail) {
                 guard account.canEdit(.apps) else {
                     denyPermission(String(localized: "You don't have permission to access app history."))
                     return
@@ -466,7 +468,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
 
     private func buildAppStoreSection() -> some View {
         Section {
-            Button {
+            StackTrackedButton(.appPrivacy, on: .appDetail) {
                 guard account.canEdit(.apps) else {
                     denyPermission(String(localized: "You don't have permission to edit app privacy."))
                     return
@@ -478,7 +480,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             } label: {
                 StackListRow(icon: "hand.raised.fill", iconColor: .blue, title: String(localized: "App Privacy"))
             }
-            Button {
+            StackTrackedButton(.appAccessibility, on: .appDetail) {
                 guard account.canEdit(.apps) else {
                     denyPermission(String(localized: "You don't have permission to edit app accessibility."))
                     return
@@ -490,7 +492,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             } label: {
                 StackListRow(icon: "accessibility", iconColor: .purple, title: String(localized: "App Accessibility"))
             }
-            Button {
+            StackTrackedButton(.ratingsReviews, on: .appDetail) {
                 guard account.canView(.review) else {
                     denyPermission(String(localized: "You don't have permission to view ratings and reviews."))
                     return
@@ -504,7 +506,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             } label: {
                 StackListRow(icon: "star.fill", iconColor: .yellow, title: String(localized: "Ratings and Reviews"))
             }
-            Button {
+            StackTrackedButton(.analytics, on: .appDetail) {
                 guard account.canView(.analytics) else {
                     denyPermission(String(localized: "You don't have permission to view analytics."))
                     return
@@ -526,7 +528,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
 
     private func buildTestFlightSection() -> some View {
         Section {
-            Button {
+            StackTrackedButton(.testFlight, on: .appDetail) {
                 guard account.canView(.testFlight) else {
                     denyPermission(String(localized: "You don't have permission to view TestFlight."))
                     return
@@ -596,7 +598,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
     private func buildToolbar() -> some ToolbarContent {
         if account.canAdd(.version) {
             ToolbarItem(placement: .primaryAction) {
-                Button {
+                StackTrackedButton(.createPlatform, on: .appDetail) {
                     viewModel.prepareCreatePlatform()
                 } label: {
                     Image(systemName: "plus")
@@ -670,10 +672,11 @@ struct CreatePlatformSheet<ViewModel: AppDetailViewModelProtocol>: View {
                 }
             }
             .navigationTitle(String(localized: "Create Platform"))
+            .trackScreen(.createPlatform)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .createPlatform) {
                         dismiss()
                         viewModel.uiState.showCreatePlatform = false
                     }
@@ -690,6 +693,21 @@ struct CreatePlatformSheet<ViewModel: AppDetailViewModelProtocol>: View {
                 }
             }
             .disabled(viewModel.uiState.isCreating)
+        }
+    }
+}
+
+// MARK: - Analytics
+
+private extension VersionAction {
+    /// The confirm button of this action's alert.
+    var analyticsConfirmButton: AnalyticsButton {
+        switch self {
+        case .submitForReview: return .confirmSubmit
+        case .cancelReview: return .confirmCancelReview
+        case .release: return .confirmRelease
+        case .reject: return .confirmReject
+        case .delete: return .confirmDelete
         }
     }
 }

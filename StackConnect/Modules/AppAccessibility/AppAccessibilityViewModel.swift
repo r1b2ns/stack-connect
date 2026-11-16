@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -6,6 +7,7 @@ import Foundation
 protocol AppAccessibilityViewModelProtocol: ObservableObject {
     var uiState: AppAccessibilityUiState { get set }
     func load() async
+    func refresh() async
     func save(declaration: AccessibilityDeclarationModel) async
     func publish(declaration: AccessibilityDeclarationModel) async
     func create(deviceFamily: String) async
@@ -47,42 +49,60 @@ final class AppAccessibilityViewModel: AppAccessibilityViewModelProtocol {
     @Published var uiState: AppAccessibilityUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         appId: String,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = AppAccessibilityUiState(appId: appId, account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func load() async {
+        _ = await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let succeeded = await performLoad()
+        analytics.track(.action(.refresh, on: .appAccessibility, result: succeeded ? .success : .failure))
+    }
+
+    private func performLoad() async -> Bool {
+        var succeeded = true
         uiState.isLoading = true
         uiState.error = nil
 
         do {
             guard let connection = createConnection() else {
                 uiState.isLoading = false
-                return
+                return false
             }
 
             uiState.declarations = try await connection.fetchAccessibilityDeclarations(appId: uiState.appId)
             Log.print.info("[AppAccessibility] Loaded \(self.uiState.declarations.count) declarations")
         } catch {
+            succeeded = false
             uiState.error = error.localizedDescription
             Log.print.error("[AppAccessibility] Failed to load: \(error.localizedDescription)")
         }
 
         uiState.isLoading = false
+        return succeeded
     }
 
     func save(declaration: AccessibilityDeclarationModel) async {
+        analytics.track(.buttonTap(.save, on: .appAccessibilityEdit))
         uiState.isSaving = true
 
         do {
             guard let connection = createConnection() else {
                 uiState.isSaving = false
+                analytics.track(.action(.updateAccessibility, on: .appAccessibilityEdit, result: .failure))
                 return
             }
 
@@ -95,7 +115,9 @@ final class AppAccessibilityViewModel: AppAccessibilityViewModelProtocol {
             uiState.editingDeclaration = nil
             uiState.toastMessage = ToastMessage(String(localized: "Accessibility updated"), icon: "accessibility")
             Log.print.info("[AppAccessibility] Saved declaration \(declaration.id)")
+            analytics.track(.action(.updateAccessibility, on: .appAccessibilityEdit, result: .success))
         } catch {
+            analytics.track(.action(.updateAccessibility, on: .appAccessibilityEdit, result: .failure))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to save"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[AppAccessibility] Save failed: \(error.localizedDescription)")
         }
@@ -104,11 +126,13 @@ final class AppAccessibilityViewModel: AppAccessibilityViewModelProtocol {
     }
 
     func publish(declaration: AccessibilityDeclarationModel) async {
+        analytics.track(.buttonTap(.publish, on: .appAccessibilityEdit))
         uiState.isSaving = true
 
         do {
             guard let connection = createConnection() else {
                 uiState.isSaving = false
+                analytics.track(.action(.publishAccessibility, on: .appAccessibilityEdit, result: .failure))
                 return
             }
 
@@ -121,7 +145,9 @@ final class AppAccessibilityViewModel: AppAccessibilityViewModelProtocol {
             uiState.editingDeclaration = nil
             uiState.toastMessage = ToastMessage(String(localized: "Declaration published"), icon: "checkmark.circle.fill")
             Log.print.info("[AppAccessibility] Published declaration \(declaration.id)")
+            analytics.track(.action(.publishAccessibility, on: .appAccessibilityEdit, result: .success))
         } catch {
+            analytics.track(.action(.publishAccessibility, on: .appAccessibilityEdit, result: .failure))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to publish"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[AppAccessibility] Publish failed: \(error.localizedDescription)")
         }
@@ -130,11 +156,13 @@ final class AppAccessibilityViewModel: AppAccessibilityViewModelProtocol {
     }
 
     func create(deviceFamily: String) async {
+        analytics.track(.buttonTap(.deviceFamily, on: .appAccessibilityAddDeviceFamily))
         uiState.isSaving = true
 
         do {
             guard let connection = createConnection() else {
                 uiState.isSaving = false
+                analytics.track(.action(.createAccessibility, on: .appAccessibilityAddDeviceFamily, result: .failure, parameters: [AnalyticsParameterKey.kind: .string(deviceFamily)]))
                 return
             }
 
@@ -147,7 +175,9 @@ final class AppAccessibilityViewModel: AppAccessibilityViewModelProtocol {
             uiState.showAddDevice = false
             uiState.toastMessage = ToastMessage(String(localized: "Declaration created"), icon: "plus.circle.fill")
             Log.print.info("[AppAccessibility] Created declaration for \(deviceFamily)")
+            analytics.track(.action(.createAccessibility, on: .appAccessibilityAddDeviceFamily, result: .success, parameters: [AnalyticsParameterKey.kind: .string(deviceFamily)]))
         } catch {
+            analytics.track(.action(.createAccessibility, on: .appAccessibilityAddDeviceFamily, result: .failure, parameters: [AnalyticsParameterKey.kind: .string(deviceFamily)]))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to create"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[AppAccessibility] Create failed: \(error.localizedDescription)")
         }
@@ -156,14 +186,20 @@ final class AppAccessibilityViewModel: AppAccessibilityViewModelProtocol {
     }
 
     func delete(declaration: AccessibilityDeclarationModel) async {
+        analytics.track(.buttonTap(.confirmDelete, on: .appAccessibility))
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                analytics.track(.action(.deleteAccessibility, on: .appAccessibility, result: .failure))
+                return
+            }
 
             try await connection.deleteAccessibilityDeclaration(id: declaration.id)
             uiState.declarations.removeAll { $0.id == declaration.id }
             uiState.toastMessage = ToastMessage(String(localized: "Declaration deleted"), icon: "trash")
             Log.print.info("[AppAccessibility] Deleted declaration \(declaration.id)")
+            analytics.track(.action(.deleteAccessibility, on: .appAccessibility, result: .success))
         } catch {
+            analytics.track(.action(.deleteAccessibility, on: .appAccessibility, result: .failure))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to delete"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[AppAccessibility] Delete failed: \(error.localizedDescription)")
         }

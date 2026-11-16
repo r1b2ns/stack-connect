@@ -70,6 +70,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                 }
             }
             .navigationTitle(String(localized: "Add Account"))
+            .trackScreen(.addAccount)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
             .disabled(viewModel.uiState.isValidating)
@@ -119,7 +120,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
 
-                StackPasteButton { viewModel.uiState.issuerID = $0 }
+                StackPasteButton(trackingScreen: .addAccount) { viewModel.uiState.issuerID = $0 }
             }
 
             HStack {
@@ -131,7 +132,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
 
-                StackPasteButton { viewModel.uiState.privateKeyID = $0 }
+                StackPasteButton(trackingScreen: .addAccount) { viewModel.uiState.privateKeyID = $0 }
             }
 
             StackKeyFileInput(
@@ -140,7 +141,8 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                 importTitle: String(localized: "Import .p8 file"),
                 allowedContentTypes: p8AllowedTypes,
                 editorFont: .system(.body, design: .monospaced),
-                minEditorHeight: 120
+                minEditorHeight: 120,
+                trackingScreen: .addAccount
             )
         } header: {
             Text("App Store Connect Credentials")
@@ -293,7 +295,8 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                 title: String(localized: "Service Account Key (JSON)"),
                 text: text,
                 importTitle: String(localized: "Import .json file"),
-                allowedContentTypes: [.json]
+                allowedContentTypes: [.json],
+                trackingScreen: .addAccount
             )
         } header: {
             Text(header)
@@ -315,7 +318,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
-            Button(String(localized: "Cancel")) {
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .addAccount) {
                 dismiss()
                 onDismiss()
             }

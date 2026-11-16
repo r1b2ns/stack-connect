@@ -1,5 +1,6 @@
 import Foundation
 import APIProviderFirebase
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -7,6 +8,7 @@ import APIProviderFirebase
 protocol FirebaseAppListViewModelProtocol: ObservableObject {
     var uiState: FirebaseAppListUiState { get set }
     func load() async
+    func refresh() async
     func updateNickname(_ app: FirebaseAppModel, newName: String) async
     func fetchConfig(_ app: FirebaseAppModel) async
     func removeApp(_ app: FirebaseAppModel) async
@@ -103,13 +105,35 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
     @Published var uiState: FirebaseAppListUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
-    init(account: AccountModel, project: FirebaseProjectModel, keychain: KeyStorable = KeychainStorable.shared) {
+    init(
+        account: AccountModel,
+        project: FirebaseProjectModel,
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
+    ) {
         self.uiState = FirebaseAppListUiState(account: account, project: project)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func load() async {
+        await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        await performLoad()
+        analytics.track(.action(.refresh, on: .firebaseAppList, result: uiState.error == nil ? .success : .failure))
+    }
+
+    /// Only the platform (an enum) is sent — never app IDs, names or identifiers.
+    private func platformParameters(_ platform: FirebaseAppPlatform) -> [String: AnalyticsValue] {
+        [AnalyticsParameterKey.kind: .string(platform.rawValue)]
+    }
+
+    private func performLoad() async {
         uiState.isLoading = true
         uiState.error = nil
 
@@ -151,7 +175,12 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
     }
 
     func updateNickname(_ app: FirebaseAppModel, newName: String) async {
-        guard let provider = createProvider() else { return }
+        analytics.track(.buttonTap(.save, on: .firebaseAppDetail))
+        let parameters = platformParameters(app.platform)
+        guard let provider = createProvider() else {
+            analytics.track(.action(.updateNickname, on: .firebaseAppDetail, result: .failure, parameters: parameters))
+            return
+        }
         let projectId = uiState.project.projectId
         let body = PatchDisplayNameRequest(displayName: newName)
 
@@ -179,7 +208,9 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
             uiState.selectedApp = nil
             uiState.toastMessage = ToastMessage(String(localized: "Nickname updated"), icon: "pencil")
             Log.print.info("[Firebase] Updated nickname for \(app.appId)")
+            analytics.track(.action(.updateNickname, on: .firebaseAppDetail, result: .success, parameters: parameters))
         } catch {
+            analytics.track(.action(.updateNickname, on: .firebaseAppDetail, result: .failure, parameters: parameters))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to update nickname"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[Firebase] Update nickname failed: \(error.localizedDescription)")
         }
@@ -232,7 +263,12 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
     }
 
     func removeApp(_ app: FirebaseAppModel) async {
-        guard let provider = createProvider() else { return }
+        analytics.track(.buttonTap(.confirmDelete, on: .firebaseAppList))
+        let parameters = platformParameters(app.platform)
+        guard let provider = createProvider() else {
+            analytics.track(.action(.deleteFirebaseApp, on: .firebaseAppList, result: .failure, parameters: parameters))
+            return
+        }
         let projectId = uiState.project.projectId
 
         do {
@@ -256,14 +292,21 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
             uiState.apps.removeAll { $0.id == app.id }
             uiState.toastMessage = ToastMessage(String(localized: "App removed"), icon: "trash")
             Log.print.info("[Firebase] Removed app \(app.appId)")
+            analytics.track(.action(.deleteFirebaseApp, on: .firebaseAppList, result: .success, parameters: parameters))
         } catch {
+            analytics.track(.action(.deleteFirebaseApp, on: .firebaseAppList, result: .failure, parameters: parameters))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to remove app"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[Firebase] Remove app failed: \(error.localizedDescription)")
         }
     }
 
     func createApp(platform: FirebaseAppPlatform, identifier: String, nickname: String, appStoreId: String) async {
-        guard let provider = createProvider() else { return }
+        analytics.track(.buttonTap(.create, on: .createFirebaseApp))
+        let parameters = platformParameters(platform)
+        guard let provider = createProvider() else {
+            analytics.track(.action(.createFirebaseApp, on: .createFirebaseApp, result: .failure, parameters: parameters))
+            return
+        }
         let projectId = uiState.project.projectId
         let displayName = nickname.isEmpty ? nil : nickname
 
@@ -299,7 +342,9 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
             uiState.toastMessage = ToastMessage(String(localized: "App created"), icon: "plus.circle.fill")
             await load()
             Log.print.info("[Firebase] Created \(platform.displayName) app")
+            analytics.track(.action(.createFirebaseApp, on: .createFirebaseApp, result: .success, parameters: parameters))
         } catch {
+            analytics.track(.action(.createFirebaseApp, on: .createFirebaseApp, result: .failure, parameters: parameters))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to create app"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[Firebase] Create app failed: \(error.localizedDescription)")
         }

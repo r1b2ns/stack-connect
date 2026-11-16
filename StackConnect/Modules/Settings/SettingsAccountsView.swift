@@ -35,6 +35,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Accounts"))
+            .trackScreen(.settingsAccounts)
             .toolbar { buildToolbar() }
             .sheet(isPresented: $coordinator.showAddOptions) {
                 AddOptionsSheetContent()
@@ -82,7 +83,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                 isPresented: $viewModel.uiState.showDeleteConfirmation,
                 presenting: viewModel.uiState.accountToDelete
             ) { account in
-                Button(String(localized: "Cancel"), role: .cancel) {
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .settingsAccounts, role: .cancel) {
                     viewModel.uiState.accountToDelete = nil
                 }
                 Button(String(localized: "Delete"), role: .destructive) {
@@ -96,7 +97,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                 String(localized: "Import Error"),
                 isPresented: $showImportError
             ) {
-                Button(String(localized: "OK"), role: .cancel) {}
+                StackTrackedButton(String(localized: "OK"), button: .ok, on: .settingsAccounts, role: .cancel) {}
             } message: {
                 Text(importError)
             }
@@ -211,7 +212,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
     ) -> some View {
         Section {
             ForEach(accounts, id: \.id) { account in
-                Button {
+                StackTrackedButton(.account, on: .settingsAccounts) {
                     viewModel.uiState.editingName = account.name
                     coordinator.presentEditAccount(account)
                 } label: {
@@ -237,7 +238,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                 }
                 .foregroundStyle(.primary)
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button(role: .destructive) {
+                    StackTrackedButton(.delete, on: .settingsAccounts, role: .destructive) {
                         viewModel.uiState.accountToDelete = account
                         viewModel.uiState.showDeleteConfirmation = true
                     } label: {
@@ -245,7 +246,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                     }
 
                     if account.isExportable {
-                        Button {
+                        StackTrackedButton(.export, on: .settingsAccounts) {
                             coordinator.presentExportAccount(account)
                         } label: {
                             Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
@@ -289,7 +290,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
-            Button {
+            StackTrackedButton(.add, on: .settingsAccounts) {
                 coordinator.presentAddOptions()
             } label: {
                 Image(systemName: "plus")
@@ -364,7 +365,7 @@ private struct ImportAccountSheet: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
 
-                Button {
+                StackTrackedButton(.howToImport, on: .importAccount) {
                     showTutorial = true
                 } label: {
                     Label(String(localized: "How to import?"), systemImage: "questionmark.circle")
@@ -372,7 +373,7 @@ private struct ImportAccountSheet: View {
                 }
                 .buttonStyle(.bordered)
 
-                Button {
+                StackTrackedButton(.importFile, on: .importAccount) {
                     showFilePicker = true
                 } label: {
                     Label(String(localized: "Import File"), systemImage: "square.and.arrow.down")
@@ -387,10 +388,11 @@ private struct ImportAccountSheet: View {
                 ImportTutorialView()
             }
             .navigationTitle(String(localized: "Import"))
+            .trackScreen(.importAccount)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .importAccount) {
                         dismiss()
                         onCancel()
                     }
@@ -418,11 +420,11 @@ private struct ImportAccountSheet: View {
                 isPresented: $showPasswordAlert
             ) {
                 SecureField(String(localized: "Password"), text: $password)
-                Button(String(localized: "Cancel"), role: .cancel) {
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .importAccount, role: .cancel) {
                     selectedURL = nil
                     password = ""
                 }
-                Button(String(localized: "Decrypt")) {
+                StackTrackedButton(String(localized: "Decrypt"), button: .decrypt, on: .importAccount) {
                     tryDecrypt()
                 }
             } message: {
@@ -433,11 +435,11 @@ private struct ImportAccountSheet: View {
                 String(localized: "Decryption Failed"),
                 isPresented: $showDecryptError
             ) {
-                Button(String(localized: "Try Again")) {
+                StackTrackedButton(String(localized: "Try Again"), button: .tryAgain, on: .importAccount) {
                     password = ""
                     showPasswordAlert = true
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .importAccount, role: .cancel) {
                     selectedURL = nil
                     password = ""
                 }
@@ -450,7 +452,7 @@ private struct ImportAccountSheet: View {
                 isPresented: $showNameAlert
             ) {
                 TextField(String(localized: "Account Name"), text: $customName)
-                Button(String(localized: "Cancel"), role: .cancel) {
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .importAccount, role: .cancel) {
                     selectedURL = nil
                     password = ""
                 }
@@ -510,23 +512,24 @@ private struct AddOptionsSheetContent: View {
     var body: some View {
         NavigationStack {
             List {
-                Button {
+                StackTrackedButton(.createNew, on: .settingsAccountAddOptions) {
                     coordinator.presentProviderPicker()
                 } label: {
                     Label(String(localized: "Create New"), systemImage: "plus.circle.fill")
                 }
 
-                Button {
+                StackTrackedButton(.importAccount, on: .settingsAccountAddOptions) {
                     coordinator.presentImport()
                 } label: {
                     Label(String(localized: "Import"), systemImage: "square.and.arrow.down.fill")
                 }
             }
             .navigationTitle(String(localized: "Add Account"))
+            .trackScreen(.settingsAccountAddOptions)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .settingsAccountAddOptions) {
                         dismiss()
                         coordinator.showAddOptions = false
                     }
@@ -547,7 +550,7 @@ private struct ProviderPickerSheetContent: View {
         NavigationStack {
             List {
                 ForEach(ProviderType.allCases, id: \.self) { provider in
-                    Button {
+                    StackTrackedButton(.providerButton(for: provider), on: .settingsAccountProviderPicker) {
                         coordinator.presentAddAccount(providerType: provider)
                     } label: {
                         Label {
@@ -560,10 +563,11 @@ private struct ProviderPickerSheetContent: View {
                 }
             }
             .navigationTitle(String(localized: "Select Provider"))
+            .trackScreen(.settingsAccountProviderPicker)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .settingsAccountProviderPicker) {
                         dismiss()
                         coordinator.showProviderPicker = false
                     }
@@ -597,7 +601,7 @@ private struct EditAccountSheetContent: View {
 
                 if account.isExportable {
                     Section {
-                        Button {
+                        StackTrackedButton(.export, on: .settingsAccountEdit) {
                             onExportRequested()
                         } label: {
                             Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
@@ -606,10 +610,11 @@ private struct EditAccountSheetContent: View {
                 }
             }
             .navigationTitle(account.name)
+            .trackScreen(.settingsAccountEdit)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .settingsAccountEdit) {
                         dismiss()
                         coordinator.dismissEditAccount()
                     }

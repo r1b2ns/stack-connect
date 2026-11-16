@@ -21,10 +21,11 @@ struct ImportTutorialView: View {
                 )
             }
             .navigationTitle(String(localized: "How to import?"))
+            .trackScreen(.importTutorial)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Done")) {
+                    StackTrackedButton(String(localized: "Done"), button: .done, on: .importTutorial) {
                         dismiss()
                     }
                 }

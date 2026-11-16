@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Step
 
@@ -59,13 +60,16 @@ final class ImportDevicesViewModel: ImportDevicesViewModelProtocol {
     @Published var uiState: ImportDevicesUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = ImportDevicesUiState(account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     // MARK: - Load
@@ -88,7 +92,11 @@ final class ImportDevicesViewModel: ImportDevicesViewModelProtocol {
             }
             uiState.step = .preview
             Log.print.info("[ImportDevices] Parsed \(parsed.count) entries from \(url.lastPathComponent)")
+            analytics.track(.action(.loadDevicesFile, on: .importDevices, result: .success, parameters: [
+                AnalyticsParameterKey.count: .int(parsed.count)
+            ]))
         } catch {
+            analytics.track(.action(.loadDevicesFile, on: .importDevices, result: .failure))
             uiState.errorMessage = error.localizedDescription
             Log.print.error("[ImportDevices] Parse failed: \(error.localizedDescription)")
         }
@@ -115,11 +123,15 @@ final class ImportDevicesViewModel: ImportDevicesViewModelProtocol {
     // MARK: - Import
 
     func startImport() async {
+        analytics.track(.buttonTap(.register, on: .importDevices))
         let toImport = uiState.parsed.filter { uiState.selectedIds.contains($0.id) }
         guard !toImport.isEmpty else { return }
 
         guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else {
             uiState.errorMessage = String(localized: "No credentials found for this account")
+            analytics.track(.action(.importDevices, on: .importDevices, result: .failure, parameters: [
+                AnalyticsParameterKey.count: .int(toImport.count)
+            ]))
             return
         }
 
@@ -155,6 +167,10 @@ final class ImportDevicesViewModel: ImportDevicesViewModelProtocol {
         }
 
         uiState.step = .done
+        analytics.track(.action(.importDevices, on: .importDevices, result: uiState.importedCount > 0 ? .success : .failure, parameters: [
+            AnalyticsParameterKey.count: .int(toImport.count),
+            AnalyticsParameterKey.failedCount: .int(uiState.failures.count)
+        ]))
         Log.print.info("[ImportDevices] Done: \(self.uiState.importedCount) ok, \(self.uiState.failures.count) failed")
     }
 

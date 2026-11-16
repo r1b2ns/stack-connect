@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 import SwiftUI
 
 // MARK: - Protocol
@@ -7,6 +8,7 @@ import SwiftUI
 protocol VersionDetailViewModelProtocol: ObservableObject {
     var uiState: VersionDetailUiState { get set }
     func refresh() async
+    func pullToRefresh() async
     func updatePromotionalText() async throws
     func updateDescription() async throws
     func updateWhatsNew() async throws
@@ -264,19 +266,33 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         version: AppStoreVersionModel,
         account: AccountModel,
         storage: PersistentStorable? = nil,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = VersionDetailUiState(version: version, account: account)
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func refresh() async {
+        _ = await performRefresh()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func pullToRefresh() async {
+        let succeeded = await performRefresh()
+        analytics.track(.action(.refresh, on: .versionDetail, result: succeeded ? .success : .failure))
+    }
+
+    private func performRefresh() async -> Bool {
+        var succeeded = true
         uiState.isLoading = true
 
         // Resolve the owning app's display name from local cache (offline-first),
@@ -296,7 +312,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
 
         guard let connection = createConnection() else {
             uiState.isLoading = false
-            return
+            return false
         }
 
         // Fetch version, localizations, build, and phased release in parallel
@@ -312,6 +328,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
                 try await storage.save(updated, id: "version.\(updated.id)")
             }
         } catch {
+            succeeded = false
             Log.print.error("[VersionDetail] Version refresh failed: \(error.localizedDescription)")
         }
 
@@ -324,6 +341,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
                 id: uiState.version.id
             )
         } catch {
+            succeeded = false
             Log.print.error("[VersionDetail] Localizations fetch failed: \(error.localizedDescription)")
         }
 
@@ -336,6 +354,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
                 try await storage.delete(BuildModel.self, id: "build.\(self.uiState.version.id)")
             }
         } catch {
+            succeeded = false
             Log.print.error("[VersionDetail] Build fetch failed: \(error.localizedDescription)")
         }
 
@@ -348,6 +367,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
                 try await storage.delete(PhasedReleaseModel.self, id: "phased.\(self.uiState.version.id)")
             }
         } catch {
+            succeeded = false
             Log.print.error("[VersionDetail] Phased release fetch failed: \(error.localizedDescription)")
         }
 
@@ -362,6 +382,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         }
 
         uiState.isLoading = false
+        return succeeded
     }
 
     /// Restores the localizations, attached build, and phased release for the
@@ -409,27 +430,36 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
     }
 
     func updatePromotionalText() async throws {
+        analytics.track(.buttonTap(.save, on: .versionPromotionalText))
         guard let locId = uiState.editingLocalization?.id else { return }
-        let connection = createConnection()!
-        try await connection.updateLocalization(id: locId, promotionalText: uiState.editPromotionalText)
-        applyLocalizationEdit(id: locId) { $0.promotionalText = self.uiState.editPromotionalText }
-        Log.print.info("[VersionDetail] Updated promotional text")
+        try await trackOutcome(.updatePromotionalText, on: .versionPromotionalText) {
+            let connection = createConnection()!
+            try await connection.updateLocalization(id: locId, promotionalText: uiState.editPromotionalText)
+            applyLocalizationEdit(id: locId) { $0.promotionalText = self.uiState.editPromotionalText }
+            Log.print.info("[VersionDetail] Updated promotional text")
+        }
     }
 
     func updateDescription() async throws {
+        analytics.track(.buttonTap(.save, on: .versionDescription))
         guard let locId = uiState.editingLocalization?.id else { return }
-        let connection = createConnection()!
-        try await connection.updateLocalization(id: locId, description: uiState.editDescription)
-        applyLocalizationEdit(id: locId) { $0.description = self.uiState.editDescription }
-        Log.print.info("[VersionDetail] Updated description")
+        try await trackOutcome(.updateDescription, on: .versionDescription) {
+            let connection = createConnection()!
+            try await connection.updateLocalization(id: locId, description: uiState.editDescription)
+            applyLocalizationEdit(id: locId) { $0.description = self.uiState.editDescription }
+            Log.print.info("[VersionDetail] Updated description")
+        }
     }
 
     func updateWhatsNew() async throws {
+        analytics.track(.buttonTap(.save, on: .versionWhatsNew))
         guard let locId = uiState.editingLocalization?.id else { return }
-        let connection = createConnection()!
-        try await connection.updateLocalization(id: locId, whatsNew: uiState.editWhatsNew)
-        applyLocalizationEdit(id: locId) { $0.whatsNew = self.uiState.editWhatsNew }
-        Log.print.info("[VersionDetail] Updated what's new")
+        try await trackOutcome(.updateWhatsNew, on: .versionWhatsNew) {
+            let connection = createConnection()!
+            try await connection.updateLocalization(id: locId, whatsNew: uiState.editWhatsNew)
+            applyLocalizationEdit(id: locId) { $0.whatsNew = self.uiState.editWhatsNew }
+            Log.print.info("[VersionDetail] Updated what's new")
+        }
     }
 
     private func applyLocalizationEdit(id: String, _ mutate: (inout AppStoreLocalizationModel) -> Void) {
@@ -482,11 +512,13 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
     }
 
     func saveGroupedFields() async {
+        analytics.track(.buttonTap(.save, on: .versionDetail))
         uiState.isSavingGroupedFields = true
         uiState.groupedFieldsError = nil
 
         guard let connection = createConnection() else {
             uiState.isSavingGroupedFields = false
+            analytics.track(.action(.saveVersionMetadata, on: .versionDetail, result: .failure))
             return
         }
 
@@ -524,7 +556,9 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             try await storage.save(uiState.version, id: "version.\(self.uiState.version.id)")
             Log.print.info("[VersionDetail] Saved grouped fields")
 
+            analytics.track(.action(.saveVersionMetadata, on: .versionDetail, result: .success))
         } catch {
+            analytics.track(.action(.saveVersionMetadata, on: .versionDetail, result: .failure))
             uiState.groupedFieldsError = error.localizedDescription
             Log.print.error("[VersionDetail] Save grouped fields failed: \(error.localizedDescription)")
         }
@@ -533,11 +567,13 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
     }
 
     func saveReleaseType() async {
+        analytics.track(.buttonTap(.save, on: .versionRelease))
         uiState.isSavingRelease = true
         uiState.releaseError = nil
 
         guard let connection = createConnection() else {
             uiState.isSavingRelease = false
+            analytics.track(.action(.updateReleaseType, on: .versionRelease, result: .failure, parameters: [AnalyticsParameterKey.kind: .string(uiState.selectedReleaseType.rawValue)]))
             return
         }
 
@@ -560,7 +596,9 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             try await storage.save(uiState.version, id: "version.\(self.uiState.version.id)")
             Log.print.info("[VersionDetail] Saved release type: \(self.uiState.selectedReleaseType.rawValue)")
 
+            analytics.track(.action(.updateReleaseType, on: .versionRelease, result: .success, parameters: [AnalyticsParameterKey.kind: .string(uiState.selectedReleaseType.rawValue)]))
         } catch {
+            analytics.track(.action(.updateReleaseType, on: .versionRelease, result: .failure, parameters: [AnalyticsParameterKey.kind: .string(uiState.selectedReleaseType.rawValue)]))
             uiState.releaseError = error.localizedDescription
             Log.print.error("[VersionDetail] Save release type failed: \(error.localizedDescription)")
         }
@@ -569,11 +607,13 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
     }
 
     func savePhasedRelease(usePhased: Bool) async {
+        analytics.track(.buttonTap((usePhased ? .usePhasedRelease : .releaseImmediately), on: .phasedRelease))
         uiState.isSavingPhasedRelease = true
         uiState.phasedReleaseError = nil
 
         guard let connection = createConnection() else {
             uiState.isSavingPhasedRelease = false
+            analytics.track(.action(.updatePhasedRelease, on: .phasedRelease, result: .failure, parameters: [AnalyticsParameterKey.enabled: .bool(usePhased)]))
             return
         }
 
@@ -593,7 +633,9 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             }
             uiState.showPhasedReleaseSheet = false
             Log.print.info("[VersionDetail] Saved phased release: usePhased=\(usePhased)")
+            analytics.track(.action(.updatePhasedRelease, on: .phasedRelease, result: .success, parameters: [AnalyticsParameterKey.enabled: .bool(usePhased)]))
         } catch {
+            analytics.track(.action(.updatePhasedRelease, on: .phasedRelease, result: .failure, parameters: [AnalyticsParameterKey.enabled: .bool(usePhased)]))
             uiState.phasedReleaseError = error.localizedDescription
             Log.print.error("[VersionDetail] Phased release save failed: \(error.localizedDescription)")
         }
@@ -602,6 +644,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
     }
 
     func setPhasedReleasePaused(_ paused: Bool) async {
+        analytics.track(.buttonTap((paused ? .pausePhasedRelease : .resumePhasedRelease), on: .versionDetail))
         guard let phasedId = uiState.phasedRelease?.id else { return }
 
         uiState.isSavingPhasedRelease = true
@@ -609,6 +652,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
 
         guard let connection = createConnection() else {
             uiState.isSavingPhasedRelease = false
+            analytics.track(.action(.pausePhasedRelease, on: .versionDetail, result: .failure, parameters: [AnalyticsParameterKey.enabled: .bool(paused)]))
             return
         }
 
@@ -617,7 +661,9 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             let updated = try await connection.updatePhasedReleaseState(id: phasedId, state: newState)
             uiState.phasedRelease = updated
             Log.print.info("[VersionDetail] Phased release paused=\(paused)")
+            analytics.track(.action(.pausePhasedRelease, on: .versionDetail, result: .success, parameters: [AnalyticsParameterKey.enabled: .bool(paused)]))
         } catch {
+            analytics.track(.action(.pausePhasedRelease, on: .versionDetail, result: .failure, parameters: [AnalyticsParameterKey.enabled: .bool(paused)]))
             uiState.phasedReleaseError = error.localizedDescription
             Log.print.error("[VersionDetail] Pause phased release failed: \(error.localizedDescription)")
         }
@@ -653,6 +699,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         do {
             guard let connection = createConnection() else {
                 uiState.isAttachingBuild = false
+                analytics.track(.action(.selectBuild, on: .buildPicker, result: .failure))
                 return
             }
             try await connection.attachBuild(versionId: uiState.version.id, buildId: build.id)
@@ -660,7 +707,9 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             uiState.toastMessage = ToastMessage(String(localized: "Build selected"), icon: "hammer.fill")
             Log.print.info("[VersionDetail] Attached build \(build.version ?? build.id)")
             await refresh()
+            analytics.track(.action(.selectBuild, on: .buildPicker, result: .success))
         } catch {
+            analytics.track(.action(.selectBuild, on: .buildPicker, result: .failure))
             uiState.actionError = error.localizedDescription
             Log.print.error("[VersionDetail] Attach build failed: \(error.localizedDescription)")
         }
@@ -679,11 +728,18 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
 
         guard let connection = createConnection() else {
             uiState.isValidatingSubmit = false
+            analytics.track(.action(.preSubmitValidation, on: .versionDetail, result: .failure))
             return
         }
 
         let checklist = await PreSubmitChecklistLoader.load(source: connection, version: uiState.version)
         uiState.isValidatingSubmit = false
+        analytics.track(.action(
+            .preSubmitValidation,
+            on: .versionDetail,
+            result: checklist.validationMessage == nil ? .success : .failure,
+            parameters: [AnalyticsParameterKey.count: .int(checklist.missingRequirements.count)]
+        ))
 
         if let message = checklist.validationMessage {
             uiState.actionError = message
@@ -711,7 +767,10 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         uiState.actionError = nil
 
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                analytics.track(.action(.submitForReview, on: .versionDetail, result: .failure))
+                return
+            }
             try await connection.submitForReview(
                 appId: uiState.version.appId,
                 versionId: uiState.version.id,
@@ -720,7 +779,9 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             uiState.toastMessage = ToastMessage(String(localized: "Submitted for review"), icon: "paperplane.fill")
             Log.print.info("[VersionDetail] Submitted for review")
             await refresh()
+            analytics.track(.action(.submitForReview, on: .versionDetail, result: .success))
         } catch {
+            analytics.track(.action(.submitForReview, on: .versionDetail, result: .failure))
             // Apple's 5-concurrent-review-submission limit: instead of a dead-end
             // error, flag it so the View can deep-link to the Submissions screen
             // where the user can discard a draft and free a slot.
@@ -741,12 +802,17 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         uiState.actionError = nil
 
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                analytics.track(.action(.cancelReview, on: .versionDetail, result: .failure))
+                return
+            }
             try await connection.cancelReview(appId: uiState.version.appId)
             uiState.toastMessage = ToastMessage(String(localized: "Review cancelled"), icon: "xmark.circle.fill")
             Log.print.info("[VersionDetail] Cancelled review")
             await refresh()
+            analytics.track(.action(.cancelReview, on: .versionDetail, result: .success))
         } catch {
+            analytics.track(.action(.cancelReview, on: .versionDetail, result: .failure))
             uiState.actionError = error.localizedDescription
             Log.print.error("[VersionDetail] Cancel review failed: \(error.localizedDescription)")
         }
@@ -759,12 +825,17 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         uiState.actionError = nil
 
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                analytics.track(.action(.cancelSubmission, on: .versionDetail, result: .failure))
+                return
+            }
             try await connection.cancelSubmission(appId: uiState.version.appId)
             uiState.toastMessage = ToastMessage(String(localized: "Submission cancelled"), icon: "xmark.circle.fill")
             Log.print.info("[VersionDetail] Cancelled submission")
             await refresh()
+            analytics.track(.action(.cancelSubmission, on: .versionDetail, result: .success))
         } catch {
+            analytics.track(.action(.cancelSubmission, on: .versionDetail, result: .failure))
             uiState.actionError = error.localizedDescription
             Log.print.error("[VersionDetail] Cancel submission failed: \(error.localizedDescription)")
         }
@@ -777,12 +848,17 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         uiState.actionError = nil
 
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                analytics.track(.action(.releaseVersion, on: .versionDetail, result: .failure))
+                return
+            }
             try await connection.releaseVersion(versionId: uiState.version.id)
             uiState.toastMessage = ToastMessage(String(localized: "Version released"), icon: "checkmark.circle.fill")
             Log.print.info("[VersionDetail] Released version")
             await refresh()
+            analytics.track(.action(.releaseVersion, on: .versionDetail, result: .success))
         } catch {
+            analytics.track(.action(.releaseVersion, on: .versionDetail, result: .failure))
             uiState.actionError = error.localizedDescription
             Log.print.error("[VersionDetail] Release failed: \(error.localizedDescription)")
         }
@@ -795,12 +871,17 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         uiState.actionError = nil
 
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                analytics.track(.action(.rejectVersion, on: .versionDetail, result: .failure))
+                return
+            }
             try await connection.rejectVersion(versionId: uiState.version.id)
             uiState.toastMessage = ToastMessage(String(localized: "Version rejected"), icon: "xmark.circle.fill")
             Log.print.info("[VersionDetail] Rejected version")
             await refresh()
+            analytics.track(.action(.rejectVersion, on: .versionDetail, result: .success))
         } catch {
+            analytics.track(.action(.rejectVersion, on: .versionDetail, result: .failure))
             uiState.actionError = error.localizedDescription
             Log.print.error("[VersionDetail] Reject failed: \(error.localizedDescription)")
         }
@@ -815,13 +896,18 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         uiState.actionError = nil
 
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                analytics.track(.action(.completePhasedRelease, on: .versionDetail, result: .failure))
+                return
+            }
             let updated = try await connection.updatePhasedReleaseState(id: phasedId, state: "COMPLETE")
             uiState.phasedRelease = updated
             uiState.toastMessage = ToastMessage(String(localized: "Released to all users"), icon: "checkmark.circle.fill")
             Log.print.info("[VersionDetail] Completed phased release")
             await refresh()
+            analytics.track(.action(.completePhasedRelease, on: .versionDetail, result: .success))
         } catch {
+            analytics.track(.action(.completePhasedRelease, on: .versionDetail, result: .failure))
             uiState.actionError = error.localizedDescription
             Log.print.error("[VersionDetail] Complete phased release failed: \(error.localizedDescription)")
         }
@@ -830,6 +916,21 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
     }
 
     // MARK: - Private
+
+    /// Runs throwing `work`, sending the `action` outcome before rethrowing.
+    private func trackOutcome(
+        _ action: AnalyticsAction,
+        on screen: AnalyticsScreen,
+        _ work: () async throws -> Void
+    ) async throws {
+        do {
+            try await work()
+            analytics.track(.action(action, on: screen, result: .success))
+        } catch {
+            analytics.track(.action(action, on: screen, result: .failure))
+            throw error
+        }
+    }
 
     private func createConnection() -> AppleAccountConnection? {
         guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else {

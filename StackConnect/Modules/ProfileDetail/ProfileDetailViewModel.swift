@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Notifications
 
@@ -33,17 +34,27 @@ final class ProfileDetailViewModel: ProfileDetailViewModelProtocol {
     @Published var uiState: ProfileDetailUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         account: AccountModel,
         profile: ProvisioningProfileModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = ProfileDetailUiState(account: account, profile: profile)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func prepareDownload() async -> URL? {
+        analytics.track(.buttonTap(.download, on: .profileDetail))
+        let url = await performDownload()
+        analytics.track(.action(.downloadProfile, on: .profileDetail, result: url != nil ? .success : .failure))
+        return url
+    }
+
+    private func performDownload() async -> URL? {
         guard let connection = makeConnection() else { return nil }
 
         uiState.isPreparingDownload = true
@@ -74,6 +85,13 @@ final class ProfileDetailViewModel: ProfileDetailViewModelProtocol {
     }
 
     func delete() async -> Bool {
+        analytics.track(.buttonTap(.confirmDelete, on: .profileDetail))
+        let deleted = await performDelete()
+        analytics.track(.action(.deleteProfile, on: .profileDetail, result: deleted ? .success : .failure))
+        return deleted
+    }
+
+    private func performDelete() async -> Bool {
         guard let connection = makeConnection() else { return false }
 
         uiState.isDeleting = true

@@ -54,11 +54,12 @@ struct CreateCertificateView<ViewModel: CreateCertificateViewModelProtocol>: Vie
             buildStepContent()
         }
         .navigationTitle(String(localized: "New Certificate"))
+        .trackScreen(.createCertificate)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if viewModel.uiState.step == .generated {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(String(localized: "Done")) { dismiss() }
+                    StackTrackedButton(String(localized: "Done"), button: .done, on: .createCertificate) { dismiss() }
                 }
             }
         }
@@ -156,7 +157,7 @@ struct CreateCertificateView<ViewModel: CreateCertificateViewModelProtocol>: Vie
     }
 
     private func buildTypeRow(_ option: CertificateTypeOption) -> some View {
-        Button {
+        StackTrackedButton(.select, on: .createCertificate) {
             viewModel.selectType(option)
         } label: {
             HStack {
@@ -206,7 +207,7 @@ struct CreateCertificateView<ViewModel: CreateCertificateViewModelProtocol>: Vie
                 }
 
                 Section {
-                    Button {
+                    StackTrackedButton(.importFile, on: .createCertificate) {
                         isImporting = true
                     } label: {
                         HStack(spacing: 12) {
@@ -279,7 +280,7 @@ struct CreateCertificateView<ViewModel: CreateCertificateViewModelProtocol>: Vie
                 }
                 .disabled(!canSubmit || viewModel.uiState.isCreating)
 
-                Button(String(localized: "Back")) {
+                StackTrackedButton(String(localized: "Back"), button: .back, on: .createCertificate) {
                     viewModel.goBack()
                 }
                 .foregroundStyle(.secondary)

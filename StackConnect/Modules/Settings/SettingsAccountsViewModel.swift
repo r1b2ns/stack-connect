@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -37,17 +38,20 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
     private let keychain: KeyStorable
     private let exporter: AccountExporting
     private let importer: AccountImporter
+    private let analytics: AnalyticsTracking
 
     init(
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
-        exporter: AccountExporting? = nil
+        exporter: AccountExporting? = nil,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         let storage: PersistentStorable = storage ?? SwiftDataStorable.shared
         self.storage = storage
         self.keychain = keychain
         self.exporter = exporter ?? AccountExporter(keychain: keychain)
         self.importer = AccountImporter(storage: storage, keychain: keychain)
+        self.analytics = analytics
     }
 
     func loadAccounts() async {
@@ -76,12 +80,16 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
     }
 
     func updateAccountName(accountId: String, newName: String) async {
+        analytics.track(.buttonTap(.save, on: .settingsAccountEdit))
         let trimmed = newName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
 
         // Find the account in any list
         let allAccounts = uiState.appleAccounts + uiState.firebaseAccounts + uiState.googlePlayAccounts
-        guard let existing = allAccounts.first(where: { $0.id == accountId }) else { return }
+        guard let existing = allAccounts.first(where: { $0.id == accountId }) else {
+            analytics.track(.action(.saveAccount, on: .settingsAccountEdit, result: .failure))
+            return
+        }
 
         // `updating` keeps every other field — notably the per-app scope.
         let updated = existing.updating(name: trimmed)
@@ -89,23 +97,40 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
         do {
             try await storage.save(updated, id: updated.id)
             Log.print.info("[SettingsAccounts] Updated account name: \(trimmed)")
+            analytics.track(.action(.saveAccount, on: .settingsAccountEdit, result: .success))
             await loadAccounts()
         } catch {
             Log.print.error("[SettingsAccounts] Failed to update account: \(error.localizedDescription)")
+            analytics.track(.action(.saveAccount, on: .settingsAccountEdit, result: .failure))
         }
     }
 
     func deleteAccount(_ account: AccountModel) async {
+        analytics.track(.buttonTap(.confirmDelete, on: .settingsAccounts))
+        let parameters = [AnalyticsParameterKey.kind: AnalyticsValue.string(account.providerType.rawValue)]
         do {
             try await AccountCascadeDeleter.delete(account, storage: storage, keychain: keychain)
             Log.print.info("[SettingsAccounts] Deleted account and related data: \(account.name)")
+            analytics.track(.action(.deleteAccount, on: .settingsAccounts, result: .success, parameters: parameters))
             await loadAccounts()
         } catch {
             Log.print.error("[SettingsAccounts] Failed to delete account: \(error.localizedDescription)")
+            analytics.track(.action(.deleteAccount, on: .settingsAccounts, result: .failure, parameters: parameters))
         }
     }
 
     func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL? {
+        let url = makeExportFile(account: account, exportName: exportName, rules: rules, password: password, expirationDate: expirationDate, appsBundles: appsBundles)
+        analytics.track(.action(
+            .exportAccount,
+            on: .exportAccount,
+            result: url == nil ? .failure : .success,
+            parameters: AnalyticsParameterKey.exportParameters(expirationDate: expirationDate, appsBundles: appsBundles)
+        ))
+        return url
+    }
+
+    private func makeExportFile(account: AccountModel, exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL? {
         do {
             return try exporter.export(AccountExportRequest(
                 account: account,
@@ -130,6 +155,13 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
 
     /// Accepts a `.scexport` file of any provider (see `AccountImporter`).
     func importAccount(from url: URL, password: String, customName: String?) async -> String? {
+        analytics.track(.buttonTap(.confirmImport, on: .importAccount))
+        let error = await performImport(from: url, password: password, customName: customName)
+        analytics.track(.action(.importAccount, on: .importAccount, result: error == nil ? .success : .failure))
+        return error
+    }
+
+    private func performImport(from url: URL, password: String, customName: String?) async -> String? {
         switch await importer.importAccount(from: url, password: password, customName: customName) {
         case .success(let account):
             Log.print.info("[SettingsAccounts] Imported account: \(account.name) (\(account.providerType.displayName))")

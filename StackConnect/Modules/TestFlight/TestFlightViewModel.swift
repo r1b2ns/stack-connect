@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -6,6 +7,7 @@ import Foundation
 protocol TestFlightViewModelProtocol: ObservableObject {
     var uiState: TestFlightUiState { get set }
     func load() async
+    func refresh() async
     func createGroup(name: String, isInternal: Bool, hasAccessToAllBuilds: Bool) async
     func deleteGroup(_ group: BetaGroupModel) async
     func expireBuild(_ build: BuildModel) async
@@ -67,20 +69,37 @@ final class TestFlightViewModel: TestFlightViewModelProtocol {
     @Published var uiState: TestFlightUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
-    init(appId: String, account: AccountModel, keychain: KeyStorable = KeychainStorable.shared) {
+    init(
+        appId: String,
+        account: AccountModel,
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
+    ) {
         self.uiState = TestFlightUiState(appId: appId, account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func load() async {
+        _ = await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let succeeded = await performLoad()
+        analytics.track(.action(.refresh, on: .testFlight, result: succeeded ? .success : .failure))
+    }
+
+    private func performLoad() async -> Bool {
         uiState.isLoading = true
         uiState.error = nil
 
         do {
             guard let connection = createConnection() else {
                 uiState.isLoading = false
-                return
+                return false
             }
 
             async let groupsResult = connection.fetchBetaGroups(appId: uiState.appId)
@@ -92,10 +111,12 @@ final class TestFlightViewModel: TestFlightViewModelProtocol {
 
             Log.print.info("[TestFlight] Loaded \(self.uiState.groups.count) groups, \(self.uiState.builds.count) builds")
             loadTesterCounts()
+            return true
         } catch {
             uiState.error = error.localizedDescription
             uiState.isLoading = false
             Log.print.error("[TestFlight] Load failed: \(error.localizedDescription)")
+            return false
         }
     }
 
@@ -116,10 +137,16 @@ final class TestFlightViewModel: TestFlightViewModelProtocol {
     }
 
     func createGroup(name: String, isInternal: Bool, hasAccessToAllBuilds: Bool) async {
+        analytics.track(.buttonTap(.create, on: .createBetaGroup))
+        let parameters: [String: AnalyticsValue] = [
+            AnalyticsParameterKey.kind: .string(isInternal ? "internal" : "external"),
+            AnalyticsParameterKey.enabled: .bool(hasAccessToAllBuilds)
+        ]
         uiState.isCreatingGroup = true
         do {
             guard let connection = createConnection() else {
                 uiState.isCreatingGroup = false
+                analytics.track(.action(.createBetaGroup, on: .createBetaGroup, result: .failure, parameters: parameters))
                 return
             }
             let group = try await connection.createBetaGroup(
@@ -131,7 +158,9 @@ final class TestFlightViewModel: TestFlightViewModelProtocol {
             uiState.groups.append(group)
             uiState.showCreateGroup = false
             uiState.toastMessage = ToastMessage(String(localized: "Group created"), icon: "person.3.fill")
+            analytics.track(.action(.createBetaGroup, on: .createBetaGroup, result: .success, parameters: parameters))
         } catch {
+            analytics.track(.action(.createBetaGroup, on: .createBetaGroup, result: .failure, parameters: parameters))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to create group"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[TestFlight] Create group failed: \(error.localizedDescription)")
         }
@@ -139,23 +168,31 @@ final class TestFlightViewModel: TestFlightViewModelProtocol {
     }
 
     func deleteGroup(_ group: BetaGroupModel) async {
+        analytics.track(.buttonTap(.confirmDelete, on: .testFlight))
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                analytics.track(.action(.deleteBetaGroup, on: .testFlight, result: .failure))
+                return
+            }
             try await connection.deleteBetaGroup(id: group.id)
             uiState.groups.removeAll { $0.id == group.id }
             uiState.toastMessage = ToastMessage(String(localized: "Group deleted"), icon: "trash")
+            analytics.track(.action(.deleteBetaGroup, on: .testFlight, result: .success))
         } catch {
+            analytics.track(.action(.deleteBetaGroup, on: .testFlight, result: .failure))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to delete group"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[TestFlight] Delete group failed: \(error.localizedDescription)")
         }
     }
 
     func expireBuild(_ build: BuildModel) async {
+        analytics.track(.buttonTap(.confirmExpire, on: .testFlight))
         uiState.isExpiringBuild = true
         uiState.expireError = nil
         do {
             guard let connection = createConnection() else {
                 uiState.isExpiringBuild = false
+                analytics.track(.action(.expireBuild, on: .testFlight, result: .failure))
                 return
             }
             try await connection.expireBuild(buildId: build.id)
@@ -163,7 +200,9 @@ final class TestFlightViewModel: TestFlightViewModelProtocol {
                 uiState.builds[idx].isExpired = true
             }
             uiState.toastMessage = ToastMessage(String(localized: "Build expired"), icon: "clock.badge.xmark")
+            analytics.track(.action(.expireBuild, on: .testFlight, result: .success))
         } catch {
+            analytics.track(.action(.expireBuild, on: .testFlight, result: .failure))
             uiState.expireError = error.localizedDescription
             Log.print.error("[TestFlight] Expire build failed: \(error.localizedDescription)")
         }

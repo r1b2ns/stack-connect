@@ -27,6 +27,7 @@ struct OnboardingView: View {
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 32)
+        .trackScreen(.onboarding)
     }
 
     // MARK: - Title
@@ -92,7 +93,7 @@ struct OnboardingView: View {
     // MARK: - Continue button
 
     private func buildContinueButton() -> some View {
-        Button(action: onContinue) {
+        StackTrackedButton(.continue, on: .onboarding, action: onContinue) {
             Text(content.continueTitle)
                 .font(.headline)
                 .foregroundStyle(.white)

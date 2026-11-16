@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
+import StackProtocols
 
 // MARK: - Key File Input
 
@@ -25,6 +26,10 @@ import UniformTypeIdentifiers
 ///
 /// The imported file is read as UTF-8 into `text`. Its content is never logged —
 /// these files hold private keys.
+///
+/// Pass `trackingScreen` to send `button_tap` events (`.paste` / `.importFile`)
+/// for the paste and import buttons on that screen. Only the tap is tracked,
+/// never the key content.
 struct StackKeyFileInput: View {
 
     let title: String
@@ -33,8 +38,10 @@ struct StackKeyFileInput: View {
     let allowedContentTypes: [UTType]
     var editorFont: Font = .system(.caption, design: .monospaced)
     var minEditorHeight: CGFloat = 200
+    var trackingScreen: AnalyticsScreen?
 
     @State private var isImporterPresented = false
+    @Environment(\.analytics) private var analytics
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -45,7 +52,7 @@ struct StackKeyFileInput: View {
 
                 Spacer()
 
-                StackPasteButton { text = $0 }
+                StackPasteButton(trackingScreen: trackingScreen) { text = $0 }
             }
 
             TextEditor(text: $text)
@@ -55,6 +62,9 @@ struct StackKeyFileInput: View {
                 .textInputAutocapitalization(.never)
 
             Button {
+                if let trackingScreen {
+                    analytics.track(.buttonTap(.importFile, on: trackingScreen))
+                }
                 isImporterPresented = true
             } label: {
                 Label(importTitle, systemImage: "doc.badge.plus")
@@ -93,12 +103,19 @@ struct StackKeyFileInput: View {
 
 /// Borderless clipboard icon that hands the current pasteboard string to
 /// `onPaste` (with a light haptic). Does nothing when the pasteboard holds no text.
+/// When `trackingScreen` is set, each tap sends a `.paste` `button_tap` on it.
 struct StackPasteButton: View {
 
+    var trackingScreen: AnalyticsScreen?
     let onPaste: (String) -> Void
+
+    @Environment(\.analytics) private var analytics
 
     var body: some View {
         Button {
+            if let trackingScreen {
+                analytics.track(.buttonTap(.paste, on: trackingScreen))
+            }
             if let text = UIPasteboard.general.string {
                 onPaste(text)
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()

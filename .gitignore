@@ -43,3 +43,7 @@ Gemfile.lock
 
 # Xcode frameworks
 Packages/StackCoreRust/StackCoreRust.xcframework/
+
+# Firebase config (secrets) — never commit
+GoogleService-Info.plist
+**/GoogleService-Info.plist

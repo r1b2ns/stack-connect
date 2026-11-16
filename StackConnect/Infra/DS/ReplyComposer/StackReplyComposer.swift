@@ -1,4 +1,5 @@
 import SwiftUI
+import StackProtocols
 
 /// Reply composer sheet: optional context sections (e.g. the review being
 /// answered), a text editor with a footer note and an optional character
@@ -7,6 +8,10 @@ import SwiftUI
 /// Used by the review list's swipe-to-reply sheet and the review detail, for
 /// every store. The counter is a soft limit: it warns past `characterLimit`
 /// but never blocks sending — the store has the final word.
+///
+/// Pass `trackingScreen` to send a `screen_view` for it when the composer
+/// appears and a `.cancel` `button_tap` on Cancel. Sending is tracked by the
+/// caller's ViewModel, together with its outcome. The reply text is never sent.
 struct StackReplyComposer<Context: View>: View {
 
     let title: String
@@ -18,12 +23,14 @@ struct StackReplyComposer<Context: View>: View {
     /// Last send failure, shown below the editor.
     var error: String? = nil
     var editorMinHeight: CGFloat = 150
+    var trackingScreen: AnalyticsScreen? = nil
     let isSending: Bool
     let onSend: (String) -> Void
     let onCancel: () -> Void
     @ViewBuilder var context: () -> Context
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.analytics) private var analytics
 
     var body: some View {
         NavigationStack {
@@ -52,6 +59,11 @@ struct StackReplyComposer<Context: View>: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
             .disabled(isSending)
+        }
+        .onAppear {
+            if let trackingScreen {
+                StackTrackScreenModifier.trackAppear(of: trackingScreen, with: analytics)
+            }
         }
         // A reply in flight can't be swiped away: its result lands here.
         .interactiveDismissDisabled(isSending)
@@ -91,6 +103,9 @@ struct StackReplyComposer<Context: View>: View {
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
             Button(String(localized: "Cancel")) {
+                if let trackingScreen {
+                    analytics.track(.buttonTap(.cancel, on: trackingScreen))
+                }
                 dismiss()
                 onCancel()
             }
@@ -119,6 +134,7 @@ extension StackReplyComposer where Context == EmptyView {
         characterLimit: Int? = nil,
         error: String? = nil,
         editorMinHeight: CGFloat = 150,
+        trackingScreen: AnalyticsScreen? = nil,
         isSending: Bool,
         onSend: @escaping (String) -> Void,
         onCancel: @escaping () -> Void
@@ -131,6 +147,7 @@ extension StackReplyComposer where Context == EmptyView {
             characterLimit: characterLimit,
             error: error,
             editorMinHeight: editorMinHeight,
+            trackingScreen: trackingScreen,
             isSending: isSending,
             onSend: onSend,
             onCancel: onCancel,

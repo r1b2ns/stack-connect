@@ -70,8 +70,9 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             }
         }
         .navigationTitle(viewModel.uiState.version.versionString ?? "Version")
+        .trackScreen(.versionDetail)
         .navigationBarTitleDisplayMode(.inline)
-        .refreshable { await viewModel.refresh() }
+        .refreshable { await viewModel.pullToRefresh() }
         .task { await viewModel.refresh() }
         .sheet(isPresented: $viewModel.uiState.showPromotionalText) {
             StackTextView(
@@ -80,6 +81,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 readOnly: !canEditMetadata,
                 onSave: { try await viewModel.updatePromotionalText() }
             )
+            .trackScreen(.versionPromotionalText)
         }
         .sheet(isPresented: $viewModel.uiState.showDescription) {
             StackTextView(
@@ -88,6 +90,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 readOnly: !canEditMetadata,
                 onSave: { try await viewModel.updateDescription() }
             )
+            .trackScreen(.versionDescription)
         }
         .sheet(isPresented: $viewModel.uiState.showWhatsNew) {
             StackTextView(
@@ -96,6 +99,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 readOnly: !canEditMetadata,
                 onSave: { try await viewModel.updateWhatsNew() }
             )
+            .trackScreen(.versionWhatsNew)
         }
         .sheet(isPresented: localizationPickerBinding) {
             if let field = viewModel.uiState.localizationPickerField {
@@ -154,7 +158,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             String(localized: "Build Selection"),
             isPresented: $showBuildBlockedAlert
         ) {
-            Button(String(localized: "OK"), role: .cancel) {}
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .versionDetail, role: .cancel) {}
         } message: {
             Text(String(localized: "The current version status does not allow changing the build."))
         }
@@ -162,7 +166,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             String(localized: "Permission Denied"),
             isPresented: $showPermissionDenied
         ) {
-            Button(String(localized: "OK"), role: .cancel) {}
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .versionDetail, role: .cancel) {}
         } message: {
             Text(permissionDeniedMessage)
         }
@@ -174,10 +178,10 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             )
         ) {
             if let action = viewModel.uiState.confirmAction {
-                Button(action.confirmLabel, role: action.isDestructive ? .destructive : nil) {
+                StackTrackedButton(action.confirmLabel, button: action.analyticsConfirmButton, on: .versionDetail, role: action.isDestructive ? .destructive : nil) {
                     Task { await performConfirmedAction(action) }
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .versionDetail, role: .cancel) {
                     viewModel.uiState.confirmAction = nil
                 }
             }
@@ -193,7 +197,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 set: { if !$0 { viewModel.uiState.actionError = nil } }
             )
         ) {
-            Button(String(localized: "OK"), role: .cancel) {
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .versionDetail, role: .cancel) {
                 viewModel.uiState.actionError = nil
             }
         } message: {
@@ -208,7 +212,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 set: { if !$0 { viewModel.uiState.submissionLimitReached = false } }
             )
         ) {
-            Button(String(localized: "Manage submissions")) {
+            StackTrackedButton(String(localized: "Manage submissions"), button: .manageSubmissions, on: .versionDetail) {
                 viewModel.uiState.submissionLimitReached = false
                 homeCoordinator.navigateToSubmissions(
                     appId: viewModel.uiState.version.appId,
@@ -216,7 +220,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                     account: viewModel.uiState.account
                 )
             }
-            Button(String(localized: "Cancel"), role: .cancel) {
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .versionDetail, role: .cancel) {
                 viewModel.uiState.submissionLimitReached = false
             }
         } message: {
@@ -255,7 +259,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
     private func buildBuildAndMediaSection() -> some View {
         Section {
             // Build row
-            Button {
+            StackTrackedButton(.build, on: .versionDetail) {
                 if canEditMetadata {
                     viewModel.uiState.showBuildPicker = true
                 } else {
@@ -290,7 +294,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             }
 
             // Preview and Screenshots
-            Button {
+            StackTrackedButton(.screenshots, on: .versionDetail) {
                 handlePreviewTap()
             } label: {
                 StackListRow(icon: "photo.on.rectangle.angled", iconColor: .blue, title: String(localized: "Preview and Screenshots"))
@@ -343,15 +347,15 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
     private func buildTextContentSection() -> some View {
         Section {
-            Button { viewModel.requestField(.promotionalText) } label: {
+            StackTrackedButton(.promotionalText, on: .versionDetail) { viewModel.requestField(.promotionalText) } label: {
                 StackListRow(icon: "text.badge.star", iconColor: .purple, title: String(localized: "Promotional Text"))
             }
 
-            Button { viewModel.requestField(.description) } label: {
+            StackTrackedButton(.appDescription, on: .versionDetail) { viewModel.requestField(.description) } label: {
                 StackListRow(icon: "doc.text.fill", iconColor: .indigo, title: String(localized: "Description"))
             }
 
-            Button { viewModel.requestField(.whatsNew) } label: {
+            StackTrackedButton(.whatsNew, on: .versionDetail) { viewModel.requestField(.whatsNew) } label: {
                 StackListRow(icon: "sparkles", iconColor: .orange, title: String(localized: "What's New"))
             }
         }
@@ -445,7 +449,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
     private func buildActionsSection() -> some View {
         Section {
-            Button {
+            StackTrackedButton(.appReviewInfo, on: .versionDetail) {
                 guard account.canEdit(.version) else {
                     permissionDeniedMessage = String(localized: "You don't have permission to edit App Review Information.")
                     showPermissionDenied = true
@@ -459,7 +463,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 StackListRow(icon: "checkmark.shield.fill", iconColor: .green, title: String(localized: "App Review Information"))
             }
 
-            Button {
+            StackTrackedButton(.releaseOptions, on: .versionDetail) {
                 guard account.canEdit(.version) else {
                     permissionDeniedMessage = String(localized: "You don't have permission to edit App Store Version Release.")
                     showPermissionDenied = true
@@ -475,7 +479,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 )
             }
 
-            Button {
+            StackTrackedButton(.phasedRelease, on: .versionDetail) {
                 guard account.canEdit(.version) else {
                     permissionDeniedMessage = String(localized: "You don't have permission to edit Phased Release.")
                     showPermissionDenied = true
@@ -527,6 +531,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             if account.canEdit(.version) {
                 buildActionBar {
                     buildActionButton(
+                        .submitForReview,
                         title: String(localized: "Submit for Review"),
                         icon: "paperplane.fill",
                         color: .blue
@@ -541,6 +546,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 HStack(spacing: 12) {
                     if account.canDelete(.version) {
                         buildActionButton(
+                            .reject,
                             title: String(localized: "Reject"),
                             icon: "xmark.circle.fill",
                             color: .red
@@ -551,6 +557,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
                     if account.canEdit(.version) {
                         buildActionButton(
+                            .release,
                             title: String(localized: "Release"),
                             icon: "arrow.up.circle.fill",
                             color: .green
@@ -565,6 +572,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             if account.canEdit(.version) {
                 buildActionBar {
                     buildActionButton(
+                        .cancelReview,
                         title: String(localized: "Cancel Review"),
                         icon: "xmark.circle.fill",
                         color: .red
@@ -578,6 +586,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             if account.canEdit(.version) {
                 buildActionBar {
                     buildActionButton(
+                        .cancelSubmission,
                         title: String(localized: "Cancel Submission"),
                         icon: "xmark.circle.fill",
                         color: .red
@@ -602,6 +611,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                         }
 
                         buildActionButton(
+                            .completePhasedRelease,
                             title: String(localized: "Release to All Users"),
                             icon: "person.3.fill",
                             color: .green
@@ -632,8 +642,8 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         }
     }
 
-    private func buildActionButton(title: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    private func buildActionButton(_ button: AnalyticsButton, title: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
+        StackTrackedButton(button, on: .versionDetail, action: action) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
                 Text(title)
@@ -745,7 +755,7 @@ struct VersionReleaseSheet<ViewModel: VersionDetailViewModelProtocol>: View {
             Form {
                 Section {
                     ForEach(VersionReleaseType.allCases) { type in
-                        Button {
+                        StackTrackedButton(.releaseType, on: .versionRelease) {
                             viewModel.uiState.selectedReleaseType = type
                         } label: {
                             HStack {
@@ -788,10 +798,11 @@ struct VersionReleaseSheet<ViewModel: VersionDetailViewModelProtocol>: View {
                 }
             }
             .navigationTitle(String(localized: "App Store Version Release"))
+            .trackScreen(.versionRelease)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .versionRelease) {
                         viewModel.uiState.showReleaseSheet = false
                     }
                 }
@@ -943,10 +954,11 @@ struct PhasedReleaseSheet<ViewModel: VersionDetailViewModelProtocol>: View {
                 }
             }
             .navigationTitle(String(localized: "Phased Release"))
+            .trackScreen(.phasedRelease)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Done")) {
+                    StackTrackedButton(String(localized: "Done"), button: .done, on: .phasedRelease) {
                         viewModel.uiState.showPhasedReleaseSheet = false
                     }
                 }
@@ -986,7 +998,7 @@ struct LocalizationPickerSheet: View {
         NavigationStack {
             List {
                 ForEach(localizations) { localization in
-                    Button {
+                    StackTrackedButton(.localization, on: .localizationPicker) {
                         onSelect(localization)
                     } label: {
                         HStack {
@@ -1013,10 +1025,11 @@ struct LocalizationPickerSheet: View {
                 }
             }
             .navigationTitle(field.title)
+            .trackScreen(.localizationPicker)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .localizationPicker) { onCancel() }
                 }
             }
         }
@@ -1025,5 +1038,21 @@ struct LocalizationPickerSheet: View {
     private func localeName(_ code: String?) -> String {
         guard let code else { return "–" }
         return Locale.current.localizedString(forIdentifier: code) ?? code
+    }
+}
+
+// MARK: - Analytics
+
+private extension VersionDetailAction {
+    /// The confirm button of this action's alert.
+    var analyticsConfirmButton: AnalyticsButton {
+        switch self {
+        case .submitForReview: return .confirmSubmit
+        case .cancelReview: return .confirmCancelReview
+        case .cancelSubmission: return .confirmCancelSubmission
+        case .release: return .confirmRelease
+        case .reject: return .confirmReject
+        case .completePhasedRelease: return .confirmCompletePhasedRelease
+        }
     }
 }

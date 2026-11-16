@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -50,23 +51,28 @@ final class AgeRatingViewModel: AgeRatingViewModelProtocol {
     @Published var uiState: AgeRatingUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         ageRating: AgeRatingDeclarationModel,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = AgeRatingUiState(account: account, declaration: ageRating)
         self.keychain = keychain
+        self.analytics = analytics
         populateFields(from: ageRating)
     }
 
     func save() async {
+        analytics.track(.buttonTap(.save, on: .ageRating))
         uiState.isSaving = true
         uiState.error = nil
 
         guard let connection = createConnection() else {
             uiState.isSaving = false
+            analytics.track(.action(.updateAgeRating, on: .ageRating, result: .failure))
             return
         }
 
@@ -94,7 +100,9 @@ final class AgeRatingViewModel: AgeRatingViewModelProtocol {
             )
             uiState.toastMessage = ToastMessage(String(localized: "Age rating updated"), icon: "checkmark.circle.fill")
             Log.print.info("[AgeRating] Saved")
+            analytics.track(.action(.updateAgeRating, on: .ageRating, result: .success))
         } catch {
+            analytics.track(.action(.updateAgeRating, on: .ageRating, result: .failure))
             uiState.error = error.localizedDescription
             Log.print.error("[AgeRating] Save failed: \(error.localizedDescription)")
         }

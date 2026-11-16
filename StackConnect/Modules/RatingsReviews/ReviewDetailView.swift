@@ -1,4 +1,5 @@
 import SwiftUI
+import StackProtocols
 
 // MARK: - Factory
 
@@ -141,6 +142,7 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
 
     private let service: (any CustomerReviewsServicing)?
     private let cache: (any CustomerReviewsCaching)?
+    private let analytics: AnalyticsTracking
 
     /// - Parameters:
     ///   - service: the account's reviews backend; `nil` when its credentials
@@ -151,7 +153,8 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
         appName: String,
         account: AccountModel,
         service: (any CustomerReviewsServicing)?,
-        cache: (any CustomerReviewsCaching)? = nil
+        cache: (any CustomerReviewsCaching)? = nil,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = ReviewDetailUiState(
             review: review,
@@ -161,9 +164,13 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
         )
         self.service = service
         self.cache = cache
+        self.analytics = analytics
     }
 
     func submitReply(body: String) async {
+        // Editing replaces the existing reply; a new reply creates one.
+        let action: AnalyticsAction = uiState.isEditingReply ? .updateReviewReply : .replyToReview
+        analytics.track(.buttonTap(uiState.isEditingReply ? .save : .send, on: .reviewReply))
         guard uiState.canReply else {
             uiState.toastMessage = ToastMessage(
                 String(localized: "This account doesn't have permission to reply to reviews."),
@@ -171,7 +178,10 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
             )
             return
         }
-        guard let service else { return }
+        guard let service else {
+            analytics.track(.action(action, on: .reviewReply, result: .failure))
+            return
+        }
 
         uiState.isSending = true
         uiState.replyError = nil
@@ -198,7 +208,9 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
                 icon: "paperplane.fill"
             )
             await cache?.saveResponse(response, forReviewId: reviewId)
+            analytics.track(.action(action, on: .reviewReply, result: .success))
         } catch {
+            analytics.track(.action(action, on: .reviewReply, result: .failure))
             let message = service.message(for: error, operation: .reply)
             uiState.replyError = message
             uiState.toastMessage = ToastMessage(message, icon: "exclamationmark.triangle.fill")
@@ -243,7 +255,12 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
     }
 
     func deleteResponse() async {
-        guard uiState.canDeleteReply, let responseId = uiState.review.responseId, let service else { return }
+        analytics.track(.buttonTap(.confirmDelete, on: .reviewDetail))
+        guard uiState.canDeleteReply, let responseId = uiState.review.responseId else { return }
+        guard let service else {
+            analytics.track(.action(.deleteReviewResponse, on: .reviewDetail, result: .failure))
+            return
+        }
 
         do {
             try await service.deleteReply(responseId: responseId)
@@ -253,7 +270,9 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
             uiState.review.responseState = nil
             uiState.review.responseDate = nil
             uiState.toastMessage = ToastMessage(String(localized: "Reply deleted"), icon: "trash")
+            analytics.track(.action(.deleteReviewResponse, on: .reviewDetail, result: .success))
         } catch {
+            analytics.track(.action(.deleteReviewResponse, on: .reviewDetail, result: .failure))
             uiState.toastMessage = ToastMessage(
                 service.message(for: error, operation: .deleteReply),
                 icon: "exclamationmark.triangle.fill"
@@ -275,6 +294,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
             buildResponseSection()
         }
         .navigationTitle(String(localized: "Review"))
+        .trackScreen(.reviewDetail)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -313,7 +333,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
             Button(String(localized: "Delete"), role: .destructive) {
                 Task { await viewModel.deleteResponse() }
             }
-            Button(String(localized: "Cancel"), role: .cancel) {}
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .reviewDetail, role: .cancel) {}
         } message: {
             Text("Are you sure you want to delete your reply? This action cannot be undone.")
         }
@@ -390,7 +410,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
     private func buildResponseSection() -> some View {
         if let responseBody = viewModel.uiState.review.responseBody, !responseBody.isEmpty {
             Section {
-                Button {
+                StackTrackedButton(.edit, on: .reviewDetail) {
                     if viewModel.uiState.canReply {
                         viewModel.startEditingReply()
                     }
@@ -440,7 +460,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
 
             if viewModel.uiState.canDeleteReply {
                 Section {
-                    Button(role: .destructive) {
+                    StackTrackedButton(.delete, on: .reviewDetail, role: .destructive) {
                         viewModel.uiState.confirmDeleteResponse = true
                     } label: {
                         Label(String(localized: "Delete Reply"), systemImage: "trash")
@@ -450,13 +470,13 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
         } else {
             if viewModel.uiState.canReply {
                 Section {
-                    Button {
+                    StackTrackedButton(.reply, on: .reviewDetail) {
                         viewModel.uiState.showReplySheet = true
                     } label: {
                         Label(String(localized: "Write a Reply"), systemImage: "arrowshape.turn.up.left.fill")
                     }
 
-                    Button {
+                    StackTrackedButton(.replyTemplates, on: .reviewDetail) {
                         viewModel.uiState.showTemplatesSheet = true
                     } label: {
                         Label(String(localized: "Reply Templates"), systemImage: "text.bubble")
@@ -482,6 +502,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
             footer: viewModel.uiState.traits.replyVisibilityNote,
             characterLimit: viewModel.uiState.traits.replyCharacterLimit,
             error: viewModel.uiState.replyError,
+            trackingScreen: .reviewReply,
             isSending: viewModel.uiState.isSending,
             onSend: { text in
                 Task { await viewModel.submitReply(body: text) }

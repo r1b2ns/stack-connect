@@ -8,6 +8,7 @@ import WidgetKit
 protocol AppListViewModelProtocol: ObservableObject {
     var uiState: AppListUiState { get set }
     func loadApps() async
+    func refresh() async
     func toggleArchive(app: AppModel) async
     func toggleFavorite(app: AppModel) async
 }
@@ -56,18 +57,33 @@ final class AppListViewModel: AppListViewModelProtocol {
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         account: AccountModel,
         storage: PersistentStorable? = nil,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = AppListUiState(account: account)
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func loadApps() async {
+        _ = await syncApps()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let synced = await syncApps()
+        analytics.track(.action(.refresh, on: .appList, result: synced ? .success : .failure))
+    }
+
+    /// Loads cached apps, then syncs from the API. Returns `true` when the API
+    /// sync completed.
+    private func syncApps() async -> Bool {
         uiState.isLoading = true
 
         // 1. Load cached apps from SwiftData (offline-first)
@@ -108,7 +124,7 @@ final class AppListViewModel: AppListViewModelProtocol {
                 Log.print.error("[AppList] No credentials found for account: \(self.uiState.account.name)")
                 uiState.isLoading = false
                 uiState.isSyncing = false
-                return
+                return false
             }
 
             let connection = AppleAccountConnection(credentials: credentials)
@@ -168,16 +184,22 @@ final class AppListViewModel: AppListViewModelProtocol {
         } catch {
             uiState.syncError = error.localizedDescription
             Log.print.error("[AppList] Sync failed: \(error.localizedDescription)")
+            uiState.isLoading = false
+            uiState.isSyncing = false
+            return false
         }
 
         uiState.isLoading = false
         uiState.isSyncing = false
+        return true
     }
 
     func toggleArchive(app: AppModel) async {
+        analytics.track(.buttonTap(.archive, on: .appList))
         guard let idx = uiState.apps.firstIndex(where: { $0.id == app.id }) else { return }
         uiState.apps[idx].isArchived.toggle()
         let updated = uiState.apps[idx]
+        let parameters = [AnalyticsParameterKey.enabled: AnalyticsValue.bool(updated.isArchived)]
 
         do {
             try await storage.save(updated, id: "\(uiState.account.id).\(updated.id)")
@@ -188,16 +210,20 @@ final class AppListViewModel: AppListViewModelProtocol {
                 : String(localized: "App unarchived")
             uiState.toastMessage = ToastMessage(text, icon: "archivebox.fill")
             Log.print.info("[AppList] Toggled archive for \(updated.name): \(updated.isArchived)")
+            analytics.track(.action(.toggleArchive, on: .appList, result: .success, parameters: parameters))
         } catch {
             uiState.apps[idx].isArchived.toggle() // revert
             Log.print.error("[AppList] Toggle archive failed: \(error.localizedDescription)")
+            analytics.track(.action(.toggleArchive, on: .appList, result: .failure, parameters: parameters))
         }
     }
 
     func toggleFavorite(app: AppModel) async {
+        analytics.track(.buttonTap(.favorite, on: .appList))
         guard let idx = uiState.apps.firstIndex(where: { $0.id == app.id }) else { return }
         uiState.apps[idx].isFavorite.toggle()
         let updated = uiState.apps[idx]
+        let parameters = [AnalyticsParameterKey.enabled: AnalyticsValue.bool(updated.isFavorite)]
 
         do {
             try await storage.save(updated, id: "\(uiState.account.id).\(updated.id)")
@@ -206,9 +232,11 @@ final class AppListViewModel: AppListViewModelProtocol {
                 : String(localized: "Removed from favorites")
             uiState.toastMessage = ToastMessage(text, icon: updated.isFavorite ? "star.fill" : "star")
             Log.print.info("[AppList] Toggled favorite for \(updated.name): \(updated.isFavorite)")
+            analytics.track(.action(.toggleFavorite, on: .appList, result: .success, parameters: parameters))
         } catch {
             uiState.apps[idx].isFavorite.toggle() // revert
             Log.print.error("[AppList] Toggle favorite failed: \(error.localizedDescription)")
+            analytics.track(.action(.toggleFavorite, on: .appList, result: .failure, parameters: parameters))
         }
     }
 

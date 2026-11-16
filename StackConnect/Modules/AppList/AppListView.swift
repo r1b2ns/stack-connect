@@ -93,14 +93,14 @@ private struct AppListEntry: View {
             ToolbarItem(placement: .topBarTrailing) {
                 switch selectedTab {
                 case .apps:
-                    Button {
+                    StackTrackedButton(.accountSettings, on: .appList) {
                         homeCoordinator.navigateToAccountManagement(account)
                     } label: {
                         Image(systemName: "gearshape")
                     }
                 case .usersAndAccess:
                     if account.canAdd(.users) {
-                        Button {
+                        StackTrackedButton(.inviteUser, on: .userAccess) {
                             userAccessViewModel.uiState.showInviteUser = true
                         } label: {
                             Image(systemName: "plus")
@@ -139,8 +139,9 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
             )
             .toolbar { buildBottomToolbar() }
             .task { await viewModel.loadApps() }
-            .refreshable { await viewModel.loadApps() }
+            .refreshable { await viewModel.refresh() }
             .toast(message: $viewModel.uiState.toastMessage)
+            .trackScreen(.appList)
     }
 
     // MARK: - Content
@@ -209,7 +210,7 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
     }
 
     private func buildAppButton(_ app: AppModel) -> some View {
-        Button {
+        StackTrackedButton(.app, on: .appList) {
             homeCoordinator.navigateToAppDetail(app, account: viewModel.uiState.account)
         } label: {
             buildAppRow(app)
@@ -449,7 +450,7 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
     private func buildBottomToolbar() -> some ToolbarContent {
         ToolbarItemGroup(placement: .bottomBar) {
             Spacer()
-            Button {
+            StackTrackedButton(.archivedApps, on: .appList) {
                 homeCoordinator.navigateToArchivedApps(account: viewModel.uiState.account)
             } label: {
                 Label(String(localized: "Archived"), systemImage: "archivebox")

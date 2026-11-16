@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Capability catalog
 
@@ -55,14 +56,17 @@ final class IdentifierDetailViewModel: IdentifierDetailViewModelProtocol {
     @Published var uiState: IdentifierDetailUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         account: AccountModel,
         bundleId: BundleIdentifierModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = IdentifierDetailUiState(account: account, bundleId: bundleId)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func load() async {
@@ -82,7 +86,11 @@ final class IdentifierDetailViewModel: IdentifierDetailViewModelProtocol {
     }
 
     func rename(to newName: String) async -> Bool {
-        guard let connection = makeConnection() else { return false }
+        analytics.track(.buttonTap(.save, on: .identifierDetail))
+        guard let connection = makeConnection() else {
+            analytics.track(.action(.renameBundleId, on: .identifierDetail, result: .failure))
+            return false
+        }
         let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed != uiState.bundleId.name else { return false }
 
@@ -100,8 +108,10 @@ final class IdentifierDetailViewModel: IdentifierDetailViewModelProtocol {
             )
             NotificationCenter.default.post(name: .bundleIdUpdated, object: uiState.bundleId)
             uiState.isRenaming = false
+            analytics.track(.action(.renameBundleId, on: .identifierDetail, result: .success))
             return true
         } catch {
+            analytics.track(.action(.renameBundleId, on: .identifierDetail, result: .failure))
             uiState.errorMessage = AppleAPIErrorTranslator.friendlyMessage(for: error)
             Log.print.error("[IdentifierDetail] Rename failed: \(error.localizedDescription)")
             uiState.isRenaming = false
@@ -110,7 +120,11 @@ final class IdentifierDetailViewModel: IdentifierDetailViewModelProtocol {
     }
 
     func delete() async -> Bool {
-        guard let connection = makeConnection() else { return false }
+        analytics.track(.buttonTap(.confirmDelete, on: .identifierDetail))
+        guard let connection = makeConnection() else {
+            analytics.track(.action(.deleteBundleId, on: .identifierDetail, result: .failure))
+            return false
+        }
 
         uiState.isDeleting = true
         uiState.errorMessage = nil
@@ -119,8 +133,10 @@ final class IdentifierDetailViewModel: IdentifierDetailViewModelProtocol {
             try await connection.deleteBundleId(id: uiState.bundleId.id)
             NotificationCenter.default.post(name: .bundleIdDeleted, object: uiState.bundleId.id)
             uiState.isDeleting = false
+            analytics.track(.action(.deleteBundleId, on: .identifierDetail, result: .success))
             return true
         } catch {
+            analytics.track(.action(.deleteBundleId, on: .identifierDetail, result: .failure))
             uiState.errorMessage = AppleAPIErrorTranslator.friendlyMessage(for: error)
             Log.print.error("[IdentifierDetail] Delete failed: \(error.localizedDescription)")
             uiState.isDeleting = false
@@ -129,7 +145,13 @@ final class IdentifierDetailViewModel: IdentifierDetailViewModelProtocol {
     }
 
     func enableCapability(typeRaw: String) async {
-        guard let connection = makeConnection() else { return }
+        analytics.track(.buttonTap(.addCapability, on: .addCapability))
+        // `typeRaw` is Apple's capability constant (e.g. `ICLOUD`), never user data.
+        let parameters: [String: AnalyticsValue] = [AnalyticsParameterKey.kind: .string(typeRaw)]
+        guard let connection = makeConnection() else {
+            analytics.track(.action(.enableCapability, on: .addCapability, result: .failure, parameters: parameters))
+            return
+        }
 
         uiState.pendingCapabilityType = typeRaw
         uiState.errorMessage = nil
@@ -140,7 +162,9 @@ final class IdentifierDetailViewModel: IdentifierDetailViewModelProtocol {
                 capabilityTypeRaw: typeRaw
             )
             uiState.capabilities.append(cap)
+            analytics.track(.action(.enableCapability, on: .addCapability, result: .success, parameters: parameters))
         } catch {
+            analytics.track(.action(.enableCapability, on: .addCapability, result: .failure, parameters: parameters))
             uiState.errorMessage = AppleAPIErrorTranslator.friendlyMessage(for: error)
             Log.print.error("[IdentifierDetail] Enable capability failed: \(error.localizedDescription)")
         }
@@ -149,16 +173,26 @@ final class IdentifierDetailViewModel: IdentifierDetailViewModelProtocol {
     }
 
     func disableCapability(id: String) async {
-        guard let connection = makeConnection() else { return }
-
+        analytics.track(.buttonTap(.removeCapability, on: .identifierDetail))
         let removed = uiState.capabilities.first { $0.id == id }
+        var parameters: [String: AnalyticsValue] = [:]
+        if let type = removed?.capabilityType {
+            parameters[AnalyticsParameterKey.kind] = .string(type)
+        }
+        guard let connection = makeConnection() else {
+            analytics.track(.action(.disableCapability, on: .identifierDetail, result: .failure, parameters: parameters))
+            return
+        }
+
         uiState.pendingCapabilityType = removed?.capabilityType
         uiState.errorMessage = nil
 
         do {
             try await connection.disableCapability(capabilityId: id)
             uiState.capabilities.removeAll { $0.id == id }
+            analytics.track(.action(.disableCapability, on: .identifierDetail, result: .success, parameters: parameters))
         } catch {
+            analytics.track(.action(.disableCapability, on: .identifierDetail, result: .failure, parameters: parameters))
             uiState.errorMessage = AppleAPIErrorTranslator.friendlyMessage(for: error)
             Log.print.error("[IdentifierDetail] Disable capability failed: \(error.localizedDescription)")
         }

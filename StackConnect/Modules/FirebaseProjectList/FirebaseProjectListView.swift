@@ -36,13 +36,14 @@ struct FirebaseProjectListView<ViewModel: FirebaseProjectListViewModelProtocol>:
     var body: some View {
         buildContent()
             .navigationTitle(viewModel.uiState.account.name)
+            .trackScreen(.firebaseProjectList)
             .searchable(
                 text: $viewModel.uiState.searchQuery,
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search by name or project ID")
             )
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .toast(message: $viewModel.uiState.toastMessage)
     }
 
@@ -82,7 +83,7 @@ struct FirebaseProjectListView<ViewModel: FirebaseProjectListViewModelProtocol>:
     private func buildList() -> some View {
         List {
             ForEach(viewModel.uiState.filteredProjects) { project in
-                Button {
+                StackTrackedButton(.project, on: .firebaseProjectList) {
                     homeCoordinator.navigateToFirebaseProjectDetail(
                         project: project,
                         account: viewModel.uiState.account

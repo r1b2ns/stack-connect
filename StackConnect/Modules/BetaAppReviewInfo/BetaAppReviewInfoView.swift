@@ -40,6 +40,7 @@ struct BetaAppReviewInfoView<ViewModel: BetaAppReviewInfoViewModelProtocol>: Vie
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Test Information"))
+            .trackScreen(.betaAppReviewInfo)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
             .disabled(viewModel.uiState.isSaving)
@@ -210,7 +211,7 @@ struct BetaAppReviewInfoView<ViewModel: BetaAppReviewInfoViewModelProtocol>: Vie
     }
 
     private func copyButton(value: String) -> some View {
-        Button {
+        StackTrackedButton(.copy, on: .betaAppReviewInfo) {
             UIPasteboard.general.string = value
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         } label: {
@@ -222,7 +223,7 @@ struct BetaAppReviewInfoView<ViewModel: BetaAppReviewInfoViewModelProtocol>: Vie
     }
 
     private func passwordVisibilityButton() -> some View {
-        Button {
+        StackTrackedButton(.togglePasswordVisibility, on: .betaAppReviewInfo) {
             isPasswordVisible.toggle()
         } label: {
             Image(systemName: isPasswordVisible ? "eye.slash" : "eye")

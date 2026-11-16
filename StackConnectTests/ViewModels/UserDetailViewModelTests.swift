@@ -90,13 +90,15 @@ final class UserDetailViewModelTests: XCTestCase {
 
     private func makeSUT(
         user: UserModel,
-        service: MockUserManaging
+        service: MockUserManaging?,
+        analytics: MockAnalyticsTracker = MockAnalyticsTracker()
     ) -> UserDetailViewModel {
         UserDetailViewModel(
             user: user,
             account: makeAccount(),
             keychain: MockKeyStorable(),
-            service: service
+            service: service,
+            analytics: analytics
         )
     }
 
@@ -531,5 +533,108 @@ final class UserDetailViewModelTests: XCTestCase {
 
         XCTAssertFalse(ok)
         XCTAssertEqual(sut.uiState.errorMessage, detail)
+    }
+
+    // MARK: - Analytics events
+
+    func testSaveRoleTracksTapAndSuccessWithRoleConstantOnly() async {
+        let analytics = MockAnalyticsTracker()
+        let sut = makeSUT(user: makeUser(roles: ["DEVELOPER"]), service: MockUserManaging(), analytics: analytics)
+        sut.selectPrimaryRole("APP_MANAGER")
+
+        await sut.saveRole()
+
+        XCTAssertEqual(analytics.taps(of: .save), [.buttonTap(.save, on: .userRoleEditor)])
+        XCTAssertEqual(analytics.actions(of: .updateUserRole), [
+            .action(.updateUserRole, on: .userRoleEditor, result: .success, parameters: [
+                AnalyticsParameterKey.kind: .string("APP_MANAGER")
+            ])
+        ])
+    }
+
+    func testSaveRoleTracksFailureWhenTheAPIRejects() async {
+        let analytics = MockAnalyticsTracker()
+        let mock = MockUserManaging()
+        mock.updateUserError = forbiddenError()
+        let sut = makeSUT(user: makeUser(roles: ["DEVELOPER"]), service: mock, analytics: analytics)
+
+        await sut.saveRole()
+
+        XCTAssertEqual(analytics.results(of: .updateUserRole), [.failure])
+    }
+
+    func testSaveRoleForAccountHolderTracksOnlyTheTap() async {
+        let analytics = MockAnalyticsTracker()
+        let sut = makeSUT(user: makeUser(roles: ["ACCOUNT_HOLDER"]), service: MockUserManaging(), analytics: analytics)
+
+        await sut.saveRole()
+
+        XCTAssertEqual(analytics.taps(of: .save).count, 1)
+        XCTAssertTrue(analytics.actions(of: .updateUserRole).isEmpty)
+    }
+
+    func testSaveResourcesTracksTapAndAccessShape() async {
+        let analytics = MockAnalyticsTracker()
+        let sut = makeSUT(
+            user: makeUser(roles: ["DEVELOPER", "CREATE_APPS"], allAppsVisible: false, provisioningAllowed: true),
+            service: MockUserManaging(),
+            analytics: analytics
+        )
+
+        await sut.saveResources()
+
+        XCTAssertEqual(analytics.taps(of: .save), [.buttonTap(.save, on: .userResourcesEditor)])
+        XCTAssertEqual(analytics.actions(of: .updateUserAccess), [
+            .action(.updateUserAccess, on: .userResourcesEditor, result: .success, parameters: [
+                AnalyticsParameterKey.count: .int(2),
+                AnalyticsParameterKey.scoped: .bool(true),
+                AnalyticsParameterKey.enabled: .bool(true)
+            ])
+        ])
+    }
+
+    func testSaveVisibleAppsTracksSuccessAndFailureWithCount() async {
+        let analytics = MockAnalyticsTracker()
+        let mock = MockUserManaging()
+        let sut = makeSUT(user: makeUser(allAppsVisible: false), service: mock, analytics: analytics)
+        sut.uiState.selectedAppIds = ["app-1", "app-2"]
+
+        await sut.saveVisibleApps()
+        mock.updateVisibleAppsError = forbiddenError()
+        await sut.saveVisibleApps()
+
+        XCTAssertEqual(analytics.taps(of: .save), [
+            .buttonTap(.save, on: .userVisibleAppsEditor),
+            .buttonTap(.save, on: .userVisibleAppsEditor)
+        ])
+        XCTAssertEqual(analytics.actions(of: .updateVisibleApps), [
+            .action(.updateVisibleApps, on: .userVisibleAppsEditor, result: .success, parameters: [AnalyticsParameterKey.count: .int(2)]),
+            .action(.updateVisibleApps, on: .userVisibleAppsEditor, result: .failure, parameters: [AnalyticsParameterKey.count: .int(2)])
+        ])
+    }
+
+    func testDeleteTracksTapAndKind() async {
+        let analytics = MockAnalyticsTracker()
+        let sut = makeSUT(user: makeUser(isPending: true), service: MockUserManaging(), analytics: analytics)
+
+        await sut.deleteUser()
+
+        XCTAssertEqual(analytics.taps(of: .confirmDelete), [.buttonTap(.confirmDelete, on: .userDetail)])
+        XCTAssertEqual(analytics.actions(of: .deleteUser), [
+            .action(.deleteUser, on: .userDetail, result: .success, parameters: [
+                AnalyticsParameterKey.kind: .string("invitation")
+            ])
+        ])
+    }
+
+    func testEditsTrackFailureWithoutCredentials() async {
+        let analytics = MockAnalyticsTracker()
+        let sut = makeSUT(user: makeUser(roles: ["DEVELOPER"]), service: nil, analytics: analytics)
+
+        await sut.saveRole()
+        await sut.deleteUser()
+
+        XCTAssertEqual(analytics.results(of: .updateUserRole), [.failure])
+        XCTAssertEqual(analytics.results(of: .deleteUser), [.failure])
     }
 }

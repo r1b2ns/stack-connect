@@ -63,6 +63,7 @@ struct AnalyticsReportDetailView<ViewModel: AnalyticsReportDetailViewModelProtoc
             buildTableSection()
         }
         .navigationTitle(viewModel.uiState.report.displayName)
+        .trackScreen(.analyticsReportDetail)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { buildToolbar() }
         .task { await viewModel.onAppear() }
@@ -253,7 +254,7 @@ struct AnalyticsReportDetailView<ViewModel: AnalyticsReportDetailViewModelProtoc
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Button {
+            StackTrackedButton(.tryAgain, on: .analyticsReportDetail) {
                 Task { await viewModel.selectGranularity(viewModel.uiState.granularity) }
             } label: {
                 if isReloading {
@@ -355,7 +356,7 @@ struct AnalyticsReportDetailView<ViewModel: AnalyticsReportDetailViewModelProtoc
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
-            Button {
+            StackTrackedButton(.files, on: .analyticsReportDetail) {
                 homeCoordinator.navigateToAnalyticsReportFiles(
                     appId: viewModel.uiState.appId,
                     appName: viewModel.uiState.appName,

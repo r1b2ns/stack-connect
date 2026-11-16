@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -6,6 +7,7 @@ import Foundation
 protocol PlatformBuildsViewModelProtocol: ObservableObject {
     var uiState: PlatformBuildsUiState { get set }
     func load() async
+    func refresh() async
     func loadMore() async
     func expireBuild(_ build: BuildModel) async
 }
@@ -35,19 +37,33 @@ final class PlatformBuildsViewModel: PlatformBuildsViewModelProtocol {
     @Published var uiState: PlatformBuildsUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
     private var lastPageResponse: Any?
 
     init(
         appId: String,
         platform: String,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = PlatformBuildsUiState(appId: appId, platform: platform, account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func load() async {
+        _ = await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let succeeded = await performLoad()
+        analytics.track(.action(.refresh, on: .platformBuilds, result: succeeded ? .success : .failure))
+    }
+
+    private func performLoad() async -> Bool {
+        var succeeded = true
         uiState.isLoading = true
         uiState.error = nil
         uiState.builds = []
@@ -56,7 +72,7 @@ final class PlatformBuildsViewModel: PlatformBuildsViewModelProtocol {
         do {
             guard let connection = createConnection() else {
                 uiState.isLoading = false
-                return
+                return false
             }
 
             let page = try await connection.fetchBuildsPage(
@@ -72,11 +88,13 @@ final class PlatformBuildsViewModel: PlatformBuildsViewModelProtocol {
 
             Log.print.info("[PlatformBuilds] Loaded \(page.builds.count) builds for \(self.uiState.platform), hasMore: \(page.hasNextPage)")
         } catch {
+            succeeded = false
             uiState.error = error.localizedDescription
             Log.print.error("[PlatformBuilds] Load failed: \(error.localizedDescription)")
         }
 
         uiState.isLoading = false
+        return succeeded
     }
 
     func loadMore() async {
@@ -109,11 +127,13 @@ final class PlatformBuildsViewModel: PlatformBuildsViewModelProtocol {
     }
 
     func expireBuild(_ build: BuildModel) async {
+        analytics.track(.buttonTap(.confirmExpire, on: .platformBuilds))
         uiState.isExpiringBuild = true
         uiState.expireError = nil
         do {
             guard let connection = createConnection() else {
                 uiState.isExpiringBuild = false
+                analytics.track(.action(.expireBuild, on: .platformBuilds, result: .failure))
                 return
             }
             try await connection.expireBuild(buildId: build.id)
@@ -121,7 +141,9 @@ final class PlatformBuildsViewModel: PlatformBuildsViewModelProtocol {
                 uiState.builds[idx].isExpired = true
             }
             uiState.toastMessage = ToastMessage(String(localized: "Build expired"), icon: "clock.badge.xmark")
+            analytics.track(.action(.expireBuild, on: .platformBuilds, result: .success))
         } catch {
+            analytics.track(.action(.expireBuild, on: .platformBuilds, result: .failure))
             uiState.expireError = error.localizedDescription
             Log.print.error("[PlatformBuilds] Expire failed: \(error.localizedDescription)")
         }

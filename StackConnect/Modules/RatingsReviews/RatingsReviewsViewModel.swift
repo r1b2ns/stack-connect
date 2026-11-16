@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -9,6 +10,8 @@ protocol RatingsReviewsViewModelProtocol: ObservableObject {
     func loadIfNeeded() async
     /// Loads the first page again (pull to refresh, sort change).
     func load() async
+    /// Pull to refresh: same as `load()`, tracked as a `refresh` action.
+    func refresh() async
     /// Appends the next page. Also the retry after a failed page.
     func loadMore() async
     func applyFilter(rating: Int?) async
@@ -138,9 +141,11 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
     private let service: (any CustomerReviewsServicing)?
     private let cache: (any CustomerReviewsCaching)?
     private let ratingSummaryFetcher: any AppStoreRatingSummaryFetching
+    private let analytics: AnalyticsTracking
     private var nextPageToken: String?
     /// The latest load. Non-`nil` once the screen has loaded (or is loading).
-    private var loadTask: Task<Void, Never>?
+    /// Its value says whether the first page loaded.
+    private var loadTask: Task<Bool, Never>?
     /// The rating summary on screen came from a sweep of every storefront.
     private var hasCompleteRatingSummary = false
     /// Bumped whenever the list starts over (load, sort, filter): a page asked
@@ -159,7 +164,8 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
         account: AccountModel,
         service: (any CustomerReviewsServicing)?,
         cache: (any CustomerReviewsCaching)? = nil,
-        ratingSummaryFetcher: any AppStoreRatingSummaryFetching = ITunesRatingSummaryFetcher()
+        ratingSummaryFetcher: any AppStoreRatingSummaryFetching = ITunesRatingSummaryFetcher(),
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = RatingsReviewsUiState(
             appId: appId,
@@ -170,24 +176,38 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
         self.service = service
         self.cache = cache
         self.ratingSummaryFetcher = ratingSummaryFetcher
+        self.analytics = analytics
     }
 
     func loadIfNeeded() async {
         if let loadTask {
             // Already loaded, or still loading: wait for it, never load again.
-            await loadTask.value
+            _ = await loadTask.value
             return
         }
         await load()
     }
 
     func load() async {
-        let task = Task { await self.performLoad() }
-        loadTask = task
-        await task.value
+        _ = await startLoad()
     }
 
-    private func performLoad() async {
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let succeeded = await startLoad()
+        analytics.track(.action(.refresh, on: .ratingsReviews, result: succeeded ? .success : .failure))
+    }
+
+    /// Runs `performLoad` in a task this ViewModel owns (see the type's docs).
+    /// Returns `true` when the first page loaded.
+    private func startLoad() async -> Bool {
+        let task = Task { await self.performLoad() }
+        loadTask = task
+        return await task.value
+    }
+
+    /// Returns `true` when the first page loaded.
+    private func performLoad() async -> Bool {
         listGeneration += 1
         let generation = listGeneration
         uiState.error = nil
@@ -199,7 +219,7 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
         guard uiState.account.allowsApp(bundleId: uiState.bundleId) else {
             uiState.reviews = []
             uiState.error = String(localized: "This app isn't included in the apps shared with this account.")
-            return
+            return false
         }
 
         // Defense in depth (D16): every entry point checks the `review` view rule
@@ -207,30 +227,33 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
         guard uiState.account.canView(.review) else {
             uiState.reviews = []
             uiState.error = String(localized: "You don't have permission to view ratings and reviews.")
-            return
+            return false
         }
 
         // Offline-first: the cached first page (unfiltered, newest first) while
         // the API answers.
         let cached = isShowingDefaultList ? await cache?.cachedReviews() : nil
-        guard generation == listGeneration else { return }
+        guard generation == listGeneration else { return false }
         let isShowingCache = !(cached?.isEmpty ?? true)
         uiState.reviews = cached ?? []
         uiState.showSyncToast = isShowingCache
         uiState.isLoading = true
 
+        let succeeded: Bool
         if uiState.traits.showsStoreRatingSummary {
             // Fetch App Store rating and reviews in parallel
             async let ratingTask: () = fetchAppStoreRating()
-            async let reviewsTask: () = fetchFirstPage(isShowingCache: isShowingCache, generation: generation)
-            _ = await (ratingTask, reviewsTask)
+            async let reviewsTask: Bool = fetchFirstPage(isShowingCache: isShowingCache, generation: generation)
+            let (_, reviewsLoaded) = await (ratingTask, reviewsTask)
+            succeeded = reviewsLoaded
         } else {
-            await fetchFirstPage(isShowingCache: isShowingCache, generation: generation)
+            succeeded = await fetchFirstPage(isShowingCache: isShowingCache, generation: generation)
         }
 
         if generation == listGeneration {
             uiState.isLoading = false
         }
+        return succeeded
     }
 
     /// App Store rating across every storefront: `averageRating` is a
@@ -254,23 +277,26 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
         Log.print.info("[RatingsReviews] Rating summary across \(summary.storefronts.count) storefronts: avg \(summary.averageRating ?? 0), count \(summary.ratingCount), complete: \(summary.isComplete)")
     }
 
+    /// Returns `true` when the first page was fetched (and is still current).
+    ///
     /// - Parameters:
     ///   - isShowingCache: cached reviews are on screen; an offline failure then
     ///     keeps them without an extra warning (the global offline banner
     ///     already says so).
     ///   - generation: the `listGeneration` this page is for; dropped if the
     ///     list started over meanwhile.
-    private func fetchFirstPage(isShowingCache: Bool, generation: Int) async {
+    @discardableResult
+    private func fetchFirstPage(isShowingCache: Bool, generation: Int) async -> Bool {
         guard let service else {
             uiState.reviews = []
             uiState.error = String(localized: "No credentials found for this account.")
             Log.print.error("[RatingsReviews] No credentials for account: \(self.uiState.account.name)")
-            return
+            return false
         }
 
         do {
             let page = try await fetchPage(after: nil, service: service)
-            guard generation == listGeneration else { return }
+            guard generation == listGeneration else { return false }
 
             uiState.reviews = page.reviews
             uiState.hasMorePages = page.hasNextPage
@@ -280,12 +306,14 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
             }
 
             Log.print.info("[RatingsReviews] Loaded \(page.reviews.count) reviews, hasMore: \(page.hasNextPage), filter: \(self.uiState.filterRating?.description ?? "all")")
+            return true
         } catch {
             Log.print.error("[RatingsReviews] Failed to load: \(error.localizedDescription)")
-            guard generation == listGeneration else { return }
+            guard generation == listGeneration else { return false }
             if !(isShowingCache && OfflineError.isConnectivityFailure(error)) {
                 uiState.error = service.message(for: error, operation: .load)
             }
+            return false
         }
     }
 
@@ -300,11 +328,16 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
         uiState.isLoading = true
         nextPageToken = nil
 
-        await fetchFirstPage(isShowingCache: false, generation: generation)
+        let succeeded = await fetchFirstPage(isShowingCache: false, generation: generation)
 
         if generation == listGeneration {
             uiState.isLoading = false
         }
+
+        // Only the star filter (1–5) is sent; `nil` means "all ratings".
+        var parameters: [String: AnalyticsValue] = [:]
+        if let rating { parameters[AnalyticsParameterKey.rating] = .int(rating) }
+        analytics.track(.action(.filterReviews, on: .ratingsReviews, result: succeeded ? .success : .failure, parameters: parameters))
     }
 
     /// Every call asks the store for at most `1 + maxEmptyPagesSkipped` pages,
@@ -339,6 +372,7 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
     }
 
     func reply(to review: CustomerReviewModel, body: String) async {
+        analytics.track(.buttonTap(.send, on: .reviewReply))
         guard uiState.canReply else {
             uiState.toastMessage = ToastMessage(
                 String(localized: "This account doesn't have permission to reply to reviews."),
@@ -346,7 +380,10 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
             )
             return
         }
-        guard let service else { return }
+        guard let service else {
+            analytics.track(.action(.replyToReview, on: .reviewReply, result: .failure))
+            return
+        }
 
         uiState.isSending = true
         uiState.replyError = nil
@@ -363,7 +400,9 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
             uiState.toastMessage = ToastMessage(String(localized: "Reply sent"), icon: "paperplane.fill")
             Log.print.info("[RatingsReviews] Replied to review \(review.id)")
             await cache?.saveResponse(response, forReviewId: review.id)
+            analytics.track(.action(.replyToReview, on: .reviewReply, result: .success))
         } catch {
+            analytics.track(.action(.replyToReview, on: .reviewReply, result: .failure))
             let message = service.message(for: error, operation: .reply)
             uiState.replyError = message
             uiState.toastMessage = ToastMessage(message, icon: "exclamationmark.triangle.fill")
@@ -382,7 +421,12 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
     }
 
     func deleteResponse(for review: CustomerReviewModel) async {
-        guard uiState.canDeleteReplies, let responseId = review.responseId, let service else { return }
+        analytics.track(.buttonTap(.delete, on: .ratingsReviews))
+        guard uiState.canDeleteReplies, let responseId = review.responseId else { return }
+        guard let service else {
+            analytics.track(.action(.deleteReviewResponse, on: .ratingsReviews, result: .failure))
+            return
+        }
 
         do {
             try await service.deleteReply(responseId: responseId)
@@ -396,7 +440,9 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
 
             uiState.toastMessage = ToastMessage(String(localized: "Reply deleted"), icon: "trash")
             Log.print.info("[RatingsReviews] Deleted response for review \(review.id)")
+            analytics.track(.action(.deleteReviewResponse, on: .ratingsReviews, result: .success))
         } catch {
+            analytics.track(.action(.deleteReviewResponse, on: .ratingsReviews, result: .failure))
             uiState.toastMessage = ToastMessage(
                 service.message(for: error, operation: .deleteReply),
                 icon: "exclamationmark.triangle.fill"

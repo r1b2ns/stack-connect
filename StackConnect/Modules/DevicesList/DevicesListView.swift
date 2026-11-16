@@ -36,6 +36,7 @@ struct DevicesListView<ViewModel: DevicesListViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Devices"))
+            .trackScreen(.devicesList)
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $viewModel.uiState.searchQuery,
@@ -45,12 +46,12 @@ struct DevicesListView<ViewModel: DevicesListViewModelProtocol>: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button {
+                        StackTrackedButton(.registerDevice, on: .devicesList) {
                             showCreate = true
                         } label: {
                             Label(String(localized: "Register Device"), systemImage: "plus")
                         }
-                        Button {
+                        StackTrackedButton(.importDevices, on: .devicesList) {
                             homeCoordinator.navigateToImportDevices(viewModel.uiState.account)
                         } label: {
                             Label(String(localized: "Import from File"), systemImage: "square.and.arrow.down")
@@ -62,7 +63,7 @@ struct DevicesListView<ViewModel: DevicesListViewModelProtocol>: View {
                 }
             }
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .sheet(isPresented: $showCreate) {
                 CreateDeviceSheet(viewModel: viewModel)
             }
@@ -107,7 +108,7 @@ struct DevicesListView<ViewModel: DevicesListViewModelProtocol>: View {
     private func buildList() -> some View {
         List {
             ForEach(viewModel.uiState.filtered) { device in
-                Button {
+                StackTrackedButton(.device, on: .devicesList) {
                     homeCoordinator.navigateToDeviceDetail(
                         device: device,
                         account: viewModel.uiState.account
@@ -177,6 +178,7 @@ private struct CreateDeviceSheet<ViewModel: DevicesListViewModelProtocol>: View 
 
     @ObservedObject var viewModel: ViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.analytics) private var analytics
 
     @State private var name = ""
     @State private var udid = ""
@@ -259,6 +261,8 @@ private struct CreateDeviceSheet<ViewModel: DevicesListViewModelProtocol>: View 
                             .font(.system(.body, design: .monospaced))
 
                         PasteButton(payloadType: String.self) { strings in
+                            // `PasteButton` is a system control, so the tap is tracked here.
+                            analytics.track(.buttonTap(.paste, on: .createDevice))
                             if let value = strings.first {
                                 udid = value.trimmingCharacters(in: .whitespacesAndNewlines)
                             }
@@ -281,10 +285,11 @@ private struct CreateDeviceSheet<ViewModel: DevicesListViewModelProtocol>: View 
                 buildUDIDTutorialSection()
             }
             .navigationTitle(String(localized: "Register Device"))
+            .trackScreen(.createDevice)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button(String(localized: "Cancel")) { dismiss() }
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .createDevice) { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     if viewModel.uiState.isCreating {

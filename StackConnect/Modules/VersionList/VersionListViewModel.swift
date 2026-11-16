@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -6,6 +7,7 @@ import Foundation
 protocol VersionListViewModelProtocol: ObservableObject {
     var uiState: VersionListUiState { get set }
     func loadVersions() async
+    func refresh() async
 }
 
 // MARK: - UiState
@@ -30,20 +32,34 @@ final class VersionListViewModel: VersionListViewModelProtocol {
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         appId: String,
         platform: AppPlatform,
         account: AccountModel,
         storage: PersistentStorable? = nil,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = VersionListUiState(appId: appId, platform: platform, account: account)
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func loadVersions() async {
+        _ = await performLoadVersions()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let succeeded = await performLoadVersions()
+        analytics.track(.action(.refresh, on: .versionList, result: succeeded ? .success : .failure))
+    }
+
+    private func performLoadVersions() async -> Bool {
+        var succeeded = true
         let versionsLimit = 200
         uiState.isLoading = true
 
@@ -71,7 +87,7 @@ final class VersionListViewModel: VersionListViewModelProtocol {
             guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(self.uiState.account.id)") else {
                 uiState.isLoading = false
                 uiState.isSyncing = false
-                return
+                return false
             }
 
             let connection = AppleAccountConnection(credentials: credentials)
@@ -90,12 +106,14 @@ final class VersionListViewModel: VersionListViewModelProtocol {
             Log.print.info("[VersionList] Synced \(platformVersions.count) \(self.uiState.platform.displayName) versions")
 
         } catch {
+            succeeded = false
             uiState.syncError = error.localizedDescription
             Log.print.error("[VersionList] Sync failed: \(error.localizedDescription)")
         }
 
         uiState.isLoading = false
         uiState.isSyncing = false
+        return succeeded
     }
 
     // MARK: - Private

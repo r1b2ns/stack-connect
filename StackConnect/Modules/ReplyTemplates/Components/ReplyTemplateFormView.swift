@@ -53,10 +53,11 @@ struct ReplyTemplateFormView: View {
             .navigationTitle(isEditing
                 ? String(localized: "Edit Template")
                 : String(localized: "New Template"))
+            .trackScreen(.replyTemplateForm)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { dismiss() }
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .replyTemplateForm) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(String(localized: "Save")) {

@@ -46,6 +46,7 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search by name or email")
             )
+            .trackScreen(.userAccess)
             .task { await viewModel.load() }
             .onAppear {
                 // Skip the initial appearance (`.task` already loaded); reload on
@@ -56,7 +57,7 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
                     hasAppeared = true
                 }
             }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .sheet(isPresented: $viewModel.uiState.showInviteUser) {
                 InviteUserSheet { email, firstName, lastName, roles, allApps, provisioning in
                     Task {
@@ -92,7 +93,7 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
                         Task { await viewModel.deleteUser(user) }
                     }
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {}
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .userAccess, role: .cancel) {}
             } message: {
                 if let user = viewModel.uiState.confirmDeleteUser {
                     if user.isPending {
@@ -109,7 +110,7 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
                     set: { if !$0 { viewModel.uiState.inviteError = nil } }
                 )
             ) {
-                Button(String(localized: "OK"), role: .cancel) {
+                StackTrackedButton(String(localized: "OK"), button: .ok, on: .userAccess, role: .cancel) {
                     viewModel.uiState.inviteError = nil
                 }
             } message: {
@@ -124,7 +125,7 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
                     set: { if !$0 { viewModel.uiState.deleteError = nil } }
                 )
             ) {
-                Button(String(localized: "OK"), role: .cancel) {
+                StackTrackedButton(String(localized: "OK"), button: .ok, on: .userAccess, role: .cancel) {
                     viewModel.uiState.deleteError = nil
                 }
             } message: {
@@ -186,7 +187,7 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
     private func buildUserRows() -> some View {
         Section {
                 ForEach(viewModel.uiState.filteredUsers) { user in
-                    Button {
+                    StackTrackedButton(.user, on: .userAccess) {
                         homeCoordinator.navigateToUserDetail(user: user, account: viewModel.uiState.account)
                     } label: {
                         buildUserRow(user)
@@ -194,7 +195,7 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
                     .foregroundStyle(.primary)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         if !user.roles.contains("ACCOUNT_HOLDER") {
-                            Button(role: .destructive) {
+                            StackTrackedButton(.delete, on: .userAccess, role: .destructive) {
                                 viewModel.uiState.confirmDeleteUser = user
                             } label: {
                                 Label(String(localized: "Delete"), systemImage: "trash")
@@ -219,7 +220,7 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(UserRoleFilter.allCases) { filter in
-                    Button {
+                    StackTrackedButton(.filter, on: .userAccess) {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             viewModel.uiState.selectedFilter = filter
                         }
@@ -411,10 +412,11 @@ struct InviteUserSheet: View {
                 }
             }
             .navigationTitle(String(localized: "Invite User"))
+            .trackScreen(.inviteUser)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .inviteUser) {
                         dismiss()
                         onCancel()
                     }
@@ -447,7 +449,7 @@ struct InviteUserSheet: View {
 
     @ViewBuilder
     private func buildRoleToggleRow(value: String, label: String) -> some View {
-        Button {
+        StackTrackedButton(.toggleRole, on: .inviteUser) {
             if selectedRoles.contains(value) {
                 selectedRoles.remove(value)
             } else {

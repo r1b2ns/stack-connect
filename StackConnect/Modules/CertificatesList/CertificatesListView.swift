@@ -35,6 +35,7 @@ struct CertificatesListView<ViewModel: CertificatesListViewModelProtocol>: View 
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Certificates"))
+            .trackScreen(.certificatesList)
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $viewModel.uiState.searchQuery,
@@ -43,7 +44,7 @@ struct CertificatesListView<ViewModel: CertificatesListViewModelProtocol>: View 
             )
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
+                    StackTrackedButton(.add, on: .certificatesList) {
                         homeCoordinator.navigateToCreateCertificate(viewModel.uiState.account)
                     } label: {
                         Image(systemName: "plus")
@@ -52,7 +53,7 @@ struct CertificatesListView<ViewModel: CertificatesListViewModelProtocol>: View 
                 }
             }
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .onReceive(NotificationCenter.default.publisher(for: .certificateRevoked)) { notification in
                 if let id = notification.object as? String {
                     viewModel.removeCertificate(id: id)
@@ -106,7 +107,7 @@ struct CertificatesListView<ViewModel: CertificatesListViewModelProtocol>: View 
             ForEach(viewModel.uiState.groupedByType, id: \.type) { group in
                 Section {
                     ForEach(group.items) { cert in
-                        Button {
+                        StackTrackedButton(.certificate, on: .certificatesList) {
                             homeCoordinator.navigateToCertificateDetail(
                                 certificate: cert,
                                 account: viewModel.uiState.account

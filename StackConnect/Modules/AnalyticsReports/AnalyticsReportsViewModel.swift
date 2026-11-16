@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -45,6 +46,7 @@ final class AnalyticsReportsViewModel: AnalyticsReportsViewModelProtocol {
     @Published private(set) var isHiddenSectionExpanded: Bool = false
 
     private let storage: KeyStorable
+    private let analytics: AnalyticsTracking
 
     private var favoritesKey: String { "analytics.favorites.\(appId)" }
     private var hiddenKey: String { "analytics.hidden.\(appId)" }
@@ -59,12 +61,14 @@ final class AnalyticsReportsViewModel: AnalyticsReportsViewModelProtocol {
         appId: String,
         appName: String,
         account: AccountModel,
-        storage: KeyStorable = UserDefaultsStorable()
+        storage: KeyStorable = UserDefaultsStorable(),
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.appId = appId
         self.appName = appName
         self.account = account
         self.storage = storage
+        self.analytics = analytics
 
         // Hydrate synchronously so there is no empty-state flash on first render.
         let persistedFavorites: [String] = storage.object(forKey: "analytics.favorites.\(appId)") ?? []
@@ -96,6 +100,7 @@ final class AnalyticsReportsViewModel: AnalyticsReportsViewModelProtocol {
     // MARK: - Actions
 
     func toggleFavorite(_ report: AnalyticsCatalogReport) {
+        analytics.track(.buttonTap(.favorite, on: .analyticsReports))
         if favoriteIds.contains(report.id) {
             favoriteIds.remove(report.id)
             Log.print.info("[AnalyticsReports] Unfavorited \(report.apiName, privacy: .public) for app \(self.appId, privacy: .public)")
@@ -106,9 +111,16 @@ final class AnalyticsReportsViewModel: AnalyticsReportsViewModelProtocol {
             Log.print.info("[AnalyticsReports] Favorited \(report.apiName, privacy: .public) for app \(self.appId, privacy: .public)")
         }
         persist()
+        analytics.track(.action(
+            .toggleFavorite,
+            on: .analyticsReports,
+            result: .success,
+            parameters: [AnalyticsParameterKey.enabled: .bool(favoriteIds.contains(report.id))]
+        ))
     }
 
     func toggleHidden(_ report: AnalyticsCatalogReport) {
+        analytics.track(.buttonTap(.hide, on: .analyticsReports))
         if hiddenIds.contains(report.id) {
             hiddenIds.remove(report.id)
             Log.print.info("[AnalyticsReports] Unhid \(report.apiName, privacy: .public) for app \(self.appId, privacy: .public)")
@@ -119,6 +131,12 @@ final class AnalyticsReportsViewModel: AnalyticsReportsViewModelProtocol {
             Log.print.info("[AnalyticsReports] Hid \(report.apiName, privacy: .public) for app \(self.appId, privacy: .public)")
         }
         persist()
+        analytics.track(.action(
+            .toggleHidden,
+            on: .analyticsReports,
+            result: .success,
+            parameters: [AnalyticsParameterKey.enabled: .bool(hiddenIds.contains(report.id))]
+        ))
     }
 
     func toggleHiddenSection() {

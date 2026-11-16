@@ -1,5 +1,6 @@
 import XCTest
 import StackCoreRust
+import StackProtocols
 @testable import StackConnect
 
 @MainActor
@@ -7,16 +8,19 @@ final class SubmissionsViewModelTests: XCTestCase {
 
     private var sut: SubmissionsViewModel!
     private var mockService: MockSubmissionsService!
+    private var analytics: MockAnalyticsTracker!
     private let account = AccountModel(name: "Apple", providerType: .apple)
 
     override func setUp() async throws {
         try await super.setUp()
         mockService = MockSubmissionsService()
+        analytics = MockAnalyticsTracker()
         sut = makeSUT()
     }
 
     override func tearDown() async throws {
         sut = nil
+        analytics = nil
         mockService = nil
         try await super.tearDown()
     }
@@ -27,7 +31,8 @@ final class SubmissionsViewModelTests: XCTestCase {
             appName: "MyApp",
             account: account,
             keychain: MockKeyStorable(),
-            service: mockService
+            service: mockService,
+            analytics: analytics
         )
     }
 
@@ -211,4 +216,47 @@ final class SubmissionsViewModelTests: XCTestCase {
     // MARK: - Test error
 
     private enum TestError: Error { case boom }
+
+    // MARK: - Analytics events
+
+    func testLoadTracksNothing() async {
+        await sut.load()
+
+        XCTAssertTrue(analytics.trackedEvents.isEmpty)
+    }
+
+    func testRefreshTracksSuccessAndFailure() async {
+        await sut.refresh()
+        mockService.fetchError = TestError.boom
+        await sut.refresh()
+
+        XCTAssertEqual(analytics.actions(of: .refresh), [
+            .action(.refresh, on: .submissions, result: .success),
+            .action(.refresh, on: .submissions, result: .failure)
+        ])
+    }
+
+    func testDiscardTracksSuccess() async {
+        await sut.discard(submission(id: "42", state: "READY_FOR_REVIEW"))
+
+        XCTAssertEqual(analytics.actions(of: .discardSubmission), [
+            .action(.discardSubmission, on: .submissions, result: .success)
+        ])
+    }
+
+    func testDiscardTracksFailure() async {
+        mockService.discardError = TestError.boom
+
+        await sut.discard(submission(id: "42", state: "READY_FOR_REVIEW"))
+
+        XCTAssertEqual(analytics.results(of: .discardSubmission), [.failure])
+    }
+
+    func testSubmitTracksSuccessAndFailure() async {
+        await sut.submit(submission(id: "1", state: "READY_FOR_REVIEW"))
+        mockService.submitError = TestError.boom
+        await sut.submit(submission(id: "2", state: "READY_FOR_REVIEW"))
+
+        XCTAssertEqual(analytics.results(of: .submitSubmission), [.success, .failure])
+    }
 }

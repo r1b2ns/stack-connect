@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 import WidgetKit
 
 // MARK: - Protocol
@@ -7,6 +8,7 @@ import WidgetKit
 protocol AppDetailViewModelProtocol: ObservableObject {
     var uiState: AppDetailUiState { get set }
     func refresh() async
+    func pullToRefresh() async
     func createVersions() async
     func deleteVersion(id: String) async
     func prepareCreatePlatform()
@@ -141,19 +143,34 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         app: AppModel,
         account: AccountModel,
         storage: PersistentStorable? = nil,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = AppDetailUiState(app: app, account: account)
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func refresh() async {
+        _ = await sync()
+    }
+
+    /// Pull-to-refresh: same load as `refresh()`, tracked with its outcome.
+    func pullToRefresh() async {
+        let synced = await sync()
+        track(.refresh, synced ? .success : .failure)
+    }
+
+    /// Loads cached data, then syncs from the API. Returns `true` when the API
+    /// sync completed.
+    private func sync() async -> Bool {
         let versionsLimit = 20
 
         // 1. Load cached versions from SwiftData FIRST (offline-first)
@@ -197,7 +214,7 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
         do {
             guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(self.uiState.account.id)") else {
                 uiState.isLoading = false
-                return
+                return false
             }
 
             let connection = AppleAccountConnection(credentials: credentials)
@@ -239,9 +256,12 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
         } catch {
             uiState.syncError = error.localizedDescription
             Log.print.error("[AppDetail] Sync failed: \(error.localizedDescription)")
+            uiState.isLoading = false
+            return false
         }
 
         uiState.isLoading = false
+        return true
     }
 
     /// Opens the create-platform sheet, pre-filling the version field with the
@@ -305,12 +325,15 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
         guard !uiState.selectedPlatforms.isEmpty,
               !uiState.newVersionString.trimmingCharacters(in: .whitespaces).isEmpty else { return }
 
+        analytics.track(.buttonTap(.add, on: .createPlatform))
+        let parameters = [AnalyticsParameterKey.count: AnalyticsValue.int(uiState.selectedPlatforms.count)]
         uiState.isCreating = true
         uiState.createError = nil
 
         do {
             guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(self.uiState.account.id)") else {
                 uiState.isCreating = false
+                analytics.track(.action(.createVersion, on: .createPlatform, result: .failure, parameters: parameters))
                 return
             }
 
@@ -330,12 +353,14 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             uiState.showCreatePlatform = false
             uiState.selectedPlatforms = []
             uiState.newVersionString = "1.0.0"
+            analytics.track(.action(.createVersion, on: .createPlatform, result: .success, parameters: parameters))
 
             await refresh()
 
         } catch {
             uiState.createError = error.localizedDescription
             Log.print.error("[AppDetail] Create version failed: \(error.localizedDescription)")
+            analytics.track(.action(.createVersion, on: .createPlatform, result: .failure, parameters: parameters))
         }
 
         uiState.isCreating = false
@@ -343,7 +368,10 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
 
     func deleteVersion(id: String) async {
         do {
-            guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(self.uiState.account.id)") else { return }
+            guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(self.uiState.account.id)") else {
+                track(.deleteVersion, .failure)
+                return
+            }
 
             let connection = AppleAccountConnection(credentials: credentials)
             try await connection.deleteAppStoreVersion(id: id)
@@ -351,9 +379,11 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             uiState.versions.removeAll { $0.id == id }
             uiState.toastMessage = ToastMessage(String(localized: "Version deleted"), icon: "trash")
             Log.print.info("[AppDetail] Deleted version \(id)")
+            track(.deleteVersion, .success)
         } catch {
             uiState.actionError = error.localizedDescription
             Log.print.error("[AppDetail] Delete version failed: \(error.localizedDescription)")
+            track(.deleteVersion, .failure)
         }
     }
 
@@ -362,16 +392,23 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
     /// error instead of submitting. When valid, it either presents the checklist
     /// sheet (when the setting is on) or falls back to the plain confirmation.
     func startSubmitForReview(_ version: AppStoreVersionModel) async {
+        analytics.track(.buttonTap(.submitForReview, on: .appDetail))
         uiState.actionError = nil
         uiState.isValidatingSubmit = true
 
         guard let connection = createConnection() else {
             uiState.isValidatingSubmit = false
+            track(.preSubmitValidation, .failure)
             return
         }
 
         let checklist = await PreSubmitChecklistLoader.load(source: connection, version: version)
         uiState.isValidatingSubmit = false
+        track(
+            .preSubmitValidation,
+            checklist.validationMessage == nil ? .success : .failure,
+            parameters: [AnalyticsParameterKey.count: .int(checklist.missingRequirements.count)]
+        )
 
         if let message = checklist.validationMessage {
             uiState.actionError = message
@@ -402,14 +439,19 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
         uiState.actionError = nil
 
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                track(.submitForReview, .failure)
+                return
+            }
             try await connection.submitForReview(appId: version.appId, versionId: version.id, platform: version.platform)
             uiState.toastMessage = ToastMessage(String(localized: "Submitted for review"), icon: "paperplane.fill")
             Log.print.info("[AppDetail] Submitted version \(version.id) for review")
+            track(.submitForReview, .success)
             await refresh()
         } catch {
             uiState.actionError = error.localizedDescription
             Log.print.error("[AppDetail] Submit for review failed: \(error.localizedDescription)")
+            track(.submitForReview, .failure)
         }
 
         uiState.isPerformingAction = false
@@ -420,14 +462,19 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
         uiState.actionError = nil
 
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                track(.cancelReview, .failure)
+                return
+            }
             try await connection.cancelReview(appId: version.appId)
             uiState.toastMessage = ToastMessage(String(localized: "Review cancelled"), icon: "xmark.circle.fill")
             Log.print.info("[AppDetail] Cancelled review for version \(version.id)")
+            track(.cancelReview, .success)
             await refresh()
         } catch {
             uiState.actionError = error.localizedDescription
             Log.print.error("[AppDetail] Cancel review failed: \(error.localizedDescription)")
+            track(.cancelReview, .failure)
         }
 
         uiState.isPerformingAction = false
@@ -438,14 +485,19 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
         uiState.actionError = nil
 
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                track(.releaseVersion, .failure)
+                return
+            }
             try await connection.releaseVersion(versionId: version.id)
             uiState.toastMessage = ToastMessage(String(localized: "Version released"), icon: "checkmark.circle.fill")
             Log.print.info("[AppDetail] Released version \(version.id)")
+            track(.releaseVersion, .success)
             await refresh()
         } catch {
             uiState.actionError = error.localizedDescription
             Log.print.error("[AppDetail] Release version failed: \(error.localizedDescription)")
+            track(.releaseVersion, .failure)
         }
 
         uiState.isPerformingAction = false
@@ -456,20 +508,26 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
         uiState.actionError = nil
 
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                track(.rejectVersion, .failure)
+                return
+            }
             try await connection.rejectVersion(versionId: version.id)
             uiState.toastMessage = ToastMessage(String(localized: "Version rejected"), icon: "xmark.circle.fill")
             Log.print.info("[AppDetail] Rejected version \(version.id)")
+            track(.rejectVersion, .success)
             await refresh()
         } catch {
             uiState.actionError = error.localizedDescription
             Log.print.error("[AppDetail] Reject version failed: \(error.localizedDescription)")
+            track(.rejectVersion, .failure)
         }
 
         uiState.isPerformingAction = false
     }
 
     func toggleFavorite() async {
+        analytics.track(.buttonTap(.favorite, on: .appDetail))
         uiState.app.isFavorite.toggle()
         do {
             try await storage.save(uiState.app, id: "\(uiState.account.id).\(uiState.app.id)")
@@ -478,13 +536,16 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
                 : String(localized: "Removed from favorites")
             uiState.toastMessage = ToastMessage(text, icon: uiState.app.isFavorite ? "star.fill" : "star")
             Log.print.info("[AppDetail] Toggled favorite for \(self.uiState.app.name): \(self.uiState.app.isFavorite)")
+            track(.toggleFavorite, .success, parameters: [AnalyticsParameterKey.enabled: .bool(uiState.app.isFavorite)])
         } catch {
             uiState.app.isFavorite.toggle() // revert
             Log.print.error("[AppDetail] Toggle favorite failed: \(error.localizedDescription)")
+            track(.toggleFavorite, .failure, parameters: [AnalyticsParameterKey.enabled: .bool(!uiState.app.isFavorite)])
         }
     }
 
     func toggleArchive() async {
+        analytics.track(.buttonTap(.archive, on: .appDetail))
         uiState.app.isArchived.toggle()
         do {
             try await storage.save(uiState.app, id: "\(uiState.account.id).\(uiState.app.id)")
@@ -495,9 +556,11 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
                 : String(localized: "Unarchived")
             uiState.toastMessage = ToastMessage(text, icon: uiState.app.isArchived ? "archivebox.fill" : "archivebox")
             Log.print.info("[AppDetail] Toggled archive for \(self.uiState.app.name): \(self.uiState.app.isArchived)")
+            track(.toggleArchive, .success, parameters: [AnalyticsParameterKey.enabled: .bool(uiState.app.isArchived)])
         } catch {
             uiState.app.isArchived.toggle() // revert
             Log.print.error("[AppDetail] Toggle archive failed: \(error.localizedDescription)")
+            track(.toggleArchive, .failure, parameters: [AnalyticsParameterKey.enabled: .bool(!uiState.app.isArchived)])
         }
     }
 
@@ -593,6 +656,11 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
         } catch {
             Log.print.error("[AppDetail] Reconciliation failed: \(error.localizedDescription)")
         }
+    }
+
+    /// Sends an `action` event for this screen.
+    private func track(_ action: AnalyticsAction, _ result: AnalyticsResult, parameters: [String: AnalyticsValue] = [:]) {
+        analytics.track(.action(action, on: .appDetail, result: result, parameters: parameters))
     }
 
     private func createConnection() -> AppleAccountConnection? {

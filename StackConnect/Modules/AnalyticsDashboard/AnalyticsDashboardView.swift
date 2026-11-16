@@ -38,9 +38,10 @@ struct AnalyticsDashboardView<ViewModel: AnalyticsDashboardViewModelProtocol>: V
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Analytics Dashboard"))
+            .trackScreen(.analyticsDashboard)
             .navigationBarTitleDisplayMode(.inline)
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
     }
 
     // MARK: - Content
@@ -69,9 +70,10 @@ struct AnalyticsDashboardView<ViewModel: AnalyticsDashboardViewModelProtocol>: V
                     Label(String(localized: "Enable API"), systemImage: "arrow.up.forward.app")
                 }
                 .buttonStyle(.borderedProminent)
+                .trackOpenURL(.enableApi, on: .analyticsDashboard)
             }
 
-            Button(String(localized: "Retry")) {
+            StackTrackedButton(String(localized: "Retry"), button: .tryAgain, on: .analyticsDashboard) {
                 Task { await viewModel.load() }
             }
         }

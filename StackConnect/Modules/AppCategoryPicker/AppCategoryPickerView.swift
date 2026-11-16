@@ -82,6 +82,7 @@ struct AppCategoryPickerView<ViewModel: AppCategoryPickerViewModelProtocol>: Vie
             }
         }
         .navigationTitle(String(localized: "Category"))
+        .trackScreen(.appCategoryPicker)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { buildToolbar() }
         .task { await viewModel.load() }
@@ -92,7 +93,7 @@ struct AppCategoryPickerView<ViewModel: AppCategoryPickerViewModelProtocol>: Vie
                 set: { if !$0 { viewModel.uiState.error = nil } }
             )
         ) {
-            Button(String(localized: "OK"), role: .cancel) {
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .appCategoryPicker, role: .cancel) {
                 viewModel.uiState.error = nil
             }
         } message: {

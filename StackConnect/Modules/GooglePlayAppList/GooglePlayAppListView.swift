@@ -32,14 +32,16 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
+    @Environment(\.analytics) private var analytics
 
     var body: some View {
         buildContent()
             .navigationTitle(viewModel.uiState.account.name)
+            .trackScreen(.googlePlayAppList)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .sheet(isPresented: $viewModel.uiState.showAddApp) {
                 AddGooglePlayAppSheet(
                     isAdding: viewModel.uiState.isAdding,
@@ -71,10 +73,13 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
             StackErrorContentView(
                 message: error,
                 reportContext: errorReportContext,
-                onRetry: { Task { await viewModel.load() } }
+                onRetry: {
+                    analytics.track(.buttonTap(.tryAgain, on: .googlePlayAppList))
+                    Task { await viewModel.load() }
+                }
             ) {
                 if viewModel.uiState.canAddApps {
-                    Button(String(localized: "Add Manually")) {
+                    StackTrackedButton(String(localized: "Add Manually"), button: .add, on: .googlePlayAppList) {
                         viewModel.uiState.showAddApp = true
                     }
                 }
@@ -100,7 +105,7 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
             } description: {
                 Text("No apps found for this account. You can add apps manually by package name.")
             } actions: {
-                Button(String(localized: "Add App")) {
+                StackTrackedButton(String(localized: "Add App"), button: .add, on: .googlePlayAppList) {
                     viewModel.uiState.showAddApp = true
                 }
                 .buttonStyle(.borderedProminent)
@@ -185,7 +190,7 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
         // Account-level actions (settings, rename, export, delete), as on the
         // App Store app list.
         ToolbarItem(placement: .topBarTrailing) {
-            Button {
+            StackTrackedButton(.accountSettings, on: .googlePlayAppList) {
                 homeCoordinator.navigateToAccountManagement(viewModel.uiState.account)
             } label: {
                 Image(systemName: "gearshape")
@@ -195,7 +200,7 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
 
         if viewModel.uiState.canAddApps {
             ToolbarItem(placement: .primaryAction) {
-                Button {
+                StackTrackedButton(.add, on: .googlePlayAppList) {
                     viewModel.uiState.showAddApp = true
                 } label: {
                     Image(systemName: "plus")
@@ -243,10 +248,11 @@ struct AddGooglePlayAppSheet: View {
                 }
             }
             .navigationTitle(String(localized: "Add App"))
+            .trackScreen(.addGooglePlayApp)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .addGooglePlayApp) { onCancel() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isAdding {
