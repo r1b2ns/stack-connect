@@ -114,7 +114,10 @@ final class GooglePlayAppListReleaseStatusTests: XCTestCase {
 
         await sut.load()
 
-        XCTAssertEqual(connection.releaseSummaryRequests.map(\.track), GooglePlayAppListViewModel.standardTracks + ["city-partners"])
+        // The first requests run concurrently, so they may start in any order.
+        let asked = connection.releaseSummaryRequests.map(\.track)
+        XCTAssertEqual(asked.sorted(), (GooglePlayAppListViewModel.standardTracks + ["city-partners"]).sorted())
+        XCTAssertEqual(asked.last, "city-partners", "Custom tracks are asked after the standard ones")
     }
 
     func testSummaryFetchesAreBoundedInFlight() async {

@@ -32,6 +32,11 @@ struct StackAppIcon<Placeholder: View, Loading: View>: View {
         self.loading = loading()
     }
 
+    /// `AsyncImage` keeps a failed phase for good, including a load cancelled
+    /// while a list reloads around it; the icon retries a couple of times.
+    @State private var attempt = 0
+    private static var maxRetries: Int { 2 }
+
     var body: some View {
         Group {
             if let url {
@@ -45,10 +50,16 @@ struct StackAppIcon<Placeholder: View, Loading: View>: View {
                         loading
                     case .failure:
                         placeholder
+                            .task {
+                                guard attempt < Self.maxRetries else { return }
+                                try? await Task.sleep(for: .milliseconds(400))
+                                attempt += 1
+                            }
                     @unknown default:
                         placeholder
                     }
                 }
+                .id(attempt)
             } else {
                 placeholder
             }
