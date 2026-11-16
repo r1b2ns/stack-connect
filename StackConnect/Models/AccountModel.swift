@@ -181,6 +181,12 @@ struct AccountModel: Codable, Identifiable, Hashable {
     /// legacy/created accounts). Non-empty ⇒ only apps whose bundleId ∈
     /// appsBundles are visible for this imported account. See `allowsApp`.
     var appsBundles: [String]?
+    /// Google Play only: the numeric Play Console developer account ID the Users
+    /// tab needs (`developers/{id}/users`, plan U3). Optional — set in Add
+    /// Account or later in Account Settings / the Users tab. Not secret (it is
+    /// in every Play Console URL), so it lives here, not in the Keychain, and
+    /// travels in `.scexport` files.
+    var googlePlayDeveloperId: String?
 
     init(
         id: String = UUID().uuidString,
@@ -193,7 +199,8 @@ struct AccountModel: Codable, Identifiable, Hashable {
         expirationDate: Date? = nil,
         hasPendingAgreements: Bool = false,
         pendingAgreementsDetectedAt: Date? = nil,
-        appsBundles: [String]? = nil
+        appsBundles: [String]? = nil,
+        googlePlayDeveloperId: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -206,6 +213,7 @@ struct AccountModel: Codable, Identifiable, Hashable {
         self.hasPendingAgreements = hasPendingAgreements
         self.pendingAgreementsDetectedAt = pendingAgreementsDetectedAt
         self.appsBundles = appsBundles
+        self.googlePlayDeveloperId = googlePlayDeveloperId
     }
 
     /// Only accounts created on this device, of a provider that supports export,
@@ -270,6 +278,12 @@ struct AccountModel: Codable, Identifiable, Hashable {
     /// A copy with a new name and/or role that keeps every other field —
     /// including the per-app scope (`appsBundles`), which must survive a rename.
     func updating(name: String? = nil, role: AccountRole? = nil) -> AccountModel {
+        updating(name: name, role: role, googlePlayDeveloperId: .some(googlePlayDeveloperId))
+    }
+
+    /// Same as `updating(name:role:)`, also replacing the Google Play developer
+    /// ID (`.some(nil)` clears it).
+    func updating(name: String? = nil, role: AccountRole? = nil, googlePlayDeveloperId: String??) -> AccountModel {
         AccountModel(
             id: id,
             name: name ?? self.name,
@@ -281,7 +295,8 @@ struct AccountModel: Codable, Identifiable, Hashable {
             expirationDate: expirationDate,
             hasPendingAgreements: hasPendingAgreements,
             pendingAgreementsDetectedAt: pendingAgreementsDetectedAt,
-            appsBundles: appsBundles
+            appsBundles: appsBundles,
+            googlePlayDeveloperId: googlePlayDeveloperId ?? self.googlePlayDeveloperId
         )
     }
 
@@ -312,10 +327,11 @@ struct AccountModel: Codable, Identifiable, Hashable {
         pendingAgreementsDetectedAt = try container.decodeIfPresent(Date.self, forKey: .pendingAgreementsDetectedAt)
         // decodeIfPresent ⇒ absent/null decodes to nil ⇒ no restriction (free backward compat).
         appsBundles = try container.decodeIfPresent([String].self, forKey: .appsBundles)
+        googlePlayDeveloperId = try container.decodeIfPresent(String.self, forKey: .googlePlayDeveloperId)
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, providerType, createdAt, rules, origin, role, expirationDate
-        case hasPendingAgreements, pendingAgreementsDetectedAt, appsBundles
+        case hasPendingAgreements, pendingAgreementsDetectedAt, appsBundles, googlePlayDeveloperId
     }
 }

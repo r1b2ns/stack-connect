@@ -235,4 +235,23 @@ final class AccountExporterTests: XCTestCase {
         XCTAssertNil(imported.appsBundles)
         XCTAssertTrue(imported.allowsApp(bundleId: "com.anything"))
     }
+
+    // MARK: - Google Play developer ID (plan U3)
+
+    func testGooglePlayDeveloperIdRoundTrips() async throws {
+        var source = makeGooglePlayAccount()
+        source.googlePlayDeveloperId = "4829103756618820931"
+        let url = try sut.export(request(source))
+
+        XCTAssertEqual(try decrypt(url)["googlePlayDeveloperId"] as? String, "4829103756618820931")
+        let importer = AccountImporter(storage: storage, keychain: MockKeyStorable())
+        let imported = try await importer.importAccount(from: url, password: password, customName: nil).get()
+        XCTAssertEqual(imported.googlePlayDeveloperId, "4829103756618820931")
+    }
+
+    func testGooglePlayWithoutDeveloperIdWritesNoKey() throws {
+        let dict = try decrypt(try sut.export(request(makeGooglePlayAccount())))
+
+        XCTAssertNil(dict["googlePlayDeveloperId"])
+    }
 }

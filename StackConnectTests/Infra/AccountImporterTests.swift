@@ -220,4 +220,24 @@ final class AccountImporterTests: XCTestCase {
         XCTAssertEqual(stored?.issuerID, "issuer")
         XCTAssertEqual(stored?.privateKey, "pk")
     }
+
+    // MARK: - Google Play developer ID (plan U3)
+
+    func testOlderGooglePlayFileHasNoDeveloperId() async throws {
+        let imported = try await importFile(googlePlayPayload()).get()
+
+        XCTAssertNil(imported.googlePlayDeveloperId)
+    }
+
+    func testInvalidDeveloperIdInTheFileIsDropped() async throws {
+        let imported = try await importFile(googlePlayPayload(extra: ["googlePlayDeveloperId": "not a number"])).get()
+
+        XCTAssertNil(imported.googlePlayDeveloperId)
+    }
+
+    func testOldGooglePlayExportHasNoUsersPermission() async throws {
+        let imported = try await importFile(googlePlayPayload()).get()
+
+        XCTAssertFalse(imported.canView(.users), "Files without a `users` permission hide the Users tab (fail closed)")
+    }
 }

@@ -19,6 +19,9 @@ struct AddAccountUiState {
     var privateKey = ""
     var firebaseJSON = ""
     var googlePlayJSON = ""
+    /// Optional Play Console developer account ID (plan U3): digits, or a
+    /// pasted Play Console URL. Empty ⇒ the Users tab asks for it later.
+    var googlePlayDeveloperId = ""
     var isValidating = false
     var validationError: String?
     var isSaved = false
@@ -73,6 +76,11 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
             return
         }
 
+        if uiState.providerType == .googlePlay, !GooglePlayDeveloperId.isAcceptable(uiState.googlePlayDeveloperId) {
+            uiState.validationError = String(localized: "The Developer ID is the number in Play Console › Settings › Developer account. Leave it empty to add it later.")
+            return
+        }
+
         uiState.isValidating = true
         uiState.validationError = nil
 
@@ -89,7 +97,10 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
             let account = AccountModel(
                 name: uiState.accountName.trimmingCharacters(in: .whitespaces),
                 providerType: uiState.providerType,
-                role: uiState.providerType.supportsAccountRole ? uiState.role : .unspecified
+                role: uiState.providerType.supportsAccountRole ? uiState.role : .unspecified,
+                googlePlayDeveloperId: uiState.providerType == .googlePlay
+                    ? GooglePlayDeveloperId.normalized(uiState.googlePlayDeveloperId)
+                    : nil
             )
 
             switch uiState.providerType {

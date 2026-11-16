@@ -53,6 +53,44 @@ protocol GooglePlayReleaseSummariesFetching: Sendable {
 /// core provider.
 typealias GooglePlayAppListConnecting = GooglePlayAccountConnecting & GooglePlayAppIconFetching & GooglePlayReleaseSummariesFetching
 
+// MARK: - Users seam (Android Publisher `developers.users`, no edit)
+
+/// Manages the users of one Play developer account (plan section 7). No edit is
+/// involved, so none of these calls can cancel a CI upload. Permissions cross as
+/// raw Google strings (`GooglePlayPermissionCatalog` types them).
+///
+/// `developerId` is the numeric Play Console developer account ID: Google can't
+/// tell which developer account a service account belongs to, so the account
+/// stores it (`AccountModel.googlePlayDeveloperId`). A wrong ID is an HTTP 404;
+/// a service account without the Admin permission gets `StackError.Auth`.
+protocol GooglePlayUsersConnecting: Sendable {
+    func fetchUsers(developerId: String) async throws -> [GooglePlayUserModel]
+
+    /// Google e-mails the invitation; the user comes back `INVITED`.
+    func inviteUser(
+        developerId: String,
+        email: String,
+        accountPermissions: [String],
+        grants: [GooglePlayGrantModel],
+        expiration: Date?
+    ) async throws -> GooglePlayUserModel
+
+    /// Replaces the account-level permissions and the expiry (`nil` = never).
+    func updateUser(
+        developerId: String,
+        email: String,
+        accountPermissions: [String],
+        expiration: Date?
+    ) async throws -> GooglePlayUserModel
+
+    func deleteUser(developerId: String, email: String) async throws
+
+    /// Creates or replaces the user's access to one app.
+    func setGrant(developerId: String, email: String, packageName: String, permissions: [String]) async throws -> GooglePlayGrantModel
+
+    func deleteGrant(developerId: String, email: String, packageName: String) async throws
+}
+
 // MARK: - App content seams (Android Publisher)
 //
 // Edit side effect: the Android Publisher API only serves app details, store
@@ -152,6 +190,7 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
     GooglePlayBundlesFetching,
     GooglePlayReleaseManaging,
     GooglePlayReviewsConnecting,
+    GooglePlayUsersConnecting,
     @unchecked Sendable {
 
     private let credentials: GooglePlayCredentials
@@ -385,6 +424,86 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
         return CoreReviewMapper.reviewResponse(response)
     }
 
+    // MARK: - Users
+
+    func fetchUsers(developerId: String) async throws -> [GooglePlayUserModel] {
+        let users = try playUsers()
+        let infos = try await callRustCore { try await users.fetchUsers(developerId: developerId) }
+        Log.print.info("[GooglePlay] Fetched \(infos.count) users (Rust core)")
+        return infos.map(Self.mapUser)
+    }
+
+    func inviteUser(
+        developerId: String,
+        email: String,
+        accountPermissions: [String],
+        grants: [GooglePlayGrantModel],
+        expiration: Date?
+    ) async throws -> GooglePlayUserModel {
+        let users = try playUsers()
+        let info = try await callRustCore {
+            try await users.inviteUser(
+                developerId: developerId,
+                email: email,
+                accountPermissions: accountPermissions,
+                grants: grants.map { PlayGrantInfo(packageName: $0.packageName, appLevelPermissions: $0.appLevelPermissions) },
+                expirationTime: expiration.map(Self.formatExpiration)
+            )
+        }
+        Log.print.info("[GooglePlay] Invited a user (Rust core)")
+        return Self.mapUser(info)
+    }
+
+    func updateUser(
+        developerId: String,
+        email: String,
+        accountPermissions: [String],
+        expiration: Date?
+    ) async throws -> GooglePlayUserModel {
+        let users = try playUsers()
+        let info = try await callRustCore {
+            try await users.updateUser(
+                developerId: developerId,
+                email: email,
+                accountPermissions: accountPermissions,
+                expirationTime: expiration.map(Self.formatExpiration)
+            )
+        }
+        Log.print.info("[GooglePlay] Updated a user's permissions (Rust core)")
+        return Self.mapUser(info)
+    }
+
+    func deleteUser(developerId: String, email: String) async throws {
+        let users = try playUsers()
+        try await callRustCore { try await users.deleteUser(developerId: developerId, email: email) }
+        Log.print.info("[GooglePlay] Removed a user (Rust core)")
+    }
+
+    func setGrant(developerId: String, email: String, packageName: String, permissions: [String]) async throws -> GooglePlayGrantModel {
+        let users = try playUsers()
+        let info = try await callRustCore {
+            try await users.setGrant(developerId: developerId, email: email, packageName: packageName, appLevelPermissions: permissions)
+        }
+        Log.print.info("[GooglePlay] Set a user's access to \(packageName) (Rust core)")
+        return GooglePlayGrantModel(packageName: info.packageName, appLevelPermissions: info.appLevelPermissions)
+    }
+
+    func deleteGrant(developerId: String, email: String, packageName: String) async throws {
+        let users = try playUsers()
+        try await callRustCore { try await users.deleteGrant(developerId: developerId, email: email, packageName: packageName) }
+        Log.print.info("[GooglePlay] Removed a user's access to \(packageName) (Rust core)")
+    }
+
+    /// The `PlayUsers` handle, online only.
+    private func playUsers() throws -> PlayUsers {
+        try requireOnline()
+        let provider = try rustCoreProvider()
+        guard let users = provider.playUsers() else {
+            throw translate(.Unsupported(message: "Users capability is not available for this provider."))
+        }
+        return users
+    }
+
     func disconnect() {
         lock.withLock { rustProvider = nil }
         Log.print.info("[GooglePlay] Disconnected")
@@ -439,6 +558,32 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
     }
 
     // MARK: - Mapping
+
+    /// RFC 3339, as Google expects `expirationTime`.
+    static func formatExpiration(_ date: Date) -> String {
+        ISO8601DateFormatter().string(from: date)
+    }
+
+    /// RFC 3339 with or without fractional seconds; `nil` when unparseable.
+    static func parseExpiration(_ value: String?) -> Date? {
+        guard let value, !value.isEmpty else { return nil }
+        let formatter = ISO8601DateFormatter()
+        if let date = formatter.date(from: value) { return date }
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: value)
+    }
+
+    static func mapUser(_ info: StackCoreRust.PlayUserInfo) -> GooglePlayUserModel {
+        GooglePlayUserModel(
+            email: info.email,
+            resourceName: info.name,
+            accessState: GooglePlayUserAccessState(rawValue: info.accessState),
+            expirationTime: parseExpiration(info.expirationTime),
+            developerAccountPermissions: info.developerAccountPermissions,
+            grants: info.grants.map { GooglePlayGrantModel(packageName: $0.packageName, appLevelPermissions: $0.appLevelPermissions) },
+            partial: info.partial
+        )
+    }
 
     /// `AppDetailsInfo.appId` is the package name for Google Play.
     static func mapAppDetails(_ info: StackCoreRust.AppDetailsInfo) -> GooglePlayAppDetailsModel {

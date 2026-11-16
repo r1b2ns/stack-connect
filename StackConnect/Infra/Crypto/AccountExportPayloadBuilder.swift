@@ -9,6 +9,9 @@ import Foundation
 /// dependency, which keeps it trivially testable.
 enum AccountExportPayloadBuilder {
 
+    /// Payload key of the Google Play developer account ID.
+    static let googlePlayDeveloperIdKey = "googlePlayDeveloperId"
+
     /// Assembles the export dictionary and serializes it to a pretty-printed JSON
     /// string. Returns `nil` if serialization fails.
     ///
@@ -49,6 +52,12 @@ enum AccountExportPayloadBuilder {
         // older importers keep treating the file as "all apps allowed".
         if let appsBundles, !appsBundles.isEmpty {
             exportDict["appsBundles"] = appsBundles
+        }
+
+        // Google Play developer account ID (plan U3): not secret, written only
+        // when set. Older importers ignore the key.
+        if account.providerType == .googlePlay, let developerId = account.googlePlayDeveloperId, !developerId.isEmpty {
+            exportDict[Self.googlePlayDeveloperIdKey] = developerId
         }
 
         if let credentials, !credentials.isEmpty {

@@ -21,8 +21,10 @@ import Foundation
 /// 5. for Google Play, the reviews the Home sync cached for the account's apps
 ///    (kept when another Play account still lists the package) and the review
 ///    rotation cursor;
-/// 6. the `AccountModel` itself (`account.id`);
-/// 7. the keychain credentials (`"credentials.<accountId>"`).
+/// 6. for Google Play, the cached users of the developer account
+///    (`GooglePlayUsersCache`, `googleplay-users.<accountId>`: e-mail addresses);
+/// 7. the `AccountModel` itself (`account.id`);
+/// 8. the keychain credentials (`"credentials.<accountId>"`).
 ///
 /// Error semantics:
 /// - Reads propagate. They all run before anything is deleted, so a failed read
@@ -93,6 +95,10 @@ enum AccountCascadeDeleter {
 
         for deletion in googlePlayCacheDeletions {
             await deletion()
+        }
+
+        if account.providerType == .googlePlay {
+            try? await storage.delete(GooglePlayUsersCache.self, id: GooglePlayUsersCache.cacheKey(accountId: account.id))
         }
 
         try await storage.delete(AccountModel.self, id: account.id)

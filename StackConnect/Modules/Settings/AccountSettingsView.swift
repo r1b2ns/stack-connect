@@ -33,6 +33,7 @@ private struct AccountSettingsEntry: View {
 protocol AccountSettingsViewModelProtocol: ObservableObject {
     var uiState: AccountSettingsUiState { get set }
     func save() async
+    func saveDeveloperId() async
     func exportAccountWithRules(exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL?
     func appsForExport() async -> [ExportableApp]
 }
@@ -43,6 +44,8 @@ struct AccountSettingsUiState {
     var account: AccountModel
     var editingName: String
     var editingRole: AccountRole
+    /// Google Play developer ID being edited (digits or a Play Console URL).
+    var editingDeveloperId = ""
     var toastMessage: ToastMessage?
 }
 
@@ -95,6 +98,28 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
         }
     }
 
+    /// Saves the Google Play developer ID (plan U3); an empty field clears it.
+    func saveDeveloperId() async {
+        let input = uiState.editingDeveloperId
+        guard GooglePlayDeveloperId.isAcceptable(input) else {
+            uiState.toastMessage = ToastMessage(
+                String(localized: "Enter the number from Play Console › Settings › Developer account."),
+                icon: "exclamationmark.triangle.fill"
+            )
+            return
+        }
+        let updated = uiState.account.updating(googlePlayDeveloperId: .some(GooglePlayDeveloperId.normalized(input)))
+        do {
+            try await storage.save(updated, id: updated.id)
+            uiState.account = updated
+            uiState.toastMessage = ToastMessage(String(localized: "Saved"), icon: "checkmark.circle.fill")
+            analytics.track(.action(.saveAccount, on: .accountSettings, result: .success))
+        } catch {
+            Log.print.error("[AccountSettings] Failed to save the developer ID: \(error.localizedDescription)")
+            analytics.track(.action(.saveAccount, on: .accountSettings, result: .failure))
+        }
+    }
+
     func exportAccountWithRules(exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL? {
         let url = makeExportFile(exportName: exportName, rules: rules, password: password, expirationDate: expirationDate, appsBundles: appsBundles)
         analytics.track(.action(
@@ -137,6 +162,7 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
     @State private var showExport = false
     @State private var shareItem: ShareableFileURL?
     @State private var showNameEdit = false
+    @State private var showDeveloperIdEdit = false
 
     /// Only the rule resources that apply to the account's provider.
     private var resources: [AccountRuleResource] {
@@ -191,6 +217,19 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
         } message: {
             Text(String(localized: "Enter a new name for this account."))
         }
+        .alert(
+            String(localized: "Developer ID"),
+            isPresented: $showDeveloperIdEdit
+        ) {
+            TextField(String(localized: "Developer ID"), text: $viewModel.uiState.editingDeveloperId)
+                .keyboardType(.numbersAndPunctuation)
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .accountSettings, role: .cancel) {}
+            StackTrackedButton(String(localized: "Save"), button: .save, on: .accountSettings) {
+                Task { await viewModel.saveDeveloperId() }
+            }
+        } message: {
+            Text("The number in Play Console › Settings › Developer account. The Users tab needs it.")
+        }
     }
 
     // MARK: - Info Section
@@ -225,6 +264,10 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
                 buildRolePicker()
             }
 
+            if viewModel.uiState.account.providerType == .googlePlay {
+                buildDeveloperIdRow()
+            }
+
             HStack {
                 Text(String(localized: "Origin"))
                     .foregroundStyle(.secondary)
@@ -253,6 +296,29 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
         } header: {
             Text(String(localized: "Account"))
         }
+    }
+
+    /// Google Play developer ID (plan U3), editable for created and imported accounts.
+    private func buildDeveloperIdRow() -> some View {
+        StackTrackedButton(.editDeveloperId, on: .accountSettings) {
+            viewModel.uiState.editingDeveloperId = viewModel.uiState.account.googlePlayDeveloperId ?? ""
+            showDeveloperIdEdit = true
+        } label: {
+            HStack {
+                Text(String(localized: "Developer ID"))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(viewModel.uiState.account.googlePlayDeveloperId ?? String(localized: "Not set"))
+                    .foregroundStyle(viewModel.uiState.account.googlePlayDeveloperId == nil ? .secondary : .primary)
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Image(systemName: "pencil")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .foregroundStyle(.primary)
     }
 
     /// App Store Connect role. Not shown for providers without roles (Google Play).

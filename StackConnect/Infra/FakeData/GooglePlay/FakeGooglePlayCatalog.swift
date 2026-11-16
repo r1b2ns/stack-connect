@@ -47,7 +47,7 @@ enum FakeGooglePlayCatalog {
 
     static func northwind(clock: FakeClock) -> FakeGooglePlayState {
         var state = FakeGooglePlayState()
-        state.users = users()
+        state.users = users(clock: clock)
         for app in apps {
             state.apps.append(AppInfo(id: app.packageName, name: app.name, bundleId: app.packageName, platform: "ANDROID"))
             state.iconUrls[app.packageName] = FakeMedia.iconURL(name: app.name, symbol: app.symbol, color: app.color)
@@ -97,30 +97,54 @@ enum FakeGooglePlayCatalog {
         }
     }
 
-    /// The account's users (`developers/{id}/users`).
-    static func users() -> [PlayUserInfo] {
-        let all = apps.map(\.packageName)
+    /// The Play Console developer account ID of the fake account (set on the
+    /// seeded `AccountModel`; the fake users capability accepts any number).
+    static let northwindDeveloperId = "4829103756618820931"
+
+    /// The account's users (`developers/{id}/users`): two admins (a person and
+    /// this account's own service account, which needs Admin to manage users), a
+    /// release manager, a release engineer and a support agent with per-app
+    /// grants, finance, a pending invitation, an expired invitation, an access
+    /// that ran out and the CI service account.
+    static func users(clock: FakeClock = FakeClock()) -> [PlayUserInfo] {
+        func user(
+            _ email: String,
+            _ state: String = "ACCESS_GRANTED",
+            expires: String? = nil,
+            account: [String] = [],
+            grants: [PlayGrantInfo] = []
+        ) -> PlayUserInfo {
+            PlayUserInfo(email: email, name: "developers/0/users/\(email)", accessState: state, expirationTime: expires,
+                         developerAccountPermissions: account, grants: grants, partial: false)
+        }
+        func grant(_ packageName: String, _ permissions: [String]) -> PlayGrantInfo {
+            PlayGrantInfo(packageName: packageName, appLevelPermissions: ["CAN_VIEW_NON_FINANCIAL_DATA"] + permissions)
+        }
         return [
-            PlayUserInfo(email: "dana.whitfield@northwind.example", name: "developers/0/users/dana.whitfield@northwind.example",
-                         accessState: "ACCESS_GRANTED", expirationTime: nil,
-                         developerAccountPermissions: ["CAN_MANAGE_PERMISSIONS_GLOBAL"], grants: [], partial: false),
-            PlayUserInfo(email: "omar.haddad@northwind.example", name: "developers/0/users/omar.haddad@northwind.example",
-                         accessState: "ACCESS_GRANTED", expirationTime: nil,
-                         developerAccountPermissions: ["CAN_VIEW_NON_FINANCIAL_DATA_GLOBAL", "CAN_MANAGE_PUBLIC_APKS_GLOBAL",
-                                                       "CAN_MANAGE_TRACK_APKS_GLOBAL", "CAN_MANAGE_PUBLIC_LISTING_GLOBAL"],
-                         grants: [], partial: false),
-            PlayUserInfo(email: "support@northwind.example", name: "developers/0/users/support@northwind.example",
-                         accessState: "ACCESS_GRANTED", expirationTime: nil, developerAccountPermissions: [],
-                         grants: all.prefix(2).map { PlayGrantInfo(packageName: $0, appLevelPermissions: ["CAN_VIEW_NON_FINANCIAL_DATA", "CAN_REPLY_TO_REVIEWS"]) },
-                         partial: false),
-            PlayUserInfo(email: "kai.nakamura@contractor.example", name: "developers/0/users/kai.nakamura@contractor.example",
-                         accessState: "INVITED", expirationTime: nil, developerAccountPermissions: [],
-                         grants: [PlayGrantInfo(packageName: "com.northwind.harbor", appLevelPermissions: ["CAN_MANAGE_TRACK_APKS", "CAN_VIEW_NON_FINANCIAL_DATA"])],
-                         partial: false),
-            PlayUserInfo(email: "ci-publisher@northwind-labs.iam.example", name: "developers/0/users/ci-publisher@northwind-labs.iam.example",
-                         accessState: "ACCESS_GRANTED", expirationTime: nil,
-                         developerAccountPermissions: ["CAN_MANAGE_TRACK_APKS_GLOBAL", "CAN_VIEW_NON_FINANCIAL_DATA_GLOBAL"],
-                         grants: [], partial: false)
+            user("dana.whitfield@northwind.example", account: ["CAN_MANAGE_PERMISSIONS_GLOBAL"]),
+            user("omar.haddad@northwind.example",
+                 account: ["CAN_VIEW_NON_FINANCIAL_DATA_GLOBAL", "CAN_VIEW_APP_QUALITY_GLOBAL", "CAN_MANAGE_PUBLIC_APKS_GLOBAL",
+                           "CAN_MANAGE_TRACK_APKS_GLOBAL", "CAN_MANAGE_TRACK_USERS_GLOBAL"]),
+            user("aiko.kimura@northwind.example", grants: [
+                grant("com.northwind.trailhead", ["CAN_MANAGE_PUBLIC_APKS", "CAN_MANAGE_TRACK_APKS", "CAN_MANAGE_PUBLIC_LISTING", "CAN_REPLY_TO_REVIEWS"]),
+                grant("com.northwind.ledger", ["CAN_REPLY_TO_REVIEWS"])
+            ]),
+            user("support@northwind.example", grants: [
+                grant("com.northwind.trailhead", ["CAN_REPLY_TO_REVIEWS"]),
+                grant("com.northwind.mosaic", ["CAN_REPLY_TO_REVIEWS"]),
+                grant("com.northwind.harbor", ["CAN_REPLY_TO_REVIEWS"])
+            ]),
+            user("priya.raman@northwind.example",
+                 account: ["CAN_VIEW_NON_FINANCIAL_DATA_GLOBAL", "CAN_VIEW_FINANCIAL_DATA_GLOBAL", "CAN_MANAGE_ORDERS_GLOBAL"]),
+            user("kai.nakamura@contractor.example", "INVITED", expires: clock.iso(daysFromNow: 45),
+                 grants: [grant("com.northwind.harbor", ["CAN_MANAGE_TRACK_APKS"])]),
+            user("joana.lima@freelance.example", "INVITATION_EXPIRED",
+                 grants: [grant("com.northwind.mosaic", ["CAN_MANAGE_TRACK_APKS", "CAN_MANAGE_TRACK_USERS"])]),
+            user("lena.fischer@agency.example", "ACCESS_EXPIRED", expires: clock.iso(daysAgo: 12),
+                 account: ["CAN_VIEW_NON_FINANCIAL_DATA_GLOBAL", "CAN_MANAGE_PUBLIC_LISTING_GLOBAL"]),
+            user(northwindClientEmail, account: ["CAN_MANAGE_PERMISSIONS_GLOBAL"]),
+            user("ci-publisher@northwind-labs.iam.example",
+                 account: ["CAN_VIEW_NON_FINANCIAL_DATA_GLOBAL", "CAN_MANAGE_TRACK_APKS_GLOBAL", "CAN_MANAGE_PUBLIC_APKS_GLOBAL"])
         ]
     }
 

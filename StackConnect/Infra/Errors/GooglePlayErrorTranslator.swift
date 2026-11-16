@@ -31,6 +31,16 @@ enum GooglePlayErrorTranslator {
         /// `applyReleaseChange` (a committed edit): a refusal carries Google's
         /// own validation message, which is the only useful detail.
         case releaseChange
+        /// The developer account's users (`developers.users`): an HTTP 404 is
+        /// a wrong developer ID, a 403 / `Auth` a service account without the
+        /// Admin permission.
+        case users
+        /// Inviting a user: as `users`, plus a 409 (already a user or invited)
+        /// and a 400 (typically an address that isn't a Google account).
+        case inviteUser
+        /// Changing or removing an existing user or app access: as `users`,
+        /// except that a 404 means the user (or the access) is already gone.
+        case userChange
     }
 
     static func friendlyMessage(for error: Error, operation: Operation = .general) -> String {
@@ -49,6 +59,11 @@ enum GooglePlayErrorTranslator {
             // The core's detail is about key parsing internals — not actionable.
             return String(localized: "The service account key is invalid. Download a new JSON key from Google Cloud and try again.")
 
+        case .Auth(let message) where operation.isUsers:
+            let lead = String(localized: "To manage users, this service account needs the “Admin (all permissions)” permission in Play Console › Users and permissions.")
+            let detail = message.trimmingCharacters(in: .whitespacesAndNewlines)
+            return detail.isEmpty ? lead : "\(lead)\n\(detail)"
+
         case .Auth(let message):
             let lead = String(localized: "Google Play denied access to this service account.")
             let detail = message.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -59,6 +74,9 @@ enum GooglePlayErrorTranslator {
 
         case .Http(let status, let message) where operation == .releaseChange:
             return releaseChangeMessage(status: Int(status), googleMessage: message)
+
+        case .Http(let status, let message) where operation == .inviteUser && status == 400:
+            return inviteRefusalMessage(googleMessage: message)
 
         case .Http(let status, _):
             return httpMessage(status: Int(status), operation: operation)
@@ -122,6 +140,26 @@ enum GooglePlayErrorTranslator {
         }
     }
 
+    /// A refused invitation: Google names an address that isn't a Google
+    /// account; anything else shows Google's own text.
+    private static func inviteRefusalMessage(googleMessage: String) -> String {
+        let detail = googleMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowered = detail.lowercased()
+        if lowered.contains("google account") || lowered.contains("not a valid") || lowered.contains("invalid email") {
+            return String(localized: "Google Play can only invite Google accounts. Check the address, or ask the person which Google account (Gmail or Google Workspace) to use.")
+        }
+        let lead = String(localized: "Google Play couldn't send this invitation.")
+        return detail.isEmpty ? lead : "\(lead)\n\(detail)"
+    }
+
+    /// True for the error a wrong developer ID produces on the users list
+    /// (HTTP 404, or a 403 that isn't about permissions), so the Users tab can
+    /// offer to correct the ID (plan U3).
+    static func isWrongDeveloperId(_ error: Error) -> Bool {
+        guard case .Http(let status, _)? = error as? StackError else { return false }
+        return status == 404 || status == 403
+    }
+
     private static var genericMessage: String {
         String(localized: "Something went wrong while talking to Google Play. Try again.")
     }
@@ -130,6 +168,14 @@ enum GooglePlayErrorTranslator {
         switch status {
         case 400 where operation == .replyToReview:
             return String(localized: "Google Play rejected this reply. Replies are limited to about \(GooglePlayReviewLimits.replyCharacterLimit) characters — shorten it and try again.")
+        case 404 where operation == .userChange:
+            return String(localized: "This user or app access is no longer on Google Play. Refresh and try again.")
+        case 403 where operation.isUsers:
+            return String(localized: "Google Play refused access to this developer account. Check the Developer ID, and that the service account has the “Admin (all permissions)” permission.")
+        case 404 where operation == .users || operation == .inviteUser:
+            return String(localized: "Google Play found no developer account with this ID. Check the Developer ID in Play Console › Settings › Developer account.")
+        case 409 where operation == .inviteUser:
+            return String(localized: "This person already has access to this developer account or has a pending invitation.")
         case 403:
             // The core reports missing access as `.Auth`; a bare 403 is the same
             // problem without Google's detail.
@@ -149,6 +195,12 @@ enum GooglePlayErrorTranslator {
         default:
             return String(localized: "Google Play returned an unexpected error (HTTP \(status)).")
         }
+    }
+}
+
+private extension GooglePlayErrorTranslator.Operation {
+    var isUsers: Bool {
+        self == .users || self == .inviteUser || self == .userChange
     }
 }
 

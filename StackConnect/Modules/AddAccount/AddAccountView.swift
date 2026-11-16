@@ -62,6 +62,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
 
                 if viewModel.uiState.providerType == .googlePlay {
                     buildGooglePlayCredentialsSection()
+                    buildGooglePlayDeveloperIdSection()
                     buildGooglePlayTutorialSection()
                 }
 
@@ -241,6 +242,24 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
             header: String(localized: "Google Play Credentials"),
             footer: String(localized: "Paste or import the service account's JSON key. Enable the Google Play Developer Reporting API in its Google Cloud project, then invite the service account e-mail in Play Console › Users and permissions with at least \"View app information (read-only)\". Access can take a while to propagate.")
         )
+    }
+
+    /// Optional (plan U3): only the Users tab needs it, so adding an account for
+    /// releases and reviews is never blocked on it.
+    private func buildGooglePlayDeveloperIdSection() -> some View {
+        Section {
+            LabeledContent(String(localized: "Developer ID")) {
+                TextField(String(localized: "Optional"), text: $viewModel.uiState.googlePlayDeveloperId)
+                    .multilineTextAlignment(.trailing)
+                    .keyboardType(.numbersAndPunctuation)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+            }
+        } header: {
+            Text("Developer Account")
+        } footer: {
+            Text("Needed only to manage users. It's the number in Play Console › Settings › Developer account (also in every Play Console URL). You can add it later in Account Settings.")
+        }
     }
 
     private func buildGooglePlayTutorialSection() -> some View {

@@ -117,6 +117,12 @@ struct AccountImporter {
         let appsBundles = (dict["appsBundles"] as? [String])
             ?? (dict["appsBundles"] as? [Any])?.compactMap { $0 as? String }
 
+        // Google Play developer account ID (plan U3). Absent in older files ⇒
+        // nil ⇒ the Users tab asks for it. Invalid values are dropped.
+        let googlePlayDeveloperId = providerType == .googlePlay
+            ? (dict[AccountExportPayloadBuilder.googlePlayDeveloperIdKey] as? String).flatMap(GooglePlayDeveloperId.normalized)
+            : nil
+
         // 6. Credentials: validate, check duplicates, store
         guard let credentials = dict["credentials"] as? [String: String] else {
             return failure(String(localized: "Missing or invalid 'credentials' field."))
@@ -152,7 +158,8 @@ struct AccountImporter {
             origin: .imported,
             role: role,
             expirationDate: expirationDate,
-            appsBundles: appsBundles
+            appsBundles: appsBundles,
+            googlePlayDeveloperId: googlePlayDeveloperId
         )
 
         do {

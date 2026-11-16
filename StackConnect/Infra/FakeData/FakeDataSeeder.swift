@@ -14,7 +14,7 @@ import SwiftData
 enum FakeDataSeeder {
 
     /// Bump to re-seed existing fake stores after the seeded accounts change.
-    static let seedVersion = "v2"
+    static let seedVersion = "v3"
     static let markerTypeName = "FakeDataSeedMarker"
 
     enum AccountID {
@@ -33,7 +33,8 @@ enum FakeDataSeeder {
             AccountModel(id: AccountID.northwindFirebase, name: "Northwind Labs", providerType: .firebase,
                          createdAt: clock.date(daysAgo: 300), role: .admin),
             AccountModel(id: AccountID.northwindGooglePlay, name: "Northwind Labs", providerType: .googlePlay,
-                         createdAt: clock.date(daysAgo: 90))
+                         createdAt: clock.date(daysAgo: 90),
+                         googlePlayDeveloperId: FakeGooglePlayCatalog.northwindDeveloperId)
         ]
     }
 
