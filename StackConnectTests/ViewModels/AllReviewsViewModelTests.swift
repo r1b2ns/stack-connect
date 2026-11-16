@@ -70,7 +70,7 @@ final class AllReviewsViewModelTests: XCTestCase {
         await sut.load()
 
         XCTAssertEqual(sut.uiState.groups.count, 1)
-        XCTAssertEqual(sut.uiState.groups.first?.app.id, "app1")
+        XCTAssertEqual(sut.uiState.groups.first?.appId, "app1")
         XCTAssertEqual(sut.uiState.groups.first?.reviews.count, 1)
     }
 
@@ -149,5 +149,64 @@ final class AllReviewsViewModelTests: XCTestCase {
         await sut.load()
 
         XCTAssertTrue(sut.uiState.isEmpty)
+    }
+
+    // MARK: - Both stores (plan S4)
+
+    func testGroupsAppStoreAndGooglePlayReviewsByApp() async throws {
+        let apple = AccountModel(id: "asc", name: "ASC", providerType: .apple)
+        let play = AccountModel(id: "play", name: "Play", providerType: .googlePlay)
+        try await storage.save(apple, id: apple.id)
+        try await storage.save(play, id: play.id)
+        let app = AppModel(id: "1", name: "Pulse", bundleId: "com.pulse", platform: "IOS", accountId: apple.id)
+        try await storage.save(app, id: "\(apple.id).1")
+        try await storage.save([GooglePlayAppItem(id: "com.t", packageName: "com.t", title: "Trailhead", isManuallyAdded: false)],
+                               id: GooglePlayAppItem.cacheKey(accountId: play.id))
+        try await saveReview("a1", appId: "1", hoursAgo: 3)
+        try await saveReview("com.t/1", appId: "com.t", hoursAgo: 1)
+        try await saveReview("com.t/2", appId: "com.t", hoursAgo: 5)
+
+        await sut.load()
+
+        XCTAssertEqual(sut.uiState.groups.map(\.appName), ["Trailhead", "Pulse"])
+        XCTAssertEqual(sut.uiState.groups.first?.reviews.map(\.review.id), ["com.t/1", "com.t/2"])
+        XCTAssertEqual(sut.uiState.groups.first?.target, .googlePlay(GooglePlayAppItem(id: "com.t", packageName: "com.t", title: "Trailhead", isManuallyAdded: false)))
+        XCTAssertEqual(sut.uiState.groups.first?.account, play)
+    }
+
+    func testSamePackageUnderTwoPlayAccountsIsOneGroup() async throws {
+        for id in ["play-a", "play-b"] {
+            try await storage.save(AccountModel(id: id, name: id, providerType: .googlePlay), id: id)
+            try await storage.save([GooglePlayAppItem(id: "com.t", packageName: "com.t", title: "Trailhead", isManuallyAdded: false)],
+                                   id: GooglePlayAppItem.cacheKey(accountId: id))
+        }
+        try await saveReview("com.t/1", appId: "com.t", hoursAgo: 1)
+
+        await sut.load()
+
+        XCTAssertEqual(sut.uiState.groups.count, 1)
+        XCTAssertEqual(sut.uiState.groups.first?.reviews.count, 1)
+    }
+
+    /// The same App Store app under two accounts used to crash
+    /// `Dictionary(uniqueKeysWithValues:)`.
+    func testDuplicateAppIdDoesNotCrash() async throws {
+        for id in ["asc-a", "asc-b"] {
+            try await storage.save(AccountModel(id: id, name: id, providerType: .apple), id: id)
+            let app = AppModel(id: "1", name: "Pulse", bundleId: "com.pulse", accountId: id)
+            try await storage.save(app, id: "\(id).1")
+        }
+        try await saveReview("a1", appId: "1", hoursAgo: 1)
+
+        await sut.load()
+
+        XCTAssertEqual(sut.uiState.groups.count, 1)
+        XCTAssertEqual(sut.uiState.groups.first?.reviews.map(\.review.id), ["a1"])
+    }
+
+    private func saveReview(_ id: String, appId: String, hoursAgo: Double) async throws {
+        var review = CustomerReviewModel(id: id, rating: 4, body: "Body", createdDate: Date().addingTimeInterval(-hoursAgo * 3600))
+        review.appId = appId
+        try await storage.save(review, id: CustomerReviewModel.storageId(appId: appId, reviewId: id))
     }
 }

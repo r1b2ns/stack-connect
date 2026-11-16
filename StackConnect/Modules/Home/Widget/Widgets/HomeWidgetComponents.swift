@@ -138,23 +138,6 @@ enum HomeWidgetDataLoader {
         }
     }
 
-    /// Resolves the account a row belongs to, for navigation into App Detail.
-    ///
-    /// The empty placeholder is a last-resort fallback for a non-optional return:
-    /// rows are filtered by `filterKnownAccounts` before they reach the view, so a
-    /// miss here means either the account list came back empty (the filter's
-    /// guard, so orphans legitimately pass through) or an account disappeared
-    /// between load and tap. It is logged rather than silently fabricated —
-    /// silently minting a blank account is what masked the orphaned records that
-    /// caused duplicate rows in the first place.
-    static func account(for app: AppModel, in map: [String: AccountModel]) -> AccountModel {
-        if let account = map[app.accountId] { return account }
-        Log.print.notice(
-            "[Widget] App '\(app.name, privacy: .public)' (\(app.id, privacy: .public)) references unknown account \(app.accountId, privacy: .public) — using placeholder."
-        )
-        return AccountModel(id: app.accountId, name: "", providerType: .apple)
-    }
-
 }
 
 // MARK: - Header

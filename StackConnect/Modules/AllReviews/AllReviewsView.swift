@@ -61,33 +61,20 @@ struct AllReviewsView<ViewModel: AllReviewsViewModelProtocol>: View {
         List {
             ForEach(viewModel.uiState.groups) { group in
                 Section {
-                    ForEach(group.reviews) { review in
+                    ForEach(group.reviews) { item in
                         StackTrackedButton(.review, on: .allReviews) {
-                            coordinator.navigateToReviewDetail(
-                                review: review,
-                                appName: group.app.name,
-                                account: group.account
-                            )
+                            coordinator.open(item)
                         } label: {
-                            HomeReviewRowView(
-                                item: DashboardReview(
-                                    review: review,
-                                    provider: .apple,
-                                    accountId: group.app.accountId,
-                                    appId: group.app.id,
-                                    appName: group.app.name,
-                                    iconUrl: group.app.iconUrl,
-                                    platform: DashboardPlatform(raw: group.app.platform),
-                                    target: .appStore(group.app),
-                                    account: group.account
-                                ),
-                                showsApp: false
-                            )
+                            HomeReviewRowView(item: item, showsApp: false)
                         }
                         .foregroundStyle(.primary)
                     }
                 } header: {
                     buildSectionHeader(group)
+                } footer: {
+                    if group.provider == .googlePlay {
+                        Text(String(localized: "Google Play only shares reviews with a comment from the last 7 days."))
+                    }
                 }
             }
         }
@@ -95,19 +82,19 @@ struct AllReviewsView<ViewModel: AllReviewsViewModelProtocol>: View {
 
     private func buildSectionHeader(_ group: AllReviewsAppGroup) -> some View {
         HStack(spacing: 8) {
-            HomeAppIconView(
-                url: group.app.iconUrl.flatMap { URL(string: $0) },
-                size: 22
-            )
-            Text(group.app.name)
+            HomeAppIconView(url: group.iconURL, size: 22)
+            Text(group.appName)
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .lineLimit(1)
+            if let platform = group.platform {
+                StackPlatformGlyphView(platform: platform)
+            }
 
             Spacer()
 
             StackTrackedButton(.seeMore, on: .allReviews) {
-                coordinator.navigateToAppDetail(group.app, account: group.account)
+                coordinator.open(group.target, accountId: group.accountId, account: group.account)
             } label: {
                 HStack(spacing: 2) {
                     Text(String(localized: "See more"))
