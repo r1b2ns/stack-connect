@@ -164,7 +164,7 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
         account: AccountModel,
         service: (any CustomerReviewsServicing)?,
         cache: (any CustomerReviewsCaching)? = nil,
-        ratingSummaryFetcher: any AppStoreRatingSummaryFetching = ITunesRatingSummaryFetcher(),
+        ratingSummaryFetcher: any AppStoreRatingSummaryFetching = BackendEnvironment.ratingSummaryFetcher,
         analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = RatingsReviewsUiState(

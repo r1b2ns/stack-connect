@@ -4,7 +4,11 @@ final class UserDefaultsStorable: KeyStorable {
 
     private let defaults: UserDefaults
 
-    init(defaults: UserDefaults = .standard) {
+    /// Defaults used when none is injected: `.standard`, or a separate suite in
+    /// the DEBUG fake data mode (set once at launch by `FakeDataBootstrap`).
+    nonisolated(unsafe) static var sharedDefaults: UserDefaults = .standard
+
+    init(defaults: UserDefaults = UserDefaultsStorable.sharedDefaults) {
         self.defaults = defaults
     }
 

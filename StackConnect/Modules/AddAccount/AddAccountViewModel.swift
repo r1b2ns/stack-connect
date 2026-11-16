@@ -121,7 +121,7 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
                 }
 
                 let config = try FirebaseConfiguration(serviceAccountJSON: jsonData)
-                let provider = APIProviderFirebase(configuration: config)
+                let provider = BackendEnvironment.firebaseProviders.makeProvider(configuration: config)
                 let _ = try await provider.request(FirebaseAPI.v1beta1.projects.get())
 
                 let credentials = FirebaseCredentials(serviceAccountJSON: json)

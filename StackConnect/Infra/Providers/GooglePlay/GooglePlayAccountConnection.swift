@@ -115,6 +115,10 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
     /// waiting for a network timeout.
     private let connectivity: ConnectivityProviding
 
+    /// Builds the core provider (the real Rust core in production, in-memory
+    /// fakes in DEBUG fake data mode).
+    private let coreProviders: any CoreProviderMaking
+
     /// Serialises the lazy build of `rustProvider`: `@unchecked Sendable` means
     /// two tasks may ask for the provider at once.
     private let lock = NSLock()
@@ -125,11 +129,13 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
     init(
         credentials: GooglePlayCredentials,
         featureFlags: FeatureFlags = .shared,
-        connectivity: ConnectivityProviding = ConnectivityMonitor.shared
+        connectivity: ConnectivityProviding = ConnectivityMonitor.shared,
+        coreProviders: any CoreProviderMaking = BackendEnvironment.coreProviders
     ) {
         self.credentials = credentials
         self.featureFlags = featureFlags
         self.connectivity = connectivity
+        self.coreProviders = coreProviders
     }
 
     /// Throws `OfflineError.noConnection` when the device is offline so network
@@ -301,7 +307,7 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
             }
             let serviceAccount = try GooglePlayServiceAccount(credentials: credentials)
             do {
-                let provider = try connect(
+                let provider = try coreProviders.connect(
                     kind: .googlePlay,
                     accountId: serviceAccount.clientEmail,
                     store: GooglePlayCredentialStore(serviceAccount: serviceAccount),

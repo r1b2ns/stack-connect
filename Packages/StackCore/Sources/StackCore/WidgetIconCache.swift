@@ -18,7 +18,16 @@ public enum WidgetIconCache {
 
     // MARK: - Paths
 
+    /// Replaces the App Group location (set once at launch, before any read or
+    /// write). The DEBUG fake data mode points it at a private folder so demo
+    /// icons never land in the container the widget extension reads.
+    nonisolated(unsafe) public static var directoryOverride: URL?
+
     public static func directory() -> URL? {
+        if let directoryOverride {
+            try? FileManager.default.createDirectory(at: directoryOverride, withIntermediateDirectories: true)
+            return directoryOverride
+        }
         guard let base = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: AppGroup.identifier
         ) else { return nil }

@@ -48,7 +48,7 @@ public final class APIProviderFirebase: @unchecked Sendable {
     // MARK: - Properties
 
     private let configuration: FirebaseConfiguration
-    private let authenticator: FirebaseAuthenticator
+    private let authenticator: RequestAuthenticating
     private let requestExecutor: RequestExecutor
     private let encoder: JSONEncoder
 
@@ -98,13 +98,33 @@ public final class APIProviderFirebase: @unchecked Sendable {
     /// - Parameters:
     ///   - configuration: Firebase service account configuration.
     ///   - requestExecutor: Optional custom request executor. Defaults to URLSession.
-    public init(
+    public convenience init(
         configuration: FirebaseConfiguration,
         requestExecutor: RequestExecutor = DefaultRequestExecutor()
     ) {
+        self.init(
+            configuration: configuration,
+            requestExecutor: requestExecutor,
+            authenticator: FirebaseAuthenticator(configuration: configuration)
+        )
+    }
+
+    /// Creates a provider with a custom authenticator — the seam for hosts that
+    /// serve the API in-process (e.g. a demo / fake-data mode) and must never
+    /// exchange the service-account JWT with Google's token endpoint.
+    ///
+    /// - Parameters:
+    ///   - configuration: Firebase service account configuration.
+    ///   - requestExecutor: Executes the authenticated requests.
+    ///   - authenticator: Adds credentials to every outgoing request.
+    public init(
+        configuration: FirebaseConfiguration,
+        requestExecutor: RequestExecutor,
+        authenticator: RequestAuthenticating
+    ) {
         self.configuration = configuration
         self.requestExecutor = requestExecutor
-        self.authenticator = FirebaseAuthenticator(configuration: configuration)
+        self.authenticator = authenticator
         self.encoder = JSONEncoder()
         self.encoder.dateEncodingStrategy = .iso8601
     }

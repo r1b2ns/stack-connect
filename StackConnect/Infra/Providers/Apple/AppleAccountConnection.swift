@@ -14,6 +14,10 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     /// timing out. Injected (defaults to the shared monitor) for testability.
     private let connectivity: ConnectivityProviding
 
+    /// Builds the core provider / sync service (the real Rust core in
+    /// production, in-memory fakes in DEBUG fake data mode).
+    private let coreProviders: any CoreProviderMaking
+
     /// Lazily-built Rust core provider, reused across `validateCredentials()` and
     /// `fetchApps()` within a single connection. Only created when the flag is ON.
     private var rustProvider: StackCoreRust.Provider?
@@ -25,11 +29,13 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     init(
         credentials: AppleCredentials,
         featureFlags: FeatureFlags = .shared,
-        connectivity: ConnectivityProviding = ConnectivityMonitor.shared
+        connectivity: ConnectivityProviding = ConnectivityMonitor.shared,
+        coreProviders: any CoreProviderMaking = BackendEnvironment.coreProviders
     ) {
         self.credentials = credentials
         self.featureFlags = featureFlags
         self.connectivity = connectivity
+        self.coreProviders = coreProviders
     }
 
     /// Guards mutating operations: throws `OfflineError.noConnection` when the
@@ -67,7 +73,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
 
     func syncApps(accountId: String, store: BlobStore) async throws -> [StackProtocols.AppInfo] {
         let provider = try rustCoreProvider()
-        let syncService = makeSyncService(provider: provider, store: store, accountId: accountId)
+        let syncService = coreProviders.makeSyncService(provider: provider, store: store, accountId: accountId)
         let coreApps = try await callRustCore { try await syncService.syncApps() }
         let apps = coreApps.map { app in
             StackProtocols.AppInfo(
@@ -2208,7 +2214,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             return rustProvider
         }
         do {
-            let provider = try connect(
+            let provider = try coreProviders.connect(
                 kind: .appStoreConnect,
                 accountId: credentials.issuerID,
                 store: rustCredentialStore,
