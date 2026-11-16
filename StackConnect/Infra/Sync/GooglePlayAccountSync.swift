@@ -42,7 +42,7 @@ struct GooglePlayReviewRotation: Codable, Hashable, Sendable {
 /// - Release summaries (`canView(.version)` only): standard tracks plus custom
 ///   tracks known from the tracks cache, at most `maxConcurrentSummaryFetches`
 ///   at once; an app's `googleplay-releases.*` entry is replaced only when every
-///   track answered.
+///   track answered. Lifecycle changes become `SyncChange.StatusChange`s (H8).
 /// - Reviews (`canView(.review)` only): the first page per app, saved as
 ///   `CustomerReviewModel` under `review.{packageName}.{reviewId}` next to the
 ///   App Store ones (plan H4). Full sync reads every app, at most
@@ -101,7 +101,7 @@ struct GooglePlayAccountSync: Sendable {
 
         var change = SyncChange()
         if account.canView(.version) {
-            await syncReleaseSummaries(for: apps)
+            change.statusChanges = await syncReleaseSummaries(for: apps)
         }
         var reviewsSaved = 0
         if account.canView(.review) {
@@ -118,8 +118,10 @@ struct GooglePlayAccountSync: Sendable {
 
     // MARK: - Release summaries
 
-    /// Fetches and caches the summaries of every app.
-    private func syncReleaseSummaries(for apps: [GooglePlayAppItem]) async {
+    /// Fetches and caches the summaries of every app; returns the releases whose
+    /// lifecycle state changed since the previous cache (new releases and the
+    /// first sync are skipped, like App Store status changes, plan H8).
+    private func syncReleaseSummaries(for apps: [GooglePlayAppItem]) async -> [SyncChange.StatusChange] {
         var requests: [(packageName: String, track: String)] = []
         for app in apps {
             for track in await GooglePlayAppListSync.tracksToAsk(packageName: app.packageName, accountId: account.id, storage: storage) {
@@ -133,17 +135,43 @@ struct GooglePlayAccountSync: Sendable {
             logTag: "Sync][GooglePlay"
         )
 
+        var changes: [SyncChange.StatusChange] = []
         for app in apps {
             guard let summaries = result.summaries[app.packageName] else { continue }
             let store = GooglePlayAppCacheStore<GooglePlayReleaseSummariesCache>(
                 storage: storage, accountId: account.id, packageName: app.packageName
             )
+            let previous = await store.load()
             await store.save(GooglePlayReleaseSummariesCache(
                 accountId: account.id,
                 packageName: app.packageName,
                 summaries: summaries,
                 fetchedAt: Date()
             ))
+            if let previous {
+                changes += Self.statusChanges(from: previous.summaries, to: summaries, app: app, accountId: account.id)
+            }
+        }
+        return changes
+    }
+
+    /// Releases (by track + version codes) present in both lists whose
+    /// lifecycle state differs.
+    static func statusChanges(
+        from previous: [GooglePlayReleaseSummaryModel],
+        to current: [GooglePlayReleaseSummaryModel],
+        app: GooglePlayAppItem,
+        accountId: String
+    ) -> [SyncChange.StatusChange] {
+        let before = Dictionary(previous.map { ($0.releaseKey, $0.lifecycleState) }, uniquingKeysWith: { first, _ in first })
+        return current.compactMap { summary in
+            guard let old = before[summary.releaseKey], old != summary.lifecycleState else { return nil }
+            return SyncChange.StatusChange(
+                accountId: accountId,
+                appId: app.packageName,
+                appName: app.displayName,
+                status: SyncChange.StatusLabel(googlePlay: summary)
+            )
         }
     }
 

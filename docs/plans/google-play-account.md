@@ -126,9 +126,9 @@ Google-side setup the user must do: enable the **Google Play Developer Reporting
 - A reply sent from the review detail updates the detail and the Play cache, but not the list behind it (same as before for App Store); the list catches up on refresh.
 - Writing listings / tracks (commit an edit) is out of scope: everything except replies stays read-only.
 
-### Phase 4 — Home / sync integration
-- Android apps in the Home dashboard and widgets (`AppPlatform.android`), background sync of Play accounts through the core `SyncService`, Play reviews in AllReviews.
-- Keep D14: a background Play sync may list apps and reviews, but must never call the edit-based reads.
+### Phase 4 — Home / sync integration ✅
+- Done as section 6 of `google-play-releases.md` (decisions H1–H8, tasks S1–S7): Play apps stay out of `AppModel` (no `AppPlatform.android`); the Home widgets, All Reviews, the WidgetKit snapshot and the local notifications read provider-neutral rows built from `AppModel` and the Play caches.
+- D14 kept: the background Play sync (`GooglePlayAccountSync`) lists apps, icons, release summaries and reviews only, never an edit-based read.
 
 ## 3. Verification (every task)
 

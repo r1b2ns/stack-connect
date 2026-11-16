@@ -21,7 +21,9 @@ enum LocalNotificationService {
 
     // MARK: - Scheduling
 
-    /// One grouped notification for all app status changes in this sync.
+    /// One grouped notification for all status changes in this sync, App Store
+    /// apps and Google Play releases alike (plan H8). A single change opens its
+    /// app in its own store (`DeepLinkResolver`).
     static func scheduleStatusChanges(_ changes: [SyncChange.StatusChange]) async {
         guard !changes.isEmpty, await isAuthorized() else { return }
 
@@ -31,11 +33,11 @@ enum LocalNotificationService {
 
         if changes.count == 1, let change = changes.first {
             title = change.appName
-            body = change.newState.displayName
+            body = change.status.text
             link = .app(accountId: change.accountId, appId: change.appId)
         } else {
             title = String(localized: "\(changes.count) apps changed status")
-            body = collapsedBody(changes.map { "\($0.appName) — \($0.newState.displayName)" })
+            body = collapsedBody(changes.map { "\($0.appName) — \($0.status.text)" })
             link = .home
         }
 

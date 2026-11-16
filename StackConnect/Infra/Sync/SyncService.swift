@@ -367,7 +367,7 @@ final class SyncService: ObservableObject {
                             accountId: account.id,
                             appId: app.id,
                             appName: app.name,
-                            newState: current
+                            status: SyncChange.StatusLabel(appStore: current)
                         )
                     )
                 }

@@ -123,6 +123,36 @@ final class GooglePlayAccountSyncTests: XCTestCase {
         XCTAssertEqual(connection.reviewsPageRequests.count, 1)
     }
 
+    // MARK: - Status changes (H8)
+
+    func testLifecycleChangesBecomeNeutralStatusChangesAfterTheFirstSync() async {
+        connection.fetchAppsHandler = { [playApp("com.a", name: "Alpha")] }
+        let state = LockedValue<GooglePlayReleaseLifecycleState>(.inReview)
+        connection.fetchReleaseSummariesHandler = { _, track in
+            track == "production" ? [GooglePlayReleaseSummaryModel(track: track, name: "2.8.1 (2811)", lifecycleState: state.value, versionCodes: ["2811"])] : []
+        }
+
+        let first = await sync()
+        XCTAssertTrue(first.statusChanges.isEmpty, "The first sync has nothing to compare with")
+
+        let unchanged = await sync()
+        XCTAssertTrue(unchanged.statusChanges.isEmpty)
+
+        state.value = .approvedNotPublished
+        let changed = await sync()
+        XCTAssertEqual(changed.statusChanges.count, 1)
+        XCTAssertEqual(changed.statusChanges.first?.appId, "com.a")
+        XCTAssertEqual(changed.statusChanges.first?.appName, "Alpha")
+        XCTAssertEqual(changed.statusChanges.first?.status.text, "Production · Approved, not published (2.8.1)")
+        XCTAssertEqual(changed.statusChanges.first?.status.color, .yellow)
+    }
+
+    func testAppStoreStatusLabelUsesTheStateName() {
+        let label = SyncChange.StatusLabel(appStore: .readyForSale)
+        XCTAssertEqual(label.text, AppStoreState.readyForSale.displayName)
+        XCTAssertEqual(label.color, .green)
+    }
+
     // MARK: - Reviews (H4)
 
     func testReviewsAreSavedAsCustomerReviewsKeyedByPackage() async throws {
@@ -183,4 +213,15 @@ final class GooglePlayAccountSyncTests: XCTestCase {
 
 private func playApp(_ packageName: String, name: String? = nil) -> StackProtocols.AppInfo {
     StackProtocols.AppInfo(id: packageName, name: name ?? packageName, bundleId: packageName, platform: "ANDROID")
+}
+
+/// A value shared with `@Sendable` mock handlers.
+private final class LockedValue<Value>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _value: Value
+    init(_ value: Value) { _value = value }
+    var value: Value {
+        get { lock.withLock { _value } }
+        set { lock.withLock { _value = newValue } }
+    }
 }
