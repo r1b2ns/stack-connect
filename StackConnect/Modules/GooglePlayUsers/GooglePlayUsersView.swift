@@ -7,6 +7,7 @@ import SwiftUI
 struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
+    @EnvironmentObject private var homeCoordinator: HomeCoordinator
     @Environment(\.analytics) private var analytics
 
     /// The first appearance is loaded by `.task`; later ones (back from a
@@ -140,8 +141,13 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
             } else {
                 Section {
                     ForEach(users) { user in
-                        buildRow(user)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) { buildSwipeActions(user) }
+                        StackTrackedButton(.user, on: .googlePlayUsers) {
+                            homeCoordinator.navigateToGooglePlayUserDetail(user, account: viewModel.uiState.account)
+                        } label: {
+                            buildRow(user)
+                        }
+                        .foregroundStyle(.primary)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) { buildSwipeActions(user) }
                     }
                 } header: {
                     Text("Users (\(users.count))")

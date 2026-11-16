@@ -464,6 +464,8 @@ private extension View {
                 GooglePlayReleaseDetailViewFactory.build(app: app, account: account, track: track, release: release)
             case .googlePlayAppInfo(let app, let account):
                 GooglePlayAppInfoViewFactory.build(app: app, account: account)
+            case .googlePlayUserDetail(let user, let account):
+                GooglePlayUserDetailViewFactory.build(user: user, account: account)
             case .appDetail(let app, let account):
                 AppDetailViewFactory.build(app: app, account: account)
             case .versionList(let appId, let platform, let account):

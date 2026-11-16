@@ -218,3 +218,46 @@ enum GooglePlayDeveloperId {
 private extension Character {
     var isASCIIDigit: Bool { isASCII && isNumber }
 }
+
+// MARK: - Cache store
+
+/// Reads and updates one account's users cache, so a write made on a user's
+/// detail shows in the list on the way back without a new request. Failures
+/// are logged and swallowed (the next load re-reads Google).
+struct GooglePlayUsersCacheStore: Sendable {
+
+    let storage: PersistentStorable
+    let accountId: String
+
+    var key: String { GooglePlayUsersCache.cacheKey(accountId: accountId) }
+
+    func load() async -> GooglePlayUsersCache? {
+        do {
+            return try await storage.fetch(GooglePlayUsersCache.self, id: key)
+        } catch {
+            Log.print.error("[GooglePlayUsers] Cache load failed: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    func save(_ users: [GooglePlayUserModel]) async {
+        do {
+            try await storage.save(GooglePlayUsersCache(accountId: accountId, users: users, fetchedAt: Date()), id: key)
+        } catch {
+            Log.print.error("[GooglePlayUsers] Cache save failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Replaces (or adds) `user` in the cache, keeping the others.
+    func upsert(_ user: GooglePlayUserModel) async {
+        guard let cache = await load() else { return }
+        var users = cache.users.filter { $0.id != user.id }
+        users.append(user)
+        await save(users)
+    }
+
+    func remove(email: String) async {
+        guard let cache = await load() else { return }
+        await save(cache.users.filter { !$0.matches(email: email) })
+    }
+}

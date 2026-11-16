@@ -32,6 +32,7 @@ enum HomeRoute: Hashable {
     case googlePlayTracks(app: GooglePlayAppItem, account: AccountModel)
     case googlePlayReleaseDetail(app: GooglePlayAppItem, account: AccountModel, track: String, release: GooglePlayReleaseModel)
     case googlePlayAppInfo(app: GooglePlayAppItem, account: AccountModel)
+    case googlePlayUserDetail(user: GooglePlayUserModel, account: AccountModel)
     case appDetail(app: AppModel, account: AccountModel)
     case versionList(appId: String, platform: AppPlatform, account: AccountModel)
     case versionDetail(version: AppStoreVersionModel, account: AccountModel)
@@ -193,6 +194,10 @@ final class HomeCoordinator: MainCoordinatorProtocol {
 
     func navigateToGooglePlayAppInfo(_ app: GooglePlayAppItem, account: AccountModel) {
         path.append(HomeRoute.googlePlayAppInfo(app: app, account: account))
+    }
+
+    func navigateToGooglePlayUserDetail(_ user: GooglePlayUserModel, account: AccountModel) {
+        path.append(HomeRoute.googlePlayUserDetail(user: user, account: account))
     }
 
     func navigateToAppDetail(_ app: AppModel, account: AccountModel) {
