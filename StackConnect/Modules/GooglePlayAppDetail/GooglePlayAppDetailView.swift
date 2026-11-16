@@ -59,10 +59,14 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol>:
     @ViewBuilder
     private func buildContent() -> some View {
         if viewModel.uiState.isAppInScope {
+            // Order of prototype screen 2: header, one section per track,
+            // store presence, quality, Play Console-only note.
             List {
                 buildHeaderSection()
-                buildReviewsSection()
+                buildReleaseSections()
                 buildStoreSection()
+                buildReviewsSection()
+                buildPlayConsoleSection()
             }
         } else {
             ContentUnavailableView {
@@ -96,21 +100,25 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol>:
                         CopyButton(text: app.packageName)
                     }
 
-                    // Platform icon only; VoiceOver still names the platform.
-                    Image(systemName: "smartphone")
-                        .font(.caption)
-                        .foregroundStyle(.green)
-                        .accessibilityLabel(String(localized: "Android"))
-
-                    if let language = viewModel.uiState.defaultLanguage {
-                        Text("Default language: \(GooglePlayLanguage.displayName(for: language))")
-                            .font(.caption)
+                    // "Android · Default language: English (US)" (prototype screen 2).
+                    HStack(spacing: 4) {
+                        Image(systemName: "smartphone")
+                            .foregroundStyle(.green)
+                            .accessibilityHidden(true)
+                        Text(platformLine)
                             .foregroundStyle(.secondary)
                     }
+                    .font(.caption)
                 }
             }
             .padding(.vertical, 4)
         }
+    }
+
+    private var platformLine: String {
+        guard let language = viewModel.uiState.defaultLanguage else { return String(localized: "Android") }
+        return String(localized: "Android · Default language: \(GooglePlayLanguage.displayName(for: language))",
+                      comment: "Google Play app detail header: platform, then the default store listing language.")
     }
 
     // MARK: - Menu
@@ -121,7 +129,7 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol>:
                 buildMenuRow(section)
             }
         } header: {
-            Text("Reviews")
+            Text("Quality")
         }
     }
 
@@ -131,9 +139,80 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol>:
                 buildMenuRow(section)
             }
         } header: {
-            Text("Store")
+            Text("Store presence")
         } footer: {
             Text("Opening these sections briefly opens a Play edit to read the data. Google allows one open edit per service account and app, so this cancels any edit this service account has open for the app — for example, a CI upload in progress. If your CI publishes with this service account, add a separate read-only one here instead.")
+        }
+    }
+
+    // MARK: - Releases
+
+    /// One section per track with a release (from the caches), "See all
+    /// tracks" closing the last one. Without any cached release, a single
+    /// Tracks & Releases row. Hidden without the `version` rule.
+    @ViewBuilder
+    private func buildReleaseSections() -> some View {
+        if viewModel.uiState.canViewReleases {
+            let sections = viewModel.uiState.releaseSections
+            if sections.isEmpty {
+                Section {
+                    buildMenuRow(.tracks)
+                } header: {
+                    Text("Releases")
+                }
+            } else {
+                ForEach(sections) { section in
+                    Section {
+                        ForEach(section.rows) { row in
+                            Button {
+                                open(row, in: section)
+                            } label: {
+                                GooglePlayAppDetailReleaseRowView(row: row)
+                            }
+                            .foregroundStyle(.primary)
+                        }
+                        if section.id == sections.last?.id {
+                            buildSeeAllTracksRow()
+                        }
+                    } header: {
+                        Text(section.kind.displayName)
+                    } footer: {
+                        if section.id == sections.last?.id {
+                            Text("Opening all tracks or a release briefly opens a Play edit, like the store presence sections below.")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func buildSeeAllTracksRow() -> some View {
+        Button {
+            open(.tracks)
+        } label: {
+            HStack {
+                Text("See all tracks")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .foregroundStyle(.primary)
+    }
+
+    /// Settings Google Play's API can't change (prototype screen 2).
+    private func buildPlayConsoleSection() -> some View {
+        Section {
+            Text("Content rating, category, data safety, privacy policy, pricing and countries can't be changed through the Google Play API.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            if let url = URL(string: "https://play.google.com/console") {
+                Link(String(localized: "Open Play Console"), destination: url)
+            }
+        } header: {
+            Text("Only in Play Console")
         }
     }
 
@@ -147,6 +226,20 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol>:
     }
 
     // MARK: - Navigation
+
+    /// A release the tracks cache holds opens its detail; otherwise the tracks
+    /// screen, which reads the release through a Play edit (an explicit tap).
+    private func open(_ row: GooglePlayAppDetailReleaseRow, in section: GooglePlayAppDetailTrackSection) {
+        if let denial = viewModel.denial(for: .tracks) {
+            viewModel.presentDenial(denial)
+            return
+        }
+        if let release = row.release {
+            homeCoordinator.navigateToGooglePlayReleaseDetail(release, track: section.kind)
+        } else {
+            homeCoordinator.navigateToGooglePlayTracks(app, account: account)
+        }
+    }
 
     private func open(_ section: GooglePlayAppDetailSection) {
         if let denial = viewModel.denial(for: section) {
@@ -183,5 +276,68 @@ private extension GooglePlayAppDetailSection {
         case .tracks:         return .green
         case .appDetails:     return .gray
         }
+    }
+}
+
+// MARK: - Release row
+
+/// `{name} [status]` over `● {lifecycle} · Version code {code}` and, while a
+/// staged rollout runs, its percentage. The badge and rollout come from the
+/// tracks cache only (they need an edit); the lifecycle line from the
+/// edit-free release summaries.
+private struct GooglePlayAppDetailReleaseRowView: View {
+
+    let row: GooglePlayAppDetailReleaseRow
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(row.title)
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+
+                    if let status = row.status {
+                        StackCapsuleBadge(title: status.displayName, color: status.color)
+                    }
+                }
+
+                if let state = row.lifecycleState {
+                    StackStatusLine(color: state.color, text: lifecycleText(state))
+                } else if let codes = versionCodesText {
+                    Text(codes)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                if let fraction = row.rolloutFraction, let status = row.status {
+                    GooglePlayRolloutLabel(fraction: fraction, status: status)
+                }
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var versionCodesText: String? {
+        switch row.versionCodes.count {
+        case 0:  return nil
+        case 1:  return String(localized: "Version code \(row.versionCodes[0])")
+        default: return String(localized: "Version codes \(row.versionCodes.joined(separator: ", "))")
+        }
+    }
+
+    /// "Published · Version code 4200".
+    private func lifecycleText(_ state: GooglePlayReleaseLifecycleState) -> String {
+        guard let codes = versionCodesText else { return state.displayName }
+        return String(localized: "\(state.displayName) · \(codes)",
+                      comment: "Google Play release row: lifecycle state, then the version codes.")
     }
 }

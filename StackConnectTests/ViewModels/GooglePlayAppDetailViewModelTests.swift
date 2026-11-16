@@ -106,7 +106,7 @@ final class GooglePlayAppDetailViewModelTests: XCTestCase {
         let state = makeSUT().uiState
 
         XCTAssertEqual(state.reviewSections, [.ratingsReviews])
-        XCTAssertEqual(state.storeSections, [.storeListings, .tracks, .appDetails])
+        XCTAssertEqual(state.storeSections, [.storeListings, .appDetails], "Tracks open from See all tracks")
         XCTAssertTrue(state.storeSections.allSatisfy(\.opensPlayEdit))
         XCTAssertFalse(GooglePlayAppDetailSection.ratingsReviews.opensPlayEdit)
     }
@@ -196,5 +196,82 @@ final class GooglePlayAppDetailViewModelTests: XCTestCase {
 
         XCTAssertTrue(sut.uiState.isAppInScope)
         XCTAssertNil(sut.denial(for: .tracks))
+    }
+    // MARK: - Release sections (cache only)
+
+    private func seedReleaseSummaries(_ summaries: [GooglePlayReleaseSummaryModel], account: AccountModel? = nil) async throws {
+        let entry = GooglePlayReleaseSummariesCache(accountId: (account ?? self.account).id, packageName: app.packageName, summaries: summaries, fetchedAt: nil)
+        try await storage.save(entry, id: entry.cacheKey)
+    }
+
+    private func seedTracks(_ tracks: [GooglePlayTrackModel]) async throws {
+        let entry = GooglePlayTracksCache(accountId: account.id, packageName: app.packageName, tracks: tracks)
+        try await storage.save(entry, id: entry.cacheKey)
+    }
+
+    func testReleaseSectionsComeFromTheSummariesAndTheTracksCacheAddsStatusAndRollout() async throws {
+        try await seedReleaseSummaries([
+            GooglePlayReleaseSummaryModel(track: "internal", name: "4.3.0 (4305)", lifecycleState: .draft, versionCodes: ["4305"]),
+            GooglePlayReleaseSummaryModel(track: "internal", name: "4.3.0 (4303)", lifecycleState: .published, versionCodes: ["4303"]),
+            GooglePlayReleaseSummaryModel(track: "production", name: "4.1.2 (4122)", lifecycleState: .published, versionCodes: ["4122"]),
+            GooglePlayReleaseSummaryModel(track: "production", name: "4.2.0 (4210)", lifecycleState: .inReview, versionCodes: ["4210"])
+        ])
+        try await seedTracks([GooglePlayTrackModel(track: "production", releases: [
+            GooglePlayReleaseModel(name: "4.2.0 (4210)", status: .inProgress, versionCodes: ["4210"], userFraction: 0.2, releaseNotes: [], inAppUpdatePriority: nil)
+        ])])
+        let sut = makeSUT()
+
+        await sut.load()
+
+        let sections = sut.uiState.releaseSections
+        XCTAssertEqual(sections.map(\.track), ["production", "internal"])
+        let rollout = try XCTUnwrap(sections.first?.rows.first)
+        XCTAssertEqual(rollout.title, "4.2.0")
+        XCTAssertEqual(rollout.lifecycleState, .inReview)
+        XCTAssertEqual(rollout.status, .inProgress)
+        XCTAssertEqual(rollout.rolloutFraction, 0.2)
+        let published = try XCTUnwrap(sections.first?.rows.last)
+        XCTAssertNil(published.status, "Not in the tracks cache: no badge")
+        XCTAssertNil(published.rolloutFraction)
+        XCTAssertEqual(sections.last?.rows.map(\.title), ["4.3.0 (4305)", "4.3.0 (4303)"], "Same short name: full names")
+        XCTAssertEqual(connection.editBasedReadCount, 0)
+    }
+
+    func testWithoutSummariesTheTracksCacheAloneBuildsTheSections() async throws {
+        try await seedTracks([
+            GooglePlayTrackModel(track: "internal", releases: []),
+            GooglePlayTrackModel(track: "beta", releases: [
+                GooglePlayReleaseModel(name: "2.0 (20)", status: .completed, versionCodes: ["20"], userFraction: nil, releaseNotes: [], inAppUpdatePriority: nil)
+            ])
+        ])
+        let sut = makeSUT()
+
+        await sut.load()
+
+        XCTAssertEqual(sut.uiState.releaseSections.map(\.track), ["beta"], "Tracks without a release are left out")
+        XCTAssertNil(sut.uiState.releaseSections.first?.rows.first?.lifecycleState)
+        XCTAssertEqual(sut.uiState.releaseSections.first?.rows.first?.status, .completed)
+    }
+
+    func testNoCacheMeansNoReleaseSections() async {
+        let sut = makeSUT()
+
+        await sut.load()
+
+        XCTAssertTrue(sut.uiState.releaseSections.isEmpty)
+        XCTAssertTrue(sut.uiState.canViewReleases)
+    }
+
+    func testAccountWithoutTheVersionRuleShowsNoReleases() async throws {
+        let imported = importedAccount(version: [])
+        try await seedReleaseSummaries([
+            GooglePlayReleaseSummaryModel(track: "production", name: "1", lifecycleState: .published, versionCodes: ["1"])
+        ], account: imported)
+        let sut = makeSUT(account: imported)
+
+        await sut.load()
+
+        XCTAssertFalse(sut.uiState.canViewReleases)
+        XCTAssertTrue(sut.uiState.releaseSections.isEmpty)
     }
 }

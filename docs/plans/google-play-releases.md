@@ -77,6 +77,7 @@ Status:
 - C1–C5 ✅ in the core; re-vendored in the app (fake data overrides every new handle method).
 - T1 read part ✅: `GooglePlayReleaseSummariesFetching` (edit-free), `GooglePlayReleaseLifecycleState`, `GooglePlayReleaseSummaryModel`, `GooglePlayReleaseKey` (R7), `countryTargeting` on `GooglePlayReleaseModel`, `GooglePlayReleaseSummariesCache` (`googleplay-releases.*`, cascade-deleted), `GooglePlayReleaseActions` (R8) with the full matrix tests, `ReleaseNotFound` copy. Write seams (`GooglePlayBundlesFetching`, `GooglePlayReleaseManaging`) come with T4–T7.
 - T2 ✅: Play resources are `[.apps, .version, .review]`; Tracks gated by `.version`; old exports hide releases.
+- T3 ✅: the Play app list fetches release summaries after each sync (standard tracks + custom tracks known from the tracks cache, at most 4 requests in flight, in scope only, never offline, only with `canView(.version)`; an app's cache is replaced only when all its tracks answered) and shows one line per track (`StackStatusLine`, shared with the App Store list). The list adopts the App Store list chrome (large title, search, glass toolbar buttons; Add App bottom-leading; no Users tab, favorites or archive yet). The app detail shows one section per track from the caches only (lifecycle line from the summaries; status badge and rollout from the tracks cache when present), "See all tracks", Store presence, Quality and "Only in Play Console". A release row opens the release detail when the tracks cache holds it, otherwise the tracks screen.
 
 ## 4. Tests
 

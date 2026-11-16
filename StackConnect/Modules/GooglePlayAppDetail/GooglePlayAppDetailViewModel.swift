@@ -59,6 +59,95 @@ enum GooglePlayAppDetailSection: CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Releases
+
+/// One release row of the app detail's track sections (prototype screen 2).
+struct GooglePlayAppDetailReleaseRow: Hashable, Identifiable {
+    let key: GooglePlayReleaseKey
+    /// Short release name ("4.2.0").
+    let title: String
+    let versionCodes: [String]
+    /// From `releases.list`; `nil` when only the tracks cache knows the release.
+    let lifecycleState: GooglePlayReleaseLifecycleState?
+    /// From the tracks cache (edit-based), when it holds this release.
+    let release: GooglePlayReleaseModel?
+
+    var id: GooglePlayReleaseKey { key }
+
+    /// Status badge ("Rolling out", "Completed"…), tracks cache only.
+    var status: GooglePlayReleaseStatus? { release?.status }
+
+    /// Staged rollout fraction, tracks cache only, while rolling out or halted.
+    var rolloutFraction: Double? { release?.rolloutFraction }
+}
+
+/// A track section of the app detail: its releases, newest first.
+struct GooglePlayAppDetailTrackSection: Hashable, Identifiable {
+    let track: String
+    let rows: [GooglePlayAppDetailReleaseRow]
+
+    var id: String { track }
+    var kind: GooglePlayTrackKind { GooglePlayTrackKind(track: track) }
+
+    /// Sections from the cached release summaries (plan R1), each row
+    /// enriched with its status and rollout from the tracks cache when that
+    /// holds the same release (R7). Without summaries, the tracks cache alone
+    /// (no lifecycle line). Tracks without a release are left out.
+    static func build(
+        summaries: GooglePlayReleaseSummariesCache?,
+        tracks: [GooglePlayTrackModel]?
+    ) -> [GooglePlayAppDetailTrackSection] {
+        var cachedReleases: [GooglePlayReleaseKey: GooglePlayReleaseModel] = [:]
+        for track in tracks ?? [] {
+            for release in track.releases {
+                cachedReleases[release.releaseKey(track: track.track)] = release
+            }
+        }
+
+        if let summaries, !summaries.summaries.isEmpty {
+            return summaries.tracks.map { entry in
+                let titles = disambiguatedTitles(entry.releases.map { ($0.shortName, $0.name) })
+                return GooglePlayAppDetailTrackSection(track: entry.track, rows: zip(entry.releases, titles).map { summary, title in
+                    GooglePlayAppDetailReleaseRow(
+                        key: summary.releaseKey,
+                        title: title,
+                        versionCodes: summary.versionCodes,
+                        lifecycleState: summary.lifecycleState,
+                        release: cachedReleases[summary.releaseKey]
+                    )
+                })
+            }
+        }
+
+        return GooglePlayTrackModel.sorted(tracks ?? []).compactMap { track in
+            guard !track.releases.isEmpty else { return nil }
+            let titles = disambiguatedTitles(track.releases.map { ($0.shortName, $0.name) })
+            return GooglePlayAppDetailTrackSection(track: track.track, rows: zip(track.releases, titles).map { release, title in
+                GooglePlayAppDetailReleaseRow(
+                    key: release.releaseKey(track: track.track),
+                    title: title,
+                    versionCodes: release.versionCodes,
+                    lifecycleState: nil,
+                    release: release
+                )
+            })
+        }
+    }
+}
+
+extension GooglePlayAppDetailTrackSection {
+
+    /// Short names ("4.3.0"), except where two releases of the section share
+    /// one: those keep their full name ("4.3.0 (4305)").
+    static func disambiguatedTitles(_ names: [(short: String, full: String?)]) -> [String] {
+        let counts = Dictionary(names.map { ($0.short, 1) }, uniquingKeysWith: +)
+        return names.map { name in
+            guard counts[name.short, default: 0] > 1, let full = name.full, !full.isEmpty else { return name.short }
+            return full
+        }
+    }
+}
+
 // MARK: - UiState
 
 struct GooglePlayAppDetailUiState {
@@ -67,6 +156,13 @@ struct GooglePlayAppDetailUiState {
     /// Default store-listing language from the cached App Details, if any.
     var defaultLanguage: String?
     var permissionDeniedMessage: String?
+    /// One section per track with a release, from the caches only.
+    var releaseSections: [GooglePlayAppDetailTrackSection] = []
+
+    /// Release sections and "See all tracks" need the `version` rule (R5).
+    var canViewReleases: Bool {
+        account.canView(.version)
+    }
 
     /// Per-app scope of an imported account. The app list never shows an app
     /// outside it; this guards the screen itself too.
@@ -75,8 +171,10 @@ struct GooglePlayAppDetailUiState {
     }
 
     let reviewSections: [GooglePlayAppDetailSection] = [.ratingsReviews]
-    /// The edit-based sections, grouped under the edit side-effect footer.
-    let storeSections: [GooglePlayAppDetailSection] = [.storeListings, .tracks, .appDetails]
+    /// The edit-based store sections, grouped under the edit side-effect
+    /// footer. Tracks are reached through "See all tracks" under the release
+    /// sections.
+    let storeSections: [GooglePlayAppDetailSection] = [.storeListings, .appDetails]
 }
 
 // MARK: - Implementation
@@ -86,7 +184,9 @@ struct GooglePlayAppDetailUiState {
 /// Edit side-effect mitigation: store listings, tracks and app details are read
 /// through a temporary Play edit, so nothing here (nor in any background path)
 /// fetches them. Each section loads only when the user opens it; this screen
-/// only reads the local cache.
+/// only reads the local caches — the release status comes from the summaries
+/// the app list fetched (edit-free), the rollout and status badges from the
+/// tracks cache when the user opened Tracks before.
 @MainActor
 final class GooglePlayAppDetailViewModel: GooglePlayAppDetailViewModelProtocol {
 
@@ -111,6 +211,18 @@ final class GooglePlayAppDetailViewModel: GooglePlayAppDetailViewModelProtocol {
             packageName: uiState.app.packageName
         )
         uiState.defaultLanguage = await detailsCache.load()?.details.defaultLanguage
+
+        guard uiState.canViewReleases else {
+            uiState.releaseSections = []
+            return
+        }
+        let summaries = await GooglePlayAppCacheStore<GooglePlayReleaseSummariesCache>(
+            storage: storage, accountId: uiState.account.id, packageName: uiState.app.packageName
+        ).load()
+        let tracks = await GooglePlayAppCacheStore<GooglePlayTracksCache>(
+            storage: storage, accountId: uiState.account.id, packageName: uiState.app.packageName
+        ).load()
+        uiState.releaseSections = GooglePlayAppDetailTrackSection.build(summaries: summaries, tracks: tracks?.tracks)
     }
 
     func denial(for section: GooglePlayAppDetailSection) -> String? {

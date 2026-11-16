@@ -295,22 +295,7 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
     }
 
     private func buildStatusBadge(state: AppStoreState, version: String?) -> some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(statusColor(state.color))
-                .frame(width: 6, height: 6)
-
-            Text(state.displayName)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-
-            if let version {
-                Text("(\(version))")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-        }
+        StackStatusLine(color: statusColor(state.color), text: state.displayName, detail: version)
     }
 
     /// Phased-release progress line (colored dot + "X of 7 days"), mirroring App

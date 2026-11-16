@@ -35,10 +35,16 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
     @Environment(\.analytics) private var analytics
 
     var body: some View {
+        // iOS 26 chrome of the App Store app list (prototype screen 1): large
+        // account title, search drawer, round glass toolbar buttons.
         buildContent()
             .navigationTitle(viewModel.uiState.account.name)
             .trackScreen(.googlePlayAppList)
-            .navigationBarTitleDisplayMode(.inline)
+            .searchable(
+                text: $viewModel.uiState.searchQuery,
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: String(localized: "Search by name or package")
+            )
             .toolbar { buildToolbar() }
             .task { await viewModel.load() }
             .refreshable { await viewModel.refresh() }
@@ -86,6 +92,8 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
             }
         } else if viewModel.uiState.apps.isEmpty {
             buildEmptyState()
+        } else if viewModel.uiState.filteredApps.isEmpty {
+            ContentUnavailableView.search(text: viewModel.uiState.searchQuery)
         } else {
             buildList()
         }
@@ -127,7 +135,7 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
             }
 
             Section {
-                ForEach(viewModel.uiState.apps) { app in
+                ForEach(viewModel.uiState.filteredApps) { app in
                     Button {
                         homeCoordinator.navigateToGooglePlayAppDetail(app, account: viewModel.uiState.account)
                     } label: {
@@ -143,19 +151,16 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
     private func buildAppRow(_ app: GooglePlayAppItem) -> some View {
         HStack(spacing: 12) {
             // The green Play tile stands in until (or unless) the store icon loads.
-            StackAppIcon(url: app.iconURL, size: 40) {
-                StackIconTile(systemName: "play.fill", color: .green, size: 40)
+            StackAppIcon(url: app.iconURL, size: 44, cornerRadius: 10) {
+                StackIconTile(systemName: "play.fill", color: .green, size: 44)
             }
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(app.displayName)
                     .font(.body)
                     .fontWeight(.medium)
 
-                Text(app.packageName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                buildStatusLines(app)
 
                 if app.isManuallyAdded {
                     Text(String(localized: "Added manually"))
@@ -169,6 +174,34 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
+        }
+    }
+
+    /// One line per track with a release ("● Production · In review (4.2.0)"),
+    /// like the App Store list's one line per platform. Without a cached status
+    /// (or without the `version` rule) the package name stands in, unless the
+    /// title already is the package name.
+    @ViewBuilder
+    private func buildStatusLines(_ app: GooglePlayAppItem) -> some View {
+        let lines = viewModel.uiState.releaseStatus[app.packageName] ?? []
+        if !lines.isEmpty {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(lines) { line in
+                    StackStatusLine(
+                        color: line.lifecycleState.color,
+                        text: line.text,
+                        detail: line.versionName,
+                        trailingSymbol: "smartphone",
+                        trailingSymbolLabel: String(localized: "Android"),
+                        wraps: true
+                    )
+                }
+            }
+        } else if app.title != nil {
+            Text(app.packageName)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
     }
 
@@ -198,14 +231,17 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
             .accessibilityLabel(String(localized: "Manage Account"))
         }
 
+        // "Add by package name" floats bottom-leading, where the App Store
+        // list keeps Archived (archive stays out for Play, plan R9).
         if viewModel.uiState.canAddApps {
-            ToolbarItem(placement: .primaryAction) {
+            ToolbarItemGroup(placement: .bottomBar) {
                 StackTrackedButton(.add, on: .googlePlayAppList) {
                     viewModel.uiState.showAddApp = true
                 } label: {
-                    Image(systemName: "plus")
+                    Label(String(localized: "Add App"), systemImage: "plus")
                 }
                 .accessibilityLabel(String(localized: "Add App"))
+                Spacer()
             }
         }
     }

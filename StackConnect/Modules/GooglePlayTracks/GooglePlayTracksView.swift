@@ -151,7 +151,8 @@ private struct GooglePlayReleaseRow: View {
 
 // MARK: - Rollout
 
-/// Staged-rollout percentage with a progress bar, e.g. "Rollout: 20%".
+/// Staged-rollout percentage with a progress bar, e.g. "Staged rollout: 20%
+/// of users". Shared by the tracks screen and the app detail release rows.
 struct GooglePlayRolloutLabel: View {
 
     let fraction: Double
@@ -159,9 +160,9 @@ struct GooglePlayRolloutLabel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Rollout: \(fraction.formatted(.percent.precision(.fractionLength(0...2))))")
+            Text("Staged rollout: \(fraction.formatted(.percent.precision(.fractionLength(0...2)))) of users")
                 .font(.caption)
-                .foregroundStyle(status.color)
+                .foregroundStyle(.secondary)
 
             ProgressView(value: min(max(fraction, 0), 1))
                 .tint(status.color)

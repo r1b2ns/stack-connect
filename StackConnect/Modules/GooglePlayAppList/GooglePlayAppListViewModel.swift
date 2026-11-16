@@ -27,6 +27,25 @@ struct GooglePlayAppListUiState {
     var isAdding = false
     var addError: String?
     var toastMessage: ToastMessage?
+    /// Search field text: matches the app name or package name.
+    var searchQuery = ""
+    /// Release status lines per package name (one per track with a release),
+    /// from the release summaries cache. Empty without `canViewReleases`.
+    var releaseStatus: [String: [GooglePlayTrackStatusLine]] = [:]
+
+    /// Release status is gated by the account's `version` rule (plan R5).
+    var canViewReleases: Bool {
+        account.canView(.version)
+    }
+
+    /// `apps` narrowed by `searchQuery` (name or package, case-insensitive).
+    var filteredApps: [GooglePlayAppItem] {
+        let query = searchQuery.trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return apps }
+        return apps.filter {
+            $0.displayName.localizedCaseInsensitiveContains(query) || $0.packageName.localizedCaseInsensitiveContains(query)
+        }
+    }
 
     /// Manual "add app by package name" is allowed by the account's rules.
     var canAddApps: Bool {
@@ -36,6 +55,39 @@ struct GooglePlayAppListUiState {
     /// Removing a manually added app is allowed by the account's rules.
     var canDeleteApps: Bool {
         account.canDelete(.apps)
+    }
+}
+
+/// One line of a Play app row: the headline release of one track
+/// ("Production · In review (4.2.0)").
+struct GooglePlayTrackStatusLine: Hashable, Identifiable {
+    let track: String
+    let lifecycleState: GooglePlayReleaseLifecycleState
+    /// The release's short name (version name), `nil` when it has none.
+    let versionName: String?
+
+    var id: String { track }
+
+    var trackKind: GooglePlayTrackKind {
+        GooglePlayTrackKind(track: track)
+    }
+
+    /// "Production · In review".
+    var text: String {
+        String(localized: "\(trackKind.displayName) · \(lifecycleState.displayName)",
+               comment: "Google Play app list status line: track name, then the release lifecycle state.")
+    }
+
+    /// One line per track that has a release, production first.
+    static func lines(from cache: GooglePlayReleaseSummariesCache) -> [GooglePlayTrackStatusLine] {
+        cache.tracks.compactMap { entry in
+            guard let headline = GooglePlayReleaseSummaryModel.headline(of: entry.releases) else { return nil }
+            return GooglePlayTrackStatusLine(
+                track: entry.track,
+                lifecycleState: headline.lifecycleState,
+                versionName: headline.name == nil ? nil : headline.shortName
+            )
+        }
     }
 }
 
@@ -56,6 +108,14 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     /// request per app at once.
     static let maxConcurrentIconFetches = 4
 
+    /// Release summary requests (one per app and track) in flight at once.
+    static let maxConcurrentSummaryFetches = 4
+
+    /// Tracks every app is asked for. Custom (closed testing) track names are
+    /// only discoverable through an edit, so they are added from the app's
+    /// tracks cache once the user has opened Tracks (plan open question 3).
+    static let standardTracks = ["production", "beta", "alpha", "internal"]
+
     @Published var uiState: GooglePlayAppListUiState
 
     private let keychain: KeyStorable
@@ -67,6 +127,10 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     /// Package names whose icon is being looked up, so overlapping passes (a pull
     /// to refresh during the first load, a manual add) never ask twice.
     private var iconFetchesInFlight = Set<String>()
+
+    /// Package names whose release summaries are being fetched (same guard as
+    /// the icons: overlapping passes never ask twice).
+    private var summaryFetchesInFlight = Set<String>()
     private let analytics: AnalyticsTracking
 
     init(
@@ -120,6 +184,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         if let cached = await loadFromStorage()?.filter(isInScope), !cached.isEmpty {
             uiState.apps = Self.sorted(cached)
         }
+        await loadCachedReleaseStatus()
         uiState.isLoading = uiState.apps.isEmpty
 
         guard let credentials = storedCredentials() else {
@@ -145,6 +210,8 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
             }
             uiState.apps = Self.merge(remote: remoteApps, into: uiState.apps)
             await saveToStorage()
+            // Apps new to the list may already have a cached status.
+            await loadCachedReleaseStatus()
             Log.print.info("[GooglePlayAppList] Synced \(remoteApps.count) apps for account: \(self.uiState.account.name)")
         } catch {
             Log.print.error("[GooglePlayAppList] Sync failed: \(error.localizedDescription)")
@@ -161,8 +228,10 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
 
         // 3. Missing icons, whether or not the sync succeeded (the cached list
         //    may lack some) — but not offline.
+        // 4. Release status (edit-free `releases.list`), same conditions.
         if !syncFailedOffline {
             await fetchMissingIcons(using: connection)
+            await fetchReleaseSummaries(using: connection)
         }
 
         uiState.isSyncing = false
@@ -342,6 +411,117 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         guard appliedCount > 0 else { return }
         await saveToStorage()
         Log.print.info("[GooglePlayAppList] Fetched \(appliedCount) of \(candidates.count) missing icons for account: \(self.uiState.account.name)")
+    }
+
+    // MARK: - Release status
+
+    /// Shows the cached release status of every listed app (offline-first).
+    private func loadCachedReleaseStatus() async {
+        guard uiState.canViewReleases else {
+            uiState.releaseStatus = [:]
+            return
+        }
+        var status: [String: [GooglePlayTrackStatusLine]] = [:]
+        for app in uiState.apps where isInScope(app) {
+            if let cache = await summariesCache(for: app.packageName).load() {
+                status[app.packageName] = GooglePlayTrackStatusLine.lines(from: cache)
+            }
+        }
+        uiState.releaseStatus = status
+    }
+
+    /// Fetches the release summaries of every app in scope (plan R1, T3).
+    ///
+    /// `releases.list` opens no Play edit, so — unlike the edit-based reads
+    /// (D14) — it is safe to run on every load. Never offline, only with the
+    /// account's `version` view rule, only for apps in its scope. One request
+    /// per app and track (the standard tracks plus custom tracks known from the
+    /// app's tracks cache), at most `maxConcurrentSummaryFetches` in flight.
+    /// An app's cache entry and status lines are replaced only when every one
+    /// of its tracks answered; a failure keeps its cached status. Each app's
+    /// entry is saved once, after all requests finished.
+    private func fetchReleaseSummaries(using fetcher: any GooglePlayReleaseSummariesFetching) async {
+        guard uiState.canViewReleases, connectivity.isCurrentlyOnline() else { return }
+
+        let packages = uiState.apps
+            .filter { isInScope($0) && !summaryFetchesInFlight.contains($0.packageName) }
+            .map(\.packageName)
+        guard !packages.isEmpty else { return }
+        summaryFetchesInFlight.formUnion(packages)
+        defer { summaryFetchesInFlight.subtract(packages) }
+
+        var requests: [(packageName: String, track: String)] = []
+        for packageName in packages {
+            for track in await tracksToAsk(packageName: packageName) {
+                requests.append((packageName, track))
+            }
+        }
+
+        var summaries: [String: [GooglePlayReleaseSummaryModel]] = [:]
+        var failed = Set<String>()
+        var pending = requests[...]
+
+        typealias Result = (packageName: String, summaries: [GooglePlayReleaseSummaryModel]?)
+        await withTaskGroup(of: Result.self) { group in
+            func schedule(_ request: (packageName: String, track: String)) {
+                group.addTask {
+                    do {
+                        return (request.packageName, try await fetcher.fetchReleaseSummaries(packageName: request.packageName, track: request.track))
+                    } catch {
+                        Log.print.info("[GooglePlayAppList] Release summaries failed for \(request.packageName) / \(request.track): \(error.localizedDescription)")
+                        return (request.packageName, nil)
+                    }
+                }
+            }
+            for _ in 0..<Self.maxConcurrentSummaryFetches {
+                guard let request = pending.popFirst() else { break }
+                schedule(request)
+            }
+            for await result in group {
+                if let fetched = result.summaries {
+                    summaries[result.packageName, default: []].append(contentsOf: fetched)
+                } else {
+                    failed.insert(result.packageName)
+                }
+                if !Task.isCancelled, let request = pending.popFirst() {
+                    schedule(request)
+                }
+            }
+        }
+        // Requests never started (cancelled) leave their apps untouched.
+        failed.formUnion(pending.map(\.packageName))
+
+        var updated = 0
+        for packageName in packages where !failed.contains(packageName) {
+            let entry = GooglePlayReleaseSummariesCache(
+                accountId: uiState.account.id,
+                packageName: packageName,
+                summaries: summaries[packageName] ?? [],
+                fetchedAt: Date()
+            )
+            await summariesCache(for: packageName).save(entry)
+            // Applied only if the app is still listed (it may have been removed meanwhile).
+            if uiState.apps.contains(where: { $0.packageName == packageName }) {
+                uiState.releaseStatus[packageName] = GooglePlayTrackStatusLine.lines(from: entry)
+            }
+            updated += 1
+        }
+        Log.print.info("[GooglePlayAppList] Updated release status of \(updated) of \(packages.count) apps for account: \(self.uiState.account.name)")
+    }
+
+    /// The standard tracks, then custom tracks named in the app's tracks cache.
+    private func tracksToAsk(packageName: String) async -> [String] {
+        let tracksCache = GooglePlayAppCacheStore<GooglePlayTracksCache>(
+            storage: storage, accountId: uiState.account.id, packageName: packageName
+        )
+        let custom = (await tracksCache.load()?.tracks ?? [])
+            .map(\.track)
+            .filter { !Self.standardTracks.contains($0.lowercased()) }
+        return Self.standardTracks + custom
+    }
+
+    private func summariesCache(for packageName: String) -> GooglePlayAppCacheStore<GooglePlayReleaseSummariesCache> {
+        GooglePlayAppCacheStore(storage: storage, accountId: uiState.account.id, packageName: packageName)
     }
 
     /// Sets the icon of the app with `packageName` if it is still listed and
