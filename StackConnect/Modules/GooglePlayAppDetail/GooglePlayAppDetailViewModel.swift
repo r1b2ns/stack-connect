@@ -11,6 +11,10 @@ protocol GooglePlayAppDetailViewModelProtocol: ObservableObject {
     func denial(for section: GooglePlayAppDetailSection) -> String?
     /// Shows the "Permission Denied" alert with `message`.
     func presentDenial(_ message: String)
+    /// Write actions a release row's swipe offers, mirroring the release
+    /// detail's bottom bar (plan R8). Empty when writes aren't allowed or the
+    /// tracks cache doesn't hold the release.
+    func releaseActions(for row: GooglePlayAppDetailReleaseRow, in section: GooglePlayAppDetailTrackSection) -> [GooglePlayReleaseAction]
 }
 
 // MARK: - Sections
@@ -193,14 +197,17 @@ final class GooglePlayAppDetailViewModel: GooglePlayAppDetailViewModelProtocol {
     @Published var uiState: GooglePlayAppDetailUiState
 
     private let storage: PersistentStorable
+    private let featureFlags: FeatureFlags
 
     init(
         app: GooglePlayAppItem,
         account: AccountModel,
-        storage: PersistentStorable? = nil
+        storage: PersistentStorable? = nil,
+        featureFlags: FeatureFlags = .shared
     ) {
         self.uiState = GooglePlayAppDetailUiState(account: account, app: app)
         self.storage = storage ?? SwiftDataStorable.shared
+        self.featureFlags = featureFlags
     }
 
     func load() async {
@@ -235,5 +242,14 @@ final class GooglePlayAppDetailViewModel: GooglePlayAppDetailViewModelProtocol {
 
     func presentDenial(_ message: String) {
         uiState.permissionDeniedMessage = message
+    }
+
+    func releaseActions(for row: GooglePlayAppDetailReleaseRow, in section: GooglePlayAppDetailTrackSection) -> [GooglePlayReleaseAction] {
+        guard let release = row.release else { return [] }
+        let account = uiState.account
+        let app = uiState.app
+        return GooglePlayReleaseActions.actions(for: release, on: section.kind, lifecycleState: row.lifecycleState)
+            .filter { GooglePlayReleaseWriteAccess.isAllowed($0.writeKind, account: account, app: app, featureFlags: featureFlags) }
+            .filter { $0 != .promote }
     }
 }

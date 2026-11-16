@@ -95,7 +95,7 @@ struct GooglePlayTracksView<ViewModel: GooglePlayTracksViewModelProtocol>: View 
             } else {
                 ForEach(Array(track.releases.enumerated()), id: \.offset) { _, release in
                     Button {
-                        homeCoordinator.navigateToGooglePlayReleaseDetail(release, track: track.kind)
+                        homeCoordinator.navigateToGooglePlayReleaseDetail(release, track: track.track, app: viewModel.uiState.app, account: viewModel.uiState.account)
                     } label: {
                         GooglePlayReleaseRow(release: release)
                     }

@@ -14,21 +14,24 @@ struct GooglePlayAppDetailViewFactory {
 private struct GooglePlayAppDetailEntry: View {
 
     @StateObject private var viewModel: GooglePlayAppDetailViewModel
+    @StateObject private var writes: GooglePlayReleaseWriteViewModel
 
     init(app: GooglePlayAppItem, account: AccountModel) {
         _viewModel = StateObject(wrappedValue: GooglePlayAppDetailViewModel(app: app, account: account))
+        _writes = StateObject(wrappedValue: GooglePlayReleaseWriteViewModel(app: app, account: account))
     }
 
     var body: some View {
-        GooglePlayAppDetailView(viewModel: viewModel)
+        GooglePlayAppDetailView(viewModel: viewModel, writes: writes)
     }
 }
 
 // MARK: - View
 
-struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol>: View {
+struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol, Writes: GooglePlayReleaseWriteViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
+    @ObservedObject var writes: Writes
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
     private var app: GooglePlayAppItem { viewModel.uiState.app }
@@ -39,6 +42,10 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol>:
             .navigationTitle(app.displayName)
             .navigationBarTitleDisplayMode(.inline)
             .task { await viewModel.load() }
+            .onChange(of: writes.uiState.revision) {
+                Task { await viewModel.load() }
+            }
+            .googlePlayReleaseWrites(writes)
             .alert(
                 String(localized: "Permission Denied"),
                 isPresented: Binding(
@@ -170,6 +177,9 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol>:
                                 GooglePlayAppDetailReleaseRowView(row: row)
                             }
                             .foregroundStyle(.primary)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                buildSwipeActions(row, in: section)
+                            }
                         }
                         if section.id == sections.last?.id {
                             buildSeeAllTracksRow()
@@ -178,10 +188,30 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol>:
                         Text(section.kind.displayName)
                     } footer: {
                         if section.id == sections.last?.id {
-                            Text("Opening all tracks or a release briefly opens a Play edit, like the store presence sections below.")
+                            if writes.canPerform(.edit) {
+                                Text("Swipe a release to halt, resume or complete its rollout. Opening all tracks or a release briefly opens a Play edit, like the store presence sections below.")
+                            } else {
+                                Text("Opening all tracks or a release briefly opens a Play edit, like the store presence sections below.")
+                            }
                         }
                     }
                 }
+            }
+        }
+    }
+
+    /// Mirrors the release detail's bottom bar (plan R8): the final action
+    /// first (rightmost), each one confirmed before anything is sent.
+    @ViewBuilder
+    private func buildSwipeActions(_ row: GooglePlayAppDetailReleaseRow, in section: GooglePlayAppDetailTrackSection) -> some View {
+        if let release = row.release {
+            ForEach(viewModel.releaseActions(for: row, in: section).reversed(), id: \.self) { action in
+                Button {
+                    writes.start(action, release: release, track: section.track)
+                } label: {
+                    Label(action.shortTitle, systemImage: action.icon)
+                }
+                .tint(action.color)
             }
         }
     }
@@ -235,7 +265,7 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol>:
             return
         }
         if let release = row.release {
-            homeCoordinator.navigateToGooglePlayReleaseDetail(release, track: section.kind)
+            homeCoordinator.navigateToGooglePlayReleaseDetail(release, track: section.track, app: app, account: account)
         } else {
             homeCoordinator.navigateToGooglePlayTracks(app, account: account)
         }

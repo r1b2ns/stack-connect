@@ -628,51 +628,19 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
     }
 
     private func buildActionBar<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        VStack(spacing: 0) {
-            content()
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-        }
-        .background(.bar)
-        .disabled(viewModel.uiState.isPerformingAction)
-        .overlay {
-            if viewModel.uiState.isPerformingAction {
-                ProgressView()
-            }
-        }
+        StackActionBar(isBusy: viewModel.uiState.isPerformingAction, content: content)
     }
 
     private func buildActionButton(_ button: AnalyticsButton, title: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
         StackTrackedButton(button, on: .versionDetail, action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                Text(title)
-                    .fontWeight(.semibold)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .foregroundStyle(.white)
-            .background(color)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            StackActionButtonLabel(title: title, icon: icon, color: color)
         }
         .buttonStyle(.plain)
     }
 
     private func buildOutlinedActionButton(title: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                Text(title)
-                    .fontWeight(.semibold)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .foregroundStyle(color)
-            .background(Color.clear)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(color, lineWidth: 2)
-            )
+            StackActionButtonLabel(title: title, icon: icon, color: color, style: .outlined)
         }
         .buttonStyle(.plain)
     }

@@ -459,8 +459,8 @@ private extension View {
                 GooglePlayStoreListingDetailViewFactory.build(listing: listing, isDefaultLanguage: isDefaultLanguage)
             case .googlePlayTracks(let app, let account):
                 GooglePlayTracksViewFactory.build(app: app, account: account)
-            case .googlePlayReleaseDetail(let release, let track):
-                GooglePlayReleaseDetailViewFactory.build(release: release, track: track)
+            case .googlePlayReleaseDetail(let app, let account, let track, let release):
+                GooglePlayReleaseDetailViewFactory.build(app: app, account: account, track: track, release: release)
             case .googlePlayAppInfo(let app, let account):
                 GooglePlayAppInfoViewFactory.build(app: app, account: account)
             case .appDetail(let app, let account):
