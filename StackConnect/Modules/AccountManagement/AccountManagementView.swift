@@ -100,6 +100,22 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
                 }
             }
 
+            // Google Play: the developer ID the Users tab needs (plan U3),
+            // edited in Account Settings.
+            if viewModel.uiState.account.providerType == .googlePlay {
+                Section {
+                    buildRow(
+                        .editDeveloperId,
+                        icon: "number",
+                        title: String(localized: "Developer ID"),
+                        subtitle: viewModel.uiState.account.googlePlayDeveloperId
+                            ?? String(localized: "Not set: needed to manage users")
+                    ) {
+                        homeCoordinator.navigateToAccountSettings(viewModel.uiState.account)
+                    }
+                }
+            }
+
             Section {
                 buildRow(
                     .export,

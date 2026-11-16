@@ -10,19 +10,17 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
     @Environment(\.analytics) private var analytics
 
-    /// The first appearance is loaded by `.task`; later ones (back from a
-    /// user's detail) reload from the cache the detail keeps in step.
-    @State private var hasAppeared = false
-
     var body: some View {
         buildContent()
             .trackScreen(.googlePlayUsers)
-            .task { await viewModel.load() }
-            .onAppear {
-                if hasAppeared {
-                    Task { await viewModel.reloadFromCache() }
+            .task {
+                // SwiftUI restarts `.task` when the tab comes back from a
+                // pushed user detail: re-read the cache that screen keeps in
+                // step instead of asking Google again (pull to refresh does).
+                if viewModel.uiState.hasLoaded {
+                    await viewModel.reloadFromCache()
                 } else {
-                    hasAppeared = true
+                    await viewModel.load()
                 }
             }
             .refreshable { await viewModel.refresh() }
@@ -242,7 +240,8 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
 
             Section {
                 LabeledContent(String(localized: "Developer ID")) {
-                    TextField("4829103756618820931", text: $viewModel.uiState.developerIdInput)
+                    TextField(String(localized: "Developer ID"), text: $viewModel.uiState.developerIdInput,
+                              prompt: Text(verbatim: "4829103756618820931"))
                         .multilineTextAlignment(.trailing)
                         .keyboardType(.numbersAndPunctuation)
                         .autocorrectionDisabled()

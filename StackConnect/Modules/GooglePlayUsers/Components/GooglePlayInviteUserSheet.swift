@@ -87,7 +87,8 @@ struct GooglePlayInviteUserSheet: View {
     private func buildUserSection() -> some View {
         Section {
             LabeledContent(String(localized: "Email")) {
-                TextField("name@example.com", text: $form.email)
+                // Verbatim: a localized key would turn the address into a link.
+                TextField(String(localized: "Email"), text: $form.email, prompt: Text(verbatim: "name@example.com"))
                     .multilineTextAlignment(.trailing)
                     .keyboardType(.emailAddress)
                     .textContentType(.emailAddress)
@@ -133,13 +134,8 @@ struct GooglePlayInviteUserSheet: View {
                 get: { form.isAdmin },
                 set: { form.setAdmin($0) }
             ))
-            ForEach(GooglePlayPermissionCatalog.accountPermissions) { permission in
-                let state = form.accountState(of: permission)
-                Toggle(permission.accountName, isOn: Binding(
-                    get: { state != .off },
-                    set: { form.set(permission, isOn: $0) }
-                ))
-                .disabled(state == .implied)
+            GooglePlayAccountPermissionRows(values: form.accountPermissions, isEditable: true) { permission, isOn in
+                form.set(permission, isOn: isOn)
             }
         } header: {
             Text("Account Permissions · All Apps")

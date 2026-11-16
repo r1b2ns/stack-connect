@@ -125,9 +125,18 @@ apps (sending a message succeeds).
 | Harbor Transit | `com.northwind.harbor` | production 1.9.0 published, custom track `city-partners` (US + CA only), internal 2.0.0 **not sent for review** |
 
 Releases not listed as above are published. Every app also has uploaded
-bundles (one newer than any release, for the bundle picker), and the account
-has five users (an Admin, a release manager, a per-app support user, a pending
-invite and a CI service account). Track changes (`applyReleaseChange`) follow
+bundles (one newer than any release, for the bundle picker).
+
+The account has developer ID `4829103756618820931` (so the Users tab loads
+right away; clear it in Account Settings to see the setup state) and ten users:
+two admins (Dana Whitfield and `play-publisher@…`, the account's own service
+account, which shows the self-protection), a release manager and a finance user
+with account-wide permissions, Aiko Kimura and a support mailbox with per-app
+grants, a pending invitation (expiring in 45 days), an expired invitation (to
+try Resend), an access that expired 12 days ago and a CI service account.
+Invites, permission and app-access changes, resends and removals succeed and
+show up on the next read; the developer ID must be numeric, like Google's
+(anything else is a 404). Track changes (`applyReleaseChange`) follow
 the core's rules (fraction 0–1 exclusive, priority 0–5, uploaded version codes
 only, release notes up to 500 characters per language, `ReleaseNotFound` for a release that is gone) and update the lifecycle
 state (in review when sent for review, not sent for review otherwise).

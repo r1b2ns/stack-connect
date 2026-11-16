@@ -198,13 +198,11 @@ struct GooglePlayUserDetailView<ViewModel: GooglePlayUserDetailViewModelProtocol
 
     private func buildAccountPermissionsSection() -> some View {
         Section {
-            ForEach(GooglePlayPermissionCatalog.accountPermissions) { permission in
-                let effective = GooglePlayPermissionCatalog.accountState(of: permission, in: state.draftAccountPermissions)
-                Toggle(permission.accountName, isOn: Binding(
-                    get: { effective != .off },
-                    set: { viewModel.setAccountPermission(permission, isOn: $0) }
-                ))
-                .disabled(effective == .implied || !state.canEditAccountPermissions)
+            GooglePlayAccountPermissionRows(
+                values: state.draftAccountPermissions,
+                isEditable: state.canEditAccountPermissions
+            ) { permission, isOn in
+                viewModel.setAccountPermission(permission, isOn: isOn)
             }
         } header: {
             Text("Account Permissions · All Apps")

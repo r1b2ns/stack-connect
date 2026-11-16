@@ -130,6 +130,10 @@ Google-side setup the user must do: enable the **Google Play Developer Reporting
 - Done as section 6 of `google-play-releases.md` (decisions H1–H8, tasks S1–S7): Play apps stay out of `AppModel` (no `AppPlatform.android`); the Home widgets, All Reviews, the WidgetKit snapshot and the local notifications read provider-neutral rows built from `AppModel` and the Play caches.
 - D14 kept: the background Play sync (`GooglePlayAccountSync`) lists apps, icons, release summaries and reviews only, never an edit-based read.
 
+### Phase 5 — User management ✅
+- Done as section 7 of `google-play-releases.md` (decisions U1–U9, tasks U1–U8): the Play account screen gets the App Store chrome with an "Apps | Users" switch; `GooglePlayUsers`, `GooglePlayUserDetail`, the invite and App Permissions sheets over the core's `PlayUsers` handle (`developers.users`, no edit, so D14 is unaffected).
+- New account field: `AccountModel.googlePlayDeveloperId` (optional in Add Account, editable in Account Settings, carried by `.scexport`). New rule resource for Play: `.users` (D9). New cache: `googleplay-users.{accountId}`, removed with the account.
+
 ## 3. Verification (every task)
 
 ```bash

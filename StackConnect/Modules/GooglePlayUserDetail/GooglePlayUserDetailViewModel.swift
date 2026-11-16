@@ -68,8 +68,9 @@ struct GooglePlayUserDetailUiState {
         access.accountPermissionsRefusal(for: user) == nil
     }
 
+    /// Admin already covers every app, so per-app access adds nothing.
     var canAddGrant: Bool {
-        access.editRefusal(for: user) == nil && !availableAppsForNewGrant.isEmpty
+        access.editRefusal(for: user) == nil && !user.isAdmin && !availableAppsForNewGrant.isEmpty
     }
 
     var canRemove: Bool { access.canDelete }

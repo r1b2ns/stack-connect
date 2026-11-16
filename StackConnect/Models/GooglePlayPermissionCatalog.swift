@@ -127,6 +127,13 @@ enum GooglePlayPermissionCatalog {
                    String(localized: "Manage orders and subscriptions", comment: "Google Play permission."))
     ]
 
+    /// Account-level permissions always listed on the user detail and invite
+    /// sheet (prototypes 17 / 21); the others sit behind "More Permissions"
+    /// unless they are on.
+    static let commonAccountPermissionIds: Set<String> = [
+        "viewAppInformation", "viewFinancialData", "viewAppQuality", "replyToReviews", "orders", "draftApps"
+    ]
+
     /// Permissions that can be granted account-wide (Admin excluded), in display order.
     static var accountPermissions: [GooglePlayPermission] {
         all.filter { $0.accountLevel != nil }

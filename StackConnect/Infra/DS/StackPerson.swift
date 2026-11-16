@@ -101,9 +101,13 @@ struct StackPersonHeader: View {
             avatar
 
             VStack(alignment: .leading, spacing: 4) {
+                // An address (pending invitation) must not break mid-word.
                 Text(title)
                     .font(.title3)
                     .fontWeight(.semibold)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .truncationMode(.middle)
 
                 if let subtitle {
                     Text(subtitle)

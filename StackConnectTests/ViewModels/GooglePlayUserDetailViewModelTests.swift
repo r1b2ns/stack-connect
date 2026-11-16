@@ -217,4 +217,11 @@ final class GooglePlayUserDetailViewModelTests: XCTestCase {
         XCTAssertFalse(sut.uiState.canEditAccountPermissions)
         XCTAssertFalse(sut.uiState.canAddGrant)
     }
+
+    func testAdminsGetNoPerAppAccess() async throws {
+        let dana = GooglePlayUserModel(email: "dana@x.example", developerAccountPermissions: [admin])
+        let sut = try await makeSUT(dana)
+
+        XCTAssertFalse(sut.uiState.canAddGrant, "Admin already covers every app")
+    }
 }
