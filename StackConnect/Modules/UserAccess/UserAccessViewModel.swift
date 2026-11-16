@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -6,6 +7,7 @@ import Foundation
 protocol UserAccessViewModelProtocol: ObservableObject {
     var uiState: UserAccessUiState { get set }
     func load() async
+    func refresh() async
     func deleteUser(_ user: UserModel) async
     func inviteUser(
         email: String,
@@ -93,41 +95,67 @@ final class UserAccessViewModel: UserAccessViewModelProtocol {
     @Published var uiState: UserAccessUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
-    init(account: AccountModel, keychain: KeyStorable = KeychainStorable.shared) {
+    init(
+        account: AccountModel,
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
+    ) {
         self.uiState = UserAccessUiState(account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func load() async {
+        _ = await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let succeeded = await performLoad()
+        analytics.track(.action(.refresh, on: .userAccess, result: succeeded ? .success : .failure))
+    }
+
+    private func performLoad() async -> Bool {
+        var succeeded = true
         uiState.isLoading = true
         uiState.error = nil
 
         do {
             guard let connection = createConnection() else {
                 uiState.isLoading = false
-                return
+                return false
             }
             uiState.users = try await connection.fetchUsers()
             Log.print.info("[UserAccess] Loaded \(self.uiState.users.count) users")
         } catch {
+            succeeded = false
             uiState.error = error.localizedDescription
             Log.print.error("[UserAccess] Load failed: \(error.localizedDescription)")
         }
 
         uiState.isLoading = false
+        return succeeded
     }
 
     func deleteUser(_ user: UserModel) async {
+        analytics.track(.buttonTap(.confirmDelete, on: .userAccess))
+        let parameters = Self.deleteParameters(for: user)
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                analytics.track(.action(.deleteUser, on: .userAccess, result: .failure, parameters: parameters))
+                return
+            }
             try await connection.deleteUser(id: user.id, isPending: user.isPending)
             uiState.users.removeAll { $0.id == user.id }
             let message = user.isPending
                 ? String(localized: "Invitation cancelled")
                 : String(localized: "User removed")
             uiState.toastMessage = ToastMessage(message, icon: "person.badge.minus")
+            analytics.track(.action(.deleteUser, on: .userAccess, result: .success, parameters: parameters))
         } catch {
+            analytics.track(.action(.deleteUser, on: .userAccess, result: .failure, parameters: parameters))
             if AppleAPIErrorTranslator.isForbidden(error) {
                 uiState.deleteError = String(localized: "Your App Store Connect API key isn't allowed to remove users. Managing Users and Access requires a key with the Admin role. Update the key's permissions in App Store Connect (Users and Access → Integrations) and try again.")
             } else {
@@ -145,8 +173,17 @@ final class UserAccessViewModel: UserAccessViewModelProtocol {
         allAppsVisible: Bool,
         provisioningAllowed: Bool
     ) async {
+        analytics.track(.buttonTap(.invite, on: .inviteUser))
+        // Shape of the invitation only — never the email or the name.
+        let parameters: [String: AnalyticsValue] = [
+            AnalyticsParameterKey.count: .int(roles.count),
+            AnalyticsParameterKey.scoped: .bool(!allAppsVisible)
+        ]
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                analytics.track(.action(.inviteUser, on: .inviteUser, result: .failure, parameters: parameters))
+                return
+            }
             try await connection.inviteUser(
                 email: email,
                 firstName: firstName,
@@ -158,10 +195,17 @@ final class UserAccessViewModel: UserAccessViewModelProtocol {
             uiState.showInviteUser = false
             uiState.toastMessage = ToastMessage(String(localized: "Invitation sent"), icon: "envelope.fill")
             await load()
+            analytics.track(.action(.inviteUser, on: .inviteUser, result: .success, parameters: parameters))
         } catch {
+            analytics.track(.action(.inviteUser, on: .inviteUser, result: .failure, parameters: parameters))
             uiState.inviteError = error.localizedDescription
             Log.print.error("[UserAccess] Invite failed: \(error.localizedDescription)")
         }
+    }
+
+    /// Whether a pending invitation or an active member is being removed.
+    static func deleteParameters(for user: UserModel) -> [String: AnalyticsValue] {
+        [AnalyticsParameterKey.kind: .string(user.isPending ? "invitation" : "member")]
     }
 
     private func createConnection() -> AppleAccountConnection? {

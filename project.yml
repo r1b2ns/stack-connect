@@ -103,6 +103,11 @@ packages:
     path: Packages/APIProviderFirebase
   APIProviderPlay:
     path: Packages/APIProviderPlay
+  # Google Analytics for Firebase. App target only (never the widget). Pinned to
+  # an exact release; product `FirebaseAnalyticsCore` is the no-IDFA variant.
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    exactVersion: 13.1.1
 
 targets:
   StackConnect:
@@ -111,6 +116,12 @@ targets:
     deploymentTarget: "17.0"
 
     sources:
+      # StackConnect/Resources/GoogleService-Info.plist (Firebase config) is
+      # git-ignored and optional: the folder glob bundles it only when it exists
+      # at `xcodegen generate` time, so open-source checkouts and CI build without
+      # it, and Firebase is configured at runtime only when it is bundled. Do not
+      # list it as an explicit `optional: true` source: XcodeGen still emits the
+      # file reference and the build fails with "Build input file cannot be found".
       - path: StackConnect
 
     info:
@@ -145,6 +156,16 @@ targets:
           - processing
         BGTaskSchedulerPermittedIdentifiers:
           - zeroSixteen.stackconnect.refresh
+        # Firebase privacy: nothing is collected until AnalyticsService enables
+        # collection for a user whose setting is ON; no ad identifiers.
+        FIREBASE_ANALYTICS_COLLECTION_ENABLED: false
+        FirebaseAutomaticScreenReportingEnabled: false
+        GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS: false
+        GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_USER_DATA: false
+        GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_STORAGE: false
+        GOOGLE_ANALYTICS_DEFAULT_ALLOW_ANALYTICS_STORAGE: true
+        GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED: false
+        GOOGLE_ANALYTICS_REGISTRATION_WITH_AD_NETWORK_ENABLED: false
 
     configFiles:
       Debug: Configs/Debug.xcconfig
@@ -169,6 +190,8 @@ targets:
       - package: StackProtocols
       - package: APIProviderFirebase
       - package: APIProviderPlay
+      - package: Firebase
+        product: FirebaseAnalyticsCore
       - target: StackConnectWidgetExtension
         embed: true
 

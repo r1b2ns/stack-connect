@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -6,6 +7,7 @@ import Foundation
 protocol AppHistoryViewModelProtocol: ObservableObject {
     var uiState: AppHistoryUiState { get set }
     func load() async
+    func refresh() async
 }
 
 // MARK: - UiState
@@ -42,24 +44,38 @@ final class AppHistoryViewModel: AppHistoryViewModelProtocol {
     @Published var uiState: AppHistoryUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         appId: String,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = AppHistoryUiState(appId: appId, account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func load() async {
+        _ = await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let succeeded = await performLoad()
+        analytics.track(.action(.refresh, on: .appHistory, result: succeeded ? .success : .failure))
+    }
+
+    private func performLoad() async -> Bool {
+        var succeeded = true
         uiState.isLoading = true
         uiState.error = nil
 
         do {
             guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else {
                 uiState.isLoading = false
-                return
+                return false
             }
 
             let connection = AppleAccountConnection(credentials: credentials)
@@ -74,11 +90,13 @@ final class AppHistoryViewModel: AppHistoryViewModelProtocol {
 
             Log.print.info("[AppHistory] Loaded \(versions.count) versions, \(submissions.count) submissions")
         } catch {
+            succeeded = false
             uiState.error = error.localizedDescription
             Log.print.error("[AppHistory] Failed to load: \(error.localizedDescription)")
         }
 
         uiState.isLoading = false
+        return succeeded
     }
 
     // MARK: - Private

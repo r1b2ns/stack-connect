@@ -11,10 +11,16 @@ enum AppSetting: String, CaseIterable {
     /// read-only pre-submit checklist bottom sheet. Ships ON by default.
     case preReviewChecklistEnabled = "appSetting.preReviewChecklistEnabled"
 
+    /// When ON, anonymous usage analytics are sent. Ships ON by default.
+    /// Turning it OFF sends a final `analytics_disabled` event and stops all
+    /// sending. Owned by `AnalyticsService`: write it only through
+    /// `AnalyticsTracking.setEnabled(_:)` so the opt-out event is never skipped.
+    case analyticsEnabled = "appSetting.analyticsEnabled"
+
     /// The compiled-in value used when nothing is stored in `UserDefaults`.
     var defaultValue: Bool {
         switch self {
-        case .preReviewChecklistEnabled:
+        case .preReviewChecklistEnabled, .analyticsEnabled:
             return true
         }
     }

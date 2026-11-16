@@ -37,6 +37,7 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(viewModel.uiState.project.displayName)
+            .trackScreen(.firebaseAppList)
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $viewModel.uiState.searchQuery,
@@ -45,7 +46,7 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
             )
             .toolbar { buildToolbar() }
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .sheet(item: $viewModel.uiState.selectedApp) { app in
                 FirebaseAppDetailSheet(
                     app: app,
@@ -87,7 +88,7 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
                         Task { await viewModel.removeApp(app) }
                     }
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {}
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .firebaseAppList, role: .cancel) {}
             } message: {
                 if let app = viewModel.uiState.confirmDeleteApp {
                     Text("Are you sure you want to delete \(app.displayName)? This action cannot be undone.")
@@ -148,7 +149,7 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
     private func buildSection(title: String, icon: String, color: Color, apps: [FirebaseAppModel]) -> some View {
         Section {
             ForEach(apps) { app in
-                Button {
+                StackTrackedButton(.app, on: .firebaseAppList) {
                     viewModel.uiState.configContent = nil
                     viewModel.uiState.configFilename = nil
                     viewModel.uiState.selectedApp = app
@@ -209,7 +210,7 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
-            Button {
+            StackTrackedButton(.add, on: .firebaseAppList) {
                 viewModel.uiState.showCreateApp = true
             } label: {
                 Image(systemName: "plus")
@@ -243,10 +244,11 @@ struct FirebaseAppDetailSheet: View {
                 buildDangerSection()
             }
             .navigationTitle(app.displayName)
+            .trackScreen(.firebaseAppDetail)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Done")) {
+                    StackTrackedButton(String(localized: "Done"), button: .done, on: .firebaseAppDetail) {
                         dismiss()
                         onDismiss()
                     }
@@ -311,7 +313,7 @@ struct FirebaseAppDetailSheet: View {
                     .disabled(nickname.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             } else {
-                Button {
+                StackTrackedButton(.editName, on: .firebaseAppDetail) {
                     isEditingNickname = true
                 } label: {
                     HStack {
@@ -366,7 +368,7 @@ struct FirebaseAppDetailSheet: View {
 
     private func buildDangerSection() -> some View {
         Section {
-            Button(role: .destructive) {
+            StackTrackedButton(.delete, on: .firebaseAppDetail, role: .destructive) {
                 onDelete()
             } label: {
                 Label(String(localized: "Delete App"), systemImage: "trash")
@@ -414,17 +416,18 @@ struct CreateFirebaseAppSheet: View {
                 }
             }
             .navigationTitle(String(localized: "New App"))
+            .trackScreen(.createFirebaseApp)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .createFirebaseApp) {
                         dismiss()
                         onCancel()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if step == 1 {
-                        Button(String(localized: "Next")) {
+                        StackTrackedButton(String(localized: "Next"), button: .continue, on: .createFirebaseApp) {
                             withAnimation { step = 2 }
                         }
                     } else {
@@ -455,7 +458,7 @@ struct CreateFirebaseAppSheet: View {
     }
 
     private func buildPlatformOption(_ platform: FirebaseAppPlatform, icon: String, color: Color, subtitle: String) -> some View {
-        Button {
+        StackTrackedButton(.select, on: .createFirebaseApp) {
             selectedPlatform = platform
         } label: {
             HStack(spacing: 12) {

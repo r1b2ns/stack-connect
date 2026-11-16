@@ -47,15 +47,16 @@ struct BuildDetailView<ViewModel: BuildDetailViewModelProtocol>: View {
             buildActionsSection()
         }
         .navigationTitle(viewModel.uiState.build.displayVersion)
+        .trackScreen(.buildDetail)
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.load() }
-        .refreshable { await viewModel.load() }
+        .refreshable { await viewModel.refresh() }
         .toast(message: $viewModel.uiState.toastMessage)
         .alert(
             String(localized: "Expire Build"),
             isPresented: $viewModel.uiState.showExpireConfirm
         ) {
-            Button(String(localized: "Cancel"), role: .cancel) {}
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .buildDetail, role: .cancel) {}
             Button(String(localized: "Expire"), role: .destructive) {
                 Task { await viewModel.expireBuild() }
             }
@@ -245,7 +246,7 @@ struct BuildDetailView<ViewModel: BuildDetailViewModelProtocol>: View {
         if !viewModel.uiState.build.isExpired
             && viewModel.uiState.account.canDelete(.testFlight) {
             Section {
-                Button(role: .destructive) {
+                StackTrackedButton(.expire, on: .buildDetail, role: .destructive) {
                     viewModel.uiState.showExpireConfirm = true
                 } label: {
                     Label(String(localized: "Expire Build"), systemImage: "clock.badge.xmark")

@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Notifications
 
@@ -14,6 +15,7 @@ extension Notification.Name {
 protocol IdentifiersListViewModelProtocol: ObservableObject {
     var uiState: IdentifiersListUiState { get set }
     func load() async
+    func refresh() async
     func create(identifier: String, name: String, platformRaw: String) async -> Bool
     func remove(id: String)
     func upsert(_ model: BundleIdentifierModel)
@@ -49,13 +51,16 @@ final class IdentifiersListViewModel: IdentifiersListViewModelProtocol {
     @Published var uiState: IdentifiersListUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = IdentifiersListUiState(account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     /// Maps a `load()` failure onto UI state: a pending Program License Agreement
@@ -71,26 +76,49 @@ final class IdentifiersListViewModel: IdentifiersListViewModelProtocol {
     }
 
     func load() async {
+        _ = await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let succeeded = await performLoad()
+        analytics.track(.action(.refresh, on: .identifiersList, result: succeeded ? .success : .failure))
+    }
+
+    private func performLoad() async -> Bool {
+        var succeeded = true
         uiState.isLoading = true
         uiState.errorMessage = nil
         uiState.pendingAgreement = false
 
         guard let connection = makeConnection() else {
             uiState.isLoading = false
-            return
+            return false
         }
 
         do {
             uiState.bundleIds = try await connection.fetchBundleIds()
         } catch {
+            succeeded = false
             handleLoadError(error)
             Log.print.error("[Identifiers] Load failed: \(error.localizedDescription)")
         }
 
         uiState.isLoading = false
+        return succeeded
     }
 
     func create(identifier: String, name: String, platformRaw: String) async -> Bool {
+        analytics.track(.buttonTap(.create, on: .createBundleId))
+        let created = await performCreate(identifier: identifier, name: name, platformRaw: platformRaw)
+        // `platformRaw` is Apple's platform constant (`IOS`, `MAC_OS`, `UNIVERSAL`).
+        analytics.track(.action(.createBundleId, on: .createBundleId, result: created ? .success : .failure, parameters: [
+            AnalyticsParameterKey.kind: .string(platformRaw)
+        ]))
+        return created
+    }
+
+    private func performCreate(identifier: String, name: String, platformRaw: String) async -> Bool {
         guard let connection = makeConnection() else { return false }
 
         uiState.isCreating = true

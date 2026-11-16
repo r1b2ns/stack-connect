@@ -8,6 +8,7 @@ import WidgetKit
 protocol ArchivedAppsViewModelProtocol: ObservableObject {
     var uiState: ArchivedAppsUiState { get set }
     func loadApps() async
+    func refresh() async
     func unarchive(app: AppModel) async
 }
 
@@ -41,18 +42,32 @@ final class ArchivedAppsViewModel: ArchivedAppsViewModelProtocol {
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         account: AccountModel,
         storage: PersistentStorable? = nil,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = ArchivedAppsUiState(account: account)
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func loadApps() async {
+        _ = await syncApps()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let synced = await syncApps()
+        analytics.track(.action(.refresh, on: .archivedApps, result: synced ? .success : .failure))
+    }
+
+    /// Returns `true` when the API sync completed.
+    private func syncApps() async -> Bool {
         uiState.isLoading = true
 
         // Load archived apps from SwiftData
@@ -80,7 +95,7 @@ final class ArchivedAppsViewModel: ArchivedAppsViewModelProtocol {
         do {
             guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(self.uiState.account.id)") else {
                 uiState.isSyncing = false
-                return
+                return false
             }
 
             let connection = AppleAccountConnection(credentials: credentials)
@@ -105,12 +120,16 @@ final class ArchivedAppsViewModel: ArchivedAppsViewModelProtocol {
             Log.print.info("[ArchivedApps] Synced \(archivedApps.count) archived apps")
         } catch {
             Log.print.error("[ArchivedApps] Sync failed: \(error.localizedDescription)")
+            uiState.isSyncing = false
+            return false
         }
 
         uiState.isSyncing = false
+        return true
     }
 
     func unarchive(app: AppModel) async {
+        analytics.track(.buttonTap(.unarchive, on: .archivedApps))
         guard let idx = uiState.apps.firstIndex(where: { $0.id == app.id }) else { return }
         uiState.apps[idx].isArchived = false
         let updated = uiState.apps[idx]
@@ -122,9 +141,11 @@ final class ArchivedAppsViewModel: ArchivedAppsViewModelProtocol {
             uiState.apps.removeAll { $0.id == updated.id }
             uiState.toastMessage = ToastMessage(String(localized: "App unarchived"), icon: "archivebox.fill")
             Log.print.info("[ArchivedApps] Unarchived \(updated.name)")
+            analytics.track(.action(.toggleArchive, on: .archivedApps, result: .success, parameters: [AnalyticsParameterKey.enabled: .bool(false)]))
         } catch {
             uiState.apps[idx].isArchived = true // revert
             Log.print.error("[ArchivedApps] Unarchive failed: \(error.localizedDescription)")
+            analytics.track(.action(.toggleArchive, on: .archivedApps, result: .failure, parameters: [AnalyticsParameterKey.enabled: .bool(false)]))
         }
     }
 }

@@ -13,6 +13,7 @@ struct CustomizeWidgetsView<ViewModel: HomeViewModelProtocol>: View {
                 buildAvailableSection()
             }
             .navigationTitle(String(localized: "Customize Widgets"))
+            .trackScreen(.customizeWidgets)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
             .environment(\.editMode, .constant(isEditing ? .active : .inactive))
@@ -127,13 +128,13 @@ struct CustomizeWidgetsView<ViewModel: HomeViewModelProtocol>: View {
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             if !viewModel.uiState.widgets.isEmpty {
-                Button(isEditing ? String(localized: "Done") : String(localized: "Edit")) {
+                StackTrackedButton(isEditing ? String(localized: "Done") : String(localized: "Edit"), button: isEditing ? .done : .edit, on: .customizeWidgets) {
                     isEditing.toggle()
                 }
             }
         }
         ToolbarItem(placement: .topBarTrailing) {
-            Button(String(localized: "Close")) {
+            StackTrackedButton(String(localized: "Close"), button: .close, on: .customizeWidgets) {
                 dismiss()
             }
         }

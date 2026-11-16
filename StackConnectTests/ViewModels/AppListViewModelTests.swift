@@ -1,4 +1,5 @@
 import XCTest
+import StackProtocols
 @testable import StackConnect
 
 @MainActor
@@ -114,5 +115,55 @@ final class AppListViewModelTests: XCTestCase {
 
         XCTAssertNil(sut.uiState.phasedByVersionId["v1"])
         XCTAssertTrue(sut.uiState.phasedByVersionId.isEmpty)
+    }
+
+    // MARK: - Analytics events
+
+    private func makeSUTWithCachedApp(analytics: MockAnalyticsTracker) async throws -> (AppListViewModel, AppModel) {
+        let account = AccountModel(name: "Team", providerType: .apple)
+        try await seedApp("a", bundleId: "com.a", accountId: account.id)
+        let sut = AppListViewModel(account: account, storage: storage, keychain: keychain, analytics: analytics)
+        await sut.loadApps()
+        let app = try XCTUnwrap(sut.uiState.apps.first)
+        return (sut, app)
+    }
+
+    func testLoadAppsTracksNothing() async throws {
+        let analytics = MockAnalyticsTracker()
+        _ = try await makeSUTWithCachedApp(analytics: analytics)
+
+        XCTAssertTrue(analytics.trackedEvents.isEmpty)
+    }
+
+    func testRefreshWithoutCredentialsTracksFailure() async throws {
+        let analytics = MockAnalyticsTracker()
+        let (sut, _) = try await makeSUTWithCachedApp(analytics: analytics)
+
+        await sut.refresh()
+
+        XCTAssertEqual(analytics.actions(of: .refresh), [.action(.refresh, on: .appList, result: .failure)])
+    }
+
+    func testToggleFavoriteTracksTapAndSuccess() async throws {
+        let analytics = MockAnalyticsTracker()
+        let (sut, app) = try await makeSUTWithCachedApp(analytics: analytics)
+
+        await sut.toggleFavorite(app: app)
+
+        XCTAssertEqual(analytics.taps(of: .favorite), [.buttonTap(.favorite, on: .appList)])
+        XCTAssertEqual(analytics.actions(of: .toggleFavorite), [
+            .action(.toggleFavorite, on: .appList, result: .success, parameters: [AnalyticsParameterKey.enabled: .bool(true)])
+        ])
+    }
+
+    func testToggleArchiveTracksFailureWhenSaveFails() async throws {
+        let analytics = MockAnalyticsTracker()
+        let (sut, app) = try await makeSUTWithCachedApp(analytics: analytics)
+        await storage.failSave(AppModel.self)
+
+        await sut.toggleArchive(app: app)
+
+        XCTAssertEqual(analytics.taps(of: .archive).count, 1)
+        XCTAssertEqual(analytics.results(of: .toggleArchive), [.failure])
     }
 }

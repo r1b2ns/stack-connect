@@ -83,6 +83,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var coordinator: HomeCoordinator
+    @Environment(\.analytics) private var analytics
     @State private var isCustomizingWidgets = false
 
     private let columns = [
@@ -99,6 +100,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
                 buildWidgetsSection()
             }
             .navigationTitle("StackConnect")
+            .trackScreen(.home)
             .navigationDestinations()
             .stackShareSheet(item: $viewModel.uiState.agreementShare) { payload in
                 payload.shareActivityItems
@@ -117,10 +119,10 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
                 isPresented: $viewModel.uiState.showExpiredAlert,
                 presenting: viewModel.uiState.expiredAccount
             ) { account in
-                Button(String(localized: "Re-import File")) {
+                StackTrackedButton(String(localized: "Re-import File"), button: .reimport, on: .home) {
                     DeepLinkRouter.shared.open(DeepLink.reimport(accountId: account.id).url)
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {}
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .home, role: .cancel) {}
             } message: { account in
                 Text("The account \"\(account.name)\" has expired. Re-import its file to keep using it, or it will stay locked.")
             }
@@ -129,10 +131,10 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
                 isPresented: $viewModel.uiState.showExpiringSoonAlert,
                 presenting: viewModel.uiState.expiringSoonAccount
             ) { account in
-                Button(String(localized: "Re-import File")) {
+                StackTrackedButton(String(localized: "Re-import File"), button: .reimport, on: .home) {
                     DeepLinkRouter.shared.open(DeepLink.reimport(accountId: account.id).url)
                 }
-                Button(String(localized: "OK"), role: .cancel) {}
+                StackTrackedButton(String(localized: "OK"), button: .ok, on: .home, role: .cancel) {}
             } message: { account in
                 if let expirationDate = account.expirationDate {
                     Text("The account \"\(account.name)\" will expire on \(expirationDate.formatted(date: .abbreviated, time: .shortened)). Request a new file from the administrator before then.")
@@ -148,7 +150,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            Button {
+            StackTrackedButton(.customizeWidgets, on: .home) {
                 isCustomizingWidgets = true
             } label: {
                 Image(systemName: "square.grid.2x2")
@@ -224,6 +226,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
                             .font(.footnote)
                             .fontWeight(.semibold)
                     }
+                    .trackOpenURL(.reviewAgreements, on: .home)
 
                     buildAgreementShareButton(for: account)
                 }
@@ -291,7 +294,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
     }
 
     private func buildWidgetsEmptyState() -> some View {
-        Button {
+        StackTrackedButton(.customizeWidgets, on: .home) {
             isCustomizingWidgets = true
         } label: {
             VStack(spacing: 10) {
@@ -329,6 +332,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
                 ForEach(viewModel.uiState.providers, id: \.self) { provider in
                     ProviderCardView(provider: provider)
                         .onTapGesture {
+                            analytics.track(.buttonTap(.providerButton(for: provider), on: .home))
                             coordinator.navigateToAccountsList(provider)
                         }
                 }
@@ -360,6 +364,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
                 .stroke(Color.gray.opacity(0.2), lineWidth: 1)
         )
         .onTapGesture {
+            analytics.track(.buttonTap(.settings, on: .home))
             coordinator.navigateToSettings()
         }
     }

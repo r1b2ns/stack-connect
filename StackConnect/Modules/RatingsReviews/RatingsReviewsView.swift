@@ -43,9 +43,10 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Ratings & Reviews"))
+            .trackScreen(.ratingsReviews)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .sheet(item: $viewModel.uiState.replyingTo) { review in
                 ReplySheet(
                     review: review,
@@ -99,7 +100,7 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
 
             Section {
                 ForEach(viewModel.uiState.reviews) { review in
-                    Button {
+                    StackTrackedButton(.review, on: .ratingsReviews) {
                         homeCoordinator.navigateToReviewDetail(review: review, appName: appName, account: viewModel.uiState.account)
                     } label: {
                         buildReviewRow(review)
@@ -107,7 +108,7 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
                     .foregroundStyle(.primary)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         if !review.hasResponse && viewModel.uiState.account.canEdit(.review) {
-                            Button {
+                            StackTrackedButton(.reply, on: .ratingsReviews) {
                                 viewModel.uiState.replyingTo = review
                             } label: {
                                 Label(String(localized: "Reply"), systemImage: "arrowshape.turn.up.left.fill")
@@ -259,7 +260,7 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
         ToolbarItem(placement: .primaryAction) {
             Menu {
                 ForEach(ReviewSortOption.allCases) { option in
-                    Button {
+                    StackTrackedButton(.sort, on: .ratingsReviews) {
                         viewModel.uiState.sortOption = option
                         Task { await viewModel.load() }
                     } label: {
@@ -333,10 +334,11 @@ struct ReplySheet: View {
                 }
             }
             .navigationTitle(String(localized: "Reply to Review"))
+            .trackScreen(.reviewReply)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .reviewReply) {
                         dismiss()
                         onCancel()
                     }

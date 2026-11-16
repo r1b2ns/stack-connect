@@ -37,9 +37,10 @@ struct AppHistoryView<ViewModel: AppHistoryViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "History"))
+            .trackScreen(.appHistory)
             .navigationBarTitleDisplayMode(.inline)
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
     }
 
     // MARK: - Content

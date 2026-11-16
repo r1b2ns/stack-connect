@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -27,18 +28,25 @@ final class DeviceDetailViewModel: DeviceDetailViewModelProtocol {
     @Published var uiState: DeviceDetailUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         account: AccountModel,
         device: DeviceModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = DeviceDetailUiState(account: account, device: device)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func rename(to newName: String) async -> Bool {
-        guard let connection = makeConnection() else { return false }
+        analytics.track(.buttonTap(.save, on: .deviceDetail))
+        guard let connection = makeConnection() else {
+            analytics.track(.action(.renameDevice, on: .deviceDetail, result: .failure))
+            return false
+        }
         let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed != uiState.device.name else { return false }
 
@@ -50,8 +58,10 @@ final class DeviceDetailViewModel: DeviceDetailViewModelProtocol {
             uiState.device = applyingName(trimmed)
             NotificationCenter.default.post(name: .deviceUpdated, object: uiState.device)
             uiState.isRenaming = false
+            analytics.track(.action(.renameDevice, on: .deviceDetail, result: .success))
             return true
         } catch {
+            analytics.track(.action(.renameDevice, on: .deviceDetail, result: .failure))
             uiState.errorMessage = error.localizedDescription
             Log.print.error("[DeviceDetail] Rename failed: \(error.localizedDescription)")
             uiState.isRenaming = false
@@ -60,18 +70,25 @@ final class DeviceDetailViewModel: DeviceDetailViewModelProtocol {
     }
 
     func toggleStatus() async {
-        guard let connection = makeConnection() else { return }
+        analytics.track(.buttonTap(.toggleStatus, on: .deviceDetail))
+        let newStatus = uiState.device.isEnabled ? "DISABLED" : "ENABLED"
+        let parameters: [String: AnalyticsValue] = [AnalyticsParameterKey.enabled: .bool(newStatus == "ENABLED")]
+        guard let connection = makeConnection() else {
+            analytics.track(.action(.toggleDeviceStatus, on: .deviceDetail, result: .failure, parameters: parameters))
+            return
+        }
 
         uiState.isTogglingStatus = true
         uiState.errorMessage = nil
 
-        let newStatus = uiState.device.isEnabled ? "DISABLED" : "ENABLED"
 
         do {
             try await connection.updateDevice(id: uiState.device.id, name: nil, status: newStatus)
             uiState.device = applyingStatus(newStatus)
             NotificationCenter.default.post(name: .deviceUpdated, object: uiState.device)
+            analytics.track(.action(.toggleDeviceStatus, on: .deviceDetail, result: .success, parameters: parameters))
         } catch {
+            analytics.track(.action(.toggleDeviceStatus, on: .deviceDetail, result: .failure, parameters: parameters))
             uiState.errorMessage = error.localizedDescription
             Log.print.error("[DeviceDetail] Status toggle failed: \(error.localizedDescription)")
         }

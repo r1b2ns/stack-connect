@@ -36,6 +36,7 @@ struct IdentifiersListView<ViewModel: IdentifiersListViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Identifiers"))
+            .trackScreen(.identifiersList)
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $viewModel.uiState.searchQuery,
@@ -44,7 +45,7 @@ struct IdentifiersListView<ViewModel: IdentifiersListViewModelProtocol>: View {
             )
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
+                    StackTrackedButton(.add, on: .identifiersList) {
                         showCreate = true
                     } label: {
                         Image(systemName: "plus")
@@ -53,7 +54,7 @@ struct IdentifiersListView<ViewModel: IdentifiersListViewModelProtocol>: View {
                 }
             }
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .sheet(isPresented: $showCreate) {
                 CreateBundleIdSheet(viewModel: viewModel)
             }
@@ -103,7 +104,7 @@ struct IdentifiersListView<ViewModel: IdentifiersListViewModelProtocol>: View {
     private func buildList() -> some View {
         List {
             ForEach(viewModel.uiState.filtered) { bundle in
-                Button {
+                StackTrackedButton(.identifier, on: .identifiersList) {
                     homeCoordinator.navigateToIdentifierDetail(
                         bundleId: bundle,
                         account: viewModel.uiState.account
@@ -207,10 +208,11 @@ private struct CreateBundleIdSheet<ViewModel: IdentifiersListViewModelProtocol>:
                 }
             }
             .navigationTitle(String(localized: "New Identifier"))
+            .trackScreen(.createBundleId)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button(String(localized: "Cancel")) { dismiss() }
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .createBundleId) { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     if viewModel.uiState.isCreating {

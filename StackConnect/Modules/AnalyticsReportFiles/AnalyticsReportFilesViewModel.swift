@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - File Item
 
@@ -71,13 +72,15 @@ final class AnalyticsReportFilesViewModel: AnalyticsReportFilesViewModelProtocol
     // detail VM so a real credentialed operation can be added without a breaking
     // init change.
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         appId: String,
         appName: String,
         report: AnalyticsCatalogReport,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = AnalyticsReportFilesUiState(
             appId: appId,
@@ -86,6 +89,7 @@ final class AnalyticsReportFilesViewModel: AnalyticsReportFilesViewModelProtocol
             account: account
         )
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     // MARK: - Load
@@ -168,18 +172,30 @@ final class AnalyticsReportFilesViewModel: AnalyticsReportFilesViewModelProtocol
     /// Permanently removes the selected files from disk, then reloads and exits
     /// selection mode. The View gates this behind a confirmation alert.
     func delete() async {
+        analytics.track(.buttonTap(.confirmDelete, on: .analyticsReportFiles))
         let targets = uiState.selectedItems
         guard !targets.isEmpty else { return }
 
         let fm = FileManager.default
+        var failed = 0
         for item in targets {
             do {
                 try fm.removeItem(at: item.url)
                 Log.print.info("[AnalyticsFiles] Deleted \(item.url.lastPathComponent)")
             } catch {
+                failed += 1
                 Log.print.error("[AnalyticsFiles] Delete failed for \(item.url.lastPathComponent): \(error.localizedDescription)")
             }
         }
+        analytics.track(.action(
+            .deleteFiles,
+            on: .analyticsReportFiles,
+            result: failed < targets.count ? .success : .failure,
+            parameters: [
+                AnalyticsParameterKey.count: .int(targets.count),
+                AnalyticsParameterKey.failedCount: .int(failed)
+            ]
+        ))
 
         uiState.selectedIDs.removeAll()
         uiState.isSelecting = false
@@ -191,11 +207,14 @@ final class AnalyticsReportFilesViewModel: AnalyticsReportFilesViewModelProtocol
     /// Presents the selected files: a single file directly, or a fresh temp `.zip`
     /// of several. `isProcessing` is published while zipping.
     func share() async {
+        analytics.track(.buttonTap(.share, on: .analyticsReportFiles))
         let items = uiState.selectedItems
         guard !items.isEmpty else { return }
+        let parameters = [AnalyticsParameterKey.count: AnalyticsValue.int(items.count)]
 
         if items.count == 1 {
             uiState.shareItem = ShareableFileURL(url: items[0].url)
+            analytics.track(.action(.shareFiles, on: .analyticsReportFiles, result: .success, parameters: parameters))
             return
         }
 
@@ -223,7 +242,9 @@ final class AnalyticsReportFilesViewModel: AnalyticsReportFilesViewModelProtocol
             let zip = try await Task.detached { try FileArchiver.zipDirectory(workDir) }.value
             uiState.shareItem = ShareableFileURL(url: zip)
             Log.print.info("[AnalyticsFiles] Zipped \(items.count) files → \(zip.lastPathComponent)")
+            analytics.track(.action(.shareFiles, on: .analyticsReportFiles, result: .success, parameters: parameters))
         } catch {
+            analytics.track(.action(.shareFiles, on: .analyticsReportFiles, result: .failure, parameters: parameters))
             uiState.errorMessage = error.localizedDescription
             Log.print.error("[AnalyticsFiles] Zip failed: \(error.localizedDescription)")
         }

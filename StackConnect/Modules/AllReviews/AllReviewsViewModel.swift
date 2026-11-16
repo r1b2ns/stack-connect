@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -35,13 +36,16 @@ final class AllReviewsViewModel: AllReviewsViewModelProtocol {
 
     private let storage: PersistentStorable
     private let syncService: SyncService
+    private let analytics: AnalyticsTracking
 
     init(
         storage: PersistentStorable? = nil,
-        syncService: SyncService = .shared
+        syncService: SyncService = .shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
         self.syncService = syncService
+        self.analytics = analytics
     }
 
     /// Loads the reviews already cached on the device. Does not hit the network.
@@ -52,14 +56,19 @@ final class AllReviewsViewModel: AllReviewsViewModelProtocol {
     }
 
     /// Pull-to-refresh: fetch fresh data from the API, then reload from storage.
+    /// Tracked as a `refresh` action with its outcome.
     func refresh() async {
         await syncService.syncAll(mode: .full).value
-        await reload()
+        let reloaded = await reload()
+        let succeeded = reloaded && syncService.state.lastError == nil
+        analytics.track(.action(.refresh, on: .allReviews, result: succeeded ? .success : .failure))
     }
 
     // MARK: - Private
 
-    private func reload() async {
+    /// Rebuilds the groups from storage. Returns `false` when storage failed.
+    @discardableResult
+    private func reload() async -> Bool {
         do {
             let apps: [AppModel] = try await storage.fetchAll(AppModel.self)
             let appById = Dictionary(uniqueKeysWithValues: apps.filter { !$0.isArchived }.map { ($0.id, $0) })
@@ -86,9 +95,11 @@ final class AllReviewsViewModel: AllReviewsViewModelProtocol {
                     if aDate != bDate { return aDate > bDate }
                     return a.app.name.localizedCaseInsensitiveCompare(b.app.name) == .orderedAscending
                 }
+            return true
         } catch {
             Log.print.error("[AllReviews] Failed to load reviews: \(error.localizedDescription)")
             uiState.groups = []
+            return false
         }
     }
 }

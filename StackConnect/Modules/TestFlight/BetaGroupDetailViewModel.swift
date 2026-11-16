@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -6,6 +7,7 @@ import Foundation
 protocol BetaGroupDetailViewModelProtocol: ObservableObject {
     var uiState: BetaGroupDetailUiState { get set }
     func load() async
+    func refresh() async
     func loadTestInformation() async
     func requestAddBuild()
     func updateGroup(name: String?, isPublicLinkEnabled: Bool?, publicLinkLimit: Int?, isFeedbackEnabled: Bool?) async
@@ -76,26 +78,46 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
     @Published var uiState: BetaGroupDetailUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
-    init(group: BetaGroupModel, appId: String, account: AccountModel, keychain: KeyStorable = KeychainStorable.shared) {
+    init(
+        group: BetaGroupModel,
+        appId: String,
+        account: AccountModel,
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
+    ) {
         self.uiState = BetaGroupDetailUiState(group: group, appId: appId, account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func load() async {
+        _ = await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let succeeded = await performLoad()
+        analytics.track(.action(.refresh, on: .betaGroupDetail, result: succeeded ? .success : .failure))
+    }
+
+    private func performLoad() async -> Bool {
+        var succeeded = true
         uiState.isLoading = true
         uiState.error = nil
 
         do {
             guard let connection = createConnection() else {
                 uiState.isLoading = false
-                return
+                return false
             }
 
             uiState.builds = try await connection.fetchBuildsForGroup(groupId: uiState.group.id)
 
             Log.print.info("[BetaGroupDetail] Loaded \(self.uiState.builds.count) builds")
         } catch {
+            succeeded = false
             uiState.error = error.localizedDescription
             Log.print.error("[BetaGroupDetail] Load failed: \(error.localizedDescription)")
         }
@@ -105,6 +127,7 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
         if !uiState.group.isInternalGroup {
             await loadTestInformation()
         }
+        return succeeded
     }
 
     func loadTestInformation() async {
@@ -149,8 +172,12 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
     }
 
     func updateGroup(name: String?, isPublicLinkEnabled: Bool?, publicLinkLimit: Int?, isFeedbackEnabled: Bool?) async {
+        analytics.track(.buttonTap(.save, on: .editBetaGroup))
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                analytics.track(.action(.updateBetaGroup, on: .editBetaGroup, result: .failure))
+                return
+            }
             try await connection.updateBetaGroup(
                 id: uiState.group.id,
                 name: name,
@@ -164,24 +191,30 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
             if let feedback = isFeedbackEnabled { uiState.group.isFeedbackEnabled = feedback }
             uiState.showEditGroup = false
             uiState.toastMessage = ToastMessage(String(localized: "Group updated"), icon: "checkmark.circle.fill")
+            analytics.track(.action(.updateBetaGroup, on: .editBetaGroup, result: .success))
         } catch {
+            analytics.track(.action(.updateBetaGroup, on: .editBetaGroup, result: .failure))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to update group"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[BetaGroupDetail] Update failed: \(error.localizedDescription)")
         }
     }
 
+    /// The build row tap is tracked by the picker; only the outcome is sent here.
     func addBuildToGroup(buildId: String) async {
         uiState.isAddingBuild = true
         do {
             guard let connection = createConnection() else {
                 uiState.isAddingBuild = false
+                analytics.track(.action(.addBuildToGroup, on: .betaGroupDetail, result: .failure))
                 return
             }
             try await connection.addBuildToGroups(buildId: buildId, groupIds: [uiState.group.id])
             uiState.showAddBuild = false
             uiState.toastMessage = ToastMessage(String(localized: "Build added"), icon: "hammer.fill")
             await load()
+            analytics.track(.action(.addBuildToGroup, on: .betaGroupDetail, result: .success))
         } catch {
+            analytics.track(.action(.addBuildToGroup, on: .betaGroupDetail, result: .failure))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to add build"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[BetaGroupDetail] Add build failed: \(error.localizedDescription)")
         }
@@ -216,12 +249,14 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
     }
 
     func confirmSubmitForReview(whatsNew: String) async {
+        analytics.track(.buttonTap(.submitForReview, on: .submitBuildForReview))
         guard let build = uiState.submitSheetBuild else { return }
         uiState.isSubmittingForReview = true
         uiState.submitError = nil
         do {
             guard let connection = createConnection() else {
                 uiState.isSubmittingForReview = false
+                analytics.track(.action(.submitBuildForBetaReview, on: .submitBuildForReview, result: .failure))
                 return
             }
 
@@ -240,7 +275,9 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
             uiState.submitSheetBuild = nil
             uiState.toastMessage = ToastMessage(String(localized: "Submitted for review"), icon: "paperplane.fill")
             await load()
+            analytics.track(.action(.submitBuildForBetaReview, on: .submitBuildForReview, result: .success))
         } catch {
+            analytics.track(.action(.submitBuildForBetaReview, on: .submitBuildForReview, result: .failure))
             uiState.submitError = error.localizedDescription
             Log.print.error("[BetaGroupDetail] Submit for review failed: \(error.localizedDescription)")
         }
@@ -248,11 +285,13 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
     }
 
     func expireBuild(_ build: BuildModel) async {
+        analytics.track(.buttonTap(.confirmExpire, on: .betaGroupDetail))
         uiState.isExpiringBuild = true
         uiState.expireError = nil
         do {
             guard let connection = createConnection() else {
                 uiState.isExpiringBuild = false
+                analytics.track(.action(.expireBuild, on: .betaGroupDetail, result: .failure))
                 return
             }
             try await connection.expireBuild(buildId: build.id)
@@ -260,7 +299,9 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
                 uiState.builds[idx].isExpired = true
             }
             uiState.toastMessage = ToastMessage(String(localized: "Build expired"), icon: "clock.badge.xmark")
+            analytics.track(.action(.expireBuild, on: .betaGroupDetail, result: .success))
         } catch {
+            analytics.track(.action(.expireBuild, on: .betaGroupDetail, result: .failure))
             uiState.expireError = error.localizedDescription
             Log.print.error("[BetaGroupDetail] Expire failed: \(error.localizedDescription)")
         }
@@ -268,16 +309,20 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
     }
 
     func removeBuildFromGroup(_ build: BuildModel) async {
+        analytics.track(.buttonTap(.confirmRemove, on: .betaGroupDetail))
         uiState.isRemovingBuild = true
         do {
             guard let connection = createConnection() else {
                 uiState.isRemovingBuild = false
+                analytics.track(.action(.removeBuildFromGroup, on: .betaGroupDetail, result: .failure))
                 return
             }
             try await connection.removeBuildFromGroup(buildId: build.id, groupId: uiState.group.id)
             uiState.builds.removeAll { $0.id == build.id }
             uiState.toastMessage = ToastMessage(String(localized: "Build removed"), icon: "trash")
+            analytics.track(.action(.removeBuildFromGroup, on: .betaGroupDetail, result: .success))
         } catch {
+            analytics.track(.action(.removeBuildFromGroup, on: .betaGroupDetail, result: .failure))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to remove build"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[BetaGroupDetail] Remove build failed: \(error.localizedDescription)")
         }

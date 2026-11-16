@@ -1,5 +1,6 @@
 import Foundation
 import APIProviderFirebase
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -7,6 +8,7 @@ import APIProviderFirebase
 protocol RemoteConfigViewModelProtocol: ObservableObject {
     var uiState: RemoteConfigUiState { get set }
     func load() async
+    func refresh() async
     func saveTemplate() async
     func addParameter(_ name: String, parameter: RemoteConfigParameter)
     func updateParameter(_ name: String, parameter: RemoteConfigParameter)
@@ -78,6 +80,7 @@ final class RemoteConfigViewModel: RemoteConfigViewModelProtocol {
     @Published var uiState: RemoteConfigUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     // Internal template (the full template we work with)
     private var currentTemplate: RemoteConfigTemplate = RemoteConfigTemplate()
@@ -85,15 +88,27 @@ final class RemoteConfigViewModel: RemoteConfigViewModelProtocol {
     init(
         project: FirebaseProjectModel,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = RemoteConfigUiState(project: project, account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     // MARK: - Load
 
     func load() async {
+        await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        await performLoad()
+        analytics.track(.action(.refresh, on: .remoteConfig, result: uiState.error == nil ? .success : .failure))
+    }
+
+    private func performLoad() async {
         uiState.isLoading = true
         uiState.error = nil
 
@@ -125,7 +140,16 @@ final class RemoteConfigViewModel: RemoteConfigViewModelProtocol {
     // MARK: - Save
 
     func saveTemplate() async {
-        guard let provider = createProvider() else { return }
+        analytics.track(.buttonTap(.publish, on: .remoteConfig))
+        // Only the shape of the template (counts) — never parameter keys or values.
+        let parameters: [String: AnalyticsValue] = [
+            AnalyticsParameterKey.count: .int(uiState.parameters.count),
+            AnalyticsParameterKey.conditionCount: .int(uiState.conditions.count)
+        ]
+        guard let provider = createProvider() else {
+            analytics.track(.action(.publishRemoteConfig, on: .remoteConfig, result: .failure, parameters: parameters))
+            return
+        }
         uiState.isSaving = true
 
         // Rebuild template from current state
@@ -144,7 +168,9 @@ final class RemoteConfigViewModel: RemoteConfigViewModelProtocol {
 
             uiState.toastMessage = ToastMessage(String(localized: "Config published"), icon: "checkmark.circle.fill")
             Log.print.info("[RemoteConfig] Template saved for \(self.uiState.project.projectId)")
+            analytics.track(.action(.publishRemoteConfig, on: .remoteConfig, result: .success, parameters: parameters))
         } catch {
+            analytics.track(.action(.publishRemoteConfig, on: .remoteConfig, result: .failure, parameters: parameters))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to publish"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[RemoteConfig] Save failed: \(error.localizedDescription)")
         }

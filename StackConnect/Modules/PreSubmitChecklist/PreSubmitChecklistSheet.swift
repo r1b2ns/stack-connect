@@ -60,13 +60,14 @@ struct PreSubmitChecklistSheet: View {
                 }
             }
             .navigationTitle(String(localized: "Review Checklist"))
+            .trackScreen(.preSubmitChecklist)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .preSubmitChecklist) { onCancel() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "Submit")) { onSubmit() }
+                    StackTrackedButton(String(localized: "Submit"), button: .confirmSubmit, on: .preSubmitChecklist) { onSubmit() }
                         .fontWeight(.semibold)
                 }
             }

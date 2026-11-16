@@ -46,6 +46,7 @@ struct AnalyticsReportsView<ViewModel: AnalyticsReportsViewModelProtocol>: View 
             buildHiddenSection()
         }
         .navigationTitle(String(localized: "Analytics"))
+        .trackScreen(.analyticsReports)
         .navigationBarTitleDisplayMode(.inline)
         .featureOnboarding(.analytics)
     }
@@ -132,7 +133,7 @@ struct AnalyticsReportsView<ViewModel: AnalyticsReportsViewModelProtocol>: View 
     }
 
     private func buildHiddenHeader() -> some View {
-        Button {
+        StackTrackedButton(.hiddenSection, on: .analyticsReports) {
             viewModel.toggleHiddenSection()
         } label: {
             HStack {
@@ -154,7 +155,7 @@ struct AnalyticsReportsView<ViewModel: AnalyticsReportsViewModelProtocol>: View 
     // MARK: - Row Button
 
     private func buildReportButton(_ report: AnalyticsCatalogReport) -> some View {
-        Button {
+        StackTrackedButton(.report, on: .analyticsReports) {
             homeCoordinator.navigateToAnalyticsReportDetail(
                 appId: viewModel.appId,
                 appName: viewModel.appName,

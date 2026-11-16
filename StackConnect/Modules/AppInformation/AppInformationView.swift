@@ -48,6 +48,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
             }
         }
         .navigationTitle(String(localized: "App Information"))
+        .trackScreen(.appInformation)
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.load() }
         .sheet(isPresented: $viewModel.uiState.showContentRightsSheet) {
@@ -60,7 +61,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
                 set: { if !$0 { viewModel.uiState.error = nil } }
             )
         ) {
-            Button(String(localized: "OK"), role: .cancel) {
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .appInformation, role: .cancel) {
                 viewModel.uiState.error = nil
             }
         } message: {
@@ -132,7 +133,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
                     .foregroundStyle(.secondary)
             }
 
-            Button {
+            StackTrackedButton(.localizations, on: .appInformation) {
                 if let appInfo = viewModel.uiState.appInfo {
                     homeCoordinator.navigateToManageLocalizations(
                         appInfoId: appInfo.id,
@@ -163,7 +164,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
 
             buildCopyableInfoRow(label: String(localized: "Apple ID"), value: viewModel.uiState.app.id)
 
-            Button {
+            StackTrackedButton(.category, on: .appInformation) {
                 if let appInfo = viewModel.uiState.appInfo {
                     homeCoordinator.navigateToAppCategoryPicker(
                         appInfoId: appInfo.id,
@@ -187,7 +188,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
             }
             .disabled(!canEditApps)
 
-            Button {
+            StackTrackedButton(.contentRights, on: .appInformation) {
                 viewModel.uiState.showContentRightsSheet = true
             } label: {
                 HStack {
@@ -210,7 +211,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
 
     private func buildAgeRatingSection() -> some View {
         Section {
-            Button {
+            StackTrackedButton(.ageRating, on: .appInformation) {
                 if let ageRating = viewModel.uiState.ageRating {
                     homeCoordinator.navigateToAgeRating(
                         ageRating: ageRating,
@@ -243,6 +244,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
                     StackListRow(icon: "safari.fill", iconColor: .blue, title: String(localized: "View on App Store"))
                 }
                 .foregroundStyle(.primary)
+                .trackOpenURL(.viewOnAppStore, on: .appInformation)
             }
         }
     }
@@ -274,7 +276,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
             Text(value)
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.trailing)
-            Button {
+            StackTrackedButton(.copy, on: .appInformation) {
                 UIPasteboard.general.string = value
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
             } label: {
@@ -355,10 +357,11 @@ struct ContentRightsSheet<ViewModel: AppInformationViewModelProtocol>: View {
                 }
             }
             .navigationTitle(String(localized: "Content Rights"))
+            .trackScreen(.contentRights)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .contentRights) {
                         dismiss()
                         viewModel.uiState.showContentRightsSheet = false
                     }

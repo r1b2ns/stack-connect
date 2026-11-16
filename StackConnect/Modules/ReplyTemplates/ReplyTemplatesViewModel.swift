@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -56,10 +57,16 @@ final class ReplyTemplatesViewModel: ReplyTemplatesViewModelProtocol {
 
     private let accountId: String
     private let storage: PersistentStorable
+    private let analytics: AnalyticsTracking
 
-    init(accountId: String, storage: PersistentStorable? = nil) {
+    init(
+        accountId: String,
+        storage: PersistentStorable? = nil,
+        analytics: AnalyticsTracking = AnalyticsService.shared
+    ) {
         self.accountId = accountId
         self.storage = storage ?? SwiftDataStorable.shared
+        self.analytics = analytics
     }
 
     /// Loads the templates cached on the device. Templates are local-only, so
@@ -81,6 +88,7 @@ final class ReplyTemplatesViewModel: ReplyTemplatesViewModelProtocol {
     }
 
     func save(title: String, body: String) async {
+        analytics.track(.buttonTap(.save, on: .replyTemplateForm))
         let template = ReplyTemplateModel(
             accountId: accountId,
             title: title.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -91,7 +99,9 @@ final class ReplyTemplatesViewModel: ReplyTemplatesViewModelProtocol {
             try await storage.save(template, id: template.id)
             uiState.templates = Self.sorted(uiState.templates + [template])
             uiState.toastMessage = ToastMessage(String(localized: "Template saved"))
+            analytics.track(.action(.createReplyTemplate, on: .replyTemplateForm, result: .success))
         } catch {
+            analytics.track(.action(.createReplyTemplate, on: .replyTemplateForm, result: .failure))
             Log.print.error("[ReplyTemplates] Failed to save template: \(error.localizedDescription)")
             uiState.toastMessage = ToastMessage(
                 String(localized: "Failed to save template"),
@@ -101,6 +111,7 @@ final class ReplyTemplatesViewModel: ReplyTemplatesViewModelProtocol {
     }
 
     func update(_ template: ReplyTemplateModel, title: String, body: String) async {
+        analytics.track(.buttonTap(.save, on: .replyTemplateForm))
         var updated = template
         updated.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         updated.body = body.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -116,7 +127,9 @@ final class ReplyTemplatesViewModel: ReplyTemplatesViewModelProtocol {
             }
             uiState.templates = Self.sorted(templates)
             uiState.toastMessage = ToastMessage(String(localized: "Template updated"))
+            analytics.track(.action(.updateReplyTemplate, on: .replyTemplateForm, result: .success))
         } catch {
+            analytics.track(.action(.updateReplyTemplate, on: .replyTemplateForm, result: .failure))
             Log.print.error("[ReplyTemplates] Failed to update template: \(error.localizedDescription)")
             uiState.toastMessage = ToastMessage(
                 String(localized: "Failed to update template"),
@@ -126,11 +139,14 @@ final class ReplyTemplatesViewModel: ReplyTemplatesViewModelProtocol {
     }
 
     func delete(_ template: ReplyTemplateModel) async {
+        analytics.track(.buttonTap(.delete, on: .replyTemplates))
         do {
             try await storage.delete(ReplyTemplateModel.self, id: template.id)
             uiState.templates.removeAll { $0.id == template.id }
             uiState.toastMessage = ToastMessage(String(localized: "Template deleted"), icon: "trash")
+            analytics.track(.action(.deleteReplyTemplate, on: .replyTemplates, result: .success))
         } catch {
+            analytics.track(.action(.deleteReplyTemplate, on: .replyTemplates, result: .failure))
             Log.print.error("[ReplyTemplates] Failed to delete template: \(error.localizedDescription)")
             uiState.toastMessage = ToastMessage(
                 String(localized: "Failed to delete template"),

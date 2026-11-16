@@ -1,4 +1,5 @@
 import XCTest
+import StackProtocols
 @testable import StackConnect
 
 @MainActor
@@ -135,5 +136,44 @@ final class AddAccountViewModelTests: XCTestCase {
         // is not the duplicate message (and the account was not saved as a dup).
         XCTAssertNotEqual(sut.uiState.validationError, duplicateError)
         XCTAssertFalse(sut.uiState.isSaved) // didn't save (network validation failed), but NOT for duplication
+    }
+
+    // MARK: - Analytics events
+
+    func testSaveTracksTapAndFailureWhenValidationFails() async {
+        let analytics = MockAnalyticsTracker()
+        sut = AddAccountViewModel(
+            providerType: .firebase,
+            storage: mockStorage,
+            keychain: mockKeychain,
+            analytics: analytics
+        )
+        sut.uiState.accountName = "Firebase"
+
+        await sut.save()
+
+        XCTAssertEqual(analytics.taps(of: .save), [.buttonTap(.save, on: .addAccount)])
+        XCTAssertEqual(analytics.actions(of: .createAccount), [
+            .action(.createAccount, on: .addAccount, result: .failure, parameters: [
+                AnalyticsParameterKey.kind: .string(ProviderType.firebase.rawValue)
+            ])
+        ])
+    }
+
+    // The success outcome needs live credential validation (no offline seam, see
+    // above), so only the guard paths are asserted here.
+    func testSaveWithEmptyNameTracksFailure() async {
+        let analytics = MockAnalyticsTracker()
+        sut = AddAccountViewModel(
+            providerType: .apple,
+            storage: mockStorage,
+            keychain: mockKeychain,
+            analytics: analytics
+        )
+        sut.uiState.accountName = "   "
+
+        await sut.save()
+
+        XCTAssertEqual(analytics.results(of: .createAccount), [.failure])
     }
 }

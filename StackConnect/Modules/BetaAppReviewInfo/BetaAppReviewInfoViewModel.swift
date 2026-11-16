@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -79,14 +80,17 @@ final class BetaAppReviewInfoViewModel: BetaAppReviewInfoViewModelProtocol {
     @Published var uiState: BetaAppReviewInfoUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         appId: String,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = BetaAppReviewInfoUiState(appId: appId, account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func load() async {
@@ -130,6 +134,7 @@ final class BetaAppReviewInfoViewModel: BetaAppReviewInfoViewModelProtocol {
     }
 
     func save() async {
+        analytics.track(.buttonTap(.save, on: .betaAppReviewInfo))
         uiState.didAttemptSave = true
 
         if uiState.hasValidationErrors {
@@ -141,6 +146,7 @@ final class BetaAppReviewInfoViewModel: BetaAppReviewInfoViewModelProtocol {
 
         guard let connection = createConnection() else {
             uiState.isSaving = false
+            analytics.track(.action(.updateBetaAppReviewInfo, on: .betaAppReviewInfo, result: .failure))
             return
         }
 
@@ -177,7 +183,9 @@ final class BetaAppReviewInfoViewModel: BetaAppReviewInfoViewModelProtocol {
 
             uiState.didSave = true
             Log.print.info("[BetaAppReviewInfo] Saved test information")
+            analytics.track(.action(.updateBetaAppReviewInfo, on: .betaAppReviewInfo, result: .success))
         } catch {
+            analytics.track(.action(.updateBetaAppReviewInfo, on: .betaAppReviewInfo, result: .failure))
             uiState.error = error.localizedDescription
             Log.print.error("[BetaAppReviewInfo] Save failed: \(error.localizedDescription)")
         }

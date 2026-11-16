@@ -271,12 +271,14 @@ final class UserDetailViewModel: UserDetailViewModelProtocol {
     /// Injected service seam. When `nil`, a real `AppleAccountConnection` is
     /// resolved from keychain credentials on demand (see `resolveService`).
     private let injectedService: UserManaging?
+    private let analytics: AnalyticsTracking
 
     init(
         user: UserModel,
         account: AccountModel,
         keychain: KeyStorable = KeychainStorable.shared,
-        service: UserManaging? = nil
+        service: UserManaging? = nil,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         let (primary, resources) = UserRoleCatalog.split(user.roles)
         self.uiState = UserDetailUiState(
@@ -289,6 +291,7 @@ final class UserDetailViewModel: UserDetailViewModelProtocol {
         self.account = account
         self.keychain = keychain
         self.injectedService = service
+        self.analytics = analytics
     }
 
     // MARK: - Service resolution
@@ -356,6 +359,7 @@ final class UserDetailViewModel: UserDetailViewModelProtocol {
 
     @discardableResult
     func saveRole() async -> Bool {
+        analytics.track(.buttonTap(.save, on: .userRoleEditor))
         guard uiState.canEditRole else { return false }
         guard let primary = uiState.selectedPrimaryRole else {
             uiState.errorMessage = String(localized: "Select a role before saving.")
@@ -374,6 +378,8 @@ final class UserDetailViewModel: UserDetailViewModelProtocol {
             provisioningAllowed: provisioning,
             successMessage: String(localized: "Role updated"),
             successIcon: "person.badge.shield.checkmark",
+            // The role is an ASC role constant (e.g. `DEVELOPER`), never user data.
+            analytics: (.updateUserRole, .userRoleEditor, [AnalyticsParameterKey.kind: .string(primary)]),
             onSuccess: { self.uiState.showRoleEditor = false }
         )
     }
@@ -382,6 +388,7 @@ final class UserDetailViewModel: UserDetailViewModelProtocol {
 
     @discardableResult
     func saveResources() async -> Bool {
+        analytics.track(.buttonTap(.save, on: .userResourcesEditor))
         guard uiState.canEdit else { return false }
         // Account Holder role stays whatever it was; for everyone else we compose
         // from the selected primary role. This keeps the primary role intact when
@@ -402,6 +409,11 @@ final class UserDetailViewModel: UserDetailViewModelProtocol {
             provisioningAllowed: provisioning,
             successMessage: String(localized: "Access updated"),
             successIcon: "checkmark.circle.fill",
+            analytics: (.updateUserAccess, .userResourcesEditor, [
+                AnalyticsParameterKey.count: .int(roles.count),
+                AnalyticsParameterKey.scoped: .bool(!uiState.allAppsVisible),
+                AnalyticsParameterKey.enabled: .bool(provisioning)
+            ]),
             onSuccess: { self.uiState.showResourcesEditor = false }
         )
     }
@@ -415,9 +427,13 @@ final class UserDetailViewModel: UserDetailViewModelProtocol {
         provisioningAllowed: Bool,
         successMessage: String,
         successIcon: String,
+        analytics event: (action: AnalyticsAction, screen: AnalyticsScreen, parameters: [String: AnalyticsValue]),
         onSuccess: @escaping () -> Void
     ) async -> Bool {
-        guard let service = resolveService() else { return false }
+        guard let service = resolveService() else {
+            analytics.track(.action(event.action, on: event.screen, result: .failure, parameters: event.parameters))
+            return false
+        }
 
         uiState.isSaving = true
         defer { uiState.isSaving = false }
@@ -438,8 +454,10 @@ final class UserDetailViewModel: UserDetailViewModelProtocol {
             uiState.toastMessage = ToastMessage(successMessage, icon: successIcon)
             onSuccess()
             Log.print.info("[UserDetail] Updated user \(self.uiState.user.id)")
+            analytics.track(.action(event.action, on: event.screen, result: .success, parameters: event.parameters))
             return true
         } catch {
+            analytics.track(.action(event.action, on: event.screen, result: .failure, parameters: event.parameters))
             handle(error, fallback: String(localized: "Failed to update user"))
             Log.print.error("[UserDetail] Update failed: \(error.localizedDescription)")
             return false
@@ -450,8 +468,13 @@ final class UserDetailViewModel: UserDetailViewModelProtocol {
 
     @discardableResult
     func saveVisibleApps() async -> Bool {
+        analytics.track(.buttonTap(.save, on: .userVisibleAppsEditor))
         guard uiState.canEditVisibleApps else { return false }
-        guard let service = resolveService() else { return false }
+        let parameters: [String: AnalyticsValue] = [AnalyticsParameterKey.count: .int(uiState.selectedAppIds.count)]
+        guard let service = resolveService() else {
+            analytics.track(.action(.updateVisibleApps, on: .userVisibleAppsEditor, result: .failure, parameters: parameters))
+            return false
+        }
 
         uiState.isSaving = true
         defer { uiState.isSaving = false }
@@ -464,8 +487,10 @@ final class UserDetailViewModel: UserDetailViewModelProtocol {
             uiState.toastMessage = ToastMessage(String(localized: "Visible apps updated"), icon: "square.grid.2x2.fill")
             uiState.showVisibleAppsEditor = false
             Log.print.info("[UserDetail] Updated visible apps for user \(self.uiState.user.id) (\(self.uiState.selectedAppIds.count))")
+            analytics.track(.action(.updateVisibleApps, on: .userVisibleAppsEditor, result: .success, parameters: parameters))
             return true
         } catch {
+            analytics.track(.action(.updateVisibleApps, on: .userVisibleAppsEditor, result: .failure, parameters: parameters))
             handle(error, fallback: String(localized: "Failed to update visible apps"))
             Log.print.error("[UserDetail] Update visible apps failed: \(error.localizedDescription)")
             return false
@@ -476,16 +501,23 @@ final class UserDetailViewModel: UserDetailViewModelProtocol {
 
     @discardableResult
     func deleteUser() async -> Bool {
+        analytics.track(.buttonTap(.confirmDelete, on: .userDetail))
         guard uiState.canDelete else { return false }
-        guard let service = resolveService() else { return false }
+        let parameters = UserAccessViewModel.deleteParameters(for: uiState.user)
+        guard let service = resolveService() else {
+            analytics.track(.action(.deleteUser, on: .userDetail, result: .failure, parameters: parameters))
+            return false
+        }
 
         uiState.isSaving = true
         defer { uiState.isSaving = false }
         do {
             try await service.deleteUser(id: uiState.user.id, isPending: uiState.user.isPending)
             Log.print.info("[UserDetail] Deleted user \(self.uiState.user.id) (isPending: \(self.uiState.user.isPending))")
+            analytics.track(.action(.deleteUser, on: .userDetail, result: .success, parameters: parameters))
             return true
         } catch {
+            analytics.track(.action(.deleteUser, on: .userDetail, result: .failure, parameters: parameters))
             if AppleAPIErrorTranslator.isForbidden(error) {
                 uiState.errorMessage = String(localized: "Your App Store Connect API key isn't allowed to remove users. Managing Users and Access requires a key with the Admin role. Update the key's permissions in App Store Connect (Users and Access → Integrations) and try again.")
             } else {

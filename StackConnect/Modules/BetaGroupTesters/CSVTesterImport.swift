@@ -126,6 +126,7 @@ struct CSVTesterImportView: View {
             }
         }
         .navigationTitle(String(localized: "Import Testers"))
+        .trackScreen(.csvTesterImport)
         .navigationBarTitleDisplayMode(.inline)
         .disabled(isInviting)
         .toolbar { buildToolbar() }
@@ -149,7 +150,7 @@ struct CSVTesterImportView: View {
                     buildRow(row)
                         .opacity(isDuplicate(row) ? 0.3 : 1.0)
                         .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) {
+                            StackTrackedButton(.remove, on: .csvTesterImport, role: .destructive) {
                                 rows.removeAll { $0.id == row.id }
                             } label: {
                                 Label(String(localized: "Remove"), systemImage: "trash")
@@ -209,7 +210,7 @@ struct CSVTesterImportView: View {
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
-            Button(String(localized: "Cancel")) {
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .csvTesterImport) {
                 dismiss()
                 onCancel()
             }

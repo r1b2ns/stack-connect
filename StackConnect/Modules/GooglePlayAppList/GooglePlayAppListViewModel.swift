@@ -1,5 +1,6 @@
 import Foundation
 import APIProviderPlay
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -7,6 +8,7 @@ import APIProviderPlay
 protocol GooglePlayAppListViewModelProtocol: ObservableObject {
     var uiState: GooglePlayAppListUiState { get set }
     func load() async
+    func refresh() async
     func addApp(packageName: String) async
     func removeApp(_ app: GooglePlayAppItem) async
 }
@@ -46,20 +48,33 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
 
     private let keychain: KeyStorable
     private let storage: PersistentStorable
+    private let analytics: AnalyticsTracking
 
     init(
         account: AccountModel,
         keychain: KeyStorable = KeychainStorable.shared,
-        storage: PersistentStorable? = nil
+        storage: PersistentStorable? = nil,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = GooglePlayAppListUiState(account: account)
         self.keychain = keychain
         self.storage = storage ?? SwiftDataStorable.shared
+        self.analytics = analytics
     }
 
     // MARK: - Load
 
     func load() async {
+        await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        await performLoad()
+        analytics.track(.action(.refresh, on: .googlePlayAppList, result: uiState.error == nil ? .success : .failure))
+    }
+
+    private func performLoad() async {
         uiState.isLoading = true
         uiState.error = nil
 
@@ -112,6 +127,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     // MARK: - Add App Manually
 
     func addApp(packageName: String) async {
+        analytics.track(.buttonTap(.add, on: .addGooglePlayApp))
         let trimmed = packageName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         guard !uiState.apps.contains(where: { $0.packageName == trimmed }) else {
@@ -125,6 +141,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         guard let provider = createProvider() else {
             uiState.addError = String(localized: "No credentials found.")
             uiState.isAdding = false
+            analytics.track(.action(.addGooglePlayApp, on: .addGooglePlayApp, result: .failure))
             return
         }
 
@@ -154,7 +171,9 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
             uiState.showAddApp = false
             uiState.toastMessage = ToastMessage(String(localized: "App added"), icon: "checkmark.circle.fill")
             Log.print.info("[GooglePlayAppList] Manually added: \(trimmed)")
+            analytics.track(.action(.addGooglePlayApp, on: .addGooglePlayApp, result: .success))
         } catch {
+            analytics.track(.action(.addGooglePlayApp, on: .addGooglePlayApp, result: .failure))
             uiState.addError = error.localizedDescription
             Log.print.error("[GooglePlayAppList] Add failed: \(error.localizedDescription)")
         }
@@ -165,8 +184,10 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     // MARK: - Remove
 
     func removeApp(_ app: GooglePlayAppItem) async {
+        analytics.track(.buttonTap(.remove, on: .googlePlayAppList))
         uiState.apps.removeAll { $0.id == app.id }
-        await saveToStorage()
+        let saved = await saveToStorage()
+        analytics.track(.action(.removeGooglePlayApp, on: .googlePlayAppList, result: saved ? .success : .failure))
     }
 
     // MARK: - Private
@@ -188,12 +209,15 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         }
     }
 
-    private func saveToStorage() async {
+    @discardableResult
+    private func saveToStorage() async -> Bool {
         let manualApps = uiState.apps.filter(\.isManuallyAdded)
         do {
             try await storage.save(manualApps, id: storageKey)
+            return true
         } catch {
             Log.print.error("[GooglePlayAppList] Storage save failed: \(error.localizedDescription)")
+            return false
         }
     }
 

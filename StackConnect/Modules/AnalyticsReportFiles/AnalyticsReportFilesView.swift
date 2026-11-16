@@ -50,6 +50,7 @@ struct AnalyticsReportFilesView<ViewModel: AnalyticsReportFilesViewModelProtocol
     var body: some View {
         buildContent()
             .navigationTitle(viewModel.uiState.report.displayName)
+            .trackScreen(.analyticsReportFiles)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
             .task { await viewModel.load() }
@@ -57,7 +58,7 @@ struct AnalyticsReportFilesView<ViewModel: AnalyticsReportFilesViewModelProtocol
                 AnalyticsShareSheet(activityItems: [item.url])
             }
             .alert(String(localized: "Delete Files"), isPresented: $showDeleteConfirmation) {
-                Button(String(localized: "Cancel"), role: .cancel) {}
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .analyticsReportFiles, role: .cancel) {}
                 Button(String(localized: "Delete"), role: .destructive) {
                     Task { await viewModel.delete() }
                 }
@@ -146,7 +147,7 @@ struct AnalyticsReportFilesView<ViewModel: AnalyticsReportFilesViewModelProtocol
 
     private func buildBottomBar() -> some View {
         HStack {
-            Button(role: .destructive) {
+            StackTrackedButton(.delete, on: .analyticsReportFiles, role: .destructive) {
                 showDeleteConfirmation = true
             } label: {
                 Label(String(localized: "Delete"), systemImage: "trash")
@@ -177,7 +178,7 @@ struct AnalyticsReportFilesView<ViewModel: AnalyticsReportFilesViewModelProtocol
     private func buildToolbar() -> some ToolbarContent {
         if !viewModel.uiState.isEmpty {
             ToolbarItem(placement: .primaryAction) {
-                Button {
+                StackTrackedButton(viewModel.uiState.isSelecting ? .done : .select, on: .analyticsReportFiles) {
                     viewModel.toggleSelecting()
                 } label: {
                     Text(viewModel.uiState.isSelecting

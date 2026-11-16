@@ -40,6 +40,7 @@ struct AppReviewInfoView<ViewModel: AppReviewInfoViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "App Review Information"))
+            .trackScreen(.appReviewInfo)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
             .disabled(viewModel.uiState.isSaving)
@@ -109,7 +110,7 @@ struct AppReviewInfoView<ViewModel: AppReviewInfoViewModelProtocol>: View {
     }
 
     private func copyButton(value: String) -> some View {
-        Button {
+        StackTrackedButton(.copy, on: .appReviewInfo) {
             UIPasteboard.general.string = value
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         } label: {
@@ -121,7 +122,7 @@ struct AppReviewInfoView<ViewModel: AppReviewInfoViewModelProtocol>: View {
     }
 
     private func passwordVisibilityButton() -> some View {
-        Button {
+        StackTrackedButton(.togglePasswordVisibility, on: .appReviewInfo) {
             isPasswordVisible.toggle()
         } label: {
             Image(systemName: isPasswordVisible ? "eye.slash" : "eye")

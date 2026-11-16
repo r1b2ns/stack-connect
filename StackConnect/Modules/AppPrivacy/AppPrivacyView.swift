@@ -37,9 +37,10 @@ struct AppPrivacyView<ViewModel: AppPrivacyViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "App Privacy"))
+            .trackScreen(.appPrivacy)
             .navigationBarTitleDisplayMode(.inline)
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .sheet(
                 item: $viewModel.uiState.editingLocalization
             ) { localization in
@@ -90,7 +91,7 @@ struct AppPrivacyView<ViewModel: AppPrivacyViewModelProtocol>: View {
         List {
             Section {
                 ForEach(viewModel.uiState.localizations) { loc in
-                    Button {
+                    StackTrackedButton(.localization, on: .appPrivacy) {
                         viewModel.uiState.editingLocalization = loc
                     } label: {
                         buildLocaleRow(loc)
@@ -177,6 +178,7 @@ struct AppPrivacyView<ViewModel: AppPrivacyViewModelProtocol>: View {
                     .foregroundStyle(.blue)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
+                .trackOpenURL(.manageDataCollection, on: .appPrivacy)
             }
             .padding(.vertical, 4)
         }
@@ -235,10 +237,11 @@ struct EditPrivacySheet: View {
                 }
             }
             .navigationTitle(localization.localeName)
+            .trackScreen(.appPrivacyEdit)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .appPrivacyEdit) {
                         onCancel()
                     }
                 }

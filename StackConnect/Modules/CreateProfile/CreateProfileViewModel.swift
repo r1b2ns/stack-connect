@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Notifications
 
@@ -192,13 +193,16 @@ final class CreateProfileViewModel: CreateProfileViewModelProtocol {
     @Published var uiState: CreateProfileUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = CreateProfileUiState(account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     // MARK: - Loading
@@ -293,6 +297,7 @@ final class CreateProfileViewModel: CreateProfileViewModelProtocol {
     // MARK: - Submit
 
     func submit() async {
+        analytics.track(.buttonTap(.create, on: .createProfile))
         guard let type = uiState.selectedType,
               let bundle = uiState.selectedBundleId,
               !uiState.selectedCertificateIds.isEmpty,
@@ -306,7 +311,13 @@ final class CreateProfileViewModel: CreateProfileViewModelProtocol {
             return
         }
 
-        guard let connection = makeConnection() else { return }
+        // `type.raw` is Apple's profile type constant (e.g. `IOS_APP_STORE`), never user data.
+        let parameters: [String: AnalyticsValue] = [AnalyticsParameterKey.kind: .string(type.raw)]
+
+        guard let connection = makeConnection() else {
+            analytics.track(.action(.createProfile, on: .createProfile, result: .failure, parameters: parameters))
+            return
+        }
 
         uiState.isCreating = true
         uiState.errorMessage = nil
@@ -326,7 +337,9 @@ final class CreateProfileViewModel: CreateProfileViewModelProtocol {
 
             NotificationCenter.default.post(name: .profileCreated, object: result.profile)
             Log.print.info("[CreateProfile] Created \(result.profile.id)")
+            analytics.track(.action(.createProfile, on: .createProfile, result: .success, parameters: parameters))
         } catch {
+            analytics.track(.action(.createProfile, on: .createProfile, result: .failure, parameters: parameters))
             uiState.errorMessage = AppleAPIErrorTranslator.friendlyMessage(for: error)
             Log.print.error("[CreateProfile] Failed: \(error.localizedDescription)")
         }
@@ -337,6 +350,13 @@ final class CreateProfileViewModel: CreateProfileViewModelProtocol {
     // MARK: - Download
 
     func prepareDownload() -> URL? {
+        analytics.track(.buttonTap(.download, on: .createProfile))
+        let url = writeCreatedProfile()
+        analytics.track(.action(.downloadProfile, on: .createProfile, result: url != nil ? .success : .failure))
+        return url
+    }
+
+    private func writeCreatedProfile() -> URL? {
         guard let base64 = uiState.createdContentBase64,
               let data = Data(base64Encoded: base64),
               let profile = uiState.createdProfile else {

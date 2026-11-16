@@ -37,10 +37,11 @@ struct AppAccessibilityView<ViewModel: AppAccessibilityViewModelProtocol>: View 
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "App Accessibility"))
+            .trackScreen(.appAccessibility)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .sheet(item: $viewModel.uiState.editingDeclaration) { declaration in
                 EditAccessibilitySheet(
                     declaration: declaration,
@@ -75,7 +76,7 @@ struct AppAccessibilityView<ViewModel: AppAccessibilityViewModelProtocol>: View 
                         Task { await viewModel.delete(declaration: decl) }
                     }
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .appAccessibility, role: .cancel) {
                     viewModel.uiState.confirmDelete = nil
                 }
             } message: {
@@ -129,7 +130,7 @@ struct AppAccessibilityView<ViewModel: AppAccessibilityViewModelProtocol>: View 
 
     private func buildDeclarationSection(_ declaration: AccessibilityDeclarationModel) -> some View {
         Section {
-            Button {
+            StackTrackedButton(.declaration, on: .appAccessibility) {
                 viewModel.uiState.editingDeclaration = declaration
             } label: {
                 buildDeclarationRow(declaration)
@@ -138,7 +139,7 @@ struct AppAccessibilityView<ViewModel: AppAccessibilityViewModelProtocol>: View 
             .disabled(!viewModel.uiState.account.canEdit(.apps))
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 if declaration.state == "DRAFT" && viewModel.uiState.account.canDelete(.apps) {
-                    Button(role: .destructive) {
+                    StackTrackedButton(.delete, on: .appAccessibility, role: .destructive) {
                         viewModel.uiState.confirmDelete = declaration
                     } label: {
                         Label(String(localized: "Delete"), systemImage: "trash")
@@ -223,7 +224,7 @@ struct AppAccessibilityView<ViewModel: AppAccessibilityViewModelProtocol>: View 
         if viewModel.uiState.account.canAdd(.apps) {
             ToolbarItem(placement: .primaryAction) {
                 if !viewModel.uiState.availableDeviceFamilies.isEmpty {
-                    Button {
+                    StackTrackedButton(.add, on: .appAccessibility) {
                         viewModel.uiState.showAddDevice = true
                     } label: {
                         Image(systemName: "plus")
@@ -349,10 +350,11 @@ struct EditAccessibilitySheet: View {
                 }
             }
             .navigationTitle(declaration.deviceFamilyDisplayName)
+            .trackScreen(.appAccessibilityEdit)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .appAccessibilityEdit) {
                         dismiss()
                         onCancel()
                     }
@@ -438,10 +440,11 @@ struct AddDeviceFamilySheet: View {
                 }
             }
             .navigationTitle(String(localized: "Add Device"))
+            .trackScreen(.appAccessibilityAddDeviceFamily)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .appAccessibilityAddDeviceFamily) {
                         dismiss()
                         onCancel()
                     }

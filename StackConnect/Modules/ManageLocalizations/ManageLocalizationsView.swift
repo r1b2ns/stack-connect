@@ -61,6 +61,7 @@ struct ManageLocalizationsView<ViewModel: ManageLocalizationsViewModelProtocol>:
             }
         }
         .navigationTitle(String(localized: "Localizations"))
+        .trackScreen(.manageLocalizations)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { buildToolbar() }
         .task { await viewModel.load() }
@@ -79,7 +80,7 @@ struct ManageLocalizationsView<ViewModel: ManageLocalizationsViewModelProtocol>:
                 set: { if !$0 { viewModel.uiState.error = nil } }
             )
         ) {
-            Button(String(localized: "OK"), role: .cancel) {
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .manageLocalizations, role: .cancel) {
                 viewModel.uiState.error = nil
             }
         } message: {
@@ -110,7 +111,7 @@ struct ManageLocalizationsView<ViewModel: ManageLocalizationsViewModelProtocol>:
     }
 
     private func buildLocalizationRow(_ loc: AppInfoLocalizationModel) -> some View {
-        Button {
+        StackTrackedButton(.localization, on: .manageLocalizations) {
             viewModel.uiState.editingLocalization = loc
             viewModel.uiState.showEditSheet = true
         } label: {
@@ -161,7 +162,7 @@ struct ManageLocalizationsView<ViewModel: ManageLocalizationsViewModelProtocol>:
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
-            Button {
+            StackTrackedButton(.add, on: .manageLocalizations) {
                 viewModel.uiState.showAddSheet = true
             } label: {
                 Image(systemName: "plus")
@@ -231,10 +232,11 @@ struct EditLocalizationSheet<ViewModel: ManageLocalizationsViewModelProtocol>: V
                 }
             }
             .navigationTitle(localeName)
+            .trackScreen(.editLocalization)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .editLocalization) {
                         dismiss()
                         viewModel.uiState.showEditSheet = false
                         viewModel.uiState.editingLocalization = nil
@@ -316,10 +318,11 @@ struct AddLocalizationSheet<ViewModel: ManageLocalizationsViewModelProtocol>: Vi
                 }
             }
             .navigationTitle(String(localized: "Add Localization"))
+            .trackScreen(.addLocalization)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .addLocalization) {
                         dismiss()
                         viewModel.uiState.showAddSheet = false
                         viewModel.uiState.error = nil

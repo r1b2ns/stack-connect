@@ -53,13 +53,14 @@ struct ReplyTemplatesView<ViewModel: ReplyTemplatesViewModelProtocol>: View {
         NavigationStack {
             buildContent()
                 .navigationTitle(String(localized: "Reply Templates"))
+                .trackScreen(.replyTemplates)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button(String(localized: "Done")) { dismiss() }
+                        StackTrackedButton(String(localized: "Done"), button: .done, on: .replyTemplates) { dismiss() }
                     }
                     ToolbarItem(placement: .primaryAction) {
-                        Button {
+                        StackTrackedButton(.add, on: .replyTemplates) {
                             viewModel.uiState.form = .create
                         } label: {
                             Image(systemName: "plus")
@@ -95,7 +96,7 @@ struct ReplyTemplatesView<ViewModel: ReplyTemplatesViewModelProtocol>: View {
         } description: {
             Text("Save replies you use often and reuse them with a tap.")
         } actions: {
-            Button(String(localized: "New Template")) {
+            StackTrackedButton(String(localized: "New Template"), button: .create, on: .replyTemplates) {
                 viewModel.uiState.form = .create
             }
         }
@@ -105,7 +106,7 @@ struct ReplyTemplatesView<ViewModel: ReplyTemplatesViewModelProtocol>: View {
         List {
             Section {
                 ForEach(viewModel.uiState.templates) { template in
-                    Button {
+                    StackTrackedButton(.template, on: .replyTemplates) {
                         onSelect(template)
                     } label: {
                         buildRow(template)
@@ -118,7 +119,7 @@ struct ReplyTemplatesView<ViewModel: ReplyTemplatesViewModelProtocol>: View {
                             Label(String(localized: "Delete"), systemImage: "trash")
                         }
 
-                        Button {
+                        StackTrackedButton(.edit, on: .replyTemplates) {
                             viewModel.uiState.form = .edit(template)
                         } label: {
                             Label(String(localized: "Edit"), systemImage: "pencil")

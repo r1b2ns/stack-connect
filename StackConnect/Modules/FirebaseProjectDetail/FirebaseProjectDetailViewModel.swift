@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -47,14 +48,17 @@ final class FirebaseProjectDetailViewModel: FirebaseProjectDetailViewModelProtoc
     @Published var uiState: FirebaseProjectDetailUiState
 
     private let storage: PersistentStorable
+    private let analytics: AnalyticsTracking
 
     init(
         project: FirebaseProjectModel,
         account: AccountModel,
-        storage: PersistentStorable? = nil
+        storage: PersistentStorable? = nil,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = FirebaseProjectDetailUiState(project: project, account: account)
         self.storage = storage ?? SwiftDataStorable.shared
+        self.analytics = analytics
     }
 
     func load() async {
@@ -89,7 +93,9 @@ final class FirebaseProjectDetailViewModel: FirebaseProjectDetailViewModelProtoc
         do {
             try await storage.save(order, id: storageKey)
             Log.print.info("[FirebaseProjectDetail] Saved menu order for \(self.uiState.project.projectId)")
+            analytics.track(.action(.reorderServices, on: .firebaseProjectDetail, result: .success))
         } catch {
+            analytics.track(.action(.reorderServices, on: .firebaseProjectDetail, result: .failure))
             Log.print.error("[FirebaseProjectDetail] Failed to save menu order: \(error.localizedDescription)")
         }
     }

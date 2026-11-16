@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Data Point
 
@@ -70,6 +71,7 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
 
     private let keychain: KeyStorable
     private let defaults: KeyStorable
+    private let analytics: AnalyticsTracking
     private var hasAppeared = false
 
     /// In-memory caches so toggling back to an already-loaded granularity is
@@ -92,7 +94,8 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
         report: AnalyticsCatalogReport,
         account: AccountModel,
         keychain: KeyStorable = KeychainStorable.shared,
-        defaults: KeyStorable = UserDefaultsStorable()
+        defaults: KeyStorable = UserDefaultsStorable(),
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = AnalyticsReportDetailUiState(
             appId: appId,
@@ -102,6 +105,7 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
         )
         self.keychain = keychain
         self.defaults = defaults
+        self.analytics = analytics
     }
 
     // MARK: - Lifecycle
@@ -222,11 +226,16 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
     // MARK: - Enable
 
     func enableReports() async {
+        analytics.track(.buttonTap(.enableReports, on: .analyticsReportDetail))
         guard uiState.account.canEdit(.analytics) else {
             uiState.toastMessage = ToastMessage(String(localized: "An Admin must enable analytics reports."), icon: "exclamationmark.triangle.fill")
             return
         }
-        guard !uiState.isEnabling, let connection = createConnection() else { return }
+        guard !uiState.isEnabling else { return }
+        guard let connection = createConnection() else {
+            analytics.track(.action(.enableReports, on: .analyticsReportDetail, result: .failure))
+            return
+        }
 
         uiState.isEnabling = true
         defer { uiState.isEnabling = false }
@@ -239,7 +248,9 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
             Log.print.info("[AnalyticsDetail] Created report request \(request.id)")
             recordRequestedNow()
             uiState.phase = .awaitingData(requestedAt: Date())
+            analytics.track(.action(.enableReports, on: .analyticsReportDetail, result: .success))
         } catch {
+            analytics.track(.action(.enableReports, on: .analyticsReportDetail, result: .failure))
             Log.print.error("[AnalyticsDetail] Enable failed: \(error.localizedDescription)")
             uiState.toastMessage = ToastMessage(AppleAPIErrorTranslator.friendlyMessage(for: error), icon: "exclamationmark.triangle.fill")
         }
@@ -251,11 +262,16 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
     /// fresh ONGOING request (Apple stops generating new instances for a stopped
     /// one — the only way to resume is a new request). Mirrors `enableReports()`.
     func reactivateReports() async {
+        analytics.track(.buttonTap(.reactivate, on: .analyticsReportDetail))
         guard uiState.account.canEdit(.analytics) else {
             uiState.toastMessage = ToastMessage(String(localized: "An Admin must reactivate analytics reports."), icon: "exclamationmark.triangle.fill")
             return
         }
-        guard !uiState.isEnabling, let connection = createConnection() else { return }
+        guard !uiState.isEnabling else { return }
+        guard let connection = createConnection() else {
+            analytics.track(.action(.reactivateReports, on: .analyticsReportDetail, result: .failure))
+            return
+        }
 
         uiState.isEnabling = true
         defer { uiState.isEnabling = false }
@@ -269,7 +285,9 @@ final class AnalyticsReportDetailViewModel: AnalyticsReportDetailViewModelProtoc
             recordRequestedNow()
             uiState.isReportStopped = false
             uiState.phase = .awaitingData(requestedAt: Date())
+            analytics.track(.action(.reactivateReports, on: .analyticsReportDetail, result: .success))
         } catch {
+            analytics.track(.action(.reactivateReports, on: .analyticsReportDetail, result: .failure))
             Log.print.error("[AnalyticsDetail] Reactivate failed: \(error.localizedDescription)")
             uiState.toastMessage = ToastMessage(AppleAPIErrorTranslator.friendlyMessage(for: error), icon: "exclamationmark.triangle.fill")
         }

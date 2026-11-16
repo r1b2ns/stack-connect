@@ -42,6 +42,7 @@ struct FirebaseProjectDetailView<ViewModel: FirebaseProjectDetailViewModelProtoc
             buildMenuSection()
         }
         .navigationTitle(viewModel.uiState.project.displayName)
+        .trackScreen(.firebaseProjectDetail)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { buildToolbar() }
         .task { await viewModel.load() }
@@ -57,7 +58,7 @@ struct FirebaseProjectDetailView<ViewModel: FirebaseProjectDetailViewModelProtoc
                 Text(viewModel.uiState.project.projectId)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Button {
+                StackTrackedButton(.copy, on: .firebaseProjectDetail) {
                     UIPasteboard.general.string = viewModel.uiState.project.projectId
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 } label: {
@@ -97,7 +98,7 @@ struct FirebaseProjectDetailView<ViewModel: FirebaseProjectDetailViewModelProtoc
     private func buildMenuSection() -> some View {
         Section {
             ForEach(viewModel.uiState.menuItems) { item in
-                Button {
+                StackTrackedButton(item.analyticsButton, on: .firebaseProjectDetail) {
                     handleMenuTap(item)
                 } label: {
                     StackListRow(icon: item.icon, iconColor: item.color, title: item.title)
@@ -147,6 +148,21 @@ struct FirebaseProjectDetailView<ViewModel: FirebaseProjectDetailViewModelProtoc
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
             EditButton()
+        }
+    }
+}
+
+// MARK: - Analytics
+
+private extension FirebaseMenuItem {
+    /// The tap identifier of this service row (fixed menu ids only).
+    var analyticsButton: AnalyticsButton {
+        switch id {
+        case "apps": return .apps
+        case "remoteConfig": return .remoteConfig
+        case "messaging": return .messaging
+        case "analyticsDashboard": return .analytics
+        default: return .select
         }
     }
 }

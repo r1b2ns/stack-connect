@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -35,13 +36,16 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         storage: PersistentStorable? = nil,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func loadAccounts() async {
@@ -70,12 +74,16 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
     }
 
     func updateAccountName(accountId: String, newName: String) async {
+        analytics.track(.buttonTap(.save, on: .settingsAccountEdit))
         let trimmed = newName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
 
         // Find the account in any list
         let allAccounts = uiState.appleAccounts + uiState.firebaseAccounts + uiState.googlePlayAccounts
-        guard let existing = allAccounts.first(where: { $0.id == accountId }) else { return }
+        guard let existing = allAccounts.first(where: { $0.id == accountId }) else {
+            analytics.track(.action(.saveAccount, on: .settingsAccountEdit, result: .failure))
+            return
+        }
 
         let updated = AccountModel(
             id: existing.id,
@@ -93,23 +101,40 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
         do {
             try await storage.save(updated, id: updated.id)
             Log.print.info("[SettingsAccounts] Updated account name: \(trimmed)")
+            analytics.track(.action(.saveAccount, on: .settingsAccountEdit, result: .success))
             await loadAccounts()
         } catch {
             Log.print.error("[SettingsAccounts] Failed to update account: \(error.localizedDescription)")
+            analytics.track(.action(.saveAccount, on: .settingsAccountEdit, result: .failure))
         }
     }
 
     func deleteAccount(_ account: AccountModel) async {
+        analytics.track(.buttonTap(.confirmDelete, on: .settingsAccounts))
+        let parameters = [AnalyticsParameterKey.kind: AnalyticsValue.string(account.providerType.rawValue)]
         do {
             try await AccountCascadeDeleter.delete(account, storage: storage, keychain: keychain)
             Log.print.info("[SettingsAccounts] Deleted account and related data: \(account.name)")
+            analytics.track(.action(.deleteAccount, on: .settingsAccounts, result: .success, parameters: parameters))
             await loadAccounts()
         } catch {
             Log.print.error("[SettingsAccounts] Failed to delete account: \(error.localizedDescription)")
+            analytics.track(.action(.deleteAccount, on: .settingsAccounts, result: .failure, parameters: parameters))
         }
     }
 
     func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL? {
+        let url = makeExportFile(account: account, exportName: exportName, rules: rules, password: password, expirationDate: expirationDate, appsBundles: appsBundles)
+        analytics.track(.action(
+            .exportAccount,
+            on: .exportAccount,
+            result: url == nil ? .failure : .success,
+            parameters: AnalyticsParameterKey.exportParameters(expirationDate: expirationDate, appsBundles: appsBundles)
+        ))
+        return url
+    }
+
+    private func makeExportFile(account: AccountModel, exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL? {
         var credentials: [String: String]?
         if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(account.id)") {
             credentials = [
@@ -160,6 +185,13 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
     // MARK: - Import
 
     func importAccount(from url: URL, password: String, customName: String?) async -> String? {
+        analytics.track(.buttonTap(.confirmImport, on: .importAccount))
+        let error = await performImport(from: url, password: password, customName: customName)
+        analytics.track(.action(.importAccount, on: .importAccount, result: error == nil ? .success : .failure))
+        return error
+    }
+
+    private func performImport(from url: URL, password: String, customName: String?) async -> String? {
         let accessing = url.startAccessingSecurityScopedResource()
         defer { if accessing { url.stopAccessingSecurityScopedResource() } }
 

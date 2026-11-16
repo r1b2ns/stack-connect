@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -6,6 +7,7 @@ import Foundation
 protocol CertificatesListViewModelProtocol: ObservableObject {
     var uiState: CertificatesListUiState { get set }
     func load() async
+    func refresh() async
     func removeCertificate(id: String)
     func insertCertificate(_ certificate: CertificateModel)
 }
@@ -46,13 +48,16 @@ final class CertificatesListViewModel: CertificatesListViewModelProtocol {
     @Published var uiState: CertificatesListUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = CertificatesListUiState(account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func removeCertificate(id: String) {
@@ -80,6 +85,17 @@ final class CertificatesListViewModel: CertificatesListViewModelProtocol {
     }
 
     func load() async {
+        _ = await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let succeeded = await performLoad()
+        analytics.track(.action(.refresh, on: .certificatesList, result: succeeded ? .success : .failure))
+    }
+
+    private func performLoad() async -> Bool {
+        var succeeded = true
         uiState.isLoading = true
         uiState.errorMessage = nil
         uiState.pendingAgreement = false
@@ -88,7 +104,7 @@ final class CertificatesListViewModel: CertificatesListViewModelProtocol {
             uiState.errorMessage = String(localized: "No credentials found for this account")
             uiState.isLoading = false
             Log.print.error("[Certificates] No credentials for account: \(self.uiState.account.name)")
-            return
+            return false
         }
 
         let connection = AppleAccountConnection(credentials: credentials)
@@ -98,10 +114,12 @@ final class CertificatesListViewModel: CertificatesListViewModelProtocol {
             uiState.certificates = certificates
             Log.print.info("[Certificates] Loaded \(certificates.count) for account: \(self.uiState.account.name)")
         } catch {
+            succeeded = false
             handleLoadError(error)
             Log.print.error("[Certificates] Load failed: \(error.localizedDescription)")
         }
 
         uiState.isLoading = false
+        return succeeded
     }
 }

@@ -1,4 +1,5 @@
 import XCTest
+import StackProtocols
 @testable import StackConnect
 
 @MainActor
@@ -7,20 +8,24 @@ final class AccountsListViewModelTests: XCTestCase {
     private var sut: AccountsListViewModel!
     private var mockStorage: MockPersistentStorable!
     private var mockKeychain: MockKeyStorable!
+    private var analytics: MockAnalyticsTracker!
 
     override func setUp() async throws {
         try await super.setUp()
         mockStorage = MockPersistentStorable()
         mockKeychain = MockKeyStorable()
+        analytics = MockAnalyticsTracker()
         sut = AccountsListViewModel(
             providerType: .apple,
             storage: mockStorage,
-            keychain: mockKeychain
+            keychain: mockKeychain,
+            analytics: analytics
         )
     }
 
     override func tearDown() async throws {
         sut = nil
+        analytics = nil
         mockStorage = nil
         mockKeychain = nil
         try await super.tearDown()
@@ -206,5 +211,68 @@ final class AccountsListViewModelTests: XCTestCase {
         XCTAssertNil(mockKeychain.data(forKey: "credentials.\(a.id)"))
         XCTAssertEqual(sut.uiState.groups.count, 1)
         XCTAssertEqual(sut.uiState.groups.first?.issuerID, "issuer-bbb")
+    }
+
+    // MARK: - Analytics events
+
+    func testDeleteAccountTracksTapAndSuccess() async throws {
+        let account = AccountModel(name: "ToDelete", providerType: .apple)
+        try await mockStorage.save(account, id: account.id)
+
+        await sut.deleteAccount(account)
+
+        XCTAssertEqual(analytics.taps(of: .delete), [.buttonTap(.delete, on: .accountsList)])
+        XCTAssertEqual(analytics.actions(of: .deleteAccount), [
+            .action(.deleteAccount, on: .accountsList, result: .success, parameters: [
+                AnalyticsParameterKey.kind: .string(ProviderType.apple.rawValue)
+            ])
+        ])
+    }
+
+    func testDeleteAccountTracksFailure() async throws {
+        let account = AccountModel(name: "ToDelete", providerType: .apple)
+        try await mockStorage.save(account, id: account.id)
+        await mockStorage.failDelete(AccountModel.self, id: account.id)
+
+        await sut.deleteAccount(account)
+
+        XCTAssertEqual(analytics.results(of: .deleteAccount), [.failure])
+    }
+
+    func testImportTracksFailureForUnreadableFile() async {
+        let missing = FileManager.default.temporaryDirectory.appendingPathComponent("missing-\(UUID().uuidString).scexport")
+
+        let error = await sut.importAccount(from: missing, password: "pw", customName: nil)
+
+        XCTAssertNotNil(error)
+        XCTAssertEqual(analytics.taps(of: .confirmImport), [.buttonTap(.confirmImport, on: .accountsListImport)])
+        XCTAssertEqual(analytics.results(of: .importAccount), [.failure])
+    }
+
+    func testReimportTracksReimportAction() async {
+        sut.beginReimport(accountId: "expired")
+        let missing = FileManager.default.temporaryDirectory.appendingPathComponent("missing-\(UUID().uuidString).scexport")
+
+        _ = await sut.importAccount(from: missing, password: "pw", customName: nil)
+
+        XCTAssertEqual(analytics.results(of: .reimportAccount), [.failure])
+        XCTAssertTrue(analytics.actions(of: .importAccount).isEmpty)
+    }
+
+    func testImportTracksSuccess() async throws {
+        let password = "aVeryStrongPass123"
+        let payload: [String: Any] = [
+            "name": "Imported",
+            "providerType": "apple",
+            "credentials": ["issuerID": "issuer", "privateKeyID": "kid", "privateKey": "pk"]
+        ]
+        let json = try XCTUnwrap(String(data: try JSONSerialization.data(withJSONObject: payload), encoding: .utf8))
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("import-\(UUID().uuidString).scexport")
+        try AccountCrypto.encrypt(json: json, password: password).write(to: url)
+
+        let error = await sut.importAccount(from: url, password: password, customName: nil)
+
+        XCTAssertNil(error)
+        XCTAssertEqual(analytics.results(of: .importAccount), [.success])
     }
 }

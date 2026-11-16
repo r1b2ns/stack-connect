@@ -34,6 +34,7 @@ struct LicenseView<ViewModel: LicenseViewModelProtocol>: View {
                 .textSelection(.enabled)
         }
         .navigationTitle(String(localized: "License"))
+        .trackScreen(.license)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

@@ -46,10 +46,11 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
             buildBuildsSection()
         }
         .navigationTitle(viewModel.uiState.group.name)
+        .trackScreen(.betaGroupDetail)
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.load() }
         .onAppear { Task { await viewModel.loadTestInformation() } }
-        .refreshable { await viewModel.load() }
+        .refreshable { await viewModel.refresh() }
         .sheet(isPresented: $viewModel.uiState.showAddBuild) {
             BuildPickerSheet(
                 title: String(localized: "Add Build"),
@@ -103,7 +104,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                     Task { await viewModel.removeBuildFromGroup(build) }
                 }
             }
-            Button(String(localized: "Cancel"), role: .cancel) {}
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .betaGroupDetail, role: .cancel) {}
         } message: {
             if let build = viewModel.uiState.confirmRemoveBuild {
                 Text("Remove build \(build.displayVersion) from this group?")
@@ -121,7 +122,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                     Task { await viewModel.expireBuild(build) }
                 }
             }
-            Button(String(localized: "Cancel"), role: .cancel) {}
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .betaGroupDetail, role: .cancel) {}
         } message: {
             if let build = viewModel.uiState.confirmExpireBuild {
                 Text("Expire build \(build.displayVersion)? Testers will no longer be able to install it. This cannot be undone via the API.")
@@ -134,7 +135,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                 set: { if !$0 { viewModel.uiState.expireError = nil } }
             )
         ) {
-            Button(String(localized: "OK"), role: .cancel) {}
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .betaGroupDetail, role: .cancel) {}
         } message: {
             if let message = viewModel.uiState.expireError {
                 Text(message)
@@ -144,13 +145,13 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
             String(localized: "Test Information Required"),
             isPresented: $viewModel.uiState.showTestInformationRequiredAlert
         ) {
-            Button(String(localized: "Edit Test Information")) {
+            StackTrackedButton(String(localized: "Edit Test Information"), button: .testInformation, on: .betaGroupDetail) {
                 homeCoordinator.navigateToBetaAppReviewInfo(
                     appId: viewModel.uiState.appId,
                     account: viewModel.uiState.account
                 )
             }
-            Button(String(localized: "Cancel"), role: .cancel) {}
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .betaGroupDetail, role: .cancel) {}
         } message: {
             Text("You must complete the Test Information before adding a build to a public group.")
         }
@@ -220,7 +221,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                 }
             }
 
-            Button {
+            StackTrackedButton(.edit, on: .betaGroupDetail) {
                 viewModel.uiState.showEditGroup = true
             } label: {
                 Label(String(localized: "Edit Group Settings"), systemImage: "pencil")
@@ -236,7 +237,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
     private func buildTestInformationSection() -> some View {
         if !viewModel.uiState.group.isInternalGroup {
             Section {
-                Button {
+                StackTrackedButton(.testInformation, on: .betaGroupDetail) {
                     homeCoordinator.navigateToBetaAppReviewInfo(
                         appId: viewModel.uiState.appId,
                         account: viewModel.uiState.account
@@ -263,7 +264,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
 
     private func buildTestersNavigationSection() -> some View {
         Section {
-            Button {
+            StackTrackedButton(.testers, on: .betaGroupDetail) {
                 homeCoordinator.navigateToBetaGroupTesters(
                     group: viewModel.uiState.group,
                     appId: viewModel.uiState.appId,
@@ -311,7 +312,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
             ForEach(viewModel.uiState.buildsByPlatform, id: \.platform) { group in
                 Section {
                     ForEach(group.builds) { build in
-                        Button {
+                        StackTrackedButton(.build, on: .betaGroupDetail) {
                             homeCoordinator.navigateToBuildDetail(
                                 build: build,
                                 appId: viewModel.uiState.appId,
@@ -323,7 +324,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                         .foregroundStyle(.primary)
                         .swipeActions(edge: .trailing) {
                             if viewModel.uiState.account.canDelete(.testFlight) {
-                                Button(role: .destructive) {
+                                StackTrackedButton(.remove, on: .betaGroupDetail, role: .destructive) {
                                     viewModel.uiState.confirmRemoveBuild = build
                                 } label: {
                                     Label(String(localized: "Remove"), systemImage: "trash")
@@ -331,7 +332,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                             }
 
                             if !build.isExpired && viewModel.uiState.account.canDelete(.testFlight) {
-                                Button {
+                                StackTrackedButton(.expire, on: .betaGroupDetail) {
                                     viewModel.uiState.confirmExpireBuild = build
                                 } label: {
                                     Label(String(localized: "Expire"), systemImage: "clock.badge.xmark")
@@ -342,7 +343,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
                             if !viewModel.uiState.group.isInternalGroup
                                 && build.canSubmitForBetaReview
                                 && viewModel.uiState.account.canEdit(.testFlight) {
-                                Button {
+                                StackTrackedButton(.submitForReview, on: .betaGroupDetail) {
                                     Task { await viewModel.startSubmitForReview(build) }
                                 } label: {
                                     Label(String(localized: "Submit"), systemImage: "paperplane.fill")
@@ -470,7 +471,7 @@ struct BetaGroupDetailView<ViewModel: BetaGroupDetailViewModelProtocol>: View {
     }
 
     private func buildAddBuildButton() -> some View {
-        Button {
+        StackTrackedButton(.addBuild, on: .betaGroupDetail) {
             viewModel.requestAddBuild()
         } label: {
             Label(String(localized: "Add Build"), systemImage: "plus.circle.fill")
@@ -553,7 +554,7 @@ struct AddTesterSheet: View {
                 }
 
                 Section {
-                    Button {
+                    StackTrackedButton(.importFile, on: .addTester) {
                         isPresentingFilePicker = true
                     } label: {
                         Label(String(localized: "Import CSV"), systemImage: "square.and.arrow.down")
@@ -563,11 +564,12 @@ struct AddTesterSheet: View {
                 }
             }
             .navigationTitle(String(localized: "Add Tester"))
+            .trackScreen(.addTester)
             .navigationBarTitleDisplayMode(.inline)
             .disabled(isInviting)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .addTester) {
                         dismiss()
                         onCancel()
                     }
@@ -614,7 +616,7 @@ struct AddTesterSheet: View {
                     set: { if !$0 { csvError = nil } }
                 )
             ) {
-                Button(String(localized: "OK"), role: .cancel) { csvError = nil }
+                StackTrackedButton(String(localized: "OK"), button: .ok, on: .addTester, role: .cancel) { csvError = nil }
             } message: {
                 if let message = csvError { Text(message) }
             }
@@ -689,6 +691,7 @@ struct SubmitBuildForReviewSheet: View {
                 }
             }
             .navigationTitle(String(localized: "Submit for Review"))
+            .trackScreen(.submitBuildForReview)
             .navigationBarTitleDisplayMode(.inline)
             .disabled(isLoading || isSubmitting)
             .overlay {
@@ -701,7 +704,7 @@ struct SubmitBuildForReviewSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .submitBuildForReview) {
                         dismiss()
                         onCancel()
                     }
@@ -724,7 +727,7 @@ struct SubmitBuildForReviewSheet: View {
                     set: { if !$0 { errorMessage = nil } }
                 )
             ) {
-                Button(String(localized: "OK"), role: .cancel) {}
+                StackTrackedButton(String(localized: "OK"), button: .ok, on: .submitBuildForReview, role: .cancel) {}
             } message: {
                 if let message = errorMessage {
                     Text(message)
@@ -787,10 +790,11 @@ struct EditBetaGroupSheet: View {
                 }
             }
             .navigationTitle(String(localized: "Edit Group"))
+            .trackScreen(.editBetaGroup)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .editBetaGroup) {
                         dismiss()
                         onCancel()
                     }
@@ -838,7 +842,7 @@ struct InternalTesterPickerSheet: View {
                     }
                 } else {
                     List(members) { member in
-                        Button {
+                        StackTrackedButton(.select, on: .internalTesterPicker) {
                             if selected.contains(member.id) {
                                 selected.remove(member.id)
                             } else {
@@ -873,11 +877,12 @@ struct InternalTesterPickerSheet: View {
                 }
             }
             .navigationTitle(String(localized: "Select Testers"))
+            .trackScreen(.internalTesterPicker)
             .navigationBarTitleDisplayMode(.inline)
             .disabled(isInviting)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .internalTesterPicker) {
                         dismiss()
                         onCancel()
                     }

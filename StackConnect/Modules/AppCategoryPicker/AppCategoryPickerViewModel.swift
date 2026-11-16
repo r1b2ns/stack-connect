@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -45,6 +46,7 @@ final class AppCategoryPickerViewModel: AppCategoryPickerViewModelProtocol {
 
     @Published var uiState: AppCategoryPickerUiState
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         appInfoId: String,
@@ -53,7 +55,8 @@ final class AppCategoryPickerViewModel: AppCategoryPickerViewModelProtocol {
         currentSecondaryCategoryId: String?,
         currentSecondarySubcategoryId: String?,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = AppCategoryPickerUiState(
             appInfoId: appInfoId,
@@ -64,6 +67,7 @@ final class AppCategoryPickerViewModel: AppCategoryPickerViewModelProtocol {
             selectedSecondarySubcategoryId: currentSecondarySubcategoryId
         )
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func load() async {
@@ -83,7 +87,11 @@ final class AppCategoryPickerViewModel: AppCategoryPickerViewModelProtocol {
     }
 
     func save() async {
-        guard let connection = createConnection() else { return }
+        analytics.track(.buttonTap(.save, on: .appCategoryPicker))
+        guard let connection = createConnection() else {
+            analytics.track(.action(.updateCategory, on: .appCategoryPicker, result: .failure))
+            return
+        }
         uiState.isSaving = true
         do {
             try await connection.updateAppInfoCategory(
@@ -95,7 +103,9 @@ final class AppCategoryPickerViewModel: AppCategoryPickerViewModelProtocol {
             )
             uiState.toastMessage = ToastMessage(String(localized: "Category updated"), icon: "checkmark.circle.fill")
             Log.print.info("[AppCategoryPicker] Updated category to \(self.uiState.selectedCategoryId ?? "nil")")
+            analytics.track(.action(.updateCategory, on: .appCategoryPicker, result: .success))
         } catch {
+            analytics.track(.action(.updateCategory, on: .appCategoryPicker, result: .failure))
             uiState.error = error.localizedDescription
             Log.print.error("[AppCategoryPicker] Save failed: \(error.localizedDescription)")
         }

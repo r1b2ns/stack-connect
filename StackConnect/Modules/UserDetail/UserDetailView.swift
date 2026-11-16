@@ -50,6 +50,7 @@ struct UserDetailView<ViewModel: UserDetailViewModelProtocol>: View {
             buildDangerSection()
         }
         .navigationTitle(user.displayName)
+        .trackScreen(.userDetail)
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.loadVisibleApps() }
         .sheet(isPresented: $viewModel.uiState.showRoleEditor) {
@@ -82,7 +83,7 @@ struct UserDetailView<ViewModel: UserDetailViewModelProtocol>: View {
                     if ok { dismiss() }
                 }
             }
-            Button(String(localized: "Cancel"), role: .cancel) {}
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .userDetail, role: .cancel) {}
         } message: {
             if user.isPending {
                 Text("Cancel the invitation sent to \(user.email ?? user.displayName)?")
@@ -97,7 +98,7 @@ struct UserDetailView<ViewModel: UserDetailViewModelProtocol>: View {
                 set: { if !$0 { viewModel.uiState.errorMessage = nil } }
             )
         ) {
-            Button(String(localized: "OK"), role: .cancel) {
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .userDetail, role: .cancel) {
                 viewModel.uiState.errorMessage = nil
             }
         } message: {
@@ -184,7 +185,7 @@ struct UserDetailView<ViewModel: UserDetailViewModelProtocol>: View {
                 }
             }
 
-            Button {
+            StackTrackedButton(.permissions, on: .userDetail) {
                 viewModel.uiState.showPermissions = true
             } label: {
                 Label(String(localized: "What do these permissions allow?"), systemImage: "info.circle")
@@ -195,7 +196,7 @@ struct UserDetailView<ViewModel: UserDetailViewModelProtocol>: View {
                 Text("Roles")
                 Spacer()
                 if viewModel.uiState.canEditRole {
-                    Button(String(localized: "Edit")) {
+                    StackTrackedButton(String(localized: "Edit"), button: .editRole, on: .userDetail) {
                         viewModel.uiState.showRoleEditor = true
                     }
                     .font(.caption)
@@ -228,7 +229,7 @@ struct UserDetailView<ViewModel: UserDetailViewModelProtocol>: View {
                 Text("Access")
                 Spacer()
                 if viewModel.uiState.canEdit {
-                    Button(String(localized: "Edit")) {
+                    StackTrackedButton(String(localized: "Edit"), button: .editAccess, on: .userDetail) {
                         viewModel.uiState.showResourcesEditor = true
                     }
                     .font(.caption)
@@ -270,7 +271,7 @@ struct UserDetailView<ViewModel: UserDetailViewModelProtocol>: View {
                             .foregroundStyle(.secondary)
                     }
 
-                    Button {
+                    StackTrackedButton(.editVisibleApps, on: .userDetail) {
                         viewModel.uiState.showVisibleAppsEditor = true
                     } label: {
                         Label(String(localized: "Edit Visible Apps"), systemImage: "square.grid.2x2")
@@ -315,7 +316,7 @@ struct UserDetailView<ViewModel: UserDetailViewModelProtocol>: View {
     private func buildDangerSection() -> some View {
         if viewModel.uiState.canDelete {
             Section {
-                Button(role: .destructive) {
+                StackTrackedButton(.delete, on: .userDetail, role: .destructive) {
                     viewModel.uiState.confirmDelete = true
                 } label: {
                     HStack {
@@ -351,7 +352,7 @@ private struct RoleEditorSheet<ViewModel: UserDetailViewModelProtocol>: View {
             Form {
                 Section {
                     ForEach(UserRoleCatalog.assignablePrimaryRoles, id: \.self) { role in
-                        Button {
+                        StackTrackedButton(.select, on: .userRoleEditor) {
                             // Reconciles dependent add-ons / provisioning so an
                             // invalid combination can never be submitted.
                             viewModel.selectPrimaryRole(role)
@@ -375,10 +376,11 @@ private struct RoleEditorSheet<ViewModel: UserDetailViewModelProtocol>: View {
                 }
             }
             .navigationTitle(String(localized: "Edit Role"))
+            .trackScreen(.userRoleEditor)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { dismiss() }
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .userRoleEditor) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(String(localized: "Save")) {
@@ -441,10 +443,11 @@ private struct ResourcesEditorSheet<ViewModel: UserDetailViewModelProtocol>: Vie
                 }
             }
             .navigationTitle(String(localized: "Edit Access"))
+            .trackScreen(.userResourcesEditor)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { dismiss() }
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .userResourcesEditor) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(String(localized: "Save")) {
@@ -497,7 +500,7 @@ private struct VisibleAppsEditorSheet<ViewModel: UserDetailViewModelProtocol>: V
                     List {
                         Section {
                             ForEach(viewModel.uiState.availableApps) { app in
-                                Button {
+                                StackTrackedButton(.toggleApp, on: .userVisibleAppsEditor) {
                                     toggle(app.id)
                                 } label: {
                                     HStack {
@@ -524,10 +527,11 @@ private struct VisibleAppsEditorSheet<ViewModel: UserDetailViewModelProtocol>: V
                 }
             }
             .navigationTitle(String(localized: "Visible Apps"))
+            .trackScreen(.userVisibleAppsEditor)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { dismiss() }
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .userVisibleAppsEditor) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(String(localized: "Save")) {
@@ -578,10 +582,11 @@ private struct PermissionsSheet: View {
                 }
             }
             .navigationTitle(String(localized: "Permissions"))
+            .trackScreen(.userPermissions)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "Done")) { dismiss() }
+                    StackTrackedButton(String(localized: "Done"), button: .done, on: .userPermissions) { dismiss() }
                 }
             }
         }

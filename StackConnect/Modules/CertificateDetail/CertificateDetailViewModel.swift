@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -33,17 +34,27 @@ final class CertificateDetailViewModel: CertificateDetailViewModelProtocol {
     @Published var uiState: CertificateDetailUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         account: AccountModel,
         certificate: CertificateModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = CertificateDetailUiState(account: account, certificate: certificate)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func prepareDownload() async -> URL? {
+        analytics.track(.buttonTap(.download, on: .certificateDetail))
+        let url = await performDownload()
+        analytics.track(.action(.downloadCertificate, on: .certificateDetail, result: url != nil ? .success : .failure))
+        return url
+    }
+
+    private func performDownload() async -> URL? {
         guard let connection = makeConnection() else { return nil }
 
         uiState.isPreparingDownload = true
@@ -74,6 +85,13 @@ final class CertificateDetailViewModel: CertificateDetailViewModelProtocol {
     }
 
     func revoke() async -> Bool {
+        analytics.track(.buttonTap(.confirmRevoke, on: .certificateDetail))
+        let succeeded = await performRevoke()
+        analytics.track(.action(.revokeCertificate, on: .certificateDetail, result: succeeded ? .success : .failure))
+        return succeeded
+    }
+
+    private func performRevoke() async -> Bool {
         guard let connection = makeConnection() else { return false }
 
         uiState.isRevoking = true

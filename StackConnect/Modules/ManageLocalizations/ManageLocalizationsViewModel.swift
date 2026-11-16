@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -41,12 +42,14 @@ final class ManageLocalizationsViewModel: ManageLocalizationsViewModelProtocol {
 
     @Published var uiState: ManageLocalizationsUiState
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         appInfoId: String,
         primaryLocale: String,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = ManageLocalizationsUiState(
             appInfoId: appInfoId,
@@ -54,6 +57,7 @@ final class ManageLocalizationsViewModel: ManageLocalizationsViewModelProtocol {
             account: account
         )
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func load() async {
@@ -73,7 +77,11 @@ final class ManageLocalizationsViewModel: ManageLocalizationsViewModelProtocol {
     }
 
     func update(localization: AppInfoLocalizationModel) async {
-        guard let connection = createConnection() else { return }
+        analytics.track(.buttonTap(.save, on: .editLocalization))
+        guard let connection = createConnection() else {
+            analytics.track(.action(.updateLocalization, on: .editLocalization, result: .failure))
+            return
+        }
         uiState.isSaving = true
         do {
             try await connection.updateAppInfoLocalization(
@@ -88,7 +96,9 @@ final class ManageLocalizationsViewModel: ManageLocalizationsViewModelProtocol {
             uiState.editingLocalization = nil
             uiState.toastMessage = ToastMessage(String(localized: "Localization updated"), icon: "checkmark.circle.fill")
             Log.print.info("[ManageLocalizations] Updated localization \(localization.id)")
+            analytics.track(.action(.updateLocalization, on: .editLocalization, result: .success))
         } catch {
+            analytics.track(.action(.updateLocalization, on: .editLocalization, result: .failure))
             uiState.error = error.localizedDescription
             Log.print.error("[ManageLocalizations] Update failed: \(error.localizedDescription)")
         }
@@ -96,20 +106,30 @@ final class ManageLocalizationsViewModel: ManageLocalizationsViewModelProtocol {
     }
 
     func delete(localization: AppInfoLocalizationModel) async {
-        guard let connection = createConnection() else { return }
+        analytics.track(.buttonTap(.delete, on: .manageLocalizations))
+        guard let connection = createConnection() else {
+            analytics.track(.action(.deleteLocalization, on: .manageLocalizations, result: .failure))
+            return
+        }
         do {
             try await connection.deleteAppInfoLocalization(id: localization.id)
             uiState.localizations.removeAll { $0.id == localization.id }
             uiState.toastMessage = ToastMessage(String(localized: "Localization removed"), icon: "checkmark.circle.fill")
             Log.print.info("[ManageLocalizations] Deleted localization \(localization.id)")
+            analytics.track(.action(.deleteLocalization, on: .manageLocalizations, result: .success))
         } catch {
+            analytics.track(.action(.deleteLocalization, on: .manageLocalizations, result: .failure))
             uiState.error = error.localizedDescription
             Log.print.error("[ManageLocalizations] Delete failed: \(error.localizedDescription)")
         }
     }
 
     func addLocalization(locale: String, name: String, subtitle: String?) async {
-        guard let connection = createConnection() else { return }
+        analytics.track(.buttonTap(.add, on: .addLocalization))
+        guard let connection = createConnection() else {
+            analytics.track(.action(.createLocalization, on: .addLocalization, result: .failure))
+            return
+        }
         uiState.isSaving = true
         do {
             let newLoc = try await connection.createAppInfoLocalization(
@@ -125,7 +145,9 @@ final class ManageLocalizationsViewModel: ManageLocalizationsViewModelProtocol {
             uiState.newSubtitle = ""
             uiState.toastMessage = ToastMessage(String(localized: "Localization added"), icon: "checkmark.circle.fill")
             Log.print.info("[ManageLocalizations] Added localization for \(locale)")
+            analytics.track(.action(.createLocalization, on: .addLocalization, result: .success))
         } catch {
+            analytics.track(.action(.createLocalization, on: .addLocalization, result: .failure))
             uiState.error = error.localizedDescription
             Log.print.error("[ManageLocalizations] Add failed: \(error.localizedDescription)")
         }

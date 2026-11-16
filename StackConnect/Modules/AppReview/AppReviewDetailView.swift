@@ -58,6 +58,7 @@ struct AppReviewDetailView<ViewModel: AppReviewDetailViewModelProtocol>: View {
             }
         }
         .navigationTitle(String(localized: "Submission Detail"))
+        .trackScreen(.appReviewDetail)
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.loadDetail() }
         .safeAreaInset(edge: .bottom) {
@@ -71,10 +72,10 @@ struct AppReviewDetailView<ViewModel: AppReviewDetailViewModelProtocol>: View {
             )
         ) {
             if let action = viewModel.uiState.confirmAction {
-                Button(action.confirmLabel, role: action.isDestructive ? .destructive : nil) {
+                StackTrackedButton(action.confirmLabel, button: action.analyticsConfirmButton, on: .appReviewDetail, role: action.isDestructive ? .destructive : nil) {
                     Task { await performConfirmedAction(action) }
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .appReviewDetail, role: .cancel) {
                     viewModel.uiState.confirmAction = nil
                 }
             }
@@ -90,7 +91,7 @@ struct AppReviewDetailView<ViewModel: AppReviewDetailViewModelProtocol>: View {
                 set: { if !$0 { viewModel.uiState.actionError = nil } }
             )
         ) {
-            Button(String(localized: "OK"), role: .cancel) {
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .appReviewDetail, role: .cancel) {
                 viewModel.uiState.actionError = nil
             }
         } message: {
@@ -114,6 +115,7 @@ struct AppReviewDetailView<ViewModel: AppReviewDetailViewModelProtocol>: View {
                 HStack(spacing: 12) {
                     if account.canEdit(.version) {
                         buildActionButton(
+                            .resubmit,
                             title: String(localized: "Resubmit"),
                             icon: "paperplane.fill",
                             color: .blue
@@ -124,6 +126,7 @@ struct AppReviewDetailView<ViewModel: AppReviewDetailViewModelProtocol>: View {
 
                     if account.canDelete(.version) {
                         buildActionButton(
+                            .discard,
                             title: String(localized: "Discard"),
                             icon: "trash.fill",
                             color: .red
@@ -138,6 +141,7 @@ struct AppReviewDetailView<ViewModel: AppReviewDetailViewModelProtocol>: View {
             if account.canDelete(.version) {
                 buildActionBar {
                     buildActionButton(
+                        .cancelSubmission,
                         title: String(localized: "Cancel Submission"),
                         icon: "xmark.circle.fill",
                         color: .red
@@ -167,8 +171,8 @@ struct AppReviewDetailView<ViewModel: AppReviewDetailViewModelProtocol>: View {
         }
     }
 
-    private func buildActionButton(title: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    private func buildActionButton(_ button: AnalyticsButton, title: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
+        StackTrackedButton(button, on: .appReviewDetail, action: action) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
                 Text(title)
@@ -283,6 +287,7 @@ struct AppReviewDetailView<ViewModel: AppReviewDetailViewModelProtocol>: View {
                     .foregroundStyle(.blue)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
+                .trackOpenURL(.resolutionCenter, on: .appReviewDetail)
             }
             .padding(.vertical, 4)
         }
@@ -449,6 +454,18 @@ struct AppReviewDetailView<ViewModel: AppReviewDetailViewModelProtocol>: View {
         case .gray:   return .gray
         case .blue:   return .blue
         case .yellow: return .yellow
+        }
+    }
+}
+
+// MARK: - Analytics
+
+private extension AppReviewDetailAction {
+    /// The confirm button of this action's alert.
+    var analyticsConfirmButton: AnalyticsButton {
+        switch self {
+        case .resubmit: return .confirmResubmit
+        case .discard: return .confirmDiscard
         }
     }
 }
