@@ -33,9 +33,25 @@ protocol GooglePlayAppIconFetching: Sendable {
     func fetchIconUrl(packageName: String) async -> String?
 }
 
-/// What the Play app list needs from one connection: the app listing plus the
-/// icon lookup, so a load goes through a single core provider.
-typealias GooglePlayAppListConnecting = GooglePlayAccountConnecting & GooglePlayAppIconFetching
+// MARK: - Release summaries seam (no edit)
+
+/// Lists one track's releases with their review / publishing state
+/// (`tracks.releases.list`, plan R1).
+///
+/// Unlike `GooglePlayTracksFetching` this opens **no** Play edit, so it can't
+/// cancel an edit in progress (e.g. a CI upload): it may run automatically —
+/// the app list load, pull to refresh, a later background sync. It carries no
+/// rollout fraction; that only exists in the edit-based track read.
+protocol GooglePlayReleaseSummariesFetching: Sendable {
+    /// Releases of `track` (obsolete ones excluded by Google). An unknown track
+    /// is an empty list.
+    func fetchReleaseSummaries(packageName: String, track: String) async throws -> [GooglePlayReleaseSummaryModel]
+}
+
+/// What the Play app list needs from one connection: the app listing, the
+/// icon lookup and the release summaries, so a load goes through a single
+/// core provider.
+typealias GooglePlayAppListConnecting = GooglePlayAccountConnecting & GooglePlayAppIconFetching & GooglePlayReleaseSummariesFetching
 
 // MARK: - App content seams (Android Publisher)
 //
@@ -101,6 +117,7 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
     GooglePlayAppDetailsFetching,
     GooglePlayStoreListingsFetching,
     GooglePlayTracksFetching,
+    GooglePlayReleaseSummariesFetching,
     GooglePlayReviewsConnecting,
     @unchecked Sendable {
 
@@ -235,6 +252,19 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
         let infos = try await callRustCore { try await tracks.fetchTracks(appId: packageName) }
         Log.print.info("[GooglePlay] Fetched \(infos.count) tracks for \(packageName) (Rust core)")
         return infos.map(Self.mapTrack)
+    }
+
+    // MARK: - Release summaries (no edit, see the seam docs)
+
+    func fetchReleaseSummaries(packageName: String, track: String) async throws -> [GooglePlayReleaseSummaryModel] {
+        try requireOnline()
+        let provider = try rustCoreProvider()
+        guard let tracks = provider.tracks() else {
+            throw translate(.Unsupported(message: "Tracks capability is not available for this provider."))
+        }
+        let infos = try await callRustCore { try await tracks.fetchReleaseSummaries(appId: packageName, track: track) }
+        Log.print.info("[GooglePlay] Fetched \(infos.count) release summaries for \(packageName) on \(track) (Rust core)")
+        return infos.map(Self.mapReleaseSummary)
     }
 
     // MARK: - Reviews
@@ -377,7 +407,20 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
             releaseNotes: info.releaseNotes.map {
                 GooglePlayLocalizedTextModel(language: $0.language, text: $0.text)
             },
-            inAppUpdatePriority: info.inAppUpdatePriority.map(Int.init)
+            inAppUpdatePriority: info.inAppUpdatePriority.map(Int.init),
+            countryTargeting: info.countryTargeting.map {
+                GooglePlayCountryTargetingModel(countries: $0.countries, includeRestOfWorld: $0.includeRestOfWorld)
+            }
+        )
+    }
+
+    /// The lifecycle state is typed (unknown values kept as `.unknown(raw)`).
+    static func mapReleaseSummary(_ info: StackCoreRust.ReleaseSummaryInfo) -> GooglePlayReleaseSummaryModel {
+        GooglePlayReleaseSummaryModel(
+            track: info.track,
+            name: info.name,
+            lifecycleState: GooglePlayReleaseLifecycleState(raw: info.lifecycleState),
+            versionCodes: info.versionCodes
         )
     }
 }

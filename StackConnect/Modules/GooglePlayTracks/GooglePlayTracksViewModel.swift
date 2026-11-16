@@ -51,6 +51,7 @@ final class GooglePlayTracksViewModel: GooglePlayTracksViewModelProtocol, Google
         self.loader = GooglePlayAppSectionLoader(
             account: account,
             app: app,
+            resource: .version,
             logTag: "GooglePlayTracks",
             keychain: keychain,
             storage: storage ?? SwiftDataStorable.shared,

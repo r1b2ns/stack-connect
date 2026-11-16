@@ -94,6 +94,19 @@ struct GooglePlayReleaseModel: Codable, Hashable {
     var releaseNotes: [GooglePlayLocalizedTextModel]
     /// In-app update priority, `0`–`5`; `nil` when unset.
     var inAppUpdatePriority: Int?
+    /// Countries the release is limited to; `nil` when it targets every
+    /// country of the track (and in caches written before the field existed).
+    var countryTargeting: GooglePlayCountryTargetingModel? = nil
+
+    /// Identity across `releases.list` and `edits.tracks` (plan R7).
+    func releaseKey(track: String) -> GooglePlayReleaseKey {
+        GooglePlayReleaseKey(track: track, versionCodes: versionCodes)
+    }
+
+    /// Name without Play Console's trailing " (versionCode)".
+    var shortName: String {
+        GooglePlayReleaseNaming.shortName(name: name, versionCodes: versionCodes)
+    }
 
     /// The staged-rollout fraction to show, only while the rollout is in
     /// progress or halted (Google leaves it unset otherwise).
@@ -146,6 +159,14 @@ enum GooglePlayReleaseStatus: String, Codable, Hashable {
         case .unknown:    return .secondary
         }
     }
+}
+
+/// Countries a release is limited to (`countryTargeting`).
+struct GooglePlayCountryTargetingModel: Codable, Hashable {
+    /// ISO 3166-1 alpha-2 codes.
+    var countries: [String]
+    /// Also serve countries Google adds later.
+    var includeRestOfWorld: Bool
 }
 
 /// A text in one language (e.g. release notes).

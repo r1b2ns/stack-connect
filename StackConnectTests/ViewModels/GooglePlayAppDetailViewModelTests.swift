@@ -34,13 +34,14 @@ final class GooglePlayAppDetailViewModelTests: XCTestCase {
 
     private func importedAccount(
         apps: [AccountPermission] = AccountPermission.allCases,
+        version: [AccountPermission] = AccountPermission.allCases,
         review: [AccountPermission] = AccountPermission.allCases,
         appsBundles: [String]? = nil
     ) -> AccountModel {
         AccountModel(
             name: "Imported",
             providerType: .googlePlay,
-            rules: AccountRules(apps: apps, review: review),
+            rules: AccountRules(apps: apps, version: version, review: review),
             origin: .imported,
             appsBundles: appsBundles
         )
@@ -134,7 +135,7 @@ final class GooglePlayAppDetailViewModelTests: XCTestCase {
     func testStoreSectionsNeedTheAppsViewRule() {
         let sut = makeSUT(account: importedAccount(apps: [], review: [.view]))
 
-        for section in [GooglePlayAppDetailSection.storeListings, .tracks, .appDetails] {
+        for section in [GooglePlayAppDetailSection.storeListings, .appDetails] {
             XCTAssertEqual(
                 sut.denial(for: section),
                 String(localized: "You don't have permission to view this app's details."),
@@ -142,6 +143,18 @@ final class GooglePlayAppDetailViewModelTests: XCTestCase {
             )
         }
         XCTAssertNil(sut.denial(for: .ratingsReviews))
+        XCTAssertNil(sut.denial(for: .tracks), "Tracks follow the version rule (R5)")
+    }
+
+    func testTracksNeedTheVersionViewRule() {
+        let sut = makeSUT(account: importedAccount(version: []))
+
+        XCTAssertEqual(GooglePlayAppDetailSection.tracks.requiredResource, .version)
+        XCTAssertEqual(
+            sut.denial(for: .tracks),
+            String(localized: "You don't have permission to view this app's releases.")
+        )
+        XCTAssertNil(sut.denial(for: .storeListings))
     }
 
     /// Asking is a pure query; only `presentDenial` shows the alert.

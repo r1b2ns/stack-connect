@@ -13,6 +13,7 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
     GooglePlayAppDetailsFetching,
     GooglePlayStoreListingsFetching,
     GooglePlayTracksFetching,
+    GooglePlayReleaseSummariesFetching,
     GooglePlayReviewsConnecting,
     @unchecked Sendable {
 
@@ -44,6 +45,9 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
     /// What `fetchTracks(packageName:)` does. Defaults to no track.
     var fetchTracksHandler: @Sendable (String) async throws -> [GooglePlayTrackModel] = { _ in [] }
 
+    /// What `fetchReleaseSummaries(packageName:track:)` does. Defaults to no release.
+    var fetchReleaseSummariesHandler: @Sendable (String, String) async throws -> [GooglePlayReleaseSummaryModel] = { _, _ in [] }
+
     /// What `fetchCustomerReviewsPage(...)` does. Defaults to an empty last page.
     var fetchReviewsPageHandler: @Sendable (ReviewsPageRequest) async throws -> CustomerReviewsPageModel = { _ in
         CustomerReviewsPageModel(reviews: [], nextPageToken: nil)
@@ -64,6 +68,9 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
     private var _appDetailsRequests: [String] = []
     private var _storeListingsRequests: [String] = []
     private var _tracksRequests: [String] = []
+    private var _releaseSummaryRequests: [(packageName: String, track: String)] = []
+    private var _summaryFetchesInFlight = 0
+    private var _maxSummaryFetchesInFlight = 0
     private var _reviewsPageRequests: [ReviewsPageRequest] = []
     private var _replies: [(reviewId: String, body: String)] = []
     private var _credentials: [GooglePlayCredentials] = []
@@ -78,6 +85,10 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
     var storeListingsRequests: [String] { lock.withLock { _storeListingsRequests } }
     var tracksRequests: [String] { lock.withLock { _tracksRequests } }
     var reviewsPageRequests: [ReviewsPageRequest] { lock.withLock { _reviewsPageRequests } }
+    /// `(packageName, track)` of every `fetchReleaseSummaries` call, in call order.
+    var releaseSummaryRequests: [(packageName: String, track: String)] { lock.withLock { _releaseSummaryRequests } }
+    /// Most `fetchReleaseSummaries` calls that were running at the same time.
+    var maxSummaryFetchesInFlight: Int { lock.withLock { _maxSummaryFetchesInFlight } }
     var replies: [(reviewId: String, body: String)] { lock.withLock { _replies } }
     var credentials: [GooglePlayCredentials] { lock.withLock { _credentials } }
 
@@ -161,6 +172,18 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
     func fetchTracks(packageName: String) async throws -> [GooglePlayTrackModel] {
         lock.withLock { _tracksRequests.append(packageName) }
         return try await fetchTracksHandler(packageName)
+    }
+
+    // MARK: - Release summaries (no edit)
+
+    func fetchReleaseSummaries(packageName: String, track: String) async throws -> [GooglePlayReleaseSummaryModel] {
+        lock.withLock {
+            _releaseSummaryRequests.append((packageName, track))
+            _summaryFetchesInFlight += 1
+            _maxSummaryFetchesInFlight = max(_maxSummaryFetchesInFlight, _summaryFetchesInFlight)
+        }
+        defer { lock.withLock { _summaryFetchesInFlight -= 1 } }
+        return try await fetchReleaseSummariesHandler(packageName, track)
     }
 
     // MARK: - Reviews

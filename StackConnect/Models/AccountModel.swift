@@ -25,12 +25,16 @@ enum AccountRuleResource: String, Codable, CaseIterable, Hashable {
     /// (Account Settings), so only meaningful resources are offered.
     ///
     /// Google Play gates its app list and the read-only app sections (`apps`:
-    /// manual add / remove, store listings, tracks, app details) and its ratings
-    /// & reviews (`review`: view, reply). Firebase accounts have no rules.
+    /// manual add / remove, store listings, app details), its releases
+    /// (`version`: release status, tracks and release detail; later edit /
+    /// add for rollout changes and new releases, plan R5) and its ratings &
+    /// reviews (`review`: view, reply). Older Play exports carry no `version`
+    /// permission, so their releases stay hidden (fail closed). Firebase
+    /// accounts have no rules.
     static func resources(for provider: ProviderType) -> [AccountRuleResource] {
         switch provider {
         case .apple:      return [.apps, .version, .review, .testFlight, .analytics, .users, .provisioning]
-        case .googlePlay: return [.apps, .review]
+        case .googlePlay: return [.apps, .version, .review]
         case .firebase:   return []
         }
     }

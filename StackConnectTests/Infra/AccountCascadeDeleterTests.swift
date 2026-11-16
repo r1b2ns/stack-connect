@@ -237,6 +237,13 @@ final class AccountCascadeDeleterTests: XCTestCase {
         try await storage.save(listings, id: listings.cacheKey)
         try await storage.save(tracks, id: tracks.cacheKey)
         try await storage.save(reviews, id: reviews.cacheKey)
+        let releases = GooglePlayReleaseSummariesCache(
+            accountId: account.id,
+            packageName: packageName,
+            summaries: [GooglePlayReleaseSummaryModel(track: "production", name: "1.0", lifecycleState: .published, versionCodes: ["10"])],
+            fetchedAt: nil
+        )
+        try await storage.save(releases, id: releases.cacheKey)
     }
 
     /// Package names with at least one cached section for `account`, per section.
@@ -248,7 +255,8 @@ final class AccountCascadeDeleterTests: XCTestCase {
             "details": packages(GooglePlayAppDetailsCache.self),
             "listings": packages(GooglePlayStoreListingsCache.self),
             "tracks": packages(GooglePlayTracksCache.self),
-            "reviews": packages(GooglePlayReviewsCache.self)
+            "reviews": packages(GooglePlayReviewsCache.self),
+            "releases": packages(GooglePlayReleaseSummariesCache.self)
         ]
     }
 
@@ -263,7 +271,7 @@ final class AccountCascadeDeleterTests: XCTestCase {
         try await AccountCascadeDeleter.delete(playAccount, storage: storage, keychain: keychain)
 
         let remaining = try await googlePlaySectionPackages(of: playAccount)
-        XCTAssertEqual(remaining, ["details": [], "listings": [], "tracks": [], "reviews": []])
+        XCTAssertEqual(remaining, ["details": [], "listings": [], "tracks": [], "reviews": [], "releases": []])
     }
 
     func testDeleteKeepsAnotherGooglePlayAccountsSectionCaches() async throws {
@@ -277,7 +285,7 @@ final class AccountCascadeDeleterTests: XCTestCase {
 
         let kept = try await googlePlaySectionPackages(of: otherPlayAccount)
         let expected: Set<String> = ["com.shared.app"]
-        XCTAssertEqual(kept, ["details": expected, "listings": expected, "tracks": expected, "reviews": expected])
+        XCTAssertEqual(kept, ["details": expected, "listings": expected, "tracks": expected, "reviews": expected, "releases": expected])
     }
 
     func testGooglePlaySectionDeleteFailureDoesNotStopTheCascade() async throws {

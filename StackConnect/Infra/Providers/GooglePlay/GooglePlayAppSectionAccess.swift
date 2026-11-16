@@ -18,8 +18,9 @@ enum GooglePlayAppSectionAccess {
         }
         guard account.canView(resource) else {
             switch resource {
-            case .review: return String(localized: "You don't have permission to view ratings and reviews.")
-            default:      return String(localized: "You don't have permission to view this app's details.")
+            case .review:  return String(localized: "You don't have permission to view ratings and reviews.")
+            case .version: return String(localized: "You don't have permission to view this app's releases.")
+            default:       return String(localized: "You don't have permission to view this app's details.")
             }
         }
         return nil

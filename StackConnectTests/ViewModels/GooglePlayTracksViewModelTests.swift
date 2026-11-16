@@ -56,6 +56,24 @@ final class GooglePlayTracksViewModelTests: XCTestCase {
 
     // MARK: - Tests
 
+    func testAccountWithoutTheVersionRuleNeverReadsTracks() async {
+        let imported = AccountModel(
+            name: "Imported", providerType: .googlePlay,
+            rules: AccountRules(apps: AccountPermission.allCases, review: AccountPermission.allCases),
+            origin: .imported
+        )
+        keychain.setObject(
+            GooglePlayCredentials(serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON()),
+            forKey: "credentials.\(imported.id)"
+        )
+        let sut = GooglePlayTracksViewModel(app: app, account: imported, keychain: keychain, storage: storage, connectionFactory: connection.tracksFactory)
+
+        await sut.load()
+
+        XCTAssertEqual(connection.editBasedReadCount, 0)
+        XCTAssertEqual(sut.uiState.error, String(localized: "You don't have permission to view this app's releases."))
+    }
+
     func testInitDoesNotReadThroughAPlayEdit() async {
         _ = makeSUT()
         await Task.yield()

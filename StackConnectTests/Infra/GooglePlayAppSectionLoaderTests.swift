@@ -237,7 +237,9 @@ final class GooglePlayAppSectionLoaderTests: XCTestCase {
         XCTAssertEqual(connection.editBasedReadCount, 0)
     }
 
-    func testAccountWithoutTheAppsViewRuleNeverReadsAnySection() async {
+    /// Store listings and app details follow the `apps` rule; tracks follow
+    /// `version` (plan R5). Neither rule: no section reads.
+    func testAccountWithoutTheAppsAndVersionViewRulesNeverReadsAnySection() async {
         let restricted = AccountModel(
             name: "Imported",
             providerType: .googlePlay,
@@ -248,7 +250,9 @@ final class GooglePlayAppSectionLoaderTests: XCTestCase {
 
         let errors = await loadEverySection(account: restricted)
 
-        XCTAssertEqual(errors, [String?](repeating: String(localized: "You don't have permission to view this app's details."), count: 3))
+        let details = String(localized: "You don't have permission to view this app's details.")
+        let releases = String(localized: "You don't have permission to view this app's releases.")
+        XCTAssertEqual(errors, [details, releases, details])
         XCTAssertEqual(connection.editBasedReadCount, 0)
     }
 

@@ -35,8 +35,29 @@ final class AccountProviderCapabilitiesTests: XCTestCase {
         XCTAssertEqual(Set(AccountRuleResource.resources(for: .apple)), Set(AccountRuleResource.allCases))
     }
 
-    func testGooglePlayResourcesAreAppsAndReviews() {
-        XCTAssertEqual(AccountRuleResource.resources(for: .googlePlay), [.apps, .review])
+    func testGooglePlayResourcesAreAppsVersionsAndReviews() {
+        XCTAssertEqual(AccountRuleResource.resources(for: .googlePlay), [.apps, .version, .review])
+    }
+
+    /// Play exports written before `.version` was a Play resource carry no
+    /// `version` permission: releases stay hidden (fail closed).
+    func testOldGooglePlayExportRulesHideReleases() throws {
+        let json = #"{"apps":["view","add"],"review":["view","edit"]}"#
+        let rules = try JSONDecoder().decode(AccountRules.self, from: Data(json.utf8))
+        let account = AccountModel(name: "Imported", providerType: .googlePlay, rules: rules, origin: .imported)
+
+        XCTAssertFalse(account.canView(.version))
+        XCTAssertTrue(account.canView(.apps))
+        XCTAssertTrue(account.canEdit(.review))
+    }
+
+    func testGooglePlayVersionFooterIsWordedForReleases() {
+        XCTAssertEqual(
+            AccountRuleResource.version.footerDescription(for: .googlePlay),
+            String(localized: "View release status, tracks and releases, and manage rollouts")
+        )
+        XCTAssertEqual(AccountRuleResource.version.footerDescription(for: .apple), AccountRuleResource.version.footerDescription)
+        XCTAssertEqual(AccountRuleResource.apps.footerDescription(for: .googlePlay), AccountRuleResource.apps.footerDescription)
     }
 
     func testFirebaseHasNoResources() {
@@ -44,7 +65,7 @@ final class AccountProviderCapabilitiesTests: XCTestCase {
     }
 
     func testAccountRuleResourcesFollowItsProvider() {
-        XCTAssertEqual(AccountModel(name: "P", providerType: .googlePlay).ruleResources, [.apps, .review])
+        XCTAssertEqual(AccountModel(name: "P", providerType: .googlePlay).ruleResources, [.apps, .version, .review])
         XCTAssertEqual(AccountModel(name: "A", providerType: .apple).ruleResources.count, 7)
     }
 

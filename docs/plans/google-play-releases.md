@@ -73,6 +73,11 @@ To validate with a real service account (not stated in the discovery document): 
 
 Order: C1 → T1 (read part) → T2 → T3 can ship first (read-only, no flag). Then C2–C5 → T1 (write part) → T4 → T5 → T7 → T6.
 
+Status:
+- C1–C5 ✅ in the core; re-vendored in the app (fake data overrides every new handle method).
+- T1 read part ✅: `GooglePlayReleaseSummariesFetching` (edit-free), `GooglePlayReleaseLifecycleState`, `GooglePlayReleaseSummaryModel`, `GooglePlayReleaseKey` (R7), `countryTargeting` on `GooglePlayReleaseModel`, `GooglePlayReleaseSummariesCache` (`googleplay-releases.*`, cascade-deleted), `GooglePlayReleaseActions` (R8) with the full matrix tests, `ReleaseNotFound` copy. Write seams (`GooglePlayBundlesFetching`, `GooglePlayReleaseManaging`) come with T4–T7.
+- T2 ✅: Play resources are `[.apps, .version, .review]`; Tracks gated by `.version`; old exports hide releases.
+
 ## 4. Tests
 
 - ViewModels and services, with `MockPersistentStorable`, `MockKeyStorable` and a mock connection per seam.

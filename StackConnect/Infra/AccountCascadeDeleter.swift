@@ -62,6 +62,7 @@ enum AccountCascadeDeleter {
                 + scopedCacheDeletions(GooglePlayStoreListingsCache.self, accountId: account.id, storage: storage)
                 + scopedCacheDeletions(GooglePlayTracksCache.self, accountId: account.id, storage: storage)
                 + scopedCacheDeletions(GooglePlayReviewsCache.self, accountId: account.id, storage: storage)
+                + scopedCacheDeletions(GooglePlayReleaseSummariesCache.self, accountId: account.id, storage: storage)
         } else {
             googlePlayCacheDeletions = []
         }

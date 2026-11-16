@@ -160,7 +160,7 @@ struct ExportAccountView: View {
             }
             .foregroundStyle(.primary)
         } footer: {
-            Text(resource.footerDescription)
+            Text(resource.footerDescription(for: account.providerType))
         }
     }
 

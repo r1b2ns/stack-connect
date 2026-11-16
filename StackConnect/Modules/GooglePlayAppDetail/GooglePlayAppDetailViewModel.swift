@@ -52,8 +52,9 @@ enum GooglePlayAppDetailSection: CaseIterable, Identifiable {
     /// Account rule needed to view the section.
     var requiredResource: AccountRuleResource {
         switch self {
-        case .ratingsReviews:                      return .review
-        case .storeListings, .tracks, .appDetails: return .apps
+        case .ratingsReviews:              return .review
+        case .tracks:                      return .version
+        case .storeListings, .appDetails:  return .apps
         }
     }
 }
