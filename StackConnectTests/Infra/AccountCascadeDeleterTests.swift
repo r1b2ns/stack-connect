@@ -404,4 +404,29 @@ final class AccountCascadeDeleterTests: XCTestCase {
         XCTAssertNotNil(storedAccount)
         XCTAssertNotNil(credentials(of: account))
     }
+
+    // MARK: - Google Play dashboard data (plan S1, H4)
+
+    func testDeleteRemovesThePlayReviewsOfTheAccountsAppsButKeepsSharedPackages() async throws {
+        let playAccount = AccountModel(name: "Play Team", providerType: .googlePlay)
+        let otherPlayAccount = AccountModel(name: "Other Play Team", providerType: .googlePlay)
+        try await storage.save(playAccount, id: playAccount.id)
+        try await storage.save(otherPlayAccount, id: otherPlayAccount.id)
+        try await seedGooglePlayCache(for: playAccount, packageNames: ["com.mine", "com.shared"])
+        try await seedGooglePlayCache(for: otherPlayAccount, packageNames: ["com.shared"])
+        for (appId, reviewId) in [("com.mine", "com.mine/1"), ("com.shared", "com.shared/1"), ("123", "apple-1")] {
+            var review = CustomerReviewModel(id: reviewId, rating: 5)
+            review.appId = appId
+            try await storage.save(review, id: CustomerReviewModel.storageId(appId: appId, reviewId: reviewId))
+        }
+        let rotationId = GooglePlayReviewRotation.storageId(accountId: playAccount.id)
+        try await storage.save(GooglePlayReviewRotation(accountId: playAccount.id, nextIndex: 3), id: rotationId)
+
+        try await AccountCascadeDeleter.delete(playAccount, storage: storage, keychain: keychain)
+
+        let remaining = try await storage.fetchAll(CustomerReviewModel.self).map(\.id).sorted()
+        XCTAssertEqual(remaining, ["apple-1", "com.shared/1"])
+        let rotation = try await storage.fetch(GooglePlayReviewRotation.self, id: rotationId)
+        XCTAssertNil(rotation)
+    }
 }

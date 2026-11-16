@@ -10,18 +10,22 @@ final class SyncServiceTests: XCTestCase {
     private var mockStorage: MockPersistentStorable!
     private var mockKeychain: MockKeyStorable!
     private var connections: [String: MockAppleAccountSyncing] = [:]
+    private var playConnection: MockGooglePlayAccountConnection!
 
     override func setUp() async throws {
         try await super.setUp()
         mockStorage = MockPersistentStorable()
         mockKeychain = MockKeyStorable()
         connections = [:]
+        let playConnection = MockGooglePlayAccountConnection()
+        self.playConnection = playConnection
         sut = StackConnect.SyncService(
             storage: mockStorage,
             keychain: mockKeychain,
             appleConnectionFactory: { [weak self] credentials in
                 self?.connections[credentials.issuerID] ?? MockAppleAccountSyncing()
-            }
+            },
+            googlePlayConnectionFactory: playConnection.syncFactory
         )
     }
 
@@ -29,6 +33,7 @@ final class SyncServiceTests: XCTestCase {
         sut = nil
         mockStorage = nil
         mockKeychain = nil
+        playConnection = nil
         try await super.tearDown()
     }
 
@@ -52,24 +57,86 @@ final class SyncServiceTests: XCTestCase {
         XCTAssertTrue(sut.state.accountsInProgress.isEmpty)
     }
 
-    func testSyncAllSkipsNonAppleAccounts() async throws {
+    func testSyncAllSkipsFirebaseAccounts() async throws {
         let firebase = AccountModel(name: "Firebase", providerType: .firebase)
-        let play = AccountModel(name: "Play", providerType: .googlePlay)
         try await mockStorage.save(firebase, id: firebase.id)
+
+        await sut.syncAll().value
+
+        // No SyncMetadata persisted because Firebase has nothing to sync.
+        let metadataFirebase: SyncMetadata? = try await mockStorage.fetch(
+            SyncMetadata.self, id: "sync.account.\(firebase.id)"
+        )
+        XCTAssertNil(metadataFirebase)
+        XCTAssertNotNil(sut.state.lastSyncedAt)
+    }
+
+    // MARK: - Google Play leg (plan S1)
+
+    func testSyncAllRunsGooglePlayAccounts() async throws {
+        let play = AccountModel(name: "Play", providerType: .googlePlay)
+        try await mockStorage.save(play, id: play.id)
+        mockKeychain.setObject(
+            GooglePlayCredentials(serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON()),
+            forKey: "credentials.\(play.id)"
+        )
+        playConnection.fetchAppsHandler = {
+            [StackProtocols.AppInfo(id: "com.play", name: "Play App", bundleId: "com.play", platform: "ANDROID")]
+        }
+
+        await sut.syncAll().value
+
+        let list: [GooglePlayAppItem]? = try await mockStorage.fetch(
+            [GooglePlayAppItem].self, id: GooglePlayAppItem.cacheKey(accountId: play.id)
+        )
+        XCTAssertEqual(list?.map(\.packageName), ["com.play"])
+        let metadata: SyncMetadata? = try await mockStorage.fetch(SyncMetadata.self, id: "sync.account.\(play.id)")
+        XCTAssertEqual(metadata?.appsSynced, 1)
+        XCTAssertEqual(playConnection.editBasedReadCount, 0)
+        XCTAssertTrue(sut.state.accountsInProgress.isEmpty)
+        XCTAssertEqual(sut.state.providerByAccountId[play.id], .googlePlay)
+    }
+
+    func testGooglePlayAccountWithMissingCredentialsRecordsError() async throws {
+        let play = AccountModel(name: "Play", providerType: .googlePlay)
         try await mockStorage.save(play, id: play.id)
 
         await sut.syncAll().value
 
-        // No SyncMetadata persisted because no Apple account ran
-        let metadataFirebase: SyncMetadata? = try await mockStorage.fetch(
-            SyncMetadata.self, id: "sync.account.\(firebase.id)"
+        let metadata: SyncMetadata? = try await mockStorage.fetch(SyncMetadata.self, id: "sync.account.\(play.id)")
+        XCTAssertNotNil(metadata?.lastError)
+        XCTAssertEqual(playConnection.fetchAppsCallCount, 0)
+    }
+
+    func testFailingGooglePlayAccountDoesNotStopAppleAccounts() async throws {
+        let play = AccountModel(name: "Play", providerType: .googlePlay)
+        let apple = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(play, id: play.id)
+        try await mockStorage.save(apple, id: apple.id)
+        mockKeychain.setObject(
+            GooglePlayCredentials(serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON()),
+            forKey: "credentials.\(play.id)"
         )
-        let metadataPlay: SyncMetadata? = try await mockStorage.fetch(
-            SyncMetadata.self, id: "sync.account.\(play.id)"
-        )
-        XCTAssertNil(metadataFirebase)
-        XCTAssertNil(metadataPlay)
-        XCTAssertNotNil(sut.state.lastSyncedAt)
+        playConnection.fetchAppsHandler = { throw URLError(.notConnectedToInternet) }
+        setCredentials(issuerID: "issuer-1", for: apple)
+        let connection = MockAppleAccountSyncing()
+        connection.apps = [StackProtocols.AppInfo(id: "app-1", name: "App One", bundleId: "com.one", platform: nil)]
+        connections["issuer-1"] = connection
+
+        await sut.syncAll().value
+
+        let playMetadata: SyncMetadata? = try await mockStorage.fetch(SyncMetadata.self, id: "sync.account.\(play.id)")
+        let appleMetadata: SyncMetadata? = try await mockStorage.fetch(SyncMetadata.self, id: "sync.account.\(apple.id)")
+        XCTAssertNotNil(playMetadata?.lastError)
+        XCTAssertNil(appleMetadata?.lastError)
+        XCTAssertEqual(appleMetadata?.appsSynced, 1)
+    }
+
+    func testInProgressCountsArePerProvider() {
+        var state = SyncState()
+        state.providerByAccountId = ["a": .apple, "b": .apple, "c": .googlePlay]
+        state.accountsInProgress = ["a", "b", "c"]
+        XCTAssertEqual(state.inProgressCountByProvider, [.apple: 2, .googlePlay: 1])
     }
 
     // MARK: - Missing credentials

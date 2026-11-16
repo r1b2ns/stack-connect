@@ -111,10 +111,8 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     /// Release summary requests (one per app and track) in flight at once.
     static let maxConcurrentSummaryFetches = 4
 
-    /// Tracks every app is asked for. Custom (closed testing) track names are
-    /// only discoverable through an edit, so they are added from the app's
-    /// tracks cache once the user has opened Tracks (plan open question 3).
-    static let standardTracks = ["production", "beta", "alpha", "internal"]
+    /// Tracks every app is asked for (see `GooglePlayAppListSync.standardTracks`).
+    static var standardTracks: [String] { GooglePlayAppListSync.standardTracks }
 
     @Published var uiState: GooglePlayAppListUiState
 
@@ -319,39 +317,12 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
 
     // MARK: - Merge
 
-    /// API apps are the source of truth; manually added apps the API doesn't
-    /// return are kept. Deduped by package name — when the API starts returning a
-    /// manually added app, the API entry (with its display name) wins. The API
-    /// has no icons, so each entry keeps the cached icon of the current item with
-    /// the same package name.
+    /// Shared with the background sync leg (`GooglePlayAppListSync.merge`).
     static func merge(
         remote: [StackProtocols.AppInfo],
         into current: [GooglePlayAppItem]
     ) -> [GooglePlayAppItem] {
-        var seen = Set<String>()
-        var merged: [GooglePlayAppItem] = []
-        var cachedIcons: [String: String] = [:]
-        for app in current {
-            if let iconUrl = app.iconUrl, cachedIcons[app.packageName] == nil {
-                cachedIcons[app.packageName] = iconUrl
-            }
-        }
-
-        for app in remote where seen.insert(app.bundleId).inserted {
-            merged.append(GooglePlayAppItem(
-                id: app.bundleId,
-                packageName: app.bundleId,
-                title: app.name.isEmpty ? nil : app.name,
-                isManuallyAdded: false,
-                iconUrl: cachedIcons[app.bundleId]
-            ))
-        }
-
-        for app in current where app.isManuallyAdded && seen.insert(app.packageName).inserted {
-            merged.append(app)
-        }
-
-        return sorted(merged)
+        GooglePlayAppListSync.merge(remote: remote, into: current)
     }
 
     // MARK: - Icons
@@ -457,46 +428,20 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
             }
         }
 
-        var summaries: [String: [GooglePlayReleaseSummaryModel]] = [:]
-        var failed = Set<String>()
-        var pending = requests[...]
-
-        typealias Result = (packageName: String, summaries: [GooglePlayReleaseSummaryModel]?)
-        await withTaskGroup(of: Result.self) { group in
-            func schedule(_ request: (packageName: String, track: String)) {
-                group.addTask {
-                    do {
-                        return (request.packageName, try await fetcher.fetchReleaseSummaries(packageName: request.packageName, track: request.track))
-                    } catch {
-                        Log.print.info("[GooglePlayAppList] Release summaries failed for \(request.packageName) / \(request.track): \(error.localizedDescription)")
-                        return (request.packageName, nil)
-                    }
-                }
-            }
-            for _ in 0..<Self.maxConcurrentSummaryFetches {
-                guard let request = pending.popFirst() else { break }
-                schedule(request)
-            }
-            for await result in group {
-                if let fetched = result.summaries {
-                    summaries[result.packageName, default: []].append(contentsOf: fetched)
-                } else {
-                    failed.insert(result.packageName)
-                }
-                if !Task.isCancelled, let request = pending.popFirst() {
-                    schedule(request)
-                }
-            }
-        }
-        // Requests never started (cancelled) leave their apps untouched.
-        failed.formUnion(pending.map(\.packageName))
+        let result = await GooglePlayAppListSync.fetchReleaseSummaries(
+            requests: requests,
+            using: fetcher,
+            maxConcurrent: Self.maxConcurrentSummaryFetches,
+            logTag: "GooglePlayAppList"
+        )
 
         var updated = 0
-        for packageName in packages where !failed.contains(packageName) {
+        for packageName in packages {
+            guard let fetched = result.summaries[packageName] else { continue }
             let entry = GooglePlayReleaseSummariesCache(
                 accountId: uiState.account.id,
                 packageName: packageName,
-                summaries: summaries[packageName] ?? [],
+                summaries: fetched,
                 fetchedAt: Date()
             )
             await summariesCache(for: packageName).save(entry)
@@ -511,13 +456,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
 
     /// The standard tracks, then custom tracks named in the app's tracks cache.
     private func tracksToAsk(packageName: String) async -> [String] {
-        let tracksCache = GooglePlayAppCacheStore<GooglePlayTracksCache>(
-            storage: storage, accountId: uiState.account.id, packageName: packageName
-        )
-        let custom = (await tracksCache.load()?.tracks ?? [])
-            .map(\.track)
-            .filter { !Self.standardTracks.contains($0.lowercased()) }
-        return Self.standardTracks + custom
+        await GooglePlayAppListSync.tracksToAsk(packageName: packageName, accountId: uiState.account.id, storage: storage)
     }
 
     private func summariesCache(for packageName: String) -> GooglePlayAppCacheStore<GooglePlayReleaseSummariesCache> {
@@ -542,7 +481,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     }
 
     private static func sorted(_ apps: [GooglePlayAppItem]) -> [GooglePlayAppItem] {
-        apps.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+        GooglePlayAppListSync.sorted(apps)
     }
 
     private func isInScope(_ app: GooglePlayAppItem) -> Bool {

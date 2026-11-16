@@ -180,11 +180,18 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
     }
 
     private var syncBannerText: String {
-        let count = viewModel.uiState.syncState.accountsInProgress.count
-        if count > 0 {
-            return String(localized: "Syncing \(count) account(s)…")
+        let syncState = viewModel.uiState.syncState
+        let count = syncState.accountsInProgress.count
+        guard count > 0 else { return String(localized: "Syncing…") }
+        // Both stores at once: say how many of each.
+        let byProvider = syncState.inProgressCountByProvider
+        if let appStore = byProvider[.apple], let googlePlay = byProvider[.googlePlay] {
+            return String(
+                localized: "Syncing \(count) account(s)… (\(appStore) App Store Connect, \(googlePlay) Google Play)",
+                comment: "Home sync banner while App Store Connect and Google Play accounts sync together: total, then the count per store."
+            )
         }
-        return String(localized: "Syncing…")
+        return String(localized: "Syncing \(count) account(s)…")
     }
 
     // MARK: - Pending Agreements Banner

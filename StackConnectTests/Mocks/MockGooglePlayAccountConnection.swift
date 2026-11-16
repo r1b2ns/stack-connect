@@ -151,6 +151,12 @@ final class MockGooglePlayAccountConnection: GooglePlayAccountConnecting,
         return self
     }
 
+    /// Same as `factory`, typed for the background sync leg (edit-free seams only).
+    func syncFactory(_ credentials: GooglePlayCredentials) -> any GooglePlaySyncConnecting {
+        record(credentials)
+        return self
+    }
+
     /// Same as `factory`, typed for the release write flows.
     func releaseWriteFactory(_ credentials: GooglePlayCredentials) -> any GooglePlayReleaseWriteConnecting {
         record(credentials)

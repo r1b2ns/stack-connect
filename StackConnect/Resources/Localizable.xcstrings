@@ -4234,6 +4234,89 @@
         }
       }
     },
+    "Syncing %lld account(s)… (%lld App Store Connect, %lld Google Play)" : {
+      "comment" : "Home sync banner while App Store Connect and Google Play accounts sync together: total, then the count per store.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Account(s) werden synchronisiert … (%lld App Store Connect, %lld Google Play)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sincronizando %lld cuenta(s)… (%lld App Store Connect, %lld Google Play)"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sincronizando %lld cuenta(s)… (%lld App Store Connect, %lld Google Play)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synchronisation de %lld compte(s)… (%lld App Store Connect, %lld Google Play)"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sincronizzazione di %lld account… (%lld App Store Connect, %lld Google Play)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld 件のアカウントを同期中…（App Store Connect %lld 件、Google Play %lld 件）"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld개 계정 동기화 중… (App Store Connect %lld개, Google Play %lld개)"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld account(s) synchroniseren… (%lld App Store Connect, %lld Google Play)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sincronizando %lld conta(s)… (%lld App Store Connect, %lld Google Play)"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A sincronizar %lld conta(s)… (%lld App Store Connect, %lld Google Play)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Синхронизация аккаунтов: %lld… (App Store Connect: %lld, Google Play: %lld)"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synkroniserar %lld konto(n)… (%lld App Store Connect, %lld Google Play)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在同步 %lld 個帳號…（App Store Connect %lld 個，Google Play %lld 個）"
+          }
+        }
+      }
+    },
     "Syncing app details..." : {
       "comment" : "Toast while the cached Google Play app details are being refreshed.",
       "localizations" : {

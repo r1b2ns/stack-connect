@@ -1,0 +1,235 @@
+import Foundation
+
+/// Everything the background sync reads from one Google Play account: the app
+/// listing, the public icon lookup, the release summaries and the first page of
+/// reviews. Deliberately **no** edit-based seam (app details, listings, tracks,
+/// bundles, writes): a background read must never open a Play edit, which would
+/// cancel an edit the same service account has open elsewhere, e.g. a CI upload
+/// (plan D14, H2).
+typealias GooglePlaySyncConnecting = GooglePlayAppListConnecting & GooglePlayReviewsConnecting
+
+/// Where the lightweight (background) sync resumes reading reviews for one Play
+/// account (plan H5). Stored under `storageId(accountId:)`, removed by
+/// `AccountCascadeDeleter`.
+struct GooglePlayReviewRotation: Codable, Hashable, Sendable {
+    let accountId: String
+    /// Index (in package-name order) of the first app the next run reads.
+    var nextIndex: Int
+
+    static func storageId(accountId: String) -> String {
+        "googleplay-review-rotation.\(accountId)"
+    }
+
+    /// The next `limit` packages starting at `cursor`, wrapping around, and the
+    /// cursor of the run after. Everything fits in one run when there are at
+    /// most `limit` packages (the cursor then stays at 0).
+    static func batch(_ packages: [String], cursor: Int, limit: Int) -> (batch: [String], nextCursor: Int) {
+        guard !packages.isEmpty, limit > 0 else { return ([], 0) }
+        guard packages.count > limit else { return (packages, 0) }
+        let start = ((cursor % packages.count) + packages.count) % packages.count
+        let batch = (0..<limit).map { packages[(start + $0) % packages.count] }
+        return (batch, (start + limit) % packages.count)
+    }
+}
+
+/// The Google Play leg of `SyncService` (plan S1): refreshes one account's app
+/// list, missing icons, release summaries and recent reviews, never opening an
+/// edit.
+///
+/// - Apps: same merge as the Play app list (`GooglePlayAppListSync.merge`), only
+///   apps in the account's per-app scope, saved to `googleplay-apps.{accountId}`.
+/// - Icons: public store page, at most `maxConcurrentIconFetches` at once.
+/// - Release summaries (`canView(.version)` only): standard tracks plus custom
+///   tracks known from the tracks cache, at most `maxConcurrentSummaryFetches`
+///   at once; an app's `googleplay-releases.*` entry is replaced only when every
+///   track answered.
+/// - Reviews (`canView(.review)` only): the first page per app, saved as
+///   `CustomerReviewModel` under `review.{packageName}.{reviewId}` next to the
+///   App Store ones (plan H4). Full sync reads every app, at most
+///   `maxConcurrentReviewFetches` at once; lightweight sync reads at most
+///   `lightweightReviewAppLimit` apps per run, rotating through the rest on
+///   later runs, to stay well under Google's review quota (plan H5).
+struct GooglePlayAccountSync: Sendable {
+
+    static let maxConcurrentIconFetches = 4
+    static let maxConcurrentSummaryFetches = 4
+    static let maxConcurrentReviewFetches = 5
+    static let lightweightReviewAppLimit = 20
+
+    let account: AccountModel
+    let connection: any GooglePlaySyncConnecting
+    let storage: PersistentStorable
+    let mode: SyncMode
+
+    init(account: AccountModel, connection: any GooglePlaySyncConnecting, storage: PersistentStorable, mode: SyncMode) {
+        var account = account
+        account.fillMissingRules()
+        self.account = account
+        self.connection = connection
+        self.storage = storage
+        self.mode = mode
+    }
+
+    /// Runs the whole leg. A failed app listing fails the account (recorded in
+    /// its `SyncMetadata`) and keeps every cache as it was.
+    func run() async -> SyncChange {
+        let cached = (try? await storage.fetch([GooglePlayAppItem].self, id: listKey)) ?? []
+        let remote: [GooglePlayAppItem]
+        do {
+            let fetched = try await connection.fetchApps().filter { account.allowsApp(bundleId: $0.bundleId) }
+            remote = GooglePlayAppListSync.merge(remote: fetched, into: cached.filter(isInScope))
+        } catch {
+            Log.print.error("[Sync][GooglePlay] \(account.name) failed: \(error.localizedDescription)")
+            await saveMetadata(appsSynced: 0, error: error.localizedDescription)
+            return SyncChange()
+        }
+
+        var apps = remote
+        let icons = await GooglePlayAppListSync.fetchIcons(
+            packageNames: apps.filter { $0.iconUrl == nil }.map(\.packageName),
+            using: connection,
+            maxConcurrent: Self.maxConcurrentIconFetches
+        )
+        for index in apps.indices where apps[index].iconUrl == nil {
+            apps[index].iconUrl = icons[apps[index].packageName]
+        }
+        do {
+            try await storage.save(apps, id: listKey)
+        } catch {
+            Log.print.error("[Sync][GooglePlay] Saving the app list failed for \(account.name): \(error.localizedDescription)")
+        }
+
+        var change = SyncChange()
+        if account.canView(.version) {
+            await syncReleaseSummaries(for: apps)
+        }
+        var reviewsSaved = 0
+        if account.canView(.review) {
+            let result = await syncReviews(for: apps)
+            change.newReviews = result.new
+            reviewsSaved = result.saved
+        }
+
+        await saveMetadata(appsSynced: apps.count, error: nil)
+        let modeLabel = mode == .lightweight ? "lightweight" : "full"
+        Log.print.notice("[Sync][GooglePlay] \(account.name): \(apps.count) apps, \(reviewsSaved) reviews (\(modeLabel))")
+        return change
+    }
+
+    // MARK: - Release summaries
+
+    /// Fetches and caches the summaries of every app.
+    private func syncReleaseSummaries(for apps: [GooglePlayAppItem]) async {
+        var requests: [(packageName: String, track: String)] = []
+        for app in apps {
+            for track in await GooglePlayAppListSync.tracksToAsk(packageName: app.packageName, accountId: account.id, storage: storage) {
+                requests.append((app.packageName, track))
+            }
+        }
+        let result = await GooglePlayAppListSync.fetchReleaseSummaries(
+            requests: requests,
+            using: connection,
+            maxConcurrent: Self.maxConcurrentSummaryFetches,
+            logTag: "Sync][GooglePlay"
+        )
+
+        for app in apps {
+            guard let summaries = result.summaries[app.packageName] else { continue }
+            let store = GooglePlayAppCacheStore<GooglePlayReleaseSummariesCache>(
+                storage: storage, accountId: account.id, packageName: app.packageName
+            )
+            await store.save(GooglePlayReleaseSummariesCache(
+                accountId: account.id,
+                packageName: app.packageName,
+                summaries: summaries,
+                fetchedAt: Date()
+            ))
+        }
+    }
+
+    // MARK: - Reviews
+
+    private func syncReviews(for apps: [GooglePlayAppItem]) async -> (saved: Int, new: [SyncChange.NewReview]) {
+        let ordered = apps.sorted { $0.packageName < $1.packageName }
+        let selected: [GooglePlayAppItem]
+        switch mode {
+        case .full:
+            selected = ordered
+        case .lightweight:
+            let rotationId = GooglePlayReviewRotation.storageId(accountId: account.id)
+            let cursor = (try? await storage.fetch(GooglePlayReviewRotation.self, id: rotationId))?.nextIndex ?? 0
+            let (batch, next) = GooglePlayReviewRotation.batch(
+                ordered.map(\.packageName), cursor: cursor, limit: Self.lightweightReviewAppLimit
+            )
+            let byPackage = Dictionary(ordered.map { ($0.packageName, $0) }, uniquingKeysWith: { first, _ in first })
+            selected = batch.compactMap { byPackage[$0] }
+            try? await storage.save(GooglePlayReviewRotation(accountId: account.id, nextIndex: next), id: rotationId)
+        }
+        guard !selected.isEmpty else { return (0, []) }
+
+        let limit = mode == .lightweight ? 3 : 10
+        var saved = 0
+        var newReviews: [SyncChange.NewReview] = []
+        var pending = selected[...]
+        await withTaskGroup(of: (Int, [SyncChange.NewReview]).self) { group in
+            func schedule(_ app: GooglePlayAppItem) {
+                group.addTask { await fetchAndPersistReviews(for: app, limit: limit) }
+            }
+            for _ in 0..<Self.maxConcurrentReviewFetches {
+                guard let app = pending.popFirst() else { break }
+                schedule(app)
+            }
+            for await (count, new) in group {
+                saved += count
+                newReviews += new
+                if let app = pending.popFirst() { schedule(app) }
+            }
+        }
+        return (saved, newReviews)
+    }
+
+    private func fetchAndPersistReviews(for app: GooglePlayAppItem, limit: Int) async -> (Int, [SyncChange.NewReview]) {
+        do {
+            let page = try await connection.fetchCustomerReviewsPage(
+                packageName: app.packageName, filterRating: nil, limit: limit, pageToken: nil
+            )
+            var saved = 0
+            var new: [SyncChange.NewReview] = []
+            for var review in page.reviews {
+                review.appId = app.packageName
+                let storageId = CustomerReviewModel.storageId(appId: app.packageName, reviewId: review.id)
+                let alreadyStored = ((try? await storage.fetch(CustomerReviewModel.self, id: storageId)) ?? nil) != nil
+                do {
+                    try await storage.save(review, id: storageId)
+                    saved += 1
+                    if !alreadyStored {
+                        new.append(SyncChange.NewReview(
+                            accountId: account.id, appId: app.packageName, appName: app.displayName, reviewId: review.id
+                        ))
+                    }
+                } catch {
+                    Log.print.error("[Sync][GooglePlay] Save review failed for \(app.packageName): \(error.localizedDescription)")
+                }
+            }
+            return (saved, new)
+        } catch {
+            Log.print.error("[Sync][GooglePlay] Fetch reviews failed for \(app.packageName): \(error.localizedDescription)")
+            return (0, [])
+        }
+    }
+
+    // MARK: - Helpers
+
+    private var listKey: String {
+        GooglePlayAppItem.cacheKey(accountId: account.id)
+    }
+
+    private func isInScope(_ app: GooglePlayAppItem) -> Bool {
+        account.allowsApp(bundleId: app.packageName)
+    }
+
+    private func saveMetadata(appsSynced: Int, error: String?) async {
+        let metadata = SyncMetadata(accountId: account.id, lastSyncedAt: .now, lastError: error, appsSynced: appsSynced)
+        try? await storage.save(metadata, id: "sync.account.\(account.id)")
+    }
+}

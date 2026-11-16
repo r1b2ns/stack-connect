@@ -76,6 +76,17 @@ struct GooglePlayTracksCache: GooglePlayAppScopedCache {
     let accountId: String
     let packageName: String
     var tracks: [GooglePlayTrackModel]
+    /// When the tracks were read (or committed by a write). Dates the rollout
+    /// percentage the Home shows ("Rollout as of …", plan H3); `nil` in caches
+    /// written before the field existed.
+    var fetchedAt: Date?
+
+    init(accountId: String, packageName: String, tracks: [GooglePlayTrackModel], fetchedAt: Date? = Date()) {
+        self.accountId = accountId
+        self.packageName = packageName
+        self.tracks = tracks
+        self.fetchedAt = fetchedAt
+    }
 }
 
 extension GooglePlayTracksCache: GooglePlayAppSectionCache {

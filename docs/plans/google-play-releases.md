@@ -140,6 +140,9 @@ Replaces the outline of "Phase 4" in `google-play-account.md`. Depends on C1 (re
 
 Order: S1 → S2 → S3 → S4 → S5 → S6 → S7. S1–S5 change nothing for Apple-only users except the removed placeholder account; S6 is the only step that rewrites existing Apple behaviour and gets its own regression tests (snapshot for an Apple-only store must draw the same rows as today, plus the rows the extension currently misses).
 
+Status:
+- S1 ✅: `SyncService` runs Apple and Google Play accounts in one task group (Firebase is skipped); `GooglePlayAccountSync` takes only the edit-free seams (`GooglePlaySyncConnecting` = app list + icons + release summaries + reviews), so no edit can be opened by construction. The app list merge, the tracks to ask and the bounded summaries fetch moved to `GooglePlayAppListSync`, shared with `GooglePlayAppListViewModel`. Reviews are saved as `CustomerReviewModel` (`review.{packageName}.{reviewId}`); lightweight runs read at most 20 apps, resuming from `GooglePlayReviewRotation` (`googleplay-review-rotation.{accountId}`). `SyncState.providerByAccountId` drives the "Syncing 3 accounts… (2 App Store Connect, 1 Google Play)" banner; widget icons include the Play list icons. `AccountCascadeDeleter` removes the account's Play reviews (unless another Play account lists the package) and its rotation cursor. `GooglePlayTracksCache.fetchedAt` dates the rollout the Home shows (H3).
+
 ### Tests
 
 Sync leg (no edit call is ever made, scope filter, quota rotation, failure of one account doesn't stop the others), entry builders (mapping table H3, missing tracks cache → no bar), mixed-store sorting and grouping, AllReviews with the same package under two accounts, deep links per provider, snapshot round-trip.

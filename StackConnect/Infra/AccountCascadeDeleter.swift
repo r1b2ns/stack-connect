@@ -18,8 +18,11 @@ import Foundation
 /// 4. the account's per-app Google Play caches — app details, store listings,
 ///    tracks and reviews (`GooglePlayAppScopedCache`), found by `accountId` so
 ///    apps that left the cached list are covered too;
-/// 5. the `AccountModel` itself (`account.id`);
-/// 6. the keychain credentials (`"credentials.<accountId>"`).
+/// 5. for Google Play, the reviews the Home sync cached for the account's apps
+///    (kept when another Play account still lists the package) and the review
+///    rotation cursor;
+/// 6. the `AccountModel` itself (`account.id`);
+/// 7. the keychain credentials (`"credentials.<accountId>"`).
 ///
 /// Error semantics:
 /// - Reads propagate. They all run before anything is deleted, so a failed read
@@ -78,6 +81,11 @@ enum AccountCascadeDeleter {
             try? await storage.delete(ReplyTemplateModel.self, id: template.id)
         }
 
+        // Before the app list goes: it names the packages whose reviews to drop.
+        if account.providerType == .googlePlay {
+            await deleteGooglePlayDashboardData(of: account, storage: storage)
+        }
+
         try? await storage.delete(
             [GooglePlayAppItem].self,
             id: GooglePlayAppItem.cacheKey(accountId: account.id)
@@ -89,6 +97,32 @@ enum AccountCascadeDeleter {
 
         try await storage.delete(AccountModel.self, id: account.id)
         keychain.removeObject(forKey: "credentials.\(account.id)")
+    }
+
+    /// Removes the Play reviews the Home sync cached for this account's apps
+    /// (`review.{packageName}.{reviewId}`, plan H4) and its review rotation
+    /// cursor. A package another Google Play account still lists keeps its
+    /// reviews: the review cache is keyed by package, not by account.
+    /// Best-effort, like the other child deletions.
+    private static func deleteGooglePlayDashboardData(of account: AccountModel, storage: PersistentStorable) async {
+        try? await storage.delete(GooglePlayReviewRotation.self, id: GooglePlayReviewRotation.storageId(accountId: account.id))
+
+        guard let packages = try? await storage.fetch([GooglePlayAppItem].self, id: GooglePlayAppItem.cacheKey(accountId: account.id)),
+              !packages.isEmpty else { return }
+        let otherAccounts = ((try? await storage.fetchAll(AccountModel.self)) ?? [])
+            .filter { $0.providerType == .googlePlay && $0.id != account.id }
+        var keptPackages = Set<String>()
+        for other in otherAccounts {
+            let list = (try? await storage.fetch([GooglePlayAppItem].self, id: GooglePlayAppItem.cacheKey(accountId: other.id))) ?? []
+            keptPackages.formUnion(list.map(\.packageName))
+        }
+        let removable = Set(packages.map(\.packageName)).subtracting(keptPackages)
+        guard !removable.isEmpty else { return }
+        let reviews = (try? await storage.fetchAll(CustomerReviewModel.self)) ?? []
+        for review in reviews {
+            guard let appId = review.appId, removable.contains(appId) else { continue }
+            try? await storage.delete(CustomerReviewModel.self, id: CustomerReviewModel.storageId(appId: appId, reviewId: review.id))
+        }
     }
 
     /// Reads every `Entry` of `accountId` now (so a read failure propagates
