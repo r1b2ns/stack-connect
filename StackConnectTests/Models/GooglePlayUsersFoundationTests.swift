@@ -184,6 +184,18 @@ final class GooglePlayUsersFoundationTests: XCTestCase {
         XCTAssertEqual(decoded.googlePlayDeveloperId, "123")
     }
 
+    // MARK: - Rules
+
+    func testGooglePlayRulesIncludeUsers() {
+        XCTAssertEqual(AccountRuleResource.resources(for: .googlePlay), [.apps, .version, .review, .users])
+        XCTAssertTrue(AccountModel(name: "Play", providerType: .googlePlay).canAdd(.users), "Accounts created here get every permission")
+        XCTAssertFalse(
+            AccountModel(name: "Old", providerType: .googlePlay, rules: AccountRules(apps: [.view]), origin: .imported).canView(.users),
+            "An older export has no `users` permission: the tab is hidden"
+        )
+        XCTAssertNotEqual(AccountRuleResource.users.footerDescription(for: .googlePlay), AccountRuleResource.users.footerDescription)
+    }
+
     // MARK: - Error copy
 
     func testUsersErrorCopy() {

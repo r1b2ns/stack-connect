@@ -36,7 +36,7 @@ final class AccountProviderCapabilitiesTests: XCTestCase {
     }
 
     func testGooglePlayResourcesAreAppsVersionsAndReviews() {
-        XCTAssertEqual(AccountRuleResource.resources(for: .googlePlay), [.apps, .version, .review])
+        XCTAssertEqual(AccountRuleResource.resources(for: .googlePlay), [.apps, .version, .review, .users])
     }
 
     /// Play exports written before `.version` was a Play resource carry no
@@ -65,7 +65,7 @@ final class AccountProviderCapabilitiesTests: XCTestCase {
     }
 
     func testAccountRuleResourcesFollowItsProvider() {
-        XCTAssertEqual(AccountModel(name: "P", providerType: .googlePlay).ruleResources, [.apps, .version, .review])
+        XCTAssertEqual(AccountModel(name: "P", providerType: .googlePlay).ruleResources, [.apps, .version, .review, .users])
         XCTAssertEqual(AccountModel(name: "A", providerType: .apple).ruleResources.count, 7)
     }
 

@@ -28,13 +28,15 @@ enum AccountRuleResource: String, Codable, CaseIterable, Hashable {
     /// manual add / remove, store listings, app details), its releases
     /// (`version`: release status, tracks and release detail; later edit /
     /// add for rollout changes and new releases, plan R5) and its ratings &
-    /// reviews (`review`: view, reply). Older Play exports carry no `version`
-    /// permission, so their releases stay hidden (fail closed). Firebase
-    /// accounts have no rules.
+    /// reviews (`review`: view, reply) and its users (`users`: view the Users
+    /// tab, invite, change permissions and app access, remove; plan U6).
+    /// Older Play exports carry no `version` / `users` permission, so their
+    /// releases and users stay hidden (fail closed). Firebase accounts have no
+    /// rules.
     static func resources(for provider: ProviderType) -> [AccountRuleResource] {
         switch provider {
         case .apple:      return [.apps, .version, .review, .testFlight, .analytics, .users, .provisioning]
-        case .googlePlay: return [.apps, .version, .review]
+        case .googlePlay: return [.apps, .version, .review, .users]
         case .firebase:   return []
         }
     }

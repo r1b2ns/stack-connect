@@ -169,6 +169,8 @@ extension AccountRuleResource {
         switch (provider, self) {
         case (.googlePlay, .version):
             return String(localized: "View release status, tracks and releases, and manage rollouts")
+        case (.googlePlay, .users):
+            return String(localized: "View the developer account's users, invite people, and change their permissions and app access")
         default:
             return footerDescription
         }
