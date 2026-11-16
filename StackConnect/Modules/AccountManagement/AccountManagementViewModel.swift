@@ -4,6 +4,7 @@ import StackProtocols
 @MainActor
 protocol AccountManagementViewModelProtocol: ObservableObject {
     var uiState: AccountManagementUiState { get set }
+    func reloadAccount() async
     func deleteAccount() async -> Bool
 }
 
@@ -31,6 +32,14 @@ final class AccountManagementViewModel: AccountManagementViewModelProtocol {
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
         self.analytics = analytics
+    }
+
+    /// Re-reads the account from storage so edits made in Account Settings
+    /// (name, Google Play developer ID) show up when the user comes back.
+    func reloadAccount() async {
+        guard var stored: AccountModel = try? await storage.fetch(AccountModel.self, id: uiState.account.id) else { return }
+        stored.fillMissingRules()
+        uiState.account = stored
     }
 
     func deleteAccount() async -> Bool {

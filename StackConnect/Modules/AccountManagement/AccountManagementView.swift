@@ -37,6 +37,9 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
             .navigationTitle(String(localized: "Manage Account"))
             .trackScreen(.accountManagement)
             .navigationBarTitleDisplayMode(.inline)
+            // `.task` runs again each time the screen reappears (coming back
+            // from Account Settings), so the Developer ID row stays current.
+            .task { await viewModel.reloadAccount() }
             .alert(
                 String(localized: "Delete Account"),
                 isPresented: $viewModel.uiState.showDeleteConfirmation
