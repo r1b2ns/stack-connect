@@ -35,10 +35,11 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
     var body: some View {
         buildContent()
             .navigationTitle(viewModel.uiState.account.name)
+            .trackScreen(.googlePlayAppList)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .sheet(isPresented: $viewModel.uiState.showAddApp) {
                 AddGooglePlayAppSheet(
                     isAdding: viewModel.uiState.isAdding,
@@ -68,11 +69,11 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
             } description: {
                 Text(error)
             } actions: {
-                Button(String(localized: "Retry")) {
+                StackTrackedButton(String(localized: "Retry"), button: .tryAgain, on: .googlePlayAppList) {
                     Task { await viewModel.load() }
                 }
 
-                Button(String(localized: "Add Manually")) {
+                StackTrackedButton(String(localized: "Add Manually"), button: .add, on: .googlePlayAppList) {
                     viewModel.uiState.showAddApp = true
                 }
             }
@@ -82,7 +83,7 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
             } description: {
                 Text("No apps found for this account. You can add apps manually by package name.")
             } actions: {
-                Button(String(localized: "Add App")) {
+                StackTrackedButton(String(localized: "Add App"), button: .add, on: .googlePlayAppList) {
                     viewModel.uiState.showAddApp = true
                 }
                 .buttonStyle(.borderedProminent)
@@ -148,7 +149,7 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
-            Button {
+            StackTrackedButton(.add, on: .googlePlayAppList) {
                 viewModel.uiState.showAddApp = true
             } label: {
                 Image(systemName: "plus")
@@ -194,10 +195,11 @@ struct AddGooglePlayAppSheet: View {
                 }
             }
             .navigationTitle(String(localized: "Add App"))
+            .trackScreen(.addGooglePlayApp)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .addGooglePlayApp) { onCancel() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isAdding {

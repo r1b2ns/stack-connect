@@ -1,4 +1,5 @@
 import SwiftUI
+import StackProtocols
 
 // MARK: - Factory
 
@@ -54,11 +55,13 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         account: AccountModel,
         storage: PersistentStorable? = nil,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = AccountSettingsUiState(
             account: account,
@@ -67,6 +70,7 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
         )
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func save() async {
@@ -91,12 +95,25 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
             uiState.account = updated
             uiState.toastMessage = ToastMessage(String(localized: "Saved"), icon: "checkmark.circle.fill")
             Log.print.info("[AccountSettings] Saved account: \(trimmed)")
+            analytics.track(.action(.saveAccount, on: .accountSettings, result: .success))
         } catch {
             Log.print.error("[AccountSettings] Failed to save: \(error.localizedDescription)")
+            analytics.track(.action(.saveAccount, on: .accountSettings, result: .failure))
         }
     }
 
     func exportAccountWithRules(exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL? {
+        let url = makeExportFile(exportName: exportName, rules: rules, password: password, expirationDate: expirationDate, appsBundles: appsBundles)
+        analytics.track(.action(
+            .exportAccount,
+            on: .exportAccount,
+            result: url == nil ? .failure : .success,
+            parameters: AnalyticsParameterKey.exportParameters(expirationDate: expirationDate, appsBundles: appsBundles)
+        ))
+        return url
+    }
+
+    private func makeExportFile(exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL? {
         var credentials: [String: String]?
         if let creds: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") {
             credentials = [
@@ -166,6 +183,7 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
             }
         }
         .navigationTitle(String(localized: "Account Settings"))
+        .trackScreen(.accountSettings)
         .navigationBarTitleDisplayMode(.inline)
         .toast(message: $viewModel.uiState.toastMessage)
         .sheet(isPresented: $showExport) {
@@ -193,8 +211,8 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
             isPresented: $showNameEdit
         ) {
             TextField(String(localized: "Account Name"), text: $viewModel.uiState.editingName)
-            Button(String(localized: "Cancel"), role: .cancel) {}
-            Button(String(localized: "Save")) {
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .accountSettings, role: .cancel) {}
+            StackTrackedButton(String(localized: "Save"), button: .save, on: .accountSettings) {
                 Task { await viewModel.save() }
             }
         } message: {
@@ -206,7 +224,7 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
 
     private func buildInfoSection() -> some View {
         Section {
-            Button {
+            StackTrackedButton(.editName, on: .accountSettings) {
                 viewModel.uiState.editingName = viewModel.uiState.account.name
                 showNameEdit = true
             } label: {
@@ -304,7 +322,7 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
 
     private func buildExportSection() -> some View {
         Section {
-            Button {
+            StackTrackedButton(.export, on: .accountSettings) {
                 showExport = true
             } label: {
                 Label(String(localized: "Export Account"), systemImage: "square.and.arrow.up")

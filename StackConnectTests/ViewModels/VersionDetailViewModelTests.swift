@@ -1,4 +1,5 @@
 import XCTest
+import StackProtocols
 @testable import StackConnect
 
 /// Covers the offline-first cache path of `VersionDetailViewModel.refresh()`.
@@ -13,6 +14,7 @@ final class VersionDetailViewModelTests: XCTestCase {
 
     private var mockStorage: MockPersistentStorable!
     private var mockKeychain: MockKeyStorable!
+    private var analytics: MockAnalyticsTracker!
 
     private let account = AccountModel(name: "Apple", providerType: .apple)
 
@@ -20,11 +22,13 @@ final class VersionDetailViewModelTests: XCTestCase {
         try await super.setUp()
         mockStorage = MockPersistentStorable()
         mockKeychain = MockKeyStorable()
+        analytics = MockAnalyticsTracker()
     }
 
     override func tearDown() async throws {
         mockStorage = nil
         mockKeychain = nil
+        analytics = nil
         try await super.tearDown()
     }
 
@@ -47,7 +51,8 @@ final class VersionDetailViewModelTests: XCTestCase {
             version: version,
             account: account,
             storage: mockStorage,
-            keychain: mockKeychain
+            keychain: mockKeychain,
+            analytics: analytics
         )
     }
 
@@ -156,5 +161,98 @@ final class VersionDetailViewModelTests: XCTestCase {
         XCTAssertNil(sut.uiState.currentBuild)
         XCTAssertNil(sut.uiState.phasedRelease)
         XCTAssertEqual(sut.uiState.editWhatsNew, "")
+    }
+
+    // MARK: - Analytics events
+    //
+    // No credentials are stored, so API-backed actions take their failure path
+    // offline; success paths need a live App Store Connect connection.
+
+    func testRefreshTracksNothingAndPullToRefreshTracksFailure() async {
+        let sut = makeSUT(version: makeVersion())
+
+        await sut.refresh()
+        XCTAssertTrue(analytics.trackedEvents.isEmpty)
+
+        await sut.pullToRefresh()
+        XCTAssertEqual(analytics.trackedEvents, [.action(.refresh, on: .versionDetail, result: .failure)])
+    }
+
+    func testVersionActionsTrackFailureWithoutCredentials() async {
+        let sut = makeSUT(version: makeVersion())
+
+        await sut.submitForReview()
+        await sut.cancelReview()
+        await sut.cancelSubmission()
+        await sut.releaseVersion()
+        await sut.rejectVersion()
+
+        XCTAssertEqual(analytics.trackedEvents, [
+            .action(.submitForReview, on: .versionDetail, result: .failure),
+            .action(.cancelReview, on: .versionDetail, result: .failure),
+            .action(.cancelSubmission, on: .versionDetail, result: .failure),
+            .action(.releaseVersion, on: .versionDetail, result: .failure),
+            .action(.rejectVersion, on: .versionDetail, result: .failure)
+        ])
+    }
+
+    func testStartSubmitTracksValidationFailureWithoutCredentials() async {
+        let sut = makeSUT(version: makeVersion())
+
+        await sut.startSubmitForReview()
+
+        XCTAssertEqual(analytics.trackedEvents, [.action(.preSubmitValidation, on: .versionDetail, result: .failure)])
+    }
+
+    func testSaveGroupedFieldsTracksTapAndFailure() async {
+        let sut = makeSUT(version: makeVersion())
+
+        await sut.saveGroupedFields()
+
+        XCTAssertEqual(analytics.trackedEvents, [
+            .buttonTap(.save, on: .versionDetail),
+            .action(.saveVersionMetadata, on: .versionDetail, result: .failure)
+        ])
+    }
+
+    func testSaveReleaseTypeTracksTheSelectedTypeOnly() async {
+        let sut = makeSUT(version: makeVersion())
+        sut.uiState.selectedReleaseType = .afterApproval
+
+        await sut.saveReleaseType()
+
+        XCTAssertEqual(analytics.trackedEvents, [
+            .buttonTap(.save, on: .versionRelease),
+            .action(.updateReleaseType, on: .versionRelease, result: .failure, parameters: [
+                AnalyticsParameterKey.kind: .string("afterApproval")
+            ])
+        ])
+    }
+
+    func testSavePhasedReleaseTracksTheChosenOption() async {
+        let sut = makeSUT(version: makeVersion())
+
+        await sut.savePhasedRelease(usePhased: true)
+        await sut.savePhasedRelease(usePhased: false)
+
+        XCTAssertEqual(analytics.taps(of: .usePhasedRelease), [.buttonTap(.usePhasedRelease, on: .phasedRelease)])
+        XCTAssertEqual(analytics.taps(of: .releaseImmediately), [.buttonTap(.releaseImmediately, on: .phasedRelease)])
+        XCTAssertEqual(analytics.results(of: .updatePhasedRelease), [.failure, .failure])
+    }
+
+    func testAttachBuildTracksFailureWithoutCredentials() async {
+        let sut = makeSUT(version: makeVersion())
+
+        await sut.attachBuild(BuildModel(id: "b1", uploadedDate: nil, iconUrl: nil, platform: "IOS"))
+
+        XCTAssertEqual(analytics.trackedEvents, [.action(.selectBuild, on: .buildPicker, result: .failure)])
+    }
+
+    func testTextUpdateWithoutLocalizationTracksOnlyTheTap() async throws {
+        let sut = makeSUT(version: makeVersion())
+
+        try await sut.updatePromotionalText()
+
+        XCTAssertEqual(analytics.trackedEvents, [.buttonTap(.save, on: .versionPromotionalText)])
     }
 }

@@ -38,6 +38,7 @@ struct MessagingView<ViewModel: MessagingViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Messaging"))
+            .trackScreen(.messaging)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
             .sheet(isPresented: $viewModel.uiState.showNewCampaign) {
@@ -95,7 +96,7 @@ struct MessagingView<ViewModel: MessagingViewModelProtocol>: View {
             } description: {
                 Text("Campaigns sent from StackConnect will appear here. Firebase does not provide a public API to list console-created campaigns.")
             } actions: {
-                Button(String(localized: "New Campaign")) {
+                StackTrackedButton(String(localized: "New Campaign"), button: .create, on: .messaging) {
                     viewModel.uiState.showNewCampaign = true
                 }
                 .buttonStyle(.borderedProminent)
@@ -232,9 +233,10 @@ struct MessagingView<ViewModel: MessagingViewModelProtocol>: View {
                     Label(String(localized: "Enable API"), systemImage: "arrow.up.forward.app")
                 }
                 .buttonStyle(.borderedProminent)
+                .trackOpenURL(.enableApi, on: .messaging)
             }
 
-            Button(String(localized: "Retry")) {
+            StackTrackedButton(String(localized: "Retry"), button: .tryAgain, on: .messaging) {
                 Task { await viewModel.loadReports() }
             }
         }
@@ -311,7 +313,7 @@ struct MessagingView<ViewModel: MessagingViewModelProtocol>: View {
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
             if viewModel.uiState.selectedTab == .campaigns {
-                Button {
+                StackTrackedButton(.add, on: .messaging) {
                     viewModel.uiState.showNewCampaign = true
                 } label: {
                     Image(systemName: "plus")
@@ -346,10 +348,11 @@ struct NewCampaignSheet: View {
                 buildCustomDataSection()
             }
             .navigationTitle(String(localized: "New Campaign"))
+            .trackScreen(.newCampaign)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { onCancel() }
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .newCampaign) { onCancel() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isSending {
@@ -478,7 +481,7 @@ struct NewCampaignSheet: View {
     private func buildAppToggleRow(_ app: SelectableApp) -> some View {
         let isSelected = draft.selectedApps.contains(app.appId)
 
-        return Button {
+        return StackTrackedButton(.toggleApp, on: .newCampaign) {
             if isSelected {
                 draft.selectedApps.remove(app.appId)
             } else {
@@ -572,7 +575,7 @@ struct NewCampaignSheet: View {
                     .autocorrectionDisabled()
                     .font(.caption)
 
-                Button {
+                StackTrackedButton(.add, on: .newCampaign) {
                     guard !newDataKey.trimmingCharacters(in: .whitespaces).isEmpty else { return }
                     draft.customData.append((key: newDataKey, value: newDataValue))
                     newDataKey = ""

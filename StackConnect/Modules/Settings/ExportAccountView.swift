@@ -60,6 +60,7 @@ struct ExportAccountView: View {
                 buildExpirationSection()
             }
             .navigationTitle(String(localized: "Export Account"))
+            .trackScreen(.exportAccount)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
             .sheet(item: $editingResource) { resource in
@@ -135,7 +136,7 @@ struct ExportAccountView: View {
 
     private func buildResourceSection(_ resource: AccountRuleResource) -> some View {
         Section {
-            Button {
+            StackTrackedButton(.editPermission, on: .exportAccount) {
                 editingResource = resource
             } label: {
                 HStack {
@@ -165,7 +166,7 @@ struct ExportAccountView: View {
     @ViewBuilder
     private func buildAppsPermissionSection() -> some View {
         Section {
-            Button {
+            StackTrackedButton(.selectApps, on: .exportAccount) {
                 showAppsPicker = true
             } label: {
                 HStack {
@@ -211,7 +212,7 @@ struct ExportAccountView: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
 
-                Button {
+                StackTrackedButton(.togglePasswordVisibility, on: .exportAccount) {
                     revealPassword.toggle()
                 } label: {
                     Image(systemName: revealPassword ? "eye.slash" : "eye")
@@ -235,7 +236,7 @@ struct ExportAccountView: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
 
-                Button {
+                StackTrackedButton(.togglePasswordVisibility, on: .exportAccount) {
                     revealConfirmPassword.toggle()
                 } label: {
                     Image(systemName: revealConfirmPassword ? "eye.slash" : "eye")
@@ -247,7 +248,7 @@ struct ExportAccountView: View {
                     : String(localized: "Show password"))
             }
 
-            Button {
+            StackTrackedButton(.generatePassword, on: .exportAccount) {
                 let generated = AccountCrypto.generateStrongPassword()
                 password = generated
                 confirmPassword = generated
@@ -263,7 +264,7 @@ struct ExportAccountView: View {
                 }
             }
 
-            Button {
+            StackTrackedButton(.copyPassword, on: .exportAccount) {
                 UIPasteboard.general.string = password
                 passwordCopied = true
                 triggerConfirmation($copyConfirmed)
@@ -331,14 +332,14 @@ struct ExportAccountView: View {
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
-            Button(String(localized: "Cancel")) {
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .exportAccount) {
                 dismiss()
                 onDismiss()
             }
         }
 
         ToolbarItem(placement: .confirmationAction) {
-            Button(String(localized: "Export")) {
+            StackTrackedButton(String(localized: "Export"), button: .export, on: .exportAccount) {
                 performExport()
             }
             .disabled(!isExportEnabled)

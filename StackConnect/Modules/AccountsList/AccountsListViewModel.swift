@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -48,15 +49,18 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         providerType: ProviderType,
         storage: PersistentStorable? = nil,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = AccountsListUiState(providerType: providerType)
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func loadAccounts() async {
@@ -102,6 +106,7 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
     }
 
     func deleteAccount(at offsets: IndexSet) async {
+        analytics.track(.buttonTap(.delete, on: .accountsList))
         for index in offsets {
             await cascadeDelete(uiState.accounts[index])
         }
@@ -111,6 +116,7 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
     /// Deletes a single account (and its related data) then reloads. Used by the
     /// grouped list where index-based deletion is not available.
     func deleteAccount(_ account: AccountModel) async {
+        analytics.track(.buttonTap(.delete, on: .accountsList))
         await cascadeDelete(account)
         await loadAccounts()
     }
@@ -118,11 +124,14 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
     /// Removes an account along with its apps, versions, reply templates and
     /// keychain credentials (see `AccountCascadeDeleter`).
     private func cascadeDelete(_ account: AccountModel) async {
+        let parameters = [AnalyticsParameterKey.kind: AnalyticsValue.string(account.providerType.rawValue)]
         do {
             try await AccountCascadeDeleter.delete(account, storage: storage, keychain: keychain)
             Log.print.info("[AccountsList] Deleted account and related data: \(account.name)")
+            analytics.track(.action(.deleteAccount, on: .accountsList, result: .success, parameters: parameters))
         } catch {
             Log.print.error("[AccountsList] Failed to delete account: \(error.localizedDescription)")
+            analytics.track(.action(.deleteAccount, on: .accountsList, result: .failure, parameters: parameters))
         }
     }
 
@@ -135,6 +144,18 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
     // MARK: - Import
 
     func importAccount(from url: URL, password: String, customName: String?) async -> String? {
+        analytics.track(.buttonTap(.confirmImport, on: .accountsListImport))
+        let isReimport = uiState.replacingAccountId != nil
+        let error = await performImport(from: url, password: password, customName: customName)
+        analytics.track(.action(
+            isReimport ? .reimportAccount : .importAccount,
+            on: .accountsListImport,
+            result: error == nil ? .success : .failure
+        ))
+        return error
+    }
+
+    private func performImport(from url: URL, password: String, customName: String?) async -> String? {
         let accessing = url.startAccessingSecurityScopedResource()
         defer { if accessing { url.stopAccessingSecurityScopedResource() } }
 

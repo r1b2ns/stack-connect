@@ -1,4 +1,5 @@
 import SwiftUI
+import StackProtocols
 import Foundation
 
 // MARK: - Device Type
@@ -133,6 +134,7 @@ final class ScreenshotPreviewViewModel: ObservableObject {
     private let platform: AppPlatform?
     let appStoreState: AppStoreState?
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         versionId: String,
@@ -140,7 +142,8 @@ final class ScreenshotPreviewViewModel: ObservableObject {
         localizationId: String? = nil,
         platform: AppPlatform? = nil,
         appStoreState: AppStoreState? = nil,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.versionId = versionId
         self.account = account
@@ -148,6 +151,7 @@ final class ScreenshotPreviewViewModel: ObservableObject {
         self.platform = platform
         self.appStoreState = appStoreState
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func loadScreenshots() async {
@@ -192,6 +196,7 @@ final class ScreenshotPreviewViewModel: ObservableObject {
     /// organizing them into folders per size, then zips the result and exposes
     /// `zipURL` for sharing. Progress is published via `downloadedCount`/`totalCount`.
     func downloadAllScreenshots() async {
+        analytics.track(.buttonTap(.downloadAll, on: .screenshotPreview))
         let items: [(set: ScreenshotSetModel, shot: ScreenshotModel)] = screenshotSets.flatMap { set in
             set.screenshots.compactMap { shot in
                 (shot.imageUrl?.isEmpty == false) ? (set, shot) : nil
@@ -241,7 +246,9 @@ final class ScreenshotPreviewViewModel: ObservableObject {
             zipURL = zip
             let count = totalCount
             Log.print.info("[Screenshots] Zipped \(count) screenshots → \(zip.lastPathComponent)")
+            analytics.track(.action(.downloadScreenshots, on: .screenshotPreview, result: .success, parameters: [AnalyticsParameterKey.count: .int(items.count)]))
         } catch {
+            analytics.track(.action(.downloadScreenshots, on: .screenshotPreview, result: .failure, parameters: [AnalyticsParameterKey.count: .int(items.count)]))
             downloadError = error.localizedDescription
             Log.print.error("[Screenshots] Bulk download failed: \(error.localizedDescription)")
         }
@@ -253,10 +260,12 @@ final class ScreenshotPreviewViewModel: ObservableObject {
     /// reflect the server state. Only meaningful while the version is in Prepare
     /// for Submission (guarded by `canDeleteAll`).
     func deleteAllScreenshots() async {
+        analytics.track(.buttonTap(.confirmDelete, on: .screenshotPreview))
         let sets = screenshotSets
         guard !sets.isEmpty else { return }
 
         guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(account.id)") else {
+            analytics.track(.action(.deleteScreenshots, on: .screenshotPreview, result: .failure, parameters: [AnalyticsParameterKey.count: .int(sets.count)]))
             return
         }
 
@@ -271,7 +280,9 @@ final class ScreenshotPreviewViewModel: ObservableObject {
             }
             Log.print.info("[Screenshots] Deleted \(sets.count) screenshot sets")
             await loadScreenshots()
+            analytics.track(.action(.deleteScreenshots, on: .screenshotPreview, result: .success, parameters: [AnalyticsParameterKey.count: .int(sets.count)]))
         } catch {
+            analytics.track(.action(.deleteScreenshots, on: .screenshotPreview, result: .failure, parameters: [AnalyticsParameterKey.count: .int(sets.count)]))
             deleteError = error.localizedDescription
             Log.print.error("[Screenshots] Delete all failed: \(error.localizedDescription)")
         }
@@ -302,13 +313,14 @@ struct ScreenshotPreviewContentView: View {
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Preview and Screenshots"))
+            .trackScreen(.screenshotPreview)
             .navigationBarTitleDisplayMode(.inline)
             .task { await viewModel.loadScreenshots() }
             .safeAreaInset(edge: .bottom) {
                 buildDownloadBar()
             }
             .alert(String(localized: "Delete All Screenshots"), isPresented: $viewModel.showDeleteAllConfirmation) {
-                Button(String(localized: "Cancel"), role: .cancel) {}
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .screenshotPreview, role: .cancel) {}
                 Button(String(localized: "Delete All"), role: .destructive) {
                     Task { await viewModel.deleteAllScreenshots() }
                 }
@@ -371,7 +383,7 @@ struct ScreenshotPreviewContentView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                     } else {
-                        Button(role: .destructive) {
+                        StackTrackedButton(.delete, on: .screenshotPreview, role: .destructive) {
                             viewModel.showDeleteAllConfirmation = true
                         } label: {
                             Label(String(localized: "Delete All"), systemImage: "trash")
@@ -414,7 +426,7 @@ struct ScreenshotPreviewContentView: View {
         } else {
             List(viewModel.availableDeviceTypes) { device in
                 let sets = viewModel.sets(for: device)
-                Button {
+                StackTrackedButton(.device, on: .screenshotPreview) {
                     homeCoordinator.navigateToScreenshotResolution(
                         device: device,
                         sets: sets,

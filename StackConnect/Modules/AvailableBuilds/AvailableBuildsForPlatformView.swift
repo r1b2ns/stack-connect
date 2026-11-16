@@ -73,13 +73,14 @@ struct AvailableBuildsForPlatformView<ViewModel: AvailableBuildsForPlatformViewM
     var body: some View {
         buildContent()
             .navigationTitle(BuildPlatform.label(for: viewModel.uiState.platform))
+            .trackScreen(.availableBuilds)
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 if viewModel.uiState.builds.isEmpty {
                     await viewModel.load()
                 }
             }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .disabled(isAdding)
     }
 
@@ -116,7 +117,7 @@ struct AvailableBuildsForPlatformView<ViewModel: AvailableBuildsForPlatformViewM
         List {
             Section {
                 ForEach(viewModel.uiState.builds) { build in
-                    Button { onSelect(build) } label: {
+                    StackTrackedButton(.build, on: .availableBuilds) { onSelect(build) } label: {
                         buildRow(build)
                     }
                     .onAppear { handleAppear(build) }

@@ -35,6 +35,7 @@ struct ProfilesListView<ViewModel: ProfilesListViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Profiles"))
+            .trackScreen(.profilesList)
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $viewModel.uiState.searchQuery,
@@ -43,7 +44,7 @@ struct ProfilesListView<ViewModel: ProfilesListViewModelProtocol>: View {
             )
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
+                    StackTrackedButton(.add, on: .profilesList) {
                         homeCoordinator.navigateToCreateProfile(viewModel.uiState.account)
                     } label: {
                         Image(systemName: "plus")
@@ -52,7 +53,7 @@ struct ProfilesListView<ViewModel: ProfilesListViewModelProtocol>: View {
                 }
             }
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .onReceive(NotificationCenter.default.publisher(for: .profileCreated)) { notification in
                 if let profile = notification.object as? ProvisioningProfileModel {
                     viewModel.insertProfile(profile)
@@ -106,7 +107,7 @@ struct ProfilesListView<ViewModel: ProfilesListViewModelProtocol>: View {
             ForEach(viewModel.uiState.groupedByType, id: \.type) { group in
                 Section {
                     ForEach(group.items) { profile in
-                        Button {
+                        StackTrackedButton(.profile, on: .profilesList) {
                             homeCoordinator.navigateToProfileDetail(
                                 profile: profile,
                                 account: viewModel.uiState.account

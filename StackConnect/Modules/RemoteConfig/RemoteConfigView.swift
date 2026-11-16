@@ -38,6 +38,7 @@ struct RemoteConfigView<ViewModel: RemoteConfigViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Remote Config"))
+            .trackScreen(.remoteConfig)
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $viewModel.uiState.searchQuery,
@@ -46,7 +47,7 @@ struct RemoteConfigView<ViewModel: RemoteConfigViewModelProtocol>: View {
             )
             .toolbar { buildToolbar() }
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .sheet(item: $viewModel.uiState.selectedParameter) { item in
                 RemoteConfigParameterDetailSheet(
                     item: item,
@@ -93,7 +94,7 @@ struct RemoteConfigView<ViewModel: RemoteConfigViewModelProtocol>: View {
         } description: {
             Text(message)
         } actions: {
-            Button(String(localized: "Retry")) {
+            StackTrackedButton(String(localized: "Retry"), button: .tryAgain, on: .remoteConfig) {
                 Task { await viewModel.load() }
             }
         }
@@ -163,7 +164,7 @@ struct RemoteConfigView<ViewModel: RemoteConfigViewModelProtocol>: View {
                 }
             } else {
                 ForEach(viewModel.uiState.filteredParameters) { item in
-                    Button {
+                    StackTrackedButton(.parameter, on: .remoteConfig) {
                         viewModel.uiState.selectedParameter = item
                     } label: {
                         buildParameterRow(item)
@@ -279,7 +280,7 @@ struct RemoteConfigView<ViewModel: RemoteConfigViewModelProtocol>: View {
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
-            Button {
+            StackTrackedButton(.add, on: .remoteConfig) {
                 viewModel.uiState.showCreateParameter = true
             } label: {
                 Image(systemName: "plus")
@@ -336,10 +337,11 @@ struct RemoteConfigConditionsView: View {
             }
         }
         .navigationTitle(String(localized: "Conditions"))
+        .trackScreen(.remoteConfigConditions)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button {
+                StackTrackedButton(.add, on: .remoteConfigConditions) {
                     editingConditionIndex = nil
                     showAddCondition = true
                 } label: {
@@ -404,14 +406,14 @@ struct RemoteConfigConditionsView: View {
             showAddCondition = true
         }
         .contextMenu {
-            Button {
+            StackTrackedButton(.edit, on: .remoteConfigConditions) {
                 editingConditionIndex = index
                 showAddCondition = true
             } label: {
                 Label(String(localized: "Edit"), systemImage: "pencil")
             }
 
-            Button {
+            StackTrackedButton(.duplicate, on: .remoteConfigConditions) {
                 onDuplicate(condition)
             } label: {
                 Label(String(localized: "Duplicate"), systemImage: "doc.on.doc")
@@ -419,7 +421,7 @@ struct RemoteConfigConditionsView: View {
 
             Divider()
 
-            Button(role: .destructive) {
+            StackTrackedButton(.delete, on: .remoteConfigConditions, role: .destructive) {
                 onDelete(index)
             } label: {
                 Label(String(localized: "Delete"), systemImage: "trash")
@@ -484,22 +486,23 @@ struct RemoteConfigParameterDetailSheet: View {
                 buildDangerSection()
             }
             .navigationTitle(item.name)
+            .trackScreen(.remoteConfigParameterDetail)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { dismiss() }
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .remoteConfigParameterDetail) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "Save")) { saveAndDismiss() }
+                    StackTrackedButton(String(localized: "Save"), button: .save, on: .remoteConfigParameterDetail) { saveAndDismiss() }
                         .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
             .alert(String(localized: "Delete Parameter"), isPresented: $showDeleteAlert) {
-                Button(String(localized: "Delete"), role: .destructive) {
+                StackTrackedButton(String(localized: "Delete"), button: .confirmDelete, on: .remoteConfigParameterDetail, role: .destructive) {
                     onDelete(item.name)
                     dismiss()
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {}
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .remoteConfigParameterDetail, role: .cancel) {}
             } message: {
                 Text("Are you sure you want to delete \"\(item.name)\"? This cannot be undone.")
             }
@@ -571,7 +574,7 @@ struct RemoteConfigParameterDetailSheet: View {
             if !available.isEmpty {
                 Menu {
                     ForEach(available) { condition in
-                        Button(condition.name) {
+                        StackTrackedButton(condition.name, button: .add, on: .remoteConfigParameterDetail) {
                             conditionalValues.append(ConditionalEntry(conditionName: condition.name, value: ""))
                         }
                     }
@@ -588,7 +591,7 @@ struct RemoteConfigParameterDetailSheet: View {
 
     private func buildDangerSection() -> some View {
         Section {
-            Button(role: .destructive) {
+            StackTrackedButton(.delete, on: .remoteConfigParameterDetail, role: .destructive) {
                 showDeleteAlert = true
             } label: {
                 Label(String(localized: "Delete Parameter"), systemImage: "trash")
@@ -702,16 +705,17 @@ struct RemoteConfigCreateParameterSheet: View {
                 }
             }
             .navigationTitle(String(localized: "New Parameter"))
+            .trackScreen(.remoteConfigCreateParameter)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .remoteConfigCreateParameter) {
                         dismiss()
                         onCancel()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "Create")) { createAndClose() }
+                    StackTrackedButton(String(localized: "Create"), button: .create, on: .remoteConfigCreateParameter) { createAndClose() }
                         .disabled(!isValid)
                 }
             }
@@ -839,16 +843,21 @@ struct RemoteConfigAddConditionSheet: View {
                 }
             }
             .navigationTitle(editingCondition == nil ? String(localized: "New Condition") : String(localized: "Edit Condition"))
+            .trackScreen(.remoteConfigAddCondition)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .remoteConfigAddCondition) {
                         dismiss()
                         onCancel()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(editingCondition == nil ? String(localized: "Add") : String(localized: "Save")) {
+                    StackTrackedButton(
+                        editingCondition == nil ? String(localized: "Add") : String(localized: "Save"),
+                        button: editingCondition == nil ? .add : .save,
+                        on: .remoteConfigAddCondition
+                    ) {
                         let condition = RemoteConfigCondition(
                             name: name.trimmingCharacters(in: .whitespaces),
                             expression: expression.isEmpty ? nil : expression,

@@ -345,6 +345,218 @@
         }
       }
     },
+    "Only screens visited and buttons tapped are collected. Account names, keys, bundle IDs and your app data are never sent." : {
+      "comment" : "Footer of the Privacy section in Settings explaining what usage analytics collect.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es werden nur besuchte Bildschirme und getippte Tasten erfasst. Accountnamen, Schlüssel, Bundle-IDs und deine App-Daten werden nie gesendet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo se recopilan las pantallas visitadas y los botones pulsados. Nunca se envían nombres de cuentas, claves, bundle IDs ni los datos de tus apps."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seuls les écrans consultés et les boutons touchés sont collectés. Les noms de compte, les clés, les bundle ID et les données de vos apps ne sont jamais envoyés."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vengono raccolti solo le schermate visitate e i pulsanti toccati. Nomi degli account, chiavi, bundle ID e i dati delle tue app non vengono mai inviati."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "収集されるのは表示した画面とタップしたボタンのみです。アカウント名、キー、Bundle ID、App のデータが送信されることはありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "방문한 화면과 탭한 버튼만 수집됩니다. 계정 이름, 키, 번들 ID 및 앱 데이터는 절대 전송되지 않습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alleen bezochte schermen en aangetikte knoppen worden verzameld. Accountnamen, sleutels, bundle-ID's en je appgegevens worden nooit verstuurd."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "São coletadas apenas as telas visitadas e os botões tocados. Nomes de contas, chaves, bundle IDs e os dados dos seus apps nunca são enviados."
+          }
+        }
+      }
+    },
+    "Privacy" : {
+      "comment" : "Header of the Privacy section in Settings.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datenschutz"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacidad"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confidentialité"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "プライバシー"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "개인정보 보호"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacy"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privacidade"
+          }
+        }
+      }
+    },
+    "Sends anonymous usage data to help improve StackConnect" : {
+      "comment" : "Caption under the Share usage analytics toggle in Settings.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sendet anonyme Nutzungsdaten, um StackConnect zu verbessern"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envía datos de uso anónimos para ayudar a mejorar StackConnect"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envoie des données d’utilisation anonymes pour aider à améliorer StackConnect"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invia dati di utilizzo anonimi per aiutare a migliorare StackConnect"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect の改善のために匿名の使用状況データを送信します"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect 개선을 위해 익명의 사용 데이터를 보냅니다"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verstuurt anonieme gebruiksgegevens om StackConnect te verbeteren"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envia dados de uso anônimos para ajudar a melhorar o StackConnect"
+          }
+        }
+      }
+    },
+    "Share usage analytics" : {
+      "comment" : "Title of the Settings toggle that turns anonymous usage analytics on or off.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nutzungsanalysen teilen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compartir análisis de uso"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Partager les données d’utilisation"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Condividi analisi di utilizzo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用状況の分析を共有"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "사용 분석 공유"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gebruiksanalyses delen"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compartilhar dados de uso"
+          }
+        }
+      }
+    },
     "Share with Account Holder" : {
       "comment" : "Accessibility label of the Home agreements banner button that shares a request with the team's Account Holder.",
       "localizations" : {

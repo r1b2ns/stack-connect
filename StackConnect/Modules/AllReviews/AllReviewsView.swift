@@ -29,6 +29,7 @@ struct AllReviewsView<ViewModel: AllReviewsViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Ratings & Reviews"))
+            .trackScreen(.allReviews)
             .navigationBarTitleDisplayMode(.inline)
             .refreshable { await viewModel.refresh() }
             .task { await viewModel.load() }
@@ -61,7 +62,7 @@ struct AllReviewsView<ViewModel: AllReviewsViewModelProtocol>: View {
             ForEach(viewModel.uiState.groups) { group in
                 Section {
                     ForEach(group.reviews) { review in
-                        Button {
+                        StackTrackedButton(.review, on: .allReviews) {
                             coordinator.navigateToReviewDetail(
                                 review: review,
                                 appName: group.app.name,
@@ -95,7 +96,7 @@ struct AllReviewsView<ViewModel: AllReviewsViewModelProtocol>: View {
 
             Spacer()
 
-            Button {
+            StackTrackedButton(.seeMore, on: .allReviews) {
                 coordinator.navigateToAppDetail(group.app, account: group.account)
             } label: {
                 HStack(spacing: 2) {

@@ -1,4 +1,5 @@
 import XCTest
+import StackProtocols
 @testable import StackConnect
 
 @MainActor
@@ -6,17 +7,20 @@ final class SettingsAccountsViewModelTests: XCTestCase {
 
     private var storage: MockPersistentStorable!
     private var keychain: MockKeyStorable!
+    private var analytics: MockAnalyticsTracker!
     private var sut: SettingsAccountsViewModel!
 
     override func setUp() async throws {
         try await super.setUp()
         storage = MockPersistentStorable()
         keychain = MockKeyStorable()
-        sut = SettingsAccountsViewModel(storage: storage, keychain: keychain)
+        analytics = MockAnalyticsTracker()
+        sut = SettingsAccountsViewModel(storage: storage, keychain: keychain, analytics: analytics)
     }
 
     override func tearDown() async throws {
         sut = nil
+        analytics = nil
         storage = nil
         keychain = nil
         try await super.tearDown()
@@ -193,5 +197,98 @@ final class SettingsAccountsViewModelTests: XCTestCase {
         let saved = try await storage.fetchAll(AccountModel.self)
         let imported = try XCTUnwrap(saved.first { $0.origin == .imported })
         XCTAssertTrue(imported.allowsApp(bundleId: "com.whatever"))
+    }
+
+    // MARK: - Analytics events
+
+    func testDeleteAccountTracksConfirmTapAndSuccess() async throws {
+        let account = makeAppleAccount()
+        try await storage.save(account, id: account.id)
+
+        await sut.deleteAccount(account)
+
+        XCTAssertEqual(analytics.taps(of: .confirmDelete), [.buttonTap(.confirmDelete, on: .settingsAccounts)])
+        XCTAssertEqual(analytics.actions(of: .deleteAccount), [
+            .action(.deleteAccount, on: .settingsAccounts, result: .success, parameters: [
+                AnalyticsParameterKey.kind: .string(ProviderType.apple.rawValue)
+            ])
+        ])
+    }
+
+    func testDeleteAccountTracksFailure() async throws {
+        let account = makeAppleAccount()
+        try await storage.save(account, id: account.id)
+        await storage.failDelete(AccountModel.self, id: account.id)
+
+        await sut.deleteAccount(account)
+
+        XCTAssertEqual(analytics.results(of: .deleteAccount), [.failure])
+    }
+
+    func testExportTracksSuccessWithShapeOnly() throws {
+        let account = makeAppleAccount()
+
+        _ = sut.exportAccountWithRules(
+            account: account,
+            exportName: "Team",
+            rules: .allPermissions,
+            password: "aVeryStrongPass123",
+            expirationDate: .now,
+            appsBundles: ["com.a"]
+        )
+
+        XCTAssertEqual(analytics.actions(of: .exportAccount), [
+            .action(.exportAccount, on: .exportAccount, result: .success, parameters: [
+                AnalyticsParameterKey.hasExpiration: .bool(true),
+                AnalyticsParameterKey.scoped: .bool(true)
+            ])
+        ])
+    }
+
+    func testImportTracksSuccess() async throws {
+        let password = "aVeryStrongPass123"
+        let payload: [String: Any] = [
+            "name": "Imported",
+            "providerType": "apple",
+            "createdAt": ISO8601DateFormatter().string(from: .now),
+            "credentials": appleCredentialsPayload()
+        ]
+        let url = try makeImportFile(payload: payload, password: password)
+
+        _ = await sut.importAccount(from: url, password: password, customName: nil)
+
+        XCTAssertEqual(analytics.taps(of: .confirmImport).count, 1)
+        XCTAssertEqual(analytics.results(of: .importAccount), [.success])
+    }
+
+    func testImportTracksFailureWithWrongPassword() async throws {
+        let payload: [String: Any] = [
+            "name": "Imported",
+            "providerType": "apple",
+            "credentials": appleCredentialsPayload()
+        ]
+        let url = try makeImportFile(payload: payload, password: "aVeryStrongPass123")
+
+        let error = await sut.importAccount(from: url, password: "wrong-password", customName: nil)
+
+        XCTAssertNotNil(error)
+        XCTAssertEqual(analytics.results(of: .importAccount), [.failure])
+    }
+
+    func testRenameAccountTracksSaveTapAndSuccess() async throws {
+        let account = makeAppleAccount()
+        try await storage.save(account, id: account.id)
+        await sut.loadAccounts()
+
+        await sut.updateAccountName(accountId: account.id, newName: "Renamed")
+
+        XCTAssertEqual(analytics.taps(of: .save), [.buttonTap(.save, on: .settingsAccountEdit)])
+        XCTAssertEqual(analytics.results(of: .saveAccount), [.success])
+    }
+
+    func testRenameUnknownAccountTracksFailure() async {
+        await sut.updateAccountName(accountId: "missing", newName: "Renamed")
+
+        XCTAssertEqual(analytics.results(of: .saveAccount), [.failure])
     }
 }

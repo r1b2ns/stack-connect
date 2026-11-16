@@ -38,10 +38,11 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "TestFlight"))
+            .trackScreen(.testFlight)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .sheet(isPresented: $viewModel.uiState.showCreateGroup) {
                 CreateBetaGroupSheet(
                     isCreating: viewModel.uiState.isCreatingGroup
@@ -69,7 +70,7 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
                         Task { await viewModel.expireBuild(build) }
                     }
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {}
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .testFlight, role: .cancel) {}
             } message: {
                 if let build = viewModel.uiState.confirmExpireBuild {
                     Text("Expire build \(build.displayVersion)? Testers will no longer be able to install it. This cannot be undone via the API.")
@@ -82,7 +83,7 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
                     set: { if !$0 { viewModel.uiState.expireError = nil } }
                 )
             ) {
-                Button(String(localized: "OK"), role: .cancel) {}
+                StackTrackedButton(String(localized: "OK"), button: .ok, on: .testFlight, role: .cancel) {}
             } message: {
                 if let message = viewModel.uiState.expireError {
                     Text(message)
@@ -100,7 +101,7 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
                         Task { await viewModel.deleteGroup(group) }
                     }
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {}
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .testFlight, role: .cancel) {}
             } message: {
                 if let group = viewModel.uiState.confirmDelete {
                     Text("Are you sure you want to delete the group \"\(group.name)\"?")
@@ -179,7 +180,7 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
     private func buildGroupSection(title: String, icon: String, groups: [BetaGroupModel]) -> some View {
         Section {
             ForEach(groups) { group in
-                Button {
+                StackTrackedButton(.betaGroup, on: .testFlight) {
                     homeCoordinator.navigateToBetaGroupDetail(group: group, appId: viewModel.uiState.appId, account: viewModel.uiState.account)
                 } label: {
                     buildGroupRow(group)
@@ -187,7 +188,7 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
                 .foregroundStyle(.primary)
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     if viewModel.uiState.account.canDelete(.testFlight) {
-                        Button(role: .destructive) {
+                        StackTrackedButton(.delete, on: .testFlight, role: .destructive) {
                             viewModel.uiState.confirmDelete = group
                         } label: {
                             Label(String(localized: "Delete"), systemImage: "trash")
@@ -247,7 +248,7 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
     private func buildPlatformSection(_ group: PlatformBuildGroup) -> some View {
         Section {
             ForEach(group.builds.prefix(5)) { build in
-                Button {
+                StackTrackedButton(.build, on: .testFlight) {
                     homeCoordinator.navigateToBuildDetail(
                         build: build,
                         appId: viewModel.uiState.appId,
@@ -259,7 +260,7 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
                 .foregroundStyle(.primary)
                 .swipeActions(edge: .trailing) {
                     if !build.isExpired && viewModel.uiState.account.canDelete(.testFlight) {
-                        Button {
+                        StackTrackedButton(.expire, on: .testFlight) {
                             viewModel.uiState.confirmExpireBuild = build
                         } label: {
                             Label(String(localized: "Expire"), systemImage: "clock.badge.xmark")
@@ -270,7 +271,7 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
             }
 
             if group.builds.count > 5 {
-                Button {
+                StackTrackedButton(.seeMore, on: .testFlight) {
                     homeCoordinator.navigateToPlatformBuildsList(
                         appId: viewModel.uiState.appId,
                         platform: group.platform,
@@ -341,7 +342,7 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
     private func buildToolbar() -> some ToolbarContent {
         if viewModel.uiState.account.canAdd(.testFlight) {
             ToolbarItem(placement: .primaryAction) {
-                Button {
+                StackTrackedButton(.add, on: .testFlight) {
                     viewModel.uiState.showCreateGroup = true
                 } label: {
                     Image(systemName: "plus")
@@ -431,11 +432,12 @@ struct CreateBetaGroupSheet: View {
                 }
             }
             .navigationTitle(String(localized: "New Beta Group"))
+            .trackScreen(.createBetaGroup)
             .navigationBarTitleDisplayMode(.inline)
             .disabled(isCreating)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .createBetaGroup) {
                         dismiss()
                         onCancel()
                     }

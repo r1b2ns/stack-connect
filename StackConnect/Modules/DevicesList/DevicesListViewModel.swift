@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Notifications
 
@@ -13,6 +14,7 @@ extension Notification.Name {
 protocol DevicesListViewModelProtocol: ObservableObject {
     var uiState: DevicesListUiState { get set }
     func load() async
+    func refresh() async
     func create(name: String, platformRaw: String, udid: String) async -> Bool
     func upsert(_ model: DeviceModel)
 }
@@ -49,13 +51,16 @@ final class DevicesListViewModel: DevicesListViewModelProtocol {
     @Published var uiState: DevicesListUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = DevicesListUiState(account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     /// Maps a `load()` failure onto UI state: a pending Program License Agreement
@@ -71,26 +76,49 @@ final class DevicesListViewModel: DevicesListViewModelProtocol {
     }
 
     func load() async {
+        _ = await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let succeeded = await performLoad()
+        analytics.track(.action(.refresh, on: .devicesList, result: succeeded ? .success : .failure))
+    }
+
+    private func performLoad() async -> Bool {
+        var succeeded = true
         uiState.isLoading = true
         uiState.errorMessage = nil
         uiState.pendingAgreement = false
 
         guard let connection = makeConnection() else {
             uiState.isLoading = false
-            return
+            return false
         }
 
         do {
             uiState.devices = try await connection.fetchDevices()
         } catch {
+            succeeded = false
             handleLoadError(error)
             Log.print.error("[Devices] Load failed: \(error.localizedDescription)")
         }
 
         uiState.isLoading = false
+        return succeeded
     }
 
     func create(name: String, platformRaw: String, udid: String) async -> Bool {
+        analytics.track(.buttonTap(.register, on: .createDevice))
+        let created = await performCreate(name: name, platformRaw: platformRaw, udid: udid)
+        // Only the platform constant (`IOS` / `MAC_OS`) is sent — never the name or UDID.
+        analytics.track(.action(.registerDevice, on: .createDevice, result: created ? .success : .failure, parameters: [
+            AnalyticsParameterKey.kind: .string(platformRaw)
+        ]))
+        return created
+    }
+
+    private func performCreate(name: String, platformRaw: String, udid: String) async -> Bool {
         guard let connection = makeConnection() else { return false }
 
         uiState.isCreating = true

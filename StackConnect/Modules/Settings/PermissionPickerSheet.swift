@@ -42,7 +42,7 @@ struct PermissionPickerSheet: View {
                     let isActive = effectivePermissions.contains(permission)
                     let isLocked = impliedPermissions.contains(permission)
 
-                    Button {
+                    StackTrackedButton(.togglePermission, on: .permissionPicker) {
                         if !isLocked {
                             togglePermission(permission)
                         }
@@ -61,7 +61,7 @@ struct PermissionPickerSheet: View {
                 }
 
                 // None option
-                Button {
+                StackTrackedButton(.selectNone, on: .permissionPicker) {
                     toggleNone()
                 } label: {
                     HStack(spacing: 12) {
@@ -76,10 +76,11 @@ struct PermissionPickerSheet: View {
                 }
             }
             .navigationTitle(resource.displayName)
+            .trackScreen(.permissionPicker)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "OK")) {
+                    StackTrackedButton(String(localized: "OK"), button: .ok, on: .permissionPicker) {
                         if isNone {
                             onDismiss([])
                         } else if selected.isEmpty && impliedPermissions.isEmpty {

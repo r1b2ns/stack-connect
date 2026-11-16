@@ -57,6 +57,7 @@ struct DeviceDetailView<ViewModel: DeviceDetailViewModelProtocol>: View {
             }
         }
         .navigationTitle(device.name)
+        .trackScreen(.deviceDetail)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { editedName = device.name }
     }

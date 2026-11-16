@@ -47,6 +47,7 @@ struct FeedbackScreen: View {
             buildOkButton()
         }
         .padding(24)
+        .trackScreen(.feedback)
     }
 
     // MARK: - Components
@@ -54,7 +55,7 @@ struct FeedbackScreen: View {
     private func buildCloseButton() -> some View {
         HStack {
             Spacer()
-            Button {
+            StackTrackedButton(.close, on: .feedback) {
                 onDismiss()
             } label: {
                 Image(systemName: "xmark.circle.fill")
@@ -90,7 +91,7 @@ struct FeedbackScreen: View {
     }
 
     private func buildOkButton() -> some View {
-        Button {
+        StackTrackedButton(.ok, on: .feedback) {
             onDismiss()
         } label: {
             Text(String(localized: "OK"))

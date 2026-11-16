@@ -1,4 +1,5 @@
 import SwiftUI
+import StackProtocols
 
 // MARK: - Factory
 
@@ -24,17 +25,20 @@ final class ScreenshotGridViewModel: ObservableObject {
     private let account: AccountModel
     private let appStoreState: AppStoreState?
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         screenshots: [ScreenshotModel],
         account: AccountModel,
         appStoreState: AppStoreState?,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.screenshots = screenshots
         self.account = account
         self.appStoreState = appStoreState
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     /// Selection (and thus deletion) is only offered while the version is still
@@ -69,9 +73,11 @@ final class ScreenshotGridViewModel: ObservableObject {
     /// Deletes every selected screenshot via the core, removing each from the
     /// grid as it succeeds. Stops at the first failure and surfaces the error.
     func deleteSelected() async {
+        analytics.track(.buttonTap(.confirmDelete, on: .screenshotGrid))
         let ids = selectedIds
         guard !ids.isEmpty else { return }
         guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(account.id)") else {
+            analytics.track(.action(.deleteScreenshots, on: .screenshotGrid, result: .failure, parameters: [AnalyticsParameterKey.count: .int(ids.count)]))
             return
         }
 
@@ -88,7 +94,9 @@ final class ScreenshotGridViewModel: ObservableObject {
             }
             Log.print.info("[Screenshots] Deleted \(ids.count) selected screenshots")
             cancelSelection()
+            analytics.track(.action(.deleteScreenshots, on: .screenshotGrid, result: .success, parameters: [AnalyticsParameterKey.count: .int(ids.count)]))
         } catch {
+            analytics.track(.action(.deleteScreenshots, on: .screenshotGrid, result: .failure, parameters: [AnalyticsParameterKey.count: .int(ids.count)]))
             deleteError = error.localizedDescription
             Log.print.error("[Screenshots] Delete selected failed: \(error.localizedDescription)")
         }
@@ -127,16 +135,17 @@ struct ScreenshotGridView: View {
             .padding(2)
         }
         .navigationTitle(navigationTitle)
+        .trackScreen(.screenshotGrid)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if viewModel.canSelect && !viewModel.screenshots.isEmpty {
                     if viewModel.isSelectionMode {
-                        Button(String(localized: "Cancel")) {
+                        StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .screenshotGrid) {
                             viewModel.cancelSelection()
                         }
                     } else {
-                        Button(String(localized: "Select")) {
+                        StackTrackedButton(String(localized: "Select"), button: .select, on: .screenshotGrid) {
                             viewModel.enterSelectionMode()
                         }
                     }
@@ -145,7 +154,7 @@ struct ScreenshotGridView: View {
             ToolbarItemGroup(placement: .bottomBar) {
                 if viewModel.isSelectionMode && viewModel.selectedCount > 0 {
                     Spacer()
-                    Button(role: .destructive) {
+                    StackTrackedButton(.delete, on: .screenshotGrid, role: .destructive) {
                         viewModel.showDeleteConfirmation = true
                     } label: {
                         Image(systemName: "trash")
@@ -159,7 +168,7 @@ struct ScreenshotGridView: View {
             String(localized: "Delete Screenshots"),
             isPresented: $viewModel.showDeleteConfirmation
         ) {
-            Button(String(localized: "Cancel"), role: .cancel) {}
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .screenshotGrid, role: .cancel) {}
             Button(String(localized: "Delete"), role: .destructive) {
                 Task { await viewModel.deleteSelected() }
             }
@@ -173,7 +182,7 @@ struct ScreenshotGridView: View {
                 set: { if !$0 { viewModel.deleteError = nil } }
             )
         ) {
-            Button(String(localized: "OK"), role: .cancel) { viewModel.deleteError = nil }
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .screenshotGrid, role: .cancel) { viewModel.deleteError = nil }
         } message: {
             Text(viewModel.deleteError ?? "")
         }
@@ -187,7 +196,7 @@ struct ScreenshotGridView: View {
     }
 
     private func buildCell(_ screenshot: ScreenshotModel, index: Int) -> some View {
-        Button {
+        StackTrackedButton(.screenshot, on: .screenshotGrid) {
             if viewModel.isSelectionMode {
                 viewModel.toggleSelection(screenshot)
             } else {

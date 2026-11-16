@@ -53,11 +53,12 @@ struct CreateProfileView<ViewModel: CreateProfileViewModelProtocol>: View {
             buildStepContent()
         }
         .navigationTitle(String(localized: "New Profile"))
+        .trackScreen(.createProfile)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if viewModel.uiState.step == .generated {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(String(localized: "Done")) { dismiss() }
+                    StackTrackedButton(String(localized: "Done"), button: .done, on: .createProfile) { dismiss() }
                 }
             }
         }
@@ -74,7 +75,7 @@ struct CreateProfileView<ViewModel: CreateProfileViewModelProtocol>: View {
                 }
             )
         ) {
-            Button(String(localized: "OK"), role: .cancel) {}
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .createProfile, role: .cancel) {}
         } message: {
             Text(viewModel.uiState.errorMessage ?? "")
         }
@@ -132,7 +133,7 @@ struct CreateProfileView<ViewModel: CreateProfileViewModelProtocol>: View {
                 if !typesInSection.isEmpty {
                     Section {
                         ForEach(typesInSection) { option in
-                            Button {
+                            StackTrackedButton(.select, on: .createProfile) {
                                 viewModel.selectType(option)
                             } label: {
                                 HStack {
@@ -175,7 +176,7 @@ struct CreateProfileView<ViewModel: CreateProfileViewModelProtocol>: View {
                 } else {
                     Section {
                         ForEach(viewModel.uiState.filteredBundleIds) { bundle in
-                            Button {
+                            StackTrackedButton(.select, on: .createProfile) {
                                 viewModel.selectBundleId(bundle)
                             } label: {
                                 HStack(spacing: 12) {
@@ -224,7 +225,7 @@ struct CreateProfileView<ViewModel: CreateProfileViewModelProtocol>: View {
                 } else {
                     Section {
                         ForEach(viewModel.uiState.filteredCertificates) { cert in
-                            Button {
+                            StackTrackedButton(.select, on: .createProfile) {
                                 viewModel.toggleCertificate(id: cert.id)
                             } label: {
                                 certificateRow(
@@ -246,6 +247,7 @@ struct CreateProfileView<ViewModel: CreateProfileViewModelProtocol>: View {
                 buildBackInlineButton()
                 buildPrimaryButton(
                     title: String(localized: "Continue"),
+                    button: .continue,
                     enabled: !viewModel.uiState.selectedCertificateIds.isEmpty
                 ) {
                     viewModel.goNextFromCertificates()
@@ -275,7 +277,7 @@ struct CreateProfileView<ViewModel: CreateProfileViewModelProtocol>: View {
                 } else {
                     Section {
                         HStack {
-                            Button(String(localized: "Select All")) {
+                            StackTrackedButton(String(localized: "Select All"), button: .selectAll, on: .createProfile) {
                                 for d in viewModel.uiState.filteredDevices {
                                     if !viewModel.uiState.selectedDeviceIds.contains(d.id) {
                                         viewModel.toggleDevice(id: d.id)
@@ -283,14 +285,14 @@ struct CreateProfileView<ViewModel: CreateProfileViewModelProtocol>: View {
                                 }
                             }
                             Spacer()
-                            Button(String(localized: "Deselect All"), role: .destructive) {
+                            StackTrackedButton(String(localized: "Deselect All"), button: .selectNone, on: .createProfile, role: .destructive) {
                                 viewModel.uiState.selectedDeviceIds.removeAll()
                             }
                         }
                         .font(.subheadline)
 
                         ForEach(viewModel.uiState.filteredDevices) { device in
-                            Button {
+                            StackTrackedButton(.select, on: .createProfile) {
                                 viewModel.toggleDevice(id: device.id)
                             } label: {
                                 multiSelectRow(
@@ -313,6 +315,7 @@ struct CreateProfileView<ViewModel: CreateProfileViewModelProtocol>: View {
                 buildBackInlineButton()
                 buildPrimaryButton(
                     title: String(localized: "Continue"),
+                    button: .continue,
                     enabled: !viewModel.uiState.selectedDeviceIds.isEmpty
                 ) {
                     viewModel.goNextFromDevices()
@@ -515,7 +518,7 @@ struct CreateProfileView<ViewModel: CreateProfileViewModelProtocol>: View {
     }
 
     private func buildBackButton() -> some View {
-        Button(String(localized: "Back")) {
+        StackTrackedButton(String(localized: "Back"), button: .back, on: .createProfile) {
             viewModel.goBack()
         }
         .foregroundStyle(.secondary)
@@ -523,7 +526,7 @@ struct CreateProfileView<ViewModel: CreateProfileViewModelProtocol>: View {
     }
 
     private func buildBackInlineButton() -> some View {
-        Button(String(localized: "Back")) {
+        StackTrackedButton(String(localized: "Back"), button: .back, on: .createProfile) {
             viewModel.goBack()
         }
         .foregroundStyle(.secondary)
@@ -533,17 +536,36 @@ struct CreateProfileView<ViewModel: CreateProfileViewModelProtocol>: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
-    private func buildPrimaryButton(title: String, enabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(enabled ? Color.blue : Color.gray.opacity(0.3))
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+    /// `button` tracks the tap in the view (navigation-only steps). Pass `nil`
+    /// when the action's ViewModel method already tracks it (e.g. submit).
+    @ViewBuilder
+    private func buildPrimaryButton(
+        title: String,
+        button: AnalyticsButton? = nil,
+        enabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        if let button {
+            StackTrackedButton(button, on: .createProfile, action: action) {
+                buildPrimaryButtonLabel(title: title, enabled: enabled)
+            }
+            .disabled(!enabled)
+        } else {
+            Button(action: action) {
+                buildPrimaryButtonLabel(title: title, enabled: enabled)
+            }
+            .disabled(!enabled)
         }
-        .disabled(!enabled)
+    }
+
+    private func buildPrimaryButtonLabel(title: String, enabled: Bool) -> some View {
+        Text(title)
+            .fontWeight(.semibold)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(enabled ? Color.blue : Color.gray.opacity(0.3))
+            .foregroundStyle(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 

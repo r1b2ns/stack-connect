@@ -14,6 +14,12 @@ struct StackConnectApp: App {
     private let releaseNotesPresenter = ReleaseNotesPresenter()
 
     init() {
+        // Analytics first, before the app delegate and any view: builds
+        // `AnalyticsService.shared` (configuring Firebase only when
+        // GoogleService-Info.plist is bundled) and applies the user's opt-out
+        // setting to the SDK before anything can be tracked.
+        AnalyticsService.shared.applyCollectionSetting()
+
         let hasSeenWelcome = UserDefaults.standard.bool(forKey: "hasSeenWelcome")
         let notes = ReleaseNotes.load()
         let presenter = ReleaseNotesPresenter()

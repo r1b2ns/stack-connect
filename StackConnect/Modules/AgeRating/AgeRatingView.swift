@@ -88,6 +88,7 @@ struct AgeRatingView<ViewModel: AgeRatingViewModelProtocol>: View {
             }
         }
         .navigationTitle(String(localized: "Age Rating"))
+        .trackScreen(.ageRating)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
@@ -108,7 +109,7 @@ struct AgeRatingView<ViewModel: AgeRatingViewModelProtocol>: View {
                 set: { if !$0 { viewModel.uiState.error = nil } }
             )
         ) {
-            Button(String(localized: "OK"), role: .cancel) {
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .ageRating, role: .cancel) {
                 viewModel.uiState.error = nil
             }
         } message: {

@@ -46,6 +46,7 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(viewModel.uiState.providerType.displayName)
+            .trackScreen(.accountsList)
             .toolbar { buildToolbar() }
             .onReceive(ReimportRouter.shared.$pending.compactMap { $0 }) { request in
                 guard request.providerType == viewModel.uiState.providerType else { return }
@@ -71,7 +72,7 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                 String(localized: "Import Error"),
                 isPresented: $showImportError
             ) {
-                Button(String(localized: "OK"), role: .cancel) {}
+                StackTrackedButton(String(localized: "OK"), button: .ok, on: .accountsList, role: .cancel) {}
             } message: {
                 Text(importError)
             }
@@ -80,10 +81,10 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                 isPresented: $showExpiredAccessAlert,
                 presenting: expiredAccessAccount
             ) { account in
-                Button(String(localized: "Re-import File")) {
+                StackTrackedButton(String(localized: "Re-import File"), button: .reimport, on: .accountsList) {
                     DeepLinkRouter.shared.open(DeepLink.reimport(accountId: account.id).url)
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {}
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .accountsList, role: .cancel) {}
             } message: { account in
                 Text("The account \"\(account.name)\" has expired. Re-import its file to keep using it.")
             }
@@ -161,7 +162,7 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
     }
 
     private func buildAccountRow(_ account: AccountModel) -> some View {
-        Button {
+        StackTrackedButton(.account, on: .accountsList) {
             guard !account.isExpired else {
                 expiredAccessAccount = account
                 showExpiredAccessAlert = true
@@ -234,14 +235,14 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
     private func buildAddOptionsSheet() -> some View {
         NavigationStack {
             List {
-                Button {
+                StackTrackedButton(.createNew, on: .accountsListAddOptions) {
                     coordinator.presentAddAccount()
                 } label: {
                     Label(String(localized: "Create New"), systemImage: "plus.circle.fill")
                 }
 
                 if viewModel.uiState.providerType == .apple {
-                    Button {
+                    StackTrackedButton(.importAccount, on: .accountsListAddOptions) {
                         viewModel.uiState.replacingAccountId = nil
                         coordinator.presentImport()
                     } label: {
@@ -250,10 +251,11 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                 }
             }
             .navigationTitle(String(localized: "Add Account"))
+            .trackScreen(.accountsListAddOptions)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .accountsListAddOptions) {
                         coordinator.showAddOptions = false
                     }
                 }
@@ -288,7 +290,7 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
-            Button {
+            StackTrackedButton(.add, on: .accountsList) {
                 coordinator.presentAddOptions()
             } label: {
                 Image(systemName: "plus")
@@ -330,7 +332,7 @@ private struct AccountsListImportSheet: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
 
-                Button {
+                StackTrackedButton(.howToImport, on: .accountsListImport) {
                     showTutorial = true
                 } label: {
                     Label(String(localized: "How to import?"), systemImage: "questionmark.circle")
@@ -338,7 +340,7 @@ private struct AccountsListImportSheet: View {
                 }
                 .buttonStyle(.bordered)
 
-                Button {
+                StackTrackedButton(.importFile, on: .accountsListImport) {
                     showFilePicker = true
                 } label: {
                     Label(String(localized: "Import File"), systemImage: "square.and.arrow.down")
@@ -353,10 +355,11 @@ private struct AccountsListImportSheet: View {
                 ImportTutorialView()
             }
             .navigationTitle(String(localized: "Import"))
+            .trackScreen(.accountsListImport)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .accountsListImport) {
                         onCancel()
                         dismiss()
                     }
@@ -383,11 +386,11 @@ private struct AccountsListImportSheet: View {
                 isPresented: $showPasswordAlert
             ) {
                 SecureField(String(localized: "Password"), text: $password)
-                Button(String(localized: "Cancel"), role: .cancel) {
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .accountsListImport, role: .cancel) {
                     selectedURL = nil
                     password = ""
                 }
-                Button(String(localized: "Decrypt")) {
+                StackTrackedButton(String(localized: "Decrypt"), button: .decrypt, on: .accountsListImport) {
                     tryDecrypt()
                 }
             } message: {
@@ -397,11 +400,11 @@ private struct AccountsListImportSheet: View {
                 String(localized: "Decryption Failed"),
                 isPresented: $showDecryptError
             ) {
-                Button(String(localized: "Try Again")) {
+                StackTrackedButton(String(localized: "Try Again"), button: .tryAgain, on: .accountsListImport) {
                     password = ""
                     showPasswordAlert = true
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .accountsListImport, role: .cancel) {
                     selectedURL = nil
                     password = ""
                 }
@@ -413,7 +416,7 @@ private struct AccountsListImportSheet: View {
                 isPresented: $showNameAlert
             ) {
                 TextField(String(localized: "Account Name"), text: $customName)
-                Button(String(localized: "Cancel"), role: .cancel) {
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .accountsListImport, role: .cancel) {
                     selectedURL = nil
                     password = ""
                 }

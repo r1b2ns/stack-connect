@@ -65,6 +65,7 @@ struct IdentifierDetailView<ViewModel: IdentifierDetailViewModelProtocol>: View 
             buildDangerZoneSection()
         }
         .navigationTitle(bundle.identifier)
+        .trackScreen(.identifierDetail)
         .navigationBarTitleDisplayMode(.inline)
         .task {
             editedName = bundle.name
@@ -74,7 +75,7 @@ struct IdentifierDetailView<ViewModel: IdentifierDetailViewModelProtocol>: View 
             String(localized: "Delete this identifier?"),
             isPresented: $showDeleteConfirmation
         ) {
-            Button(String(localized: "Cancel"), role: .cancel) {}
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .identifierDetail, role: .cancel) {}
             Button(String(localized: "Delete"), role: .destructive) {
                 Task {
                     let ok = await viewModel.delete()
@@ -88,7 +89,7 @@ struct IdentifierDetailView<ViewModel: IdentifierDetailViewModelProtocol>: View 
             String(localized: "Apple rejected this change"),
             isPresented: errorAlertBinding
         ) {
-            Button(String(localized: "OK"), role: .cancel) {}
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .identifierDetail, role: .cancel) {}
         } message: {
             Text(viewModel.uiState.errorMessage ?? "")
         }
@@ -173,7 +174,7 @@ struct IdentifierDetailView<ViewModel: IdentifierDetailViewModelProtocol>: View 
                 }
             }
 
-            Button {
+            StackTrackedButton(.addCapability, on: .identifierDetail) {
                 showAddCapability = true
             } label: {
                 Label(String(localized: "Add Capability"), systemImage: "plus.circle")
@@ -188,7 +189,7 @@ struct IdentifierDetailView<ViewModel: IdentifierDetailViewModelProtocol>: View 
 
     private func buildDangerZoneSection() -> some View {
         Section {
-            Button(role: .destructive) {
+            StackTrackedButton(.delete, on: .identifierDetail, role: .destructive) {
                 showDeleteConfirmation = true
             } label: {
                 HStack {
@@ -223,7 +224,7 @@ struct IdentifierDetailView<ViewModel: IdentifierDetailViewModelProtocol>: View 
             Text(value)
                 .multilineTextAlignment(.trailing)
                 .textSelection(.enabled)
-            Button {
+            StackTrackedButton(.copy, on: .identifierDetail) {
                 UIPasteboard.general.string = copyValue ?? value
             } label: {
                 Image(systemName: "doc.on.doc")
@@ -289,11 +290,12 @@ private struct AddCapabilitySheet<ViewModel: IdentifierDetailViewModelProtocol>:
                 }
             }
             .navigationTitle(String(localized: "Add Capability"))
+            .trackScreen(.addCapability)
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchQuery, prompt: String(localized: "Search capabilities"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(String(localized: "Close")) { dismiss() }
+                    StackTrackedButton(String(localized: "Close"), button: .close, on: .addCapability) { dismiss() }
                 }
             }
         }

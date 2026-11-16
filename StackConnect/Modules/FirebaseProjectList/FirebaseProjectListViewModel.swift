@@ -1,5 +1,6 @@
 import Foundation
 import APIProviderFirebase
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -7,6 +8,7 @@ import APIProviderFirebase
 protocol FirebaseProjectListViewModelProtocol: ObservableObject {
     var uiState: FirebaseProjectListUiState { get set }
     func load() async
+    func refresh() async
 }
 
 // MARK: - Project Model
@@ -51,13 +53,29 @@ final class FirebaseProjectListViewModel: FirebaseProjectListViewModelProtocol {
     @Published var uiState: FirebaseProjectListUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
-    init(account: AccountModel, keychain: KeyStorable = KeychainStorable.shared) {
+    init(
+        account: AccountModel,
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
+    ) {
         self.uiState = FirebaseProjectListUiState(account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func load() async {
+        await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        await performLoad()
+        analytics.track(.action(.refresh, on: .firebaseProjectList, result: uiState.error == nil ? .success : .failure))
+    }
+
+    private func performLoad() async {
         uiState.isLoading = true
         uiState.error = nil
 

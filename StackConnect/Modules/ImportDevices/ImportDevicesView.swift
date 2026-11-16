@@ -53,11 +53,12 @@ struct ImportDevicesView<ViewModel: ImportDevicesViewModelProtocol>: View {
             }
         }
         .navigationTitle(String(localized: "Import Devices"))
+        .trackScreen(.importDevices)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if viewModel.uiState.step == .done {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(String(localized: "Done")) { dismiss() }
+                    StackTrackedButton(String(localized: "Done"), button: .done, on: .importDevices) { dismiss() }
                 }
             }
         }
@@ -99,7 +100,7 @@ struct ImportDevicesView<ViewModel: ImportDevicesViewModelProtocol>: View {
                     .padding(.horizontal, 32)
             }
 
-            Button {
+            StackTrackedButton(.importFile, on: .importDevices) {
                 isImporting = true
             } label: {
                 Label(String(localized: "Choose File"), systemImage: "folder")
@@ -183,11 +184,11 @@ struct ImportDevicesView<ViewModel: ImportDevicesViewModelProtocol>: View {
 
                 Section {
                     HStack {
-                        Button(String(localized: "Select All")) {
+                        StackTrackedButton(String(localized: "Select All"), button: .selectAll, on: .importDevices) {
                             viewModel.selectAll()
                         }
                         Spacer()
-                        Button(String(localized: "Deselect All"), role: .destructive) {
+                        StackTrackedButton(String(localized: "Deselect All"), button: .selectNone, on: .importDevices, role: .destructive) {
                             viewModel.deselectAll()
                         }
                     }
@@ -223,7 +224,7 @@ struct ImportDevicesView<ViewModel: ImportDevicesViewModelProtocol>: View {
                 }
                 .disabled(viewModel.uiState.selectedCount == 0)
 
-                Button(String(localized: "Choose Another File")) {
+                StackTrackedButton(String(localized: "Choose Another File"), button: .reimport, on: .importDevices) {
                     viewModel.reset()
                 }
                 .foregroundStyle(.secondary)
@@ -234,7 +235,7 @@ struct ImportDevicesView<ViewModel: ImportDevicesViewModelProtocol>: View {
 
     private func buildPreviewRow(_ device: ParsedDevice) -> some View {
         let isSelected = viewModel.uiState.selectedIds.contains(device.id)
-        return Button {
+        return StackTrackedButton(.select, on: .importDevices) {
             viewModel.toggle(id: device.id)
         } label: {
             HStack(spacing: 12) {
@@ -344,7 +345,7 @@ struct ImportDevicesView<ViewModel: ImportDevicesViewModelProtocol>: View {
             }
 
             Section {
-                Button(String(localized: "Import Another File")) {
+                StackTrackedButton(String(localized: "Import Another File"), button: .reimport, on: .importDevices) {
                     viewModel.reset()
                 }
             }

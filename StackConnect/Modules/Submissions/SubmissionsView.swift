@@ -59,9 +59,10 @@ struct SubmissionsView<ViewModel: SubmissionsViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Submissions"))
+            .trackScreen(.submissions)
             .navigationBarTitleDisplayMode(.inline)
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .alert(
                 viewModel.uiState.pendingAction?.title ?? "",
                 isPresented: Binding(
@@ -70,10 +71,10 @@ struct SubmissionsView<ViewModel: SubmissionsViewModelProtocol>: View {
                 )
             ) {
                 if let action = viewModel.uiState.pendingAction {
-                    Button(action.confirmLabel, role: action.isDestructive ? .destructive : nil) {
+                    StackTrackedButton(action.confirmLabel, button: action.analyticsConfirmButton, on: .submissions, role: action.isDestructive ? .destructive : nil) {
                         perform(action)
                     }
-                    Button(String(localized: "Cancel"), role: .cancel) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .submissions, role: .cancel) {
                         viewModel.uiState.pendingAction = nil
                     }
                 }
@@ -89,7 +90,7 @@ struct SubmissionsView<ViewModel: SubmissionsViewModelProtocol>: View {
                     set: { if !$0 { viewModel.uiState.error = nil } }
                 )
             ) {
-                Button(String(localized: "OK"), role: .cancel) {
+                StackTrackedButton(String(localized: "OK"), button: .ok, on: .submissions, role: .cancel) {
                     viewModel.uiState.error = nil
                 }
             } message: {
@@ -105,12 +106,12 @@ struct SubmissionsView<ViewModel: SubmissionsViewModelProtocol>: View {
                 )
             ) {
                 if let url = appStoreConnectDistributionURL {
-                    Button(String(localized: "Open App Store Connect")) {
+                    StackTrackedButton(String(localized: "Open App Store Connect"), button: .openAppStoreConnect, on: .submissions) {
                         openURL(url)
                         viewModel.uiState.notRemovable = nil
                     }
                 }
-                Button(String(localized: "Close"), role: .cancel) {
+                StackTrackedButton(String(localized: "Close"), button: .close, on: .submissions, role: .cancel) {
                     viewModel.uiState.notRemovable = nil
                 }
             } message: {
@@ -176,7 +177,7 @@ struct SubmissionsView<ViewModel: SubmissionsViewModelProtocol>: View {
     }
 
     private func buildRow(_ submission: ReviewSubmissionModel) -> some View {
-        Button {
+        StackTrackedButton(.submission, on: .submissions) {
             homeCoordinator.navigateToReviewSubmissionDetail(
                 submission: submission,
                 account: account
@@ -190,7 +191,7 @@ struct SubmissionsView<ViewModel: SubmissionsViewModelProtocol>: View {
         .foregroundStyle(.primary)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if account.canDelete(.version) {
-                Button(role: .destructive) {
+                StackTrackedButton(.discard, on: .submissions, role: .destructive) {
                     viewModel.uiState.pendingAction = .discard(submission)
                 } label: {
                     Label(String(localized: "Discard"), systemImage: "trash")
@@ -198,7 +199,7 @@ struct SubmissionsView<ViewModel: SubmissionsViewModelProtocol>: View {
             }
 
             if submission.state == "READY_FOR_REVIEW" && account.canEdit(.version) {
-                Button {
+                StackTrackedButton(.submitForReview, on: .submissions) {
                     viewModel.uiState.pendingAction = .submit(submission)
                 } label: {
                     Label(String(localized: "Submit"), systemImage: "paperplane")
@@ -217,6 +218,18 @@ struct SubmissionsView<ViewModel: SubmissionsViewModelProtocol>: View {
             Task { await viewModel.discard(submission) }
         case .submit(let submission):
             Task { await viewModel.submit(submission) }
+        }
+    }
+}
+
+// MARK: - Analytics
+
+private extension SubmissionsPendingAction {
+    /// The confirm button of this action's alert.
+    var analyticsConfirmButton: AnalyticsButton {
+        switch self {
+        case .discard: return .confirmDiscard
+        case .submit: return .confirmSubmit
         }
     }
 }

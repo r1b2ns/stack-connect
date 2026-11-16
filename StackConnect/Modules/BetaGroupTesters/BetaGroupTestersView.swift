@@ -39,6 +39,7 @@ struct BetaGroupTestersView<ViewModel: BetaGroupTestersViewModelProtocol>: View 
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Testers"))
+            .trackScreen(.betaGroupTesters)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
             .searchable(
@@ -49,7 +50,7 @@ struct BetaGroupTestersView<ViewModel: BetaGroupTestersViewModelProtocol>: View 
             .autocorrectionDisabled()
             .textInputAutocapitalization(.never)
             .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
+            .refreshable { await viewModel.refresh() }
             .sheet(isPresented: $viewModel.uiState.showAddTester) {
                 if viewModel.uiState.group.isInternalGroup {
                     InternalTesterPickerSheet(
@@ -84,7 +85,7 @@ struct BetaGroupTestersView<ViewModel: BetaGroupTestersViewModelProtocol>: View 
                     set: { if !$0 { viewModel.uiState.inviteError = nil } }
                 )
             ) {
-                Button(String(localized: "OK"), role: .cancel) {
+                StackTrackedButton(String(localized: "OK"), button: .ok, on: .betaGroupTesters, role: .cancel) {
                     viewModel.uiState.inviteError = nil
                 }
             } message: {
@@ -104,7 +105,7 @@ struct BetaGroupTestersView<ViewModel: BetaGroupTestersViewModelProtocol>: View 
                         Task { await viewModel.removeTester(tester) }
                     }
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {}
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .betaGroupTesters, role: .cancel) {}
             } message: {
                 if let tester = viewModel.uiState.confirmRemoveTester {
                     Text("Remove \(tester.displayName) from this group?")
@@ -156,7 +157,7 @@ struct BetaGroupTestersView<ViewModel: BetaGroupTestersViewModelProtocol>: View 
                     ForEach(filtered) { tester in
                         buildTesterRow(tester)
                             .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
+                                StackTrackedButton(.remove, on: .betaGroupTesters, role: .destructive) {
                                     viewModel.uiState.confirmRemoveTester = tester
                                 } label: {
                                     Label(String(localized: "Remove"), systemImage: "person.badge.minus")
@@ -220,7 +221,7 @@ struct BetaGroupTestersView<ViewModel: BetaGroupTestersViewModelProtocol>: View 
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
-            Button {
+            StackTrackedButton(.add, on: .betaGroupTesters) {
                 if viewModel.uiState.group.isInternalGroup {
                     Task { await viewModel.loadTeamMembers() }
                 }

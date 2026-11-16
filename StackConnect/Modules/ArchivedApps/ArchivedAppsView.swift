@@ -36,6 +36,7 @@ struct ArchivedAppsView<ViewModel: ArchivedAppsViewModelProtocol>: View {
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Archived Apps"))
+            .trackScreen(.archivedApps)
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $viewModel.uiState.searchQuery,
@@ -43,7 +44,7 @@ struct ArchivedAppsView<ViewModel: ArchivedAppsViewModelProtocol>: View {
                 prompt: String(localized: "Search by name or bundle ID")
             )
             .task { await viewModel.loadApps() }
-            .refreshable { await viewModel.loadApps() }
+            .refreshable { await viewModel.refresh() }
             .overlay(alignment: .bottom) {
                 if viewModel.uiState.isSyncing {
                     buildSyncingIndicator()
@@ -87,7 +88,7 @@ struct ArchivedAppsView<ViewModel: ArchivedAppsViewModelProtocol>: View {
 
     private func buildList() -> some View {
         List(viewModel.uiState.filteredApps) { app in
-            Button {
+            StackTrackedButton(.app, on: .archivedApps) {
                 homeCoordinator.navigateToAppDetail(app, account: viewModel.uiState.account)
             } label: {
                 buildAppRow(app)

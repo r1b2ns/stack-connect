@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -44,14 +45,17 @@ final class AppReviewInfoViewModel: AppReviewInfoViewModelProtocol {
     @Published var uiState: AppReviewInfoUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         versionId: String,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = AppReviewInfoUiState(versionId: versionId, account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func loadReviewDetail() async {
@@ -82,6 +86,7 @@ final class AppReviewInfoViewModel: AppReviewInfoViewModelProtocol {
     }
 
     func save() async {
+        analytics.track(.buttonTap(.save, on: .appReviewInfo))
         guard let reviewDetailId = uiState.reviewDetailId else { return }
 
         uiState.isSaving = true
@@ -89,6 +94,7 @@ final class AppReviewInfoViewModel: AppReviewInfoViewModelProtocol {
 
         guard let connection = createConnection() else {
             uiState.isSaving = false
+            analytics.track(.action(.updateAppReviewInfo, on: .appReviewInfo, result: .failure))
             return
         }
 
@@ -108,7 +114,9 @@ final class AppReviewInfoViewModel: AppReviewInfoViewModelProtocol {
             try await connection.updateAppReviewDetail(model: model)
             uiState.didSave = true
             Log.print.info("[AppReviewInfo] Saved review detail")
+            analytics.track(.action(.updateAppReviewInfo, on: .appReviewInfo, result: .success))
         } catch {
+            analytics.track(.action(.updateAppReviewInfo, on: .appReviewInfo, result: .failure))
             uiState.error = error.localizedDescription
             Log.print.error("[AppReviewInfo] Save failed: \(error.localizedDescription)")
         }

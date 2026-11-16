@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -34,10 +35,12 @@ final class AppInformationViewModel: AppInformationViewModelProtocol {
     @Published var uiState: AppInformationUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
-    init(app: AppModel, account: AccountModel, keychain: KeyStorable = KeychainStorable.shared) {
+    init(app: AppModel, account: AccountModel, keychain: KeyStorable = KeychainStorable.shared, analytics: AnalyticsTracking = AnalyticsService.shared) {
         self.uiState = AppInformationUiState(app: app, account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func load() async {
@@ -74,7 +77,11 @@ final class AppInformationViewModel: AppInformationViewModelProtocol {
     }
 
     func updateContentRights(_ value: String) async {
-        guard let connection = createConnection() else { return }
+        analytics.track(.buttonTap(.select, on: .contentRights))
+        guard let connection = createConnection() else {
+            analytics.track(.action(.updateContentRights, on: .contentRights, result: .failure, parameters: [AnalyticsParameterKey.kind: .string(value)]))
+            return
+        }
 
         do {
             try await connection.updateApp(id: uiState.app.id, contentRightsDeclaration: value)
@@ -83,14 +90,19 @@ final class AppInformationViewModel: AppInformationViewModelProtocol {
             uiState.toastMessage = ToastMessage(String(localized: "Content rights updated"), icon: "checkmark.circle.fill")
             if let info = uiState.appInfo { saveToCache(appInfo: info, ageRating: uiState.ageRating) }
             Log.print.info("[AppInformation] Updated content rights to \(value)")
+            analytics.track(.action(.updateContentRights, on: .contentRights, result: .success, parameters: [AnalyticsParameterKey.kind: .string(value)]))
         } catch {
+            analytics.track(.action(.updateContentRights, on: .contentRights, result: .failure, parameters: [AnalyticsParameterKey.kind: .string(value)]))
             uiState.error = error.localizedDescription
             Log.print.error("[AppInformation] Content rights update failed: \(error.localizedDescription)")
         }
     }
 
     func updatePrimaryLocale(_ locale: String) async {
-        guard let connection = createConnection() else { return }
+        guard let connection = createConnection() else {
+            analytics.track(.action(.updatePrimaryLocale, on: .appInformation, result: .failure))
+            return
+        }
 
         do {
             try await connection.updateApp(id: uiState.app.id, primaryLocale: locale)
@@ -98,7 +110,9 @@ final class AppInformationViewModel: AppInformationViewModelProtocol {
             uiState.toastMessage = ToastMessage(String(localized: "Primary locale updated"), icon: "checkmark.circle.fill")
             if let info = uiState.appInfo { saveToCache(appInfo: info, ageRating: uiState.ageRating) }
             Log.print.info("[AppInformation] Updated primary locale to \(locale)")
+            analytics.track(.action(.updatePrimaryLocale, on: .appInformation, result: .success))
         } catch {
+            analytics.track(.action(.updatePrimaryLocale, on: .appInformation, result: .failure))
             uiState.error = error.localizedDescription
             Log.print.error("[AppInformation] Primary locale update failed: \(error.localizedDescription)")
         }

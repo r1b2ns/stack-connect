@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Models
 
@@ -14,6 +15,7 @@ struct iTunesStorefrontInfo: Equatable {
 protocol RatingsReviewsViewModelProtocol: ObservableObject {
     var uiState: RatingsReviewsUiState { get set }
     func load() async
+    func refresh() async
     func loadMore() async
     func applyFilter(rating: Int?) async
     func reply(to review: CustomerReviewModel, body: String) async
@@ -94,22 +96,39 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
     @Published var uiState: RatingsReviewsUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
     private var lastPageResponse: Any?
 
     init(
         appId: String,
         bundleId: String,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        loadsOnInit: Bool = true
     ) {
         self.uiState = RatingsReviewsUiState(appId: appId, bundleId: bundleId, account: account)
         self.keychain = keychain
-        Task {
-            await load()
+        self.analytics = analytics
+        if loadsOnInit {
+            Task {
+                await load()
+            }
         }
     }
 
     func load() async {
+        _ = await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        let succeeded = await performLoad()
+        analytics.track(.action(.refresh, on: .ratingsReviews, result: succeeded ? .success : .failure))
+    }
+
+    /// Reloads rating + first page. Returns `true` when the reviews page loaded.
+    private func performLoad() async -> Bool {
         uiState.isLoading = true
         uiState.error = nil
         uiState.reviews = []
@@ -117,11 +136,12 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
 
         // Fetch App Store rating and reviews in parallel
         async let ratingTask: () = fetchAppStoreRating()
-        async let reviewsTask: () = fetchFirstPage()
+        async let reviewsTask: Bool = fetchFirstPage()
 
-        _ = await (ratingTask, reviewsTask)
+        let (_, succeeded) = await (ratingTask, reviewsTask)
 
         uiState.isLoading = false
+        return succeeded
     }
 
     /// Aggregates iTunes Lookup data across every storefront where the app is available.
@@ -150,9 +170,11 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
         Log.print.info("[RatingsReviews] iTunes aggregate across \(storefronts.count) storefronts: avg \(weightedAverage), count \(totalCount)")
     }
 
-    private func fetchFirstPage() async {
+    /// Returns `true` when the first page was fetched.
+    @discardableResult
+    private func fetchFirstPage() async -> Bool {
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else { return false }
 
             let filterRating = uiState.filterRating.map { [String($0)] }
 
@@ -169,9 +191,11 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
             lastPageResponse = page.rawResponse
 
             Log.print.info("[RatingsReviews] Loaded \(page.reviews.count) reviews, hasMore: \(page.hasNextPage), filter: \(self.uiState.filterRating?.description ?? "all")")
+            return true
         } catch {
             uiState.error = error.localizedDescription
             Log.print.error("[RatingsReviews] Failed to load: \(error.localizedDescription)")
+            return false
         }
     }
 
@@ -181,9 +205,14 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
         uiState.isLoading = true
         lastPageResponse = nil
 
-        await fetchFirstPage()
+        let succeeded = await fetchFirstPage()
 
         uiState.isLoading = false
+
+        // Only the star filter (1–5) is sent; `nil` means "all ratings".
+        var parameters: [String: AnalyticsValue] = [:]
+        if let rating { parameters[AnalyticsParameterKey.rating] = .int(rating) }
+        analytics.track(.action(.filterReviews, on: .ratingsReviews, result: succeeded ? .success : .failure, parameters: parameters))
     }
 
     func loadMore() async {
@@ -219,11 +248,13 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
     }
 
     func reply(to review: CustomerReviewModel, body: String) async {
+        analytics.track(.buttonTap(.send, on: .reviewReply))
         uiState.isSending = true
 
         do {
             guard let connection = createConnection() else {
                 uiState.isSending = false
+                analytics.track(.action(.replyToReview, on: .reviewReply, result: .failure))
                 return
             }
 
@@ -239,7 +270,9 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
             uiState.replyText = ""
             uiState.toastMessage = ToastMessage(String(localized: "Reply sent"), icon: "paperplane.fill")
             Log.print.info("[RatingsReviews] Replied to review \(review.id)")
+            analytics.track(.action(.replyToReview, on: .reviewReply, result: .success))
         } catch {
+            analytics.track(.action(.replyToReview, on: .reviewReply, result: .failure))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to send reply"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[RatingsReviews] Reply failed: \(error.localizedDescription)")
         }
@@ -248,10 +281,14 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
     }
 
     func deleteResponse(for review: CustomerReviewModel) async {
+        analytics.track(.buttonTap(.delete, on: .ratingsReviews))
         guard let responseId = review.responseId else { return }
 
         do {
-            guard let connection = createConnection() else { return }
+            guard let connection = createConnection() else {
+                analytics.track(.action(.deleteReviewResponse, on: .ratingsReviews, result: .failure))
+                return
+            }
             try await connection.deleteReviewResponse(responseId: responseId)
 
             if let idx = uiState.reviews.firstIndex(where: { $0.id == review.id }) {
@@ -263,7 +300,9 @@ final class RatingsReviewsViewModel: RatingsReviewsViewModelProtocol {
 
             uiState.toastMessage = ToastMessage(String(localized: "Reply deleted"), icon: "trash")
             Log.print.info("[RatingsReviews] Deleted response for review \(review.id)")
+            analytics.track(.action(.deleteReviewResponse, on: .ratingsReviews, result: .success))
         } catch {
+            analytics.track(.action(.deleteReviewResponse, on: .ratingsReviews, result: .failure))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to delete reply"), icon: "exclamationmark.triangle.fill")
             Log.print.error("[RatingsReviews] Delete response failed: \(error.localizedDescription)")
         }

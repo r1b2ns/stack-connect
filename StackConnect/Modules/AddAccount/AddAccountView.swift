@@ -72,6 +72,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                 }
             }
             .navigationTitle(String(localized: "Add Account"))
+            .trackScreen(.addAccount)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
             .disabled(viewModel.uiState.isValidating)
@@ -150,7 +151,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
 
-                Button {
+                StackTrackedButton(.importFile, on: .addAccount) {
                     showingP8FilePicker = true
                 } label: {
                     Label(String(localized: "Import .p8 file"), systemImage: "doc.badge.plus")
@@ -232,7 +233,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
 
-                Button {
+                StackTrackedButton(.importFile, on: .addAccount) {
                     showingJSONFilePicker = true
                 } label: {
                     Label(String(localized: "Import .json file"), systemImage: "doc.badge.plus")
@@ -338,7 +339,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
     }
 
     private func buildPasteButton(onPaste: @escaping (String) -> Void) -> some View {
-        Button {
+        StackTrackedButton(.paste, on: .addAccount) {
             if let text = UIPasteboard.general.string {
                 onPaste(text)
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -363,7 +364,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
-            Button(String(localized: "Cancel")) {
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .addAccount) {
                 dismiss()
                 onDismiss()
             }

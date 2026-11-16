@@ -1,4 +1,5 @@
 import SwiftUI
+import StackProtocols
 
 // MARK: - Factory
 
@@ -114,23 +115,30 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
     @Published var uiState: ReviewDetailUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         review: CustomerReviewModel,
         appName: String,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = ReviewDetailUiState(review: review, appName: appName, account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     func submitReply(body: String) async {
+        // Editing replaces the existing reply; a new reply creates one.
+        let action: AnalyticsAction = uiState.isEditingReply ? .updateReviewReply : .replyToReview
+        analytics.track(.buttonTap(uiState.isEditingReply ? .save : .send, on: .reviewReply))
         uiState.isSending = true
 
         do {
             guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else {
                 uiState.isSending = false
+                analytics.track(.action(action, on: .reviewReply, result: .failure))
                 return
             }
 
@@ -155,7 +163,9 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
                 wasEditing ? String(localized: "Reply updated") : String(localized: "Reply sent"),
                 icon: "paperplane.fill"
             )
+            analytics.track(.action(action, on: .reviewReply, result: .success))
         } catch {
+            analytics.track(.action(action, on: .reviewReply, result: .failure))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to send reply"), icon: "exclamationmark.triangle.fill")
         }
 
@@ -194,10 +204,14 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
     }
 
     func deleteResponse() async {
+        analytics.track(.buttonTap(.confirmDelete, on: .reviewDetail))
         guard let responseId = uiState.review.responseId else { return }
 
         do {
-            guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else { return }
+            guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else {
+                analytics.track(.action(.deleteReviewResponse, on: .reviewDetail, result: .failure))
+                return
+            }
 
             let connection = AppleAccountConnection(credentials: credentials)
             try await connection.deleteReviewResponse(responseId: responseId)
@@ -207,7 +221,9 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
             uiState.review.responseState = nil
             uiState.review.responseDate = nil
             uiState.toastMessage = ToastMessage(String(localized: "Reply deleted"), icon: "trash")
+            analytics.track(.action(.deleteReviewResponse, on: .reviewDetail, result: .success))
         } catch {
+            analytics.track(.action(.deleteReviewResponse, on: .reviewDetail, result: .failure))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to delete reply"), icon: "exclamationmark.triangle.fill")
         }
     }
@@ -226,6 +242,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
             buildResponseSection()
         }
         .navigationTitle(String(localized: "Review"))
+        .trackScreen(.reviewDetail)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -260,7 +277,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
             Button(String(localized: "Delete"), role: .destructive) {
                 Task { await viewModel.deleteResponse() }
             }
-            Button(String(localized: "Cancel"), role: .cancel) {}
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .reviewDetail, role: .cancel) {}
         } message: {
             Text("Are you sure you want to delete your reply? This action cannot be undone.")
         }
@@ -337,7 +354,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
     private func buildResponseSection() -> some View {
         if let responseBody = viewModel.uiState.review.responseBody, !responseBody.isEmpty {
             Section {
-                Button {
+                StackTrackedButton(.edit, on: .reviewDetail) {
                     if viewModel.uiState.account.canEdit(.review) {
                         viewModel.startEditingReply()
                     }
@@ -387,7 +404,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
 
             if viewModel.uiState.account.canDelete(.review) {
                 Section {
-                    Button(role: .destructive) {
+                    StackTrackedButton(.delete, on: .reviewDetail, role: .destructive) {
                         viewModel.uiState.confirmDeleteResponse = true
                     } label: {
                         Label(String(localized: "Delete Reply"), systemImage: "trash")
@@ -397,13 +414,13 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
         } else {
             if viewModel.uiState.account.canEdit(.review) {
                 Section {
-                    Button {
+                    StackTrackedButton(.reply, on: .reviewDetail) {
                         viewModel.uiState.showReplySheet = true
                     } label: {
                         Label(String(localized: "Write a Reply"), systemImage: "arrowshape.turn.up.left.fill")
                     }
 
-                    Button {
+                    StackTrackedButton(.replyTemplates, on: .reviewDetail) {
                         viewModel.uiState.showTemplatesSheet = true
                     } label: {
                         Label(String(localized: "Reply Templates"), systemImage: "text.bubble")
@@ -432,10 +449,11 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
             .navigationTitle(viewModel.uiState.isEditingReply
                 ? String(localized: "Edit Reply")
                 : String(localized: "Reply to Review"))
+            .trackScreen(.reviewReply)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) {
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .reviewReply) {
                         dismiss()
                         viewModel.cancelReplySheet()
                     }

@@ -22,6 +22,7 @@ struct ReleaseNotesView: View {
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 32)
+        .trackScreen(.releaseNotes)
     }
 
     // MARK: - Title
@@ -85,7 +86,7 @@ struct ReleaseNotesView: View {
     // MARK: - Continue button
 
     private func buildContinueButton() -> some View {
-        Button(action: onContinue) {
+        StackTrackedButton(.continue, on: .releaseNotes, action: onContinue) {
             Text("Continue")
                 .font(.headline)
                 .foregroundStyle(.white)

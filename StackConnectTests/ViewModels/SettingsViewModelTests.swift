@@ -1,4 +1,5 @@
 import XCTest
+import StackProtocols
 @testable import StackConnect
 
 @MainActor
@@ -6,7 +7,8 @@ final class SettingsViewModelTests: XCTestCase {
 
     private func makeSUT(
         storage: MockPersistentStorable = MockPersistentStorable(),
-        keychain: MockKeyStorable = MockKeyStorable()
+        keychain: MockKeyStorable = MockKeyStorable(),
+        analytics: MockAnalyticsTracker = MockAnalyticsTracker()
     ) -> (SettingsViewModel, AppSettings, UserDefaults, String) {
         let suite = "SettingsViewModelTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -14,7 +16,8 @@ final class SettingsViewModelTests: XCTestCase {
         let sut = SettingsViewModel(
             storage: storage,
             keychain: keychain,
-            appSettings: appSettings
+            appSettings: appSettings,
+            analytics: analytics
         )
         return (sut, appSettings, defaults, suite)
     }
@@ -34,6 +37,75 @@ final class SettingsViewModelTests: XCTestCase {
 
         XCTAssertFalse(sut.uiState.preReviewChecklistEnabled)
         XCTAssertFalse(appSettings.isEnabled(.preReviewChecklistEnabled))
+    }
+
+    // MARK: - Usage analytics
+
+    func testAnalyticsInitialStateReflectsEnabledTracker() {
+        let (sut, _, defaults, suite) = makeSUT(analytics: MockAnalyticsTracker(isEnabled: true))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        XCTAssertTrue(sut.uiState.analyticsEnabled)
+    }
+
+    func testAnalyticsInitialStateReflectsDisabledTracker() {
+        let (sut, _, defaults, suite) = makeSUT(analytics: MockAnalyticsTracker(isEnabled: false))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        XCTAssertFalse(sut.uiState.analyticsEnabled)
+    }
+
+    func testTurningAnalyticsOffForwardsToTracker() {
+        let tracker = MockAnalyticsTracker(isEnabled: true)
+        let (sut, _, defaults, suite) = makeSUT(analytics: tracker)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        sut.setAnalyticsEnabled(false)
+
+        XCTAssertEqual(tracker.setEnabledCalls, [false])
+        XCTAssertFalse(sut.uiState.analyticsEnabled)
+    }
+
+    func testTurningAnalyticsOnForwardsToTracker() {
+        let tracker = MockAnalyticsTracker(isEnabled: false)
+        let (sut, _, defaults, suite) = makeSUT(analytics: tracker)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        sut.setAnalyticsEnabled(true)
+
+        XCTAssertEqual(tracker.setEnabledCalls, [true])
+        XCTAssertTrue(sut.uiState.analyticsEnabled)
+    }
+
+    func testViewModelDoesNotWriteTheAnalyticsSettingItself() {
+        let (sut, _, defaults, suite) = makeSUT(analytics: MockAnalyticsTracker(isEnabled: true))
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        sut.setAnalyticsEnabled(false)
+
+        XCTAssertNil(defaults.object(forKey: AppSetting.analyticsEnabled.rawValue))
+    }
+
+    func testTurningAnalyticsOffThroughRealServiceSendsOnlyTheDisabledEvent() {
+        let suite = "SettingsViewModelTests.analytics.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        let provider = MockAnalyticsProvider()
+        let service = AnalyticsService(providers: [provider], settings: settings)
+        let sut = SettingsViewModel(
+            storage: MockPersistentStorable(),
+            keychain: MockKeyStorable(),
+            appSettings: settings,
+            analytics: service
+        )
+
+        sut.setAnalyticsEnabled(false)
+        service.track(.screenView(.settings))
+
+        XCTAssertEqual(provider.sentEventNames, ["analytics_disabled"])
+        XCTAssertFalse(sut.uiState.analyticsEnabled)
+        XCTAssertFalse(settings.isEnabled(.analyticsEnabled))
     }
 
     // MARK: - Delete all accounts
@@ -99,5 +171,65 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertNil(keychain.string(forKey: "credentials.\(healthy.id)"))
         // The failing account keeps its credentials so it stays usable.
         XCTAssertEqual(keychain.string(forKey: "credentials.\(failing.id)"), "secret")
+    }
+
+    // MARK: - Analytics events
+
+    func testDeleteAllAccountsTracksConfirmTapAndSuccess() async throws {
+        let storage = MockPersistentStorable()
+        let keychain = MockKeyStorable()
+        let tracker = MockAnalyticsTracker()
+        let (sut, _, defaults, suite) = makeSUT(storage: storage, keychain: keychain, analytics: tracker)
+        defer { defaults.removePersistentDomain(forName: suite) }
+        try await seedAccount(AccountModel(name: "First", providerType: .apple), storage: storage, keychain: keychain)
+
+        await sut.deleteAllAccounts()
+
+        XCTAssertEqual(tracker.taps(of: .confirmDeleteAllAccounts), [.buttonTap(.confirmDeleteAllAccounts, on: .settings)])
+        XCTAssertEqual(tracker.actions(of: .deleteAllAccounts), [
+            .action(.deleteAllAccounts, on: .settings, result: .success, parameters: [
+                AnalyticsParameterKey.count: .int(1),
+                AnalyticsParameterKey.failedCount: .int(0)
+            ])
+        ])
+    }
+
+    func testDeleteAllAccountsTracksFailureWhenFetchFails() async {
+        let storage = MockPersistentStorable()
+        await storage.failFetchAll(AccountModel.self)
+        let tracker = MockAnalyticsTracker()
+        let (sut, _, defaults, suite) = makeSUT(storage: storage, analytics: tracker)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        await sut.deleteAllAccounts()
+
+        XCTAssertEqual(tracker.results(of: .deleteAllAccounts), [.failure])
+    }
+
+    func testDeleteAllAccountsTracksFailureWhenAnAccountFails() async throws {
+        let storage = MockPersistentStorable()
+        let keychain = MockKeyStorable()
+        let tracker = MockAnalyticsTracker()
+        let (sut, _, defaults, suite) = makeSUT(storage: storage, keychain: keychain, analytics: tracker)
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let failing = AccountModel(name: "Failing", providerType: .apple)
+        try await seedAccount(failing, storage: storage, keychain: keychain)
+        await storage.failDelete(AccountModel.self, id: failing.id)
+
+        await sut.deleteAllAccounts()
+
+        XCTAssertEqual(tracker.results(of: .deleteAllAccounts), [.failure])
+    }
+
+    func testTogglingPreReviewChecklistTracksTheNewValue() {
+        let tracker = MockAnalyticsTracker()
+        let (sut, _, defaults, suite) = makeSUT(analytics: tracker)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        sut.setPreReviewChecklistEnabled(false)
+
+        XCTAssertEqual(tracker.trackedEvents, [
+            .action(.togglePreReviewChecklist, on: .settings, parameters: [AnalyticsParameterKey.enabled: .bool(false)])
+        ])
     }
 }

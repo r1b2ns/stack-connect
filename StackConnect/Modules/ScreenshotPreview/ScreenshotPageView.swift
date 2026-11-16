@@ -1,4 +1,5 @@
 import SwiftUI
+import StackProtocols
 
 // MARK: - Factory
 
@@ -23,17 +24,20 @@ final class ScreenshotPageViewModel: ObservableObject {
     private let account: AccountModel
     private let appStoreState: AppStoreState?
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         screenshots: [ScreenshotModel],
         account: AccountModel,
         appStoreState: AppStoreState?,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.screenshots = screenshots
         self.account = account
         self.appStoreState = appStoreState
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     /// Individual deletion is only offered while the version is still editable
@@ -44,8 +48,10 @@ final class ScreenshotPageViewModel: ObservableObject {
 
     /// Deletes `screenshot` via the core, removing it from the pager on success.
     func deleteScreenshot(_ screenshot: ScreenshotModel) async {
+        analytics.track(.buttonTap(.confirmDelete, on: .screenshotPage))
         guard let index = screenshots.firstIndex(where: { $0.id == screenshot.id }) else { return }
         guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(account.id)") else {
+            analytics.track(.action(.deleteScreenshots, on: .screenshotPage, result: .failure, parameters: [AnalyticsParameterKey.count: .int(1)]))
             return
         }
 
@@ -58,7 +64,9 @@ final class ScreenshotPageViewModel: ObservableObject {
             try await connection.deleteScreenshot(screenshotId: screenshot.id)
             Log.print.info("[Screenshots] Deleted screenshot \(screenshot.id)")
             screenshots.remove(at: index)
+            analytics.track(.action(.deleteScreenshots, on: .screenshotPage, result: .success, parameters: [AnalyticsParameterKey.count: .int(1)]))
         } catch {
+            analytics.track(.action(.deleteScreenshots, on: .screenshotPage, result: .failure, parameters: [AnalyticsParameterKey.count: .int(1)]))
             deleteError = error.localizedDescription
             Log.print.error("[Screenshots] Delete screenshot failed: \(error.localizedDescription)")
         }
@@ -91,6 +99,7 @@ struct ScreenshotPageView: View {
         }
         .tabViewStyle(.page(indexDisplayMode: .automatic))
         .navigationTitle("\(min(currentIndex + 1, max(viewModel.screenshots.count, 1))) / \(viewModel.screenshots.count)")
+        .trackScreen(.screenshotPage)
         .navigationBarTitleDisplayMode(.inline)
         .background(Color.black)
         .ignoresSafeArea(.container, edges: .bottom)
@@ -99,7 +108,7 @@ struct ScreenshotPageView: View {
             isPresented: $viewModel.showDeleteConfirmation,
             presenting: viewModel.pendingDelete
         ) { screenshot in
-            Button(String(localized: "Cancel"), role: .cancel) {
+            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .screenshotPage, role: .cancel) {
                 viewModel.pendingDelete = nil
             }
             Button(String(localized: "Delete"), role: .destructive) {
@@ -123,7 +132,7 @@ struct ScreenshotPageView: View {
                 set: { if !$0 { viewModel.deleteError = nil } }
             )
         ) {
-            Button(String(localized: "OK"), role: .cancel) { viewModel.deleteError = nil }
+            StackTrackedButton(String(localized: "OK"), button: .ok, on: .screenshotPage, role: .cancel) { viewModel.deleteError = nil }
         } message: {
             Text(viewModel.deleteError ?? "")
         }
@@ -155,7 +164,7 @@ struct ScreenshotPageView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(alignment: .bottom) {
             if viewModel.canDelete {
-                Button(role: .destructive) {
+                StackTrackedButton(.delete, on: .screenshotPage, role: .destructive) {
                     viewModel.pendingDelete = screenshot
                     viewModel.showDeleteConfirmation = true
                 } label: {

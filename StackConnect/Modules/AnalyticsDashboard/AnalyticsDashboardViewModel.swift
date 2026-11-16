@@ -1,5 +1,6 @@
 import Foundation
 import APIProviderFirebase
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -7,6 +8,7 @@ import APIProviderFirebase
 protocol AnalyticsDashboardViewModelProtocol: ObservableObject {
     var uiState: AnalyticsDashboardUiState { get set }
     func load() async
+    func refresh() async
 }
 
 // MARK: - Chart Data Models
@@ -58,19 +60,32 @@ final class AnalyticsDashboardViewModel: AnalyticsDashboardViewModelProtocol {
     @Published var uiState: AnalyticsDashboardUiState
 
     private let keychain: KeyStorable
+    private let analytics: AnalyticsTracking
 
     init(
         project: FirebaseProjectModel,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared
+        keychain: KeyStorable = KeychainStorable.shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = AnalyticsDashboardUiState(project: project, account: account)
         self.keychain = keychain
+        self.analytics = analytics
     }
 
     // MARK: - Load
 
     func load() async {
+        await performLoad()
+    }
+
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    func refresh() async {
+        await performLoad()
+        analytics.track(.action(.refresh, on: .analyticsDashboard, result: uiState.error == nil ? .success : .failure))
+    }
+
+    private func performLoad() async {
         uiState.isLoading = true
         uiState.error = nil
 

@@ -22,6 +22,7 @@ struct ScreenshotResolutionView: View {
     var body: some View {
         buildContent()
             .navigationTitle(device.title)
+            .trackScreen(.screenshotResolution)
             .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -35,7 +36,7 @@ struct ScreenshotResolutionView: View {
             }
         } else {
             List(sets) { set in
-                Button {
+                StackTrackedButton(.screenshotSet, on: .screenshotResolution) {
                     homeCoordinator.navigateToScreenshotGrid(screenshots: set.screenshots, account: account, appStoreState: appStoreState)
                 } label: {
                     HStack(spacing: 12) {

@@ -1,5 +1,6 @@
 import Foundation
 import APIProviderFirebase
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -170,16 +171,19 @@ final class MessagingViewModel: MessagingViewModelProtocol {
 
     private let keychain: KeyStorable
     private let storage: PersistentStorable
+    private let analytics: AnalyticsTracking
 
     init(
         project: FirebaseProjectModel,
         account: AccountModel,
         keychain: KeyStorable = KeychainStorable.shared,
-        storage: PersistentStorable? = nil
+        storage: PersistentStorable? = nil,
+        analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = MessagingUiState(project: project, account: account)
         self.keychain = keychain
         self.storage = storage ?? SwiftDataStorable.shared
+        self.analytics = analytics
     }
 
     // MARK: - Load Apps
@@ -273,7 +277,14 @@ final class MessagingViewModel: MessagingViewModelProtocol {
     }
 
     func sendCampaign(_ draft: CampaignDraft) async {
-        guard let provider = createProvider(), draft.isValid else { return }
+        analytics.track(.buttonTap(.send, on: .newCampaign))
+        guard draft.isValid else { return }
+        guard let provider = createProvider() else {
+            analytics.track(.action(.sendCampaign, on: .newCampaign, result: .failure, parameters: [
+                AnalyticsParameterKey.kind: .string(draft.targetType.rawValue)
+            ]))
+            return
+        }
         uiState.isSending = true
 
         let notification = FCMNotification(
@@ -376,11 +387,21 @@ final class MessagingViewModel: MessagingViewModelProtocol {
 
         uiState.isSending = false
         uiState.showNewCampaign = false
+
+        // Only the target type (an enum) and counts — never campaign content,
+        // topics, conditions or app identifiers.
+        analytics.track(.action(.sendCampaign, on: .newCampaign, result: sentCount > 0 ? .success : .failure, parameters: [
+            AnalyticsParameterKey.kind: .string(draft.targetType.rawValue),
+            AnalyticsParameterKey.count: .int(sentCount + failedCount),
+            AnalyticsParameterKey.failedCount: .int(failedCount)
+        ]))
     }
 
+    /// Removes a campaign from the local history (swipe-to-delete, no button).
     func deleteCampaign(_ campaign: CampaignRecord) async {
         uiState.campaigns.removeAll { $0.id == campaign.id }
-        await saveCampaigns()
+        let saved = await saveCampaigns()
+        analytics.track(.action(.deleteCampaign, on: .messaging, result: saved ? .success : .failure))
     }
 
     // MARK: - Reports
@@ -464,11 +485,14 @@ final class MessagingViewModel: MessagingViewModelProtocol {
         "fcm-campaigns.\(uiState.project.projectId)"
     }
 
-    private func saveCampaigns() async {
+    @discardableResult
+    private func saveCampaigns() async -> Bool {
         do {
             try await storage.save(uiState.campaigns, id: campaignsStorageKey)
+            return true
         } catch {
             Log.print.error("[Messaging] Failed to save campaigns: \(error.localizedDescription)")
+            return false
         }
     }
 
