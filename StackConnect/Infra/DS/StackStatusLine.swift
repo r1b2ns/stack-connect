@@ -1,5 +1,45 @@
 import SwiftUI
 
+/// A small platform glyph drawn after a status or a title: an SF Symbol in
+/// tertiary, or the green Android robot head of the prototypes (`.pi.and`,
+/// asset `AndroidGlyph`). SF Symbols has no Android glyph, and the generic
+/// `smartphone` symbol reads as a missing-character box at caption size.
+enum StackPlatformGlyph: Hashable {
+    case system(String)
+    case android
+
+    var image: Image {
+        switch self {
+        case .system(let name): return Image(systemName: name)
+        case .android:          return Image("AndroidGlyph")
+        }
+    }
+
+    var style: AnyShapeStyle {
+        switch self {
+        case .system:  return AnyShapeStyle(.tertiary)
+        case .android: return AnyShapeStyle(Color.androidGlyph)
+        }
+    }
+
+    /// VoiceOver name.
+    var accessibilityName: String? {
+        switch self {
+        case .system:  return nil
+        case .android: return String(localized: "Android")
+        }
+    }
+}
+
+extension Color {
+    /// The prototypes' Android green (`#1A7F37`, lighter in dark mode).
+    static let androidGlyph = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.27, green: 0.75, blue: 0.40, alpha: 1)
+            : UIColor(red: 0.10, green: 0.50, blue: 0.22, alpha: 1)
+    })
+}
+
 /// One status line under a list row title: `● {text} ({detail}) {glyph}` — a
 /// 6 pt colored dot, the status in secondary caption text, an optional
 /// tertiary detail in parentheses (usually a version) and an optional trailing
@@ -12,10 +52,8 @@ struct StackStatusLine: View {
     let color: Color
     let text: String
     var detail: String? = nil
-    /// SF Symbol drawn last, in tertiary (e.g. `iphone`, `smartphone`).
-    var trailingSymbol: String? = nil
-    /// VoiceOver name of `trailingSymbol` (e.g. "Android").
-    var trailingSymbolLabel: String? = nil
+    /// Platform glyph drawn last (e.g. `.android`).
+    var trailingGlyph: StackPlatformGlyph? = nil
     /// Long statuses wrap onto a second line (detail and glyph flow with the
     /// text) instead of truncating. Off by default: one line, truncated.
     var wraps: Bool = false
@@ -46,12 +84,12 @@ struct StackStatusLine: View {
                         .lineLimit(1)
                 }
 
-                if let trailingSymbol {
-                    Image(systemName: trailingSymbol)
+                if let trailingGlyph {
+                    trailingGlyph.image
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                        .accessibilityLabel(trailingSymbolLabel ?? "")
-                        .accessibilityHidden(trailingSymbolLabel == nil)
+                        .foregroundStyle(trailingGlyph.style)
+                        .accessibilityLabel(trailingGlyph.accessibilityName ?? "")
+                        .accessibilityHidden(trailingGlyph.accessibilityName == nil)
                 }
             }
         }
@@ -64,18 +102,18 @@ struct StackStatusLine: View {
             .accessibilityHidden(true)
     }
 
-    /// Text, detail and glyph as one `Text`, so they wrap together. No-break
-    /// spaces keep the detail and the glyph on the last word's line.
+    /// Text, detail and glyph as one `Text`, so they wrap together. A no-break
+    /// space keeps the detail and the glyph on the last word's line.
     private var flowingText: Text {
         var result = Text(text).foregroundStyle(.secondary)
         if let detail {
             result = result + Text("\u{00A0}(\(detail))").foregroundStyle(.tertiary)
         }
-        if let trailingSymbol {
-            result = result + Text("\u{00A0}\u{2060}") + Text(Image(systemName: trailingSymbol))
+        if let trailingGlyph {
+            result = result + Text("\u{00A0}") + Text(trailingGlyph.image)
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .accessibilityLabel(trailingSymbolLabel ?? "")
+                .foregroundStyle(trailingGlyph.style)
+                .accessibilityLabel(trailingGlyph.accessibilityName ?? "")
         }
         return result
     }

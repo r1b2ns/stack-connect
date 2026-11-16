@@ -191,8 +191,7 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
                         color: line.lifecycleState.color,
                         text: line.text,
                         detail: line.versionName,
-                        trailingSymbol: "smartphone",
-                        trailingSymbolLabel: String(localized: "Android"),
+                        trailingGlyph: .android,
                         wraps: true
                     )
                 }

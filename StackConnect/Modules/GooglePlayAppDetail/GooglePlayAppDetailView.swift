@@ -102,8 +102,8 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol>:
 
                     // "Android · Default language: English (US)" (prototype screen 2).
                     HStack(spacing: 4) {
-                        Image(systemName: "smartphone")
-                            .foregroundStyle(.green)
+                        StackPlatformGlyph.android.image
+                            .foregroundStyle(Color.androidGlyph)
                             .accessibilityHidden(true)
                         Text(platformLine)
                             .foregroundStyle(.secondary)
