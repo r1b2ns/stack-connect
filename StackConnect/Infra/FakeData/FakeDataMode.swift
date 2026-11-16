@@ -1,0 +1,76 @@
+#if DEBUG
+import Foundation
+
+/// Launch switches of the DEBUG-only fake data (demo accounts) mode.
+///
+/// - `-StackFakeData YES` (launch argument, read like the `UserDefaults`
+///   argument domain) or `STACK_FAKE_DATA=1` (environment) runs the app entirely
+///   on invented data: no network, no Keychain, no App Group store.
+/// - `-StackFakeDataReset YES` or `STACK_FAKE_DATA_RESET=1` wipes the fake store
+///   and seeds it again. It only has an effect together with the mode itself.
+///
+/// The scheme "StackConnect Fake Data" (project.yml) pre-fills both arguments so
+/// they can be toggled in Xcode's scheme editor. See `docs/FAKE_DATA.md`.
+struct FakeDataMode: Equatable, Sendable {
+
+    static let argumentKey = "StackFakeData"
+    static let resetArgumentKey = "StackFakeDataReset"
+    static let environmentKey = "STACK_FAKE_DATA"
+    static let resetEnvironmentKey = "STACK_FAKE_DATA_RESET"
+
+    /// Run on fake data.
+    let isEnabled: Bool
+
+    /// Wipe the fake store and seed it again (only meaningful when enabled).
+    let shouldReset: Bool
+
+    /// The switches this process was launched with.
+    static let current = FakeDataMode(
+        arguments: ProcessInfo.processInfo.arguments,
+        environment: ProcessInfo.processInfo.environment
+    )
+
+    init(isEnabled: Bool, shouldReset: Bool) {
+        self.isEnabled = isEnabled
+        self.shouldReset = isEnabled && shouldReset
+    }
+
+    /// Parses the launch arguments (`-Key value`, the `UserDefaults` argument
+    /// domain syntax) and the environment. The argument wins over the environment
+    /// when both are present.
+    init(arguments: [String], environment: [String: String]) {
+        let enabled = Self.flag(Self.argumentKey, in: arguments)
+            ?? Self.truthy(environment[Self.environmentKey])
+            ?? false
+        let reset = Self.flag(Self.resetArgumentKey, in: arguments)
+            ?? Self.truthy(environment[Self.resetEnvironmentKey])
+            ?? false
+        self.init(isEnabled: enabled, shouldReset: reset)
+    }
+
+    // MARK: - Parsing
+
+    /// Value of `-key value` in `arguments`, or `nil` when the key is absent or
+    /// has no value. The last occurrence wins, like the argument domain.
+    private static func flag(_ key: String, in arguments: [String]) -> Bool? {
+        var result: Bool?
+        for (index, argument) in arguments.enumerated() where argument == "-\(key)" {
+            let valueIndex = arguments.index(after: index)
+            guard valueIndex < arguments.endIndex else { continue }
+            result = truthy(arguments[valueIndex])
+        }
+        return result
+    }
+
+    /// `YES` / `true` / `1` → true, `NO` / `false` / `0` → false (case-insensitive),
+    /// anything else (or `nil`) → `nil`.
+    private static func truthy(_ raw: String?) -> Bool? {
+        guard let raw = raw?.trimmingCharacters(in: .whitespaces).lowercased() else { return nil }
+        switch raw {
+        case "yes", "true", "1": return true
+        case "no", "false", "0": return false
+        default: return nil
+        }
+    }
+}
+#endif

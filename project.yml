@@ -270,6 +270,20 @@ schemes:
       config: Debug
       targets: [StackConnectTests]
 
+  # Runs the app on invented demo accounts (DEBUG-only fake data mode, see
+  # docs/FAKE_DATA.md): no network, no Keychain, no App Group store. Toggle the
+  # reset argument in the scheme editor to re-seed from scratch.
+  StackConnect Fake Data:
+    build:
+      targets:
+        StackConnect: all
+    run:
+      config: Debug
+      executable: StackConnect
+      commandLineArguments:
+        "-StackFakeData YES": true
+        "-StackFakeDataReset YES": false
+
   StackConnect Production:
     build:
       targets:

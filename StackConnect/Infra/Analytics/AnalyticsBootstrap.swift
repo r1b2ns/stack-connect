@@ -44,6 +44,10 @@ enum AnalyticsBootstrap {
     /// the app is the host of a unit-test run (tests must not send events).
     static func shouldUseFirebase(bundle: Bundle, processInfo: ProcessInfo) -> Bool {
         guard processInfo.environment["XCTestConfigurationFilePath"] == nil else { return false }
+        #if DEBUG
+        // Demo sessions on fake data must not reach the product's analytics.
+        guard !FakeDataMode(arguments: processInfo.arguments, environment: processInfo.environment).isEnabled else { return false }
+        #endif
         return bundle.path(forResource: firebaseConfigResource, ofType: "plist") != nil
     }
 }

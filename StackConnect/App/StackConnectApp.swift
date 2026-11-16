@@ -35,10 +35,7 @@ struct StackConnectApp: App {
         _showWelcome = State(initialValue: !hasSeenWelcome && !canShowReleaseNotes)
 
         do {
-            let configuration = ModelConfiguration(
-                groupContainer: .identifier(AppGroup.identifier)
-            )
-            let container = try ModelContainer(for: PersistedItem.self, configurations: configuration)
+            let container = try Self.makeModelContainer()
             self.modelContainer = container
             SwiftDataStorable.shared = SwiftDataStorable.make(modelContainer: container)
         } catch {
@@ -49,6 +46,32 @@ struct StackConnectApp: App {
             .displayFrequency(.immediate),
             .datastoreLocation(.applicationDefault)
         ])
+
+        #if DEBUG
+        // Demo / screenshot sessions start straight on the dashboard: no
+        // welcome, release notes or tips over the fake data.
+        if FakeDataMode.current.isEnabled {
+            _showWelcome = State(initialValue: false)
+            _showReleaseNotes = State(initialValue: false)
+            Tips.hideAllTipsForTesting()
+        }
+        #endif
+    }
+
+    /// The App Group store shared with the widget extension, or — in the DEBUG
+    /// fake data mode — a private store with demo accounts, after every backend
+    /// seam has been swapped for its fake (`FakeDataBootstrap`).
+    @MainActor
+    private static func makeModelContainer() throws -> ModelContainer {
+        #if DEBUG
+        if FakeDataMode.current.isEnabled {
+            return try FakeDataBootstrap.install(mode: .current)
+        }
+        #endif
+        let configuration = ModelConfiguration(
+            groupContainer: .identifier(AppGroup.identifier)
+        )
+        return try ModelContainer(for: PersistedItem.self, configurations: configuration)
     }
 
     var body: some Scene {
