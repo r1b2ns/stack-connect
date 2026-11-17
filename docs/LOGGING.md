@@ -68,6 +68,27 @@ xcrun simctl spawn booted log show --last 5m --info --debug --predicate 'subsyst
 Drop the `category` clause to see the app's own lines too
 (`subsystem == "zeroSixteen.stackconnect"`).
 
+### An iPhone connected to this Mac (Terminal)
+
+`scripts/device-logs.sh` streams the app's lines from a connected iPhone
+(USB, or Wi-Fi for a paired device) through
+[pymobiledevice3](https://github.com/doronz88/pymobiledevice3), filtered by
+subsystem and category:
+
+```bash
+brew install pipx && pipx install pymobiledevice3   # once
+scripts/device-logs.sh --device "iPhone name"       # core.* lines only
+scripts/device-logs.sh --device "iPhone name" --all # app (UI) + core.* lines
+scripts/device-logs.sh --category 'core.googleplay*' --save /tmp/stack.log
+```
+
+Unlock the iPhone and accept "Trust This Computer" the first time. A Debug
+build (run from Xcode) logs `debug` lines, one per HTTP request; a Release
+build (TestFlight / App Store) only `info` and above. Values logged as
+private show as `<private>` on a device; the core's lines and the
+`Rust core error` lines are public. Run `scripts/device-logs.sh --help` for
+every option.
+
 ### Console.app (device or simulator)
 
 1. Open Console.app and select the device (a connected iPhone) or the Mac
