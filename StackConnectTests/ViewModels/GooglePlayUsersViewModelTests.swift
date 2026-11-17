@@ -153,14 +153,101 @@ final class GooglePlayUsersViewModelTests: XCTestCase {
         XCTAssertEqual(connection.calls, [.fetch(developerId: "777")])
     }
 
-    func testAWrongDeveloperIdOffersToChangeIt() async throws {
+    func testAWrongDeveloperIdAsksForItAgainPrefilled() async throws {
         let sut = try await makeSUT()
         connection.failNext(.fetch, with: StackError.Http(status: 404, message: "not found"))
 
         await sut.load()
 
         XCTAssertTrue(sut.uiState.developerIdRejected)
+        XCTAssertTrue(sut.uiState.showsSetup, "The form is back")
+        XCTAssertEqual(sut.uiState.developerIdInput, developerId, "Pre-filled with the stored ID")
+        XCTAssertNotNil(sut.uiState.error, "The load error stays, with its report")
+        XCTAssertTrue(sut.uiState.errorDetails.contains(String(localized: "HTTP status: \(404)")))
+        XCTAssertFalse(sut.uiState.canShowInvite, "No Invite while the ID is in question")
+    }
+
+    func testALocallyRejectedDeveloperIdIsPrefilledVerbatim() async throws {
+        let sut = try await makeSUT(makeAccount(developerId: "abc"))
+        connection.failNext(.fetch, with: StackError.Http(
+            status: 404,
+            message: "\"abc\" is not a valid Google Play developer account ID (checked locally; nothing was sent to Google)."
+        ))
+
+        await sut.load()
+
+        XCTAssertTrue(sut.uiState.showsSetup)
+        XCTAssertEqual(sut.uiState.developerIdInput, "abc", "The raw stored value, though the normalizer refuses it")
+        XCTAssertEqual(sut.uiState.error?.components(separatedBy: "\n").first, GooglePlayDeveloperId.invalidMessage)
+    }
+
+    func testAnAccountAccessRefusalAsksForTheDeveloperIdButAKeyRefusalDoesNot() async throws {
+        let sut = try await makeSUT()
+        connection.failNext(.fetch, with: StackError.Auth(
+            message: "The service account \(selfEmail) cannot access the developer account \(developerId). Invite it in Play Console > Users and permissions."
+        ))
+        await sut.load()
+        XCTAssertTrue(sut.uiState.developerIdRejected)
+
+        connection.failNext(.fetch, with: StackError.Auth(message: "invalid_grant: Invalid JWT Signature."))
+        await sut.load()
+        XCTAssertFalse(sut.uiState.developerIdRejected)
+        XCTAssertFalse(sut.uiState.showsSetup)
+    }
+
+    func testSavingANewDeveloperIdFromTheRejectedFormStoresItAndReloads() async throws {
+        let sut = try await makeSUT()
+        connection.failNext(.fetch, with: StackError.Http(status: 404, message: "not found"))
+        await sut.load()
+
+        sut.uiState.developerIdInput = "https://play.google.com/console/u/0/developers/777/app-list"
+        await sut.saveDeveloperId()
+
+        let stored = try await storage.fetch(AccountModel.self, id: "play.account")
+        XCTAssertEqual(stored?.googlePlayDeveloperId, "777")
+        XCTAssertEqual(connection.calls.last, .fetch(developerId: "777"))
+        XCTAssertFalse(sut.uiState.developerIdRejected)
+        XCTAssertFalse(sut.uiState.showsSetup)
+        XCTAssertTrue(sut.uiState.canShowInvite)
+        XCTAssertNil(sut.uiState.error)
+        XCTAssertEqual(sut.uiState.users.count, Self.seedUsers.count)
+    }
+
+    func testSavingTheSameDeveloperIdJustRetries() async throws {
+        let sut = try await makeSUT()
+        connection.failNext(.fetch, with: StackError.Http(status: 404, message: "not found"))
+        await sut.load()
+
+        await sut.saveDeveloperId()
+
+        XCTAssertEqual(connection.calls, [.fetch(developerId: developerId), .fetch(developerId: developerId)])
+        XCTAssertFalse(sut.uiState.showsSetup)
+        XCTAssertEqual(sut.uiState.users.count, Self.seedUsers.count)
+    }
+
+    func testARetryKeepsWhatWasTypedInTheRejectedForm() async throws {
+        let sut = try await makeSUT()
+        connection.failNext(.fetch, with: StackError.Http(status: 404, message: "not found"))
+        await sut.load()
+
+        sut.uiState.developerIdInput = "12"
+        connection.failNext(.fetch, with: StackError.Http(status: 404, message: "not found"))
+        await sut.load()
+
+        XCTAssertTrue(sut.uiState.showsSetup)
+        XCTAssertEqual(sut.uiState.developerIdInput, "12")
+    }
+
+    func testANetworkErrorKeepsTheErrorState() async throws {
+        let sut = try await makeSUT()
+        connection.failNext(.fetch, with: StackError.Network(message: "timed out"))
+
+        await sut.load()
+
+        XCTAssertFalse(sut.uiState.developerIdRejected)
+        XCTAssertFalse(sut.uiState.showsSetup)
         XCTAssertNotNil(sut.uiState.error)
+        XCTAssertEqual(sut.uiState.developerIdInput, "", "The form isn't filled")
     }
 
     // MARK: - Offline-first

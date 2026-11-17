@@ -69,12 +69,11 @@ struct GooglePlayUsersUiState {
     var error: String?
     /// Technical lines of `error`'s Share Error report.
     var errorDetails: [String] = []
-    /// The last load failed in a way a wrong developer ID explains (404 / 403):
-    /// the error offers to change it (plan U3).
+    /// The last load failed in a way the developer ID explains (a wrong ID, or
+    /// Google refusing the developer account; see
+    /// `GooglePlayErrorTranslator.asksForDeveloperId`): the setup form comes
+    /// back pre-filled with the stored ID, with `error` and a Retry (plan U3).
     var developerIdRejected = false
-    /// The one-field setup form is on screen (no developer ID yet, or the user
-    /// chose to change it).
-    var isEditingDeveloperId = false
     var developerIdInput = ""
     var developerIdError: String?
     /// Technical lines of `developerIdError`'s Share Error report.
@@ -106,7 +105,7 @@ struct GooglePlayUsersUiState {
 
     /// "+" in the toolbar: the `users` add rule and a developer ID.
     var canShowInvite: Bool {
-        access.canInvite && developerId != nil && !isEditingDeveloperId
+        access.canInvite && developerId != nil && !developerIdRejected
     }
 
     /// `users` narrowed by the filter chip and the search text (e-mail or name).
@@ -121,9 +120,9 @@ struct GooglePlayUsersUiState {
 
     var developerId: String? { account.googlePlayDeveloperId }
 
-    /// Setup state: no developer ID, or the user is correcting it.
+    /// Setup state: no developer ID, or the stored one was rejected.
     var showsSetup: Bool {
-        developerId == nil || isEditingDeveloperId
+        developerId == nil || developerIdRejected
     }
 
     var access: GooglePlayUsersAccess {
@@ -184,12 +183,15 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
 
     private func performLoad() async {
         defer { uiState.hasLoaded = true }
+        // The ID the form already shows, if any (a Retry keeps what was typed).
+        let shownRejectedId = uiState.developerIdRejected ? uiState.developerId : nil
         await refreshAccount()
         guard uiState.access.canView else { return }
         guard let developerId = uiState.developerId else {
             // Setup state: nothing to request until the ID is known.
             uiState.users = []
             uiState.isLoading = false
+            uiState.developerIdRejected = false
             return
         }
 
@@ -223,7 +225,15 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
                 uiState.error = failure.message
                 uiState.errorDetails = failure.technicalDetails
             }
-            uiState.developerIdRejected = GooglePlayErrorTranslator.isWrongDeveloperId(error)
+            let rejected = GooglePlayErrorTranslator.asksForDeveloperId(error)
+            if rejected && shownRejectedId != developerId {
+                // Ask again with the value as stored (verbatim, even one the
+                // normalizer would refuse) so it can be corrected in place.
+                uiState.developerIdInput = developerId
+                uiState.developerIdError = nil
+                uiState.developerIdErrorDetails = []
+            }
+            uiState.developerIdRejected = rejected
         }
 
         uiState.isLoading = false
@@ -248,21 +258,26 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
         uiState.isSavingDeveloperId = true
         defer { uiState.isSavingDeveloperId = false }
 
+        // The same ID again (a rejected one re-entered as is): just retry.
         let changed = developerId != uiState.developerId
-        let updated = uiState.account.updating(googlePlayDeveloperId: .some(developerId))
-        do {
-            try await storage.save(updated, id: updated.id)
-        } catch {
-            Log.print.error("[GooglePlayUsers] Saving the developer ID \"\(developerId, privacy: .public)\" failed: \(error.localizedDescription, privacy: .public)")
-            uiState.developerIdError = String(localized: "The Developer ID couldn't be saved. Try again.") + "\n" + error.localizedDescription
-            uiState.developerIdErrorDetails = GooglePlayDeveloperId.diagnosticLines(for: input, label: .entered)
-            analytics.track(.action(.saveDeveloperId, on: .googlePlayUsers, result: .failure))
-            return
+        if changed {
+            let updated = uiState.account.updating(googlePlayDeveloperId: .some(developerId))
+            do {
+                try await storage.save(updated, id: updated.id)
+            } catch {
+                Log.print.error("[GooglePlayUsers] Saving the developer ID \"\(developerId, privacy: .public)\" failed: \(error.localizedDescription, privacy: .public)")
+                uiState.developerIdError = String(localized: "The Developer ID couldn't be saved. Try again.") + "\n" + error.localizedDescription
+                uiState.developerIdErrorDetails = GooglePlayDeveloperId.diagnosticLines(for: input, label: .entered)
+                analytics.track(.action(.saveDeveloperId, on: .googlePlayUsers, result: .failure))
+                return
+            }
+            uiState.account = updated
         }
-        uiState.account = updated
+        // The field shows the ID as stored (a pasted Console URL becomes the
+        // number); a rejected form stays up, Save spinning, until the reload ends.
+        uiState.developerIdInput = developerId
         uiState.developerIdError = nil
         uiState.developerIdErrorDetails = []
-        uiState.isEditingDeveloperId = false
         analytics.track(.action(.saveDeveloperId, on: .googlePlayUsers, result: .success))
 
         // Another developer account's users must not show under the new ID.

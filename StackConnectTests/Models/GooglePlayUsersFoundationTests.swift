@@ -254,6 +254,13 @@ final class GooglePlayUsersFoundationTests: XCTestCase {
         )
         XCTAssertTrue(GooglePlayErrorTranslator.isWrongDeveloperId(StackError.Http(status: 404, message: "")))
         XCTAssertFalse(GooglePlayErrorTranslator.isWrongDeveloperId(StackError.Network(message: "")))
+        XCTAssertTrue(GooglePlayErrorTranslator.asksForDeveloperId(StackError.Http(status: 404, message: "")))
+        XCTAssertTrue(GooglePlayErrorTranslator.asksForDeveloperId(StackError.Auth(
+            message: "The service account sa@x.example cannot access the developer account 1234. Invite it in Play Console."
+        )))
+        XCTAssertFalse(GooglePlayErrorTranslator.asksForDeveloperId(StackError.Auth(message: "invalid_grant")))
+        XCTAssertFalse(GooglePlayErrorTranslator.asksForDeveloperId(StackError.Network(message: "")))
+        XCTAssertFalse(GooglePlayErrorTranslator.asksForDeveloperId(StackError.Http(status: 500, message: "")))
 
         let auth = GooglePlayErrorTranslator.friendlyMessage(for: StackError.Auth(message: "Needs Admin (all permissions)."), operation: .users)
         XCTAssertTrue(auth.hasPrefix(String(localized: "To manage users, this service account needs the “Admin (all permissions)” permission in Play Console › Users and permissions.")))

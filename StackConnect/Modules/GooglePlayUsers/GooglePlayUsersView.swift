@@ -112,18 +112,12 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error = state.error, state.users.isEmpty {
+            // Network, offline, server: the developer ID isn't in question.
             StackErrorContentView(
                 message: error,
                 reportContext: errorReportContext.withTechnicalDetails(state.errorDetails),
-                onRetry: {
-                    analytics.track(.buttonTap(.tryAgain, on: .googlePlayUsers))
-                    Task { await viewModel.load() }
-                }
-            ) {
-                if state.developerIdRejected {
-                    Button(String(localized: "Change Developer ID")) { beginEditingDeveloperId() }
-                }
-            }
+                onRetry: retry
+            )
         } else {
             buildList()
                 .searchable(
@@ -132,6 +126,11 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
                     prompt: String(localized: "Search by name or email")
                 )
         }
+    }
+
+    private func retry() {
+        analytics.track(.buttonTap(.tryAgain, on: .googlePlayUsers))
+        Task { await viewModel.load() }
     }
 
     private var errorReportContext: ErrorReportContext {
@@ -234,23 +233,23 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
 
     // MARK: - Setup (plan U3)
 
+    /// The one-field form: first-time setup (no developer ID yet), or the
+    /// stored ID rejected by the last load — then pre-filled with it, under
+    /// the load error (with its Share Error) and with a Retry.
     private func buildSetup() -> some View {
-        List {
-            Section {
-                VStack(spacing: 10) {
-                    Image(systemName: "person.2.badge.key")
-                        .font(.system(size: 40))
-                        .foregroundStyle(.tint)
-                    Text("Manage Play Console users")
-                        .font(.headline)
-                    Text("Enter this account's Developer ID once to list, invite and edit the people who can access your Play Console.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
+        let state = viewModel.uiState
+        let rejected = state.developerIdRejected
+        let isBusy = state.isSavingDeveloperId || state.isSyncing
+        return List {
+            if rejected {
+                if let error = state.error {
+                    StackInlineErrorSection(
+                        message: error,
+                        reportContext: errorReportContext.withTechnicalDetails(state.errorDetails)
+                    )
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .listRowBackground(Color.clear)
+            } else {
+                buildSetupIntro()
             }
 
             Section {
@@ -266,17 +265,17 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
                         .onSubmit { Task { await viewModel.saveDeveloperId() } }
                 }
             } header: {
-                Text("First-time setup")
+                rejected ? Text("Developer ID") : Text("First-time setup")
             } footer: {
                 VStack(alignment: .leading, spacing: 6) {
-                    if let error = viewModel.uiState.developerIdError {
+                    if let error = state.developerIdError {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(error)
                                 .foregroundStyle(.red)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             StackErrorShareLink(
                                 message: error,
-                                context: errorReportContext.withTechnicalDetails(viewModel.uiState.developerIdErrorDetails),
+                                context: errorReportContext.withTechnicalDetails(state.developerIdErrorDetails),
                                 style: .icon
                             )
                         }
@@ -289,35 +288,51 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
                 Button {
                     Task { await viewModel.saveDeveloperId() }
                 } label: {
-                    HStack {
-                        Spacer()
-                        if viewModel.uiState.isSavingDeveloperId {
-                            ProgressView()
-                        } else {
-                            Text("Save").fontWeight(.semibold)
-                        }
-                        Spacer()
-                    }
+                    buildFormButtonLabel(String(localized: "Save"), isWorking: state.isSavingDeveloperId)
+                        .fontWeight(.semibold)
                 }
-                .disabled(viewModel.uiState.developerIdInput.trimmingCharacters(in: .whitespaces).isEmpty
-                          || viewModel.uiState.isSavingDeveloperId)
+                .disabled(state.developerIdInput.trimmingCharacters(in: .whitespaces).isEmpty || isBusy)
 
-                if viewModel.uiState.developerId != nil {
-                    Button(String(localized: "Cancel"), role: .cancel) {
-                        viewModel.uiState.isEditingDeveloperId = false
-                        viewModel.uiState.developerIdError = nil
+                if rejected {
+                    Button(action: retry) {
+                        buildFormButtonLabel(String(localized: "Retry"),
+                                             isWorking: state.isSyncing && !state.isSavingDeveloperId)
                     }
-                    .frame(maxWidth: .infinity)
+                    .disabled(isBusy)
                 }
             }
         }
     }
 
-    private func beginEditingDeveloperId() {
-        analytics.track(.buttonTap(.editDeveloperId, on: .googlePlayUsers))
-        viewModel.uiState.developerIdInput = viewModel.uiState.developerId ?? ""
-        viewModel.uiState.developerIdError = nil
-        viewModel.uiState.developerIdErrorDetails = []
-        viewModel.uiState.isEditingDeveloperId = true
+    private func buildSetupIntro() -> some View {
+        Section {
+            VStack(spacing: 10) {
+                Image(systemName: "person.2.badge.key")
+                    .font(.system(size: 40))
+                    .foregroundStyle(.tint)
+                Text("Manage Play Console users")
+                    .font(.headline)
+                Text("Enter this account's Developer ID once to list, invite and edit the people who can access your Play Console.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .listRowBackground(Color.clear)
+        }
+    }
+
+    /// A centered form button title, or a spinner while it runs.
+    private func buildFormButtonLabel(_ title: String, isWorking: Bool) -> some View {
+        HStack {
+            Spacer()
+            if isWorking {
+                ProgressView()
+            } else {
+                Text(title)
+            }
+            Spacer()
+        }
     }
 }

@@ -174,6 +174,19 @@ enum GooglePlayErrorTranslator {
         return status == 404 || status == 403
     }
 
+    /// True when a users-list failure is worth answering by checking the
+    /// developer ID, so the Users tab asks for it again, pre-filled with the
+    /// stored value (plan U3): a wrong ID (`isWrongDeveloperId`, the core's
+    /// local rejection of a non-numeric ID included), or Google refusing the
+    /// developer account itself — its 403 reads the same for an ID the service
+    /// account isn't a member of and for a member without the Admin permission.
+    /// Other `Auth` failures (a revoked key, a disabled API) are not about the ID.
+    static func asksForDeveloperId(_ error: Error) -> Bool {
+        if isWrongDeveloperId(error) { return true }
+        guard case .Auth(let message)? = error as? StackError else { return false }
+        return message.localizedCaseInsensitiveContains("cannot access the developer account")
+    }
+
     /// True when the core refused the call before sending it (an invalid
     /// developer ID, e-mail or package name): its message says so.
     static func isLocalRejection(_ message: String) -> Bool {
