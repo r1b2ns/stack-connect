@@ -276,6 +276,31 @@ final class FakeDataBackendsTests: XCTestCase {
         }
     }
 
+    /// `FakeCoreError.playQuotaExceeded` reads exactly like the core's quota
+    /// mapping (`quota_exceeded` + `with_request_context`): Http 429 whatever
+    /// Google answered, with and without a `Retry-After`.
+    func testFakePlayQuotaErrorMirrorsTheCoresWording() {
+        guard case let .Http(status, message) = FakeCoreError.playQuotaExceeded(
+            retryAfterSeconds: 60, request: "GET applications/com.example.app/tracks/production/releases"
+        ) else { return XCTFail("Expected Http") }
+        XCTAssertEqual(status, 429)
+        XCTAssertEqual(
+            message,
+            "Listing releases quota exceeded. [PERMISSION_DENIED]; this is a Google Play API quota/rate limit, "
+                + "not a permission problem — wait and retry later (Retry-After: 60 s) "
+                + "(HTTP 403 on GET applications/com.example.app/tracks/production/releases)"
+        )
+
+        guard case let .Http(_, plain) = FakeCoreError.playQuotaExceeded(
+            googleMessage: "Quota exceeded", googleStatus: "RESOURCE_EXHAUSTED", answeredStatus: 429, request: "GET v1beta1/apps:search"
+        ) else { return XCTFail("Expected Http") }
+        XCTAssertEqual(
+            plain,
+            "Quota exceeded [RESOURCE_EXHAUSTED]; this is a Google Play API quota/rate limit, not a permission problem "
+                + "— wait and retry later (HTTP 429 on GET v1beta1/apps:search)"
+        )
+    }
+
     /// `FakeCoreMessage` mirrors the core's `quoted` / `shape`
     /// (`logging/redact.rs`), including its own unit-test expectations.
     func testFakeCoreMessageMirrorsTheCoresEchoHelpers() {

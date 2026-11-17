@@ -81,6 +81,27 @@ enum FakeCoreError {
     static func unsupported(_ what: String) -> StackError {
         .Unsupported(message: "\(what) is not available in fake data mode.")
     }
+
+    /// A Google Play quota or rate limit, worded exactly like the core's
+    /// (`quota_exceeded` + `with_request_context` in
+    /// `providers/googleplay/error.rs`): always `Http 429`, Google's message
+    /// and status first, then that it is not a permission problem, the
+    /// `Retry-After` seconds when Google sent them and the status Google
+    /// actually answered on which call.
+    static func playQuotaExceeded(
+        googleMessage: String = "Listing releases quota exceeded.",
+        googleStatus: String = "PERMISSION_DENIED",
+        answeredStatus: Int = 403,
+        retryAfterSeconds: Int? = nil,
+        request: String
+    ) -> StackError {
+        let retryAfter = retryAfterSeconds.map { " (Retry-After: \($0) s)" } ?? ""
+        return .Http(
+            status: 429,
+            message: "\(googleMessage) [\(googleStatus)]; this is a Google Play API quota/rate limit, not a permission problem "
+                + "— wait and retry later\(retryAfter) (HTTP \(answeredStatus) on \(request))"
+        )
+    }
 }
 
 /// The core's helpers for echoing a rejected input in a local-validation
