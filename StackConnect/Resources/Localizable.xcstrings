@@ -5806,6 +5806,89 @@
         }
       }
     },
+    "Google Play API quota" : {
+      "comment" : "Error report technical value: Google answered with an API quota or rate limit.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play API-Kontingent"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuota de la API de Google Play"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuota de la API de Google Play"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quota de l’API Google Play"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quota dell’API di Google Play"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play API の割り当て"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play API 할당량"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play API-quotum"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cota da API do Google Play"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quota da API do Google Play"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Квота API Google Play"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play API-kvot"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play API 配額"
+          }
+        }
+      }
+    },
     "Google Play can only invite Google accounts. Check the address, or ask the person which Google account (Gmail or Google Workspace) to use." : {
       "localizations" : {
         "de" : {
@@ -117014,6 +117097,89 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Google Play 審查"
+          }
+        }
+      }
+    },
+    "Google Play's API quota for this account was reached. Wait a few minutes and try again." : {
+      "comment" : "Error shown when Google Play answers with an API quota or rate limit (the core reports it as HTTP 429).",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Google Play API-Kontingent dieses Kontos wurde erreicht. Warten Sie einige Minuten und versuchen Sie es erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se ha alcanzado la cuota de la API de Google Play de esta cuenta. Espera unos minutos e inténtalo de nuevo."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se alcanzó la cuota de la API de Google Play de esta cuenta. Espera unos minutos e inténtalo de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le quota de l’API Google Play de ce compte est atteint. Patientez quelques minutes, puis réessayez."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "È stata raggiunta la quota dell’API di Google Play per questo account. Attendi qualche minuto e riprova."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアカウントの Google Play API の割り当て上限に達しました。数分待ってからもう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 계정의 Google Play API 할당량에 도달했습니다. 몇 분 후에 다시 시도하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het Google Play API-quotum van dit account is bereikt. Wacht een paar minuten en probeer het opnieuw."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A cota da API do Google Play desta conta foi atingida. Aguarde alguns minutos e tente novamente."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A quota da API do Google Play desta conta foi atingida. Aguarde alguns minutos e tente novamente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Достигнута квота API Google Play для этого аккаунта. Подождите несколько минут и повторите попытку."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play API-kvoten för det här kontot har nåtts. Vänta några minuter och försök igen."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此帳號已達 Google Play API 配額上限。請稍候幾分鐘再試一次。"
           }
         }
       }

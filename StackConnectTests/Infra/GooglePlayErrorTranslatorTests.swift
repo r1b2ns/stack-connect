@@ -60,8 +60,42 @@ final class GooglePlayErrorTranslatorTests: XCTestCase {
     func testRateLimit() {
         XCTAssertEqual(
             message(for: StackError.Http(status: 429, message: "RESOURCE_EXHAUSTED")),
-            String(localized: "You hit Google's rate limit. Wait a moment and try again.")
+            String(localized: "Google Play's API quota for this account was reached. Wait a few minutes and try again.") + "\nRESOURCE_EXHAUSTED"
         )
+    }
+
+    /// The core reports every Google quota or rate limit as Http 429 (even a
+    /// 403 "Listing releases quota exceeded."): every operation shows the
+    /// quota copy with Google's own text, never the permission or developer
+    /// ID copy.
+    func testQuotaIsTheSameFriendlyCopyForEveryOperation() {
+        let core = "Listing releases quota exceeded. [PERMISSION_DENIED]; this is a Google Play API quota/rate limit, "
+            + "not a permission problem — wait and retry later (Retry-After: 60 s) (HTTP 403 on GET developers/5374/users)"
+        let expected = String(localized: "Google Play's API quota for this account was reached. Wait a few minutes and try again.") + "\nListing releases quota exceeded. [PERMISSION_DENIED]"
+        let operations: [GooglePlayErrorTranslator.Operation] = [
+            .general, .appContentRead, .replyToReview, .releaseChange, .users, .inviteUser, .userChange
+        ]
+        for operation in operations {
+            let text = GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 429, message: core), operation: operation)
+            XCTAssertEqual(text, expected, "\(operation)")
+            XCTAssertFalse(text.contains("Admin"), "Not the permission copy (\(operation))")
+            XCTAssertFalse(text.contains("Developer ID"), "Not the developer ID copy (\(operation))")
+        }
+        XCTAssertEqual(
+            GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 429, message: "  "), operation: .users),
+            String(localized: "Google Play's API quota for this account was reached. Wait a few minutes and try again."),
+            "Without Google's text, the lead alone"
+        )
+    }
+
+    func testAQuotaNeverAsksForTheDeveloperIdAgain() {
+        let quota = StackError.Http(
+            status: 429,
+            message: "Quota exceeded [RESOURCE_EXHAUSTED]; this is a Google Play API quota/rate limit, not a permission problem "
+                + "— wait and retry later (HTTP 403 on GET developers/5374/users)"
+        )
+        XCTAssertFalse(GooglePlayErrorTranslator.asksForDeveloperId(quota))
+        XCTAssertFalse(GooglePlayErrorTranslator.isWrongDeveloperId(quota))
     }
 
     func testServerErrors() {
@@ -123,7 +157,7 @@ final class GooglePlayErrorTranslatorTests: XCTestCase {
         for operation in [GooglePlayErrorTranslator.Operation.general, .appContentRead, .replyToReview] {
             XCTAssertEqual(
                 GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 429, message: ""), operation: operation),
-                String(localized: "You hit Google's rate limit. Wait a moment and try again."),
+                String(localized: "Google Play's API quota for this account was reached. Wait a few minutes and try again."),
                 "\(operation)"
             )
         }

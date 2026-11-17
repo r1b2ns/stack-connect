@@ -88,7 +88,7 @@ final class GooglePlayAppInfoViewModelTests: XCTestCase {
         await sut.load()
 
         XCTAssertEqual(sut.uiState.details?.contactEmail, "old@example.com")
-        XCTAssertEqual(sut.uiState.error, String(localized: "You hit Google's rate limit. Wait a moment and try again."))
+        XCTAssertEqual(sut.uiState.error, String(localized: "Google Play's API quota for this account was reached. Wait a few minutes and try again."))
     }
 
     func testOfflineWithoutCacheShowsTheOfflineError() async {

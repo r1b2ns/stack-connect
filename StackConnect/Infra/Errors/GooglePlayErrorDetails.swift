@@ -94,6 +94,9 @@ struct GooglePlayErrorDetails: Equatable, Sendable {
     enum Source: String, Equatable, Sendable {
         /// Google answered the request with this error.
         case googlePlay
+        /// Google answered with an API quota or rate limit (the core reports
+        /// it as HTTP 429, see `GooglePlayQuota`).
+        case googlePlayQuota
         /// The app (or its core) refused the call before sending anything:
         /// the core's message reads "local validation failed: …; request not
         /// sent to Google" (see `GooglePlayErrorTranslator.isLocalRejection`).
@@ -215,8 +218,15 @@ struct GooglePlayErrorDetails: Equatable, Sendable {
         }
         switch stackError {
         case .Http(let status, let message):
-            let local = GooglePlayErrorTranslator.isLocalRejection(message)
-            return Facts(kind: "StackError.Http", status: Int(status), message: message, source: local ? .localValidation : .googlePlay)
+            let source: Source
+            if GooglePlayErrorTranslator.isLocalRejection(message) {
+                source = .localValidation
+            } else if GooglePlayQuota.isQuotaExceeded(stackError) {
+                source = .googlePlayQuota
+            } else {
+                source = .googlePlay
+            }
+            return Facts(kind: "StackError.Http", status: Int(status), message: message, source: source)
         case .Auth(let message):
             return Facts(kind: "StackError.Auth", message: message, source: .googlePlay)
         case .Network(let message):
@@ -250,6 +260,8 @@ private extension GooglePlayErrorDetails.Source {
         switch self {
         case .googlePlay:
             return String(localized: "Google Play API (Google's answer)", comment: "Error report technical value: the error came from Google's response.")
+        case .googlePlayQuota:
+            return String(localized: "Google Play API quota", comment: "Error report technical value: Google answered with an API quota or rate limit.")
         case .localValidation:
             return String(localized: "StackConnect, before any request (nothing was sent to Google)", comment: "Error report technical value: the app refused the call locally.")
         case .connection:

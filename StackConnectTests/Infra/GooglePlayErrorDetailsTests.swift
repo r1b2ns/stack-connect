@@ -139,6 +139,18 @@ final class GooglePlayErrorDetailsTests: XCTestCase {
         XCTAssertTrue(lines.contains(String(localized: "Resource: \("developers/1234/users")")))
     }
 
+    func testDetailsOfAQuotaNameTheQuotaAsTheSource() {
+        let core = "Quota exceeded [RESOURCE_EXHAUSTED]; this is a Google Play API quota/rate limit, not a permission problem "
+            + "— wait and retry later (Retry-After: 30 s) (HTTP 403 on GET developers/1234/users)"
+        let lines = GooglePlayErrorTranslator.technicalDetails(
+            for: StackError.Http(status: 429, message: core), operation: .users, call: listCall("1234")
+        )
+
+        XCTAssertTrue(lines.contains(String(localized: "Source: \(String(localized: "Google Play API quota"))")))
+        XCTAssertTrue(lines.contains(String(localized: "HTTP status: \(429)")))
+        XCTAssertTrue(lines.contains(String(localized: "Message: \(core)")), "The core's message verbatim")
+    }
+
     func testDetailsOfMissingAdminHaveNoStatusButTheAuthMessage() {
         let lines = GooglePlayErrorTranslator.technicalDetails(
             for: StackError.Auth(message: missingAdminMessage), operation: .users, call: listCall("1234")

@@ -196,6 +196,27 @@ final class GooglePlayUsersViewModelTests: XCTestCase {
         XCTAssertFalse(sut.uiState.showsSetup)
     }
 
+    /// A quota (the core's Http 429, even for Google's 403) is not about the
+    /// developer ID: the list keeps its state and shows the quota copy.
+    func testAQuotaNeitherAsksForTheDeveloperIdNorBlamesPermissions() async throws {
+        let sut = try await makeSUT()
+        connection.failNext(.fetch, with: StackError.Http(
+            status: 429,
+            message: "Quota exceeded [RESOURCE_EXHAUSTED]; this is a Google Play API quota/rate limit, not a permission problem "
+                + "— wait and retry later (HTTP 403 on GET developers/\(developerId)/users)"
+        ))
+
+        await sut.load()
+
+        XCTAssertFalse(sut.uiState.developerIdRejected)
+        XCTAssertFalse(sut.uiState.showsSetup)
+        XCTAssertEqual(
+            sut.uiState.error?.components(separatedBy: "\n").first,
+            String(localized: "Google Play's API quota for this account was reached. Wait a few minutes and try again.")
+        )
+        XCTAssertTrue(sut.uiState.errorDetails.contains(String(localized: "Source: \(String(localized: "Google Play API quota"))")))
+    }
+
     func testSavingANewDeveloperIdFromTheRejectedFormStoresItAndReloads() async throws {
         let sut = try await makeSUT()
         connection.failNext(.fetch, with: StackError.Http(status: 404, message: "not found"))

@@ -6,7 +6,9 @@ import StackCoreRust
 /// Inputs are whatever `GooglePlayAccountConnection` surfaces unchanged:
 /// - `GooglePlayServiceAccount.ParseError` — the key file itself is unusable;
 /// - `OfflineError` — the local "device is offline" guard;
-/// - `StackError` from the Rust core. Its `errorDescription` is a debug string
+/// - `StackError` from the Rust core. A quota or rate limit is always
+///   `.Http(429, …)` (`GooglePlayQuota`), whatever the operation. Its
+///   `errorDescription` is a debug string
 ///   (`String(reflecting:)`), so it is never shown raw. The one exception is the
 ///   `.Auth` message: the core fills it with actionable English guidance from
 ///   Google (enable the Reporting API + activation URL, invite the service
@@ -72,6 +74,12 @@ enum GooglePlayErrorTranslator {
         case .Network:
             return String(localized: "Couldn't reach Google Play. Check your internet connection and try again.")
 
+        case .Http(429, let message):
+            // A quota or rate limit, whatever the operation (the core reports
+            // every one as 429, even when Google answered 403): never a
+            // permission or developer ID problem.
+            return quotaMessage(coreMessage: message)
+
         case .Http(let status, let message) where operation == .releaseChange:
             return releaseChangeMessage(status: Int(status), googleMessage: message)
 
@@ -130,6 +138,15 @@ enum GooglePlayErrorTranslator {
 
     // MARK: - Private
 
+    /// A Google Play quota or rate limit: friendly copy, then Google's own text
+    /// (without the core's explanation and request suffix) as the detail.
+    private static func quotaMessage(coreMessage: String) -> String {
+        let lead = String(localized: "Google Play's API quota for this account was reached. Wait a few minutes and try again.",
+                          comment: "Error shown when Google Play answers with an API quota or rate limit (the core reports it as HTTP 429).")
+        let detail = GooglePlayQuota.googleMessage(in: coreMessage)
+        return detail.isEmpty ? lead : "\(lead)\n\(detail)"
+    }
+
     /// Release changes: Google explains every refusal in its message, so the
     /// known ones get actionable copy and the rest show Google's text.
     private static func releaseChangeMessage(status: Int, googleMessage: String) -> String {
@@ -182,6 +199,8 @@ enum GooglePlayErrorTranslator {
     /// account isn't a member of and for a member without the Admin permission.
     /// Other `Auth` failures (a revoked key, a disabled API) are not about the ID.
     static func asksForDeveloperId(_ error: Error) -> Bool {
+        // A quota says nothing about the ID (the core reports it as 429).
+        if GooglePlayQuota.isQuotaExceeded(error) { return false }
         if isWrongDeveloperId(error) { return true }
         guard case .Auth(let message)? = error as? StackError else { return false }
         return message.localizedCaseInsensitiveContains("cannot access the developer account")
@@ -251,8 +270,6 @@ enum GooglePlayErrorTranslator {
             // Unknown package, or a package name that breaks Android's naming
             // rules (rejected by the core without a request).
             return String(localized: "Google Play found no app with this package name. Check it in Play Console and try again.")
-        case 429:
-            return String(localized: "You hit Google's rate limit. Wait a moment and try again.")
         case 500...599:
             return String(localized: "Google Play is temporarily unavailable. Try again in a few minutes.")
         default:
