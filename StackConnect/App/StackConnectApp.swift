@@ -78,37 +78,51 @@ struct StackConnectApp: App {
         return try ModelContainer(for: PersistedItem.self, configurations: configuration)
     }
 
+    /// The app is the host of a unit-test run: it shows no UI, so the Home
+    /// never starts a sync against the simulator's real accounts (network and
+    /// Google Play quota) while tests run.
+    private static let isUnitTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+
     var body: some Scene {
         WindowGroup {
-            HomeViewFactory.build()
-                .offlineBanner()
-                // App Store review request after a successful foreground sync,
-                // every third launch, at most once per launch.
-                .reviewPromptOnSuccessfulSync()
-                .sheet(isPresented: $showWelcome) {
-                    WelcomeView {
-                        UserDefaults.standard.set(true, forKey: "hasSeenWelcome")
-                        // On a fresh install the user already sees the welcome
-                        // screen, so mark the current version's release notes as
-                        // seen to avoid showing them right afterwards.
+            if Self.isUnitTestHost {
+                Color.clear
+            } else {
+                buildRoot()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func buildRoot() -> some View {
+        HomeViewFactory.build()
+            .offlineBanner()
+            // App Store review request after a successful foreground sync,
+            // every third launch, at most once per launch.
+            .reviewPromptOnSuccessfulSync()
+            .sheet(isPresented: $showWelcome) {
+                WelcomeView {
+                    UserDefaults.standard.set(true, forKey: "hasSeenWelcome")
+                    // On a fresh install the user already sees the welcome
+                    // screen, so mark the current version's release notes as
+                    // seen to avoid showing them right afterwards.
+                    releaseNotesPresenter.markAsSeen()
+                    showWelcome = false
+                }
+                .interactiveDismissDisabled(true)
+            }
+            .sheet(isPresented: $showReleaseNotes) {
+                if let releaseNotes {
+                    ReleaseNotesView(releaseNotes: releaseNotes) {
                         releaseNotesPresenter.markAsSeen()
-                        showWelcome = false
+                        // Showing the release notes also completes onboarding,
+                        // so the welcome screen won't appear afterwards.
+                        UserDefaults.standard.set(true, forKey: "hasSeenWelcome")
+                        showReleaseNotes = false
                     }
                     .interactiveDismissDisabled(true)
                 }
-                .sheet(isPresented: $showReleaseNotes) {
-                    if let releaseNotes {
-                        ReleaseNotesView(releaseNotes: releaseNotes) {
-                            releaseNotesPresenter.markAsSeen()
-                            // Showing the release notes also completes onboarding,
-                            // so the welcome screen won't appear afterwards.
-                            UserDefaults.standard.set(true, forKey: "hasSeenWelcome")
-                            showReleaseNotes = false
-                        }
-                        .interactiveDismissDisabled(true)
-                    }
-                }
-                .modelContainer(modelContainer)
-        }
+            }
+            .modelContainer(modelContainer)
     }
 }
