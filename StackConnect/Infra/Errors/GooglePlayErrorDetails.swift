@@ -95,7 +95,8 @@ struct GooglePlayErrorDetails: Equatable, Sendable {
         /// Google answered the request with this error.
         case googlePlay
         /// The app (or its core) refused the call before sending anything:
-        /// the core says "nothing was sent to Google".
+        /// the core's message reads "local validation failed: …; request not
+        /// sent to Google" (see `GooglePlayErrorTranslator.isLocalRejection`).
         case localValidation
         /// The request didn't get an answer (offline, timeout, DNS…).
         case connection

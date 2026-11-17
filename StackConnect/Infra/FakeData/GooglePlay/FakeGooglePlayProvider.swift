@@ -329,14 +329,18 @@ final class FakePlayUsers: PlayUsers, @unchecked Sendable {
         fatalError("Fake capabilities are never lifted from the FFI")
     }
 
-    /// Mirrors the core's local check (`ensure_developer_id`): a developer ID
-    /// that isn't ASCII digits is a 404 raised before any request.
+    /// Mirrors the core's local check (`ensure_developer_id` + `local_rejection`
+    /// in `providers/googleplay/client.rs`, `error.rs`): a developer ID that
+    /// isn't ASCII digits is a 404 raised before any request, worded exactly
+    /// like the core's.
     private func validate(developerId: String) throws {
         guard !developerId.isEmpty, developerId.unicodeScalars.allSatisfy({ ("0"..."9").contains($0) }) else {
+            let problem = developerId.isEmpty ? "is empty" : "is not numeric"
             throw StackError.Http(
                 status: 404,
-                message: "\(String(reflecting: developerId)) is not a valid Google Play developer account ID (the number in a Play "
-                    + "Console URL after /developers/), so no developer account can have it (checked locally; nothing was sent to Google)."
+                message: "local validation failed: developer ID \(FakeCoreMessage.quoted(developerId)) \(problem) "
+                    + "(\(FakeCoreMessage.shape(developerId))); it is the number after /developers/ in a Play Console URL; "
+                    + "request not sent to Google"
             )
         }
     }

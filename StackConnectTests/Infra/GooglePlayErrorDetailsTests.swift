@@ -12,18 +12,19 @@ final class GooglePlayErrorDetailsTests: XCTestCase {
 
     /// The core's own message for a developer ID that isn't digits-only
     /// (`ensure_developer_id`, raised before any request).
-    private let localDeveloperIdMessage = "\"abc\" is not a valid Google Play developer account ID (the number in a Play "
-        + "Console URL after /developers/), so no developer account can have it (checked locally; nothing was sent to Google)."
+    private let localDeveloperIdMessage = "local validation failed: developer ID \"abc\" is not numeric (3 chars: letters); "
+        + "it is the number after /developers/ in a Play Console URL; request not sent to Google"
 
     /// The core's message for Google's 404 on `developers/{id}/users`.
     private let googleNotFoundMessage = "Google Play found no developer account with ID 1234 (HTTP 404): check the "
-        + "developer ID. Google said: Developer not found. [NOT_FOUND]"
+        + "developer ID. Google said: Developer not found. [NOT_FOUND] (HTTP 404 on GET developers/1234/users)"
 
     /// The core's `Auth` for Google's 403 when the service account isn't Admin.
     private var missingAdminMessage: String {
         "The service account \(serviceAccount) cannot access the developer account 1234. Invite it in Play Console > "
             + "Users and permissions with at least \"Admin (all permissions)\"; new access can take a while to propagate. "
-            + "Google said: The caller does not have the CAN_MANAGE_PERMISSIONS_GLOBAL permission. [PERMISSION_DENIED]"
+            + "Google said: The caller does not have the CAN_MANAGE_PERMISSIONS_GLOBAL permission. [PERMISSION_DENIED] "
+            + "(HTTP 403 on GET developers/1234/users)"
     }
 
     private func listCall(_ developerId: String) -> GooglePlayUsersCall {
@@ -75,10 +76,23 @@ final class GooglePlayErrorDetailsTests: XCTestCase {
     }
 
     func testALocallyRejectedInviteAddressIsNotBlamedOnGoogle() {
-        let local = "\"a b@x\" is not a valid e-mail address (checked locally; nothing was sent to Google)."
+        let local = "local validation failed: \"a***@x\" is not a valid e-mail address (5 chars: letters, whitespace, '@'); "
+            + "request not sent to Google"
         let message = GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 400, message: local), operation: .inviteUser)
 
         XCTAssertEqual(message, String(localized: "Google Play couldn't send this invitation.") + "\n" + local)
+    }
+
+    func testLocalRejectionRecognizesTheCoresWordingsOnly() {
+        XCTAssertTrue(GooglePlayErrorTranslator.isLocalRejection(localDeveloperIdMessage))
+        XCTAssertTrue(GooglePlayErrorTranslator.isLocalRejection(
+            "local validation failed: userFraction 1.5 is not between 0 and 1, exclusive; request not sent to Google"
+        ))
+        XCTAssertTrue(GooglePlayErrorTranslator.isLocalRejection(
+            "\"a b@x\" is not a valid e-mail address (checked locally; nothing was sent to Google)."
+        ), "The core's previous wording is still recognized")
+        XCTAssertFalse(GooglePlayErrorTranslator.isLocalRejection(googleNotFoundMessage))
+        XCTAssertFalse(GooglePlayErrorTranslator.isLocalRejection(missingAdminMessage))
     }
 
     func testMissingAdminKeepsTheAdminLeadAndTheCoresMessage() {

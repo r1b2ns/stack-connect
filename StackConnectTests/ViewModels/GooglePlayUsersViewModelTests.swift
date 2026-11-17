@@ -125,7 +125,7 @@ final class GooglePlayUsersViewModelTests: XCTestCase {
 
     func testALoadFailureCarriesTechnicalDetailsForTheReport() async throws {
         let sut = try await makeSUT()
-        let googleMessage = "Google Play found no developer account with ID \(developerId) (HTTP 404): check the developer ID. Google said: Not found. [NOT_FOUND]"
+        let googleMessage = "Google Play found no developer account with ID \(developerId) (HTTP 404): check the developer ID. Google said: Not found. [NOT_FOUND] (HTTP 404 on GET developers/\(developerId)/users)"
         connection.failNext(.fetch, with: StackError.Http(status: 404, message: googleMessage))
 
         await sut.load()
@@ -171,7 +171,8 @@ final class GooglePlayUsersViewModelTests: XCTestCase {
         let sut = try await makeSUT(makeAccount(developerId: "abc"))
         connection.failNext(.fetch, with: StackError.Http(
             status: 404,
-            message: "\"abc\" is not a valid Google Play developer account ID (checked locally; nothing was sent to Google)."
+            message: "local validation failed: developer ID \"abc\" is not numeric (3 chars: letters); it is the number "
+                + "after /developers/ in a Play Console URL; request not sent to Google"
         ))
 
         await sut.load()

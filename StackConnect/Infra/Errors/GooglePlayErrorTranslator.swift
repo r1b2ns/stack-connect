@@ -156,7 +156,7 @@ enum GooglePlayErrorTranslator {
     private static func inviteRefusalMessage(googleMessage: String) -> String {
         let detail = googleMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         let lowered = detail.lowercased()
-        // The core's own check (an address it can't send, nothing was sent to
+        // The core's own check (an address it can't send, request not sent to
         // Google) is not Google refusing the account.
         if !isLocalRejection(detail),
            lowered.contains("google account") || lowered.contains("not a valid") || lowered.contains("invalid email") {
@@ -188,10 +188,19 @@ enum GooglePlayErrorTranslator {
     }
 
     /// True when the core refused the call before sending it (an invalid
-    /// developer ID, e-mail or package name): its message says so.
+    /// developer ID, e-mail, package name or release change): its message
+    /// starts with "local validation failed:" and ends with "request not sent
+    /// to Google". The core's older wording ("nothing was sent to Google") is
+    /// still recognized, for safety.
     static func isLocalRejection(_ message: String) -> Bool {
-        message.localizedCaseInsensitiveContains("nothing was sent to Google")
+        localRejectionMarkers.contains { message.localizedCaseInsensitiveContains($0) }
     }
+
+    private static let localRejectionMarkers = [
+        "local validation failed",
+        "request not sent to Google",
+        "nothing was sent to Google"
+    ]
 
     // MARK: - Technical details
 

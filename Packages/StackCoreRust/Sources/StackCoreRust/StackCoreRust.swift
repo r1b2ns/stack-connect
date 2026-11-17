@@ -5869,6 +5869,235 @@ public func FfiConverterTypeCertificates_lower(_ value: Certificates) -> UInt64 
 
 
 /**
+ * Process-wide diagnostic log sink, installed with
+ * [`crate::facade::set_core_logger`]. Unlike [`DebugLogger`], it is meant to
+ * stay on in release builds: every message is **redacted** before it gets
+ * here (no access token, `Authorization` header, private key, JSON key or
+ * JWT; user e-mails masked as `d***@agency.example`), and lines are leveled so
+ * the host can filter and route them (iOS: one `os.Logger` per `target`).
+ *
+ * Called synchronously on whichever thread the core is running; implement it
+ * as a cheap, non-blocking hand-off (e.g. `Logger.log`).
+ */
+public protocol CoreLogger: AnyObject, Sendable {
+    
+    /**
+     * Emits one single-line message. `target` names the area (`http`,
+     * `auth`, `googleplay.users`, …; see the README's *Logging* section).
+     */
+    func log(level: LogLevel, target: String, message: String) 
+    
+}
+/**
+ * Process-wide diagnostic log sink, installed with
+ * [`crate::facade::set_core_logger`]. Unlike [`DebugLogger`], it is meant to
+ * stay on in release builds: every message is **redacted** before it gets
+ * here (no access token, `Authorization` header, private key, JSON key or
+ * JWT; user e-mails masked as `d***@agency.example`), and lines are leveled so
+ * the host can filter and route them (iOS: one `os.Logger` per `target`).
+ *
+ * Called synchronously on whichever thread the core is running; implement it
+ * as a cheap, non-blocking hand-off (e.g. `Logger.log`).
+ */
+open class CoreLoggerImpl: CoreLogger, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_corelogger(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_corelogger(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Emits one single-line message. `target` names the area (`http`,
+     * `auth`, `googleplay.users`, …; see the README's *Logging* section).
+     */
+open func log(level: LogLevel, target: String, message: String)  {try! rustCall() {
+    uniffi_stack_core_fn_method_corelogger_log(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeLogLevel_lower(level),
+        FfiConverterString.lower(target),
+        FfiConverterString.lower(message),$0
+    )
+}
+}
+    
+
+    
+}
+
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceCoreLogger {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    //
+    // Store the vtable directly.
+    static let vtable: UniffiVTableCallbackInterfaceCoreLogger = UniffiVTableCallbackInterfaceCoreLogger(
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            do {
+                try FfiConverterTypeCoreLogger.handleMap.remove(handle: uniffiHandle)
+            } catch {
+                print("Uniffi callback interface CoreLogger: handle missing in uniffiFree")
+            }
+        },
+        uniffiClone: { (uniffiHandle: UInt64) -> UInt64 in
+            do {
+                return try FfiConverterTypeCoreLogger.handleMap.clone(handle: uniffiHandle)
+            } catch {
+                fatalError("Uniffi callback interface CoreLogger: handle missing in uniffiClone")
+            }
+        },
+        log: { (
+            uniffiHandle: UInt64,
+            level: RustBuffer,
+            target: RustBuffer,
+            message: RustBuffer,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterTypeCoreLogger.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.log(
+                     level: try FfiConverterTypeLogLevel_lift(level),
+                     target: try FfiConverterString.lift(target),
+                     message: try FfiConverterString.lift(message)
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        }
+    )
+
+    // Rust stores this pointer for future callback invocations, so it must live
+    // for the process lifetime (not just for the init function call).
+    static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfaceCoreLogger> = {
+        let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfaceCoreLogger>.allocate(capacity: 1)
+        ptr.initialize(to: vtable)
+        return UnsafePointer(ptr)
+    }()
+}
+
+private func uniffiCallbackInitCoreLogger() {
+    uniffi_stack_core_fn_init_callback_vtable_corelogger(UniffiCallbackInterfaceCoreLogger.vtablePtr)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCoreLogger: FfiConverter {
+    fileprivate static let handleMap = UniffiHandleMap<CoreLogger>()
+
+    typealias FfiType = UInt64
+    typealias SwiftType = CoreLogger
+
+    public static func lift(_ handle: UInt64) throws -> CoreLogger {
+        if ((handle & 1) == 0) {
+            // Rust-generated handle, construct a new class that uses the handle to implement the
+            // interface
+            return CoreLoggerImpl(unsafeFromHandle: handle)
+        } else {
+            // Swift-generated handle, get the object from the handle map
+            return try handleMap.remove(handle: handle)
+        }
+    }
+
+    public static func lower(_ value: CoreLogger) -> UInt64 {
+         if let rustImpl = value as? CoreLoggerImpl {
+             // Rust-implemented object.  Clone the handle and return it
+            return rustImpl.uniffiCloneHandle()
+         } else {
+            // Swift object, generate a new vtable handle and return that.
+            return handleMap.insert(obj: value)
+         }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CoreLogger {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: CoreLogger, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCoreLogger_lift(_ handle: UInt64) throws -> CoreLogger {
+    return try FfiConverterTypeCoreLogger.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCoreLogger_lower(_ value: CoreLogger) -> UInt64 {
+    return FfiConverterTypeCoreLogger.lower(value)
+}
+
+
+
+
+
+
+/**
  * Secure-credential storage implemented natively (Keychain on iOS) and injected
  * across the FFI boundary as a foreign trait. Each provider declares the keys it
  * reads via its `credential_schema` (see `service::registry`).
@@ -14056,6 +14285,104 @@ public func FfiConverterTypeChangesInReviewBehavior_lower(_ value: ChangesInRevi
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
+ * Severity of a diagnostic line, most severe first. A sink installed with a
+ * minimum level receives that level and every more severe one.
+ */
+
+public enum LogLevel: Equatable, Hashable {
+    
+    /**
+     * A call failed in a way the user will see: a 5xx, a transport failure.
+     */
+    case error
+    /**
+     * Something was refused or skipped: a 4xx, a local validation failure
+     * (nothing sent), a best-effort cleanup that failed.
+     */
+    case warn
+    /**
+     * What changed and why: writes, their ids and outcome, token retries.
+     */
+    case info
+    /**
+     * Everything else: one line per HTTP request, reads, paging.
+     */
+    case debug
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension LogLevel: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLogLevel: FfiConverterRustBuffer {
+    typealias SwiftType = LogLevel
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LogLevel {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .error
+        
+        case 2: return .warn
+        
+        case 3: return .info
+        
+        case 4: return .debug
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: LogLevel, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .error:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .warn:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .info:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .debug:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLogLevel_lift(_ buf: RustBuffer) throws -> LogLevel {
+    return try FfiConverterTypeLogLevel.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLogLevel_lower(_ value: LogLevel) -> RustBuffer {
+    return FfiConverterTypeLogLevel.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
  * The status a new release starts in.
  */
 
@@ -15007,6 +15334,30 @@ fileprivate struct FfiConverterOptionTypeCertificates: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeCertificates.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeCoreLogger: FfiConverterRustBuffer {
+    typealias SwiftType = CoreLogger?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeCoreLogger.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeCoreLogger.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -16537,6 +16888,22 @@ public func makeSyncService(provider: Provider, store: BlobStore, accountId: Str
     )
 })
 }
+/**
+ * Installs the process-wide diagnostic log sink (`Some`) or removes it
+ * (`None`), receiving `min_level` and every more severe level.
+ *
+ * Independent of `connect`'s `debug_logger`: install it once at startup and
+ * it covers every provider, including those connected earlier. Messages are
+ * redacted before they reach `logger` (see [`CoreLogger`]). Without a sink the
+ * core formats nothing. Call again to change the level.
+ */
+public func setCoreLogger(logger: CoreLogger?, minLevel: LogLevel)  {try! rustCall() {
+    uniffi_stack_core_fn_func_set_core_logger(
+        FfiConverterOptionTypeCoreLogger.lower(logger),
+        FfiConverterTypeLogLevel_lower(minLevel),$0
+    )
+}
+}
 
 private enum InitializationResult {
     case ok
@@ -16565,6 +16932,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_func_make_sync_service() != 17430) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_func_set_core_logger() != 61948) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_method_blobstore_save() != 62593) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -16575,6 +16945,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_blobstore_delete() != 21501) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_corelogger_log() != 45113) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_credentialstore_secret() != 28669) {
@@ -17011,6 +17384,7 @@ private let initializationResult: InitializationResult = {
     }
 
     uniffiCallbackInitBlobStore()
+    uniffiCallbackInitCoreLogger()
     uniffiCallbackInitCredentialStore()
     uniffiCallbackInitDebugLogger()
     return InitializationResult.ok

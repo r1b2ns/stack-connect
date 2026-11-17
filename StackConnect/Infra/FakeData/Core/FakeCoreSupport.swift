@@ -83,6 +83,55 @@ enum FakeCoreError {
     }
 }
 
+/// The core's helpers for echoing a rejected input in a local-validation
+/// message (`logging/redact.rs`: `quoted`, `shape`), so fake rejections read
+/// exactly like the core's.
+enum FakeCoreMessage {
+
+    /// The core echoes at most this many characters of a rejected value.
+    private static let maxEchoCharacters = 64
+
+    /// `value` quoted like Rust's `{:?}`, cut to 64 characters (`…` marks a cut).
+    static func quoted(_ value: String) -> String {
+        let scalars = Array(value.unicodeScalars)
+        var head = String.UnicodeScalarView()
+        head.append(contentsOf: scalars.prefix(maxEchoCharacters))
+        let quoted = String(reflecting: String(head))
+        return scalars.count > maxEchoCharacters ? quoted + "…" : quoted
+    }
+
+    /// Length and character kinds of `value` without its content, e.g.
+    /// `3 chars: letters` or `6 chars: digits, whitespace`.
+    static func shape(_ value: String) -> String {
+        let scalars = Array(value.unicodeScalars)
+        let unit = scalars.count == 1 ? "char" : "chars"
+        let isDigit: (Unicode.Scalar) -> Bool = { ("0"..."9").contains($0) }
+        var kinds: [String] = []
+        if scalars.contains(where: isDigit) { kinds.append("digits") }
+        if scalars.contains(where: { $0.properties.isAlphabetic }) { kinds.append("letters") }
+        if scalars.contains(where: { $0.properties.isWhitespace }) { kinds.append("whitespace") }
+        var symbols: [Unicode.Scalar] = []
+        for scalar in scalars where !isDigit(scalar) && !scalar.properties.isAlphabetic && !scalar.properties.isWhitespace {
+            if !symbols.contains(scalar) { symbols.append(scalar) }
+        }
+        kinds += symbols.prefix(5).map(debugCharacter)
+        if symbols.count > 5 { kinds.append("…") }
+        return kinds.isEmpty ? "\(scalars.count) \(unit)" : "\(scalars.count) \(unit): \(kinds.joined(separator: ", "))"
+    }
+
+    /// A character quoted like Rust's `char` `{:?}` (`'@'`, `'\''`).
+    private static func debugCharacter(_ scalar: Unicode.Scalar) -> String {
+        switch scalar {
+        case "'":  return #"'\''"#
+        case "\\": return #"'\\'"#
+        case "\"": return #"'"'"#
+        default:
+            let escaped = String(reflecting: String(scalar)).dropFirst().dropLast()
+            return "'\(escaped)'"
+        }
+    }
+}
+
 /// Short, unique ids for records created while the app runs (`prefix-xxxxxxxx`).
 enum FakeID {
     static func make(_ prefix: String) -> String {

@@ -267,7 +267,28 @@ final class FakeDataBackendsTests: XCTestCase {
         } catch let StackError.Http(status, message) {
             XCTAssertEqual(status, 404)
             XCTAssertTrue(GooglePlayErrorTranslator.isLocalRejection(message), "Mirrors the core's local check: \(message)")
+            XCTAssertEqual(
+                message,
+                "local validation failed: developer ID \"not-a-number\" is not numeric (12 chars: letters, '-'); "
+                    + "it is the number after /developers/ in a Play Console URL; request not sent to Google",
+                "Worded exactly like the core's ensure_developer_id"
+            )
         }
+    }
+
+    /// `FakeCoreMessage` mirrors the core's `quoted` / `shape`
+    /// (`logging/redact.rs`), including its own unit-test expectations.
+    func testFakeCoreMessageMirrorsTheCoresEchoHelpers() {
+        XCTAssertEqual(FakeCoreMessage.shape(""), "0 chars")
+        XCTAssertEqual(FakeCoreMessage.shape("7"), "1 char: digits")
+        XCTAssertEqual(FakeCoreMessage.shape("abc"), "3 chars: letters")
+        XCTAssertEqual(FakeCoreMessage.shape(" 5374 "), "6 chars: digits, whitespace")
+        XCTAssertEqual(FakeCoreMessage.shape("a/b-c/d"), "7 chars: letters, '/', '-'")
+        XCTAssertEqual(FakeCoreMessage.shape("!@#$%^&"), "7 chars: '!', '@', '#', '$', '%', …")
+        XCTAssertEqual(FakeCoreMessage.quoted("abc"), "\"abc\"")
+        XCTAssertEqual(FakeCoreMessage.quoted(""), "\"\"")
+        XCTAssertEqual(FakeCoreMessage.quoted(String(repeating: "x", count: 70)), "\"\(String(repeating: "x", count: 64))\"…")
+        XCTAssertEqual(FakeCoreMessage.quoted(String(repeating: "x", count: 64)), "\"\(String(repeating: "x", count: 64))\"")
     }
 
     // MARK: - Firebase

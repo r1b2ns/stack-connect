@@ -273,7 +273,11 @@ final class ErrorShareReportTests: XCTestCase {
         let credentials = GooglePlayCredentials(serviceAccountJSON: keyFile)
         keychain.setObject(credentials, forKey: "credentials.\(account.id)")
         let clientEmail = (try? GooglePlayServiceAccount(credentials: credentials))?.clientEmail
-        let error = StackError.Http(status: 404, message: "\"abc\" is not a valid Google Play developer account ID (checked locally; nothing was sent to Google).")
+        let error = StackError.Http(
+            status: 404,
+            message: "local validation failed: developer ID \"abc\" is not numeric (3 chars: letters); it is the number "
+                + "after /developers/ in a Play Console URL; request not sent to Google"
+        )
         let call = GooglePlayUsersCall(.list, developerId: "abc", serviceAccountEmail: clientEmail)
 
         let report = ErrorShareReport.make(
