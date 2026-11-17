@@ -12,6 +12,9 @@ struct StackConnectApp: App {
 
     private let modelContainer: ModelContainer
     private let releaseNotesPresenter = ReleaseNotesPresenter()
+    /// Finishes tip transactions completed outside the tip jar (Ask to Buy,
+    /// interrupted purchases). Lives as long as the app; `nil` in a unit-test host.
+    private let tipJarTransactionObserver: TipJarTransactionObserver?
 
     init() {
         // The core's diagnostic log sink goes in before anything can `connect`
@@ -23,6 +26,10 @@ struct StackConnectApp: App {
         // GoogleService-Info.plist is bundled) and applies the user's opt-out
         // setting to the SDK before anything can be tracked.
         AnalyticsService.shared.applyCollectionSetting()
+
+        // Listen to `Transaction.updates` as early as possible, so a tip
+        // approved while the app was closed is finished right away.
+        tipJarTransactionObserver = Self.isUnitTestHost ? nil : TipJarTransactionObserver()
 
         let hasSeenWelcome = UserDefaults.standard.bool(forKey: "hasSeenWelcome")
         let notes = ReleaseNotes.load()

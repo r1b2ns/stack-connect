@@ -1,0 +1,68 @@
+{
+  "identifier" : "5C1E7A9B",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "6740100001",
+      "localizations" : [
+        {
+          "description" : "Buy the developer a coffee.",
+          "displayName" : "Coffee",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "zeroSixteen.stackconnect.tip.coffee",
+      "referenceName" : "Tip - Coffee",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "6740100002",
+      "localizations" : [
+        {
+          "description" : "Buy the developer a snack.",
+          "displayName" : "Snack",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "zeroSixteen.stackconnect.tip.snack",
+      "referenceName" : "Tip - Snack",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "6740100003",
+      "localizations" : [
+        {
+          "description" : "Buy the developer lunch.",
+          "displayName" : "Lunch",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "zeroSixteen.stackconnect.tip.lunch",
+      "referenceName" : "Tip - Lunch",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

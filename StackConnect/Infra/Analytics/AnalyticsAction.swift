@@ -18,6 +18,11 @@ enum AnalyticsAction: String, CaseIterable, Sendable {
     case deleteAllAccounts = "delete_all_accounts"
     case togglePreReviewChecklist = "toggle_pre_review_checklist"
 
+    // MARK: Tip jar
+    /// Sent with the outcome and `product_id` only: never a price, receipt or
+    /// transaction identifier.
+    case purchaseTip = "purchase_tip"
+
     // MARK: Accounts
     case createAccount = "create_account"
     case saveAccount = "save_account"
@@ -152,4 +157,6 @@ enum AnalyticsResult: String, CaseIterable, Sendable {
     case success = "success"
     case failure = "failure"
     case cancelled = "cancelled"
+    /// Deferred by the store (e.g. Ask to Buy): it may still complete later.
+    case pending = "pending"
 }

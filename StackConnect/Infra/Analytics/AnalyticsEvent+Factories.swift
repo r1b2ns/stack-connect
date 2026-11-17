@@ -29,6 +29,8 @@ enum AnalyticsParameterKey {
     static let rating = "rating"
     /// Number of Remote Config conditions in a published template.
     static let conditionCount = "condition_count"
+    /// A tip's App Store product ID (a fixed catalog value, never user data).
+    static let productId = "product_id"
 
     /// Shape of an account export (never its content): whether it expires and
     /// whether it is restricted to a subset of apps.

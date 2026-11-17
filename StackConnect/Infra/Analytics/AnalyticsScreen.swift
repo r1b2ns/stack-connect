@@ -32,6 +32,7 @@ enum AnalyticsScreen: String, CaseIterable, Sendable {
     case permissionPicker = "permission_picker"
     case appsPermissionPicker = "apps_permission_picker"
     case license = "license"
+    case tipJar = "tip_jar"
 
     // MARK: Apps
     case appList = "app_list"

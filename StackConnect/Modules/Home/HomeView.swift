@@ -408,6 +408,8 @@ private extension View {
                 SettingsAccountsViewFactory.build()
             case .license:
                 LicenseViewFactory.build()
+            case .tipJar:
+                TipJarViewFactory.build()
             case .accountSettings(let account):
                 AccountSettingsViewFactory.build(account: account)
             case .accountManagement(let account):

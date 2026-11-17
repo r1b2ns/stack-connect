@@ -107,6 +107,12 @@ packages:
     url: https://github.com/firebase/firebase-ios-sdk
     exactVersion: 13.1.1
 
+# Files shown in the project navigator without belonging to any target.
+# TipJar.storekit is the local StoreKit configuration used by the Development
+# and Fake Data schemes; it must never be bundled into the app.
+fileGroups:
+  - Configs/TipJar.storekit
+
 targets:
   StackConnect:
     type: application
@@ -270,6 +276,8 @@ schemes:
     run:
       config: Debug
       executable: StackConnect
+      # Local StoreKit testing for the tip jar (no App Store Connect needed).
+      storeKitConfiguration: Configs/TipJar.storekit
     test:
       config: Debug
       targets: [StackConnectTests]
@@ -284,6 +292,7 @@ schemes:
     run:
       config: Debug
       executable: StackConnect
+      storeKitConfiguration: Configs/TipJar.storekit
       commandLineArguments:
         "-StackFakeData YES": true
         "-StackFakeDataReset YES": false

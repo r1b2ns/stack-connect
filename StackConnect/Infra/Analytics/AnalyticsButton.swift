@@ -48,8 +48,12 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     case accounts = "accounts"
     case github = "github"
     case license = "license"
+    case supportProject = "support_project"
     case deleteAllAccounts = "delete_all_accounts"
     case confirmDeleteAllAccounts = "confirm_delete_all_accounts"
+
+    // MARK: Tip jar
+    case purchaseTip = "purchase_tip"
 
     // MARK: Accounts
     case account = "account"

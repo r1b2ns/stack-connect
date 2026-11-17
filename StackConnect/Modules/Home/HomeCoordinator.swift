@@ -4,6 +4,7 @@ enum HomeRoute: Hashable {
     case settings
     case settingsAccounts
     case license
+    case tipJar
     case accountSettings(AccountModel)
     case accountManagement(AccountModel)
     case certificatesList(AccountModel)
@@ -82,6 +83,10 @@ final class HomeCoordinator: MainCoordinatorProtocol {
 
     func navigateToLicense() {
         path.append(HomeRoute.license)
+    }
+
+    func navigateToTipJar() {
+        path.append(HomeRoute.tipJar)
     }
 
     func navigateToAccountSettings(_ account: AccountModel) {

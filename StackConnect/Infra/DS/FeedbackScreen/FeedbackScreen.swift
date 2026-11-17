@@ -7,6 +7,8 @@ enum FeedbackType {
     case warning
     case success
     case info
+    /// A warm thank-you (e.g. after a tip).
+    case gratitude
 
     var tintColor: Color {
         switch self {
@@ -14,6 +16,7 @@ enum FeedbackType {
         case .warning: return .yellow
         case .success: return .green
         case .info: return .blue
+        case .gratitude: return .pink
         }
     }
 }

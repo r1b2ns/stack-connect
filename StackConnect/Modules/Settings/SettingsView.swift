@@ -125,6 +125,26 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
 
     private func buildAboutSection() -> some View {
         Section {
+            StackTrackedButton(.supportProject, on: .settings) {
+                homeCoordinator.navigateToTipJar()
+            } label: {
+                HStack {
+                    Image(systemName: "heart.fill")
+                        .foregroundStyle(.pink)
+                        .frame(width: 28)
+
+                    Text(String(localized: "Support the Project"))
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .foregroundStyle(.primary)
+
             Link(destination: URL(string: "https://github.com/r1b2ns/stack-connect")!) {
                 HStack {
                     Image(systemName: "chevron.left.forwardslash.chevron.right")
