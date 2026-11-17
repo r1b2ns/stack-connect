@@ -129,6 +129,13 @@ apps (sending a message succeeds).
 Releases not listed as above are published. Every app also has uploaded
 bundles (one newer than any release, for the bundle picker).
 
+Release summaries (`tracks.releases.list`) answer like Google and the vendored
+core: a track without releases (a standard track always exists) is Google's
+`204 No Content`, which the core fails to decode and the app reads as an empty
+list (`GooglePlayEmptyReleaseList`); an unknown custom track is an empty list
+(Google's 404). Each request logs `[FakeData][Play] releases.list <package> /
+<track>`, to count them.
+
 The account has developer ID `4829103756618820931` (so the Users tab loads
 right away; clear it in Account Settings to see the setup state) and ten users:
 two admins (Dana Whitfield and `play-publisher@…`, the account's own service

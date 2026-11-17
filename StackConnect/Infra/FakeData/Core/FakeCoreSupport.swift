@@ -102,6 +102,14 @@ enum FakeCoreError {
                 + "— wait and retry later\(retryAfter) (HTTP \(answeredStatus) on \(request))"
         )
     }
+
+    /// What the vendored core reports when Google answers `tracks.releases.list`
+    /// of a track without releases with `204 No Content`: the empty body fails
+    /// to decode (`providers/googleplay/releases.rs` only reads a 404 as "no
+    /// releases"). See `GooglePlayEmptyReleaseList`.
+    static func releaseListNoContent() -> StackError {
+        .Decode(message: "tracks.releases.list response: EOF while parsing a value at line 1 column 0")
+    }
 }
 
 /// The core's helpers for echoing a rejected input in a local-validation

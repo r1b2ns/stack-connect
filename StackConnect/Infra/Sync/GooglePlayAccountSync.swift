@@ -131,7 +131,8 @@ struct GooglePlayAccountSync: Sendable {
     // MARK: - Release summaries
 
     /// Fetches and caches the summaries of the apps due a refresh (an automatic
-    /// run, see `GooglePlayReleaseSummariesRefresher`); returns the releases
+    /// run shared with the Play app list, see
+    /// `GooglePlayReleaseSummariesRefresher`); returns the releases
     /// whose lifecycle state changed since the previous cache (new releases and
     /// the first sync are skipped, like App Store status changes, plan H8).
     private func syncReleaseSummaries(for apps: [GooglePlayAppItem]) async -> [SyncChange.StatusChange] {
@@ -143,19 +144,15 @@ struct GooglePlayAccountSync: Sendable {
             logTag: "Sync][GooglePlay",
             now: now
         )
+        // The refresher saves the entries (also when this leg shares a run the
+        // Play app list started) and hands back the ones they replaced.
         let outcome = await refresher.refresh(packages: apps.map(\.packageName), trigger: .automatic)
 
         var changes: [SyncChange.StatusChange] = []
         for app in apps {
-            guard let entry = outcome.entries[app.packageName] else { continue }
-            let store = GooglePlayAppCacheStore<GooglePlayReleaseSummariesCache>(
-                storage: storage, accountId: account.id, packageName: app.packageName
-            )
-            let previous = await store.load()
-            await store.save(entry)
-            if let previous {
-                changes += Self.statusChanges(from: previous.summaries, to: entry.summaries, app: app, accountId: account.id)
-            }
+            guard let entry = outcome.entries[app.packageName],
+                  let previous = outcome.previousEntries[app.packageName] else { continue }
+            changes += Self.statusChanges(from: previous.summaries, to: entry.summaries, app: app, accountId: account.id)
         }
         return changes
     }

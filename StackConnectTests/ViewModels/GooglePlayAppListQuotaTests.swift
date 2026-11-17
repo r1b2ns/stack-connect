@@ -254,7 +254,12 @@ final class GooglePlayAppListQuotaTests: XCTestCase {
 
         clock.value = start.addingTimeInterval(5 * 60 + GooglePlayReleaseSummariesRefresher.minimumAutomaticInterval)
         await sut.load()
-        XCTAssertEqual(connection.releaseSummaryRequests.count, 12, "Due again after the interval (no release known: every track)")
+        XCTAssertEqual(connection.releaseSummaryRequests.count, 8,
+                       "Due again after the interval, but every track was found empty by the last discovery: nothing to ask")
+
+        clock.value = start.addingTimeInterval(5 * 60 + GooglePlayReleaseSummariesRefresher.fullTrackDiscoveryInterval)
+        await sut.load()
+        XCTAssertEqual(connection.releaseSummaryRequests.count, 12, "The daily discovery asks every track again")
     }
 
     // MARK: - Fewer tracks
@@ -278,21 +283,40 @@ final class GooglePlayAppListQuotaTests: XCTestCase {
         XCTAssertEqual(cached?.tracksDiscoveredAt, start.addingTimeInterval(-3_600), "Not a full discovery")
     }
 
-    func testEveryTrackIsAskedOnceADayAndWhenNothingIsKnown() async throws {
+    func testEveryTrackIsAskedOnceADayAndWhenNeverDiscovered() async throws {
         try await seedSummaries("com.a", [summary("production", "1.0 (10)", .published, "10")],
                                 fetchedAt: start.addingTimeInterval(-3_600),
                                 discoveredAt: start.addingTimeInterval(-GooglePlayReleaseSummariesRefresher.fullTrackDiscoveryInterval))
-        try await seedSummaries("com.b", [], fetchedAt: start.addingTimeInterval(-3_600), discoveredAt: start.addingTimeInterval(-60))
-        connection.fetchAppsHandler = { [app("com.a"), app("com.b")] }
+        try await seedSummaries("com.b", [], fetchedAt: start.addingTimeInterval(-3_600), discoveredAt: nil)
+        try await seedSummaries("com.c", [], fetchedAt: start.addingTimeInterval(-3_600), discoveredAt: start.addingTimeInterval(-60))
+        connection.fetchAppsHandler = { [app("com.a"), app("com.b"), app("com.c")] }
         let sut = makeSUT()
 
         await sut.load()
 
         let asked = Dictionary(grouping: connection.releaseSummaryRequests, by: \.packageName).mapValues { Set($0.map(\.track)) }
         XCTAssertEqual(asked["com.a"], Set(GooglePlayAppListSync.standardTracks), "Discovery older than a day")
-        XCTAssertEqual(asked["com.b"], Set(GooglePlayAppListSync.standardTracks), "No release known")
+        XCTAssertEqual(asked["com.b"], Set(GooglePlayAppListSync.standardTracks), "Never discovered")
+        XCTAssertNil(asked["com.c"], "Discovered a minute ago with every track empty: known empty until the next discovery")
         let cached = try await cachedSummaries("com.a")
         XCTAssertEqual(cached?.tracksDiscoveredAt, start)
+    }
+
+    func testATracksCacheOlderThanTheLastDiscoveryDoesNotAddTracks() async throws {
+        let discovery = start.addingTimeInterval(-3_600)
+        try await seedSummaries("com.a", [summary("production", "1.0 (10)", .published, "10")],
+                                fetchedAt: discovery, discoveredAt: discovery)
+        let stale = GooglePlayTracksCache(accountId: account.id, packageName: "com.a", tracks: [
+            GooglePlayTrackModel(track: "beta", releases: [GooglePlayReleaseModel(name: "0.9", status: .completed, versionCodes: ["9"], userFraction: nil, releaseNotes: [], inAppUpdatePriority: nil)])
+        ], fetchedAt: discovery.addingTimeInterval(-60))
+        try await storage.save(stale, id: stale.cacheKey)
+        connection.fetchAppsHandler = { [app("com.a")] }
+        let sut = makeSUT()
+
+        await sut.load()
+
+        XCTAssertEqual(connection.releaseSummaryRequests.map(\.track), ["production"],
+                       "Beta was asked (and answered empty) by the later discovery")
     }
 
     // MARK: - Other errors

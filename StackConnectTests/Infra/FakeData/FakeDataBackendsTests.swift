@@ -167,7 +167,13 @@ final class FakeDataBackendsTests: XCTestCase {
         var states: Set<String> = []
         for app in FakeGooglePlayCatalog.apps {
             for track in ["production", "beta", "alpha", "internal"] {
-                for summary in try await tracks.fetchReleaseSummaries(appId: app.packageName, track: track) {
+                let summaries: [ReleaseSummaryInfo]
+                do {
+                    summaries = try await tracks.fetchReleaseSummaries(appId: app.packageName, track: track)
+                } catch where GooglePlayEmptyReleaseList.isEmptyBody(error) {
+                    continue // A track without releases (Google's 204).
+                }
+                for summary in summaries {
                     XCTAssertEqual(summary.track, track)
                     states.insert(try XCTUnwrap(summary.lifecycleState))
                 }
@@ -179,6 +185,39 @@ final class FakeDataBackendsTests: XCTestCase {
         ])
         let unknownTrack = try await tracks.fetchReleaseSummaries(appId: "com.northwind.trailhead", track: "no-such-track")
         XCTAssertTrue(unknownTrack.isEmpty, "An unknown track is an empty list, like the core's 404 mapping")
+    }
+
+    /// Google answers `releases.list` of a track without releases with 204 No
+    /// Content, which the vendored core fails to decode; the connection reads
+    /// that as an empty list, so the app is still cached.
+    func testAnEmptyTrackIsGooglesNoContentAndTheConnectionReadsItAsEmpty() async throws {
+        let tracks = try XCTUnwrap(playProvider().tracks())
+        do {
+            _ = try await tracks.fetchReleaseSummaries(appId: "com.northwind.trailhead", track: "alpha")
+            XCTFail("Expected the core's empty-body decode error")
+        } catch {
+            XCTAssertTrue(GooglePlayEmptyReleaseList.isEmptyBody(error))
+        }
+
+        let connection = playConnection()
+        let empty = try await connection.fetchReleaseSummaries(packageName: "com.northwind.trailhead", track: "alpha")
+        XCTAssertTrue(empty.isEmpty)
+        let production = try await connection.fetchReleaseSummaries(packageName: "com.northwind.trailhead", track: "production")
+        XCTAssertFalse(production.isEmpty)
+    }
+
+    func testOnlyTheCoresEmptyBodyDecodeErrorIsAnEmptyReleaseList() {
+        XCTAssertTrue(GooglePlayEmptyReleaseList.isEmptyBody(
+            StackError.Decode(message: "tracks.releases.list response: EOF while parsing a value at line 1 column 0")
+        ))
+        XCTAssertFalse(GooglePlayEmptyReleaseList.isEmptyBody(
+            StackError.Decode(message: "tracks.releases.list response: expected value at line 1 column 1")
+        ), "A malformed body is still an error")
+        XCTAssertFalse(GooglePlayEmptyReleaseList.isEmptyBody(
+            StackError.Decode(message: "edits.tracks response: EOF while parsing a value at line 1 column 0")
+        ), "Only releases.list")
+        XCTAssertFalse(GooglePlayEmptyReleaseList.isEmptyBody(StackError.Http(status: 204, message: "")))
+        XCTAssertFalse(GooglePlayEmptyReleaseList.isEmptyBody(URLError(.zeroByteResource)))
     }
 
     /// `-StackFakePlayQuota YES`: every release summary answers with the

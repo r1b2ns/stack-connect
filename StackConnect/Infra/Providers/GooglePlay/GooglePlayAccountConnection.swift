@@ -334,7 +334,15 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
         guard let tracks = provider.tracks() else {
             throw translate(.Unsupported(message: "Tracks capability is not available for this provider."))
         }
-        let infos = try await callRustCore { try await tracks.fetchReleaseSummaries(appId: packageName, track: track) }
+        let infos: [ReleaseSummaryInfo]
+        do {
+            infos = try await tracks.fetchReleaseSummaries(appId: packageName, track: track)
+        } catch let error as StackError where GooglePlayEmptyReleaseList.isEmptyBody(error) {
+            // Google's 204 No Content for a track without releases.
+            infos = []
+        } catch let error as StackError {
+            throw translate(error)
+        }
         Log.print.info("[GooglePlay] Fetched \(infos.count) release summaries for \(packageName) on \(track) (Rust core)")
         return infos.map(Self.mapReleaseSummary)
     }

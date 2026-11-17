@@ -435,9 +435,10 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     /// `releases.list` opens no Play edit, so — unlike the edit-based reads
     /// (D14) — it is safe to run automatically. Never offline, only with the
     /// account's `version` view rule, only for apps in its scope. An app's
-    /// cache entry and status lines are replaced only when every track asked
-    /// answered; a failure keeps its cached status. Each app's entry is saved
-    /// once, after all requests finished.
+    /// cache entry is replaced only when every track asked answered; a failure
+    /// keeps its cached status. The refresher saves the entries (the run may
+    /// be the Home sync's, shared), then the status lines are read back from
+    /// the cache, so apps another run just refreshed show their fresh status.
     private func fetchReleaseSummaries(
         using fetcher: any GooglePlayReleaseSummariesFetching,
         trigger: GooglePlayReleaseSummariesRefresher.Trigger
@@ -453,14 +454,8 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
 
         let outcome = await summariesRefresher(using: fetcher).refresh(packages: packages, trigger: trigger)
 
-        for packageName in packages {
-            guard let entry = outcome.entries[packageName] else { continue }
-            await summariesCache(for: packageName).save(entry)
-            // Applied only if the app is still listed (it may have been removed meanwhile).
-            if uiState.apps.contains(where: { $0.packageName == packageName }) {
-                uiState.releaseStatus[packageName] = GooglePlayTrackStatusLine.lines(from: entry)
-            }
-        }
+        // Only apps still listed (one may have been removed meanwhile).
+        await loadCachedReleaseStatus()
         uiState.releaseStatusPausedUntil = outcome.cooldown.flatMap { $0.isActive(at: now()) ? $0.until : nil }
         Log.print.info("[GooglePlayAppList] Updated release status of \(outcome.entries.count, privacy: .public) of \(packages.count, privacy: .public) apps for account: \(self.uiState.account.name)")
     }

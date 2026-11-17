@@ -129,18 +129,27 @@ final class FakePlayTracks: Tracks, @unchecked Sendable {
         }
     }
 
-    /// Edit-free `tracks.releases.list`; an unknown track is an empty list.
-    /// With `releaseSummariesQuotaExceeded`, the core's quota error.
+    /// Edit-free `tracks.releases.list`, answered like Google and the vendored
+    /// core: an unknown custom track is an empty list (Google's 404), a track
+    /// without releases (a standard track always exists) is Google's
+    /// `204 No Content`, which the core fails to decode
+    /// (`FakeCoreError.releaseListNoContent`). With
+    /// `releaseSummariesQuotaExceeded`, the core's quota error.
     override func fetchReleaseSummaries(appId: String, track: String) async throws -> [ReleaseSummaryInfo] {
-        try developer.state.read { state in
+        // One line per request, to count them in fake mode (`[FakeData][Play] releases.list`).
+        Log.print.info("[FakeData][Play] releases.list \(appId, privacy: .public) / \(track, privacy: .public)")
+        return try developer.state.read { state in
             if state.releaseSummariesQuotaExceeded {
                 throw FakeCoreError.playQuotaExceeded(
                     retryAfterSeconds: 60,
                     request: "GET applications/\(appId)/tracks/\(track)/releases"
                 )
             }
-            guard state.tracks[appId] != nil else { throw FakeCoreError.notFound("Package \(appId)") }
-            return state.releaseSummaries(packageName: appId, track: track)
+            guard let tracks = state.tracks[appId] else { throw FakeCoreError.notFound("Package \(appId)") }
+            let exists = tracks.contains { $0.track == track } || GooglePlayAppListSync.standardTracks.contains(track)
+            let summaries = state.releaseSummaries(packageName: appId, track: track)
+            if exists && summaries.isEmpty { throw FakeCoreError.releaseListNoContent() }
+            return summaries
         }
     }
 
