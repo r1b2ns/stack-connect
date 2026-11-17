@@ -264,8 +264,9 @@ final class FakeDataBackendsTests: XCTestCase {
         do {
             _ = try await users.fetchUsers(developerId: "not-a-number")
             XCTFail("Expected a 404")
-        } catch let StackError.Http(status, _) {
+        } catch let StackError.Http(status, message) {
             XCTAssertEqual(status, 404)
+            XCTAssertTrue(GooglePlayErrorTranslator.isLocalRejection(message), "Mirrors the core's local check: \(message)")
         }
     }
 

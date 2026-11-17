@@ -33,6 +33,9 @@ enum FakeDataBootstrap {
 
         let container = try makeContainer(directory: directory)
         try FakeDataSeeder.seedIfNeeded(container: container, clock: clock)
+        if let developerId = mode.playDeveloperId {
+            try FakeDataSeeder.setPlayDeveloperId(developerId, container: container)
+        }
 
         let keys = FakeKeyStorable()
         FakeDataSeeder.writeCredentials(into: keys)

@@ -14,6 +14,7 @@ All the code lives in `StackConnect/Infra/FakeData/` and is wrapped in
 | `-StackFakeData YES` (launch argument) or `STACK_FAKE_DATA=1` (environment) | Run on fake data. |
 | `-StackFakeDataReset YES` or `STACK_FAKE_DATA_RESET=1` | Wipe the fake store, icon cache and preferences, then seed again. Only applies together with the switch above. |
 | `-StackFakeDataWidgets YES` or `STACK_FAKE_DATA_WIDGETS=1` | Also feed the **home-screen widgets**: the WidgetKit snapshot (`WidgetDashboard.json`) and the widget icons are written to the App Group instead of the private fake folder. Use it to capture App Store screenshots of the widgets. It replaces the real widget snapshot until the next sync with real accounts (launch without the switch to restore it). Only applies together with `-StackFakeData YES`. |
+| `-StackFakePlayDeveloperId <value>` | Store `<value>` verbatim as the Google Play account's developer ID at launch, bypassing the input normalizer (an empty value clears it). Use e.g. `abc` to see the Users tab's "invalid developer ID" error (a local HTTP 404, as the Rust core raises it) and its Share Error report. Only applies together with `-StackFakeData YES`. |
 
 The argument wins over the environment variable (`-StackFakeData NO` turns the
 mode off even when `STACK_FAKE_DATA=1` is set). Parsing lives in

@@ -12,6 +12,10 @@ import Foundation
 ///   WidgetKit snapshot and the widget icons into the App Group, so the
 ///   home-screen widgets show the fake data (App Store screenshots). Without it
 ///   they stay on the real data. Only with the mode itself.
+/// - `-StackFakePlayDeveloperId <value>` stores `<value>` verbatim as the fake
+///   Google Play account's developer ID at launch (bypassing the input
+///   normalizer), e.g. `abc` to see the Users tab's "invalid developer ID"
+///   error and its report. Only with the mode itself.
 ///
 /// The scheme "StackConnect Fake Data" (project.yml) pre-fills both arguments so
 /// they can be toggled in Xcode's scheme editor. See `docs/FAKE_DATA.md`.
@@ -23,6 +27,7 @@ struct FakeDataMode: Equatable, Sendable {
     static let resetEnvironmentKey = "STACK_FAKE_DATA_RESET"
     static let widgetsArgumentKey = "StackFakeDataWidgets"
     static let widgetsEnvironmentKey = "STACK_FAKE_DATA_WIDGETS"
+    static let playDeveloperIdArgumentKey = "StackFakePlayDeveloperId"
 
     /// Run on fake data.
     let isEnabled: Bool
@@ -34,16 +39,21 @@ struct FakeDataMode: Equatable, Sendable {
     /// meaningful when enabled).
     let feedsHomeScreenWidgets: Bool
 
+    /// Developer ID forced on the fake Play account, verbatim (only meaningful
+    /// when enabled).
+    let playDeveloperId: String?
+
     /// The switches this process was launched with.
     static let current = FakeDataMode(
         arguments: ProcessInfo.processInfo.arguments,
         environment: ProcessInfo.processInfo.environment
     )
 
-    init(isEnabled: Bool, shouldReset: Bool, feedsHomeScreenWidgets: Bool = false) {
+    init(isEnabled: Bool, shouldReset: Bool, feedsHomeScreenWidgets: Bool = false, playDeveloperId: String? = nil) {
         self.isEnabled = isEnabled
         self.shouldReset = isEnabled && shouldReset
         self.feedsHomeScreenWidgets = isEnabled && feedsHomeScreenWidgets
+        self.playDeveloperId = isEnabled ? playDeveloperId : nil
     }
 
     /// Parses the launch arguments (`-Key value`, the `UserDefaults` argument
@@ -59,7 +69,12 @@ struct FakeDataMode: Equatable, Sendable {
         let widgets = Self.flag(Self.widgetsArgumentKey, in: arguments)
             ?? Self.truthy(environment[Self.widgetsEnvironmentKey])
             ?? false
-        self.init(isEnabled: enabled, shouldReset: reset, feedsHomeScreenWidgets: widgets)
+        self.init(
+            isEnabled: enabled,
+            shouldReset: reset,
+            feedsHomeScreenWidgets: widgets,
+            playDeveloperId: Self.value(Self.playDeveloperIdArgumentKey, in: arguments)
+        )
     }
 
     // MARK: - Parsing
@@ -72,6 +87,17 @@ struct FakeDataMode: Equatable, Sendable {
             let valueIndex = arguments.index(after: index)
             guard valueIndex < arguments.endIndex else { continue }
             result = truthy(arguments[valueIndex])
+        }
+        return result
+    }
+
+    /// Raw value of `-key value` in `arguments` (last occurrence wins).
+    private static func value(_ key: String, in arguments: [String]) -> String? {
+        var result: String?
+        for (index, argument) in arguments.enumerated() where argument == "-\(key)" {
+            let valueIndex = arguments.index(after: index)
+            guard valueIndex < arguments.endIndex else { continue }
+            result = arguments[valueIndex]
         }
         return result
     }

@@ -63,6 +63,22 @@ enum FakeDataSeeder {
         Log.print.notice("[FakeData] Seeded \(accounts(clock: clock).count) fake accounts")
     }
 
+    /// Stores `developerId` verbatim (empty clears it) on the fake Play account,
+    /// bypassing `GooglePlayDeveloperId.normalized` — `-StackFakePlayDeveloperId`.
+    @MainActor
+    static func setPlayDeveloperId(_ developerId: String, container: ModelContainer) throws {
+        let context = ModelContext(container)
+        let typeName = String(describing: AccountModel.self)
+        let id = AccountID.northwindGooglePlay
+        let items = try context.fetch(FetchDescriptor<PersistedItem>())
+        guard let item = items.first(where: { $0.typeName == typeName && $0.identifier == id }) else { return }
+        let account = try JSONDecoder().decode(AccountModel.self, from: item.payload)
+        let updated = account.updating(googlePlayDeveloperId: .some(developerId.isEmpty ? nil : developerId))
+        item.payload = try JSONEncoder().encode(updated)
+        try context.save()
+        Log.print.notice("[FakeData] Play developer ID forced to \"\(developerId, privacy: .public)\"")
+    }
+
     /// The tracks of every fake Play app, read "yesterday".
     static func googlePlayTracksCaches(clock: FakeClock) -> [GooglePlayTracksCache] {
         FakeGooglePlayCatalog.apps.map { app in

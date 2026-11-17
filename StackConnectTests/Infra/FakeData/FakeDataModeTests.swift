@@ -65,4 +65,13 @@ final class FakeDataModeTests: XCTestCase {
         XCTAssertFalse(FakeDataMode(arguments: ["-StackFakeData", "YES"], environment: [:]).feedsHomeScreenWidgets)
         XCTAssertFalse(FakeDataMode(arguments: ["-StackFakeDataWidgets", "YES"], environment: [:]).feedsHomeScreenWidgets)
     }
+
+    func testPlayDeveloperIdOverrideIsReadVerbatimOnlyInTheMode() {
+        let mode = FakeDataMode(arguments: ["-StackFakeData", "YES", "-StackFakePlayDeveloperId", " abc "], environment: [:])
+        XCTAssertEqual(mode.playDeveloperId, " abc ")
+
+        XCTAssertNil(FakeDataMode(arguments: ["-StackFakeData", "YES"], environment: [:]).playDeveloperId)
+        XCTAssertNil(FakeDataMode(arguments: ["-StackFakePlayDeveloperId", "abc"], environment: [:]).playDeveloperId,
+                     "Without the mode the override is ignored")
+    }
 }
