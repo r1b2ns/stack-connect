@@ -102,20 +102,24 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
     func saveDeveloperId() async {
         let input = uiState.editingDeveloperId
         guard GooglePlayDeveloperId.isAcceptable(input) else {
-            uiState.toastMessage = ToastMessage(
-                String(localized: "Enter the number from Play Console › Settings › Developer account."),
-                icon: "exclamationmark.triangle.fill"
-            )
+            // The input isn't known to be an ID (it may be any pasted text): private.
+            Log.print.error("[AccountSettings] Developer ID refused by the normalizer — length: \(input.count, privacy: .public), input: \"\(input)\"")
+            uiState.toastMessage = ToastMessage(GooglePlayDeveloperId.invalidMessage, icon: "exclamationmark.triangle.fill")
             return
         }
-        let updated = uiState.account.updating(googlePlayDeveloperId: .some(GooglePlayDeveloperId.normalized(input)))
+        let developerId = GooglePlayDeveloperId.normalized(input)
+        let updated = uiState.account.updating(googlePlayDeveloperId: .some(developerId))
         do {
             try await storage.save(updated, id: updated.id)
             uiState.account = updated
             uiState.toastMessage = ToastMessage(String(localized: "Saved"), icon: "checkmark.circle.fill")
             analytics.track(.action(.saveAccount, on: .accountSettings, result: .success))
         } catch {
-            Log.print.error("[AccountSettings] Failed to save the developer ID: \(error.localizedDescription)")
+            Log.print.error("[AccountSettings] Failed to save the developer ID \"\(developerId ?? "", privacy: .public)\": \(error.localizedDescription, privacy: .public)")
+            uiState.toastMessage = ToastMessage(
+                String(localized: "The Developer ID couldn't be saved. Try again.") + "\n" + error.localizedDescription,
+                icon: "exclamationmark.triangle.fill"
+            )
             analytics.track(.action(.saveAccount, on: .accountSettings, result: .failure))
         }
     }

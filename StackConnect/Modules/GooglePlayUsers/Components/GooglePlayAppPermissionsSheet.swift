@@ -57,6 +57,10 @@ struct GooglePlayAppPermissionsSheet: View {
     let onSave: (_ packageName: String, _ values: [String]) async -> Bool
     /// `nil` hides "Remove Access to This App" (adding, or not allowed).
     let onRemove: (() async -> Bool)?
+    /// A failed save or removal, shown at the top with Share Error.
+    let error: String?
+    /// Where `error` is reported from, with its technical details.
+    let errorReportContext: ErrorReportContext?
 
     @State private var form: GooglePlayGrantForm
     @State private var isSaving = false
@@ -69,18 +73,25 @@ struct GooglePlayAppPermissionsSheet: View {
         apps: [GooglePlayAppItem],
         editedApp: GooglePlayAppItem?,
         onSave: @escaping (_ packageName: String, _ values: [String]) async -> Bool,
-        onRemove: (() async -> Bool)?
+        onRemove: (() async -> Bool)?,
+        error: String? = nil,
+        errorReportContext: ErrorReportContext? = nil
     ) {
         _form = State(initialValue: form)
         self.apps = apps
         self.editedApp = editedApp
         self.onSave = onSave
         self.onRemove = onRemove
+        self.error = error
+        self.errorReportContext = errorReportContext
     }
 
     var body: some View {
         NavigationStack {
             Form {
+                if let error, let errorReportContext {
+                    StackInlineErrorSection(message: error, reportContext: errorReportContext)
+                }
                 buildAppSection()
                 ForEach(GooglePlayPermissionCatalog.grouped(.app), id: \.group) { group in
                     Section {

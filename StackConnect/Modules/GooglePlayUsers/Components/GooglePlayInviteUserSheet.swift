@@ -7,6 +7,9 @@ struct GooglePlayInviteUserSheet: View {
     let apps: [GooglePlayAppItem]
     /// Account-wide permissions are allowed (not a scoped import).
     let allowsAccountPermissions: Bool
+    /// Where a failed invitation is reported from (Share Error), with the
+    /// last failure's technical details.
+    let errorReportContext: ErrorReportContext
     /// Sends the invitation; returns a user-facing error, `nil` on success.
     let onSend: (GooglePlayInviteForm) async -> String?
 
@@ -29,11 +32,7 @@ struct GooglePlayInviteUserSheet: View {
                 buildAppAccessSection()
 
                 if let error {
-                    Section {
-                        Label(error, systemImage: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.red)
-                            .font(.subheadline)
-                    }
+                    StackInlineErrorSection(message: error, reportContext: errorReportContext)
                 }
 
                 Section {

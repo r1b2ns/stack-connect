@@ -77,7 +77,10 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
         }
 
         if uiState.providerType == .googlePlay, !GooglePlayDeveloperId.isAcceptable(uiState.googlePlayDeveloperId) {
-            uiState.validationError = String(localized: "The Developer ID is the number in Play Console › Settings › Developer account. Leave it empty to add it later.")
+            let input = uiState.googlePlayDeveloperId
+            // The input isn't known to be an ID (it may be any pasted text): private.
+            Log.print.error("[AddAccount] Developer ID refused by the normalizer — length: \(input.count, privacy: .public), input: \"\(input)\"")
+            uiState.validationError = GooglePlayDeveloperId.invalidMessage
             return
         }
 

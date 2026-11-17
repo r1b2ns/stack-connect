@@ -30,6 +30,7 @@ struct GooglePlayUserDetailView<ViewModel: GooglePlayUserDetailViewModelProtocol
 
     @ObservedObject var viewModel: ViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var errorShareRequest: StackErrorShareRequest?
 
     private var state: GooglePlayUserDetailUiState { viewModel.uiState }
     private var user: GooglePlayUserModel { state.user }
@@ -54,7 +55,9 @@ struct GooglePlayUserDetailView<ViewModel: GooglePlayUserDetailViewModelProtocol
                 viewModel.uiState.draftExpiration = expiration
             }
         }
-        .sheet(item: $viewModel.uiState.grantEditor) { request in
+        .sheet(item: $viewModel.uiState.grantEditor, onDismiss: {
+            viewModel.uiState.grantEditorError = nil
+        }) { request in
             buildAppPermissionsSheet(request)
         }
         .toast(message: $viewModel.uiState.toastMessage)
@@ -106,11 +109,22 @@ struct GooglePlayUserDetailView<ViewModel: GooglePlayUserDetailViewModelProtocol
                 set: { if !$0 { viewModel.uiState.errorMessage = nil } }
             ),
             presenting: state.errorMessage
-        ) { _ in
+        ) { message in
             StackTrackedButton(String(localized: "OK"), button: .ok, on: .googlePlayUserDetail, role: .cancel) {}
+            StackErrorShareAlertButton(
+                message: message,
+                context: errorReportContext(screen: user.displayName, details: state.errorDetails),
+                request: $errorShareRequest
+            )
         } message: { message in
             Text(message)
         }
+        .stackErrorShareSheet($errorShareRequest)
+    }
+
+    /// Share Error context of this screen (or of its App Permissions sheet).
+    private func errorReportContext(screen: String, details: [String]) -> ErrorReportContext {
+        ErrorReportContext(screen: screen, account: state.account, technicalDetails: details)
     }
 
     // MARK: - App Permissions sheet (plan U7)
@@ -130,7 +144,12 @@ struct GooglePlayUserDetailView<ViewModel: GooglePlayUserDetailViewModelProtocol
             },
             onRemove: grant.map { grant in
                 { await viewModel.removeGrant(grant) }
-            }
+            },
+            error: state.grantEditorError?.message,
+            errorReportContext: errorReportContext(
+                screen: String(localized: "App Permissions"),
+                details: state.grantEditorError?.technicalDetails ?? []
+            )
         )
     }
 

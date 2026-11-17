@@ -78,6 +78,17 @@ enum GooglePlayErrorTranslator {
         case .Http(let status, let message) where operation == .inviteUser && status == 400:
             return inviteRefusalMessage(googleMessage: message)
 
+        case .Http(let status, let message) where operation.isUsers:
+            // Keep the friendly lead and add the core's / Google's own text: a
+            // wrong developer ID, a missing permission or a refused change
+            // reads very differently in it (and a local check says nothing
+            // was sent to Google at all).
+            let lead = isLocalRejection(message) && status == 404
+                ? GooglePlayDeveloperId.invalidMessage
+                : httpMessage(status: Int(status), operation: operation)
+            let detail = message.trimmingCharacters(in: .whitespacesAndNewlines)
+            return detail.isEmpty ? lead : "\(lead)\n\(detail)"
+
         case .Http(let status, _):
             return httpMessage(status: Int(status), operation: operation)
 
@@ -145,7 +156,10 @@ enum GooglePlayErrorTranslator {
     private static func inviteRefusalMessage(googleMessage: String) -> String {
         let detail = googleMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         let lowered = detail.lowercased()
-        if lowered.contains("google account") || lowered.contains("not a valid") || lowered.contains("invalid email") {
+        // The core's own check (an address it can't send, nothing was sent to
+        // Google) is not Google refusing the account.
+        if !isLocalRejection(detail),
+           lowered.contains("google account") || lowered.contains("not a valid") || lowered.contains("invalid email") {
             return String(localized: "Google Play can only invite Google accounts. Check the address, or ask the person which Google account (Gmail or Google Workspace) to use.")
         }
         let lead = String(localized: "Google Play couldn't send this invitation.")
@@ -158,6 +172,33 @@ enum GooglePlayErrorTranslator {
     static func isWrongDeveloperId(_ error: Error) -> Bool {
         guard case .Http(let status, _)? = error as? StackError else { return false }
         return status == 404 || status == 403
+    }
+
+    /// True when the core refused the call before sending it (an invalid
+    /// developer ID, e-mail or package name): its message says so.
+    static func isLocalRejection(_ message: String) -> Bool {
+        message.localizedCaseInsensitiveContains("nothing was sent to Google")
+    }
+
+    // MARK: - Technical details
+
+    /// The "Technical details" lines of a shared error report for any Google
+    /// Play error (see `GooglePlayErrorDetails`). Pass the users `call` for a
+    /// `developers.users` failure: it adds the developer ID as stored, the
+    /// resource path and the service account e-mail.
+    static func technicalDetails(for error: Error, operation: Operation, call: GooglePlayUsersCall? = nil) -> [String] {
+        GooglePlayErrorDetails(error: error, operation: call?.operation ?? operation, call: call).lines
+    }
+
+    /// A failed users call, ready for the screen: the friendly message, the
+    /// report's technical details, and the failure logged under `logTag`.
+    static func usersFailure(_ error: Error, call: GooglePlayUsersCall, logTag: String) -> GooglePlayUsersFailure {
+        let details = GooglePlayErrorDetails(error: error, operation: call.operation, call: call)
+        details.log(tag: logTag)
+        return GooglePlayUsersFailure(
+            message: friendlyMessage(for: error, operation: call.operation),
+            technicalDetails: details.lines
+        )
     }
 
     private static var genericMessage: String {
@@ -202,6 +243,13 @@ private extension GooglePlayErrorTranslator.Operation {
     var isUsers: Bool {
         self == .users || self == .inviteUser || self == .userChange
     }
+}
+
+/// A failed Google Play users call as a screen shows it: the user-facing
+/// message and the technical lines its Share Error report adds.
+struct GooglePlayUsersFailure: Equatable, Sendable {
+    let message: String
+    var technicalDetails: [String] = []
 }
 
 /// Limits Google Play enforces on review replies.

@@ -67,6 +67,8 @@ struct GooglePlayUsersUiState {
     var showSyncToast = false
     /// Last load failure, user-facing.
     var error: String?
+    /// Technical lines of `error`'s Share Error report.
+    var errorDetails: [String] = []
     /// The last load failed in a way a wrong developer ID explains (404 / 403):
     /// the error offers to change it (plan U3).
     var developerIdRejected = false
@@ -75,6 +77,8 @@ struct GooglePlayUsersUiState {
     var isEditingDeveloperId = false
     var developerIdInput = ""
     var developerIdError: String?
+    /// Technical lines of `developerIdError`'s Share Error report.
+    var developerIdErrorDetails: [String] = []
     var isSavingDeveloperId = false
     var toastMessage: ToastMessage?
     /// The calling service account's `client_email` (self-protection, U7).
@@ -89,6 +93,11 @@ struct GooglePlayUsersUiState {
     var refusalMessage: String?
     /// A failed write, user-facing.
     var actionError: String?
+    /// Technical lines of `actionError`'s Share Error report.
+    var actionErrorDetails: [String] = []
+    /// Technical lines of the last failed invitation (the invite sheet's
+    /// Share Error report).
+    var inviteErrorDetails: [String] = []
     /// E-mail of the user a write is running for.
     var workingEmail: String?
     var showInvite = false
@@ -185,6 +194,7 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
         }
 
         uiState.error = nil
+        uiState.errorDetails = []
         await loadApps()
         if let cached = await loadCache() {
             uiState.users = Self.sorted(cached.users)
@@ -207,10 +217,11 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
             await saveCache()
             Log.print.info("[GooglePlayUsers] Synced \(users.count) users for account: \(self.uiState.account.name)")
         } catch {
-            Log.print.error("[GooglePlayUsers] Sync failed: \(error.localizedDescription)")
+            let failure = GooglePlayErrorTranslator.usersFailure(error, call: usersCall(.list, developerId: developerId), logTag: "GooglePlayUsers")
             let offline = GooglePlayErrorTranslator.isOffline(error)
             if !(offline && !uiState.users.isEmpty) {
-                uiState.error = GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .users)
+                uiState.error = failure.message
+                uiState.errorDetails = failure.technicalDetails
             }
             uiState.developerIdRejected = GooglePlayErrorTranslator.isWrongDeveloperId(error)
         }
@@ -223,8 +234,15 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
 
     func saveDeveloperId() async {
         analytics.track(.buttonTap(.saveDeveloperId, on: .googlePlayUsers))
-        guard let developerId = GooglePlayDeveloperId.normalized(uiState.developerIdInput) else {
-            uiState.developerIdError = String(localized: "Enter the number from Play Console › Settings › Developer account.")
+        let input = uiState.developerIdInput
+        guard let developerId = GooglePlayDeveloperId.normalized(input) else {
+            // Say what's wrong (and keep the exact input for the report): a
+            // pasted value often carries a URL without the ID or stray text.
+            let details = GooglePlayDeveloperId.diagnosticLines(for: input, label: .entered)
+            // The input isn't known to be an ID (it may be any pasted text): private.
+            Log.print.error("[GooglePlayUsers] Developer ID refused by the normalizer — length: \(input.count, privacy: .public), input: \"\(input)\"")
+            uiState.developerIdError = GooglePlayDeveloperId.invalidMessage
+            uiState.developerIdErrorDetails = details
             return
         }
         uiState.isSavingDeveloperId = true
@@ -235,13 +253,15 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
         do {
             try await storage.save(updated, id: updated.id)
         } catch {
-            Log.print.error("[GooglePlayUsers] Saving the developer ID failed: \(error.localizedDescription)")
-            uiState.developerIdError = String(localized: "The Developer ID couldn't be saved. Try again.")
+            Log.print.error("[GooglePlayUsers] Saving the developer ID \"\(developerId, privacy: .public)\" failed: \(error.localizedDescription, privacy: .public)")
+            uiState.developerIdError = String(localized: "The Developer ID couldn't be saved. Try again.") + "\n" + error.localizedDescription
+            uiState.developerIdErrorDetails = GooglePlayDeveloperId.diagnosticLines(for: input, label: .entered)
             analytics.track(.action(.saveDeveloperId, on: .googlePlayUsers, result: .failure))
             return
         }
         uiState.account = updated
         uiState.developerIdError = nil
+        uiState.developerIdErrorDetails = []
         uiState.isEditingDeveloperId = false
         analytics.track(.action(.saveDeveloperId, on: .googlePlayUsers, result: .success))
 
@@ -290,8 +310,10 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
                                                 : String(localized: "User removed"))
             analytics.track(.action(.deleteUser, on: .googlePlayUsers, result: .success))
         } catch {
-            Log.print.error("[GooglePlayUsers] Remove failed: \(error.localizedDescription)")
-            uiState.actionError = GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .userChange)
+            let failure = GooglePlayErrorTranslator.usersFailure(
+                error, call: usersCall(.delete, developerId: developerId, email: user.email), logTag: "GooglePlayUsers"
+            )
+            showActionError(failure)
             analytics.track(.action(.deleteUser, on: .googlePlayUsers, result: .failure))
         }
     }
@@ -308,8 +330,11 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
         do {
             try await connection.deleteUser(developerId: developerId, email: user.email)
         } catch {
-            Log.print.error("[GooglePlayUsers] Resend failed removing the old invitation: \(error.localizedDescription)")
-            uiState.actionError = GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .userChange)
+            Log.print.error("[GooglePlayUsers] Resend failed removing the old invitation")
+            let failure = GooglePlayErrorTranslator.usersFailure(
+                error, call: usersCall(.delete, developerId: developerId, email: user.email), logTag: "GooglePlayUsers"
+            )
+            showActionError(failure)
             analytics.track(.action(.resendInvite, on: .googlePlayUsers, result: .failure))
             return
         }
@@ -329,11 +354,15 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
             analytics.track(.action(.resendInvite, on: .googlePlayUsers, result: .success))
         } catch {
             // The old invitation is gone: the list must say so too.
-            Log.print.error("[GooglePlayUsers] Resend failed sending the new invitation: \(error.localizedDescription)")
+            Log.print.error("[GooglePlayUsers] Resend failed sending the new invitation")
+            let failure = GooglePlayErrorTranslator.usersFailure(error, call: usersCall(.invite, developerId: developerId), logTag: "GooglePlayUsers")
             uiState.users.removeAll { $0.id == user.id }
             await saveCache()
-            let reason = GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .inviteUser)
-            uiState.actionError = String(localized: "The expired invitation was removed, but the new one couldn't be sent. Invite \(user.email) again.\n\(reason)")
+            let reason = failure.message
+            showActionError(GooglePlayUsersFailure(
+                message: String(localized: "The expired invitation was removed, but the new one couldn't be sent. Invite \(user.email) again.\n\(reason)"),
+                technicalDetails: failure.technicalDetails
+            ))
             analytics.track(.action(.resendInvite, on: .googlePlayUsers, result: .failure))
         }
     }
@@ -341,6 +370,7 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
     // MARK: - Invite (plan U6)
 
     func invite(_ form: GooglePlayInviteForm) async -> String? {
+        uiState.inviteErrorDetails = []
         let access = uiState.access
         guard access.canInvite else { return GooglePlayUsersAccess.message(for: .notPermitted) }
         guard form.isEmailValid else { return String(localized: "Enter a valid e-mail address.") }
@@ -372,9 +402,10 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
             analytics.track(.action(.inviteUser, on: .googlePlayInviteUser, result: .success))
             return nil
         } catch {
-            Log.print.error("[GooglePlayUsers] Invite failed: \(error.localizedDescription)")
+            let failure = GooglePlayErrorTranslator.usersFailure(error, call: usersCall(.invite, developerId: developerId), logTag: "GooglePlayUsers")
+            uiState.inviteErrorDetails = failure.technicalDetails
             analytics.track(.action(.inviteUser, on: .googlePlayInviteUser, result: .failure))
-            return GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .inviteUser)
+            return failure.message
         }
     }
 
@@ -392,6 +423,15 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
     }
 
     // MARK: - Private
+
+    private func usersCall(_ method: GooglePlayUsersCall.Method, developerId: String, email: String? = nil) -> GooglePlayUsersCall {
+        GooglePlayUsersCall(method, developerId: developerId, email: email, serviceAccountEmail: uiState.serviceAccountEmail)
+    }
+
+    private func showActionError(_ failure: GooglePlayUsersFailure) {
+        uiState.actionError = failure.message
+        uiState.actionErrorDetails = failure.technicalDetails
+    }
 
     /// The account as stored now: the developer ID may have been set in
     /// Account Settings since this screen was pushed.

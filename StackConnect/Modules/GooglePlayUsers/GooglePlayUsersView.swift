@@ -9,6 +9,7 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
     @Environment(\.analytics) private var analytics
+    @State private var errorShareRequest: StackErrorShareRequest?
 
     var body: some View {
         buildContent()
@@ -29,7 +30,12 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
             .sheet(isPresented: $viewModel.uiState.showInvite) {
                 GooglePlayInviteUserSheet(
                     apps: viewModel.uiState.apps,
-                    allowsAccountPermissions: viewModel.uiState.access.canInviteWithAccountPermissions
+                    allowsAccountPermissions: viewModel.uiState.access.canInviteWithAccountPermissions,
+                    errorReportContext: ErrorReportContext(
+                        screen: String(localized: "Invite User"),
+                        account: viewModel.uiState.account,
+                        technicalDetails: viewModel.uiState.inviteErrorDetails
+                    )
                 ) { form in
                     await viewModel.invite(form)
                 }
@@ -74,11 +80,17 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
                 String(localized: "Error"),
                 isPresented: isPresented(\.actionError),
                 presenting: viewModel.uiState.actionError
-            ) { _ in
+            ) { message in
                 StackTrackedButton(String(localized: "OK"), button: .ok, on: .googlePlayUsers, role: .cancel) {}
+                StackErrorShareAlertButton(
+                    message: message,
+                    context: errorReportContext.withTechnicalDetails(viewModel.uiState.actionErrorDetails),
+                    request: $errorShareRequest
+                )
             } message: { message in
                 Text(message)
             }
+            .stackErrorShareSheet($errorShareRequest)
     }
 
     /// A Bool binding over an optional piece of state, cleared on dismiss.
@@ -102,7 +114,7 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
         } else if let error = state.error, state.users.isEmpty {
             StackErrorContentView(
                 message: error,
-                reportContext: errorReportContext,
+                reportContext: errorReportContext.withTechnicalDetails(state.errorDetails),
                 onRetry: {
                     analytics.track(.buttonTap(.tryAgain, on: .googlePlayUsers))
                     Task { await viewModel.load() }
@@ -138,7 +150,10 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
             }
 
             if let error = viewModel.uiState.error {
-                StackInlineErrorSection(message: error, reportContext: errorReportContext)
+                StackInlineErrorSection(
+                    message: error,
+                    reportContext: errorReportContext.withTechnicalDetails(viewModel.uiState.errorDetails)
+                )
             }
 
             let users = viewModel.uiState.filteredUsers
@@ -255,7 +270,16 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
             } footer: {
                 VStack(alignment: .leading, spacing: 6) {
                     if let error = viewModel.uiState.developerIdError {
-                        Text(error).foregroundStyle(.red)
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(error)
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            StackErrorShareLink(
+                                message: error,
+                                context: errorReportContext.withTechnicalDetails(viewModel.uiState.developerIdErrorDetails),
+                                style: .icon
+                            )
+                        }
                     }
                     Text("Google can't tell which developer account a service account belongs to: the ID is in Play Console › Settings › Developer account (and in every Play Console URL). The service account needs the “Admin (all permissions)” permission to manage users.")
                 }
@@ -293,6 +317,7 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
         analytics.track(.buttonTap(.editDeveloperId, on: .googlePlayUsers))
         viewModel.uiState.developerIdInput = viewModel.uiState.developerId ?? ""
         viewModel.uiState.developerIdError = nil
+        viewModel.uiState.developerIdErrorDetails = []
         viewModel.uiState.isEditingDeveloperId = true
     }
 }

@@ -39,6 +39,11 @@ struct GooglePlayUserDetailUiState {
     var isSaving = false
     var toastMessage: ToastMessage?
     var errorMessage: String?
+    /// Technical lines of `errorMessage`'s Share Error report.
+    var errorDetails: [String] = []
+    /// A failure while the App Permissions sheet is open: shown in the sheet,
+    /// since an alert can't show over it.
+    var grantEditorError: GooglePlayUsersFailure?
     var refusalMessage: String?
     var confirmRemove = false
     var confirmRemoveGrant: GooglePlayGrantModel?
@@ -220,8 +225,9 @@ final class GooglePlayUserDetailViewModel: GooglePlayUserDetailViewModelProtocol
             uiState.toastMessage = ToastMessage(String(localized: "Permissions saved"))
             analytics.track(.action(.updateUserPermissions, on: .googlePlayUserDetail, result: .success))
         } catch {
-            Log.print.error("[GooglePlayUserDetail] Save failed: \(error.localizedDescription)")
-            uiState.errorMessage = GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .userChange)
+            show(GooglePlayErrorTranslator.usersFailure(
+                error, call: usersCall(.update, developerId: developerId, email: user.email), logTag: "GooglePlayUserDetail"
+            ))
             analytics.track(.action(.updateUserPermissions, on: .googlePlayUserDetail, result: .failure))
         }
     }
@@ -249,8 +255,9 @@ final class GooglePlayUserDetailViewModel: GooglePlayUserDetailViewModelProtocol
             analytics.track(.action(.deleteUser, on: .googlePlayUserDetail, result: .success))
             return true
         } catch {
-            Log.print.error("[GooglePlayUserDetail] Remove failed: \(error.localizedDescription)")
-            uiState.errorMessage = GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .userChange)
+            show(GooglePlayErrorTranslator.usersFailure(
+                error, call: usersCall(.delete, developerId: developerId, email: user.email), logTag: "GooglePlayUserDetail"
+            ))
             analytics.track(.action(.deleteUser, on: .googlePlayUserDetail, result: .failure))
             return false
         }
@@ -259,6 +266,7 @@ final class GooglePlayUserDetailViewModel: GooglePlayUserDetailViewModelProtocol
     // MARK: - App access
 
     func saveGrant(packageName: String, permissions: [String]) async -> Bool {
+        uiState.grantEditorError = nil
         let user = uiState.user
         if let refusal = uiState.access.grantRefusal(for: user, packageName: packageName) {
             uiState.refusalMessage = GooglePlayUsersAccess.message(for: refusal)
@@ -266,7 +274,7 @@ final class GooglePlayUserDetailViewModel: GooglePlayUserDetailViewModelProtocol
         }
         let normalized = GooglePlayPermissionCatalog.normalized(permissions, level: .app)
         guard !normalized.isEmpty else {
-            uiState.errorMessage = String(localized: "Turn on at least one permission for this app.")
+            show(GooglePlayUsersFailure(message: String(localized: "Turn on at least one permission for this app.")))
             return false
         }
         guard let (connection, developerId) = connectionAndDeveloperId() else { return false }
@@ -283,8 +291,11 @@ final class GooglePlayUserDetailViewModel: GooglePlayUserDetailViewModelProtocol
             analytics.track(.action(.updateAppAccess, on: .googlePlayAppPermissions, result: .success))
             return true
         } catch {
-            Log.print.error("[GooglePlayUserDetail] Grant failed: \(error.localizedDescription)")
-            uiState.errorMessage = GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .userChange)
+            show(GooglePlayErrorTranslator.usersFailure(
+                error,
+                call: usersCall(.setGrant, developerId: developerId, email: user.email, packageName: packageName),
+                logTag: "GooglePlayUserDetail"
+            ))
             analytics.track(.action(.updateAppAccess, on: .googlePlayAppPermissions, result: .failure))
             return false
         }
@@ -300,6 +311,7 @@ final class GooglePlayUserDetailViewModel: GooglePlayUserDetailViewModelProtocol
 
     func removeGrant(_ grant: GooglePlayGrantModel) async -> Bool {
         uiState.confirmRemoveGrant = nil
+        uiState.grantEditorError = nil
         let user = uiState.user
         guard uiState.access.grantRefusal(for: user, packageName: grant.packageName) == nil,
               let (connection, developerId) = connectionAndDeveloperId() else { return false }
@@ -314,14 +326,37 @@ final class GooglePlayUserDetailViewModel: GooglePlayUserDetailViewModelProtocol
             analytics.track(.action(.removeAppAccess, on: .googlePlayUserDetail, result: .success))
             return true
         } catch {
-            Log.print.error("[GooglePlayUserDetail] Grant removal failed: \(error.localizedDescription)")
-            uiState.errorMessage = GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .userChange)
+            show(GooglePlayErrorTranslator.usersFailure(
+                error,
+                call: usersCall(.deleteGrant, developerId: developerId, email: user.email, packageName: grant.packageName),
+                logTag: "GooglePlayUserDetail"
+            ))
             analytics.track(.action(.removeAppAccess, on: .googlePlayUserDetail, result: .failure))
             return false
         }
     }
 
     // MARK: - Private
+
+    private func usersCall(
+        _ method: GooglePlayUsersCall.Method,
+        developerId: String,
+        email: String,
+        packageName: String? = nil
+    ) -> GooglePlayUsersCall {
+        GooglePlayUsersCall(method, developerId: developerId, email: email, packageName: packageName,
+                            serviceAccountEmail: uiState.serviceAccountEmail)
+    }
+
+    /// In the App Permissions sheet while it's open, else in the error alert.
+    private func show(_ failure: GooglePlayUsersFailure) {
+        if uiState.grantEditor != nil {
+            uiState.grantEditorError = failure
+        } else {
+            uiState.errorMessage = failure.message
+            uiState.errorDetails = failure.technicalDetails
+        }
+    }
 
     private var cacheStore: GooglePlayUsersCacheStore {
         GooglePlayUsersCacheStore(storage: storage, accountId: uiState.account.id)
@@ -337,12 +372,13 @@ final class GooglePlayUserDetailViewModel: GooglePlayUserDetailViewModelProtocol
 
     private func connectionAndDeveloperId() -> (any GooglePlayUsersConnecting, String)? {
         guard let developerId = uiState.account.googlePlayDeveloperId else {
-            uiState.errorMessage = String(localized: "Add the Developer ID in Account Settings first.")
+            show(GooglePlayUsersFailure(message: String(localized: "Add the Developer ID in Account Settings first.")))
             return nil
         }
         if let connection { return (connection, developerId) }
         guard let credentials: GooglePlayCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else {
-            uiState.errorMessage = String(localized: "No credentials found for this account.")
+            Log.print.error("[GooglePlayUserDetail] No credentials found for account: \(self.uiState.account.name)")
+            show(GooglePlayUsersFailure(message: String(localized: "No credentials found for this account.")))
             return nil
         }
         let made = connectionFactory(credentials)

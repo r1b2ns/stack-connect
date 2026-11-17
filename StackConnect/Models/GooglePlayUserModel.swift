@@ -206,13 +206,20 @@ struct GooglePlayUsersCache: Codable, Sendable {
 enum GooglePlayDeveloperId {
 
     /// The ID in `input` (digits, or a Play Console URL), `nil` when there is none.
+    ///
+    /// Spaces and invisible characters (zero-width spaces, BOM, no-break
+    /// spaces) that copying from a web page or a chat often adds are ignored.
+    /// From a URL, the digits right after `/developers/` are taken, e.g.
+    /// `https://play.google.com/console/u/0/developers/4829103756618820931/app-list?hl=en`.
     static func normalized(_ input: String) -> String? {
-        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        if trimmed.allSatisfy(\.isASCIIDigit) { return trimmed }
-        // ".../developers/<digits>/..." from a pasted Play Console URL.
-        if let range = trimmed.range(of: #"developers/(\d+)"#, options: .regularExpression) {
-            let digits = trimmed[range].drop(while: { !$0.isASCIIDigit })
+        let compact = String(String.UnicodeScalarView(input.unicodeScalars.filter { !ignoredScalars.contains($0) }))
+        guard !compact.isEmpty else { return nil }
+        if compact.allSatisfy(\.isASCIIDigit) { return compact }
+        // ".../developers/<digits>[/…|?…|#…]" from a pasted Play Console URL
+        // (possibly inside a sentence). The digits must end the path segment:
+        // "developers/12ab" is no ID.
+        if let range = compact.range(of: #"developers/[0-9]+(?=$|[/?#&.,;:)\]>"'])"#, options: .regularExpression) {
+            let digits = compact[range].drop(while: { !$0.isASCIIDigit })
             return digits.isEmpty ? nil : String(digits)
         }
         return nil
@@ -222,6 +229,23 @@ enum GooglePlayDeveloperId {
     static func isAcceptable(_ input: String) -> Bool {
         input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || normalized(input) != nil
     }
+
+    /// Why an input was refused: what the ID looks like and where to find it.
+    static var invalidMessage: String {
+        String(
+            localized: "The Developer ID must be the number from the Play Console URL: the digits after /developers/ (play.google.com/console/u/0/developers/<ID>/app-list). You can paste the whole URL.",
+            comment: "Shown when the Google Play developer ID entered isn't a number or a Play Console URL containing one."
+        )
+    }
+
+    /// Whitespace and invisible formatting characters a paste may carry.
+    private static let ignoredScalars: Set<Unicode.Scalar> = {
+        var scalars = Set<Unicode.Scalar>(["\u{200B}", "\u{200C}", "\u{200D}", "\u{2060}", "\u{FEFF}", "\u{00A0}", "\u{202F}"])
+        for value in [0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x20, 0x85, 0x2028, 0x2029] {
+            if let scalar = Unicode.Scalar(value) { scalars.insert(scalar) }
+        }
+        return scalars
+    }()
 }
 
 private extension Character {

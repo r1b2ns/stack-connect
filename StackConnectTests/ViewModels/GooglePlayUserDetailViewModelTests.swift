@@ -91,8 +91,24 @@ final class GooglePlayUserDetailViewModelTests: XCTestCase {
 
         XCTAssertTrue(sut.uiState.hasChanges)
         XCTAssertNotNil(sut.uiState.errorMessage)
+        XCTAssertTrue(sut.uiState.errorDetails.contains(String(localized: "Operation: \("developers.users.patch")")))
+        XCTAssertTrue(sut.uiState.errorDetails.contains(String(localized: "Resource: \("developers/123/users/support@x.example")")))
         let cached = try await cachedUser("support@x.example")
         XCTAssertEqual(cached, support)
+    }
+
+    func testAGrantFailureWhileTheAppPermissionsSheetIsOpenShowsInTheSheet() async throws {
+        let sut = try await makeSUT(support)
+        sut.uiState.grantEditor = GooglePlayGrantEditorRequest(packageName: "com.x.two", permissions: [])
+        connection.failNext(.setGrant, with: StackError.Http(status: 403, message: "The caller does not have permission [PERMISSION_DENIED]"))
+
+        let saved = await sut.saveGrant(packageName: "com.x.two", permissions: ["CAN_REPLY_TO_REVIEWS"])
+
+        XCTAssertFalse(saved)
+        XCTAssertNil(sut.uiState.errorMessage, "No alert under the sheet")
+        let failure = try XCTUnwrap(sut.uiState.grantEditorError)
+        XCTAssertTrue(failure.message.hasSuffix("\nThe caller does not have permission [PERMISSION_DENIED]"))
+        XCTAssertTrue(failure.technicalDetails.contains(String(localized: "Resource: \("developers/123/users/support@x.example/grants/com.x.two")")))
     }
 
     func testUnknownPermissionsAreKeptOnSave() async throws {

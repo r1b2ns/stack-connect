@@ -182,6 +182,47 @@ final class GooglePlayUsersFoundationTests: XCTestCase {
         XCTAssertFalse(GooglePlayDeveloperId.isAcceptable("12a"))
     }
 
+    func testDeveloperIdFromCurrentPlayConsoleURLs() {
+        let id = "4829103756618820931"
+        let urls = [
+            "https://play.google.com/console/u/0/developers/\(id)/app-list",
+            "https://play.google.com/console/u/0/developers/\(id)/app-list?hl=en&pli=1",
+            "https://play.google.com/console/u/1/developers/\(id)",
+            "https://play.google.com/console/developers/\(id)?hl=pt-BR",
+            "https://play.google.com/console/u/0/developers/\(id)/app/4973092157430010220/app-dashboard?timespan=thirtyDays",
+            "https://play.google.com/console/u/0/developers/\(id)#users",
+            "play.google.com/console/u/0/developers/\(id)/users-and-permissions",
+            "  https://play.google.com/console/u/0/developers/\(id)/app-list\n",
+            "Open https://play.google.com/console/u/0/developers/\(id).",
+            "(https://play.google.com/console/u/0/developers/\(id))"
+        ]
+        for url in urls {
+            XCTAssertEqual(GooglePlayDeveloperId.normalized(url), id, url)
+        }
+    }
+
+    func testDeveloperIdIgnoresSpacesAndInvisibleCharactersFromAPaste() {
+        XCTAssertEqual(GooglePlayDeveloperId.normalized("\u{200B}4829103756618820931\u{FEFF}"), "4829103756618820931")
+        XCTAssertEqual(GooglePlayDeveloperId.normalized("4829 1037 5661 8820 931"), "4829103756618820931")
+        XCTAssertEqual(GooglePlayDeveloperId.normalized("\u{00A0}123\u{00A0}"), "123")
+        XCTAssertEqual(GooglePlayDeveloperId.normalized("\t123\r\n"), "123")
+    }
+
+    func testDeveloperIdRefusesURLsWithoutANumericId() {
+        XCTAssertNil(GooglePlayDeveloperId.normalized("https://play.google.com/console/u/0/developers/app-list"))
+        XCTAssertNil(GooglePlayDeveloperId.normalized("https://play.google.com/console/u/0/developers/12ab/app-list"))
+        XCTAssertNil(GooglePlayDeveloperId.normalized("https://play.google.com/console/u/0/app-list"))
+        XCTAssertNil(GooglePlayDeveloperId.normalized("-123"))
+        XCTAssertNil(GooglePlayDeveloperId.normalized("１２３"), "Full-width digits aren't an ID Google knows")
+        XCTAssertFalse(GooglePlayDeveloperId.isAcceptable("https://play.google.com/console/u/0/developers/app-list"))
+    }
+
+    func testDeveloperIdInvalidMessageExplainsWhereTheIdIs() {
+        let message = GooglePlayDeveloperId.invalidMessage
+        XCTAssertFalse(message.isEmpty)
+        XCTAssertTrue(message.contains("/developers/"), "Names the URL segment in every language")
+    }
+
     func testDeveloperIdSurvivesRenameAndDecoding() throws {
         let account = AccountModel(name: "Play", providerType: .googlePlay, googlePlayDeveloperId: "123")
         XCTAssertEqual(account.updating(name: "Renamed").googlePlayDeveloperId, "123")
@@ -208,7 +249,8 @@ final class GooglePlayUsersFoundationTests: XCTestCase {
     func testUsersErrorCopy() {
         XCTAssertEqual(
             GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 404, message: "x"), operation: .users),
-            String(localized: "Google Play found no developer account with this ID. Check the Developer ID in Play Console › Settings › Developer account.")
+            String(localized: "Google Play found no developer account with this ID. Check the Developer ID in Play Console › Settings › Developer account.") + "\nx",
+            "The friendly lead, then the core's / Google's own message"
         )
         XCTAssertTrue(GooglePlayErrorTranslator.isWrongDeveloperId(StackError.Http(status: 404, message: "")))
         XCTAssertFalse(GooglePlayErrorTranslator.isWrongDeveloperId(StackError.Network(message: "")))
@@ -219,7 +261,7 @@ final class GooglePlayUsersFoundationTests: XCTestCase {
 
         XCTAssertEqual(
             GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 409, message: "exists"), operation: .inviteUser),
-            String(localized: "This person already has access to this developer account or has a pending invitation.")
+            String(localized: "This person already has access to this developer account or has a pending invitation.") + "\nexists"
         )
         XCTAssertEqual(
             GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 400, message: "The email is not a valid Google Account."), operation: .inviteUser),

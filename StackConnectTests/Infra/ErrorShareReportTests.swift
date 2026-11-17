@@ -1,3 +1,4 @@
+import StackCoreRust
 import UIKit
 import XCTest
 @testable import StackConnect
@@ -225,6 +226,71 @@ final class ErrorShareReportTests: XCTestCase {
         )
 
         for secret in [GooglePlayTestFixtures.privateKeyId, "PRIVATE KEY", "MIIEfake", GooglePlayTestFixtures.clientEmail, account.id] {
+            XCTAssertFalse(report.text.contains(secret), "Report leaks \(secret)")
+            XCTAssertFalse(report.subject.contains(secret), "Subject leaks \(secret)")
+        }
+    }
+
+    // MARK: - Technical details
+
+    func testTechnicalDetailsAreAFifthBlockAfterTheMessage() {
+        var context = makeFullContext()
+        context.technicalDetails = ["Operation: developers.users.list", "  ", "HTTP status: 404"]
+
+        let blocks = makeReport(message: "Boom", context: context).text.components(separatedBy: "\n\n")
+
+        XCTAssertEqual(blocks.count, 5)
+        XCTAssertEqual(lines(of: blocks[2]).last, "Boom")
+        XCTAssertEqual(lines(of: blocks[3]), [
+            String(localized: "Technical details:"),
+            "Operation: developers.users.list",
+            "HTTP status: 404"
+        ], "Heading, then the lines without blank ones")
+        XCTAssertEqual(lines(of: blocks[4]).count, 4, "Environment stays last")
+    }
+
+    func testNoTechnicalSectionWithoutDetails() {
+        var context = makeFullContext()
+        context.technicalDetails = [" ", ""]
+
+        let text = makeReport(context: context).text
+
+        XCTAssertFalse(text.contains(String(localized: "Technical details:")))
+    }
+
+    func testWithTechnicalDetailsKeepsTheRestOfTheContext() {
+        let context = makeFullContext().withTechnicalDetails(["a"])
+
+        XCTAssertEqual(context.technicalDetails, ["a"])
+        XCTAssertEqual(context.screen, "Ratings & Reviews")
+        XCTAssertEqual(context.appIdentifier, "com.acme.app")
+    }
+
+    func testUsersErrorReportNamesTheServiceAccountButNoSecret() {
+        let keychain = MockKeyStorable()
+        let account = AccountModel(name: "Acme Play", providerType: .googlePlay, googlePlayDeveloperId: "abc")
+        let keyFile = GooglePlayTestFixtures.serviceAccountJSON()
+        let credentials = GooglePlayCredentials(serviceAccountJSON: keyFile)
+        keychain.setObject(credentials, forKey: "credentials.\(account.id)")
+        let clientEmail = (try? GooglePlayServiceAccount(credentials: credentials))?.clientEmail
+        let error = StackError.Http(status: 404, message: "\"abc\" is not a valid Google Play developer account ID (checked locally; nothing was sent to Google).")
+        let call = GooglePlayUsersCall(.list, developerId: "abc", serviceAccountEmail: clientEmail)
+
+        let report = ErrorShareReport.make(
+            message: GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .users),
+            context: ErrorReportContext(
+                screen: "Users",
+                account: account,
+                technicalDetails: GooglePlayErrorTranslator.technicalDetails(for: error, operation: .users, call: call)
+            ),
+            environment: makeEnvironment()
+        )
+
+        XCTAssertTrue(report.text.contains(String(localized: "Technical details:")))
+        XCTAssertTrue(report.text.contains("developers/abc/users"))
+        XCTAssertTrue(report.text.contains("\"abc\""))
+        XCTAssertTrue(report.text.contains(GooglePlayTestFixtures.clientEmail), "The service account a Play admin must grant Admin to")
+        for secret in [GooglePlayTestFixtures.privateKeyId, "PRIVATE KEY", "MIIEfake", "private_key", account.id] {
             XCTAssertFalse(report.text.contains(secret), "Report leaks \(secret)")
             XCTAssertFalse(report.subject.contains(secret), "Subject leaks \(secret)")
         }

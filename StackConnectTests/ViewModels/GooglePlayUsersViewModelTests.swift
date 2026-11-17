@@ -99,6 +99,51 @@ final class GooglePlayUsersViewModelTests: XCTestCase {
         XCTAssertTrue(connection.calls.isEmpty)
     }
 
+    func testARefusedDeveloperIdSaysWhyAndReportsTheInput() async throws {
+        let sut = try await makeSUT(makeAccount(developerId: nil))
+
+        sut.uiState.developerIdInput = "https://play.google.com/console/u/0/developers/app-list"
+        await sut.saveDeveloperId()
+
+        XCTAssertEqual(sut.uiState.developerIdError, GooglePlayDeveloperId.invalidMessage)
+        XCTAssertEqual(
+            sut.uiState.developerIdErrorDetails.first,
+            String(localized: "Developer ID (as entered): \("\"https://play.google.com/console/u/0/developers/app-list\"")")
+        )
+        XCTAssertTrue(sut.uiState.showsSetup)
+    }
+
+    func testAPastedPlayConsoleURLIsSaved() async throws {
+        let sut = try await makeSUT(makeAccount(developerId: nil))
+
+        sut.uiState.developerIdInput = "https://play.google.com/console/u/0/developers/\(developerId)/app-list?hl=en"
+        await sut.saveDeveloperId()
+
+        XCTAssertNil(sut.uiState.developerIdError)
+        XCTAssertEqual(connection.calls.first, .fetch(developerId: developerId))
+    }
+
+    func testALoadFailureCarriesTechnicalDetailsForTheReport() async throws {
+        let sut = try await makeSUT()
+        let googleMessage = "Google Play found no developer account with ID \(developerId) (HTTP 404): check the developer ID. Google said: Not found. [NOT_FOUND]"
+        connection.failNext(.fetch, with: StackError.Http(status: 404, message: googleMessage))
+
+        await sut.load()
+
+        XCTAssertEqual(sut.uiState.error?.components(separatedBy: "\n").last, googleMessage, "Google's message is shown")
+        let details = sut.uiState.errorDetails
+        XCTAssertTrue(details.contains(String(localized: "Operation: \("developers.users.list")")))
+        XCTAssertTrue(details.contains(String(localized: "HTTP status: \(404)")))
+        XCTAssertTrue(details.contains(String(localized: "Message: \(googleMessage)")))
+        XCTAssertTrue(details.contains(String(localized: "Developer ID (as stored): \("\"\(developerId)\"")")))
+        XCTAssertTrue(details.contains(String(localized: "Resource: \("developers/\(developerId)/users")")))
+        XCTAssertTrue(details.contains(String(localized: "Service account: \(selfEmail)")))
+
+        connection.failNext(.fetch, with: StackError.Network(message: "x"))
+        await sut.refresh()
+        XCTAssertFalse(sut.uiState.errorDetails.contains(String(localized: "HTTP status: \(404)")), "A new load replaces the details")
+    }
+
     func testTheDeveloperIdSetElsewhereIsPickedUpOnLoad() async throws {
         let sut = try await makeSUT(makeAccount(developerId: nil))
         try await storage.save(makeAccount(developerId: "777"), id: "play.account")
@@ -299,6 +344,7 @@ final class GooglePlayUsersViewModelTests: XCTestCase {
 
         XCTAssertFalse(sut.uiState.users.contains { $0.email == "joana@x.example" })
         XCTAssertNotNil(sut.uiState.actionError)
+        XCTAssertTrue(sut.uiState.actionErrorDetails.contains(String(localized: "Operation: \("developers.users.create")")))
     }
 
     // MARK: - Invite (plan U6)
@@ -349,6 +395,8 @@ final class GooglePlayUsersViewModelTests: XCTestCase {
         let error = await sut.invite(inviteForm("new@x.example"))
 
         XCTAssertEqual(error, String(localized: "Google Play can only invite Google accounts. Check the address, or ask the person which Google account (Gmail or Google Workspace) to use."))
+        XCTAssertTrue(sut.uiState.inviteErrorDetails.contains(String(localized: "Message: \("Not a valid Google account")")))
+        XCTAssertTrue(sut.uiState.inviteErrorDetails.contains(String(localized: "Resource: \("developers/\(developerId)/users")")))
         XCTAssertFalse(sut.uiState.users.contains { $0.email == "new@x.example" })
         let cached = try await cachedUsers()
         XCTAssertEqual(cached?.count, Self.seedUsers.count)

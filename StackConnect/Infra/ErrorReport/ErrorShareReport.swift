@@ -7,7 +7,10 @@ import Foundation
 /// Play Console) which screen, store, account and app failed.
 ///
 /// Holds display values only — never credentials, tokens, key ids or keychain
-/// data.
+/// data. `technicalDetails` may name public identifiers that help whoever
+/// administers the account diagnose the error (e.g. a Play developer ID, a
+/// resource path, the service account e-mail a Play Console admin grants
+/// access to).
 struct ErrorReportContext: Equatable, Sendable {
 
     /// Screen title (e.g. "Ratings & Reviews").
@@ -20,36 +23,56 @@ struct ErrorReportContext: Equatable, Sendable {
     var appName: String?
     /// Bundle id (App Store) or package name (Google Play).
     var appIdentifier: String?
+    /// Technical facts about the error (operation, status, the raw message,
+    /// identifiers), one per line, printed after the error message under
+    /// "Technical details". Blank lines are left out.
+    var technicalDetails: [String]
 
     init(
         screen: String,
         store: String? = nil,
         accountName: String? = nil,
         appName: String? = nil,
-        appIdentifier: String? = nil
+        appIdentifier: String? = nil,
+        technicalDetails: [String] = []
     ) {
         self.screen = screen
         self.store = store
         self.accountName = accountName
         self.appName = appName
         self.appIdentifier = appIdentifier
+        self.technicalDetails = technicalDetails
     }
 
     /// Context of a screen of `account`: only its display name and its store
     /// are taken from it.
-    init(screen: String, account: AccountModel, appName: String? = nil, appIdentifier: String? = nil) {
+    init(
+        screen: String,
+        account: AccountModel,
+        appName: String? = nil,
+        appIdentifier: String? = nil,
+        technicalDetails: [String] = []
+    ) {
         self.init(
             screen: screen,
             store: account.providerType.displayName,
             accountName: account.name,
             appName: appName,
-            appIdentifier: appIdentifier
+            appIdentifier: appIdentifier,
+            technicalDetails: technicalDetails
         )
     }
 
     /// Context of a screen of a Google Play `app` of `account`.
     init(screen: String, account: AccountModel, app: GooglePlayAppItem) {
         self.init(screen: screen, account: account, appName: app.displayName, appIdentifier: app.packageName)
+    }
+
+    /// This context with `lines` as its technical details.
+    func withTechnicalDetails(_ lines: [String]) -> ErrorReportContext {
+        var context = self
+        context.technicalDetails = lines
+        return context
     }
 }
 
@@ -77,8 +100,9 @@ struct ErrorShareReport: Equatable, Sendable {
     ///
     /// - Parameters:
     ///   - message: The error exactly as shown on screen. Never altered.
-    ///   - context: Screen, store, account and app the error belongs to. Blank
-    ///     optional values are left out of the report.
+    ///   - context: Screen, store, account and app the error belongs to, and
+    ///     its technical details. Blank optional values are left out of the
+    ///     report.
     ///   - environment: App version, OS, device and the report's timestamp.
     static func make(
         message: String,
@@ -110,12 +134,19 @@ struct ErrorShareReport: Equatable, Sendable {
             String(localized: "Date: \(date)", comment: "Error report line. Argument: when the report was made, as an ISO 8601 date with time zone.")
         ]
 
-        let sections = [
+        var sections = [
             String(localized: "StackConnect — Error report", comment: "First line of the error report shared from an error screen."),
             contextLines.joined(separator: "\n"),
-            String(localized: "Error message:", comment: "Error report heading, followed by the error message as shown on screen.") + "\n" + message,
-            environmentLines.joined(separator: "\n")
+            String(localized: "Error message:", comment: "Error report heading, followed by the error message as shown on screen.") + "\n" + message
         ]
+        let technicalLines = context.technicalDetails.compactMap { Optional($0).nonBlank }
+        if !technicalLines.isEmpty {
+            sections.append(
+                ([String(localized: "Technical details:", comment: "Error report heading, followed by technical facts about the error (operation, HTTP status, raw message, identifiers).")]
+                 + technicalLines).joined(separator: "\n")
+            )
+        }
+        sections.append(environmentLines.joined(separator: "\n"))
 
         return ErrorShareReport(
             text: sections.joined(separator: "\n\n"),
