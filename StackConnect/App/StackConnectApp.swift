@@ -78,6 +78,9 @@ struct StackConnectApp: App {
         WindowGroup {
             HomeViewFactory.build()
                 .offlineBanner()
+                // App Store review request after a successful foreground sync,
+                // every third launch, at most once per launch.
+                .reviewPromptOnSuccessfulSync()
                 .sheet(isPresented: $showWelcome) {
                     WelcomeView {
                         UserDefaults.standard.set(true, forKey: "hasSeenWelcome")

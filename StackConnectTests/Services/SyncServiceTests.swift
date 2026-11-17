@@ -168,6 +168,28 @@ final class SyncServiceTests: XCTestCase {
         XCTAssertNotNil(metadata?.lastError)
     }
 
+    func testFailedAccountIsReportedInRunStateWithoutRunLevelError() async throws {
+        let apple = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(apple, id: apple.id)
+
+        await sut.syncAll(mode: .lightweight).value
+
+        XCTAssertNil(sut.state.lastError)
+        XCTAssertEqual(sut.state.lastRunMode, .lightweight)
+        XCTAssertEqual(sut.state.lastRunAccountCount, 1)
+        XCTAssertEqual(sut.state.lastRunFailedAccountCount, 1)
+        XCTAssertFalse(sut.state.lastRunSucceeded)
+    }
+
+    func testRunWithoutAccountsSucceedsWithZeroAccounts() async {
+        await sut.syncAll().value
+
+        XCTAssertEqual(sut.state.lastRunMode, .full)
+        XCTAssertEqual(sut.state.lastRunAccountCount, 0)
+        XCTAssertEqual(sut.state.lastRunFailedAccountCount, 0)
+        XCTAssertTrue(sut.state.lastRunSucceeded)
+    }
+
     // MARK: - Coalescing
 
     func testConcurrentSyncAllCallsAreCoalesced() async throws {

@@ -81,7 +81,7 @@ struct GooglePlayAccountSync: Sendable {
         } catch {
             Log.print.error("[Sync][GooglePlay] \(account.name) failed: \(error.localizedDescription)")
             await saveMetadata(appsSynced: 0, error: error.localizedDescription)
-            return SyncChange()
+            return .failed(accountId: account.id)
         }
 
         var apps = remote

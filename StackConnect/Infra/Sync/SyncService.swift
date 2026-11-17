@@ -16,6 +16,18 @@ struct SyncState: Equatable {
     var providerByAccountId: [String: ProviderType] = [:]
     var lastSyncedAt: Date?
     var lastError: String?
+    /// Mode of the running (or last finished) sync; `nil` before the first run.
+    var lastRunMode: SyncMode?
+    /// Accounts the running (or last finished) sync covered.
+    var lastRunAccountCount = 0
+    /// Accounts whose leg failed in the last finished sync. `lastError` only
+    /// reports run-level failures (e.g. the accounts can't be loaded).
+    var lastRunFailedAccountCount = 0
+
+    /// The last run finished with every account synced and no error at all.
+    var lastRunSucceeded: Bool {
+        !isSyncing && lastError == nil && lastRunFailedAccountCount == 0
+    }
 
     /// Accounts still syncing, per provider.
     var inProgressCountByProvider: [ProviderType: Int] {
@@ -110,8 +122,13 @@ final class SyncService: ObservableObject {
     // MARK: - Private (MainActor)
 
     private func performSyncAll(mode: SyncMode) async {
-        state.isSyncing = true
-        state.lastError = nil
+        var started = state
+        started.isSyncing = true
+        started.lastError = nil
+        started.lastRunMode = mode
+        started.lastRunAccountCount = 0
+        started.lastRunFailedAccountCount = 0
+        state = started
 
         let accounts: [AccountModel]
         do {
@@ -145,6 +162,7 @@ final class SyncService: ObservableObject {
                 return .apple(account, creds.map(appleConnectionFactory))
             }
         }
+        state.lastRunAccountCount = accounts.count
         state.providerByAccountId = Dictionary(accounts.map { ($0.id, $0.providerType) }, uniquingKeysWith: { first, _ in first })
 
         let playCount = accounts.filter { $0.providerType == .googlePlay }.count
@@ -185,8 +203,13 @@ final class SyncService: ObservableObject {
             return aggregate
         }
 
-        state.lastSyncedAt = .now
-        state.isSyncing = false
+        // One mutation, so observers see the failure count together with the
+        // end of the run (the review prompt reacts to this transition).
+        var finished = state
+        finished.lastRunFailedAccountCount = changes.failedAccountIds.count
+        finished.lastSyncedAt = .now
+        finished.isSyncing = false
+        state = finished
         await preloadWidgetIcons()
         await widgetSnapshotWriter(storage)
 
@@ -276,7 +299,7 @@ final class SyncService: ObservableObject {
         guard let connection else {
             Log.print.error("[Sync] No credentials for \(account.name)")
             await saveMetadata(storage: storage, accountId: account.id, appsSynced: 0, error: "Missing credentials")
-            return SyncChange()
+            return .failed(accountId: account.id)
         }
         return await GooglePlayAccountSync(account: account, connection: connection, storage: storage, mode: mode).run()
     }
@@ -290,7 +313,7 @@ final class SyncService: ObservableObject {
         guard let connection else {
             Log.print.error("[Sync] No credentials for \(account.name)")
             await saveMetadata(storage: storage, accountId: account.id, appsSynced: 0, error: "Missing credentials")
-            return SyncChange()
+            return .failed(accountId: account.id)
         }
 
         do {
@@ -418,7 +441,7 @@ final class SyncService: ObservableObject {
             // Offline-first contract: a transient/non-agreement error must NOT
             // clear a previously-set flag, so we only clear on a clean sync.
             Log.print.error("[Sync] \(account.name) failed: \(error.localizedDescription)")
-            return SyncChange()
+            return .failed(accountId: account.id)
         }
     }
 

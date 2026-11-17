@@ -44,13 +44,23 @@ struct SyncChange: Sendable {
 
     var statusChanges: [StatusChange] = []
     var newReviews: [NewReview] = []
+    /// Accounts whose leg failed (missing credentials, API error). Lets the
+    /// run tell a clean sync from one with per-account failures, which are
+    /// otherwise only recorded in each account's `SyncMetadata`.
+    var failedAccountIds: Set<String> = []
+
+    /// The result of an account leg that failed: no changes, one failure.
+    static func failed(accountId: String) -> SyncChange {
+        SyncChange(failedAccountIds: [accountId])
+    }
 
     var isEmpty: Bool { statusChanges.isEmpty && newReviews.isEmpty }
 
     static func + (lhs: SyncChange, rhs: SyncChange) -> SyncChange {
         SyncChange(
             statusChanges: lhs.statusChanges + rhs.statusChanges,
-            newReviews: lhs.newReviews + rhs.newReviews
+            newReviews: lhs.newReviews + rhs.newReviews,
+            failedAccountIds: lhs.failedAccountIds.union(rhs.failedAccountIds)
         )
     }
 }
