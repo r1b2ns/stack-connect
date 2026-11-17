@@ -57,21 +57,22 @@ final class TipJarViewModelTests: XCTestCase {
         XCTAssertEqual(sut.uiState.tips.map(\.id), [TipProduct.coffee.id, TipProduct.snack.id, TipProduct.lunch.id])
     }
 
-    func testLoadFailureIsUnavailable() async {
+    func testLoadFailureIsFailed() async {
         service.loadResult = .failure(MockTipJarService.LoadError())
 
         await sut.load()
 
-        XCTAssertEqual(sut.uiState.phase, .unavailable)
+        XCTAssertEqual(sut.uiState.phase, .failed)
         XCTAssertTrue(sut.uiState.tips.isEmpty)
     }
 
-    func testLoadWithNoProductsIsUnavailable() async {
+    func testLoadWithNoProductsIsEmpty() async {
         service.loadResult = .success([])
 
         await sut.load()
 
-        XCTAssertEqual(sut.uiState.phase, .unavailable)
+        XCTAssertEqual(sut.uiState.phase, .empty)
+        XCTAssertTrue(sut.uiState.tips.isEmpty)
     }
 
     func testReloadFailureKeepsTipsAlreadyOnScreen() async {
@@ -89,7 +90,7 @@ final class TipJarViewModelTests: XCTestCase {
     func testRetryAfterFailureLoadsTips() async {
         service.loadResult = .failure(MockTipJarService.LoadError())
         await sut.load()
-        XCTAssertEqual(sut.uiState.phase, .unavailable)
+        XCTAssertEqual(sut.uiState.phase, .failed)
 
         service.loadResult = .success([.snack, .coffee])
         await sut.retry()
@@ -100,13 +101,36 @@ final class TipJarViewModelTests: XCTestCase {
         XCTAssertEqual(analytics.taps(of: .tryAgain).count, 1)
     }
 
-    func testRetryThatFailsAgainStaysUnavailable() async {
+    func testRetryThatFailsAgainStaysFailed() async {
         service.loadResult = .failure(MockTipJarService.LoadError())
         await sut.load()
 
         await sut.retry()
 
-        XCTAssertEqual(sut.uiState.phase, .unavailable)
+        XCTAssertEqual(sut.uiState.phase, .failed)
+    }
+
+    func testRetryAfterEmptyLoadsTips() async {
+        service.loadResult = .success([])
+        await sut.load()
+        XCTAssertEqual(sut.uiState.phase, .empty)
+
+        service.loadResult = .success([.lunch, .coffee])
+        await sut.retry()
+
+        XCTAssertEqual(sut.uiState.phase, .loaded)
+        XCTAssertEqual(sut.uiState.tips.map(\.id), [TipProduct.coffee.id, TipProduct.lunch.id])
+        XCTAssertEqual(analytics.taps(of: .tryAgain).count, 1)
+    }
+
+    func testRetryAfterEmptyThatFailsIsFailed() async {
+        service.loadResult = .success([])
+        await sut.load()
+
+        service.loadResult = .failure(MockTipJarService.LoadError())
+        await sut.retry()
+
+        XCTAssertEqual(sut.uiState.phase, .failed)
     }
 
     // MARK: - Purchase outcomes

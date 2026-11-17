@@ -62,8 +62,16 @@ struct TipJarView<ViewModel: TipJarViewModelProtocol>: View {
         case .loading:
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        case .unavailable:
-            buildUnavailable()
+        case .empty:
+            buildUnavailable(
+                title: String(localized: "Tips Not Available"),
+                message: String(localized: "Tips aren't available right now. Please check back later.")
+            )
+        case .failed:
+            buildUnavailable(
+                title: String(localized: "Tips Unavailable"),
+                message: String(localized: "Tips can't be loaded right now. Check your connection and try again.")
+            )
         case .loaded:
             buildList()
         }
@@ -137,11 +145,11 @@ struct TipJarView<ViewModel: TipJarViewModelProtocol>: View {
         }
     }
 
-    private func buildUnavailable() -> some View {
+    private func buildUnavailable(title: String, message: String) -> some View {
         ContentUnavailableView {
-            Label(String(localized: "Tips Unavailable"), systemImage: "heart.slash")
+            Label(title, systemImage: "heart.slash")
         } description: {
-            Text(String(localized: "Tips can't be loaded right now. Check your connection and try again."))
+            Text(message)
         } actions: {
             Button(String(localized: "Retry")) {
                 Task { await viewModel.retry() }

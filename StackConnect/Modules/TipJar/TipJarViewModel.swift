@@ -20,8 +20,11 @@ struct TipJarUiState {
     enum Phase: Equatable {
         case loading
         case loaded
-        /// No tip could be loaded (offline, storefront without the products).
-        case unavailable
+        /// The load succeeded but the App Store returned no tips (products not
+        /// approved yet, or not sold in this storefront). Not a connection issue.
+        case empty
+        /// The load threw and no tips are on screen (offline, App Store error).
+        case failed
     }
 
     var phase: Phase = .loading
@@ -71,10 +74,12 @@ final class TipJarViewModel: TipJarViewModelProtocol {
         do {
             let products = try await service.loadProducts()
             uiState.tips = TipProduct.sortedByPrice(products)
+            uiState.phase = uiState.tips.isEmpty ? .empty : .loaded
         } catch {
             Log.print.error("[TipJar] Failed to load products: \(error.localizedDescription, privacy: .public)")
+            // A failed reload keeps the tips already on screen.
+            uiState.phase = uiState.tips.isEmpty ? .failed : .loaded
         }
-        uiState.phase = uiState.tips.isEmpty ? .unavailable : .loaded
     }
 
     func retry() async {
