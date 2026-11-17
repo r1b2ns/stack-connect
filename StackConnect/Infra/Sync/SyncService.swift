@@ -11,8 +11,34 @@ import UserNotifications
 struct SyncState: Equatable {
     var isSyncing = false
     var accountsInProgress: Set<String> = []
+    /// Provider of every account of the running sync, for the "Syncing N
+    /// accounts… (2 App Store Connect, 1 Google Play)" banner.
+    var providerByAccountId: [String: ProviderType] = [:]
     var lastSyncedAt: Date?
     var lastError: String?
+    /// Mode of the running (or last finished) sync; `nil` before the first run.
+    var lastRunMode: SyncMode?
+    /// Accounts the running (or last finished) sync covered.
+    var lastRunAccountCount = 0
+    /// Accounts whose leg failed in the last finished sync. `lastError` only
+    /// reports run-level failures (e.g. the accounts can't be loaded).
+    var lastRunFailedAccountCount = 0
+
+    /// The last run finished with every account synced and no error at all.
+    var lastRunSucceeded: Bool {
+        !isSyncing && lastError == nil && lastRunFailedAccountCount == 0
+    }
+
+    /// Accounts still syncing, per provider.
+    var inProgressCountByProvider: [ProviderType: Int] {
+        var counts: [ProviderType: Int] = [:]
+        for accountId in accountsInProgress {
+            if let provider = providerByAccountId[accountId] {
+                counts[provider, default: 0] += 1
+            }
+        }
+        return counts
+    }
 }
 
 // MARK: - Mode
@@ -35,6 +61,9 @@ enum SyncMode: Sendable {
 final class SyncService: ObservableObject {
 
     typealias AppleConnectionFactory = (AppleCredentials) -> any AppleAccountSyncing
+    typealias GooglePlayConnectionFactory = (GooglePlayCredentials) -> any GooglePlaySyncConnecting
+    /// Rewrites the WidgetKit snapshot and reloads the timelines (plan H6).
+    typealias WidgetSnapshotWriting = @MainActor (PersistentStorable) async -> Void
 
     static let shared = SyncService()
 
@@ -43,16 +72,35 @@ final class SyncService: ObservableObject {
     private let storage: PersistentStorable
     private let keychain: KeyStorable
     private let appleConnectionFactory: AppleConnectionFactory
+    private let googlePlayConnectionFactory: GooglePlayConnectionFactory
+    private let widgetSnapshotWriter: WidgetSnapshotWriting
     private var rootTask: Task<Void, Never>?
 
     init(
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
-        appleConnectionFactory: AppleConnectionFactory? = nil
+        appleConnectionFactory: AppleConnectionFactory? = nil,
+        googlePlayConnectionFactory: GooglePlayConnectionFactory? = nil,
+        widgetSnapshotWriter: WidgetSnapshotWriting? = nil
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
         self.appleConnectionFactory = appleConnectionFactory ?? { AppleAccountConnection(credentials: $0) }
+        self.googlePlayConnectionFactory = googlePlayConnectionFactory ?? { GooglePlayAccountConnection(credentials: $0) }
+        self.widgetSnapshotWriter = widgetSnapshotWriter ?? { await WidgetDashboardSnapshotWriter.write(storage: $0) }
+    }
+
+    /// One account of a sync run with the connection built for it (`nil` when
+    /// its credentials are missing).
+    private enum PreparedAccount: @unchecked Sendable {
+        case apple(AccountModel, (any AppleAccountSyncing)?)
+        case googlePlay(AccountModel, (any GooglePlaySyncConnecting)?)
+
+        var account: AccountModel {
+            switch self {
+            case .apple(let account, _), .googlePlay(let account, _): return account
+            }
+        }
     }
 
     /// Fire-and-forget. Safe to call repeatedly — already-running syncs are coalesced
@@ -74,13 +122,19 @@ final class SyncService: ObservableObject {
     // MARK: - Private (MainActor)
 
     private func performSyncAll(mode: SyncMode) async {
-        state.isSyncing = true
-        state.lastError = nil
+        var started = state
+        started.isSyncing = true
+        started.lastError = nil
+        started.lastRunMode = mode
+        started.lastRunAccountCount = 0
+        started.lastRunFailedAccountCount = 0
+        state = started
 
         let accounts: [AccountModel]
         do {
+            // Firebase has nothing to sync in the background.
             let all: [AccountModel] = try await storage.fetchAll(AccountModel.self)
-            accounts = all.filter { $0.providerType == .apple }
+            accounts = all.filter { $0.providerType == .apple || $0.providerType == .googlePlay }
         } catch {
             state.lastError = error.localizedDescription
             state.isSyncing = false
@@ -91,35 +145,56 @@ final class SyncService: ObservableObject {
         guard !accounts.isEmpty else {
             state.isSyncing = false
             state.lastSyncedAt = .now
-            WidgetCenter.shared.reloadAllTimelines()
+            await widgetSnapshotWriter(storage)
             return
         }
 
         // Build the per-account connections on MainActor (Keychain isn't Sendable).
         // The connections themselves are Sendable so they're safe to ship to detached work.
-        let prepared: [(AccountModel, (any AppleAccountSyncing)?)] = accounts.map { account in
-            let creds: AppleCredentials? = keychain.object(forKey: "credentials.\(account.id)")
-            let connection = creds.map(appleConnectionFactory)
-            return (account, connection)
+        let prepared: [PreparedAccount] = accounts.map { account in
+            let key = "credentials.\(account.id)"
+            switch account.providerType {
+            case .googlePlay:
+                let creds: GooglePlayCredentials? = keychain.object(forKey: key)
+                return .googlePlay(account, creds.map(googlePlayConnectionFactory))
+            default:
+                let creds: AppleCredentials? = keychain.object(forKey: key)
+                return .apple(account, creds.map(appleConnectionFactory))
+            }
         }
+        state.lastRunAccountCount = accounts.count
+        state.providerByAccountId = Dictionary(accounts.map { ($0.id, $0.providerType) }, uniquingKeysWith: { first, _ in first })
 
-        Log.print.notice("[Sync] Starting \(mode == .lightweight ? "lightweight " : "")parallel sync for \(accounts.count) Apple account(s)")
+        let playCount = accounts.filter { $0.providerType == .googlePlay }.count
+        Log.print.notice("[Sync] Starting \(mode == .lightweight ? "lightweight " : "")parallel sync for \(accounts.count - playCount) Apple and \(playCount) Google Play account(s)")
         #if DEBUG
         await postDebugSyncStartedNotification(mode: mode, accountCount: accounts.count)
         #endif
         let storage = self.storage
 
         let changes = await withTaskGroup(of: SyncChange.self) { group -> SyncChange in
-            for (account, connection) in prepared {
+            for item in prepared {
+                let accountId = item.account.id
                 group.addTask { [weak self] in
-                    await self?.markInProgress(account.id, started: true)
-                    let change = await SyncService.runAccountSync(
-                        account: account,
-                        connection: connection,
-                        storage: storage,
-                        mode: mode
-                    )
-                    await self?.markInProgress(account.id, started: false)
+                    await self?.markInProgress(accountId, started: true)
+                    let change: SyncChange
+                    switch item {
+                    case let .apple(account, connection):
+                        change = await SyncService.runAccountSync(
+                            account: account,
+                            connection: connection,
+                            storage: storage,
+                            mode: mode
+                        )
+                    case let .googlePlay(account, connection):
+                        change = await SyncService.runGooglePlaySync(
+                            account: account,
+                            connection: connection,
+                            storage: storage,
+                            mode: mode
+                        )
+                    }
+                    await self?.markInProgress(accountId, started: false)
                     return change
                 }
             }
@@ -128,10 +203,15 @@ final class SyncService: ObservableObject {
             return aggregate
         }
 
-        state.lastSyncedAt = .now
-        state.isSyncing = false
+        // One mutation, so observers see the failure count together with the
+        // end of the run (the review prompt reacts to this transition).
+        var finished = state
+        finished.lastRunFailedAccountCount = changes.failedAccountIds.count
+        finished.lastSyncedAt = .now
+        finished.isSyncing = false
+        state = finished
         await preloadWidgetIcons()
-        WidgetCenter.shared.reloadAllTimelines()
+        await widgetSnapshotWriter(storage)
 
         // "Fake push": surface status changes and new reviews as local
         // notifications, but only for background (lightweight) syncs — in the
@@ -147,11 +227,11 @@ final class SyncService: ObservableObject {
     /// Caches app icons into the shared App Group container so the widget can
     /// render real icons instead of placeholders.
     private func preloadWidgetIcons() async {
-        guard let apps: [AppModel] = try? await storage.fetchAll(AppModel.self) else { return }
+        let apps: [AppModel] = (try? await storage.fetchAll(AppModel.self)) ?? []
         // Include per-platform icons so the WidgetKit extension (which can't fetch
         // at render time) has the bytes cached for each awaiting platform's row.
         // `WidgetIconCache.preload` dedups via a Set.
-        let iconURLs = apps.flatMap { app -> [String] in
+        var iconURLs = apps.flatMap { app -> [String] in
             var urls: [String] = []
             if let icon = app.iconUrl { urls.append(icon) }
             for version in (app.platformVersions ?? []) + (app.awaitingVersions ?? []) {
@@ -159,6 +239,9 @@ final class SyncService: ObservableObject {
             }
             return urls
         }
+        // Google Play apps live in one cached list per account.
+        let playLists: [[GooglePlayAppItem]] = (try? await storage.fetchAll([GooglePlayAppItem].self)) ?? []
+        iconURLs += playLists.flatMap { $0.compactMap(\.iconUrl) }
         await WidgetIconCache.preload(iconURLs: iconURLs)
     }
 
@@ -207,6 +290,20 @@ final class SyncService: ObservableObject {
 
     // MARK: - Private (off MainActor)
 
+    private nonisolated static func runGooglePlaySync(
+        account: AccountModel,
+        connection: (any GooglePlaySyncConnecting)?,
+        storage: PersistentStorable,
+        mode: SyncMode
+    ) async -> SyncChange {
+        guard let connection else {
+            Log.print.error("[Sync] No credentials for \(account.name)")
+            await saveMetadata(storage: storage, accountId: account.id, appsSynced: 0, error: "Missing credentials")
+            return .failed(accountId: account.id)
+        }
+        return await GooglePlayAccountSync(account: account, connection: connection, storage: storage, mode: mode).run()
+    }
+
     private nonisolated static func runAccountSync(
         account: AccountModel,
         connection: (any AppleAccountSyncing)?,
@@ -216,7 +313,7 @@ final class SyncService: ObservableObject {
         guard let connection else {
             Log.print.error("[Sync] No credentials for \(account.name)")
             await saveMetadata(storage: storage, accountId: account.id, appsSynced: 0, error: "Missing credentials")
-            return SyncChange()
+            return .failed(accountId: account.id)
         }
 
         do {
@@ -293,7 +390,7 @@ final class SyncService: ObservableObject {
                             accountId: account.id,
                             appId: app.id,
                             appName: app.name,
-                            newState: current
+                            status: SyncChange.StatusLabel(appStore: current)
                         )
                     )
                 }
@@ -344,7 +441,7 @@ final class SyncService: ObservableObject {
             // Offline-first contract: a transient/non-agreement error must NOT
             // clear a previously-set flag, so we only clear on a clean sync.
             Log.print.error("[Sync] \(account.name) failed: \(error.localizedDescription)")
-            return SyncChange()
+            return .failed(accountId: account.id)
         }
     }
 

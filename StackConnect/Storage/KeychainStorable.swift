@@ -3,9 +3,13 @@ import Security
 
 final class KeychainStorable: KeyStorable {
 
-    // MARK: - Singleton
+    // MARK: - Shared instance
 
-    static let shared = KeychainStorable()
+    /// The key store every screen and service uses by default: the real Keychain.
+    /// Typed as the `KeyStorable` abstraction so the DEBUG fake data mode can
+    /// replace it with an in-memory store once, at launch, before anything reads
+    /// it (`FakeDataBootstrap`) — the real Keychain is then never touched.
+    nonisolated(unsafe) static var shared: KeyStorable = KeychainStorable()
 
     // MARK: - Properties
 

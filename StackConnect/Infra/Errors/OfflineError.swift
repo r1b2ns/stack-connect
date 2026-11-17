@@ -1,4 +1,5 @@
 import Foundation
+import StackCoreRust
 
 /// Thrown by write/mutating operations that require the network when the device
 /// is offline.
@@ -15,5 +16,17 @@ enum OfflineError: LocalizedError {
         case .noConnection:
             return String(localized: "No internet connection. This action isn't available offline.")
         }
+    }
+}
+
+extension OfflineError {
+
+    /// True for the local offline guard and for Rust-core transport failures
+    /// (any provider) — the cases where cached data is still the best thing to
+    /// show and the global offline banner already explains why.
+    static func isConnectivityFailure(_ error: Error) -> Bool {
+        if case OfflineError.noConnection = error { return true }
+        if case StackError.Network = error { return true }
+        return false
     }
 }

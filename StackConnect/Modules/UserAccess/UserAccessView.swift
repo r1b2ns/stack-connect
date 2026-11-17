@@ -32,6 +32,7 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
+    @Environment(\.analytics) private var analytics
 
     /// Tracks the first appearance so we can distinguish it (handled by `.task`)
     /// from a reappearance after popping back from `UserDetail`. On reappear we
@@ -217,117 +218,35 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
     // MARK: - Filter Strip
 
     private func buildFilterStrip() -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(UserRoleFilter.allCases) { filter in
-                    StackTrackedButton(.filter, on: .userAccess) {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            viewModel.uiState.selectedFilter = filter
-                        }
-                    } label: {
-                        Text(filter.displayName)
-                            .font(.subheadline)
-                            .fontWeight(viewModel.uiState.selectedFilter == filter ? .semibold : .regular)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(
-                                viewModel.uiState.selectedFilter == filter
-                                    ? Color.accentColor.opacity(0.15)
-                                    : Color(.systemGray6)
-                            )
-                            .foregroundStyle(
-                                viewModel.uiState.selectedFilter == filter
-                                    ? .accent
-                                    : .secondary
-                            )
-                            .clipShape(Capsule())
-                    }
-                }
-            }
-            .padding(.horizontal, 4)
-            .padding(.vertical, 4)
+        StackFilterChips(
+            items: UserRoleFilter.allCases,
+            selection: viewModel.uiState.selectedFilter,
+            title: \.displayName
+        ) { filter in
+            analytics.track(.buttonTap(.filter, on: .userAccess))
+            viewModel.uiState.selectedFilter = filter
         }
-        .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
     }
 
     // MARK: - User Row
 
     private func buildUserRow(_ user: UserModel) -> some View {
-        HStack(spacing: 12) {
-            buildUserAvatar(user)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(user.displayName)
-                    .font(.body)
-                    .fontWeight(.medium)
-
-                if let email = user.email {
-                    Text(email)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Text(user.rolesDisplayName)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 4) {
-                if user.isPending {
-                    Text(String(localized: "Pending"))
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.orange)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.orange.opacity(0.12))
-                        .clipShape(Capsule())
-                } else if user.allAppsVisible {
-                    Text(String(localized: "All Apps"))
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.blue)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.12))
-                        .clipShape(Capsule())
-                }
-            }
-
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
+        StackPersonRow(
+            avatar: buildUserAvatar(user),
+            title: user.displayName,
+            subtitle: user.email,
+            detail: user.rolesDisplayName,
+            badge: user.isPending
+                ? .init(title: String(localized: "Pending"), color: .orange)
+                : (user.allAppsVisible ? .init(title: String(localized: "All Apps"), color: .blue) : nil)
+        )
     }
 
-    private func buildUserAvatar(_ user: UserModel) -> some View {
+    private func buildUserAvatar(_ user: UserModel) -> StackAvatar {
         let initials = [user.firstName?.prefix(1), user.lastName?.prefix(1)]
             .compactMap { $0.map(String.init) }
             .joined()
-
-        let color = avatarColor(for: user.primaryRoleDisplayName)
-
-        return ZStack {
-            Circle()
-                .fill(color.opacity(0.15))
-
-            if initials.isEmpty {
-                Image(systemName: "person.fill")
-                    .foregroundStyle(color)
-                    .font(.caption)
-            } else {
-                Text(initials)
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(color)
-            }
-        }
-        .frame(width: 36, height: 36)
+        return StackAvatar(initials: initials, tint: avatarColor(for: user.primaryRoleDisplayName))
     }
 
     private func avatarColor(for role: String) -> Color {

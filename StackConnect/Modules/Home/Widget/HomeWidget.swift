@@ -23,9 +23,9 @@ enum HomeWidgetKind: String, Codable, CaseIterable, Hashable, Identifiable {
     var summary: String {
         switch self {
         case .inReview:
-            return String(localized: "Apps waiting on App Review")
+            return String(localized: "Apps waiting on review", comment: "Customize Widgets: summary of the In Review widget (App Store and Google Play).")
         case .awaitingRelease:
-            return String(localized: "Approved apps ready to release")
+            return String(localized: "Approved releases and staged rollouts", comment: "Customize Widgets: summary of the Awaiting Release widget (App Store and Google Play).")
         case .recentReviews:
             return String(localized: "Latest customer reviews across your apps")
         }

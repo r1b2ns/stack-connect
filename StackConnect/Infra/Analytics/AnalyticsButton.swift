@@ -79,6 +79,10 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     // MARK: Apps
     case app = "app"
     case accountSettings = "account_settings"
+    case editDeveloperId = "edit_developer_id"
+    case saveDeveloperId = "save_developer_id"
+    case accessExpiry = "access_expiry"
+    case preset = "preset"
     case inviteUser = "invite_user"
     case archive = "archive"
     case unarchive = "unarchive"

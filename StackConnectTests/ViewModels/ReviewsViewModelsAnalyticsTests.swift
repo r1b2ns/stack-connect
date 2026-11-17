@@ -28,13 +28,13 @@ final class ReviewsViewModelsAnalyticsTests: XCTestCase {
             appId: "app-1",
             bundleId: "com.example.app",
             account: account,
-            keychain: MockKeyStorable(),
-            analytics: analytics,
-            loadsOnInit: false
+            service: nil,
+            ratingSummaryFetcher: MockAppStoreRatingSummaryFetcher(),
+            analytics: analytics
         )
     }
 
-    func testReplyTracksTapAndFailureWithoutCredentials() async {
+    func testReplyTracksTapAndFailureWithoutService() async {
         let sut = makeRatingsSUT()
 
         await sut.reply(to: CustomerReviewModel(id: "r1", rating: 4), body: "Private reply text")
@@ -43,7 +43,7 @@ final class ReviewsViewModelsAnalyticsTests: XCTestCase {
         XCTAssertEqual(analytics.actions(of: .replyToReview), [.action(.replyToReview, on: .reviewReply, result: .failure)])
     }
 
-    func testDeleteResponseTracksTapAndFailureWithoutCredentials() async {
+    func testDeleteResponseTracksTapAndFailureWithoutService() async {
         let sut = makeRatingsSUT()
 
         await sut.deleteResponse(for: CustomerReviewModel(id: "r1", rating: 2, responseId: "resp-1"))
@@ -80,12 +80,12 @@ final class ReviewsViewModelsAnalyticsTests: XCTestCase {
             review: review,
             appName: "App",
             account: account,
-            keychain: MockKeyStorable(),
+            service: nil,
             analytics: analytics
         )
     }
 
-    func testSubmitNewReplyTracksSendAndFailureWithoutCredentials() async {
+    func testSubmitNewReplyTracksSendAndFailureWithoutService() async {
         let sut = makeDetailSUT(review: CustomerReviewModel(id: "r1", rating: 5))
 
         await sut.submitReply(body: "Thanks!")
@@ -105,7 +105,7 @@ final class ReviewsViewModelsAnalyticsTests: XCTestCase {
         XCTAssertEqual(analytics.actions(of: .updateReviewReply), [.action(.updateReviewReply, on: .reviewReply, result: .failure)])
     }
 
-    func testDeleteResponseTracksConfirmAndFailureWithoutCredentials() async {
+    func testDeleteResponseTracksConfirmAndFailureWithoutService() async {
         let sut = makeDetailSUT(review: CustomerReviewModel(id: "r1", rating: 5, responseId: "resp-1", responseBody: "Old"))
 
         await sut.deleteResponse()

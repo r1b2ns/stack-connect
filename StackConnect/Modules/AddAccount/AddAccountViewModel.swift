@@ -1,7 +1,6 @@
 import Foundation
 import StackProtocols
 import APIProviderFirebase
-import APIProviderPlay
 
 // MARK: - Protocol
 
@@ -20,6 +19,9 @@ struct AddAccountUiState {
     var privateKey = ""
     var firebaseJSON = ""
     var googlePlayJSON = ""
+    /// Optional Play Console developer account ID (plan U3): digits, or a
+    /// pasted Play Console URL. Empty ⇒ the Users tab asks for it later.
+    var googlePlayDeveloperId = ""
     var isValidating = false
     var validationError: String?
     var isSaved = false
@@ -32,21 +34,28 @@ struct AddAccountUiState {
 @MainActor
 final class AddAccountViewModel: AddAccountViewModelProtocol {
 
+    /// Builds the Google Play connection used to validate a new key against the
+    /// live service. Injected so tests never hit the network or the Rust core.
+    typealias GooglePlayConnectionFactory = (GooglePlayCredentials) -> any GooglePlayAccountConnecting
+
     @Published var uiState: AddAccountUiState
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
+    private let googlePlayConnectionFactory: GooglePlayConnectionFactory
     private let analytics: AnalyticsTracking
 
     init(
         providerType: ProviderType,
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
+        googlePlayConnectionFactory: @escaping GooglePlayConnectionFactory = { GooglePlayAccountConnection(credentials: $0) },
         analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
         self.uiState = AddAccountUiState(providerType: providerType)
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
+        self.googlePlayConnectionFactory = googlePlayConnectionFactory
         self.analytics = analytics
     }
 
@@ -67,6 +76,14 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
             return
         }
 
+        if uiState.providerType == .googlePlay, !GooglePlayDeveloperId.isAcceptable(uiState.googlePlayDeveloperId) {
+            let input = uiState.googlePlayDeveloperId
+            // The input isn't known to be an ID (it may be any pasted text): private.
+            Log.print.error("[AddAccount] Developer ID refused by the normalizer — length: \(input.count, privacy: .public), input: \"\(input)\"")
+            uiState.validationError = GooglePlayDeveloperId.invalidMessage
+            return
+        }
+
         uiState.isValidating = true
         uiState.validationError = nil
 
@@ -78,10 +95,15 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
                 return
             }
 
+            // The role picker is hidden for providers without roles (Google
+            // Play): those accounts always keep the default role.
             let account = AccountModel(
                 name: uiState.accountName.trimmingCharacters(in: .whitespaces),
                 providerType: uiState.providerType,
-                role: uiState.role
+                role: uiState.providerType.supportsAccountRole ? uiState.role : .unspecified,
+                googlePlayDeveloperId: uiState.providerType == .googlePlay
+                    ? GooglePlayDeveloperId.normalized(uiState.googlePlayDeveloperId)
+                    : nil
             )
 
             switch uiState.providerType {
@@ -113,7 +135,7 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
                 }
 
                 let config = try FirebaseConfiguration(serviceAccountJSON: jsonData)
-                let provider = APIProviderFirebase(configuration: config)
+                let provider = BackendEnvironment.firebaseProviders.makeProvider(configuration: config)
                 let _ = try await provider.request(FirebaseAPI.v1beta1.projects.get())
 
                 let credentials = FirebaseCredentials(serviceAccountJSON: json)
@@ -121,22 +143,16 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
 
             case .googlePlay:
                 let json = uiState.googlePlayJSON.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !json.isEmpty else {
-                    uiState.validationError = String(localized: "Service Account JSON is required.")
-                    uiState.isValidating = false
-                    return
-                }
 
-                guard let jsonData = json.data(using: .utf8) else {
-                    uiState.validationError = String(localized: "Invalid JSON format.")
-                    uiState.isValidating = false
-                    return
-                }
+                // Offline format check first (empty / malformed / not a service
+                // account), then the live check: token exchange + Play Developer
+                // Reporting API through the Rust core.
+                _ = try GooglePlayServiceAccount(json: json)
 
-                // Validate by parsing the configuration (checks key format)
-                let _ = try PlayConfiguration(serviceAccountJSON: jsonData)
-
+                // Storage format unchanged (plan D2): the whole JSON file.
                 let credentials = GooglePlayCredentials(serviceAccountJSON: json)
+                try await googlePlayConnectionFactory(credentials).validateCredentials()
+
                 keychain.setObject(credentials, forKey: "credentials.\(account.id)")
             }
 
@@ -145,7 +161,7 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
             Log.print.info("[AddAccount] Account saved: \(account.name)")
 
         } catch {
-            uiState.validationError = error.localizedDescription
+            uiState.validationError = friendlyMessage(for: error)
             Log.print.error("[AddAccount] Validation failed: \(error.localizedDescription)")
         }
 
@@ -153,6 +169,15 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
     }
 
     // MARK: - Private
+
+    private func friendlyMessage(for error: Error) -> String {
+        switch uiState.providerType {
+        case .googlePlay:
+            return GooglePlayErrorTranslator.friendlyMessage(for: error)
+        case .apple, .firebase:
+            return error.localizedDescription
+        }
+    }
 
     private func sanitizedPrivateKey(_ key: String) -> String {
         key
@@ -166,6 +191,20 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
         guard let allAccounts = try? await storage.fetchAll(AccountModel.self) else { return nil }
         let sameTypeAccounts = allAccounts.filter { $0.providerType == uiState.providerType }
         let newName = uiState.accountName.trimmingCharacters(in: .whitespaces)
+
+        // Google Play: same service account = same `client_email` (plan D4), so a
+        // re-formatted or re-downloaded key of that account is caught too. An
+        // unparseable new key is not a duplicate: save() reports why.
+        if uiState.providerType == .googlePlay {
+            guard let existing = GooglePlayDuplicateAccountFinder.existingAccount(
+                matching: uiState.googlePlayJSON,
+                in: sameTypeAccounts,
+                keychain: keychain
+            ) else {
+                return nil
+            }
+            return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
+        }
 
         for existing in sameTypeAccounts {
             switch uiState.providerType {
@@ -186,12 +225,7 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
                     }
                 }
             case .googlePlay:
-                if let creds: GooglePlayCredentials = keychain.object(forKey: "credentials.\(existing.id)") {
-                    let newJSON = uiState.googlePlayJSON.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if creds.serviceAccountJSON == newJSON {
-                        return String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
-                    }
-                }
+                break // Handled above.
             }
         }
 

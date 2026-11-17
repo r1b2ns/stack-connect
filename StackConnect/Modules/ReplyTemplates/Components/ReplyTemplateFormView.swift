@@ -38,7 +38,7 @@ struct ReplyTemplateFormView: View {
                 } header: {
                     Text("Name")
                 } footer: {
-                    Text("Only you can see this name. It is never shown on the App Store.")
+                    Text("Only you can see this name. Customers never see it.")
                 }
 
                 Section {

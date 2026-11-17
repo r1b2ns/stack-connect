@@ -14,6 +14,10 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     /// timing out. Injected (defaults to the shared monitor) for testability.
     private let connectivity: ConnectivityProviding
 
+    /// Builds the core provider / sync service (the real Rust core in
+    /// production, in-memory fakes in DEBUG fake data mode).
+    private let coreProviders: any CoreProviderMaking
+
     /// Lazily-built Rust core provider, reused across `validateCredentials()` and
     /// `fetchApps()` within a single connection. Only created when the flag is ON.
     private var rustProvider: StackCoreRust.Provider?
@@ -25,11 +29,13 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     init(
         credentials: AppleCredentials,
         featureFlags: FeatureFlags = .shared,
-        connectivity: ConnectivityProviding = ConnectivityMonitor.shared
+        connectivity: ConnectivityProviding = ConnectivityMonitor.shared,
+        coreProviders: any CoreProviderMaking = BackendEnvironment.coreProviders
     ) {
         self.credentials = credentials
         self.featureFlags = featureFlags
         self.connectivity = connectivity
+        self.coreProviders = coreProviders
     }
 
     /// Guards mutating operations: throws `OfflineError.noConnection` when the
@@ -67,7 +73,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
 
     func syncApps(accountId: String, store: BlobStore) async throws -> [StackProtocols.AppInfo] {
         let provider = try rustCoreProvider()
-        let syncService = makeSyncService(provider: provider, store: store, accountId: accountId)
+        let syncService = coreProviders.makeSyncService(provider: provider, store: store, accountId: accountId)
         let coreApps = try await callRustCore { try await syncService.syncApps() }
         let apps = coreApps.map { app in
             StackProtocols.AppInfo(
@@ -87,7 +93,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             guard let meta = provider.appMetadata() else { return nil }
             return try await callRustCore { try await meta.fetchIconUrl(appId: appId) }
         } catch {
-            Log.print.info("[Apple] Icon fetch failed for app \(appId) (Rust core): \(error.localizedDescription)")
+            Log.print.info("[Apple] Icon fetch failed for app \(appId, privacy: .public) (Rust core): \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }
@@ -719,19 +725,20 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         return CustomerReviewsPage(reviews: models, hasNextPage: core.nextToken != nil, rawResponse: core.nextToken)
     }
 
-    func replyToReview(reviewId: String, responseBody: String) async throws {
+    /// Creates (or replaces) the developer response and returns the one App Store
+    /// Connect kept, so callers can show its id and state without a re-fetch.
+    @discardableResult
+    func replyToReview(reviewId: String, responseBody: String) async throws -> CustomerReviewResponseModel {
         try requireOnline()
         let provider = try rustCoreProvider()
         guard let reviews = provider.reviews() else {
             throw translate(.Unsupported(message: "Reviews capability is not available for this provider."))
         }
-        // Rust core returns the created/replaced ReviewResponse; this method's contract
-        // is Void, so we discard it (callers re-fetch the review list to see the reply).
-        _ = try await callRustCore {
+        let response = try await callRustCore {
             try await reviews.replyToReview(reviewId: reviewId, body: responseBody)
         }
         Log.print.info("[Apple] Replied to review \(reviewId) (Rust core)")
-        return
+        return CoreReviewMapper.reviewResponse(response)
     }
 
     func deleteReviewResponse(responseId: String) async throws {
@@ -1652,20 +1659,9 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     /// Maps a Rust-core `CustomerReview` to the app's `CustomerReviewModel`.
     /// The core does no date logic, so `createdDate`/response date (raw ISO8601)
     /// are parsed here; the developer response is flattened into the model fields.
+    /// Store-agnostic: shared with Google Play through `CoreReviewMapper`.
     static func mapCustomerReview(_ review: StackCoreRust.CustomerReview) -> CustomerReviewModel {
-        CustomerReviewModel(
-            id: review.id,
-            rating: Int(review.rating),
-            title: review.title,
-            body: review.body,
-            reviewerNickname: review.reviewerNickname,
-            createdDate: review.createdDate.flatMap(parseISO8601Date),
-            territory: review.territory,
-            responseId: review.response?.id,
-            responseBody: review.response?.body,
-            responseState: review.response?.state,
-            responseDate: review.response?.lastModifiedDate.flatMap(parseISO8601Date)
-        )
+        CoreReviewMapper.customerReview(review)
     }
 
     /// Maps a Rust-core `BuildInfo` to the app's `BuildModel`.
@@ -2054,19 +2050,10 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     }
 
     /// App Store Connect timestamps may or may not include fractional seconds
-    /// (e.g. `2024-01-15T10:30:00Z` vs `2024-01-15T10:30:00.123Z`). A single
-    /// `ISO8601DateFormatter` cannot tolerate both, so we try with fractional
-    /// seconds first, then fall back to the plain internet date-time format.
+    /// (e.g. `2024-01-15T10:30:00Z` vs `2024-01-15T10:30:00.123Z`); see
+    /// `ISO8601DateParser`.
     static func parseISO8601Date(_ string: String) -> Date? {
-        let withFractional = ISO8601DateFormatter()
-        withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = withFractional.date(from: string) {
-            return date
-        }
-
-        let plain = ISO8601DateFormatter()
-        plain.formatOptions = [.withInternetDateTime]
-        return plain.date(from: string)
+        ISO8601DateParser.date(from: string)
     }
 
     // MARK: - Analytics
@@ -2227,7 +2214,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             return rustProvider
         }
         do {
-            let provider = try connect(
+            let provider = try coreProviders.connect(
                 kind: .appStoreConnect,
                 accountId: credentials.issuerID,
                 store: rustCredentialStore,
@@ -2260,8 +2247,12 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     /// through unchanged) while logging it at the boundary. This keeps caller
     /// behaviour identical to the Swift SDK path and gives us a single place to add
     /// richer mapping (e.g. pending-agreement handling) if the migration expands.
+    ///
+    /// The core's message is logged `.public` so it is readable outside Xcode:
+    /// it carries no token or key, but App Store Connect may echo an address
+    /// it was sent (an invited user or tester), which is accepted here.
     private func translate(_ error: StackError) -> Error {
-        Log.print.error("[Apple] Rust core error: \(error.localizedDescription)")
+        Log.print.error("[Apple] Rust core error: \(error.localizedDescription, privacy: .public)")
         return error
     }
 }

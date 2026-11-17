@@ -23,14 +23,23 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         #if DEBUG
-        NFX.sharedInstance().start()
-        Log.print.info("[App] netfox started")
+        // Fake data mode makes no network calls (netfox would also bypass its
+        // network guard) and shows no permission prompt over demo screens.
+        let isFakeDataMode = FakeDataMode.current.isEnabled
+        if !isFakeDataMode {
+            NFX.sharedInstance().start()
+            Log.print.info("[App] netfox started")
+        }
+        #else
+        let isFakeDataMode = false
         #endif
 
         UNUserNotificationCenter.current().delegate = self
         // Ask for notification permission on first launch so background sync can
         // surface status changes and new reviews as local "fake push" alerts.
-        Task { await LocalNotificationService.requestAuthorizationIfNeeded() }
+        if !isFakeDataMode {
+            Task { await LocalNotificationService.requestAuthorizationIfNeeded() }
+        }
 
         // One-time cleanup of analytics CSVs orphaned by the pre-per-app storage
         // layout. Runs off the launch path (utility priority) so it never blocks

@@ -25,3 +25,12 @@ struct CustomerReviewModel: Codable, Identifiable, Hashable {
         return Locale.current.localizedString(forRegionCode: territory) ?? territory
     }
 }
+
+extension CustomerReviewModel {
+    /// Storage id of a review cached for the Home dashboard, for both stores:
+    /// `review.{appId}.{reviewId}` (`appId` is the App Store app id or the Play
+    /// package name, plan H4).
+    static func storageId(appId: String, reviewId: String) -> String {
+        "review.\(appId).\(reviewId)"
+    }
+}

@@ -78,4 +78,29 @@ final class AccountManagementViewModelTests: XCTestCase {
 
         XCTAssertEqual(analytics.results(of: .deleteAccount), [.failure])
     }
+
+    // MARK: - Reload
+
+    func testReloadAccountPicksUpDeveloperIdEditedElsewhere() async throws {
+        let play = AccountModel(name: "Play", providerType: .googlePlay)
+        try await storage.save(play, id: play.id)
+        sut = AccountManagementViewModel(account: play, storage: storage, keychain: keychain, analytics: analytics)
+        XCTAssertNil(sut.uiState.account.googlePlayDeveloperId)
+
+        let edited = play.updating(googlePlayDeveloperId: .some("1234567890"))
+        try await storage.save(edited, id: edited.id)
+        await sut.reloadAccount()
+
+        XCTAssertEqual(sut.uiState.account.googlePlayDeveloperId, "1234567890")
+    }
+
+    func testReloadAccountKeepsCurrentAccountWhenNotStored() async {
+        let missing = AccountModel(name: "Missing", providerType: .googlePlay, googlePlayDeveloperId: "42")
+        sut = AccountManagementViewModel(account: missing, storage: storage, keychain: keychain, analytics: analytics)
+
+        await sut.reloadAccount()
+
+        XCTAssertEqual(sut.uiState.account.googlePlayDeveloperId, "42")
+        XCTAssertEqual(sut.uiState.account.name, "Missing")
+    }
 }

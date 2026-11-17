@@ -3,10 +3,14 @@ import StackProtocols
 
 // MARK: - Factory
 
+/// One review with the reply composer and reply templates, for any store: the
+/// store comes from the account (`CustomerReviewsServiceFactory`).
 @MainActor
 struct ReviewDetailViewFactory {
-    static func build(review: CustomerReviewModel, appName: String, account: AccountModel) -> some View {
-        ReviewDetailEntryView(review: review, appName: appName, account: account)
+    /// - Parameter appId: the review's app (package name for Google Play), when
+    ///   known, so a reply also updates that app's offline reviews cache.
+    static func build(review: CustomerReviewModel, appName: String, account: AccountModel, appId: String? = nil) -> some View {
+        ReviewDetailEntryView(review: review, appName: appName, account: account, appId: appId)
     }
 }
 
@@ -19,11 +23,17 @@ private struct ReviewDetailEntryView: View {
 
     @StateObject private var viewModel: ReviewDetailViewModel
 
-    init(review: CustomerReviewModel, appName: String, account: AccountModel) {
+    init(review: CustomerReviewModel, appName: String, account: AccountModel, appId: String?) {
         self.review = review
         self.appName = appName
         self.account = account
-        _viewModel = StateObject(wrappedValue: ReviewDetailViewModel(review: review, appName: appName, account: account))
+        _viewModel = StateObject(wrappedValue: ReviewDetailViewModel(
+            review: review,
+            appName: appName,
+            account: account,
+            service: CustomerReviewsServiceFactory.makeService(for: account),
+            cache: appId.flatMap { CustomerReviewsServiceFactory.makeCache(for: account, appId: $0) }
+        ))
     }
 
     var body: some View {
@@ -50,10 +60,14 @@ struct ReviewDetailUiState {
     var review: CustomerReviewModel
     var appName: String
     var account: AccountModel
+    /// What the account's store supports (reply deletion, copy, reply limit).
+    var traits: CustomerReviewsTraits
     var isSending = false
     var toastMessage: ToastMessage?
     var showReplySheet = false
     var replyText = ""
+    /// Last reply failure, shown inside the reply composer.
+    var replyError: String?
     var isEditingReply = false
     var confirmDeleteResponse = false
     var showTemplatesSheet = false
@@ -62,6 +76,18 @@ struct ReviewDetailUiState {
     /// view at once, so the reply composer is only opened from the templates
     /// sheet's `onDismiss`. See `selectTemplate` / `applyPendingTemplate`.
     var pendingTemplateBody: String?
+
+    /// Writing or editing a reply is gated by the account's `review` rules (edit),
+    /// for every store.
+    var canReply: Bool {
+        account.canEdit(.review)
+    }
+
+    /// Needs the account's `review` delete rule and a store that can delete
+    /// replies (Google Play can't: a reply can only be replaced).
+    var canDeleteReply: Bool {
+        traits.canDeleteReplies && account.canDelete(.review)
+    }
 
     /// Plain-text payload for the system share sheet.
     var shareText: String {
@@ -114,18 +140,30 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
 
     @Published var uiState: ReviewDetailUiState
 
-    private let keychain: KeyStorable
+    private let service: (any CustomerReviewsServicing)?
+    private let cache: (any CustomerReviewsCaching)?
     private let analytics: AnalyticsTracking
 
+    /// - Parameters:
+    ///   - service: the account's reviews backend; `nil` when its credentials
+    ///     are missing (sending then does nothing).
+    ///   - cache: the app's offline reviews cache, kept in step after a reply.
     init(
         review: CustomerReviewModel,
         appName: String,
         account: AccountModel,
-        keychain: KeyStorable = KeychainStorable.shared,
+        service: (any CustomerReviewsServicing)?,
+        cache: (any CustomerReviewsCaching)? = nil,
         analytics: AnalyticsTracking = AnalyticsService.shared
     ) {
-        self.uiState = ReviewDetailUiState(review: review, appName: appName, account: account)
-        self.keychain = keychain
+        self.uiState = ReviewDetailUiState(
+            review: review,
+            appName: appName,
+            account: account,
+            traits: service?.traits ?? .appStore
+        )
+        self.service = service
+        self.cache = cache
         self.analytics = analytics
     }
 
@@ -133,40 +171,50 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
         // Editing replaces the existing reply; a new reply creates one.
         let action: AnalyticsAction = uiState.isEditingReply ? .updateReviewReply : .replyToReview
         analytics.track(.buttonTap(uiState.isEditingReply ? .save : .send, on: .reviewReply))
+        guard uiState.canReply else {
+            uiState.toastMessage = ToastMessage(
+                String(localized: "This account doesn't have permission to reply to reviews."),
+                icon: "exclamationmark.triangle.fill"
+            )
+            return
+        }
+        guard let service else {
+            analytics.track(.action(action, on: .reviewReply, result: .failure))
+            return
+        }
+
         uiState.isSending = true
+        uiState.replyError = nil
+        // Read before the call: the composer may be dismissed meanwhile.
+        let isEditing = uiState.isEditingReply
+        let reviewId = uiState.review.id
 
         do {
-            guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else {
-                uiState.isSending = false
-                analytics.track(.action(action, on: .reviewReply, result: .failure))
-                return
-            }
+            // Editing replaces the current reply; how is up to the store (App
+            // Store Connect deletes and re-creates it, Google Play upserts).
+            let replacingId = isEditing ? uiState.review.responseId : nil
+            let response = try await service.reply(
+                toReviewId: reviewId,
+                body: body,
+                replacingResponseId: replacingId
+            )
 
-            let connection = AppleAccountConnection(credentials: credentials)
-
-            // The App Store Connect API has no PATCH for replies. Editing means deleting
-            // the existing response and creating a new one with the updated text.
-            if uiState.isEditingReply, let existingId = uiState.review.responseId {
-                try await connection.deleteReviewResponse(responseId: existingId)
-            }
-
-            try await connection.replyToReview(reviewId: uiState.review.id, responseBody: body)
-
-            uiState.review.responseBody = body
-            uiState.review.responseState = "PENDING_PUBLISH"
-            uiState.review.responseDate = Date()
+            uiState.review.applyResponse(response)
             uiState.showReplySheet = false
             uiState.replyText = ""
-            let wasEditing = uiState.isEditingReply
             uiState.isEditingReply = false
             uiState.toastMessage = ToastMessage(
-                wasEditing ? String(localized: "Reply updated") : String(localized: "Reply sent"),
+                isEditing ? String(localized: "Reply updated") : String(localized: "Reply sent"),
                 icon: "paperplane.fill"
             )
+            await cache?.saveResponse(response, forReviewId: reviewId)
             analytics.track(.action(action, on: .reviewReply, result: .success))
         } catch {
             analytics.track(.action(action, on: .reviewReply, result: .failure))
-            uiState.toastMessage = ToastMessage(String(localized: "Failed to send reply"), icon: "exclamationmark.triangle.fill")
+            let message = service.message(for: error, operation: .reply)
+            uiState.replyError = message
+            uiState.toastMessage = ToastMessage(message, icon: "exclamationmark.triangle.fill")
+            Log.print.error("[ReviewDetail] Reply failed: \(error.localizedDescription)")
         }
 
         uiState.isSending = false
@@ -178,9 +226,12 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
         uiState.showReplySheet = true
     }
 
+    /// Closes the composer and drops its draft, error and edit mode. Also runs
+    /// when the sheet is swiped away, so the next reply starts clean.
     func cancelReplySheet() {
         uiState.showReplySheet = false
         uiState.replyText = ""
+        uiState.replyError = nil
         uiState.isEditingReply = false
     }
 
@@ -205,16 +256,14 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
 
     func deleteResponse() async {
         analytics.track(.buttonTap(.confirmDelete, on: .reviewDetail))
-        guard let responseId = uiState.review.responseId else { return }
+        guard uiState.canDeleteReply, let responseId = uiState.review.responseId else { return }
+        guard let service else {
+            analytics.track(.action(.deleteReviewResponse, on: .reviewDetail, result: .failure))
+            return
+        }
 
         do {
-            guard let credentials: AppleCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else {
-                analytics.track(.action(.deleteReviewResponse, on: .reviewDetail, result: .failure))
-                return
-            }
-
-            let connection = AppleAccountConnection(credentials: credentials)
-            try await connection.deleteReviewResponse(responseId: responseId)
+            try await service.deleteReply(responseId: responseId)
 
             uiState.review.responseId = nil
             uiState.review.responseBody = nil
@@ -224,7 +273,11 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
             analytics.track(.action(.deleteReviewResponse, on: .reviewDetail, result: .success))
         } catch {
             analytics.track(.action(.deleteReviewResponse, on: .reviewDetail, result: .failure))
-            uiState.toastMessage = ToastMessage(String(localized: "Failed to delete reply"), icon: "exclamationmark.triangle.fill")
+            uiState.toastMessage = ToastMessage(
+                service.message(for: error, operation: .deleteReply),
+                icon: "exclamationmark.triangle.fill"
+            )
+            Log.print.error("[ReviewDetail] Delete reply failed: \(error.localizedDescription)")
         }
     }
 }
@@ -234,7 +287,6 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
 struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
 
     @StateObject var viewModel: ViewModel
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         List {
@@ -255,7 +307,11 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
                 }
             }
         }
-        .sheet(isPresented: $viewModel.uiState.showReplySheet) {
+        .sheet(
+            isPresented: $viewModel.uiState.showReplySheet,
+            // Swiping the composer away drops its draft, error and edit mode too.
+            onDismiss: { viewModel.cancelReplySheet() }
+        ) {
             buildReplySheet()
         }
         .sheet(
@@ -355,7 +411,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
         if let responseBody = viewModel.uiState.review.responseBody, !responseBody.isEmpty {
             Section {
                 StackTrackedButton(.edit, on: .reviewDetail) {
-                    if viewModel.uiState.account.canEdit(.review) {
+                    if viewModel.uiState.canReply {
                         viewModel.startEditingReply()
                     }
                 } label: {
@@ -393,16 +449,16 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.plain)
-                .disabled(!viewModel.uiState.account.canEdit(.review))
+                .disabled(!viewModel.uiState.canReply)
             } header: {
                 Text("Your Reply")
             } footer: {
-                if viewModel.uiState.account.canEdit(.review) {
+                if viewModel.uiState.canReply {
                     Text("Tap to edit your reply.")
                 }
             }
 
-            if viewModel.uiState.account.canDelete(.review) {
+            if viewModel.uiState.canDeleteReply {
                 Section {
                     StackTrackedButton(.delete, on: .reviewDetail, role: .destructive) {
                         viewModel.uiState.confirmDeleteResponse = true
@@ -412,7 +468,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
                 }
             }
         } else {
-            if viewModel.uiState.account.canEdit(.review) {
+            if viewModel.uiState.canReply {
                 Section {
                     StackTrackedButton(.reply, on: .reviewDetail) {
                         viewModel.uiState.showReplySheet = true
@@ -426,7 +482,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
                         Label(String(localized: "Reply Templates"), systemImage: "text.bubble")
                     }
                 } footer: {
-                    Text("Reply to this review. Your response will be visible on the App Store.")
+                    Text(viewModel.uiState.traits.composeReplyNote)
                 }
             }
         }
@@ -435,45 +491,26 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
     // MARK: - Reply Sheet
 
     private func buildReplySheet() -> some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextEditor(text: $viewModel.uiState.replyText)
-                        .frame(minHeight: 150)
-                } header: {
-                    Text("Your Reply")
-                } footer: {
-                    Text("Your reply will be visible to all users on the App Store.")
-                }
-            }
-            .navigationTitle(viewModel.uiState.isEditingReply
+        StackReplyComposer(
+            title: viewModel.uiState.isEditingReply
                 ? String(localized: "Edit Reply")
-                : String(localized: "Reply to Review"))
-            .trackScreen(.reviewReply)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .reviewReply) {
-                        dismiss()
-                        viewModel.cancelReplySheet()
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    if viewModel.uiState.isSending {
-                        ProgressView()
-                    } else {
-                        Button(viewModel.uiState.isEditingReply
-                            ? String(localized: "Save")
-                            : String(localized: "Send")
-                        ) {
-                            Task { await viewModel.submitReply(body: viewModel.uiState.replyText) }
-                        }
-                        .disabled(viewModel.uiState.replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
-                }
+                : String(localized: "Reply to Review"),
+            confirmTitle: viewModel.uiState.isEditingReply
+                ? String(localized: "Save")
+                : String(localized: "Send"),
+            text: $viewModel.uiState.replyText,
+            footer: viewModel.uiState.traits.replyVisibilityNote,
+            characterLimit: viewModel.uiState.traits.replyCharacterLimit,
+            error: viewModel.uiState.replyError,
+            trackingScreen: .reviewReply,
+            isSending: viewModel.uiState.isSending,
+            onSend: { text in
+                Task { await viewModel.submitReply(body: text) }
+            },
+            onCancel: {
+                viewModel.cancelReplySheet()
             }
-            .disabled(viewModel.uiState.isSending)
-        }
+        )
     }
 
     // MARK: - Helpers

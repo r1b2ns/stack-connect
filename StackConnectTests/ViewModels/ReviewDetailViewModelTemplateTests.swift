@@ -10,23 +10,20 @@ import XCTest
 @MainActor
 final class ReviewDetailViewModelTemplateTests: XCTestCase {
 
-    private var keychain: MockKeyStorable!
     private var sut: ReviewDetailViewModel!
 
     override func setUp() async throws {
         try await super.setUp()
-        keychain = MockKeyStorable()
         sut = ReviewDetailViewModel(
             review: CustomerReviewModel(id: "r1", rating: 5),
             appName: "App A",
             account: AccountModel(id: "acc1", name: "Test", providerType: .apple),
-            keychain: keychain
+            service: MockCustomerReviewsService()
         )
     }
 
     override func tearDown() async throws {
         sut = nil
-        keychain = nil
         try await super.tearDown()
     }
 

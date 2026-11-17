@@ -91,24 +91,14 @@ struct PreSubmitChecklistSheet: View {
 
     // MARK: - Rows
 
-    /// A row showing a label + value, optionally trailed by a status indicator.
+    /// A row showing a label + value, optionally with a status indicator.
     private func buildValueRow(
         title: String,
         value: String,
         satisfied: Bool,
         showsIndicator: Bool = true
     ) -> some View {
-        HStack(spacing: 12) {
-            Text(title)
-                .foregroundStyle(.primary)
-            Spacer()
-            Text(value)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.trailing)
-            if showsIndicator {
-                statusIcon(satisfied: satisfied)
-            }
-        }
+        StackChecklistRow(title: title, value: value, isSatisfied: showsIndicator ? satisfied : nil)
     }
 
     /// A row showing a label + a ✅/⚠️ status (with optional detail text).
@@ -117,20 +107,6 @@ struct PreSubmitChecklistSheet: View {
         satisfied: Bool,
         detail: String? = nil
     ) -> some View {
-        HStack(spacing: 12) {
-            Text(title)
-                .foregroundStyle(.primary)
-            Spacer()
-            if let detail {
-                Text(detail)
-                    .foregroundStyle(.secondary)
-            }
-            statusIcon(satisfied: satisfied)
-        }
-    }
-
-    private func statusIcon(satisfied: Bool) -> some View {
-        Image(systemName: satisfied ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-            .foregroundStyle(satisfied ? .green : .orange)
+        StackChecklistRow(title: title, value: detail, isSatisfied: satisfied)
     }
 }

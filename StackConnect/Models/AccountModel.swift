@@ -19,6 +19,27 @@ enum AccountRuleResource: String, Codable, CaseIterable, Hashable {
     case testFlight
     case analytics
     case provisioning
+
+    /// Rule resources that gate something for accounts of `provider`, in display
+    /// order. Drives the permission pickers (export) and the permissions summary
+    /// (Account Settings), so only meaningful resources are offered.
+    ///
+    /// Google Play gates its app list and the read-only app sections (`apps`:
+    /// manual add / remove, store listings, app details), its releases
+    /// (`version`: release status, tracks and release detail; later edit /
+    /// add for rollout changes and new releases, plan R5) and its ratings &
+    /// reviews (`review`: view, reply) and its users (`users`: view the Users
+    /// tab, invite, change permissions and app access, remove; plan U6).
+    /// Older Play exports carry no `version` / `users` permission, so their
+    /// releases and users stay hidden (fail closed). Firebase accounts have no
+    /// rules.
+    static func resources(for provider: ProviderType) -> [AccountRuleResource] {
+        switch provider {
+        case .apple:      return [.apps, .version, .review, .testFlight, .analytics, .users, .provisioning]
+        case .googlePlay: return [.apps, .version, .review, .users]
+        case .firebase:   return []
+        }
+    }
 }
 
 // MARK: - Rules
@@ -162,6 +183,12 @@ struct AccountModel: Codable, Identifiable, Hashable {
     /// legacy/created accounts). Non-empty ⇒ only apps whose bundleId ∈
     /// appsBundles are visible for this imported account. See `allowsApp`.
     var appsBundles: [String]?
+    /// Google Play only: the numeric Play Console developer account ID the Users
+    /// tab needs (`developers/{id}/users`, plan U3). Optional — set in Add
+    /// Account or later in Account Settings / the Users tab. Not secret (it is
+    /// in every Play Console URL), so it lives here, not in the Keychain, and
+    /// travels in `.scexport` files.
+    var googlePlayDeveloperId: String?
 
     init(
         id: String = UUID().uuidString,
@@ -174,7 +201,8 @@ struct AccountModel: Codable, Identifiable, Hashable {
         expirationDate: Date? = nil,
         hasPendingAgreements: Bool = false,
         pendingAgreementsDetectedAt: Date? = nil,
-        appsBundles: [String]? = nil
+        appsBundles: [String]? = nil,
+        googlePlayDeveloperId: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -187,10 +215,25 @@ struct AccountModel: Codable, Identifiable, Hashable {
         self.hasPendingAgreements = hasPendingAgreements
         self.pendingAgreementsDetectedAt = pendingAgreementsDetectedAt
         self.appsBundles = appsBundles
+        self.googlePlayDeveloperId = googlePlayDeveloperId
     }
 
+    /// Only accounts created on this device, of a provider that supports export,
+    /// can be exported (an imported account can't be re-shared).
     var isExportable: Bool {
-        origin == .created
+        origin == .created && providerType.supportsExport
+    }
+
+    /// Rule resources that apply to this account's provider.
+    var ruleResources: [AccountRuleResource] {
+        AccountRuleResource.resources(for: providerType)
+    }
+
+    /// Role to show next to the account name, or `nil` when there is none to show
+    /// (unspecified, or a provider without roles such as Google Play).
+    var displayedRole: AccountRole? {
+        guard providerType.supportsAccountRole, role != .unspecified else { return nil }
+        return role
     }
 
     var isExpired: Bool {
@@ -234,6 +277,31 @@ struct AccountModel: Codable, Identifiable, Hashable {
         rules[resource].contains(.add)
     }
 
+    /// A copy with a new name and/or role that keeps every other field —
+    /// including the per-app scope (`appsBundles`), which must survive a rename.
+    func updating(name: String? = nil, role: AccountRole? = nil) -> AccountModel {
+        updating(name: name, role: role, googlePlayDeveloperId: .some(googlePlayDeveloperId))
+    }
+
+    /// Same as `updating(name:role:)`, also replacing the Google Play developer
+    /// ID (`.some(nil)` clears it).
+    func updating(name: String? = nil, role: AccountRole? = nil, googlePlayDeveloperId: String??) -> AccountModel {
+        AccountModel(
+            id: id,
+            name: name ?? self.name,
+            providerType: providerType,
+            createdAt: createdAt,
+            rules: rules,
+            origin: origin,
+            role: role ?? self.role,
+            expirationDate: expirationDate,
+            hasPendingAgreements: hasPendingAgreements,
+            pendingAgreementsDetectedAt: pendingAgreementsDetectedAt,
+            appsBundles: appsBundles,
+            googlePlayDeveloperId: googlePlayDeveloperId ?? self.googlePlayDeveloperId
+        )
+    }
+
     /// Ensures all rule resources have values for created accounts.
     /// Imported accounts keep their original permissions (even if empty).
     mutating func fillMissingRules() {
@@ -261,10 +329,11 @@ struct AccountModel: Codable, Identifiable, Hashable {
         pendingAgreementsDetectedAt = try container.decodeIfPresent(Date.self, forKey: .pendingAgreementsDetectedAt)
         // decodeIfPresent ⇒ absent/null decodes to nil ⇒ no restriction (free backward compat).
         appsBundles = try container.decodeIfPresent([String].self, forKey: .appsBundles)
+        googlePlayDeveloperId = try container.decodeIfPresent(String.self, forKey: .googlePlayDeveloperId)
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, providerType, createdAt, rules, origin, role, expirationDate
-        case hasPendingAgreements, pendingAgreementsDetectedAt, appsBundles
+        case hasPendingAgreements, pendingAgreementsDetectedAt, appsBundles, googlePlayDeveloperId
     }
 }

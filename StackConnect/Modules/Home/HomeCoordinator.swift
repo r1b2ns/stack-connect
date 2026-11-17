@@ -26,6 +26,13 @@ enum HomeRoute: Hashable {
     case analyticsDashboard(project: FirebaseProjectModel, account: AccountModel)
     case messaging(project: FirebaseProjectModel, account: AccountModel)
     case googlePlayAppList(AccountModel)
+    case googlePlayAppDetail(app: GooglePlayAppItem, account: AccountModel)
+    case googlePlayStoreListings(app: GooglePlayAppItem, account: AccountModel)
+    case googlePlayStoreListingDetail(listing: GooglePlayStoreListingModel, isDefaultLanguage: Bool)
+    case googlePlayTracks(app: GooglePlayAppItem, account: AccountModel)
+    case googlePlayReleaseDetail(app: GooglePlayAppItem, account: AccountModel, track: String, release: GooglePlayReleaseModel)
+    case googlePlayAppInfo(app: GooglePlayAppItem, account: AccountModel)
+    case googlePlayUserDetail(user: GooglePlayUserModel, account: AccountModel)
     case appDetail(app: AppModel, account: AccountModel)
     case versionList(appId: String, platform: AppPlatform, account: AccountModel)
     case versionDetail(version: AppStoreVersionModel, account: AccountModel)
@@ -46,7 +53,10 @@ enum HomeRoute: Hashable {
     case appPrivacy(appId: String, account: AccountModel)
     case appAccessibility(appId: String, account: AccountModel)
     case ratingsReviews(appId: String, bundleId: String, appName: String, account: AccountModel)
-    case reviewDetail(review: CustomerReviewModel, appName: String, account: AccountModel)
+    /// `appId` (the package name for Google Play) lets the detail keep the
+    /// store's offline reviews cache in step after a reply; `nil` from screens
+    /// that aren't an app's review list.
+    case reviewDetail(review: CustomerReviewModel, appName: String, account: AccountModel, appId: String? = nil)
     case allReviews
     case testFlight(appId: String, account: AccountModel)
     case betaGroupDetail(group: BetaGroupModel, appId: String, account: AccountModel)
@@ -162,8 +172,84 @@ final class HomeCoordinator: MainCoordinatorProtocol {
         path.append(HomeRoute.googlePlayAppList(account))
     }
 
+    func navigateToGooglePlayAppDetail(_ app: GooglePlayAppItem, account: AccountModel) {
+        path.append(HomeRoute.googlePlayAppDetail(app: app, account: account))
+    }
+
+    func navigateToGooglePlayStoreListings(_ app: GooglePlayAppItem, account: AccountModel) {
+        path.append(HomeRoute.googlePlayStoreListings(app: app, account: account))
+    }
+
+    func navigateToGooglePlayStoreListingDetail(_ listing: GooglePlayStoreListingModel, isDefaultLanguage: Bool) {
+        path.append(HomeRoute.googlePlayStoreListingDetail(listing: listing, isDefaultLanguage: isDefaultLanguage))
+    }
+
+    func navigateToGooglePlayTracks(_ app: GooglePlayAppItem, account: AccountModel) {
+        path.append(HomeRoute.googlePlayTracks(app: app, account: account))
+    }
+
+    func navigateToGooglePlayReleaseDetail(_ release: GooglePlayReleaseModel, track: String, app: GooglePlayAppItem, account: AccountModel) {
+        path.append(HomeRoute.googlePlayReleaseDetail(app: app, account: account, track: track, release: release))
+    }
+
+    func navigateToGooglePlayAppInfo(_ app: GooglePlayAppItem, account: AccountModel) {
+        path.append(HomeRoute.googlePlayAppInfo(app: app, account: account))
+    }
+
+    func navigateToGooglePlayUserDetail(_ user: GooglePlayUserModel, account: AccountModel) {
+        path.append(HomeRoute.googlePlayUserDetail(user: user, account: account))
+    }
+
     func navigateToAppDetail(_ app: AppModel, account: AccountModel) {
         path.append(HomeRoute.appDetail(app: app, account: account))
+    }
+
+    /// Opens a dashboard row's app in its own store's detail (plan H7).
+    func navigate(to target: DashboardTarget, account: AccountModel) {
+        switch target {
+        case .appStore(let app):
+            navigateToAppDetail(app, account: account)
+        case .googlePlay(let app):
+            navigateToGooglePlayAppDetail(app, account: account)
+        }
+    }
+
+    /// Opens a dashboard row; when the widget couldn't read the accounts, the
+    /// row's account is resolved from storage first (a row whose account is
+    /// gone does nothing, logged).
+    @MainActor
+    func open(_ target: DashboardTarget, accountId: String, account: AccountModel?, storage: PersistentStorable? = SwiftDataStorable.shared) {
+        if let account {
+            navigate(to: target, account: account)
+            return
+        }
+        Task { @MainActor in
+            guard var resolved = try? await storage?.fetch(AccountModel.self, id: accountId) else {
+                Log.print.notice("[Home] Dashboard row references unknown account \(accountId, privacy: .public)")
+                return
+            }
+            resolved.fillMissingRules()
+            navigate(to: target, account: resolved)
+        }
+    }
+
+    /// Opens a dashboard review in Review Detail (Play reviews carry their
+    /// package so the detail keeps the Play reviews cache in step).
+    @MainActor
+    func open(_ item: DashboardReview, storage: PersistentStorable? = SwiftDataStorable.shared) {
+        let appId = item.provider == .googlePlay ? item.appId : nil
+        if let account = item.account {
+            navigateToReviewDetail(review: item.review, appName: item.appName, account: account, appId: appId)
+            return
+        }
+        Task { @MainActor in
+            guard var resolved = try? await storage?.fetch(AccountModel.self, id: item.accountId) else {
+                Log.print.notice("[Home] Dashboard review references unknown account \(item.accountId, privacy: .public)")
+                return
+            }
+            resolved.fillMissingRules()
+            navigateToReviewDetail(review: item.review, appName: item.appName, account: resolved, appId: appId)
+        }
     }
 
     func navigateToVersionList(appId: String, platform: AppPlatform, account: AccountModel) {
@@ -230,8 +316,8 @@ final class HomeCoordinator: MainCoordinatorProtocol {
         path.append(HomeRoute.ratingsReviews(appId: appId, bundleId: bundleId, appName: appName, account: account))
     }
 
-    func navigateToReviewDetail(review: CustomerReviewModel, appName: String, account: AccountModel) {
-        path.append(HomeRoute.reviewDetail(review: review, appName: appName, account: account))
+    func navigateToReviewDetail(review: CustomerReviewModel, appName: String, account: AccountModel, appId: String? = nil) {
+        path.append(HomeRoute.reviewDetail(review: review, appName: appName, account: account, appId: appId))
     }
 
     func navigateToAllReviews() {

@@ -54,6 +54,14 @@ struct CachedAccessToken {
     }
 }
 
+// MARK: - Request authentication seam
+
+/// Adds credentials to an outgoing request. `FirebaseAuthenticator` (service
+/// account JWT → OAuth2 bearer token) is the production implementation.
+public protocol RequestAuthenticating {
+    func adapt(_ urlRequest: URLRequest) async throws -> URLRequest
+}
+
 // MARK: - FirebaseAuthenticator
 
 /// Handles Google Service Account OAuth2 authentication.
@@ -62,7 +70,7 @@ struct CachedAccessToken {
 /// 2. Exchanges the JWT for an OAuth2 access token via Google's token endpoint
 /// 3. Caches the access token and refreshes when expired
 /// 4. Adapts outgoing URLRequests with the Bearer token
-final class FirebaseAuthenticator {
+final class FirebaseAuthenticator: RequestAuthenticating {
 
     private let configuration: FirebaseConfiguration
     private var cachedToken: CachedAccessToken?

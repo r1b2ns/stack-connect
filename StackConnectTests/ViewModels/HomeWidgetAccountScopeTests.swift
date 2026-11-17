@@ -40,9 +40,9 @@ final class HomeWidgetAccountScopeTests: XCTestCase {
         let widget = AwaitingReleaseWidget(configuration: .init(kind: .awaitingRelease), storage: storage)
         await widget.load()
 
-        XCTAssertEqual(widget.apps.count, 2)
+        XCTAssertEqual(widget.entries.count, 2)
         XCTAssertEqual(
-            Set(widget.apps.map { AppPlatformVersionKey($0) }),
+            Set(widget.entries.map { AppPlatformVersionKey($0) }),
             [
                 AppPlatformVersionKey(platform: AppPlatform.ios.rawValue, version: "3.1.0"),
                 AppPlatformVersionKey(platform: AppPlatform.tvOs.rawValue, version: "3.1.2")
@@ -62,7 +62,7 @@ final class HomeWidgetAccountScopeTests: XCTestCase {
         let widget = AwaitingReleaseWidget(configuration: .init(kind: .awaitingRelease), storage: storage)
         await widget.load()
 
-        XCTAssertEqual(widget.apps.map(\.id), ["app-live"])
+        XCTAssertEqual(widget.entries.map(\.appId), ["app-live"])
     }
 
     func testInReviewExcludesOrphanedApp() async throws {
@@ -73,7 +73,7 @@ final class HomeWidgetAccountScopeTests: XCTestCase {
         let widget = InReviewWidget(configuration: .init(kind: .inReview), storage: storage)
         await widget.load()
 
-        XCTAssertEqual(widget.apps.map(\.id), ["app-live"])
+        XCTAssertEqual(widget.entries.map(\.appId), ["app-live"])
     }
 
     func testRecentReviewsExcludesReviewsOfOrphanedApp() async throws {
@@ -86,7 +86,7 @@ final class HomeWidgetAccountScopeTests: XCTestCase {
         let widget = RecentReviewsWidget(configuration: .init(kind: .recentReviews), storage: storage)
         await widget.load()
 
-        XCTAssertEqual(widget.reviews.map(\.id), ["r-1"])
+        XCTAssertEqual(widget.reviews.map(\.review.id), ["r-1"])
     }
 
     // MARK: - Guard: never filter without a loaded account list
@@ -99,7 +99,7 @@ final class HomeWidgetAccountScopeTests: XCTestCase {
         let widget = AwaitingReleaseWidget(configuration: .init(kind: .awaitingRelease), storage: storage)
         await widget.load()
 
-        XCTAssertEqual(widget.apps.map(\.id), ["app-1"])
+        XCTAssertEqual(widget.entries.map(\.appId), ["app-1"])
     }
 
     /// The account fetch *failing* must not blank out Home either — a transient
@@ -114,7 +114,7 @@ final class HomeWidgetAccountScopeTests: XCTestCase {
         await widget.load()
 
         // Both survive: with no usable account list there is no basis to filter.
-        XCTAssertEqual(Set(widget.apps.map(\.id)), ["app-1", "app-orphan"])
+        XCTAssertEqual(Set(widget.entries.map(\.appId)), ["app-1", "app-orphan"])
     }
 
     func testInReviewKeepsAppsWhenAccountFetchFails() async throws {
@@ -124,7 +124,7 @@ final class HomeWidgetAccountScopeTests: XCTestCase {
         let widget = InReviewWidget(configuration: .init(kind: .inReview), storage: failing)
         await widget.load()
 
-        XCTAssertEqual(widget.apps.map(\.id), ["app-orphan"])
+        XCTAssertEqual(widget.entries.map(\.appId), ["app-orphan"])
     }
 
     // MARK: - filterKnownAccounts (unit)
@@ -165,8 +165,8 @@ final class HomeWidgetAccountScopeTests: XCTestCase {
             self.version = version
         }
 
-        init(_ app: AppModel) {
-            self.init(platform: app.platform, version: app.versionString)
+        init(_ entry: DashboardEntry) {
+            self.init(platform: entry.platform?.rawValue, version: entry.versionText)
         }
     }
 

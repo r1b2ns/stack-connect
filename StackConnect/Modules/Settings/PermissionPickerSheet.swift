@@ -163,4 +163,16 @@ extension AccountRuleResource {
         case .provisioning: return String(localized: "Manage certificates, identifiers, devices, and provisioning profiles")
         }
     }
+
+    /// `footerDescription`, worded for the provider where it differs.
+    func footerDescription(for provider: ProviderType) -> String {
+        switch (provider, self) {
+        case (.googlePlay, .version):
+            return String(localized: "View release status, tracks and releases, and manage rollouts")
+        case (.googlePlay, .users):
+            return String(localized: "View the developer account's users, invite people, and change their permissions and app access")
+        default:
+            return footerDescription
+        }
+    }
 }

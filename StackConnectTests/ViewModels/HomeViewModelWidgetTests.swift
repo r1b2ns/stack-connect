@@ -29,6 +29,11 @@ final class HomeViewModelWidgetTests: XCTestCase {
 
     // MARK: - Defaults
 
+    func testOffersEveryProviderIncludingGooglePlay() {
+        XCTAssertEqual(sut.uiState.providers, ProviderType.allCases)
+        XCTAssertTrue(sut.uiState.providers.contains(.googlePlay))
+    }
+
     func testDefaultsToNoWidgetsOnFreshInstall() {
         XCTAssertEqual(sut.uiState.widgets.count, HomeWidgetRegistry.defaultConfigurations.count)
         XCTAssertTrue(sut.uiState.widgets.isEmpty)

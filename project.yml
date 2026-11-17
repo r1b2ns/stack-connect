@@ -101,8 +101,6 @@ packages:
     path: Packages/StackProtocols
   APIProviderFirebase:
     path: Packages/APIProviderFirebase
-  APIProviderPlay:
-    path: Packages/APIProviderPlay
   # Google Analytics for Firebase. App target only (never the widget). Pinned to
   # an exact release; product `FirebaseAnalyticsCore` is the no-IDFA variant.
   Firebase:
@@ -189,7 +187,6 @@ targets:
         product: StackCoreRust
       - package: StackProtocols
       - package: APIProviderFirebase
-      - package: APIProviderPlay
       - package: Firebase
         product: FirebaseAnalyticsCore
       - target: StackConnectWidgetExtension
@@ -233,6 +230,10 @@ targets:
 
     sources:
       - path: StackConnectTests
+      # The widget extension's layouts and snapshot loader, compiled into the
+      # tests so WidgetRenderingTests can render the home-screen widgets.
+      - path: StackConnectWidget/Views
+      - path: StackConnectWidget/Data
 
     info:
       path: StackConnectTests/Info.plist
@@ -272,6 +273,20 @@ schemes:
     test:
       config: Debug
       targets: [StackConnectTests]
+
+  # Runs the app on invented demo accounts (DEBUG-only fake data mode, see
+  # docs/FAKE_DATA.md): no network, no Keychain, no App Group store. Toggle the
+  # reset argument in the scheme editor to re-seed from scratch.
+  StackConnect Fake Data:
+    build:
+      targets:
+        StackConnect: all
+    run:
+      config: Debug
+      executable: StackConnect
+      commandLineArguments:
+        "-StackFakeData YES": true
+        "-StackFakeDataReset YES": false
 
   StackConnect Production:
     build:

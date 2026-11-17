@@ -238,7 +238,7 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
 
     private func buildAppRow(_ app: AppModel) -> some View {
         HStack(spacing: 12) {
-            buildAppIcon(url: app.iconUrl.flatMap { URL(string: $0) })
+            StackAppIcon(url: app.iconUrl.flatMap { URL(string: $0) }, size: 44, cornerRadius: 10)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
@@ -295,22 +295,7 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
     }
 
     private func buildStatusBadge(state: AppStoreState, version: String?) -> some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(statusColor(state.color))
-                .frame(width: 6, height: 6)
-
-            Text(state.displayName)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-
-            if let version {
-                Text("(\(version))")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-        }
+        StackStatusLine(color: statusColor(state.color), text: state.displayName, detail: version)
     }
 
     /// Phased-release progress line (colored dot + "X of 7 days"), mirroring App
@@ -442,44 +427,6 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
         case .blue:   return .blue
         case .yellow: return .yellow
         }
-    }
-
-    // MARK: - App Icon
-
-    private func buildAppIcon(url: URL?) -> some View {
-        Group {
-            if let url {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    case .failure:
-                        appIconPlaceholder
-                    case .empty:
-                        ProgressView()
-                            .frame(width: 44, height: 44)
-                    @unknown default:
-                        appIconPlaceholder
-                    }
-                }
-            } else {
-                appIconPlaceholder
-            }
-        }
-        .frame(width: 44, height: 44)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-    }
-
-    private var appIconPlaceholder: some View {
-        RoundedRectangle(cornerRadius: 10)
-            .fill(Color.blue.opacity(0.15))
-            .overlay {
-                Image(systemName: "app.fill")
-                    .foregroundStyle(.blue)
-                    .font(.title3)
-            }
     }
 
     // MARK: - Toolbar

@@ -37,10 +37,8 @@ private struct HomeEntry: View {
         case .reviews:
             coordinator.path = NavigationPath()
             coordinator.navigateToAllReviews()
-        case let .app(accountId, appId):
-            Task { await openAppDetail(accountId: accountId, appId: appId) }
-        case let .review(accountId, appId, reviewId):
-            Task { await openReviewDetail(accountId: accountId, appId: appId, reviewId: reviewId) }
+        case .app, .review:
+            Task { await open(link) }
         case let .reimport(accountId):
             Task { await openReimport(accountId: accountId) }
         }
@@ -55,25 +53,21 @@ private struct HomeEntry: View {
         ReimportRouter.shared.request(accountId: accountId, providerType: account.providerType)
     }
 
+    /// `app` and `review` links resolve their account first and open the
+    /// screen of its store (plan H7).
     @MainActor
-    private func openAppDetail(accountId: String, appId: String) async {
+    private func open(_ link: DeepLink) async {
         guard let storage = SwiftDataStorable.shared,
-              var account: AccountModel = try? await storage.fetch(AccountModel.self, id: accountId),
-              let app: AppModel = try? await storage.fetch(AppModel.self, id: "\(accountId).\(appId)") else { return }
-        account.fillMissingRules()
+              let destination = await DeepLinkResolver(storage: storage).resolve(link) else { return }
         coordinator.path = NavigationPath()
-        coordinator.navigateToAppDetail(app, account: account)
-    }
-
-    @MainActor
-    private func openReviewDetail(accountId: String, appId: String, reviewId: String) async {
-        guard let storage = SwiftDataStorable.shared,
-              var account: AccountModel = try? await storage.fetch(AccountModel.self, id: accountId),
-              let app: AppModel = try? await storage.fetch(AppModel.self, id: "\(accountId).\(appId)"),
-              let review: CustomerReviewModel = try? await storage.fetch(CustomerReviewModel.self, id: "review.\(appId).\(reviewId)") else { return }
-        account.fillMissingRules()
-        coordinator.path = NavigationPath()
-        coordinator.navigateToReviewDetail(review: review, appName: app.name, account: account)
+        switch destination {
+        case let .appStoreApp(app, account):
+            coordinator.navigateToAppDetail(app, account: account)
+        case let .googlePlayApp(app, account):
+            coordinator.navigateToGooglePlayAppDetail(app, account: account)
+        case let .review(review, appName, account, appId):
+            coordinator.navigateToReviewDetail(review: review, appName: appName, account: account, appId: appId)
+        }
     }
 }
 
@@ -180,11 +174,18 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
     }
 
     private var syncBannerText: String {
-        let count = viewModel.uiState.syncState.accountsInProgress.count
-        if count > 0 {
-            return String(localized: "Syncing \(count) account(s)…")
+        let syncState = viewModel.uiState.syncState
+        let count = syncState.accountsInProgress.count
+        guard count > 0 else { return String(localized: "Syncing…") }
+        // Both stores at once: say how many of each.
+        let byProvider = syncState.inProgressCountByProvider
+        if let appStore = byProvider[.apple], let googlePlay = byProvider[.googlePlay] {
+            return String(
+                localized: "Syncing \(count) account(s)… (\(appStore) App Store Connect, \(googlePlay) Google Play)",
+                comment: "Home sync banner while App Store Connect and Google Play accounts sync together: total, then the count per store."
+            )
         }
-        return String(localized: "Syncing…")
+        return String(localized: "Syncing \(count) account(s)…")
     }
 
     // MARK: - Pending Agreements Banner
@@ -451,6 +452,20 @@ private extension View {
                 MessagingViewFactory.build(project: project, account: account)
             case .googlePlayAppList(let account):
                 GooglePlayAppListViewFactory.build(account: account)
+            case .googlePlayAppDetail(let app, let account):
+                GooglePlayAppDetailViewFactory.build(app: app, account: account)
+            case .googlePlayStoreListings(let app, let account):
+                GooglePlayStoreListingsViewFactory.build(app: app, account: account)
+            case .googlePlayStoreListingDetail(let listing, let isDefaultLanguage):
+                GooglePlayStoreListingDetailViewFactory.build(listing: listing, isDefaultLanguage: isDefaultLanguage)
+            case .googlePlayTracks(let app, let account):
+                GooglePlayTracksViewFactory.build(app: app, account: account)
+            case .googlePlayReleaseDetail(let app, let account, let track, let release):
+                GooglePlayReleaseDetailViewFactory.build(app: app, account: account, track: track, release: release)
+            case .googlePlayAppInfo(let app, let account):
+                GooglePlayAppInfoViewFactory.build(app: app, account: account)
+            case .googlePlayUserDetail(let user, let account):
+                GooglePlayUserDetailViewFactory.build(user: user, account: account)
             case .appDetail(let app, let account):
                 AppDetailViewFactory.build(app: app, account: account)
             case .versionList(let appId, let platform, let account):
@@ -487,8 +502,8 @@ private extension View {
                 AppAccessibilityViewFactory.build(appId: appId, account: account)
             case .ratingsReviews(let appId, let bundleId, let appName, let account):
                 RatingsReviewsViewFactory.build(appId: appId, bundleId: bundleId, appName: appName, account: account)
-            case .reviewDetail(let review, let appName, let account):
-                ReviewDetailViewFactory.build(review: review, appName: appName, account: account)
+            case .reviewDetail(let review, let appName, let account, let appId):
+                ReviewDetailViewFactory.build(review: review, appName: appName, account: account, appId: appId)
             case .allReviews:
                 AllReviewsViewFactory.build()
             case .testFlight(let appId, let account):

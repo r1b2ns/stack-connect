@@ -126,8 +126,6 @@ final class FirebaseProjectListViewModel: FirebaseProjectListViewModelProtocol {
 
     private func createProvider() -> APIProviderFirebase? {
         guard let credentials: FirebaseCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else { return nil }
-        guard let jsonData = credentials.serviceAccountJSON.data(using: .utf8) else { return nil }
-        guard let config = try? FirebaseConfiguration(serviceAccountJSON: jsonData) else { return nil }
-        return APIProviderFirebase(configuration: config)
+        return BackendEnvironment.firebaseProviders.makeProvider(serviceAccountJSON: credentials.serviceAccountJSON)
     }
 }

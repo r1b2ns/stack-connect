@@ -2,11 +2,12 @@ import SwiftUI
 
 /// Multi-select picker for scoping an export to a subset of the account's apps.
 /// Modeled on `PermissionPickerSheet`. Selection is by app **bundle id** (stable,
-/// human-readable, unique within a team). An empty selection is treated by the
-/// caller as "all apps" (no restriction) — see the backward-compat contract.
+/// human-readable, unique within a team) — the package name for Google Play
+/// apps. An empty selection is treated by the caller as "all apps" (no
+/// restriction) — see the backward-compat contract.
 struct AppsPermissionPickerSheet: View {
 
-    let apps: [AppModel]
+    let apps: [ExportableApp]
     let initiallySelected: Set<String>
     let onDismiss: (Set<String>) -> Void
 
@@ -15,7 +16,7 @@ struct AppsPermissionPickerSheet: View {
 
     /// Apps filtered by the current search query (name OR bundle id, case-insensitive).
     /// A blank query returns the full `apps` set.
-    private var filteredApps: [AppModel] {
+    private var filteredApps: [ExportableApp] {
         guard !searchQuery.trimmingCharacters(in: .whitespaces).isEmpty else {
             return apps
         }
@@ -36,7 +37,7 @@ struct AppsPermissionPickerSheet: View {
                         toggle(app.bundleId)
                     } label: {
                         HStack(spacing: 12) {
-                            buildAppIcon(url: app.iconUrl.flatMap { URL(string: $0) })
+                            StackAppIcon(url: app.iconURL, size: 44, cornerRadius: 10)
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(app.name)
@@ -97,43 +98,5 @@ struct AppsPermissionPickerSheet: View {
         } else {
             selected.insert(bundleId)
         }
-    }
-
-    // MARK: - App Icon
-
-    private func buildAppIcon(url: URL?) -> some View {
-        Group {
-            if let url {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    case .failure:
-                        appIconPlaceholder
-                    case .empty:
-                        ProgressView()
-                            .frame(width: 44, height: 44)
-                    @unknown default:
-                        appIconPlaceholder
-                    }
-                }
-            } else {
-                appIconPlaceholder
-            }
-        }
-        .frame(width: 44, height: 44)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-    }
-
-    private var appIconPlaceholder: some View {
-        RoundedRectangle(cornerRadius: 10)
-            .fill(Color.blue.opacity(0.15))
-            .overlay {
-                Image(systemName: "app.fill")
-                    .foregroundStyle(.blue)
-                    .font(.title3)
-            }
     }
 }

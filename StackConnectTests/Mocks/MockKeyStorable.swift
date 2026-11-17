@@ -5,6 +5,11 @@ final class MockKeyStorable: KeyStorable {
 
     private var store: [String: Any] = [:]
 
+    /// Every key currently stored — lets tests assert nothing was written.
+    var storedKeys: Set<String> {
+        Set(store.keys)
+    }
+
     func string(forKey key: String) -> String? {
         store[key] as? String
     }

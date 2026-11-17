@@ -37,6 +37,9 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
             .navigationTitle(String(localized: "Manage Account"))
             .trackScreen(.accountManagement)
             .navigationBarTitleDisplayMode(.inline)
+            // `.task` runs again each time the screen reappears (coming back
+            // from Account Settings), so the Developer ID row stays current.
+            .task { await viewModel.reloadAccount() }
             .alert(
                 String(localized: "Delete Account"),
                 isPresented: $viewModel.uiState.showDeleteConfirmation
@@ -57,7 +60,10 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
     @ViewBuilder
     private func buildContent() -> some View {
         List {
-            if viewModel.uiState.account.canView(.provisioning) {
+            // Certificates, Identifiers, Devices & Profiles are App Store Connect
+            // only: hidden for providers whose rules don't include them (Google Play).
+            if viewModel.uiState.account.ruleResources.contains(.provisioning),
+               viewModel.uiState.account.canView(.provisioning) {
                 Section {
                     buildRow(
                         .certificates,
@@ -93,6 +99,22 @@ struct AccountManagementView<ViewModel: AccountManagementViewModelProtocol>: Vie
                         subtitle: String(localized: "Provisioning profiles for this account")
                     ) {
                         homeCoordinator.navigateToProfilesList(viewModel.uiState.account)
+                    }
+                }
+            }
+
+            // Google Play: the developer ID the Users tab needs (plan U3),
+            // edited in Account Settings.
+            if viewModel.uiState.account.providerType == .googlePlay {
+                Section {
+                    buildRow(
+                        .editDeveloperId,
+                        icon: "number",
+                        title: String(localized: "Developer ID"),
+                        subtitle: viewModel.uiState.account.googlePlayDeveloperId
+                            ?? String(localized: "Not set: needed to manage users")
+                    ) {
+                        homeCoordinator.navigateToAccountSettings(viewModel.uiState.account)
                     }
                 }
             }

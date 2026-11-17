@@ -113,62 +113,19 @@ struct UserDetailView<ViewModel: UserDetailViewModelProtocol>: View {
 
     private func buildHeaderSection() -> some View {
         Section {
-            HStack(spacing: 16) {
-                buildAvatar()
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(user.displayName)
-                        .font(.title3)
-                        .fontWeight(.semibold)
-
-                    if let email = user.email {
-                        Text(email)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    if user.isPending {
-                        buildPendingBadge()
-                    }
-                }
-            }
-            .padding(.vertical, 4)
+            StackPersonHeader(
+                avatar: StackAvatar(initials: initials, tint: .blue, size: 56),
+                title: user.displayName,
+                subtitle: user.email,
+                badge: user.isPending ? .init(title: String(localized: "Pending"), color: .orange) : nil
+            )
         }
     }
 
-    private func buildPendingBadge() -> some View {
-        Text(String(localized: "Pending"))
-            .font(.caption2)
-            .fontWeight(.medium)
-            .foregroundStyle(.orange)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(Color.orange.opacity(0.12))
-            .clipShape(Capsule())
-            .padding(.top, 2)
-    }
-
-    private func buildAvatar() -> some View {
-        let initials = [user.firstName?.prefix(1), user.lastName?.prefix(1)]
+    private var initials: String {
+        [user.firstName?.prefix(1), user.lastName?.prefix(1)]
             .compactMap { $0.map(String.init) }
             .joined()
-
-        return ZStack {
-            Circle()
-                .fill(Color.blue.opacity(0.15))
-
-            if initials.isEmpty {
-                Image(systemName: "person.fill")
-                    .foregroundStyle(.blue)
-                    .font(.title3)
-            } else {
-                Text(initials)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.blue)
-            }
-        }
-        .frame(width: 56, height: 56)
     }
 
     // MARK: - Roles

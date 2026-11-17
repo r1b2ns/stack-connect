@@ -25,7 +25,7 @@ protocol HomeViewModelProtocol: ObservableObject {
 // MARK: - UiState
 
 struct HomeUiState {
-    var providers: [ProviderType] = ProviderType.allCases.filter { $0 != .googlePlay }
+    var providers: [ProviderType] = ProviderType.allCases
     var widgets: [any HomeWidget] = []
     var isLoading = false
     var syncState = SyncState()
@@ -70,7 +70,8 @@ final class HomeViewModel: HomeViewModelProtocol {
     private let analytics: AnalyticsTracking
     private var cancellables = Set<AnyCancellable>()
 
-    private static let widgetsStorageKey = "home.widget.configurations"
+    /// Preferences key of the dashboard layout (also seeded by the DEBUG fake data mode).
+    static let widgetsStorageKey = "home.widget.configurations"
 
     /// Accounts already warned about upcoming expiration this session (avoids repeat alerts).
     private var warnedAccountIds: Set<String> = []

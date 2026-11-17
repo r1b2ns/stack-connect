@@ -628,51 +628,19 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
     }
 
     private func buildActionBar<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        VStack(spacing: 0) {
-            content()
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-        }
-        .background(.bar)
-        .disabled(viewModel.uiState.isPerformingAction)
-        .overlay {
-            if viewModel.uiState.isPerformingAction {
-                ProgressView()
-            }
-        }
+        StackActionBar(isBusy: viewModel.uiState.isPerformingAction, content: content)
     }
 
     private func buildActionButton(_ button: AnalyticsButton, title: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
         StackTrackedButton(button, on: .versionDetail, action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                Text(title)
-                    .fontWeight(.semibold)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .foregroundStyle(.white)
-            .background(color)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            StackActionButtonLabel(title: title, icon: icon, color: color)
         }
         .buttonStyle(.plain)
     }
 
     private func buildOutlinedActionButton(title: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                Text(title)
-                    .fontWeight(.semibold)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .foregroundStyle(color)
-            .background(Color.clear)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(color, lineWidth: 2)
-            )
+            StackActionButtonLabel(title: title, icon: icon, color: color, style: .outlined)
         }
         .buttonStyle(.plain)
     }
@@ -835,50 +803,22 @@ struct PhasedReleaseSheet<ViewModel: VersionDetailViewModelProtocol>: View {
         NavigationStack {
             Form {
                 Section {
-                    Button {
+                    StackChoiceRow(
+                        title: String(localized: "Release update to all users immediately"),
+                        icon: "arrow.up.forward.circle",
+                        isSelected: !isPhasedActive
+                    ) {
                         Task { await viewModel.savePhasedRelease(usePhased: false) }
-                    } label: {
-                        HStack {
-                            Image(systemName: "arrow.up.forward.circle")
-                                .foregroundStyle(.secondary)
-                                .frame(width: 24)
-
-                            Text("Release update to all users immediately")
-                                .font(.body)
-                                .foregroundStyle(isPhasedActive ? .secondary : .primary)
-
-                            Spacer()
-
-                            if !isPhasedActive {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
                     }
                     .disabled(isPhasedActive)
-                    .foregroundStyle(.primary)
 
-                    Button {
+                    StackChoiceRow(
+                        title: String(localized: "Release update over 7-day period using phased release"),
+                        icon: "chart.bar.doc.horizontal.fill",
+                        isSelected: isPhasedActive
+                    ) {
                         Task { await viewModel.savePhasedRelease(usePhased: true) }
-                    } label: {
-                        HStack {
-                            Image(systemName: "chart.bar.doc.horizontal.fill")
-                                .foregroundStyle(.secondary)
-                                .frame(width: 24)
-
-                            Text("Release update over 7-day period using phased release")
-                                .font(.body)
-                                .foregroundStyle(.primary)
-
-                            Spacer()
-
-                            if viewModel.uiState.phasedRelease != nil {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
                     }
-                    .foregroundStyle(.primary)
                 }
 
                 if isPhasedActive, let phased = viewModel.uiState.phasedRelease {
