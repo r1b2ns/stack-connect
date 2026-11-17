@@ -286,7 +286,7 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
             }
             return iconUrl
         } catch {
-            Log.print.info("[GooglePlay] Icon fetch failed for \(packageName) (Rust core): \(error.localizedDescription)")
+            Log.print.info("[GooglePlay] Icon fetch failed for \(packageName, privacy: .public) (Rust core): \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }
@@ -552,8 +552,14 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
 
     /// Logs a Rust-core error at the boundary and preserves the typed error, so
     /// `GooglePlayErrorTranslator` can still map it to user-facing copy.
+    ///
+    /// The core's message is logged `.public` so it is readable outside Xcode:
+    /// it carries no token or key (its own local rejections mask e-mails), but
+    /// an `Auth` message names the service account's `client_email` unmasked
+    /// and Google may echo an address it was sent. Neither is a secret (the
+    /// service account e-mail is what a Play Console admin grants access to).
     private func translate(_ error: StackError) -> Error {
-        Log.print.error("[GooglePlay] Rust core error: \(error.localizedDescription)")
+        Log.print.error("[GooglePlay] Rust core error: \(error.localizedDescription, privacy: .public)")
         return error
     }
 

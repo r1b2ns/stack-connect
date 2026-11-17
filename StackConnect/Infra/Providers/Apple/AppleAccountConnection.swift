@@ -93,7 +93,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             guard let meta = provider.appMetadata() else { return nil }
             return try await callRustCore { try await meta.fetchIconUrl(appId: appId) }
         } catch {
-            Log.print.info("[Apple] Icon fetch failed for app \(appId) (Rust core): \(error.localizedDescription)")
+            Log.print.info("[Apple] Icon fetch failed for app \(appId, privacy: .public) (Rust core): \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }
@@ -2247,8 +2247,12 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     /// through unchanged) while logging it at the boundary. This keeps caller
     /// behaviour identical to the Swift SDK path and gives us a single place to add
     /// richer mapping (e.g. pending-agreement handling) if the migration expands.
+    ///
+    /// The core's message is logged `.public` so it is readable outside Xcode:
+    /// it carries no token or key, but App Store Connect may echo an address
+    /// it was sent (an invited user or tester), which is accepted here.
     private func translate(_ error: StackError) -> Error {
-        Log.print.error("[Apple] Rust core error: \(error.localizedDescription)")
+        Log.print.error("[Apple] Rust core error: \(error.localizedDescription, privacy: .public)")
         return error
     }
 }

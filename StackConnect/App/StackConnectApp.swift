@@ -14,6 +14,10 @@ struct StackConnectApp: App {
     private let releaseNotesPresenter = ReleaseNotesPresenter()
 
     init() {
+        // The core's diagnostic log sink goes in before anything can `connect`
+        // (fake data mode included: the fakes just never produce core lines).
+        CoreLoggerInstaller.shared.install()
+
         // Analytics first, before the app delegate and any view: builds
         // `AnalyticsService.shared` (configuring Firebase only when
         // GoogleService-Info.plist is bundled) and applies the user's opt-out
