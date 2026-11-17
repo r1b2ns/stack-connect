@@ -206,7 +206,20 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
                     .foregroundStyle(.primary)
                     .contextMenu { buildAppContextMenu(app) }
                 }
+            } footer: {
+                buildReleaseStatusPausedFooter()
             }
+        }
+    }
+
+    /// Subtle note while a Google Play quota cooldown pauses the release
+    /// status: the cached lines stay, nothing blocks.
+    @ViewBuilder
+    private func buildReleaseStatusPausedFooter() -> some View {
+        if let note = viewModel.uiState.releaseStatusPausedNote {
+            Label(note, systemImage: "clock.arrow.circlepath")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
     }
 

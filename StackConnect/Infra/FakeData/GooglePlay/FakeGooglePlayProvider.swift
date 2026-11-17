@@ -130,8 +130,15 @@ final class FakePlayTracks: Tracks, @unchecked Sendable {
     }
 
     /// Edit-free `tracks.releases.list`; an unknown track is an empty list.
+    /// With `releaseSummariesQuotaExceeded`, the core's quota error.
     override func fetchReleaseSummaries(appId: String, track: String) async throws -> [ReleaseSummaryInfo] {
         try developer.state.read { state in
+            if state.releaseSummariesQuotaExceeded {
+                throw FakeCoreError.playQuotaExceeded(
+                    retryAfterSeconds: 60,
+                    request: "GET applications/\(appId)/tracks/\(track)/releases"
+                )
+            }
             guard state.tracks[appId] != nil else { throw FakeCoreError.notFound("Package \(appId)") }
             return state.releaseSummaries(packageName: appId, track: track)
         }

@@ -32,10 +32,23 @@ struct GooglePlayAppListUiState {
     /// Release status lines per package name (one per track with a release),
     /// from the release summaries cache. Empty without `canViewReleases`.
     var releaseStatus: [String: [GooglePlayTrackStatusLine]] = [:]
+    /// End of the Google Play quota cooldown that pauses the release status
+    /// refreshes (`GooglePlayQuotaCooldown`), `nil` when none is in force.
+    var releaseStatusPausedUntil: Date?
 
     /// Release status is gated by the account's `version` rule (plan R5).
     var canViewReleases: Bool {
         account.canView(.version)
+    }
+
+    /// The list's footer note while a quota cooldown pauses the release status
+    /// ("… Retrying after 14:35."), `nil` otherwise. Never an alert: the
+    /// cached status stays on screen.
+    var releaseStatusPausedNote: String? {
+        guard canViewReleases, let until = releaseStatusPausedUntil else { return nil }
+        let time = until.formatted(date: Calendar.current.isDateInToday(until) ? .omitted : .abbreviated, time: .shortened)
+        return String(localized: "Release status paused: Google Play API quota reached. Retrying after \(time).",
+                      comment: "Google Play app list footer while Google's API quota pauses the release status. Argument: when it is retried, e.g. 14:35.")
     }
 
     /// `apps` narrowed by `searchQuery` (name or package, case-insensitive).
@@ -108,8 +121,9 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     /// request per app at once.
     static let maxConcurrentIconFetches = 4
 
-    /// Release summary requests (one per app and track) in flight at once.
-    static let maxConcurrentSummaryFetches = 4
+    /// Release summary requests (one per app and track) in flight at once:
+    /// Google counts its quota per minute.
+    static let maxConcurrentSummaryFetches = GooglePlayReleaseSummariesRefresher.maxConcurrentFetches
 
     /// Tracks every app is asked for (see `GooglePlayAppListSync.standardTracks`).
     static var standardTracks: [String] { GooglePlayAppListSync.standardTracks }
@@ -121,6 +135,8 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     private let connectionFactory: ConnectionFactory
     private let accessCheckerFactory: AccessCheckerFactory
     private let connectivity: ConnectivityProviding
+    /// Clock of the release-summary intervals and quota cooldown. Injected for tests.
+    private let now: @Sendable () -> Date
 
     /// Package names whose icon is being looked up, so overlapping passes (a pull
     /// to refresh during the first load, a manual add) never ask twice.
@@ -140,7 +156,8 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
             GooglePlayCoreAccessChecker(appDetails: GooglePlayAccountConnection(credentials: $0))
         },
         connectivity: ConnectivityProviding = ConnectivityMonitor.shared,
-        analytics: AnalyticsTracking = AnalyticsService.shared
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.uiState = GooglePlayAppListUiState(account: account)
         self.keychain = keychain
@@ -149,6 +166,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         self.accessCheckerFactory = accessCheckerFactory
         self.connectivity = connectivity
         self.analytics = analytics
+        self.now = now
     }
 
     // MARK: - Load
@@ -165,16 +183,18 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     /// ⇒ every app): apps outside it are never shown nor persisted — mirroring
     /// the App Store `AppListViewModel`.
     func load() async {
-        await performLoad()
+        await performLoad(trigger: .automatic)
     }
 
-    /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
+    /// Pull-to-refresh: same load, tracked as a `refresh` action with its
+    /// outcome. The release status is asked for every app and track, even
+    /// during a quota cooldown (once; a new hit extends it).
     func refresh() async {
-        await performLoad()
+        await performLoad(trigger: .userRefresh)
         analytics.track(.action(.refresh, on: .googlePlayAppList, result: uiState.error == nil ? .success : .failure))
     }
 
-    private func performLoad() async {
+    private func performLoad(trigger: GooglePlayReleaseSummariesRefresher.Trigger) async {
         uiState.error = nil
 
         // 1. Cached list first (offline-first). Defense-in-depth: hide any cached
@@ -229,7 +249,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         // 4. Release status (edit-free `releases.list`), same conditions.
         if !syncFailedOffline {
             await fetchMissingIcons(using: connection)
-            await fetchReleaseSummaries(using: connection)
+            await fetchReleaseSummaries(using: connection, trigger: trigger)
         }
 
         uiState.isSyncing = false
@@ -386,10 +406,12 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
 
     // MARK: - Release status
 
-    /// Shows the cached release status of every listed app (offline-first).
+    /// Shows the cached release status of every listed app (offline-first),
+    /// and whether a quota cooldown pauses its refresh.
     private func loadCachedReleaseStatus() async {
         guard uiState.canViewReleases else {
             uiState.releaseStatus = [:]
+            uiState.releaseStatusPausedUntil = nil
             return
         }
         var status: [String: [GooglePlayTrackStatusLine]] = [:]
@@ -399,19 +421,27 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
             }
         }
         uiState.releaseStatus = status
+        let cooldown = await summariesRefresher(using: nil).loadCooldown()
+        uiState.releaseStatusPausedUntil = cooldown.flatMap { $0.isActive(at: now()) ? $0.until : nil }
     }
 
-    /// Fetches the release summaries of every app in scope (plan R1, T3).
+    /// Fetches the release summaries of the apps in scope (plan R1, T3)
+    /// through `GooglePlayReleaseSummariesRefresher`, which keeps the run under
+    /// Google's quota: a load asks nothing during a quota cooldown, skips apps
+    /// refreshed in the last minutes and asks only the tracks known to hold a
+    /// release; a pull to refresh asks every track of every app; the first
+    /// quota hit stops the run and (re)starts the cooldown.
     ///
     /// `releases.list` opens no Play edit, so — unlike the edit-based reads
-    /// (D14) — it is safe to run on every load. Never offline, only with the
-    /// account's `version` view rule, only for apps in its scope. One request
-    /// per app and track (the standard tracks plus custom tracks known from the
-    /// app's tracks cache), at most `maxConcurrentSummaryFetches` in flight.
-    /// An app's cache entry and status lines are replaced only when every one
-    /// of its tracks answered; a failure keeps its cached status. Each app's
-    /// entry is saved once, after all requests finished.
-    private func fetchReleaseSummaries(using fetcher: any GooglePlayReleaseSummariesFetching) async {
+    /// (D14) — it is safe to run automatically. Never offline, only with the
+    /// account's `version` view rule, only for apps in its scope. An app's
+    /// cache entry and status lines are replaced only when every track asked
+    /// answered; a failure keeps its cached status. Each app's entry is saved
+    /// once, after all requests finished.
+    private func fetchReleaseSummaries(
+        using fetcher: any GooglePlayReleaseSummariesFetching,
+        trigger: GooglePlayReleaseSummariesRefresher.Trigger
+    ) async {
         guard uiState.canViewReleases, connectivity.isCurrentlyOnline() else { return }
 
         let packages = uiState.apps
@@ -421,42 +451,31 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         summaryFetchesInFlight.formUnion(packages)
         defer { summaryFetchesInFlight.subtract(packages) }
 
-        var requests: [(packageName: String, track: String)] = []
-        for packageName in packages {
-            for track in await tracksToAsk(packageName: packageName) {
-                requests.append((packageName, track))
-            }
-        }
+        let outcome = await summariesRefresher(using: fetcher).refresh(packages: packages, trigger: trigger)
 
-        let result = await GooglePlayAppListSync.fetchReleaseSummaries(
-            requests: requests,
-            using: fetcher,
-            maxConcurrent: Self.maxConcurrentSummaryFetches,
-            logTag: "GooglePlayAppList"
-        )
-
-        var updated = 0
         for packageName in packages {
-            guard let fetched = result.summaries[packageName] else { continue }
-            let entry = GooglePlayReleaseSummariesCache(
-                accountId: uiState.account.id,
-                packageName: packageName,
-                summaries: fetched,
-                fetchedAt: Date()
-            )
+            guard let entry = outcome.entries[packageName] else { continue }
             await summariesCache(for: packageName).save(entry)
             // Applied only if the app is still listed (it may have been removed meanwhile).
             if uiState.apps.contains(where: { $0.packageName == packageName }) {
                 uiState.releaseStatus[packageName] = GooglePlayTrackStatusLine.lines(from: entry)
             }
-            updated += 1
         }
-        Log.print.info("[GooglePlayAppList] Updated release status of \(updated) of \(packages.count) apps for account: \(self.uiState.account.name)")
+        uiState.releaseStatusPausedUntil = outcome.cooldown.flatMap { $0.isActive(at: now()) ? $0.until : nil }
+        Log.print.info("[GooglePlayAppList] Updated release status of \(outcome.entries.count, privacy: .public) of \(packages.count, privacy: .public) apps for account: \(self.uiState.account.name)")
     }
 
-    /// The standard tracks, then custom tracks named in the app's tracks cache.
-    private func tracksToAsk(packageName: String) async -> [String] {
-        await GooglePlayAppListSync.tracksToAsk(packageName: packageName, accountId: uiState.account.id, storage: storage)
+    /// The refresher of this account. Without a `fetcher` it only reads the
+    /// cooldown (its `refresh` needs one).
+    private func summariesRefresher(using fetcher: (any GooglePlayReleaseSummariesFetching)?) -> GooglePlayReleaseSummariesRefresher {
+        GooglePlayReleaseSummariesRefresher(
+            accountId: uiState.account.id,
+            storage: storage,
+            fetcher: fetcher ?? NoReleaseSummariesFetcher(),
+            maxConcurrent: Self.maxConcurrentSummaryFetches,
+            logTag: "GooglePlayAppList",
+            now: now
+        )
     }
 
     private func summariesCache(for packageName: String) -> GooglePlayAppCacheStore<GooglePlayReleaseSummariesCache> {
@@ -514,4 +533,9 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
             return false
         }
     }
+}
+
+/// Stands in for a connection when the refresher only reads its cooldown.
+private struct NoReleaseSummariesFetcher: GooglePlayReleaseSummariesFetching {
+    func fetchReleaseSummaries(packageName: String, track: String) async throws -> [GooglePlayReleaseSummaryModel] { [] }
 }

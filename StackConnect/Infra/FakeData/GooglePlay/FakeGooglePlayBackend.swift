@@ -21,6 +21,9 @@ struct FakeGooglePlayState {
     var bundles: [String: [BundleInfo]] = [:]                // package name
     /// Users of the developer account (`developers/{id}/users`).
     var users: [PlayUserInfo] = []
+    /// Every `tracks.releases.list` answers with Google's quota error
+    /// (`-StackFakePlayQuota YES`).
+    var releaseSummariesQuotaExceeded = false
 
     /// The package name embedded in a composite review id (`{package}/{id}`).
     func packageName(forReview reviewId: String) -> String? {

@@ -9,22 +9,28 @@ final class GooglePlayAccountSyncTests: XCTestCase {
 
     private var storage: MockPersistentStorable!
     private var connection: MockGooglePlayAccountConnection!
+    private var clock: LockedValue<Date>!
     private let account = AccountModel(name: "Play Team", providerType: .googlePlay)
 
     override func setUp() async throws {
         try await super.setUp()
         storage = MockPersistentStorable()
         connection = MockGooglePlayAccountConnection()
+        clock = LockedValue(Date(timeIntervalSince1970: 1_790_000_000))
     }
 
     override func tearDown() async throws {
         storage = nil
         connection = nil
+        clock = nil
         try await super.tearDown()
     }
 
     private func sync(_ account: AccountModel? = nil, mode: SyncMode = .full) async -> SyncChange {
-        await GooglePlayAccountSync(account: account ?? self.account, connection: connection, storage: storage, mode: mode).run()
+        let clock = self.clock!
+        return await GooglePlayAccountSync(
+            account: account ?? self.account, connection: connection, storage: storage, mode: mode, now: { clock.value }
+        ).run()
     }
 
     private func cachedList(_ accountId: String? = nil) async throws -> [GooglePlayAppItem]? {
@@ -135,16 +141,69 @@ final class GooglePlayAccountSyncTests: XCTestCase {
         let first = await sync()
         XCTAssertTrue(first.statusChanges.isEmpty, "The first sync has nothing to compare with")
 
+        // Each run past the automatic refresh interval.
+        clock.value += GooglePlayReleaseSummariesRefresher.minimumAutomaticInterval + 60
         let unchanged = await sync()
         XCTAssertTrue(unchanged.statusChanges.isEmpty)
 
         state.value = .approvedNotPublished
+        clock.value += GooglePlayReleaseSummariesRefresher.minimumAutomaticInterval + 60
         let changed = await sync()
         XCTAssertEqual(changed.statusChanges.count, 1)
         XCTAssertEqual(changed.statusChanges.first?.appId, "com.a")
         XCTAssertEqual(changed.statusChanges.first?.appName, "Alpha")
         XCTAssertEqual(changed.statusChanges.first?.status.text, "Production · Approved, not published (2.8.1)")
         XCTAssertEqual(changed.statusChanges.first?.status.color, .yellow)
+    }
+
+    // MARK: - Google Play quota
+
+    func testSyncStopsAtTheFirstQuotaHitAndStartsTheCooldown() async throws {
+        connection.fetchAppsHandler = { (0..<5).map { playApp("com.app\($0)") } }
+        connection.fetchReleaseSummariesHandler = { packageName, track in
+            throw FakeCoreError.playQuotaExceeded(request: "GET applications/\(packageName)/tracks/\(track)/releases")
+        }
+
+        let change = await sync()
+
+        XCTAssertLessThanOrEqual(connection.releaseSummaryRequests.count, GooglePlayAccountSync.maxConcurrentSummaryFetches,
+                                 "Nothing is started after the first hit")
+        XCTAssertTrue(change.statusChanges.isEmpty)
+        let cooldown = try await storage.fetch(GooglePlayQuotaCooldown.self, id: GooglePlayQuotaCooldown.storageId(accountId: account.id))
+        XCTAssertEqual(cooldown?.until, clock.value.addingTimeInterval(GooglePlayReleaseSummariesRefresher.minimumCooldown))
+        let metadata = try await storage.fetch(SyncMetadata.self, id: "sync.account.\(account.id)")
+        XCTAssertNil(metadata?.lastError, "A quota on the release status doesn't fail the account")
+        XCTAssertEqual(connection.reviewsPageRequests.count, 5, "Reviews still sync")
+    }
+
+    func testSyncAsksNoReleaseSummaryDuringACooldownButStillSyncsTheRest() async throws {
+        let cooldown = GooglePlayQuotaCooldown(accountId: account.id, until: clock.value.addingTimeInterval(300), recordedAt: clock.value)
+        try await storage.save(cooldown, id: GooglePlayQuotaCooldown.storageId(accountId: account.id))
+        connection.fetchAppsHandler = { [playApp("com.a")] }
+
+        _ = await sync()
+
+        XCTAssertTrue(connection.releaseSummaryRequests.isEmpty)
+        XCTAssertEqual(connection.fetchAppsCallCount, 1)
+        XCTAssertEqual(connection.reviewsPageRequests.count, 1)
+
+        clock.value += 301
+        _ = await sync(mode: .lightweight)
+        XCTAssertEqual(connection.releaseSummaryRequests.count, GooglePlayAppListSync.standardTracks.count, "Asked again once it ended")
+        let remaining = try await storage.fetch(GooglePlayQuotaCooldown.self, id: GooglePlayQuotaCooldown.storageId(accountId: account.id))
+        XCTAssertNil(remaining, "An ended cooldown is removed")
+    }
+
+    func testSyncSkipsAppsRefreshedLessThanTheMinimumIntervalAgo() async {
+        connection.fetchAppsHandler = { [playApp("com.a")] }
+
+        _ = await sync()
+        let firstRun = connection.releaseSummaryRequests.count
+        clock.value += GooglePlayReleaseSummariesRefresher.minimumAutomaticInterval - 60
+        _ = await sync()
+
+        XCTAssertEqual(firstRun, GooglePlayAppListSync.standardTracks.count)
+        XCTAssertEqual(connection.releaseSummaryRequests.count, firstRun, "Refreshed too recently: not asked again")
     }
 
     func testAppStoreStatusLabelUsesTheStateName() {

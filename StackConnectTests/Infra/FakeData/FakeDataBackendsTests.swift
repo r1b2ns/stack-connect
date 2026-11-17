@@ -181,6 +181,26 @@ final class FakeDataBackendsTests: XCTestCase {
         XCTAssertTrue(unknownTrack.isEmpty, "An unknown track is an empty list, like the core's 404 mapping")
     }
 
+    /// `-StackFakePlayQuota YES`: every release summary answers with the
+    /// core's quota error, which the app reads as a quota hit.
+    func testGooglePlayReleaseSummariesCanSimulateTheQuota() async throws {
+        let developer = FakeGooglePlayBackend(clock: clock, developers: FakeGooglePlayCatalog.makeDevelopers(clock: clock))
+            .developer(clientEmail: FakeGooglePlayCatalog.northwindClientEmail)
+        developer.state.write { $0.releaseSummariesQuotaExceeded = true }
+        let tracks = try XCTUnwrap(FakeGooglePlayProvider(developer: developer).tracks())
+
+        do {
+            _ = try await tracks.fetchReleaseSummaries(appId: "com.northwind.trailhead", track: "production")
+            XCTFail("Expected the quota error")
+        } catch {
+            let hit = try XCTUnwrap(GooglePlayQuota.hit(from: error))
+            XCTAssertEqual(hit.retryAfter, 60)
+            XCTAssertTrue(hit.message.hasSuffix("(HTTP 403 on GET applications/com.northwind.trailhead/tracks/production/releases)"))
+        }
+        let fetched = try await tracks.fetchTracks(appId: "com.northwind.trailhead")
+        XCTAssertFalse(fetched.isEmpty, "Only release summaries hit the quota")
+    }
+
     func testGooglePlayBundlesIncludeAnUnreleasedBuild() async throws {
         let bundles = try await XCTUnwrap(playProvider().tracks()).fetchBundles(appId: "com.northwind.trailhead")
         XCTAssertEqual(bundles.first?.versionCode, "4306")

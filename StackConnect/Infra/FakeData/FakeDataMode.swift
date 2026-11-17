@@ -16,6 +16,9 @@ import Foundation
 ///   Google Play account's developer ID at launch (bypassing the input
 ///   normalizer), e.g. `abc` to see the Users tab's "invalid developer ID"
 ///   error and its report. Only with the mode itself.
+/// - `-StackFakePlayQuota YES` makes every fake Play release-summary request
+///   fail with the core's quota error (Http 429), to see the app list's quota
+///   cooldown and its footer. Only with the mode itself.
 ///
 /// The scheme "StackConnect Fake Data" (project.yml) pre-fills both arguments so
 /// they can be toggled in Xcode's scheme editor. See `docs/FAKE_DATA.md`.
@@ -28,6 +31,7 @@ struct FakeDataMode: Equatable, Sendable {
     static let widgetsArgumentKey = "StackFakeDataWidgets"
     static let widgetsEnvironmentKey = "STACK_FAKE_DATA_WIDGETS"
     static let playDeveloperIdArgumentKey = "StackFakePlayDeveloperId"
+    static let playQuotaArgumentKey = "StackFakePlayQuota"
 
     /// Run on fake data.
     let isEnabled: Bool
@@ -43,17 +47,28 @@ struct FakeDataMode: Equatable, Sendable {
     /// when enabled).
     let playDeveloperId: String?
 
+    /// Fake Play release-summary requests answer with a quota error (only
+    /// meaningful when enabled).
+    let simulatesPlayQuota: Bool
+
     /// The switches this process was launched with.
     static let current = FakeDataMode(
         arguments: ProcessInfo.processInfo.arguments,
         environment: ProcessInfo.processInfo.environment
     )
 
-    init(isEnabled: Bool, shouldReset: Bool, feedsHomeScreenWidgets: Bool = false, playDeveloperId: String? = nil) {
+    init(
+        isEnabled: Bool,
+        shouldReset: Bool,
+        feedsHomeScreenWidgets: Bool = false,
+        playDeveloperId: String? = nil,
+        simulatesPlayQuota: Bool = false
+    ) {
         self.isEnabled = isEnabled
         self.shouldReset = isEnabled && shouldReset
         self.feedsHomeScreenWidgets = isEnabled && feedsHomeScreenWidgets
         self.playDeveloperId = isEnabled ? playDeveloperId : nil
+        self.simulatesPlayQuota = isEnabled && simulatesPlayQuota
     }
 
     /// Parses the launch arguments (`-Key value`, the `UserDefaults` argument
@@ -73,7 +88,8 @@ struct FakeDataMode: Equatable, Sendable {
             isEnabled: enabled,
             shouldReset: reset,
             feedsHomeScreenWidgets: widgets,
-            playDeveloperId: Self.value(Self.playDeveloperIdArgumentKey, in: arguments)
+            playDeveloperId: Self.value(Self.playDeveloperIdArgumentKey, in: arguments),
+            simulatesPlayQuota: Self.flag(Self.playQuotaArgumentKey, in: arguments) ?? false
         )
     }
 

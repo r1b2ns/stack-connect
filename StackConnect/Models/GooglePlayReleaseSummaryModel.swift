@@ -180,6 +180,11 @@ struct GooglePlayReleaseSummariesCache: GooglePlayAppScopedCache {
     let packageName: String
     var summaries: [GooglePlayReleaseSummaryModel]
     var fetchedAt: Date?
+    /// When every standard track was last asked (an automatic refresh may ask
+    /// only the tracks known to hold a release, see
+    /// `GooglePlayReleaseSummariesRefresher`). `nil` in entries written before
+    /// the field existed, or by a single-track refresh after a write.
+    var tracksDiscoveredAt: Date? = nil
 
     /// Summaries grouped per track, in display order (production → testing →
     /// custom), tracks without a release left out.

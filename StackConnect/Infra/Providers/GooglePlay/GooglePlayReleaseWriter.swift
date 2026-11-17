@@ -148,7 +148,8 @@ final class GooglePlayReleaseWriter {
                 accountId: account.id,
                 packageName: app.packageName,
                 summaries: others + fresh,
-                fetchedAt: Date()
+                fetchedAt: Date(),
+                tracksDiscoveredAt: cached?.tracksDiscoveredAt
             ))
         } catch {
             Log.print.error("[GooglePlayReleaseWriter] Summaries refresh failed after a write: \(error.localizedDescription)")

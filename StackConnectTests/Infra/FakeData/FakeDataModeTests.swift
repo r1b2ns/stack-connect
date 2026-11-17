@@ -74,4 +74,10 @@ final class FakeDataModeTests: XCTestCase {
         XCTAssertNil(FakeDataMode(arguments: ["-StackFakePlayDeveloperId", "abc"], environment: [:]).playDeveloperId,
                      "Without the mode the override is ignored")
     }
+
+    func testPlayQuotaSwitchNeedsTheMode() {
+        XCTAssertTrue(FakeDataMode(arguments: ["-StackFakeData", "YES", "-StackFakePlayQuota", "YES"], environment: [:]).simulatesPlayQuota)
+        XCTAssertFalse(FakeDataMode(arguments: ["-StackFakeData", "YES"], environment: [:]).simulatesPlayQuota)
+        XCTAssertFalse(FakeDataMode(arguments: ["-StackFakePlayQuota", "YES"], environment: [:]).simulatesPlayQuota)
+    }
 }

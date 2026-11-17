@@ -46,9 +46,14 @@ enum FakeDataBootstrap {
             seedDashboardIfNeeded(UserDefaultsStorable(defaults: defaults))
         }
 
+        let playDevelopers = FakeGooglePlayCatalog.makeDevelopers(clock: clock)
+        if mode.simulatesPlayQuota {
+            // `-StackFakePlayQuota YES`: release summaries hit Google's quota.
+            playDevelopers.forEach { $0.state.write { $0.releaseSummariesQuotaExceeded = true } }
+        }
         BackendEnvironment.coreProviders = FakeCoreProviderFactory(
             appStoreConnect: FakeAppStoreConnectBackend(clock: clock, teams: FakeAppStoreConnectCatalog.makeTeams(clock: clock)),
-            googlePlay: FakeGooglePlayBackend(clock: clock, developers: FakeGooglePlayCatalog.makeDevelopers(clock: clock))
+            googlePlay: FakeGooglePlayBackend(clock: clock, developers: playDevelopers)
         )
         BackendEnvironment.firebaseProviders = FakeFirebaseProviderFactory(server: FakeFirebaseServer(clock: clock))
         BackendEnvironment.ratingSummaryFetcher = FakeRatingSummaryFetcher()
@@ -68,7 +73,7 @@ enum FakeDataBootstrap {
         }
         URLProtocol.registerClass(FakeNetworkURLProtocol.self)
 
-        Log.print.notice("[FakeData] Fake data mode ON (store: \(directory.path, privacy: .public), reset: \(mode.shouldReset), home-screen widgets: \(mode.feedsHomeScreenWidgets))")
+        Log.print.notice("[FakeData] Fake data mode ON (store: \(directory.path, privacy: .public), reset: \(mode.shouldReset), home-screen widgets: \(mode.feedsHomeScreenWidgets), Play quota: \(mode.simulatesPlayQuota))")
         return container
     }
 

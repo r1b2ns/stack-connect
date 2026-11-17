@@ -113810,6 +113810,89 @@
         }
       }
     },
+    "Release status paused: Google Play API quota reached. Retrying after %@." : {
+      "comment" : "Google Play app list footer while Google's API quota pauses the release status. Argument: when it is retried, e.g. 14:35.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Release-Status pausiert: Google Play API-Kontingent erreicht. Neuer Versuch nach %@."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estado de las versiones en pausa: se ha alcanzado la cuota de la API de Google Play. Se volverá a intentar después de %@."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estado de las versiones en pausa: se alcanzó la cuota de la API de Google Play. Se volverá a intentar después de %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Statut des versions en pause : quota de l’API Google Play atteint. Nouvel essai après %@."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stato delle release in pausa: quota dell’API di Google Play raggiunta. Nuovo tentativo dopo %@."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リリースステータスを一時停止中：Google Play API の割り当て上限に達しました。%@ 以降に再試行します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "릴리스 상태 일시 중지됨: Google Play API 할당량에 도달했습니다. %@ 이후에 다시 시도합니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Releasestatus gepauzeerd: Google Play API-quotum bereikt. Nieuwe poging na %@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status das versões pausado: cota da API do Google Play atingida. Nova tentativa após %@."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estado das versões em pausa: quota da API do Google Play atingida. Nova tentativa após %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Статус релизов приостановлен: достигнута квота API Google Play. Повторная попытка после %@."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Releasestatus pausad: Google Play API-kvoten har nåtts. Nytt försök efter %@."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "版本狀態已暫停：已達 Google Play API 配額上限。將於 %@ 後重試。"
+          }
+        }
+      }
+    },
     "Staged Rollout" : {
       "localizations" : {
         "de" : {

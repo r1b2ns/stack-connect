@@ -107,11 +107,12 @@ enum AccountCascadeDeleter {
 
     /// Removes the Play reviews the Home sync cached for this account's apps
     /// (`review.{packageName}.{reviewId}`, plan H4) and its review rotation
-    /// cursor. A package another Google Play account still lists keeps its
+    /// cursor and quota cooldown. A package another Google Play account still lists keeps its
     /// reviews: the review cache is keyed by package, not by account.
     /// Best-effort, like the other child deletions.
     private static func deleteGooglePlayDashboardData(of account: AccountModel, storage: PersistentStorable) async {
         try? await storage.delete(GooglePlayReviewRotation.self, id: GooglePlayReviewRotation.storageId(accountId: account.id))
+        try? await storage.delete(GooglePlayQuotaCooldown.self, id: GooglePlayQuotaCooldown.storageId(accountId: account.id))
 
         guard let packages = try? await storage.fetch([GooglePlayAppItem].self, id: GooglePlayAppItem.cacheKey(accountId: account.id)),
               !packages.isEmpty else { return }

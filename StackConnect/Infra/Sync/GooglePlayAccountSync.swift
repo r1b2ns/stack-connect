@@ -39,10 +39,13 @@ struct GooglePlayReviewRotation: Codable, Hashable, Sendable {
 /// - Apps: same merge as the Play app list (`GooglePlayAppListSync.merge`), only
 ///   apps in the account's per-app scope, saved to `googleplay-apps.{accountId}`.
 /// - Icons: public store page, at most `maxConcurrentIconFetches` at once.
-/// - Release summaries (`canView(.version)` only): standard tracks plus custom
-///   tracks known from the tracks cache, at most `maxConcurrentSummaryFetches`
-///   at once; an app's `googleplay-releases.*` entry is replaced only when every
-///   track answered. Lifecycle changes become `SyncChange.StatusChange`s (H8).
+/// - Release summaries (`canView(.version)` only): an automatic
+///   `GooglePlayReleaseSummariesRefresher` run — nothing during a Google Play
+///   quota cooldown, apps refreshed in the last minutes skipped, only the
+///   tracks known to hold a release, stopped at the first quota hit, at most
+///   `maxConcurrentSummaryFetches` at once; an app's `googleplay-releases.*`
+///   entry is replaced only when every track asked answered. Lifecycle changes
+///   become `SyncChange.StatusChange`s (H8).
 /// - Reviews (`canView(.review)` only): the first page per app, saved as
 ///   `CustomerReviewModel` under `review.{packageName}.{reviewId}` next to the
 ///   App Store ones (plan H4). Full sync reads every app, at most
@@ -52,7 +55,7 @@ struct GooglePlayReviewRotation: Codable, Hashable, Sendable {
 struct GooglePlayAccountSync: Sendable {
 
     static let maxConcurrentIconFetches = 4
-    static let maxConcurrentSummaryFetches = 4
+    static let maxConcurrentSummaryFetches = GooglePlayReleaseSummariesRefresher.maxConcurrentFetches
     static let maxConcurrentReviewFetches = 5
     static let lightweightReviewAppLimit = 20
 
@@ -60,14 +63,23 @@ struct GooglePlayAccountSync: Sendable {
     let connection: any GooglePlaySyncConnecting
     let storage: PersistentStorable
     let mode: SyncMode
+    /// Clock of the release-summary intervals and quota cooldown. Injected for tests.
+    let now: @Sendable () -> Date
 
-    init(account: AccountModel, connection: any GooglePlaySyncConnecting, storage: PersistentStorable, mode: SyncMode) {
+    init(
+        account: AccountModel,
+        connection: any GooglePlaySyncConnecting,
+        storage: PersistentStorable,
+        mode: SyncMode,
+        now: @escaping @Sendable () -> Date = { Date() }
+    ) {
         var account = account
         account.fillMissingRules()
         self.account = account
         self.connection = connection
         self.storage = storage
         self.mode = mode
+        self.now = now
     }
 
     /// Runs the whole leg. A failed app listing fails the account (recorded in
@@ -118,38 +130,31 @@ struct GooglePlayAccountSync: Sendable {
 
     // MARK: - Release summaries
 
-    /// Fetches and caches the summaries of every app; returns the releases whose
-    /// lifecycle state changed since the previous cache (new releases and the
-    /// first sync are skipped, like App Store status changes, plan H8).
+    /// Fetches and caches the summaries of the apps due a refresh (an automatic
+    /// run, see `GooglePlayReleaseSummariesRefresher`); returns the releases
+    /// whose lifecycle state changed since the previous cache (new releases and
+    /// the first sync are skipped, like App Store status changes, plan H8).
     private func syncReleaseSummaries(for apps: [GooglePlayAppItem]) async -> [SyncChange.StatusChange] {
-        var requests: [(packageName: String, track: String)] = []
-        for app in apps {
-            for track in await GooglePlayAppListSync.tracksToAsk(packageName: app.packageName, accountId: account.id, storage: storage) {
-                requests.append((app.packageName, track))
-            }
-        }
-        let result = await GooglePlayAppListSync.fetchReleaseSummaries(
-            requests: requests,
-            using: connection,
+        let refresher = GooglePlayReleaseSummariesRefresher(
+            accountId: account.id,
+            storage: storage,
+            fetcher: connection,
             maxConcurrent: Self.maxConcurrentSummaryFetches,
-            logTag: "Sync][GooglePlay"
+            logTag: "Sync][GooglePlay",
+            now: now
         )
+        let outcome = await refresher.refresh(packages: apps.map(\.packageName), trigger: .automatic)
 
         var changes: [SyncChange.StatusChange] = []
         for app in apps {
-            guard let summaries = result.summaries[app.packageName] else { continue }
+            guard let entry = outcome.entries[app.packageName] else { continue }
             let store = GooglePlayAppCacheStore<GooglePlayReleaseSummariesCache>(
                 storage: storage, accountId: account.id, packageName: app.packageName
             )
             let previous = await store.load()
-            await store.save(GooglePlayReleaseSummariesCache(
-                accountId: account.id,
-                packageName: app.packageName,
-                summaries: summaries,
-                fetchedAt: Date()
-            ))
+            await store.save(entry)
             if let previous {
-                changes += Self.statusChanges(from: previous.summaries, to: summaries, app: app, accountId: account.id)
+                changes += Self.statusChanges(from: previous.summaries, to: entry.summaries, app: app, accountId: account.id)
             }
         }
         return changes
