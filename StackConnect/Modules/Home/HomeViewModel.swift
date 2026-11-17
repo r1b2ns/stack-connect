@@ -20,6 +20,12 @@ protocol HomeViewModelProtocol: ObservableObject {
     /// payload — falling back to a generic message when the Account Holder can't be
     /// determined — so the share sheet opens either way.
     func prepareAgreementShare(accountId: String) async
+    /// The user tapped the "support the project" card: tracks it and retires the
+    /// card for good. Navigation to the tip jar is the View's job.
+    func openTipCard()
+    /// The user closed the "support the project" card: tracks it and retires the
+    /// card for good.
+    func dismissTipCard()
 }
 
 // MARK: - UiState
@@ -40,6 +46,8 @@ struct HomeUiState {
     /// Non-nil while the "ask the Account Holder" share sheet should be shown.
     /// Cleared by the View when the share sheet is dismissed.
     var agreementShare: AgreementSharePayload?
+    /// The one-time "support the project" card (rules in `TipJarPromptService`).
+    var showTipCard = false
 }
 
 /// One-shot request to present the share sheet asking an account's Account Holder
@@ -68,6 +76,7 @@ final class HomeViewModel: HomeViewModelProtocol {
     private let syncService: SyncService
     private let teamUsersFetcherFactory: TeamUsersFetcherFactory
     private let analytics: AnalyticsTracking
+    private let tipCard: TipJarCardPresenting
     private var cancellables = Set<AnyCancellable>()
 
     /// Preferences key of the dashboard layout (also seeded by the DEBUG fake data mode).
@@ -85,10 +94,12 @@ final class HomeViewModel: HomeViewModelProtocol {
         preferences: KeyStorable = UserDefaultsStorable(),
         syncService: SyncService = .shared,
         teamUsersFetcherFactory: TeamUsersFetcherFactory? = nil,
-        analytics: AnalyticsTracking = AnalyticsService.shared
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        tipCard: TipJarCardPresenting = TipJarPromptService.shared
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
         self.analytics = analytics
+        self.tipCard = tipCard
         self.keychain = keychain
         self.preferences = preferences
         self.syncService = syncService
@@ -112,6 +123,13 @@ final class HomeViewModel: HomeViewModelProtocol {
                 if newState.lastSyncedAt != previousTimestamp {
                     Task { await self.loadDashboard() }
                 }
+            }
+            .store(in: &cancellables)
+
+        tipCard.isCardVisiblePublisher
+            .removeDuplicates()
+            .sink { [weak self] isVisible in
+                self?.uiState.showTipCard = isVisible
             }
             .store(in: &cancellables)
     }
@@ -209,6 +227,23 @@ final class HomeViewModel: HomeViewModelProtocol {
             Log.print.error("[Home] Account Holder lookup failed for account \(account.id): \(error.localizedDescription)")
             return nil
         }
+    }
+
+    // MARK: - Tip Card
+
+    func openTipCard() {
+        analytics.track(.buttonTap(.openTipCard, on: .home))
+        retireTipCard()
+    }
+
+    func dismissTipCard() {
+        analytics.track(.buttonTap(.dismissTipCard, on: .home))
+        retireTipCard()
+    }
+
+    private func retireTipCard() {
+        uiState.showTipCard = false
+        tipCard.retireCard()
     }
 
     // MARK: - Widgets

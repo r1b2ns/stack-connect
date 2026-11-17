@@ -90,6 +90,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
             List {
                 buildSyncBanner()
                 buildAgreementsBanner()
+                buildTipCard()
                 buildAccountsSection()
                 buildWidgetsSection()
             }
@@ -269,6 +270,41 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
             localized: "Opens the share sheet with a message asking the team's Account Holder to accept the pending agreements.",
             comment: "Accessibility hint of the Home agreements banner button that shares a request with the team's Account Holder."
         ))
+    }
+
+    // MARK: - Tip Card
+
+    /// One-time "support the project" card (rules in `TipJarPromptService`).
+    /// Tapping it or its button opens the tip jar; either that or the close
+    /// button retires it for good.
+    @ViewBuilder
+    private func buildTipCard() -> some View {
+        if viewModel.uiState.showTipCard {
+            StackBannerCard(
+                systemImage: "heart.fill",
+                tint: .pink,
+                title: String(localized: "Enjoying StackConnect?"),
+                message: String(localized: "It's free and open source. If it saves you time, consider leaving a tip.", comment: "Body of the Home card inviting the user to leave an optional tip."),
+                onTap: { openTipJarFromCard() },
+                onDismiss: { viewModel.dismissTipCard() }
+            ) {
+                Button {
+                    openTipJarFromCard()
+                } label: {
+                    Text(String(localized: "tipCard.support", defaultValue: "Support", comment: "Button of the Home tip card that opens the tip jar (support the project, not customer support)."))
+                        .font(.footnote)
+                        .fontWeight(.semibold)
+                }
+                .buttonStyle(.borderless)
+                .tint(.pink)
+                .accessibilityHint(String(localized: "Opens the tip jar.", comment: "Accessibility hint of the Home tip card button."))
+            }
+        }
+    }
+
+    private func openTipJarFromCard() {
+        viewModel.openTipCard()
+        coordinator.navigateToTipJar()
     }
 
     // MARK: - Widgets Section

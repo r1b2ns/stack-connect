@@ -37,6 +37,10 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     case dismissAgreementsBanner = "dismiss_agreements_banner"
     case shareAgreementsRequest = "share_agreements_request"
     case reviewAgreements = "review_agreements"
+    /// The Home "support the project" card (or its Support button) was tapped.
+    case openTipCard = "open_tip_card"
+    /// The Home "support the project" card was closed.
+    case dismissTipCard = "dismiss_tip_card"
     case widgetApp = "widget_app"
     case widgetReview = "widget_review"
     case appleProvider = "apple_provider"

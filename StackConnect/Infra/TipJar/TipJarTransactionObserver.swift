@@ -10,19 +10,28 @@ import StoreKit
 /// `Transaction.unfinished`; it is cancelled when the observer is released.
 final class TipJarTransactionObserver: Sendable {
 
+    /// Called after a verified tip transaction is finished.
+    typealias TipCompletionHandler = @Sendable () async -> Void
+
     private let task: Task<Void, Never>
 
-    init(tipProductIDs: Set<String> = Set(TipJarCatalog.productIDs)) {
+    /// - Parameter onTipCompleted: Runs after each verified tip transaction is
+    ///   finished (e.g. an Ask to Buy approval). By default it records the tip
+    ///   so the Home "support the project" card never shows again.
+    init(
+        tipProductIDs: Set<String> = Set(TipJarCatalog.productIDs),
+        onTipCompleted: @escaping TipCompletionHandler = { await TipJarPromptService.shared.recordCompletedTip() }
+    ) {
         task = Task(priority: .background) {
             await withTaskGroup(of: Void.self) { group in
                 group.addTask {
                     for await result in Transaction.updates {
-                        await Self.handle(result, tipProductIDs: tipProductIDs)
+                        await Self.handle(result, tipProductIDs: tipProductIDs, onTipCompleted: onTipCompleted)
                     }
                 }
                 group.addTask {
                     for await result in Transaction.unfinished {
-                        await Self.handle(result, tipProductIDs: tipProductIDs)
+                        await Self.handle(result, tipProductIDs: tipProductIDs, onTipCompleted: onTipCompleted)
                     }
                 }
             }
@@ -43,7 +52,11 @@ final class TipJarTransactionObserver: Sendable {
 
     // MARK: - Private
 
-    private static func handle(_ result: VerificationResult<Transaction>, tipProductIDs: Set<String>) async {
+    private static func handle(
+        _ result: VerificationResult<Transaction>,
+        tipProductIDs: Set<String>,
+        onTipCompleted: TipCompletionHandler
+    ) async {
         switch result {
         case .verified(let transaction):
             guard shouldFinish(productID: transaction.productID, isVerified: true, tipProductIDs: tipProductIDs) else {
@@ -52,6 +65,10 @@ final class TipJarTransactionObserver: Sendable {
             }
             await transaction.finish()
             Log.print.info("[TipJar] Finished background transaction for \(transaction.productID, privacy: .public)")
+            // A refunded (revoked) tip doesn't count as a completed one.
+            if transaction.revocationDate == nil {
+                await onTipCompleted()
+            }
         case .unverified(let transaction, let error):
             Log.print.error("[TipJar] Unverified background transaction for \(transaction.productID, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }

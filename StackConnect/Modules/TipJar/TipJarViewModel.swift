@@ -47,13 +47,18 @@ final class TipJarViewModel: TipJarViewModelProtocol {
 
     private let service: TipJarServiceProtocol
     private let analytics: AnalyticsTracking
+    private let tipRecorder: TipJarTipRecording
 
+    /// - Parameter tipRecorder: Told about every completed tip, so the Home
+    ///   "support the project" card never shows again.
     init(
         service: TipJarServiceProtocol = StoreKitTipJarService(),
-        analytics: AnalyticsTracking = AnalyticsService.shared
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        tipRecorder: TipJarTipRecording = TipJarPromptService.shared
     ) {
         self.service = service
         self.analytics = analytics
+        self.tipRecorder = tipRecorder
     }
 
     /// Loads the tips. The spinner only shows while nothing is on screen, so a
@@ -89,6 +94,7 @@ final class TipJarViewModel: TipJarViewModelProtocol {
         switch outcome {
         case .success:
             uiState.isShowingThankYou = true
+            tipRecorder.recordCompletedTip()
             track(tip, result: .success)
         case .userCancelled:
             track(tip, result: .cancelled)

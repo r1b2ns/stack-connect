@@ -26,7 +26,8 @@ final class ReviewPromptService {
 
     private let defaults: UserDefaults
     private let isEnabled: Bool
-    private var hasRegisteredLaunch = false
+    /// Whether this process already counted its launch.
+    private(set) var hasRegisteredLaunch = false
     private(set) var hasRequestedThisLaunch = false
 
     /// - Parameters:

@@ -7,17 +7,20 @@ final class TipJarViewModelTests: XCTestCase {
 
     private var service: MockTipJarService!
     private var analytics: MockAnalyticsTracker!
+    private var tipRecorder: MockTipJarTipRecorder!
     private var sut: TipJarViewModel!
 
     override func setUp() async throws {
         try await super.setUp()
         service = MockTipJarService()
         analytics = MockAnalyticsTracker()
-        sut = TipJarViewModel(service: service, analytics: analytics)
+        tipRecorder = MockTipJarTipRecorder()
+        sut = TipJarViewModel(service: service, analytics: analytics, tipRecorder: tipRecorder)
     }
 
     override func tearDown() async throws {
         sut = nil
+        tipRecorder = nil
         analytics = nil
         service = nil
         try await super.tearDown()
@@ -196,6 +199,42 @@ final class TipJarViewModelTests: XCTestCase {
         XCTAssertEqual(Set(messages).count, failures.count)
     }
 
+    // MARK: - Home tip card
+
+    func testSuccessfulPurchaseRecordsTheTip() async {
+        await loadAllTips()
+        service.purchaseOutcome = .success
+
+        await sut.purchase(.coffee)
+
+        XCTAssertEqual(tipRecorder.recordedTipCount, 1)
+    }
+
+    func testUnsuccessfulPurchasesRecordNoTip() async {
+        await loadAllTips()
+        for outcome: TipPurchaseOutcome in [.userCancelled, .pending, .failed(.network)] {
+            service.purchaseOutcome = outcome
+            await sut.purchase(.coffee)
+        }
+
+        XCTAssertEqual(tipRecorder.recordedTipCount, 0)
+    }
+
+    func testSuccessfulPurchaseRetiresTheRealCardFlag() async {
+        let suiteName = "TipJarViewModelTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let prompt = TipJarPromptService(defaults: defaults)
+        sut = TipJarViewModel(service: service, analytics: analytics, tipRecorder: prompt)
+        await loadAllTips()
+        service.purchaseOutcome = .success
+
+        await sut.purchase(.snack)
+
+        XCTAssertTrue(prompt.hasTipped)
+        XCTAssertTrue(defaults.bool(forKey: TipJarPromptService.hasTippedKey))
+    }
+
     // MARK: - Purchasing flag
 
     func testPurchasingFlagIsSetWhilePurchaseIsInFlight() async {
@@ -256,7 +295,7 @@ final class TipJarViewModelTests: XCTestCase {
 
     func testPurchaseSendsNothingWhenAnalyticsIsOff() async {
         analytics = MockAnalyticsTracker(isEnabled: false)
-        sut = TipJarViewModel(service: service, analytics: analytics)
+        sut = TipJarViewModel(service: service, analytics: analytics, tipRecorder: tipRecorder)
         await loadAllTips()
 
         await sut.purchase(.coffee)

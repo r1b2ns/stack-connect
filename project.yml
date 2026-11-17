@@ -278,6 +278,9 @@ schemes:
       executable: StackConnect
       # Local StoreKit testing for the tip jar (no App Store Connect needed).
       storeKitConfiguration: Configs/TipJar.storekit
+      commandLineArguments:
+        # DEBUG: shows the Home tip card right away (TipJarPromptService).
+        "-TipJarCardForce YES": false
     test:
       config: Debug
       targets: [StackConnectTests]
@@ -296,6 +299,7 @@ schemes:
       commandLineArguments:
         "-StackFakeData YES": true
         "-StackFakeDataReset YES": false
+        "-TipJarCardForce YES": false
 
   StackConnect Production:
     build:
