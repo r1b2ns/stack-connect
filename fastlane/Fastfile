@@ -18,6 +18,16 @@
 
 default_platform(:ios)
 
+# Force UTF-8 regardless of the caller's locale. When the shell runs with an
+# empty LANG / C locale (CI, IDE runners, agents), Ruby starts in US-ASCII and
+# fastlane crashes reading xcpretty's "▸" output ("invalid byte sequence in
+# US-ASCII"), aborting the archive. Setting ENV in before_all is too late for
+# Ruby's own encoding, so fix both here, at load time.
+ENV["LANG"]   = "en_US.UTF-8"
+ENV["LC_ALL"] = "en_US.UTF-8"
+Encoding.default_external = Encoding::UTF_8
+Encoding.default_internal = Encoding::UTF_8
+
 require_relative "creative_assets"
 
 # ─── Project constants ────────────────────────────────────────────────────────
@@ -37,11 +47,6 @@ platform :ios do
   # ── before_all ─────────────────────────────────────────────────────────────
 
   before_all do
-    # Ensure Ruby and sub-processes use UTF-8 so Xcode log parsing never
-    # raises "invalid byte sequence in US-ASCII".
-    ENV["LANG"]   = "en_US.UTF-8"
-    ENV["LC_ALL"] = "en_US.UTF-8"
-
     # Regenerate the Xcode project from project.yml so the workspace is always
     # up-to-date before building, regardless of untracked source-file changes.
     sh("cd .. && xcodegen generate --spec project.yml")
