@@ -36,6 +36,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @State private var showPermissionDenied = false
     @State private var permissionDeniedMessage = ""
@@ -56,14 +57,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
     }
 
     var body: some View {
-        List {
-            buildHeaderSection()
-            buildRejectedReviewTip()
-            buildPlatformSections()
-            buildGeneralSection()
-            buildAppStoreSection()
-            buildTestFlightSection()
-        }
+        buildLayout()
         .foregroundStyle(.primary)
         .navigationTitle(viewModel.uiState.app.name)
         .trackScreen(.appDetail)
@@ -132,6 +126,38 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             StackTrackedButton(String(localized: "OK"), button: .ok, on: .appDetail, role: .cancel) {}
         } message: {
             Text(permissionDeniedMessage)
+        }
+    }
+
+    // MARK: - Layout
+
+    /// Compact: the iPhone List. Regular (iPad detail column, Mac window): two
+    /// columns, versions and TestFlight on the left, settings on the right.
+    @ViewBuilder
+    private func buildLayout() -> some View {
+        if horizontalSizeClass == .regular {
+            HStack(alignment: .top, spacing: 0) {
+                List {
+                    buildHeaderSection()
+                    buildRejectedReviewTip()
+                    buildPlatformSections()
+                    buildTestFlightSection()
+                }
+                List {
+                    buildGeneralSection()
+                    buildAppStoreSection()
+                }
+            }
+            .background(Color(.systemGroupedBackground))
+        } else {
+            List {
+                buildHeaderSection()
+                buildRejectedReviewTip()
+                buildPlatformSections()
+                buildGeneralSection()
+                buildAppStoreSection()
+                buildTestFlightSection()
+            }
         }
     }
 
@@ -281,6 +307,10 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                     buildVersionRow(version)
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    buildSwipeActions(for: version)
+                }
+                // Pointer / Mac: the same actions on secondary click.
+                .contextMenu {
                     buildSwipeActions(for: version)
                 }
             }

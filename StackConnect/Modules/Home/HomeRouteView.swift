@@ -148,9 +148,22 @@ struct HomeRouteView: View {
 extension View {
     /// Registers `HomeRouteView` for every `HomeRoute` pushed on the enclosing
     /// `NavigationStack`.
-    func homeNavigationDestinations() -> some View {
-        navigationDestination(for: HomeRoute.self) { route in
-            HomeRouteView(route: route)
+    ///
+    /// - Parameter coordinator: injected into every destination when set. A
+    ///   stack inside a `NavigationSplitView` column does not hand the
+    ///   environment objects set on it down to its pushed screens, so the split
+    ///   view passes its detail coordinator explicitly.
+    @ViewBuilder
+    func homeNavigationDestinations(coordinator: HomeCoordinator? = nil) -> some View {
+        if let coordinator {
+            navigationDestination(for: HomeRoute.self) { route in
+                HomeRouteView(route: route)
+                    .environmentObject(coordinator)
+            }
+        } else {
+            navigationDestination(for: HomeRoute.self) { route in
+                HomeRouteView(route: route)
+            }
         }
     }
 }

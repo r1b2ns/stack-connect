@@ -157,7 +157,8 @@ private struct RootDetailStack<Root: View>: View {
     var body: some View {
         NavigationStack(path: $coordinator.path) {
             root()
-                .homeNavigationDestinations()
+                .environmentObject(coordinator)
+                .homeNavigationDestinations(coordinator: coordinator)
         }
         .environmentObject(coordinator)
     }

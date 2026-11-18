@@ -36,6 +36,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @State private var showBuildBlockedAlert = false
     @State private var showPermissionDenied = false
@@ -53,11 +54,28 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         isMetadataEditable && account.canEdit(.version)
     }
 
+    /// Regular width (iPad detail column, Mac window) lays the screen out as a
+    /// card grid with the actions in the toolbar; compact keeps the iPhone List
+    /// and bottom action bar.
+    private var isRegular: Bool {
+        horizontalSizeClass == .regular
+    }
+
     var body: some View {
         Group {
             if viewModel.uiState.isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if isRegular {
+                VersionDetailRegularContent(
+                    viewModel: viewModel,
+                    canEditMetadata: canEditMetadata,
+                    onBuild: handleBuildTap,
+                    onScreenshots: handlePreviewTap,
+                    onAppReviewInfo: handleAppReviewInfoTap,
+                    onReleaseOptions: handleReleaseOptionsTap,
+                    onPhasedRelease: handlePhasedReleaseTap
+                )
             } else {
                 List {
                     buildHeaderSection()
@@ -147,7 +165,14 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            buildBottomBar()
+            if !isRegular {
+                buildBottomBar()
+            }
+        }
+        .toolbar {
+            if isRegular && !viewModel.uiState.isLoading {
+                buildRegularToolbar()
+            }
         }
         .overlay {
             if viewModel.uiState.isValidatingSubmit {
@@ -260,11 +285,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         Section {
             // Build row
             StackTrackedButton(.build, on: .versionDetail) {
-                if canEditMetadata {
-                    viewModel.uiState.showBuildPicker = true
-                } else {
-                    showBuildBlockedAlert = true
-                }
+                handleBuildTap()
             } label: {
                 HStack(spacing: 12) {
                     buildIconSquare(icon: "hammer.fill", color: .gray)
@@ -299,6 +320,14 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             } label: {
                 StackListRow(icon: "photo.on.rectangle.angled", iconColor: .blue, title: String(localized: "Preview and Screenshots"))
             }
+        }
+    }
+
+    private func handleBuildTap() {
+        if canEditMetadata {
+            viewModel.uiState.showBuildPicker = true
+        } else {
+            showBuildBlockedAlert = true
         }
     }
 
@@ -365,70 +394,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
 
     private func buildMetadataSection() -> some View {
         Section {
-            HStack {
-                TextField(String(localized: "Keywords"), text: $viewModel.uiState.editKeywords)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .disabled(!canEditMetadata)
-                CopyButton(text: viewModel.uiState.editKeywords)
-            }
-
-            HStack {
-                TextField(String(localized: "Support URL"), text: $viewModel.uiState.editSupportUrl)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-                    .disabled(!canEditMetadata)
-                CopyButton(text: viewModel.uiState.editSupportUrl)
-            }
-
-            HStack {
-                TextField(String(localized: "Marketing URL"), text: $viewModel.uiState.editMarketingUrl)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-                    .disabled(!canEditMetadata)
-                CopyButton(text: viewModel.uiState.editMarketingUrl)
-            }
-
-            HStack {
-                TextField(String(localized: "Version"), text: $viewModel.uiState.editVersion)
-                    .textInputAutocapitalization(.never)
-                    .keyboardType(.numbersAndPunctuation)
-                    .disabled(!canEditMetadata)
-                CopyButton(text: viewModel.uiState.editVersion)
-            }
-
-            HStack {
-                TextField(String(localized: "Copyright"), text: $viewModel.uiState.editCopyright)
-                    .disabled(!canEditMetadata)
-                CopyButton(text: viewModel.uiState.editCopyright)
-            }
-
-            if let error = viewModel.uiState.groupedFieldsError {
-                Label(error, systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
-                    .font(.caption)
-            }
-
-            if canEditMetadata {
-                Button {
-                    Task { await viewModel.saveGroupedFields() }
-                } label: {
-                    HStack {
-                        Spacer()
-                        if viewModel.uiState.isSavingGroupedFields {
-                            ProgressView()
-                        } else {
-                            Text("Save")
-                                .fontWeight(.medium)
-                        }
-                        Spacer()
-                    }
-                }
-                .disabled(viewModel.uiState.isSavingGroupedFields)
-                .foregroundStyle(.accent)
-            }
+            VersionMetadataFields(viewModel: viewModel, canEdit: canEditMetadata)
         } header: {
             Text("Metadata")
         }
@@ -450,26 +416,13 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
     private func buildActionsSection() -> some View {
         Section {
             StackTrackedButton(.appReviewInfo, on: .versionDetail) {
-                guard account.canEdit(.version) else {
-                    permissionDeniedMessage = String(localized: "You don't have permission to edit App Review Information.")
-                    showPermissionDenied = true
-                    return
-                }
-                homeCoordinator.navigateToAppReviewInfo(
-                    versionId: viewModel.uiState.version.id,
-                    account: viewModel.uiState.account
-                )
+                handleAppReviewInfoTap()
             } label: {
                 StackListRow(icon: "checkmark.shield.fill", iconColor: .green, title: String(localized: "App Review Information"))
             }
 
             StackTrackedButton(.releaseOptions, on: .versionDetail) {
-                guard account.canEdit(.version) else {
-                    permissionDeniedMessage = String(localized: "You don't have permission to edit App Store Version Release.")
-                    showPermissionDenied = true
-                    return
-                }
-                viewModel.uiState.showReleaseSheet = true
+                handleReleaseOptionsTap()
             } label: {
                 buildMenuRowWithSubtitle(
                     icon: "arrow.up.circle.fill",
@@ -480,12 +433,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
             }
 
             StackTrackedButton(.phasedRelease, on: .versionDetail) {
-                guard account.canEdit(.version) else {
-                    permissionDeniedMessage = String(localized: "You don't have permission to edit Phased Release.")
-                    showPermissionDenied = true
-                    return
-                }
-                viewModel.uiState.showPhasedReleaseSheet = true
+                handlePhasedReleaseTap()
             } label: {
                 buildMenuRowWithSubtitle(
                     icon: "chart.bar.doc.horizontal.fill",
@@ -494,6 +442,108 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                     subtitle: viewModel.uiState.phasedReleaseSubtitle
                 )
             }
+        }
+    }
+
+    private func handleAppReviewInfoTap() {
+        guard account.canEdit(.version) else {
+            permissionDeniedMessage = String(localized: "You don't have permission to edit App Review Information.")
+            showPermissionDenied = true
+            return
+        }
+        homeCoordinator.navigateToAppReviewInfo(
+            versionId: viewModel.uiState.version.id,
+            account: viewModel.uiState.account
+        )
+    }
+
+    private func handleReleaseOptionsTap() {
+        guard account.canEdit(.version) else {
+            permissionDeniedMessage = String(localized: "You don't have permission to edit App Store Version Release.")
+            showPermissionDenied = true
+            return
+        }
+        viewModel.uiState.showReleaseSheet = true
+    }
+
+    private func handlePhasedReleaseTap() {
+        guard account.canEdit(.version) else {
+            permissionDeniedMessage = String(localized: "You don't have permission to edit Phased Release.")
+            showPermissionDenied = true
+            return
+        }
+        viewModel.uiState.showPhasedReleaseSheet = true
+    }
+
+    // MARK: - Regular Toolbar
+
+    /// The bottom bar's actions as toolbar buttons (regular width).
+    @ToolbarContentBuilder
+    private func buildRegularToolbar() -> some ToolbarContent {
+        ToolbarItemGroup(placement: .primaryAction) {
+            if viewModel.uiState.isPerformingAction {
+                ProgressView()
+            }
+            ForEach(regularActions) { action in
+                buildToolbarButton(action)
+            }
+        }
+    }
+
+    private var regularActions: [VersionDetailPrimaryAction] {
+        VersionDetailPrimaryAction.actions(
+            state: viewModel.uiState.version.appStoreState,
+            phasedState: viewModel.uiState.phasedRelease?.state,
+            canEdit: account.canEdit(.version),
+            canDelete: account.canDelete(.version)
+        )
+    }
+
+    @ViewBuilder
+    private func buildToolbarButton(_ action: VersionDetailPrimaryAction) -> some View {
+        if action.isProminent {
+            buildToolbarButtonBase(action)
+                .buttonStyle(.borderedProminent)
+        } else {
+            buildToolbarButtonBase(action)
+                .buttonStyle(.bordered)
+        }
+    }
+
+    private func buildToolbarButtonBase(_ action: VersionDetailPrimaryAction) -> some View {
+        Button(role: action.isDestructive ? .destructive : nil) {
+            perform(action)
+        } label: {
+            // Prominent toolbar buttons collapse a Label to its icon: keep the
+            // title, which says what will happen.
+            if action.isProminent {
+                Text(action.title)
+            } else {
+                Label(action.title, systemImage: action.systemImage)
+                    .labelStyle(.titleAndIcon)
+            }
+        }
+        .disabled(viewModel.uiState.isPerformingAction)
+    }
+
+    private func perform(_ action: VersionDetailPrimaryAction) {
+        switch action {
+        case .submitForReview:
+            Task { await viewModel.startSubmitForReview() }
+        case .reject:
+            viewModel.uiState.confirmAction = .reject
+        case .release:
+            viewModel.uiState.confirmAction = .release
+        case .cancelReview:
+            viewModel.uiState.confirmAction = .cancelReview
+        case .cancelSubmission:
+            viewModel.uiState.confirmAction = .cancelSubmission
+        case .pausePhasedRelease:
+            Task { await viewModel.setPhasedReleasePaused(true) }
+        case .resumePhasedRelease:
+            Task { await viewModel.setPhasedReleasePaused(false) }
+        case .completePhasedRelease:
+            viewModel.uiState.confirmAction = .completePhasedRelease
         }
     }
 
@@ -842,7 +892,7 @@ struct PhasedReleaseSheet<ViewModel: VersionDetailViewModelProtocol>: View {
                             }
                             .font(.subheadline)
 
-                            let percentage = phasedReleasePercentage(forDay: day)
+                            let percentage = PhasedReleaseSchedule.percentage(forDay: day)
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack {
                                     Text("Users receiving update")
@@ -909,18 +959,6 @@ struct PhasedReleaseSheet<ViewModel: VersionDetailViewModelProtocol>: View {
                     ProgressView()
                 }
             }
-        }
-    }
-
-    private func phasedReleasePercentage(forDay day: Int) -> Int {
-        switch day {
-        case 1: return 1
-        case 2: return 2
-        case 3: return 5
-        case 4: return 10
-        case 5: return 20
-        case 6: return 50
-        default: return 100
         }
     }
 }
