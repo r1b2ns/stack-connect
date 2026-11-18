@@ -221,6 +221,22 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
             buildAppRow(app)
         }
         .foregroundStyle(.primary)
+        // Mac: Archive / Favorite on secondary click (the iPhone swipe actions).
+        .stackContextMenu(isEnabled: isRunningOnMac) {
+            Button {
+                Task { await viewModel.toggleFavorite(app: app) }
+            } label: {
+                Label(
+                    app.isFavorite ? String(localized: "Unfavorite") : String(localized: "Favorite"),
+                    systemImage: app.isFavorite ? "star.slash.fill" : "star.fill"
+                )
+            }
+            Button {
+                Task { await viewModel.toggleArchive(app: app) }
+            } label: {
+                Label(String(localized: "Archive"), systemImage: "archivebox.fill")
+            }
+        }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button {
                 Task { await viewModel.toggleArchive(app: app) }

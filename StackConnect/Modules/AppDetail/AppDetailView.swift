@@ -309,8 +309,8 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     buildSwipeActions(for: version)
                 }
-                // Pointer / Mac: the same actions on secondary click.
-                .contextMenu {
+                // iPad / Mac: the same actions on secondary click.
+                .stackContextMenu(isEnabled: horizontalSizeClass == .regular || ProcessInfo.processInfo.isiOSAppOnMac) {
                     buildSwipeActions(for: version)
                 }
             }
