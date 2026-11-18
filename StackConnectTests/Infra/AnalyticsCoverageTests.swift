@@ -34,9 +34,41 @@ final class AnalyticsCoverageTests: XCTestCase {
             + AnalyticsDeepLinkDestination.allCases.map(\.rawValue)
             + AnalyticsTrackKind.allCases.map(\.rawValue)
             + AnalyticsReleaseWriteKind.allCases.map(\.rawValue)
+            + AnalyticsNavigationOrigin.allCases.map(\.rawValue)
+            + AnalyticsSidebarDestination.allCases.map(\.rawValue)
+            + AnalyticsUILayout.allCases.map(\.rawValue)
+            + AnalyticsReviewsFilter.allCases.map(\.rawValue)
         for raw in raws {
             XCTAssertNotNil(raw.range(of: "^[a-z0-9][a-z0-9_]*$", options: .regularExpression), raw)
         }
+    }
+
+    func testSplitViewDimensionsFitFirebaseLimits() {
+        let raws = AnalyticsNavigationOrigin.allCases.map(\.rawValue)
+            + AnalyticsSidebarDestination.allCases.map(\.rawValue)
+            + AnalyticsUILayout.allCases.map(\.rawValue)
+            + AnalyticsReviewsFilter.allCases.map(\.rawValue)
+            + [AnalyticsScreen.releaseQueueInReview, .releaseQueueAwaitingRelease].map(\.rawValue)
+            + [AnalyticsAction.navigate, .find].map(\.rawValue)
+        for raw in raws {
+            XCTAssertLessThanOrEqual(raw.count, FirebaseAnalyticsPayload.maxStringValueLength, raw)
+        }
+        // User property values are capped at 36 characters.
+        for layout in AnalyticsUILayout.allCases {
+            XCTAssertEqual(FirebaseAnalyticsPayload.userProperty(name: AnalyticsUserProperty.uiLayout.rawValue, value: layout.rawValue)?.value,
+                           layout.rawValue)
+        }
+    }
+
+    func testNavigateEventPayloadPassesUnchanged() throws {
+        let event = AnalyticsEvent.navigate(to: .account(id: "acc", section: .certificates), from: .menuCommand)
+
+        let payload = try XCTUnwrap(FirebaseAnalyticsPayload.make(from: event))
+
+        XCTAssertEqual(payload.name, "action")
+        XCTAssertEqual(payload.parameters["destination"] as? String, "account_certificates")
+        XCTAssertEqual(payload.parameters["source"] as? String, "menu_command")
+        XCTAssertEqual(payload.parameters["action_name"] as? String, "navigate")
     }
 
     // MARK: - Screen-less actions

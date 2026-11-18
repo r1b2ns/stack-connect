@@ -21,10 +21,10 @@ final class AppCommandsTests: XCTestCase {
 
     func testSelectingFromACommandClearsTheDetail() {
         let coordinator = RootSplitCoordinator()
-        coordinator.select(.settings)
+        coordinator.select(.settings, origin: .sidebar)
         coordinator.contentCoordinator.navigateToLicense()
 
-        coordinator.select(RootNavigationShortcut.recentReviews.item)
+        coordinator.select(RootNavigationShortcut.recentReviews.item, origin: .menuCommand)
 
         XCTAssertEqual(coordinator.selection, .recentReviews)
         XCTAssertNil(coordinator.detailRoute)

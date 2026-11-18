@@ -1,4 +1,5 @@
 import SwiftUI
+import StackProtocols
 
 // MARK: - Sidebar Items
 
@@ -18,6 +19,14 @@ enum RootReleaseQueue: String, CaseIterable, Hashable, Identifiable {
     }
 
     var title: String { widgetKind.displayName }
+
+    /// The `screen_name` of the queue's middle column.
+    var analyticsScreen: AnalyticsScreen {
+        switch self {
+        case .inReview:        return .releaseQueueInReview
+        case .awaitingRelease: return .releaseQueueAwaitingRelease
+        }
+    }
 
     var systemImage: String {
         switch self {
@@ -141,7 +150,10 @@ final class RootSplitCoordinator: ObservableObject {
     let contentCoordinator = HomeCoordinator()
     let detailCoordinator = HomeCoordinator()
 
-    init() {
+    private let analytics: AnalyticsTracking
+
+    init(analytics: AnalyticsTracking = AnalyticsService.shared) {
+        self.analytics = analytics
         contentCoordinator.routeHandler = { [weak self] route in
             self?.showInDetail(route)
         }
@@ -156,10 +168,18 @@ final class RootSplitCoordinator: ObservableObject {
     }
 
     /// Sidebar selection. Changing it clears the detail column.
-    func select(_ item: RootSidebarItem) {
+    ///
+    /// The single choke point of user navigation between sidebar items (the
+    /// sidebar, the menu-bar commands and the dashboard KPI tiles all come
+    /// through here), so it sends one `navigate` action per actual change,
+    /// with `origin`. Reselecting the current item sends nothing. Programmatic
+    /// moves (deep links, pop to root) don't come through here and are not
+    /// tracked as navigation.
+    func select(_ item: RootSidebarItem, origin: AnalyticsNavigationOrigin) {
         guard item != selection else { return }
         selection = item
         resetDetail()
+        analytics.track(.navigate(to: item, from: origin))
     }
 
     /// Opens `route` as the detail column's root (a row picked in the middle
@@ -169,9 +189,15 @@ final class RootSplitCoordinator: ObservableObject {
         detailCoordinator.path = NavigationPath()
     }
 
-    /// The Find command: focus the search field of the screen on display.
+    /// The Find command (⌘F): focus the search field of the screen on display.
+    /// Tracked as a `find` action from the menu command (its only caller).
     func requestSearch() {
         searchRequest += 1
+        analytics.track(.action(
+            .find,
+            on: nil,
+            parameters: [AnalyticsParameterKey.source: .string(AnalyticsNavigationOrigin.menuCommand.rawValue)]
+        ))
     }
 
     func returnToDashboard() {

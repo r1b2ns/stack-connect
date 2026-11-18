@@ -43,10 +43,12 @@ To learn which features are used and where the app fails, StackConnect sends **a
   - how many search results were found (for example `2_5`);
   - the kind of release track;
   - whether the app was opened from a notification, a widget or a link, and the kind of screen it opened.
+  - on iPad and Mac, the kind of sidebar section opened (for example `recent_reviews` or `account_apps`, never which account) and whether it was opened from the sidebar, a menu command or a dashboard tile.
 - **Segment properties:**
   - the number of connected accounts, in buckets (`0`, `1`, `2`, `3+`);
   - which kinds of store are connected (Apple, Firebase, Google Play);
   - whether notifications are allowed.
+  - whether the compact (iPhone) or the regular (iPad and Mac split view) layout is on screen.
 - **Standard device information:** app version and build, iOS version, device model, language, approximate country (from the IP address, which Google does not store), and the automatic Firebase events `first_open`, `session_start` and `user_engagement`.
 - **Crash reports:** the stack trace and device and OS state at the time of a crash. A few handled errors are also recorded, keeping only their error domain, code and category. Messages, URLs and response bodies are removed.
 

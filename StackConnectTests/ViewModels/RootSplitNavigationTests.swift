@@ -37,7 +37,7 @@ final class RootSplitCoordinatorTests: XCTestCase {
     }
 
     func testContentColumnRoutesBecomeDetailRootInsteadOfPushing() {
-        sut.select(.account(id: account.id, section: .apps))
+        sut.select(.account(id: account.id, section: .apps), origin: .sidebar)
 
         sut.contentCoordinator.navigateToAppList(account)
 
@@ -46,7 +46,7 @@ final class RootSplitCoordinatorTests: XCTestCase {
     }
 
     func testPickingAnotherRowReplacesDetailAndDropsItsStack() {
-        sut.select(.settings)
+        sut.select(.settings, origin: .sidebar)
         sut.contentCoordinator.navigateToLicense()
         sut.detailCoordinator.navigateToTipJar()
         XCTAssertEqual(sut.detailCoordinator.path.count, 1)
@@ -58,7 +58,7 @@ final class RootSplitCoordinatorTests: XCTestCase {
     }
 
     func testDetailColumnPushesOnItsOwnStack() {
-        sut.select(.settings)
+        sut.select(.settings, origin: .sidebar)
         sut.contentCoordinator.navigateToSettingsAccounts()
 
         sut.detailCoordinator.navigateToAccountsList(.apple)
@@ -68,11 +68,11 @@ final class RootSplitCoordinatorTests: XCTestCase {
     }
 
     func testSelectingAnItemClearsTheDetail() {
-        sut.select(.settings)
+        sut.select(.settings, origin: .sidebar)
         sut.contentCoordinator.navigateToLicense()
         sut.detailCoordinator.navigateToTipJar()
 
-        sut.select(.recentReviews)
+        sut.select(.recentReviews, origin: .sidebar)
 
         XCTAssertEqual(sut.selection, .recentReviews)
         XCTAssertNil(sut.detailRoute)
@@ -80,16 +80,16 @@ final class RootSplitCoordinatorTests: XCTestCase {
     }
 
     func testReselectingTheSameItemKeepsTheDetail() {
-        sut.select(.settings)
+        sut.select(.settings, origin: .sidebar)
         sut.contentCoordinator.navigateToLicense()
 
-        sut.select(.settings)
+        sut.select(.settings, origin: .sidebar)
 
         XCTAssertEqual(sut.detailRoute, .license)
     }
 
     func testPopToRootFromEitherColumnReturnsToDashboardAndReloadsAccounts() {
-        sut.select(.account(id: account.id, section: .manage))
+        sut.select(.account(id: account.id, section: .manage), origin: .sidebar)
         sut.contentCoordinator.navigateToLicense()
         let revision = sut.accountsRevision
 
@@ -99,7 +99,7 @@ final class RootSplitCoordinatorTests: XCTestCase {
         XCTAssertNil(sut.detailRoute)
         XCTAssertEqual(sut.accountsRevision, revision + 1)
 
-        sut.select(.settings)
+        sut.select(.settings, origin: .sidebar)
         sut.detailCoordinator.popToRoot()
         XCTAssertEqual(sut.selection, .dashboard)
         XCTAssertEqual(sut.accountsRevision, revision + 2)
@@ -108,7 +108,7 @@ final class RootSplitCoordinatorTests: XCTestCase {
     // MARK: - Deep links
 
     func testDeepLinkRouteOpensOnTopOfTheDashboard() {
-        sut.select(.settings)
+        sut.select(.settings, origin: .sidebar)
 
         sut.show(.appList(account))
 

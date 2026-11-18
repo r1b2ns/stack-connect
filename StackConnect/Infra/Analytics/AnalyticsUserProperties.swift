@@ -21,6 +21,11 @@ enum AnalyticsUserProperty: String, CaseIterable, Sendable {
     /// `NotificationPermissionService` at launch, after the permission prompt
     /// and whenever the app becomes active (the user may change it in Settings).
     case notificationsEnabled = "notifications_enabled"
+    /// The root layout on screen: `"compact"` (iPhone Home stack) or
+    /// `"regular"` (iPad / Mac split view), an `AnalyticsUILayout` raw value.
+    /// Set by `AppRootView` from the horizontal size class, and again whenever
+    /// it changes (rotation, multitasking, resizing a Mac window).
+    case uiLayout = "ui_layout"
 
     /// The properties `AnalyticsUserPropertiesUpdater` derives from accounts.
     static let accountDerived: [AnalyticsUserProperty] = [.accountCount, .hasApple, .hasFirebase, .hasGooglePlay]

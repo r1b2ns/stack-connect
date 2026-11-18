@@ -82,7 +82,7 @@ private struct RecentReviewsWidgetView: View {
                 )
             } else {
                 ForEach(Array(widget.reviews.enumerated()), id: \.element.id) { index, item in
-                    StackTrackedButton(.widgetReview, on: .home) {
+                    StackTrackedButton(.widgetReview, onCurrentScreenOr: .home) {
                         coordinator.open(item)
                     } label: {
                         HomeReviewRowView(item: item)
@@ -95,7 +95,7 @@ private struct RecentReviewsWidgetView: View {
                     }
                 }
 
-                StackTrackedButton(.seeMore, on: .home) {
+                StackTrackedButton(.seeMore, onCurrentScreenOr: .home) {
                     coordinator.navigateToAllReviews()
                 } label: {
                     HStack(spacing: 4) {

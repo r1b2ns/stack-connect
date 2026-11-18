@@ -171,6 +171,92 @@ enum AnalyticsReleaseWriteKind: String, CaseIterable, Sendable {
     }
 }
 
+// MARK: - Split view navigation
+
+/// Where a split view navigation came from (`source` of the `navigate` and
+/// `find` actions, and of the menu `refresh`). Same key as the deep-link
+/// `source` of `app_opened_from`: the action name tells the two value sets
+/// apart.
+enum AnalyticsNavigationOrigin: String, CaseIterable, Sendable {
+    /// A click (or keyboard selection) in the split view sidebar, including
+    /// its "+" header buttons and account context menus.
+    case sidebar = "sidebar"
+    /// A menu-bar command or its keyboard shortcut (⌘⇧N, ⌘F, ⌘R, ⌘1–4, ⌘,).
+    case menuCommand = "menu_command"
+    /// A release queue KPI tile on the iPad / Mac dashboard.
+    case dashboardTile = "dashboard_tile"
+}
+
+/// The kind of split view sidebar item opened (`destination` of `navigate`).
+/// Accounts are reduced to the team tool shown: never an account name or id.
+/// Same key as the deep-link `destination` of `app_opened_from`.
+enum AnalyticsSidebarDestination: String, CaseIterable, Sendable {
+    case dashboard = "dashboard"
+    case releaseQueueInReview = "release_queue_in_review"
+    case releaseQueueAwaitingRelease = "release_queue_awaiting_release"
+    case recentReviews = "recent_reviews"
+    case accountApps = "account_apps"
+    case accountUsers = "account_users"
+    case accountDevices = "account_devices"
+    case accountCertificates = "account_certificates"
+    case accountIdentifiers = "account_identifiers"
+    case accountProfiles = "account_profiles"
+    case accountManage = "account_manage"
+    case addAccount = "add_account"
+    case settings = "settings"
+
+    init(_ item: RootSidebarItem) {
+        switch item {
+        case .dashboard:                       self = .dashboard
+        case .releaseQueue(.inReview):         self = .releaseQueueInReview
+        case .releaseQueue(.awaitingRelease):  self = .releaseQueueAwaitingRelease
+        case .recentReviews:                   self = .recentReviews
+        case .account(_, let section):         self.init(section)
+        case .addAccount:                      self = .addAccount
+        case .settings:                        self = .settings
+        }
+    }
+
+    private init(_ section: RootAccountSection) {
+        switch section {
+        case .apps:         self = .accountApps
+        case .users:        self = .accountUsers
+        case .devices:      self = .accountDevices
+        case .certificates: self = .accountCertificates
+        case .identifiers:  self = .accountIdentifiers
+        case .profiles:     self = .accountProfiles
+        case .manage:       self = .accountManage
+        }
+    }
+}
+
+/// The root layout picked by `AppRootView` (`ui_layout` user property).
+enum AnalyticsUILayout: String, CaseIterable, Sendable {
+    /// Compact width: the iPhone Home stack (iPhone, Slide Over, narrow windows).
+    case compact = "compact"
+    /// Regular width: the split view (iPad full screen, wide windows, Mac).
+    case regular = "regular"
+}
+
+// MARK: - Reviews inbox
+
+/// The Reviews inbox filter (`kind` of `filter_reviews` on `all_reviews`).
+enum AnalyticsReviewsFilter: String, CaseIterable, Sendable {
+    case all = "all"
+    case appStore = "app_store"
+    case googlePlay = "google_play"
+    case unreplied = "unreplied"
+
+    init(_ filter: AllReviewsFilter) {
+        switch filter {
+        case .all:        self = .all
+        case .appStore:   self = .appStore
+        case .googlePlay: self = .googlePlay
+        case .unreplied:  self = .unreplied
+        }
+    }
+}
+
 // MARK: - Error category of any error
 
 extension AnalyticsErrorCategory {

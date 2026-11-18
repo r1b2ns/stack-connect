@@ -57,10 +57,53 @@ struct StackCardButton<Label: View>: View {
     var body: some View {
         Button(action: action) {
             label()
-                .contentShape(Rectangle())
-                .padding(.vertical, 4)
+                .stackCardButtonLabel()
         }
-        .buttonStyle(.plain)
-        .hoverEffect(.highlight)
+        .stackCardButtonChrome()
+    }
+}
+
+/// `StackCardButton` that sends a `button_tap` event before running its
+/// action (through `StackTrackedButton`), for card rows that mirror a tracked
+/// row of a compact List.
+struct StackTrackedCardButton<Label: View>: View {
+
+    private let button: AnalyticsButton
+    private let screen: AnalyticsScreen
+    private let action: () -> Void
+    private let label: () -> Label
+
+    init(
+        _ button: AnalyticsButton,
+        on screen: AnalyticsScreen,
+        action: @escaping () -> Void,
+        @ViewBuilder label: @escaping () -> Label
+    ) {
+        self.button = button
+        self.screen = screen
+        self.action = action
+        self.label = label
+    }
+
+    var body: some View {
+        StackTrackedButton(button, on: screen, action: action) {
+            label()
+                .stackCardButtonLabel()
+        }
+        .stackCardButtonChrome()
+    }
+}
+
+private extension View {
+    /// The whole row is tappable, with a little vertical breathing room.
+    func stackCardButtonLabel() -> some View {
+        contentShape(Rectangle())
+            .padding(.vertical, 4)
+    }
+
+    /// Plain style with a hover highlight (pointer and keyboard focus).
+    func stackCardButtonChrome() -> some View {
+        buttonStyle(.plain)
+            .hoverEffect(.highlight)
     }
 }

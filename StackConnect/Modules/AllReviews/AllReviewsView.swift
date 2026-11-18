@@ -72,7 +72,10 @@ struct AllReviewsView<ViewModel: AllReviewsViewModelProtocol>: View {
 
     private func buildFilterMenu() -> some View {
         Menu {
-            Picker(String(localized: "Filter"), selection: $viewModel.uiState.filter) {
+            Picker(String(localized: "Filter"), selection: Binding(
+                get: { viewModel.uiState.filter },
+                set: { viewModel.applyFilter($0) }
+            )) {
                 ForEach(AllReviewsFilter.allCases) { filter in
                     if filter == .unreplied {
                         Text(verbatim: "\(filter.title) (\(viewModel.uiState.unrepliedCount))").tag(filter)

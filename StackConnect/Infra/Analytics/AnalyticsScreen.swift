@@ -13,6 +13,12 @@ enum AnalyticsScreen: String, CaseIterable, Sendable {
     case home = "home"
     case customizeWidgets = "customize_widgets"
 
+    // MARK: Split view (iPad / Mac)
+    /// Middle column of the In Review release queue (`RootReleaseQueue.inReview`).
+    case releaseQueueInReview = "release_queue_in_review"
+    /// Middle column of the Awaiting Release queue (`RootReleaseQueue.awaitingRelease`).
+    case releaseQueueAwaitingRelease = "release_queue_awaiting_release"
+
     // MARK: Accounts
     case accountManagement = "account_management"
     case accountsList = "accounts_list"

@@ -70,7 +70,7 @@ struct VersionDetailRegularContent<ViewModel: VersionDetailViewModelProtocol>: V
 
     private func buildBuildCard() -> some View {
         StackCard(title: String(localized: "Build"), systemImage: "hammer") {
-            StackCardButton(action: onBuild) {
+            StackTrackedCardButton(.build, on: .versionDetail, action: onBuild) {
                 HStack {
                     if let build = viewModel.uiState.currentBuild {
                         Text(build.version ?? "–")
@@ -90,7 +90,7 @@ struct VersionDetailRegularContent<ViewModel: VersionDetailViewModelProtocol>: V
 
     private func buildScreenshotsCard() -> some View {
         StackCard(title: String(localized: "Preview and Screenshots"), systemImage: "photo.on.rectangle.angled") {
-            StackCardButton(action: onScreenshots) {
+            StackTrackedCardButton(.screenshots, on: .versionDetail, action: onScreenshots) {
                 HStack {
                     Text(String(localized: "Manage", comment: "Version Detail (iPad): opens the screenshots of the version."))
                         .foregroundStyle(.tint)
@@ -107,18 +107,21 @@ struct VersionDetailRegularContent<ViewModel: VersionDetailViewModelProtocol>: V
         StackCard(title: String(localized: "Release"), systemImage: "arrow.up.circle") {
             VStack(alignment: .leading, spacing: 8) {
                 buildDetailRow(
+                    .releaseOptions,
                     title: String(localized: "App Store Version Release"),
                     value: viewModel.uiState.releaseTypeSubtitle,
                     action: onReleaseOptions
                 )
                 Divider()
                 buildDetailRow(
+                    .phasedRelease,
                     title: String(localized: "Phased Release"),
                     value: viewModel.uiState.phasedReleaseSubtitle,
                     action: onPhasedRelease
                 )
                 Divider()
                 buildDetailRow(
+                    .appReviewInfo,
                     title: String(localized: "App Review Information"),
                     value: nil,
                     action: onAppReviewInfo
@@ -131,18 +134,18 @@ struct VersionDetailRegularContent<ViewModel: VersionDetailViewModelProtocol>: V
         StackCard(title: String(localized: "What's New"), systemImage: "sparkles") {
             buildTextPreview(viewModel.uiState.editWhatsNew, lineLimit: 8)
         } accessory: {
-            buildEditButton(.whatsNew)
+            buildEditButton(.whatsNew, analyticsButton: .whatsNew)
         }
     }
 
     private func buildStoreTextCard() -> some View {
         StackCard(title: String(localized: "Store Text", comment: "Version Detail (iPad): card with the promotional text and the description."), systemImage: "doc.text") {
             VStack(alignment: .leading, spacing: 8) {
-                StackCardButton { viewModel.requestField(.promotionalText) } label: {
+                StackTrackedCardButton(.promotionalText, on: .versionDetail) { viewModel.requestField(.promotionalText) } label: {
                     buildPreviewRow(title: String(localized: "Promotional Text"), text: viewModel.uiState.editPromotionalText, lineLimit: 2)
                 }
                 Divider()
-                StackCardButton { viewModel.requestField(.description) } label: {
+                StackTrackedCardButton(.appDescription, on: .versionDetail) { viewModel.requestField(.description) } label: {
                     buildPreviewRow(title: String(localized: "Description"), text: viewModel.uiState.editDescription, lineLimit: 3)
                 }
             }
@@ -160,8 +163,13 @@ struct VersionDetailRegularContent<ViewModel: VersionDetailViewModelProtocol>: V
 
     // MARK: - Pieces
 
-    private func buildDetailRow(title: String, value: String?, action: @escaping () -> Void) -> some View {
-        StackCardButton(action: action) {
+    private func buildDetailRow(
+        _ analyticsButton: AnalyticsButton,
+        title: String,
+        value: String?,
+        action: @escaping () -> Void
+    ) -> some View {
+        StackTrackedCardButton(analyticsButton, on: .versionDetail, action: action) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
@@ -209,8 +217,12 @@ struct VersionDetailRegularContent<ViewModel: VersionDetailViewModelProtocol>: V
         }
     }
 
-    private func buildEditButton(_ field: VersionDetailLocalizableField) -> some View {
-        Button(canEditMetadata ? String(localized: "Edit") : String(localized: "View")) {
+    private func buildEditButton(_ field: VersionDetailLocalizableField, analyticsButton: AnalyticsButton) -> some View {
+        StackTrackedButton(
+            canEditMetadata ? String(localized: "Edit") : String(localized: "View"),
+            button: analyticsButton,
+            on: .versionDetail
+        ) {
             viewModel.requestField(field)
         }
         .buttonStyle(.borderless)
@@ -246,7 +258,12 @@ struct PhasedReleaseHeroCard: View {
                 }
             }
         } accessory: {
-            Button(String(localized: "Manage", comment: "Phased release card: opens the phased release options.")) {
+            // Same event as the Phased Release row (compact List and card).
+            StackTrackedButton(
+                String(localized: "Manage", comment: "Phased release card: opens the phased release options."),
+                button: .phasedRelease,
+                on: .versionDetail
+            ) {
                 onManage()
             }
             .buttonStyle(.borderless)

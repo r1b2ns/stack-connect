@@ -51,9 +51,13 @@ enum AnalyticsParameterKey {
     static let track = "track"
     /// Whether a Google Play write was sent for review right away.
     static let sendForReview = "send_for_review"
-    /// Where an app open came from: `DeepLinkSource` raw value.
+    /// Where an app open came from: `DeepLinkSource` raw value. Also where a
+    /// split view navigation / menu command came from:
+    /// `AnalyticsNavigationOrigin` raw value (`navigate`, `find`, `refresh`).
     static let source = "source"
-    /// The deep-link route kind opened: `AnalyticsDeepLinkDestination` raw value.
+    /// The deep-link route kind opened: `AnalyticsDeepLinkDestination` raw
+    /// value. Also the split view sidebar item kind opened by `navigate`:
+    /// `AnalyticsSidebarDestination` raw value.
     static let destination = "destination"
     /// Number of results of a search, bucketed: `AnalyticsCountBucket` raw value.
     static let resultCountBucket = "result_count_bucket"
@@ -147,6 +151,19 @@ extension AnalyticsEvent {
             parameters: [
                 AnalyticsParameterKey.source: .string(source.rawValue),
                 AnalyticsParameterKey.destination: .string(destination.rawValue)
+            ]
+        )
+    }
+
+    /// A split view sidebar destination opened from `origin` (no screen: the
+    /// split view root is not one). Only the item kind, never an account.
+    static func navigate(to item: RootSidebarItem, from origin: AnalyticsNavigationOrigin) -> AnalyticsEvent {
+        .action(
+            .navigate,
+            on: nil,
+            parameters: [
+                AnalyticsParameterKey.destination: .string(AnalyticsSidebarDestination(item).rawValue),
+                AnalyticsParameterKey.source: .string(origin.rawValue)
             ]
         )
     }

@@ -258,7 +258,7 @@ struct HomeDashboardEntryList: View {
                     .padding(.top, 4)
             }
             ForEach(group.entries) { entry in
-                StackTrackedButton(.widgetApp, on: .home) {
+                StackTrackedButton(.widgetApp, onCurrentScreenOr: .home) {
                     onSelect(entry)
                 } label: {
                     HomeAppRowView(entry: entry, showsPlatform: !showsHeaders)

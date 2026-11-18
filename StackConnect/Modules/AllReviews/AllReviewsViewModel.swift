@@ -8,6 +8,8 @@ protocol AllReviewsViewModelProtocol: ObservableObject {
     var uiState: AllReviewsUiState { get set }
     func load() async
     func refresh() async
+    /// The split view inbox filter: shows `filter` and tracks the change.
+    func applyFilter(_ filter: AllReviewsFilter)
 }
 
 // MARK: - UiState
@@ -125,6 +127,19 @@ final class AllReviewsViewModel: AllReviewsViewModelProtocol {
         let reloaded = await reload()
         let succeeded = reloaded && syncService.state.lastError == nil
         analytics.track(.action(.refresh, on: .allReviews, result: succeeded ? .success : .failure))
+    }
+
+    /// Local filtering only (no fetch, so no outcome): tracked as a
+    /// `filter_reviews` action with the filter as `kind`. Picking the filter
+    /// already shown sends nothing.
+    func applyFilter(_ filter: AllReviewsFilter) {
+        guard filter != uiState.filter else { return }
+        uiState.filter = filter
+        analytics.track(.action(
+            .filterReviews,
+            on: .allReviews,
+            parameters: [AnalyticsParameterKey.kind: .string(AnalyticsReviewsFilter(filter).rawValue)]
+        ))
     }
 
     // MARK: - Private

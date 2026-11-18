@@ -72,7 +72,7 @@ struct RootSplitView<HomeVM: HomeViewModelProtocol, SidebarVM: RootSidebarViewMo
             selection: Binding(
                 get: { coordinator.selection },
                 set: { item in
-                    if let item { coordinator.select(item) }
+                    if let item { coordinator.select(item, origin: .sidebar) }
                 }
             )
         )
@@ -97,7 +97,7 @@ struct RootSplitView<HomeVM: HomeViewModelProtocol, SidebarVM: RootSidebarViewMo
             EmptyView()
         case .releaseQueue(let queue):
             RootReleaseQueueView(queue: queue, widget: sidebarViewModel.widget(for: queue)) {
-                await sidebarViewModel.load()
+                await sidebarViewModel.refresh(queue)
             }
         case .recentReviews:
             AllReviewsViewFactory.build(showsFilter: true)
@@ -131,7 +131,7 @@ struct RootSplitView<HomeVM: HomeViewModelProtocol, SidebarVM: RootSidebarViewMo
     private func buildDetailRoot() -> some View {
         if coordinator.selection == .dashboard {
             RootDashboardView(viewModel: homeViewModel, sidebarViewModel: sidebarViewModel) { queue in
-                coordinator.select(.releaseQueue(queue))
+                coordinator.select(.releaseQueue(queue), origin: .dashboardTile)
             }
         } else if case let .account(id, .users) = coordinator.selection {
             if let account = sidebarViewModel.account(id: id) {

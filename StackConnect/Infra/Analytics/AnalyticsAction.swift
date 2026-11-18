@@ -39,6 +39,16 @@ enum AnalyticsAction: String, CaseIterable, Sendable {
     case removeWidget = "remove_widget"
     case reorderWidgets = "reorder_widgets"
 
+    // MARK: Split view (iPad / Mac)
+    /// A split view sidebar destination was opened, with `destination`
+    /// (`AnalyticsSidebarDestination`) and `source` (`AnalyticsNavigationOrigin`:
+    /// sidebar click, menu / keyboard command or dashboard KPI tile). Sent
+    /// without `screen_name`, and only when the selection actually changes.
+    case navigate = "navigate"
+    /// The Find menu command (⌘F) asked the screen on display to focus its
+    /// search field, with `source`. Never the search text.
+    case find = "find"
+
     // MARK: Settings
     case deleteAllAccounts = "delete_all_accounts"
     case togglePreReviewChecklist = "toggle_pre_review_checklist"

@@ -1,4 +1,5 @@
 import SwiftUI
+import StackProtocols
 
 /// Menu-bar commands (Mac, and the iPad hardware-keyboard shortcut overlay),
 /// driven by the split view's selection state. The split view publishes its
@@ -13,7 +14,7 @@ struct AppCommands: Commands {
 
         CommandGroup(after: .newItem) {
             Button(String(localized: "Add Account…", comment: "Menu command: adds an App Store Connect account.")) {
-                coordinator?.select(.addAccount(.apple))
+                coordinator?.select(.addAccount(.apple), origin: .menuCommand)
             }
             .keyboardShortcut("n", modifiers: [.command, .shift])
             .disabled(coordinator == nil)
@@ -29,8 +30,7 @@ struct AppCommands: Commands {
 
         CommandGroup(after: .toolbar) {
             Button(String(localized: "Refresh", comment: "Menu command: syncs every account.")) {
-                // User-initiated from the menu bar: not tied to one screen.
-                SyncService.shared.syncAll(trigger: .manual, screen: nil)
+                Task { await AppMenuRefresh.perform() }
             }
             .keyboardShortcut("r", modifiers: .command)
         }
@@ -38,12 +38,34 @@ struct AppCommands: Commands {
         CommandMenu(String(localized: "Go", comment: "Menu bar menu that jumps between the main sections.")) {
             ForEach(RootNavigationShortcut.allCases) { shortcut in
                 Button(shortcut.title) {
-                    coordinator?.select(shortcut.item)
+                    coordinator?.select(shortcut.item, origin: .menuCommand)
                 }
                 .keyboardShortcut(shortcut.key, modifiers: .command)
                 .disabled(coordinator == nil)
             }
         }
+    }
+}
+
+/// The Refresh menu command (⌘R). Available in both layouts, so it does not
+/// go through the split view coordinator.
+@MainActor
+enum AppMenuRefresh {
+    /// Syncs every account (user-initiated from the menu bar: not tied to one
+    /// screen), then tracks a screen-less `refresh` action with its outcome and
+    /// `source = menu_command`. The `sync` action itself is tracked by
+    /// `SyncService` as for any other run.
+    static func perform(
+        syncService: SyncService = .shared,
+        analytics: AnalyticsTracking = AnalyticsService.shared
+    ) async {
+        await syncService.syncAll(trigger: .manual, screen: nil).value
+        analytics.track(.action(
+            .refresh,
+            on: nil,
+            result: syncService.state.lastError == nil ? .success : .failure,
+            parameters: [AnalyticsParameterKey.source: .string(AnalyticsNavigationOrigin.menuCommand.rawValue)]
+        ))
     }
 }
 
