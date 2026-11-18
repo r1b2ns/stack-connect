@@ -21,8 +21,10 @@ struct AppListSwipeActionsTip: Tip {
 
 @MainActor
 struct AppListViewFactory {
-    static func build(account: AccountModel) -> some View {
-        AppListEntry(account: account)
+    /// - Parameter showsUsersTab: `false` in the regular-width split view, where
+    ///   Users and Access is its own sidebar item under the account.
+    static func build(account: AccountModel, showsUsersTab: Bool = true) -> some View {
+        AppListEntry(account: account, showsUsersTab: showsUsersTab)
     }
 }
 
@@ -44,6 +46,7 @@ enum AppListTab: String, CaseIterable {
 
 private struct AppListEntry: View {
     let account: AccountModel
+    let showsUsersTab: Bool
 
     @StateObject private var coordinator = AppListCoordinator()
     @StateObject private var appListViewModel: AppListViewModel
@@ -51,8 +54,9 @@ private struct AppListEntry: View {
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
     @State private var selectedTab: AppListTab = .apps
 
-    init(account: AccountModel) {
+    init(account: AccountModel, showsUsersTab: Bool) {
         self.account = account
+        self.showsUsersTab = showsUsersTab
         _appListViewModel = StateObject(wrappedValue: AppListViewModel(account: account))
         _userAccessViewModel = StateObject(wrappedValue: UserAccessViewModel(account: account))
     }
@@ -61,7 +65,7 @@ private struct AppListEntry: View {
         AppListTab.allCases.filter { tab in
             switch tab {
             case .apps: return true
-            case .usersAndAccess: return account.canView(.users)
+            case .usersAndAccess: return showsUsersTab && account.canView(.users)
             }
         }
     }
@@ -134,6 +138,7 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
                 prompt: String(localized: "Search by name or bundle ID")
             )
             .trackSearch(query: viewModel.uiState.searchQuery, resultCount: viewModel.uiState.filteredApps.count, on: .appList)
+            .stackSearchShortcutFocus()
             .toast(
                 isPresented: $viewModel.uiState.showSyncToast,
                 message: String(localized: "Syncing apps...")
@@ -217,6 +222,22 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
             buildAppRow(app)
         }
         .foregroundStyle(.primary)
+        // Mac: Archive / Favorite on secondary click (the iPhone swipe actions).
+        .stackContextMenu(isEnabled: isRunningOnMac) {
+            Button {
+                Task { await viewModel.toggleFavorite(app: app) }
+            } label: {
+                Label(
+                    app.isFavorite ? String(localized: "Unfavorite") : String(localized: "Favorite"),
+                    systemImage: app.isFavorite ? "star.slash.fill" : "star.fill"
+                )
+            }
+            Button {
+                Task { await viewModel.toggleArchive(app: app) }
+            } label: {
+                Label(String(localized: "Archive"), systemImage: "archivebox.fill")
+            }
+        }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button {
                 Task { await viewModel.toggleArchive(app: app) }

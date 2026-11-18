@@ -73,140 +73,175 @@ enum HomeRoute: Hashable {
 final class HomeCoordinator: MainCoordinatorProtocol {
     @Published var path = NavigationPath()
 
+    /// When set, every route is handed to this closure instead of being pushed
+    /// on `path`. The regular-width split view uses it for its content column:
+    /// a row tapped in the middle column opens in the detail column instead of
+    /// pushing inside the narrow list (`RootSplitCoordinator`).
+    var routeHandler: ((HomeRoute) -> Void)?
+
+    /// When set, `popToRoot()` calls this closure instead of emptying `path`.
+    /// The split view uses it to go back to its dashboard after an account is
+    /// deleted, since there is no single stack to unwind there.
+    var popToRootHandler: (() -> Void)?
+
+    init(routeHandler: ((HomeRoute) -> Void)? = nil, popToRootHandler: (() -> Void)? = nil) {
+        self.routeHandler = routeHandler
+        self.popToRootHandler = popToRootHandler
+    }
+
+    /// Single funnel for every `navigateTo…` call.
+    func push(_ route: HomeRoute) {
+        if let routeHandler {
+            routeHandler(route)
+        } else {
+            path.append(route)
+        }
+    }
+
+    /// Shadows `MainCoordinatorProtocol.popToRoot()` for callers holding a
+    /// `HomeCoordinator` (every screen reads it from the environment).
+    func popToRoot() {
+        if let popToRootHandler {
+            popToRootHandler()
+        } else {
+            path.removeLast(path.count)
+        }
+    }
+
     func navigateToSettings() {
-        path.append(HomeRoute.settings)
+        push(HomeRoute.settings)
     }
 
     func navigateToSettingsAccounts() {
-        path.append(HomeRoute.settingsAccounts)
+        push(HomeRoute.settingsAccounts)
     }
 
     func navigateToLicense() {
-        path.append(HomeRoute.license)
+        push(HomeRoute.license)
     }
 
     func navigateToTipJar() {
-        path.append(HomeRoute.tipJar)
+        push(HomeRoute.tipJar)
     }
 
     func navigateToAccountSettings(_ account: AccountModel) {
-        path.append(HomeRoute.accountSettings(account))
+        push(HomeRoute.accountSettings(account))
     }
 
     func navigateToAccountManagement(_ account: AccountModel) {
-        path.append(HomeRoute.accountManagement(account))
+        push(HomeRoute.accountManagement(account))
     }
 
     func navigateToCertificatesList(_ account: AccountModel) {
-        path.append(HomeRoute.certificatesList(account))
+        push(HomeRoute.certificatesList(account))
     }
 
     func navigateToCertificateDetail(certificate: CertificateModel, account: AccountModel) {
-        path.append(HomeRoute.certificateDetail(certificate: certificate, account: account))
+        push(HomeRoute.certificateDetail(certificate: certificate, account: account))
     }
 
     func navigateToCreateCertificate(_ account: AccountModel) {
-        path.append(HomeRoute.createCertificate(account))
+        push(HomeRoute.createCertificate(account))
     }
 
     func navigateToProfilesList(_ account: AccountModel) {
-        path.append(HomeRoute.profilesList(account))
+        push(HomeRoute.profilesList(account))
     }
 
     func navigateToCreateProfile(_ account: AccountModel) {
-        path.append(HomeRoute.createProfile(account))
+        push(HomeRoute.createProfile(account))
     }
 
     func navigateToProfileDetail(profile: ProvisioningProfileModel, account: AccountModel) {
-        path.append(HomeRoute.profileDetail(profile: profile, account: account))
+        push(HomeRoute.profileDetail(profile: profile, account: account))
     }
 
     func navigateToIdentifiersList(_ account: AccountModel) {
-        path.append(HomeRoute.identifiersList(account))
+        push(HomeRoute.identifiersList(account))
     }
 
     func navigateToIdentifierDetail(bundleId: BundleIdentifierModel, account: AccountModel) {
-        path.append(HomeRoute.identifierDetail(bundleId: bundleId, account: account))
+        push(HomeRoute.identifierDetail(bundleId: bundleId, account: account))
     }
 
     func navigateToDevicesList(_ account: AccountModel) {
-        path.append(HomeRoute.devicesList(account))
+        push(HomeRoute.devicesList(account))
     }
 
     func navigateToDeviceDetail(device: DeviceModel, account: AccountModel) {
-        path.append(HomeRoute.deviceDetail(device: device, account: account))
+        push(HomeRoute.deviceDetail(device: device, account: account))
     }
 
     func navigateToImportDevices(_ account: AccountModel) {
-        path.append(HomeRoute.importDevices(account))
+        push(HomeRoute.importDevices(account))
     }
 
     func navigateToAccountsList(_ providerType: ProviderType) {
-        path.append(HomeRoute.accountsList(providerType))
+        push(HomeRoute.accountsList(providerType))
     }
 
     func navigateToAppList(_ account: AccountModel) {
-        path.append(HomeRoute.appList(account))
+        push(HomeRoute.appList(account))
     }
 
     func navigateToFirebaseProjectList(_ account: AccountModel) {
-        path.append(HomeRoute.firebaseProjectList(account))
+        push(HomeRoute.firebaseProjectList(account))
     }
 
     func navigateToFirebaseProjectDetail(project: FirebaseProjectModel, account: AccountModel) {
-        path.append(HomeRoute.firebaseProjectDetail(project: project, account: account))
+        push(HomeRoute.firebaseProjectDetail(project: project, account: account))
     }
 
     func navigateToFirebaseAppList(project: FirebaseProjectModel, account: AccountModel) {
-        path.append(HomeRoute.firebaseAppList(project: project, account: account))
+        push(HomeRoute.firebaseAppList(project: project, account: account))
     }
 
     func navigateToRemoteConfig(project: FirebaseProjectModel, account: AccountModel) {
-        path.append(HomeRoute.remoteConfig(project: project, account: account))
+        push(HomeRoute.remoteConfig(project: project, account: account))
     }
 
     func navigateToAnalyticsDashboard(project: FirebaseProjectModel, account: AccountModel) {
-        path.append(HomeRoute.analyticsDashboard(project: project, account: account))
+        push(HomeRoute.analyticsDashboard(project: project, account: account))
     }
 
     func navigateToMessaging(project: FirebaseProjectModel, account: AccountModel) {
-        path.append(HomeRoute.messaging(project: project, account: account))
+        push(HomeRoute.messaging(project: project, account: account))
     }
 
     func navigateToGooglePlayAppList(_ account: AccountModel) {
-        path.append(HomeRoute.googlePlayAppList(account))
+        push(HomeRoute.googlePlayAppList(account))
     }
 
     func navigateToGooglePlayAppDetail(_ app: GooglePlayAppItem, account: AccountModel) {
-        path.append(HomeRoute.googlePlayAppDetail(app: app, account: account))
+        push(HomeRoute.googlePlayAppDetail(app: app, account: account))
     }
 
     func navigateToGooglePlayStoreListings(_ app: GooglePlayAppItem, account: AccountModel) {
-        path.append(HomeRoute.googlePlayStoreListings(app: app, account: account))
+        push(HomeRoute.googlePlayStoreListings(app: app, account: account))
     }
 
     func navigateToGooglePlayStoreListingDetail(_ listing: GooglePlayStoreListingModel, isDefaultLanguage: Bool) {
-        path.append(HomeRoute.googlePlayStoreListingDetail(listing: listing, isDefaultLanguage: isDefaultLanguage))
+        push(HomeRoute.googlePlayStoreListingDetail(listing: listing, isDefaultLanguage: isDefaultLanguage))
     }
 
     func navigateToGooglePlayTracks(_ app: GooglePlayAppItem, account: AccountModel) {
-        path.append(HomeRoute.googlePlayTracks(app: app, account: account))
+        push(HomeRoute.googlePlayTracks(app: app, account: account))
     }
 
     func navigateToGooglePlayReleaseDetail(_ release: GooglePlayReleaseModel, track: String, app: GooglePlayAppItem, account: AccountModel) {
-        path.append(HomeRoute.googlePlayReleaseDetail(app: app, account: account, track: track, release: release))
+        push(HomeRoute.googlePlayReleaseDetail(app: app, account: account, track: track, release: release))
     }
 
     func navigateToGooglePlayAppInfo(_ app: GooglePlayAppItem, account: AccountModel) {
-        path.append(HomeRoute.googlePlayAppInfo(app: app, account: account))
+        push(HomeRoute.googlePlayAppInfo(app: app, account: account))
     }
 
     func navigateToGooglePlayUserDetail(_ user: GooglePlayUserModel, account: AccountModel) {
-        path.append(HomeRoute.googlePlayUserDetail(user: user, account: account))
+        push(HomeRoute.googlePlayUserDetail(user: user, account: account))
     }
 
     func navigateToAppDetail(_ app: AppModel, account: AccountModel) {
-        path.append(HomeRoute.appDetail(app: app, account: account))
+        push(HomeRoute.appDetail(app: app, account: account))
     }
 
     /// Opens a dashboard row's app in its own store's detail (plan H7).
@@ -258,119 +293,119 @@ final class HomeCoordinator: MainCoordinatorProtocol {
     }
 
     func navigateToVersionList(appId: String, platform: AppPlatform, account: AccountModel) {
-        path.append(HomeRoute.versionList(appId: appId, platform: platform, account: account))
+        push(HomeRoute.versionList(appId: appId, platform: platform, account: account))
     }
 
     func navigateToVersionDetail(_ version: AppStoreVersionModel, account: AccountModel) {
-        path.append(HomeRoute.versionDetail(version: version, account: account))
+        push(HomeRoute.versionDetail(version: version, account: account))
     }
 
     func navigateToScreenshotPreview(versionId: String, account: AccountModel, localizationId: String? = nil, platform: AppPlatform? = nil, appStoreState: AppStoreState? = nil) {
-        path.append(HomeRoute.screenshotPreview(versionId: versionId, localizationId: localizationId, platform: platform, appStoreState: appStoreState, account: account))
+        push(HomeRoute.screenshotPreview(versionId: versionId, localizationId: localizationId, platform: platform, appStoreState: appStoreState, account: account))
     }
 
     func navigateToScreenshotResolution(device: ScreenshotDeviceType, sets: [ScreenshotSetModel], account: AccountModel, appStoreState: AppStoreState?) {
-        path.append(HomeRoute.screenshotResolution(device: device, sets: sets, account: account, appStoreState: appStoreState))
+        push(HomeRoute.screenshotResolution(device: device, sets: sets, account: account, appStoreState: appStoreState))
     }
 
     func navigateToScreenshotGrid(screenshots: [ScreenshotModel], account: AccountModel, appStoreState: AppStoreState?) {
-        path.append(HomeRoute.screenshotGrid(screenshots: screenshots, account: account, appStoreState: appStoreState))
+        push(HomeRoute.screenshotGrid(screenshots: screenshots, account: account, appStoreState: appStoreState))
     }
 
     func navigateToScreenshotPage(screenshots: [ScreenshotModel], startIndex: Int = 0, account: AccountModel, appStoreState: AppStoreState?) {
-        path.append(HomeRoute.screenshotPage(screenshots: screenshots, startIndex: startIndex, account: account, appStoreState: appStoreState))
+        push(HomeRoute.screenshotPage(screenshots: screenshots, startIndex: startIndex, account: account, appStoreState: appStoreState))
     }
 
     func navigateToAppReviewInfo(versionId: String, account: AccountModel) {
-        path.append(HomeRoute.appReviewInfo(versionId: versionId, account: account))
+        push(HomeRoute.appReviewInfo(versionId: versionId, account: account))
     }
 
     func navigateToBetaAppReviewInfo(appId: String, account: AccountModel) {
-        path.append(HomeRoute.betaAppReviewInfo(appId: appId, account: account))
+        push(HomeRoute.betaAppReviewInfo(appId: appId, account: account))
     }
 
     func navigateToAppInformation(app: AppModel, account: AccountModel) {
-        path.append(HomeRoute.appInformation(app: app, account: account))
+        push(HomeRoute.appInformation(app: app, account: account))
     }
 
     func navigateToAgeRating(ageRating: AgeRatingDeclarationModel, account: AccountModel) {
-        path.append(HomeRoute.ageRating(ageRating: ageRating, account: account))
+        push(HomeRoute.ageRating(ageRating: ageRating, account: account))
     }
 
     func navigateToManageLocalizations(appInfoId: String, primaryLocale: String, account: AccountModel) {
-        path.append(HomeRoute.manageLocalizations(appInfoId: appInfoId, primaryLocale: primaryLocale, account: account))
+        push(HomeRoute.manageLocalizations(appInfoId: appInfoId, primaryLocale: primaryLocale, account: account))
     }
 
     func navigateToArchivedApps(account: AccountModel) {
-        path.append(HomeRoute.archivedApps(account: account))
+        push(HomeRoute.archivedApps(account: account))
     }
 
     func navigateToAppHistory(appId: String, account: AccountModel) {
-        path.append(HomeRoute.appHistory(appId: appId, account: account))
+        push(HomeRoute.appHistory(appId: appId, account: account))
     }
 
     func navigateToAppPrivacy(appId: String, account: AccountModel) {
-        path.append(HomeRoute.appPrivacy(appId: appId, account: account))
+        push(HomeRoute.appPrivacy(appId: appId, account: account))
     }
 
     func navigateToAppAccessibility(appId: String, account: AccountModel) {
-        path.append(HomeRoute.appAccessibility(appId: appId, account: account))
+        push(HomeRoute.appAccessibility(appId: appId, account: account))
     }
 
     func navigateToRatingsReviews(appId: String, bundleId: String, appName: String, account: AccountModel) {
-        path.append(HomeRoute.ratingsReviews(appId: appId, bundleId: bundleId, appName: appName, account: account))
+        push(HomeRoute.ratingsReviews(appId: appId, bundleId: bundleId, appName: appName, account: account))
     }
 
     func navigateToReviewDetail(review: CustomerReviewModel, appName: String, account: AccountModel, appId: String? = nil) {
-        path.append(HomeRoute.reviewDetail(review: review, appName: appName, account: account, appId: appId))
+        push(HomeRoute.reviewDetail(review: review, appName: appName, account: account, appId: appId))
     }
 
     func navigateToAllReviews() {
-        path.append(HomeRoute.allReviews)
+        push(HomeRoute.allReviews)
     }
 
     func navigateToTestFlight(appId: String, account: AccountModel) {
-        path.append(HomeRoute.testFlight(appId: appId, account: account))
+        push(HomeRoute.testFlight(appId: appId, account: account))
     }
 
     func navigateToBetaGroupDetail(group: BetaGroupModel, appId: String, account: AccountModel) {
-        path.append(HomeRoute.betaGroupDetail(group: group, appId: appId, account: account))
+        push(HomeRoute.betaGroupDetail(group: group, appId: appId, account: account))
     }
 
     func navigateToBetaGroupTesters(group: BetaGroupModel, appId: String, account: AccountModel) {
-        path.append(HomeRoute.betaGroupTesters(group: group, appId: appId, account: account))
+        push(HomeRoute.betaGroupTesters(group: group, appId: appId, account: account))
     }
 
     func navigateToPlatformBuildsList(appId: String, platform: String, account: AccountModel) {
-        path.append(HomeRoute.platformBuildsList(appId: appId, platform: platform, account: account))
+        push(HomeRoute.platformBuildsList(appId: appId, platform: platform, account: account))
     }
 
     func navigateToBuildDetail(build: BuildModel, appId: String, account: AccountModel) {
-        path.append(HomeRoute.buildDetail(build: build, appId: appId, account: account))
+        push(HomeRoute.buildDetail(build: build, appId: appId, account: account))
     }
 
     func navigateToUserDetail(user: UserModel, account: AccountModel) {
-        path.append(HomeRoute.userDetail(user: user, account: account))
+        push(HomeRoute.userDetail(user: user, account: account))
     }
 
     func navigateToSubmissions(appId: String, appName: String?, account: AccountModel) {
-        path.append(HomeRoute.submissions(appId: appId, appName: appName, account: account))
+        push(HomeRoute.submissions(appId: appId, appName: appName, account: account))
     }
 
     func navigateToReviewSubmissionDetail(submission: ReviewSubmissionModel, account: AccountModel) {
-        path.append(HomeRoute.reviewSubmissionDetail(submission: submission, account: account))
+        push(HomeRoute.reviewSubmissionDetail(submission: submission, account: account))
     }
 
     func navigateToAnalyticsReports(appId: String, appName: String, account: AccountModel) {
-        path.append(HomeRoute.analyticsReports(appId: appId, appName: appName, account: account))
+        push(HomeRoute.analyticsReports(appId: appId, appName: appName, account: account))
     }
 
     func navigateToAnalyticsReportDetail(appId: String, appName: String, report: AnalyticsCatalogReport, account: AccountModel) {
-        path.append(HomeRoute.analyticsReportDetail(appId: appId, appName: appName, report: report, account: account))
+        push(HomeRoute.analyticsReportDetail(appId: appId, appName: appName, report: report, account: account))
     }
 
     func navigateToAnalyticsReportFiles(appId: String, appName: String, report: AnalyticsCatalogReport, account: AccountModel) {
-        path.append(HomeRoute.analyticsReportFiles(appId: appId, appName: appName, report: report, account: account))
+        push(HomeRoute.analyticsReportFiles(appId: appId, appName: appName, report: report, account: account))
     }
 
     func navigateToAppCategoryPicker(
@@ -381,7 +416,7 @@ final class HomeCoordinator: MainCoordinatorProtocol {
         secondarySubcategoryId: String?,
         account: AccountModel
     ) {
-        path.append(HomeRoute.appCategoryPicker(
+        push(HomeRoute.appCategoryPicker(
             appInfoId: appInfoId,
             primaryCategoryId: primaryCategoryId,
             primarySubcategoryId: primarySubcategoryId,

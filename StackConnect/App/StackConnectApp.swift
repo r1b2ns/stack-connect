@@ -107,11 +107,14 @@ struct StackConnectApp: App {
                 buildRoot()
             }
         }
+        // Menu bar (Mac) and hardware keyboard shortcuts (iPad), driven by
+        // the split view's selection.
+        .commands { AppCommands() }
     }
 
     @ViewBuilder
     private func buildRoot() -> some View {
-        HomeViewFactory.build()
+        AppRootViewFactory.build()
             .offlineBanner()
             // App Store review request after a successful foreground sync,
             // every third launch, at most once per launch; then the Home tip
