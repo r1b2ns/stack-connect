@@ -47,3 +47,7 @@ Packages/StackCoreRust/StackCoreRust.xcframework/
 # Firebase config (secrets) — never commit
 GoogleService-Info.plist
 **/GoogleService-Info.plist
+
+# Local throwaway spikes (credentials and API outputs stay out of git)
+spikes/
+docs/
