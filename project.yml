@@ -209,13 +209,19 @@ targets:
       # Uploads the dSYM to Crashlytics (Firebase's documented `run` script from
       # the SPM checkout). Release builds for a device only, and a no-op (exit 0)
       # when GoogleService-Info.plist isn't bundled (open-source / CI builds) or
-      # the checkout can't be found. No input files are declared (Firebase's
-      # CrashlyticsInputFiles.xcfilelist lists them for user script sandboxing,
-      # which this project doesn't enable): a missing input fails the build, and
-      # here the plist is optional and Debug builds have no dSYM.
+      # the checkout can't be found.
+      # The dSYM and the binary are declared as inputs so Xcode schedules this
+      # script only after the dSYM has been generated (Firebase's documented
+      # setup). GoogleService-Info.plist is deliberately NOT an input: it is
+      # optional, and a missing declared input fails the build.
       - name: Upload dSYM to Crashlytics
         basedOnDependencyAnalysis: false
         showEnvVars: false
+        inputFiles:
+          - ${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}
+          - ${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}
+          - ${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Info.plist
+          - $(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)
         script: |
           if [ "${CONFIGURATION}" != "Release" ]; then
             echo "Crashlytics: skipping dSYM upload (${CONFIGURATION} build)"
