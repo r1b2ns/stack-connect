@@ -24,7 +24,10 @@ import Foundation
 /// 6. for Google Play, the cached users of the developer account
 ///    (`GooglePlayUsersCache`, `googleplay-users.<accountId>`: e-mail addresses);
 /// 7. the `AccountModel` itself (`account.id`);
-/// 8. the keychain credentials (`"credentials.<accountId>"`).
+/// 8. the keychain credentials (`"credentials.<accountId>"`);
+/// 9. for an account signed in with Google, its Google login (revoked at
+///    Google, best effort, and deleted from the Keychain) once no other
+///    account uses it (`GoogleLoginReferences`).
 ///
 /// Then posts `AccountsChange` so account-derived state (analytics user
 /// properties) is recomputed, whichever screen deleted the account.
@@ -46,8 +49,12 @@ enum AccountCascadeDeleter {
     static func delete(
         _ account: AccountModel,
         storage: PersistentStorable,
-        keychain: KeyStorable
+        keychain: KeyStorable,
+        googleAuth: (any GoogleAuthServicing)? = nil
     ) async throws {
+        // Read before the credentials go.
+        let googleLoginId = GoogleLoginReferences.loginId(of: account, keychain: keychain)
+
         let accountApps = try await storage.fetchAll(AppModel.self)
             .filter { $0.accountId == account.id }
 
@@ -106,7 +113,25 @@ enum AccountCascadeDeleter {
 
         try await storage.delete(AccountModel.self, id: account.id)
         keychain.removeObject(forKey: "credentials.\(account.id)")
+        if let googleLoginId {
+            await releaseGoogleLoginIfUnused(googleLoginId, storage: storage, keychain: keychain, googleAuth: googleAuth)
+        }
         AccountsChange.post()
+    }
+
+    /// Signs the Google login out (plan G6: sign-out revokes the grant) when
+    /// the deleted account was the last one using it. Best effort: when the
+    /// remaining accounts can't be read the login is kept, so no account
+    /// loses its sign-in by mistake.
+    private static func releaseGoogleLoginIfUnused(
+        _ loginId: String,
+        storage: PersistentStorable,
+        keychain: KeyStorable,
+        googleAuth: (any GoogleAuthServicing)?
+    ) async {
+        guard let remaining = try? await storage.fetchAll(AccountModel.self) else { return }
+        guard GoogleLoginReferences.accounts(using: loginId, in: remaining, keychain: keychain).isEmpty else { return }
+        await (googleAuth ?? GoogleAuthService.shared).signOut(loginId: loginId)
     }
 
     /// Removes the Play reviews the Home sync cached for this account's apps

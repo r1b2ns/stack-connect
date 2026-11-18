@@ -436,6 +436,6 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
 
     private func createProvider() -> APIProviderFirebase? {
         guard let credentials: FirebaseCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else { return nil }
-        return BackendEnvironment.firebaseProviders.makeProvider(serviceAccountJSON: credentials.serviceAccountJSON)
+        return BackendEnvironment.firebaseProviders.makeProvider(credentials: credentials)
     }
 }

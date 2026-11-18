@@ -61,6 +61,35 @@ final class GooglePlayUserDetailViewModelTests: XCTestCase {
             .users.first { $0.email == email }
     }
 
+    // MARK: - Credential-aware copy
+
+    func testPartialAccessFooterFollowsTheAuthMethod() {
+        let user = GooglePlayUserModel(email: "partial@x.example", partial: true)
+        XCTAssertEqual(
+            GooglePlayUserDetailUiState(account: makeAccount(), user: user, serviceAccountEmail: nil).partialAccessFooter,
+            String(localized: "Google returned only part of this user's access (they also have access this service account can't see). Edit them in Play Console.")
+        )
+        let signIn = AccountModel(id: "play.signin", name: "Play", providerType: .googlePlay, authMethod: .googleSignIn)
+        XCTAssertEqual(
+            GooglePlayUserDetailUiState(account: signIn, user: user, serviceAccountEmail: nil).partialAccessFooter,
+            String(localized: "Google returned only part of this user's access (they also have access the signed-in Google account can't see). Edit them in Play Console.")
+        )
+    }
+
+    func testAGrantFailureOfAGoogleSignInAccountNamesTheSignedInGoogleAccount() async throws {
+        let account = AccountModel(id: "play.account", name: "Play", providerType: .googlePlay,
+                                   googlePlayDeveloperId: "123", authMethod: .googleSignIn)
+        let sut = try await makeSUT(support, account: account)
+        connection.failNext(.setGrant, with: StackError.Http(status: 403, message: ""))
+
+        _ = await sut.saveGrant(packageName: "com.x.two", permissions: ["CAN_REPLY_TO_REVIEWS"])
+
+        XCTAssertEqual(
+            sut.uiState.errorMessage,
+            String(localized: "Google Play refused access to this developer account. Check the Developer ID, and that the signed-in Google account has the “Admin (all permissions)” permission.")
+        )
+    }
+
     // MARK: - Account permissions
 
     func testSavesTheAccountPermissionsWithViewAppInformationAndTheExpiry() async throws {

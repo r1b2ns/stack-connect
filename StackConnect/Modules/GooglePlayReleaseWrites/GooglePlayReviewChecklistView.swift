@@ -53,7 +53,7 @@ struct GooglePlayReviewChecklistView<Writes: GooglePlayReleaseWriteViewModelProt
             } header: {
                 Text("Google Play Review")
             } footer: {
-                Text("Google validates the edit before committing. Publishing cancels any other edit this service account has open for the app, such as a CI upload in progress.")
+                Text(writes.uiState.checklistEditFooter)
             }
 
             if let error = writes.uiState.checklistError {

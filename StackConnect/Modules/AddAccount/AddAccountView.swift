@@ -48,22 +48,10 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
     var body: some View {
         NavigationStack {
             Form {
-                buildNameSection()
-
-                if viewModel.uiState.providerType == .apple {
-                    buildAppleCredentialsSection()
-                    buildAppleTutorialSection()
-                }
-
-                if viewModel.uiState.providerType == .firebase {
-                    buildFirebaseCredentialsSection()
-                    buildFirebaseTutorialSection()
-                }
-
-                if viewModel.uiState.providerType == .googlePlay {
-                    buildGooglePlayCredentialsSection()
-                    buildGooglePlayDeveloperIdSection()
-                    buildGooglePlayTutorialSection()
+                if viewModel.uiState.isGoogleSignInMode {
+                    buildGoogleSignInContent()
+                } else {
+                    buildKeyFileContent()
                 }
 
                 if let error = viewModel.uiState.validationError {
@@ -74,12 +62,54 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
             .trackScreen(.addAccount)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { buildToolbar() }
-            .disabled(viewModel.uiState.isValidating)
+            .disabled(viewModel.uiState.isBusy)
             .onChange(of: viewModel.uiState.isSaved) { _, isSaved in
                 if isSaved {
                     onDismiss()
                 }
             }
+        }
+        // Cancel, swipe down or Save: a Google login signed in here but
+        // never used by an account is signed out (no-op after a save).
+        .onDisappear {
+            Task { await viewModel.discardUnsavedGoogleLogin() }
+        }
+    }
+
+    // MARK: - Key file (service account JSON / .p8)
+
+    @ViewBuilder
+    private func buildKeyFileContent() -> some View {
+        if viewModel.uiState.isGoogleSignInAvailable {
+            buildUseGoogleSignInSection()
+        }
+
+        buildNameSection()
+
+        if viewModel.uiState.providerType == .apple {
+            buildAppleCredentialsSection()
+            buildAppleTutorialSection()
+        }
+
+        if viewModel.uiState.providerType == .firebase {
+            buildFirebaseCredentialsSection()
+            buildFirebaseTutorialSection()
+        }
+
+        if viewModel.uiState.providerType == .googlePlay {
+            buildGooglePlayCredentialsSection()
+            buildGooglePlayDeveloperIdSection()
+            buildGooglePlayTutorialSection()
+        }
+    }
+
+    private func buildUseGoogleSignInSection() -> some View {
+        Section {
+            Button(String(localized: "Sign in with Google instead")) {
+                viewModel.setCredentialMode(.googleSignIn)
+            }
+        } footer: {
+            Text("No service account needed: sign in with the Google account you use in the console.")
         }
     }
 
@@ -324,6 +354,145 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
         }
     }
 
+    // MARK: - Sign in with Google
+
+    private var google: GoogleSignInState { viewModel.uiState.google }
+
+    @ViewBuilder
+    private func buildGoogleSignInContent() -> some View {
+        if let login = google.login {
+            buildGoogleAccountSection(login)
+        } else {
+            buildGoogleSignInSection()
+        }
+
+        if google.step == .loading {
+            Section {
+                HStack(spacing: 12) {
+                    ProgressView()
+                    Text(viewModel.uiState.providerType == .googlePlay
+                         ? String(localized: "Looking for your Google Play apps…")
+                         : String(localized: "Looking for your Firebase projects…"))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+
+        if let notice = google.notice {
+            Section {
+                Label(notice, systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .font(.subheadline)
+            }
+        }
+
+        if let error = google.errorMessage {
+            buildErrorSection(error)
+        }
+
+        if !google.disabledFeatures.isEmpty {
+            buildMissingAccessSection()
+        }
+
+        if google.step == .picking {
+            if viewModel.uiState.providerType == .googlePlay {
+                buildNameSection()
+            }
+            buildGooglePickerSection()
+            if viewModel.uiState.providerType == .googlePlay {
+                buildGooglePlayDeveloperIdSection()
+            }
+        }
+
+        Section {
+            Button(String(localized: "Use a service account JSON instead")) {
+                viewModel.setCredentialMode(.keyFile)
+            }
+        } footer: {
+            Text("For CI, shared team accounts, or if you prefer not to sign in with Google.")
+        }
+    }
+
+    private func buildGoogleSignInSection() -> some View {
+        Section {
+            StackSignInButton(
+                title: String(localized: "Sign in with Google"),
+                isLoading: google.step == .signingIn
+            ) {
+                Task { await viewModel.signInWithGoogle() }
+            }
+        } footer: {
+            Text(viewModel.uiState.providerType == .googlePlay
+                 ? String(localized: "Sign in with the Google account you use in Play Console, then pick the apps to add. StackConnect only gets the access you allow, and your sign-in stays on this device.")
+                 : String(localized: "Sign in with the Google account you use in the Firebase console, then pick the projects to add. StackConnect only gets the access you allow, and your sign-in stays on this device."))
+        }
+    }
+
+    private func buildGoogleAccountSection(_ login: GoogleLogin) -> some View {
+        Section {
+            LabeledContent(String(localized: "Signed in as"), value: login.displayName)
+
+            Button(String(localized: "Use Another Google Account")) {
+                Task { await viewModel.signInWithGoogle() }
+            }
+        } header: {
+            Text("Google Account")
+        }
+    }
+
+    private func buildMissingAccessSection() -> some View {
+        Section {
+            ForEach(google.disabledFeatures, id: \.self) { feature in
+                Label(feature.displayName, systemImage: "xmark.circle")
+                    .foregroundStyle(.orange)
+            }
+
+            Button(String(localized: "Grant Access")) {
+                Task { await viewModel.grantMissingGoogleAccess() }
+            }
+        } header: {
+            Text("Access Not Granted")
+        } footer: {
+            Text("These stay off because their checkbox was unticked on Google's consent page. Tap Grant Access to allow them.")
+        }
+    }
+
+    private func buildGooglePickerSection() -> some View {
+        Section {
+            ForEach(google.items) { item in
+                StackTrackedButton(.toggleApp, on: .addAccount) {
+                    viewModel.toggleGoogleItem(item.id)
+                } label: {
+                    StackSelectableRow(
+                        title: item.resource.title,
+                        subtitle: item.resource.subtitle,
+                        isSelected: google.selectedIds.contains(item.id),
+                        note: item.isAlreadyAdded ? String(localized: "Already added") : nil
+                    )
+                }
+                .disabled(item.isAlreadyAdded)
+            }
+        } header: {
+            HStack {
+                Text(viewModel.uiState.providerType == .googlePlay
+                     ? String(localized: "Apps")
+                     : String(localized: "Projects"))
+                Spacer()
+                if !google.selectableItems.isEmpty {
+                    Button(google.areAllSelected ? String(localized: "Select None") : String(localized: "Select All")) {
+                        viewModel.setAllGoogleItemsSelected(!google.areAllSelected)
+                    }
+                    .font(.footnote)
+                    .textCase(nil)
+                }
+            }
+        } footer: {
+            Text(viewModel.uiState.providerType == .googlePlay
+                 ? String(localized: "One account is added for this Google login. With every app selected, apps you get access to later show up too.")
+                 : String(localized: "Each project is added as its own account."))
+        }
+    }
+
     private func buildErrorSection(_ error: String) -> some View {
         Section {
             Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -350,7 +519,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                 Button(String(localized: "Save")) {
                     Task { await viewModel.save() }
                 }
-                .disabled(viewModel.uiState.accountName.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(!viewModel.uiState.canSave)
             }
         }
     }

@@ -109,6 +109,51 @@ final class GooglePlayReleaseWriteViewModelTests: XCTestCase {
         GooglePlayPendingWrite(track: "production", change: .halt(versionCodes: ["4210"]), releaseTitle: "4.2.0")
     }
 
+    // MARK: - Credential-aware copy
+
+    func testServiceAccountKeepsTheServiceAccountEditWording() {
+        let sut = makeSUT()
+
+        XCTAssertEqual(sut.uiState.authMethod, .keyFile)
+        XCTAssertEqual(
+            GooglePlayPendingWrite.editWarning(for: sut.uiState.authMethod),
+            String(localized: "This opens a Play edit and commits it. Any edit this service account has open for the app elsewhere (for example a CI upload) is cancelled.")
+        )
+        XCTAssertEqual(
+            sut.uiState.rolloutEditFooter,
+            String(localized: "Saving opens a Play edit, updates the track and commits it. Any edit this service account has open elsewhere (for example a CI upload) is cancelled.")
+        )
+        XCTAssertEqual(
+            sut.uiState.checklistEditFooter,
+            String(localized: "Google validates the edit before committing. Publishing cancels any other edit this service account has open for the app, such as a CI upload in progress.")
+        )
+    }
+
+    func testGoogleSignInAccountTalksAboutItsGoogleAccount() {
+        let account = AccountModel(name: "Signed In", providerType: .googlePlay, authMethod: .googleSignIn)
+        let sut = makeSUT(account: account)
+
+        XCTAssertEqual(sut.uiState.authMethod, .googleSignIn)
+        XCTAssertEqual(
+            GooglePlayPendingWrite.editWarning(for: sut.uiState.authMethod),
+            String(localized: "This opens a Play edit and commits it. Any edit open with your Google account for the app elsewhere is cancelled.")
+        )
+        XCTAssertEqual(
+            sut.uiState.rolloutEditFooter,
+            String(localized: "Saving opens a Play edit, updates the track and commits it. Any edit open with your Google account for the app elsewhere is cancelled.")
+        )
+        XCTAssertEqual(
+            sut.uiState.checklistEditFooter,
+            String(localized: "Google validates the edit before committing. Publishing cancels any other edit open with your Google account for the app.")
+        )
+        let write = haltWrite()
+        XCTAssertTrue(write.message(for: .googleSignIn).hasPrefix(write.summary))
+        XCTAssertTrue(write.message(for: .googleSignIn).hasSuffix(GooglePlayPendingWrite.editWarning(for: .googleSignIn)))
+        for text in [write.message(for: .googleSignIn), sut.uiState.rolloutEditFooter, sut.uiState.checklistEditFooter] {
+            XCTAssertFalse(text.localizedCaseInsensitiveContains("service account"), text)
+        }
+    }
+
     // MARK: - Confirmation
 
     func testStartingAnActionOnlyAsksForConfirmation() async {
@@ -117,7 +162,7 @@ final class GooglePlayReleaseWriteViewModelTests: XCTestCase {
         sut.start(.halt, release: rolling, track: "production")
 
         XCTAssertEqual(sut.uiState.pendingWrite?.change, .halt(versionCodes: ["4210"]))
-        XCTAssertTrue(sut.uiState.pendingWrite?.message.contains(GooglePlayPendingWrite.editWarning) ?? false, "R4: the confirmation states other edits are cancelled")
+        XCTAssertTrue(sut.uiState.pendingWrite?.message(for: sut.uiState.authMethod).contains(GooglePlayPendingWrite.editWarning(for: .keyFile)) ?? false, "R4: the confirmation states other edits are cancelled")
         XCTAssertTrue(connection.releaseChanges.isEmpty)
         XCTAssertTrue(connection.credentials.isEmpty)
 

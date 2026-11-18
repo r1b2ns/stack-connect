@@ -25,9 +25,16 @@ struct GooglePlayPendingWrite: Identifiable, Hashable {
 
     var trackKind: GooglePlayTrackKind { GooglePlayTrackKind(track: track) }
 
-    /// Said on every confirmation: a write commits an edit (R4).
-    static var editWarning: String {
-        String(localized: "This opens a Play edit and commits it. Any edit this service account has open for the app elsewhere (for example a CI upload) is cancelled.")
+    /// Said on every confirmation: a write commits an edit (R4). Google keeps
+    /// one open edit per caller and app: the service account, or the Google
+    /// account a "Sign in with Google" account signed in with.
+    static func editWarning(for authMethod: AccountAuthMethod) -> String {
+        switch authMethod {
+        case .keyFile:
+            return String(localized: "This opens a Play edit and commits it. Any edit this service account has open for the app elsewhere (for example a CI upload) is cancelled.")
+        case .googleSignIn:
+            return String(localized: "This opens a Play edit and commits it. Any edit open with your Google account for the app elsewhere is cancelled.")
+        }
     }
 
     var title: String {
@@ -43,8 +50,8 @@ struct GooglePlayPendingWrite: Identifiable, Hashable {
     }
 
     /// What happens, then the edit warning.
-    var message: String {
-        "\(summary)\n\n\(Self.editWarning)"
+    func message(for authMethod: AccountAuthMethod) -> String {
+        "\(summary)\n\n\(Self.editWarning(for: authMethod))"
     }
 
     var summary: String {

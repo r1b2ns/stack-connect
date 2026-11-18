@@ -45,7 +45,14 @@ enum GooglePlayErrorTranslator {
         case userChange
     }
 
-    static func friendlyMessage(for error: Error, operation: Operation = .general) -> String {
+    /// - Parameter authMethod: how the account calls Google Play. The copy
+    ///   names a service account for `.keyFile` and the signed-in Google
+    ///   account for `.googleSignIn`.
+    static func friendlyMessage(
+        for error: Error,
+        operation: Operation = .general,
+        authMethod: AccountAuthMethod = .keyFile
+    ) -> String {
         if let parseError = error as? GooglePlayServiceAccount.ParseError {
             return parseError.localizedDescription
         }
@@ -62,12 +69,17 @@ enum GooglePlayErrorTranslator {
             return String(localized: "The service account key is invalid. Download a new JSON key from Google Cloud and try again.")
 
         case .Auth(let message) where operation.isUsers:
-            let lead = String(localized: "To manage users, this service account needs the “Admin (all permissions)” permission in Play Console › Users and permissions.")
+            let lead = authMethod == .googleSignIn
+                ? String(localized: "To manage users, the signed-in Google account needs the “Admin (all permissions)” permission in Play Console › Users and permissions.")
+                : String(localized: "To manage users, this service account needs the “Admin (all permissions)” permission in Play Console › Users and permissions.")
             let detail = message.trimmingCharacters(in: .whitespacesAndNewlines)
             return detail.isEmpty ? lead : "\(lead)\n\(detail)"
 
         case .Auth(let message):
-            let lead = String(localized: "Google Play denied access to this service account.")
+            let lead = authMethod == .googleSignIn
+                ? String(localized: "Google Play denied access to the signed-in Google account.",
+                         comment: "Lead sentence shown when Google rejects the account a user signed in with (Sign in with Google). It is followed by Google's own (English) instructions on how to fix it.")
+                : String(localized: "Google Play denied access to this service account.")
             let detail = message.trimmingCharacters(in: .whitespacesAndNewlines)
             return detail.isEmpty ? lead : "\(lead)\n\(detail)"
 
@@ -81,7 +93,7 @@ enum GooglePlayErrorTranslator {
             return quotaMessage(coreMessage: message)
 
         case .Http(let status, let message) where operation == .releaseChange:
-            return releaseChangeMessage(status: Int(status), googleMessage: message)
+            return releaseChangeMessage(status: Int(status), googleMessage: message, authMethod: authMethod)
 
         case .Http(let status, let message) where operation == .inviteUser && status == 400:
             return inviteRefusalMessage(googleMessage: message)
@@ -93,12 +105,12 @@ enum GooglePlayErrorTranslator {
             // was sent to Google at all).
             let lead = isLocalRejection(message) && status == 404
                 ? GooglePlayDeveloperId.invalidMessage
-                : httpMessage(status: Int(status), operation: operation)
+                : httpMessage(status: Int(status), operation: operation, authMethod: authMethod)
             let detail = message.trimmingCharacters(in: .whitespacesAndNewlines)
             return detail.isEmpty ? lead : "\(lead)\n\(detail)"
 
         case .Http(let status, _):
-            return httpMessage(status: Int(status), operation: operation)
+            return httpMessage(status: Int(status), operation: operation, authMethod: authMethod)
 
         case .Decode:
             return String(localized: "Google Play returned an unexpected response. Try again later.")
@@ -149,7 +161,7 @@ enum GooglePlayErrorTranslator {
 
     /// Release changes: Google explains every refusal in its message, so the
     /// known ones get actionable copy and the rest show Google's text.
-    private static func releaseChangeMessage(status: Int, googleMessage: String) -> String {
+    private static func releaseChangeMessage(status: Int, googleMessage: String, authMethod: AccountAuthMethod) -> String {
         let detail = googleMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         let lowered = detail.lowercased()
         if lowered.contains("changesnotsentforreview") || lowered.contains("not be sent for review")
@@ -164,7 +176,7 @@ enum GooglePlayErrorTranslator {
             let lead = String(localized: "Google Play rejected this change. Nothing was published.")
             return detail.isEmpty ? lead : "\(lead)\n\(detail)"
         default:
-            return httpMessage(status: status, operation: .releaseChange)
+            return httpMessage(status: status, operation: .releaseChange, authMethod: authMethod)
         }
     }
 
@@ -233,11 +245,16 @@ enum GooglePlayErrorTranslator {
 
     /// A failed users call, ready for the screen: the friendly message, the
     /// report's technical details, and the failure logged under `logTag`.
-    static func usersFailure(_ error: Error, call: GooglePlayUsersCall, logTag: String) -> GooglePlayUsersFailure {
+    static func usersFailure(
+        _ error: Error,
+        call: GooglePlayUsersCall,
+        logTag: String,
+        authMethod: AccountAuthMethod = .keyFile
+    ) -> GooglePlayUsersFailure {
         let details = GooglePlayErrorDetails(error: error, operation: call.operation, call: call)
         details.log(tag: logTag)
         return GooglePlayUsersFailure(
-            message: friendlyMessage(for: error, operation: call.operation),
+            message: friendlyMessage(for: error, operation: call.operation, authMethod: authMethod),
             technicalDetails: details.lines
         )
     }
@@ -246,12 +263,15 @@ enum GooglePlayErrorTranslator {
         String(localized: "Something went wrong while talking to Google Play. Try again.")
     }
 
-    private static func httpMessage(status: Int, operation: Operation) -> String {
+    private static func httpMessage(status: Int, operation: Operation, authMethod: AccountAuthMethod) -> String {
+        let isSignIn = authMethod == .googleSignIn
         switch status {
         case 400 where operation == .replyToReview:
             return String(localized: "Google Play rejected this reply. Replies are limited to about \(GooglePlayReviewLimits.replyCharacterLimit) characters — shorten it and try again.")
         case 404 where operation == .userChange:
             return String(localized: "This user or app access is no longer on Google Play. Refresh and try again.")
+        case 403 where operation.isUsers && isSignIn:
+            return String(localized: "Google Play refused access to this developer account. Check the Developer ID, and that the signed-in Google account has the “Admin (all permissions)” permission.")
         case 403 where operation.isUsers:
             return String(localized: "Google Play refused access to this developer account. Check the Developer ID, and that the service account has the “Admin (all permissions)” permission.")
         case 404 where operation == .users || operation == .inviteUser:
@@ -261,6 +281,9 @@ enum GooglePlayErrorTranslator {
         case 403:
             // The core reports missing access as `.Auth`; a bare 403 is the same
             // problem without Google's detail.
+            if isSignIn {
+                return String(localized: "The signed-in Google account can't access this app. In Play Console › Users and permissions, give it access to the app and try again.")
+            }
             return String(localized: "This service account can't access this app. In Play Console › Users and permissions, give it access to the app and try again.")
         case 404 where operation == .replyToReview:
             return String(localized: "This review is no longer available on Google Play.")

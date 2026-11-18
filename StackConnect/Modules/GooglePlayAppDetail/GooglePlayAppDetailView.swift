@@ -167,7 +167,7 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol, 
         } header: {
             Text("Store presence")
         } footer: {
-            Text("Opening these sections briefly opens a Play edit to read the data. Google allows one open edit per service account and app, so this cancels any edit this service account has open for the app — for example, a CI upload in progress. If your CI publishes with this service account, add a separate read-only one here instead.")
+            Text(viewModel.uiState.storeSectionsFooter)
         }
     }
 

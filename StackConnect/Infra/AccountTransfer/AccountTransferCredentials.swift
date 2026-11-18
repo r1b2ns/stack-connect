@@ -38,7 +38,11 @@ enum AccountTransferCredentials {
         case .googlePlay:
             // Storage format unchanged (plan D2): the whole key file, as stored.
             guard let credentials: GooglePlayCredentials = keychain.object(forKey: keychainKey) else { return nil }
-            return [Key.serviceAccountJSON: credentials.serviceAccountJSON]
+            // A Google sign-in login is never exported (plan G7): its refresh
+            // token stays on this device. `AccountModel.isExportable` already
+            // hides the export; this is defense in depth.
+            guard case .serviceAccount(let json) = credentials.source else { return nil }
+            return [Key.serviceAccountJSON: json]
 
         case .firebase:
             return nil

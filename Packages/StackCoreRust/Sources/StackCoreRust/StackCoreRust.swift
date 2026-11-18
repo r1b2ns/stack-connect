@@ -605,6 +605,287 @@ fileprivate struct FfiConverterData: FfiConverterRustBuffer {
 
 
 /**
+ * Hands the core a ready-to-use OAuth 2.0 access token for one account that
+ * was added with the user's own Google sign-in ("Sign in with Google"),
+ * instead of a service-account key. Implemented natively (iOS: an adapter
+ * over the app's Google sign-in service) and injected across the FFI boundary
+ * as a foreign trait through
+ * [`crate::facade::connect_with_access_token`].
+ *
+ * The core calls it before **every** request and never caches, stores or
+ * refreshes the value: the host owns the refresh token, caches the access
+ * token and refreshes it before it expires. The core never sees a refresh
+ * token. The token must carry the scopes of the service it is used for
+ * (Google Play: `androidpublisher` and `playdeveloperreporting`).
+ *
+ * The returned value is a bearer credential: the core never logs it, neither
+ * through [`CoreLogger`] nor through [`DebugLogger`] (the `Authorization`
+ * header is redacted in the debug trace of this auth path).
+ */
+public protocol AccessTokenProvider: AnyObject, Sendable {
+    
+    /**
+     * A currently valid access token for `account_id` (the id the host
+     * passed to `connect_with_access_token`).
+     *
+     * # Errors
+     * Any [`crate::error::StackError`]. The core reports a failure as
+     * [`crate::error::StackError::Auth`] (an `Auth` error keeps its message
+     * verbatim, so a host marker such as `invalid_grant` round-trips), except
+     * [`crate::error::StackError::Network`], which passes through unchanged
+     * so an offline device is not reported as a sign-in problem. Throwing an
+     * error that is not a `StackError` also ends up as `Auth`.
+     */
+    func accessToken(accountId: String) async throws  -> String
+    
+}
+/**
+ * Hands the core a ready-to-use OAuth 2.0 access token for one account that
+ * was added with the user's own Google sign-in ("Sign in with Google"),
+ * instead of a service-account key. Implemented natively (iOS: an adapter
+ * over the app's Google sign-in service) and injected across the FFI boundary
+ * as a foreign trait through
+ * [`crate::facade::connect_with_access_token`].
+ *
+ * The core calls it before **every** request and never caches, stores or
+ * refreshes the value: the host owns the refresh token, caches the access
+ * token and refreshes it before it expires. The core never sees a refresh
+ * token. The token must carry the scopes of the service it is used for
+ * (Google Play: `androidpublisher` and `playdeveloperreporting`).
+ *
+ * The returned value is a bearer credential: the core never logs it, neither
+ * through [`CoreLogger`] nor through [`DebugLogger`] (the `Authorization`
+ * header is redacted in the debug trace of this auth path).
+ */
+open class AccessTokenProviderImpl: AccessTokenProvider, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_accesstokenprovider(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_accesstokenprovider(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * A currently valid access token for `account_id` (the id the host
+     * passed to `connect_with_access_token`).
+     *
+     * # Errors
+     * Any [`crate::error::StackError`]. The core reports a failure as
+     * [`crate::error::StackError::Auth`] (an `Auth` error keeps its message
+     * verbatim, so a host marker such as `invalid_grant` round-trips), except
+     * [`crate::error::StackError::Network`], which passes through unchanged
+     * so an offline device is not reported as a sign-in problem. Throwing an
+     * error that is not a `StackError` also ends up as `Auth`.
+     */
+open func accessToken(accountId: String)async throws  -> String  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_accesstokenprovider_access_token(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(accountId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+
+    
+}
+
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceAccessTokenProvider {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    //
+    // Store the vtable directly.
+    static let vtable: UniffiVTableCallbackInterfaceAccessTokenProvider = UniffiVTableCallbackInterfaceAccessTokenProvider(
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            do {
+                try FfiConverterTypeAccessTokenProvider.handleMap.remove(handle: uniffiHandle)
+            } catch {
+                print("Uniffi callback interface AccessTokenProvider: handle missing in uniffiFree")
+            }
+        },
+        uniffiClone: { (uniffiHandle: UInt64) -> UInt64 in
+            do {
+                return try FfiConverterTypeAccessTokenProvider.handleMap.clone(handle: uniffiHandle)
+            } catch {
+                fatalError("Uniffi callback interface AccessTokenProvider: handle missing in uniffiClone")
+            }
+        },
+        accessToken: { (
+            uniffiHandle: UInt64,
+            accountId: RustBuffer,
+            uniffiFutureCallback: @escaping UniffiForeignFutureCompleteRustBuffer,
+            uniffiCallbackData: UInt64,
+            uniffiOutDroppedCallback: UnsafeMutablePointer<UniffiForeignFutureDroppedCallbackStruct>
+        ) in
+            let makeCall = {
+                () async throws -> String in
+                guard let uniffiObj = try? FfiConverterTypeAccessTokenProvider.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return try await uniffiObj.accessToken(
+                     accountId: try FfiConverterString.lift(accountId)
+                )
+            }
+
+            let uniffiHandleSuccess = { (returnValue: String) in
+                uniffiFutureCallback(
+                    uniffiCallbackData,
+                    UniffiForeignFutureResultRustBuffer(
+                        returnValue: FfiConverterString.lower(returnValue),
+                        callStatus: RustCallStatus()
+                    )
+                )
+            }
+            let uniffiHandleError = { (statusCode, errorBuf) in
+                uniffiFutureCallback(
+                    uniffiCallbackData,
+                    UniffiForeignFutureResultRustBuffer(
+                        returnValue: RustBuffer.empty(),
+                        callStatus: RustCallStatus(code: statusCode, errorBuf: errorBuf)
+                    )
+                )
+            }
+            uniffiTraitInterfaceCallAsyncWithError(
+                makeCall: makeCall,
+                handleSuccess: uniffiHandleSuccess,
+                handleError: uniffiHandleError,
+                lowerError: FfiConverterTypeStackError_lower,
+                droppedCallback: uniffiOutDroppedCallback
+            )
+        }
+    )
+
+    // Rust stores this pointer for future callback invocations, so it must live
+    // for the process lifetime (not just for the init function call).
+    static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfaceAccessTokenProvider> = {
+        let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfaceAccessTokenProvider>.allocate(capacity: 1)
+        ptr.initialize(to: vtable)
+        return UnsafePointer(ptr)
+    }()
+}
+
+private func uniffiCallbackInitAccessTokenProvider() {
+    uniffi_stack_core_fn_init_callback_vtable_accesstokenprovider(UniffiCallbackInterfaceAccessTokenProvider.vtablePtr)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAccessTokenProvider: FfiConverter {
+    fileprivate static let handleMap = UniffiHandleMap<AccessTokenProvider>()
+
+    typealias FfiType = UInt64
+    typealias SwiftType = AccessTokenProvider
+
+    public static func lift(_ handle: UInt64) throws -> AccessTokenProvider {
+        if ((handle & 1) == 0) {
+            // Rust-generated handle, construct a new class that uses the handle to implement the
+            // interface
+            return AccessTokenProviderImpl(unsafeFromHandle: handle)
+        } else {
+            // Swift-generated handle, get the object from the handle map
+            return try handleMap.remove(handle: handle)
+        }
+    }
+
+    public static func lower(_ value: AccessTokenProvider) -> UInt64 {
+         if let rustImpl = value as? AccessTokenProviderImpl {
+             // Rust-implemented object.  Clone the handle and return it
+            return rustImpl.uniffiCloneHandle()
+         } else {
+            // Swift object, generate a new vtable handle and return that.
+            return handleMap.insert(obj: value)
+         }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AccessTokenProvider {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: AccessTokenProvider, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAccessTokenProvider_lift(_ handle: UInt64) throws -> AccessTokenProvider {
+    return try FfiConverterTypeAccessTokenProvider.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAccessTokenProvider_lower(_ value: AccessTokenProvider) -> UInt64 {
+    return FfiConverterTypeAccessTokenProvider.lower(value)
+}
+
+
+
+
+
+
+/**
  * UniFFI-exported Accessibility Declarations capability handle. A thin,
  * binding-friendly wrapper around a boxed [`AccessibilityDeclarationsImpl`];
  * async work runs on the tokio runtime. Reached via
@@ -6411,6 +6692,11 @@ public func FfiConverterTypeCredentialStore_lower(_ value: CredentialStore) -> U
  * request body. Each grants API access until it expires (an assertion can be
  * exchanged again for a fresh one-hour token until its own `exp`). Private keys
  * never appear in any request.
+ *
+ * One exception: a provider built by
+ * [`crate::facade::connect_with_access_token`] redacts the `Authorization`
+ * header (`Bearer [redacted]`), since that token is the user's own
+ * credential supplied by the host ([`AccessTokenProvider`]).
  */
 public protocol DebugLogger: AnyObject, Sendable {
     
@@ -6435,6 +6721,11 @@ public protocol DebugLogger: AnyObject, Sendable {
  * request body. Each grants API access until it expires (an assertion can be
  * exchanged again for a fresh one-hour token until its own `exp`). Private keys
  * never appear in any request.
+ *
+ * One exception: a provider built by
+ * [`crate::facade::connect_with_access_token`] redacts the `Authorization`
+ * header (`Bearer [redacted]`), since that token is the user's own
+ * credential supplied by the host ([`AccessTokenProvider`]).
  */
 open class DebugLoggerImpl: DebugLogger, @unchecked Sendable {
     fileprivate let handle: UInt64
@@ -16819,6 +17110,96 @@ fileprivate func uniffiFutureContinuationCallback(handle: UInt64, pollResult: In
         print("uniffiFutureContinuationCallback invalid handle")
     }
 }
+private func uniffiTraitInterfaceCallAsync<T>(
+    makeCall: @escaping () async throws -> T,
+    handleSuccess: @escaping (T) -> (),
+    handleError: @escaping (Int8, RustBuffer) -> (),
+    droppedCallback: UnsafeMutablePointer<UniffiForeignFutureDroppedCallbackStruct>
+) {
+    let task = Task {
+        // Note: it's important we call either `handleSuccess` or `handleError` exactly once.  Each
+        // call consumes an Arc reference, which means there should be no possibility of a double
+        // call.  The following code is structured so that will will never call both `handleSuccess`
+        // and `handleError`, even in the face of weird errors.
+        //
+        // On platforms that need extra machinery to make C-ABI calls, like JNA or ctypes, it's
+        // possible that we fail to make either call.  However, it doesn't seem like this is
+        // possible on Swift since swift can just make the C call directly.
+        var callResult: T
+        do {
+            callResult = try await makeCall()
+        } catch {
+            handleError(CALL_UNEXPECTED_ERROR, FfiConverterString.lower(String(describing: error)))
+            return
+        }
+        handleSuccess(callResult)
+    }
+    let handle = UNIFFI_FOREIGN_FUTURE_HANDLE_MAP.insert(obj: task)
+    droppedCallback.pointee = UniffiForeignFutureDroppedCallbackStruct(
+        handle: handle,
+        free: uniffiForeignFutureDroppedCallback
+    )
+}
+
+private func uniffiTraitInterfaceCallAsyncWithError<T, E>(
+    makeCall: @escaping () async throws -> T,
+    handleSuccess: @escaping (T) -> (),
+    handleError: @escaping (Int8, RustBuffer) -> (),
+    lowerError: @escaping (E) -> RustBuffer,
+    droppedCallback: UnsafeMutablePointer<UniffiForeignFutureDroppedCallbackStruct>
+) {
+    let task = Task {
+        // See the note in uniffiTraitInterfaceCallAsync for details on `handleSuccess` and
+        // `handleError`.
+        var callResult: T
+        do {
+            callResult = try await makeCall()
+        } catch let error as E {
+            handleError(CALL_ERROR, lowerError(error))
+            return
+        } catch {
+            handleError(CALL_UNEXPECTED_ERROR, FfiConverterString.lower(String(describing: error)))
+            return
+        }
+        handleSuccess(callResult)
+    }
+    let handle = UNIFFI_FOREIGN_FUTURE_HANDLE_MAP.insert(obj: task)
+    droppedCallback.pointee = UniffiForeignFutureDroppedCallbackStruct(
+        handle: handle,
+        free: uniffiForeignFutureDroppedCallback
+    )
+}
+
+// Borrow the callback handle map implementation to store foreign future handles
+// TODO: consolidate the handle-map code (https://github.com/mozilla/uniffi-rs/pull/1823)
+fileprivate let UNIFFI_FOREIGN_FUTURE_HANDLE_MAP = UniffiHandleMap<UniffiForeignFutureTask>()
+
+// Protocol for tasks that handle foreign futures.
+//
+// Defining a protocol allows all tasks to be stored in the same handle map.  This can't be done
+// with the task object itself, since has generic parameters.
+fileprivate protocol UniffiForeignFutureTask {
+    func cancel()
+}
+
+extension Task: UniffiForeignFutureTask {}
+
+private func uniffiForeignFutureDroppedCallback(handle: UInt64) {
+    do {
+        let task = try UNIFFI_FOREIGN_FUTURE_HANDLE_MAP.remove(handle: handle)
+        // Set the cancellation flag on the task.  If it's still running, the code can check the
+        // cancellation flag or call `Task.checkCancellation()`.  If the task has completed, this is
+        // a no-op.
+        task.cancel()
+    } catch {
+        print("uniffiForeignFutureDroppedCallback: handle missing from handlemap")
+    }
+}
+
+// For testing
+public func uniffiForeignFutureHandleCountStackCore() -> Int {
+    UNIFFI_FOREIGN_FUTURE_HANDLE_MAP.count
+}
 /**
  * Every service the core can connect today. Drives the host's service picker.
  */
@@ -16857,6 +17238,42 @@ public func connect(kind: ServiceKind, accountId: String, store: CredentialStore
         FfiConverterTypeServiceKind_lower(kind),
         FfiConverterString.lower(accountId),
         FfiConverterTypeCredentialStore_lower(store),
+        FfiConverterOptionTypeDebugLogger.lower(debugLogger),$0
+    )
+})
+}
+/**
+ * Builds a connected [`Provider`] for an account added with the user's own
+ * OAuth sign-in (Google Play: "Sign in with Google"), authorized with the
+ * access token `token_provider` returns for `account_id` instead of the
+ * service-account secrets [`connect`] reads.
+ *
+ * The core asks `token_provider` before every request and never caches,
+ * stores or refreshes the token; the host owns the refresh token. The token
+ * must carry the service's scopes (Google Play: `androidpublisher` and
+ * `playdeveloperreporting`). The returned provider exposes the same
+ * capabilities as one built by [`connect`].
+ *
+ * Errors on this path: a `token_provider` failure surfaces as
+ * [`StackError::Auth`] (a host `Auth` keeps its message verbatim; a host
+ * `Network` passes through unchanged), and an HTTP 401 from Google is
+ * [`StackError::Auth`] without a retry. Quota / rate limits keep the same
+ * [`StackError::Http`] `429` shape as the service-account path.
+ *
+ * Synchronous and offline, like [`connect`]. When `debug_logger` is `Some`,
+ * requests are traced like [`connect`]'s, except that the `Authorization`
+ * header is redacted.
+ *
+ * # Errors
+ * [`StackError::Unsupported`] for a service without this auth path (App
+ * Store Connect); [`StackError::InvalidCredentials`] for a blank `account_id`.
+ */
+public func connectWithAccessToken(kind: ServiceKind, accountId: String, tokenProvider: AccessTokenProvider, debugLogger: DebugLogger?)throws  -> Provider  {
+    return try  FfiConverterTypeProvider_lift(try rustCallWithError(FfiConverterTypeStackError_lift) {
+    uniffi_stack_core_fn_func_connect_with_access_token(
+        FfiConverterTypeServiceKind_lower(kind),
+        FfiConverterString.lower(accountId),
+        FfiConverterTypeAccessTokenProvider_lower(tokenProvider),
         FfiConverterOptionTypeDebugLogger.lower(debugLogger),$0
     )
 })
@@ -16926,6 +17343,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_func_connect() != 64857) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_func_connect_with_access_token() != 64274) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_func_credential_schema() != 9978) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -16933,6 +17353,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_func_set_core_logger() != 61948) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_accesstokenprovider_access_token() != 61720) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_blobstore_save() != 62593) {
@@ -17383,6 +17806,7 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
 
+    uniffiCallbackInitAccessTokenProvider()
     uniffiCallbackInitBlobStore()
     uniffiCallbackInitCoreLogger()
     uniffiCallbackInitCredentialStore()
