@@ -33,6 +33,7 @@ struct GooglePlayTracksView<ViewModel: GooglePlayTracksViewModelProtocol, Writes
     @ObservedObject var viewModel: ViewModel
     @ObservedObject var writes: Writes
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         StackLoadableContent(
@@ -83,6 +84,24 @@ struct GooglePlayTracksView<ViewModel: GooglePlayTracksViewModelProtocol, Writes
                 Label(String(localized: "No Tracks"), systemImage: "square.stack.3d.up")
             } description: {
                 Text("This app has no release track yet.")
+            }
+        } else if horizontalSizeClass == .regular {
+            // iPad / Mac: the tracks as a board with the selected release below.
+            VStack(spacing: 0) {
+                if let error = viewModel.uiState.error {
+                    List {
+                        StackInlineErrorSection(message: error, reportContext: errorReportContext)
+                    }
+                    .frame(maxHeight: 140)
+                }
+                GooglePlayTracksBoardView(
+                    tracks: tracks,
+                    app: viewModel.uiState.app,
+                    account: viewModel.uiState.account,
+                    writes: writes
+                ) { release, track in
+                    homeCoordinator.navigateToGooglePlayReleaseDetail(release, track: track, app: viewModel.uiState.app, account: viewModel.uiState.account)
+                }
             }
         } else {
             List {

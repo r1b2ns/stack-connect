@@ -4,18 +4,21 @@ import SwiftUI
 
 @MainActor
 struct AllReviewsViewFactory {
-    static func build() -> some View {
-        AllReviewsEntry()
+    /// - Parameter showsFilter: the store / unreplied filter menu; on in the
+    ///   split view inbox, off on iPhone.
+    static func build(showsFilter: Bool = false) -> some View {
+        AllReviewsEntry(showsFilter: showsFilter)
     }
 }
 
 // MARK: - Entry
 
 private struct AllReviewsEntry: View {
+    let showsFilter: Bool
     @StateObject private var viewModel = AllReviewsViewModel()
 
     var body: some View {
-        AllReviewsView(viewModel: viewModel)
+        AllReviewsView(viewModel: viewModel, showsFilter: showsFilter)
     }
 }
 
@@ -24,10 +27,20 @@ private struct AllReviewsEntry: View {
 struct AllReviewsView<ViewModel: AllReviewsViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
+    var showsFilter = false
     @EnvironmentObject private var coordinator: HomeCoordinator
 
     var body: some View {
         buildContent()
+            .toolbar {
+                // Split view inbox: filter by store or by reviews still
+                // waiting for a reply.
+                if showsFilter && !viewModel.uiState.isEmpty {
+                    ToolbarItem(placement: .primaryAction) {
+                        buildFilterMenu()
+                    }
+                }
+            }
             .navigationTitle(String(localized: "Ratings & Reviews"))
             .trackScreen(.allReviews)
             .navigationBarTitleDisplayMode(.inline)
@@ -57,9 +70,37 @@ struct AllReviewsView<ViewModel: AllReviewsViewModelProtocol>: View {
         }
     }
 
+    private func buildFilterMenu() -> some View {
+        Menu {
+            Picker(String(localized: "Filter"), selection: $viewModel.uiState.filter) {
+                ForEach(AllReviewsFilter.allCases) { filter in
+                    if filter == .unreplied {
+                        Text(verbatim: "\(filter.title) (\(viewModel.uiState.unrepliedCount))").tag(filter)
+                    } else {
+                        Text(filter.title).tag(filter)
+                    }
+                }
+            }
+        } label: {
+            Label(
+                String(localized: "Filter"),
+                systemImage: viewModel.uiState.filter == .all
+                    ? "line.3.horizontal.decrease.circle"
+                    : "line.3.horizontal.decrease.circle.fill"
+            )
+        }
+    }
+
     private func buildList() -> some View {
         List {
-            ForEach(viewModel.uiState.groups) { group in
+            if viewModel.uiState.visibleGroups.isEmpty {
+                ContentUnavailableView(
+                    String(localized: "No Reviews"),
+                    systemImage: "line.3.horizontal.decrease.circle"
+                )
+                .listRowBackground(Color.clear)
+            }
+            ForEach(viewModel.uiState.visibleGroups) { group in
                 Section {
                     ForEach(group.reviews) { item in
                         StackTrackedButton(.review, on: .allReviews) {

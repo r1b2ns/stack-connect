@@ -4,70 +4,12 @@ import SwiftUI
 
 @MainActor
 struct HomeViewFactory {
-    static func build() -> some View {
-        HomeEntry()
-    }
-}
-
-// MARK: - Entry
-
-private struct HomeEntry: View {
-    @StateObject private var coordinator = HomeCoordinator()
-    @StateObject private var viewModel = HomeViewModel()
-
-    var body: some View {
+    /// The compact-width root (iPhone, narrow iPad / Mac windows): the Home
+    /// stack driven by `coordinator`. Both objects are owned by
+    /// `AppRootViewFactory`, so they survive size-class changes.
+    static func build(viewModel: HomeViewModel, coordinator: HomeCoordinator) -> some View {
         HomeView(viewModel: viewModel)
             .environmentObject(coordinator)
-            .onOpenURL { url in
-                handleDeepLink(url)
-            }
-            .onReceive(DeepLinkRouter.shared.$pending.compactMap { $0 }) { url in
-                handleDeepLink(url)
-                DeepLinkRouter.shared.pending = nil
-            }
-    }
-
-    /// Routes deep links (scheme `stackconnect`) from widgets and local
-    /// notifications into the Home navigation stack.
-    private func handleDeepLink(_ url: URL) {
-        guard let link = DeepLink(url: url) else { return }
-        switch link {
-        case .home:
-            coordinator.path = NavigationPath()
-        case .reviews:
-            coordinator.path = NavigationPath()
-            coordinator.navigateToAllReviews()
-        case .app, .review:
-            Task { await open(link) }
-        case let .reimport(accountId):
-            Task { await openReimport(accountId: accountId) }
-        }
-    }
-
-    @MainActor
-    private func openReimport(accountId: String) async {
-        guard let storage = SwiftDataStorable.shared,
-              let account: AccountModel = try? await storage.fetch(AccountModel.self, id: accountId) else { return }
-        coordinator.path = NavigationPath()
-        coordinator.navigateToAccountsList(account.providerType)
-        ReimportRouter.shared.request(accountId: accountId, providerType: account.providerType)
-    }
-
-    /// `app` and `review` links resolve their account first and open the
-    /// screen of its store (plan H7).
-    @MainActor
-    private func open(_ link: DeepLink) async {
-        guard let storage = SwiftDataStorable.shared,
-              let destination = await DeepLinkResolver(storage: storage).resolve(link) else { return }
-        coordinator.path = NavigationPath()
-        switch destination {
-        case let .appStoreApp(app, account):
-            coordinator.navigateToAppDetail(app, account: account)
-        case let .googlePlayApp(app, account):
-            coordinator.navigateToGooglePlayAppDetail(app, account: account)
-        case let .review(review, appName, account, appId):
-            coordinator.navigateToReviewDetail(review: review, appName: appName, account: account, appId: appId)
-        }
     }
 }
 
@@ -88,18 +30,18 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
     var body: some View {
         NavigationStack(path: $coordinator.path) {
             List {
-                buildSyncBanner()
-                buildAgreementsBanner()
-                buildTipCard()
+                HomeSyncBanner(syncState: viewModel.uiState.syncState)
+                HomeAgreementsBanners(viewModel: viewModel)
+                HomeTipCard(viewModel: viewModel) {
+                    coordinator.navigateToTipJar()
+                }
                 buildAccountsSection()
                 buildWidgetsSection()
             }
             .navigationTitle("StackConnect")
             .trackScreen(.home)
-            .navigationDestinations()
-            .stackShareSheet(item: $viewModel.uiState.agreementShare) { payload in
-                payload.shareActivityItems
-            }
+            .homeNavigationDestinations()
+            .homePresentations(viewModel: viewModel)
             .toolbar { buildToolbar() }
             .refreshable { await viewModel.refresh() }
             .task {
@@ -108,34 +50,6 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
             }
             .sheet(isPresented: $isCustomizingWidgets) {
                 CustomizeWidgetsView(viewModel: viewModel)
-            }
-            .alert(
-                String(localized: "Account Expired"),
-                isPresented: $viewModel.uiState.showExpiredAlert,
-                presenting: viewModel.uiState.expiredAccount
-            ) { account in
-                StackTrackedButton(String(localized: "Re-import File"), button: .reimport, on: .home) {
-                    DeepLinkRouter.shared.open(DeepLink.reimport(accountId: account.id).url)
-                }
-                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .home, role: .cancel) {}
-            } message: { account in
-                Text("The account \"\(account.name)\" has expired. Re-import its file to keep using it, or it will stay locked.")
-            }
-            .alert(
-                String(localized: "Account Expiring Soon"),
-                isPresented: $viewModel.uiState.showExpiringSoonAlert,
-                presenting: viewModel.uiState.expiringSoonAccount
-            ) { account in
-                StackTrackedButton(String(localized: "Re-import File"), button: .reimport, on: .home) {
-                    DeepLinkRouter.shared.open(DeepLink.reimport(accountId: account.id).url)
-                }
-                StackTrackedButton(String(localized: "OK"), button: .ok, on: .home, role: .cancel) {}
-            } message: { account in
-                if let expirationDate = account.expirationDate {
-                    Text("The account \"\(account.name)\" will expire on \(expirationDate.formatted(date: .abbreviated, time: .shortened)). Request a new file from the administrator before then.")
-                } else {
-                    Text("The account \"\(account.name)\" will expire soon. Request a new file from the administrator.")
-                }
             }
         }
     }
@@ -154,166 +68,15 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
         }
     }
 
-    // MARK: - Sync Banner
-
-    @ViewBuilder
-    private func buildSyncBanner() -> some View {
-        if viewModel.uiState.syncState.isSyncing {
-            HStack(spacing: 10) {
-                ProgressView()
-                    .scaleEffect(0.75)
-
-                Text(syncBannerText)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-            }
-            .padding(.vertical, 4)
-            .listRowSeparator(.hidden)
-        }
-    }
-
-    private var syncBannerText: String {
-        let syncState = viewModel.uiState.syncState
-        let count = syncState.accountsInProgress.count
-        guard count > 0 else { return String(localized: "Syncing…") }
-        // Both stores at once: say how many of each.
-        let byProvider = syncState.inProgressCountByProvider
-        if let appStore = byProvider[.apple], let googlePlay = byProvider[.googlePlay] {
-            return String(
-                localized: "Syncing \(count) account(s)… (\(appStore) App Store Connect, \(googlePlay) Google Play)",
-                comment: "Home sync banner while App Store Connect and Google Play accounts sync together: total, then the count per store."
-            )
-        }
-        return String(localized: "Syncing \(count) account(s)…")
-    }
-
-    // MARK: - Pending Agreements Banner
-
-    @ViewBuilder
-    private func buildAgreementsBanner() -> some View {
-        ForEach(viewModel.uiState.pendingAgreementsAccounts, id: \.id) { account in
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(String(localized: "Action Required: App Store Connect Agreements"))
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-
-                        Text("Apple reported pending or updated agreements for \"\(account.name)\". Some data may be unavailable until you review and accept them.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer(minLength: 0)
-
-                    Button {
-                        viewModel.dismissPendingAgreements(accountId: account.id)
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(String(localized: "Dismiss"))
-                }
-
-                HStack(spacing: 16) {
-                    Link(destination: AppStoreConnectLinks.agreements) {
-                        Text(String(localized: "Review Agreements"))
-                            .font(.footnote)
-                            .fontWeight(.semibold)
-                    }
-                    .trackOpenURL(.reviewAgreements, on: .home)
-
-                    buildAgreementShareButton(for: account)
-                }
-            }
-            .padding(.vertical, 8)
-            .listRowSeparator(.hidden)
-        }
-    }
-
-    /// Asks the ViewModel to look up the Account Holder and prepare the share
-    /// payload; the share sheet itself is presented by `stackShareSheet` once
-    /// `uiState.agreementShare` is set. Shows a spinner and stays disabled while
-    /// that account's lookup is in flight.
-    private func buildAgreementShareButton(for account: AccountModel) -> some View {
-        let isPreparing = viewModel.uiState.preparingAgreementShareAccountIds.contains(account.id)
-        return Button {
-            Task { await viewModel.prepareAgreementShare(accountId: account.id) }
-        } label: {
-            ZStack {
-                // Keeps the label's size stable while swapping icon and spinner.
-                Image(systemName: "square.and.arrow.up")
-                    .font(.footnote.weight(.semibold))
-                    .opacity(isPreparing ? 0 : 1)
-
-                if isPreparing {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.borderless)
-        .disabled(isPreparing)
-        .accessibilityLabel(String(
-            localized: "Share with Account Holder",
-            comment: "Accessibility label of the Home agreements banner button that shares a request with the team's Account Holder."
-        ))
-        .accessibilityHint(String(
-            localized: "Opens the share sheet with a message asking the team's Account Holder to accept the pending agreements.",
-            comment: "Accessibility hint of the Home agreements banner button that shares a request with the team's Account Holder."
-        ))
-    }
-
-    // MARK: - Tip Card
-
-    /// One-time "support the project" card (rules in `TipJarPromptService`).
-    /// Tapping it or its button opens the tip jar; either that or the close
-    /// button retires it for good.
-    @ViewBuilder
-    private func buildTipCard() -> some View {
-        if viewModel.uiState.showTipCard {
-            StackBannerCard(
-                systemImage: "heart.fill",
-                tint: .pink,
-                title: String(localized: "Enjoying StackConnect?"),
-                message: String(localized: "It's free and open source. If it saves you time, consider leaving a tip.", comment: "Body of the Home card inviting the user to leave an optional tip."),
-                onTap: { openTipJarFromCard() },
-                onDismiss: { viewModel.dismissTipCard() }
-            ) {
-                Button {
-                    openTipJarFromCard()
-                } label: {
-                    Text(String(localized: "tipCard.support", defaultValue: "Support", comment: "Button of the Home tip card that opens the tip jar (support the project, not customer support)."))
-                        .font(.footnote)
-                        .fontWeight(.semibold)
-                }
-                .buttonStyle(.borderless)
-                .tint(.pink)
-                .accessibilityHint(String(localized: "Opens the tip jar.", comment: "Accessibility hint of the Home tip card button."))
-            }
-        }
-    }
-
-    private func openTipJarFromCard() {
-        viewModel.openTipCard()
-        coordinator.navigateToTipJar()
-    }
-
     // MARK: - Widgets Section
 
     @ViewBuilder
     private func buildWidgetsSection() -> some View {
         if viewModel.uiState.widgets.isEmpty {
             Section {
-                buildWidgetsEmptyState()
+                HomeWidgetsEmptyState {
+                    isCustomizingWidgets = true
+                }
                     .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
                     .listRowSeparator(.hidden)
             }
@@ -328,37 +91,6 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
             }
             .listRowBackground(Color.clear)
         }
-    }
-
-    private func buildWidgetsEmptyState() -> some View {
-        StackTrackedButton(.customizeWidgets, on: .home) {
-            isCustomizingWidgets = true
-        } label: {
-            VStack(spacing: 10) {
-                Image(systemName: "square.grid.2x2")
-                    .font(.system(size: 32))
-                    .foregroundStyle(.secondary)
-                Text(String(localized: "No widgets yet"))
-                    .font(.headline)
-                Text(String(localized: "Add widgets to keep an eye on your apps right from here."))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                Text(String(localized: "Add Widgets"))
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.blue)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(24)
-            .background(Color.gray.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Accounts Section
@@ -431,142 +163,3 @@ extension AgreementSharePayload {
     }
 }
 
-// MARK: - Navigation Destinations
-
-private extension View {
-    @ViewBuilder
-    func navigationDestinations() -> some View {
-        self.navigationDestination(for: HomeRoute.self) { route in
-            switch route {
-            case .settings:
-                SettingsViewFactory.build()
-            case .settingsAccounts:
-                SettingsAccountsViewFactory.build()
-            case .license:
-                LicenseViewFactory.build()
-            case .tipJar:
-                TipJarViewFactory.build()
-            case .accountSettings(let account):
-                AccountSettingsViewFactory.build(account: account)
-            case .accountManagement(let account):
-                AccountManagementViewFactory.build(account: account)
-            case .certificatesList(let account):
-                CertificatesListViewFactory.build(account: account)
-            case .createCertificate(let account):
-                CreateCertificateViewFactory.build(account: account)
-            case .certificateDetail(let certificate, let account):
-                CertificateDetailViewFactory.build(account: account, certificate: certificate)
-            case .profilesList(let account):
-                ProfilesListViewFactory.build(account: account)
-            case .createProfile(let account):
-                CreateProfileViewFactory.build(account: account)
-            case .profileDetail(let profile, let account):
-                ProfileDetailViewFactory.build(account: account, profile: profile)
-            case .identifiersList(let account):
-                IdentifiersListViewFactory.build(account: account)
-            case .identifierDetail(let bundleId, let account):
-                IdentifierDetailViewFactory.build(account: account, bundleId: bundleId)
-            case .devicesList(let account):
-                DevicesListViewFactory.build(account: account)
-            case .deviceDetail(let device, let account):
-                DeviceDetailViewFactory.build(account: account, device: device)
-            case .importDevices(let account):
-                ImportDevicesViewFactory.build(account: account)
-            case .accountsList(let providerType):
-                AccountsListViewFactory.build(providerType: providerType)
-            case .appList(let account):
-                AppListViewFactory.build(account: account)
-            case .firebaseProjectList(let account):
-                FirebaseProjectListViewFactory.build(account: account)
-            case .firebaseProjectDetail(let project, let account):
-                FirebaseProjectDetailViewFactory.build(project: project, account: account)
-            case .firebaseAppList(let project, let account):
-                FirebaseAppListViewFactory.build(account: account, project: project)
-            case .remoteConfig(let project, let account):
-                RemoteConfigViewFactory.build(project: project, account: account)
-            case .analyticsDashboard(let project, let account):
-                AnalyticsDashboardViewFactory.build(project: project, account: account)
-            case .messaging(let project, let account):
-                MessagingViewFactory.build(project: project, account: account)
-            case .googlePlayAppList(let account):
-                GooglePlayAppListViewFactory.build(account: account)
-            case .googlePlayAppDetail(let app, let account):
-                GooglePlayAppDetailViewFactory.build(app: app, account: account)
-            case .googlePlayStoreListings(let app, let account):
-                GooglePlayStoreListingsViewFactory.build(app: app, account: account)
-            case .googlePlayStoreListingDetail(let listing, let isDefaultLanguage):
-                GooglePlayStoreListingDetailViewFactory.build(listing: listing, isDefaultLanguage: isDefaultLanguage)
-            case .googlePlayTracks(let app, let account):
-                GooglePlayTracksViewFactory.build(app: app, account: account)
-            case .googlePlayReleaseDetail(let app, let account, let track, let release):
-                GooglePlayReleaseDetailViewFactory.build(app: app, account: account, track: track, release: release)
-            case .googlePlayAppInfo(let app, let account):
-                GooglePlayAppInfoViewFactory.build(app: app, account: account)
-            case .googlePlayUserDetail(let user, let account):
-                GooglePlayUserDetailViewFactory.build(user: user, account: account)
-            case .appDetail(let app, let account):
-                AppDetailViewFactory.build(app: app, account: account)
-            case .versionList(let appId, let platform, let account):
-                VersionListViewFactory.build(appId: appId, platform: platform, account: account)
-            case .versionDetail(let version, let account):
-                VersionDetailViewFactory.build(version: version, account: account)
-            case .screenshotPreview(let versionId, let localizationId, let platform, let appStoreState, let account):
-                ScreenshotPreviewViewFactory.build(versionId: versionId, account: account, localizationId: localizationId, platform: platform, appStoreState: appStoreState)
-            case .screenshotResolution(let device, let sets, let account, let appStoreState):
-                ScreenshotResolutionViewFactory.build(device: device, sets: sets, account: account, appStoreState: appStoreState)
-            case .screenshotGrid(let screenshots, let account, let appStoreState):
-                ScreenshotGridViewFactory.build(screenshots: screenshots, account: account, appStoreState: appStoreState)
-            case .screenshotPage(let screenshots, let startIndex, let account, let appStoreState):
-                ScreenshotPageViewFactory.build(screenshots: screenshots, startIndex: startIndex, account: account, appStoreState: appStoreState)
-            case .appReviewInfo(let versionId, let account):
-                AppReviewInfoViewFactory.build(versionId: versionId, account: account)
-            case .betaAppReviewInfo(let appId, let account):
-                BetaAppReviewInfoViewFactory.build(appId: appId, account: account)
-            case .appInformation(let app, let account):
-                AppInformationViewFactory.build(app: app, account: account)
-            case .ageRating(let ageRating, let account):
-                AgeRatingViewFactory.build(ageRating: ageRating, account: account)
-            case .manageLocalizations(let appInfoId, let primaryLocale, let account):
-                ManageLocalizationsViewFactory.build(appInfoId: appInfoId, primaryLocale: primaryLocale, account: account)
-            case .appCategoryPicker(let appInfoId, let primaryCategoryId, let primarySubcategoryId, let secondaryCategoryId, let secondarySubcategoryId, let account):
-                AppCategoryPickerViewFactory.build(appInfoId: appInfoId, currentCategoryId: primaryCategoryId, currentSubcategoryId: primarySubcategoryId, currentSecondaryCategoryId: secondaryCategoryId, currentSecondarySubcategoryId: secondarySubcategoryId, account: account)
-            case .archivedApps(let account):
-                ArchivedAppsViewFactory.build(account: account)
-            case .appHistory(let appId, let account):
-                AppHistoryViewFactory.build(appId: appId, account: account)
-            case .appPrivacy(let appId, let account):
-                AppPrivacyViewFactory.build(appId: appId, account: account)
-            case .appAccessibility(let appId, let account):
-                AppAccessibilityViewFactory.build(appId: appId, account: account)
-            case .ratingsReviews(let appId, let bundleId, let appName, let account):
-                RatingsReviewsViewFactory.build(appId: appId, bundleId: bundleId, appName: appName, account: account)
-            case .reviewDetail(let review, let appName, let account, let appId):
-                ReviewDetailViewFactory.build(review: review, appName: appName, account: account, appId: appId)
-            case .allReviews:
-                AllReviewsViewFactory.build()
-            case .testFlight(let appId, let account):
-                TestFlightViewFactory.build(appId: appId, account: account)
-            case .betaGroupDetail(let group, let appId, let account):
-                BetaGroupDetailViewFactory.build(group: group, appId: appId, account: account)
-            case .betaGroupTesters(let group, let appId, let account):
-                BetaGroupTestersViewFactory.build(group: group, appId: appId, account: account)
-            case .platformBuildsList(let appId, let platform, let account):
-                PlatformBuildsViewFactory.build(appId: appId, platform: platform, account: account)
-            case .buildDetail(let build, let appId, let account):
-                BuildDetailViewFactory.build(build: build, appId: appId, account: account)
-            case .submissions(let appId, let appName, let account):
-                SubmissionsViewFactory.build(appId: appId, appName: appName, account: account)
-            case .reviewSubmissionDetail(let submission, let account):
-                AppReviewDetailViewFactory.build(submission: submission, account: account)
-            case .userDetail(let user, let account):
-                UserDetailViewFactory.build(user: user, account: account)
-            case .analyticsReports(let appId, let appName, let account):
-                AnalyticsReportsViewFactory.build(appId: appId, appName: appName, account: account)
-            case .analyticsReportDetail(let appId, let appName, let report, let account):
-                AnalyticsReportDetailViewFactory.build(appId: appId, appName: appName, report: report, account: account)
-            case .analyticsReportFiles(let appId, let appName, let report, let account):
-                AnalyticsReportFilesViewFactory.build(appId: appId, appName: appName, report: report, account: account)
-            }
-        }
-    }
-}

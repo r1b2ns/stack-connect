@@ -52,6 +52,13 @@ protocol ReviewDetailViewModelProtocol: ObservableObject {
     func cancelReplySheet()
     func selectTemplate(_ template: ReplyTemplateModel)
     func applyPendingTemplate()
+    /// Loads the account's reply templates for the inline composer's chips.
+    func loadTemplates() async
+    /// Inline composer (regular width): fills the draft with a template.
+    func insertTemplate(_ template: ReplyTemplateModel)
+    /// Inline composer (regular width): edits the current reply in place,
+    /// without the composer sheet.
+    func beginInlineEdit()
 }
 
 // MARK: - UiState
@@ -76,6 +83,21 @@ struct ReviewDetailUiState {
     /// view at once, so the reply composer is only opened from the templates
     /// sheet's `onDismiss`. See `selectTemplate` / `applyPendingTemplate`.
     var pendingTemplateBody: String?
+    /// The account's reply templates (inline composer chips, regular width).
+    var templates: [ReplyTemplateModel] = []
+
+    /// The inline composer can send: there is text and nothing in flight.
+    var canSendReply: Bool {
+        canReply && !isSending && !replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// The inline composer shows while there is no reply yet, or while the
+    /// existing one is being edited.
+    var showsInlineComposer: Bool {
+        guard canReply else { return false }
+        let hasReply = !(review.responseBody ?? "").isEmpty
+        return !hasReply || isEditingReply
+    }
 
     /// Writing or editing a reply is gated by the account's `review` rules (edit),
     /// for every store.
@@ -143,6 +165,7 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
     private let service: (any CustomerReviewsServicing)?
     private let cache: (any CustomerReviewsCaching)?
     private let analytics: AnalyticsTracking
+    private let templatesStorage: PersistentStorable?
 
     /// - Parameters:
     ///   - service: the account's reviews backend; `nil` when its credentials
@@ -154,7 +177,8 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
         account: AccountModel,
         service: (any CustomerReviewsServicing)?,
         cache: (any CustomerReviewsCaching)? = nil,
-        analytics: AnalyticsTracking = AnalyticsService.shared
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        templatesStorage: PersistentStorable? = nil
     ) {
         self.uiState = ReviewDetailUiState(
             review: review,
@@ -165,6 +189,7 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
         self.service = service
         self.cache = cache
         self.analytics = analytics
+        self.templatesStorage = templatesStorage ?? SwiftDataStorable.shared
     }
 
     func submitReply(body: String) async {
@@ -254,6 +279,33 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
         uiState.showReplySheet = true
     }
 
+    // MARK: - Inline Composer
+
+    func loadTemplates() async {
+        guard let templatesStorage else { return }
+        do {
+            let all: [ReplyTemplateModel] = try await templatesStorage.fetchAll(ReplyTemplateModel.self)
+            uiState.templates = all
+                .filter { $0.accountId == uiState.account.id }
+                .sorted { $0.updatedAt > $1.updatedAt }
+        } catch {
+            Log.print.error("[ReviewDetail] Failed to load reply templates: \(error.localizedDescription)")
+            uiState.templates = []
+        }
+    }
+
+    func insertTemplate(_ template: ReplyTemplateModel) {
+        analytics.track(.buttonTap(.replyTemplates, on: .reviewDetail))
+        uiState.replyText = template.body
+        uiState.replyError = nil
+    }
+
+    func beginInlineEdit() {
+        uiState.replyText = uiState.review.responseBody ?? ""
+        uiState.replyError = nil
+        uiState.isEditingReply = true
+    }
+
     func deleteResponse() async {
         analytics.track(.buttonTap(.confirmDelete, on: .reviewDetail))
         guard uiState.canDeleteReply, let responseId = uiState.review.responseId else { return }
@@ -287,11 +339,28 @@ final class ReviewDetailViewModel: ReviewDetailViewModelProtocol {
 struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
 
     @StateObject var viewModel: ViewModel
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    /// Regular width (iPad detail column, Mac window): the reply is written
+    /// inline under the review, with the templates as chips; compact keeps the
+    /// composer and templates sheets.
+    private var isRegular: Bool {
+        horizontalSizeClass == .regular
+    }
 
     var body: some View {
         List {
             buildReviewSection()
-            buildResponseSection()
+            if isRegular {
+                buildRegularResponseSections()
+            } else {
+                buildResponseSection()
+            }
+        }
+        .task {
+            if isRegular {
+                await viewModel.loadTemplates()
+            }
         }
         .navigationTitle(String(localized: "Review"))
         .trackScreen(.reviewDetail)
@@ -313,6 +382,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
             onDismiss: { viewModel.cancelReplySheet() }
         ) {
             buildReplySheet()
+                .stackFormSheet()
         }
         .sheet(
             isPresented: $viewModel.uiState.showTemplatesSheet,
@@ -325,6 +395,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
                 onSelect: { template in viewModel.selectTemplate(template) }
             )
             .presentationDetents([.medium, .large])
+            .stackFormSheet()
         }
         .alert(
             String(localized: "Delete Reply"),
@@ -486,6 +557,87 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
                 }
             }
         }
+    }
+
+    // MARK: - Regular Width Response
+
+    @ViewBuilder
+    private func buildRegularResponseSections() -> some View {
+        let state = viewModel.uiState
+        if let responseBody = state.review.responseBody, !responseBody.isEmpty, !state.isEditingReply {
+            Section {
+                buildResponseContent(responseBody)
+            } header: {
+                Text("Your Reply")
+            }
+
+            if state.canReply || state.canDeleteReply {
+                Section {
+                    if state.canReply {
+                        StackTrackedButton(.edit, on: .reviewDetail) {
+                            viewModel.beginInlineEdit()
+                        } label: {
+                            Label(String(localized: "Edit Reply"), systemImage: "pencil")
+                        }
+                    }
+                    if state.canDeleteReply {
+                        StackTrackedButton(.delete, on: .reviewDetail, role: .destructive) {
+                            viewModel.uiState.confirmDeleteResponse = true
+                        } label: {
+                            Label(String(localized: "Delete Reply"), systemImage: "trash")
+                        }
+                    }
+                }
+            }
+        }
+
+        if state.showsInlineComposer {
+            Section {
+                StackInlineReplyComposer(
+                    text: $viewModel.uiState.replyText,
+                    confirmTitle: state.isEditingReply ? String(localized: "Save") : String(localized: "Send"),
+                    footer: state.traits.replyVisibilityNote,
+                    characterLimit: state.traits.replyCharacterLimit,
+                    error: state.replyError,
+                    templates: state.templates.map { .init(id: $0.id, title: $0.title) },
+                    isSending: state.isSending,
+                    canSend: state.canSendReply,
+                    onSelectTemplate: { chip in
+                        if let template = state.templates.first(where: { $0.id == chip.id }) {
+                            viewModel.insertTemplate(template)
+                        }
+                    },
+                    onSend: {
+                        let body = viewModel.uiState.replyText
+                        Task { await viewModel.submitReply(body: body) }
+                    },
+                    onCancel: state.isEditingReply ? { viewModel.cancelReplySheet() } : nil
+                )
+            } header: {
+                Text(state.isEditingReply ? String(localized: "Edit Reply") : String(localized: "Your Reply"))
+            }
+        }
+    }
+
+    private func buildResponseContent(_ responseBody: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let state = viewModel.uiState.review.responseState {
+                Text(state == "PUBLISHED" ? String(localized: "Published") : String(localized: "Pending"))
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(state == "PUBLISHED" ? Color.green : Color.orange)
+            }
+            Text(responseBody)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+            if let date = viewModel.uiState.review.responseDate {
+                Text(formatDate(date))
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.vertical, 4)
     }
 
     // MARK: - Reply Sheet

@@ -184,6 +184,10 @@ targets:
         PRODUCT_NAME: "$(TARGET_NAME)"
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1,2"
+        # The iPad app also runs on Apple silicon Macs ("Designed for iPad").
+        # Not Mac Catalyst.
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: YES
+        SUPPORTS_MACCATALYST: NO
 
     dependencies:
       - package: netfox
@@ -231,6 +235,9 @@ targets:
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1,2"
         SKIP_INSTALL: YES
+        # Ships inside the app, also on Mac ("Designed for iPad").
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: YES
+        SUPPORTS_MACCATALYST: NO
 
     dependencies:
       - package: StackCore

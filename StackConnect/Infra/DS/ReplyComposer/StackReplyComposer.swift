@@ -77,24 +77,9 @@ struct StackReplyComposer<Context: View>: View {
             Text(footer)
 
             if let characterLimit {
-                buildCounter(limit: characterLimit)
+                StackReplyCharacterCounter(count: text.count, limit: characterLimit)
             }
         }
-    }
-
-    private func buildCounter(limit: Int) -> some View {
-        let count = text.count
-        let isOverLimit = count > limit
-        return HStack(spacing: 6) {
-            Text(verbatim: "\(count)/\(limit)")
-                .monospacedDigit()
-            if isOverLimit {
-                Text("Longer replies may be rejected.")
-            }
-        }
-        .foregroundStyle(isOverLimit ? Color.orange : Color.secondary)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(String(localized: "\(count) of \(limit) characters"))
     }
 
     // MARK: - Toolbar
@@ -153,5 +138,29 @@ extension StackReplyComposer where Context == EmptyView {
             onCancel: onCancel,
             context: { EmptyView() }
         )
+    }
+}
+
+// MARK: - Character Counter
+
+/// "count/limit" under a reply editor; past the limit it turns orange and
+/// warns, without blocking (the store has the final word).
+struct StackReplyCharacterCounter: View {
+
+    let count: Int
+    let limit: Int
+
+    var body: some View {
+        let isOverLimit = count > limit
+        HStack(spacing: 6) {
+            Text(verbatim: "\(count)/\(limit)")
+                .monospacedDigit()
+            if isOverLimit {
+                Text("Longer replies may be rejected.")
+            }
+        }
+        .foregroundStyle(isOverLimit ? Color.orange : Color.secondary)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(String(localized: "\(count) of \(limit) characters"))
     }
 }

@@ -36,6 +36,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @State private var showPermissionDenied = false
     @State private var permissionDeniedMessage = ""
@@ -56,14 +57,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
     }
 
     var body: some View {
-        List {
-            buildHeaderSection()
-            buildRejectedReviewTip()
-            buildPlatformSections()
-            buildGeneralSection()
-            buildAppStoreSection()
-            buildTestFlightSection()
-        }
+        buildLayout()
         .foregroundStyle(.primary)
         .navigationTitle(viewModel.uiState.app.name)
         .trackScreen(.appDetail)
@@ -132,6 +126,55 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             StackTrackedButton(String(localized: "OK"), button: .ok, on: .appDetail, role: .cancel) {}
         } message: {
             Text(permissionDeniedMessage)
+        }
+    }
+
+    // MARK: - Layout
+
+    /// Compact, or a regular-width container too narrow for two columns (an
+    /// iPad detail column next to the sidebar, a narrow Mac window): the iPhone
+    /// List. Wide regular width: two columns, versions and TestFlight on the
+    /// left, settings on the right. Decided by the width actually available,
+    /// see `StackColumnLayout`.
+    @ViewBuilder
+    private func buildLayout() -> some View {
+        if horizontalSizeClass == .regular {
+            GeometryReader { proxy in
+                if StackColumnLayout.fitsTwoColumns(width: proxy.size.width) {
+                    buildTwoColumnLayout()
+                } else {
+                    buildSingleColumnLayout()
+                }
+            }
+        } else {
+            buildSingleColumnLayout()
+        }
+    }
+
+    private func buildTwoColumnLayout() -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            List {
+                buildHeaderSection()
+                buildRejectedReviewTip()
+                buildPlatformSections()
+                buildTestFlightSection()
+            }
+            List {
+                buildGeneralSection()
+                buildAppStoreSection()
+            }
+        }
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private func buildSingleColumnLayout() -> some View {
+        List {
+            buildHeaderSection()
+            buildRejectedReviewTip()
+            buildPlatformSections()
+            buildGeneralSection()
+            buildAppStoreSection()
+            buildTestFlightSection()
         }
     }
 
@@ -281,6 +324,10 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                     buildVersionRow(version)
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    buildSwipeActions(for: version)
+                }
+                // iPad / Mac: the same actions on secondary click.
+                .stackContextMenu(isEnabled: horizontalSizeClass == .regular || ProcessInfo.processInfo.isiOSAppOnMac) {
                     buildSwipeActions(for: version)
                 }
             }

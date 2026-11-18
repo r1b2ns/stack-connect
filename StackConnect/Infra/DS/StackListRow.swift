@@ -39,6 +39,8 @@ struct StackListRow: View {
                 Text(String(localized: "New"))
                     .font(.caption2)
                     .fontWeight(.semibold)
+                    .lineLimit(1)
+                    .fixedSize()
                     .foregroundStyle(.white)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 2)
