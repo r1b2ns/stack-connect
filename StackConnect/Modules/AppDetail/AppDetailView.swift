@@ -131,33 +131,50 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
 
     // MARK: - Layout
 
-    /// Compact: the iPhone List. Regular (iPad detail column, Mac window): two
-    /// columns, versions and TestFlight on the left, settings on the right.
+    /// Compact, or a regular-width container too narrow for two columns (an
+    /// iPad detail column next to the sidebar, a narrow Mac window): the iPhone
+    /// List. Wide regular width: two columns, versions and TestFlight on the
+    /// left, settings on the right. Decided by the width actually available,
+    /// see `StackColumnLayout`.
     @ViewBuilder
     private func buildLayout() -> some View {
         if horizontalSizeClass == .regular {
-            HStack(alignment: .top, spacing: 0) {
-                List {
-                    buildHeaderSection()
-                    buildRejectedReviewTip()
-                    buildPlatformSections()
-                    buildTestFlightSection()
-                }
-                List {
-                    buildGeneralSection()
-                    buildAppStoreSection()
+            GeometryReader { proxy in
+                if StackColumnLayout.fitsTwoColumns(width: proxy.size.width) {
+                    buildTwoColumnLayout()
+                } else {
+                    buildSingleColumnLayout()
                 }
             }
-            .background(Color(.systemGroupedBackground))
         } else {
+            buildSingleColumnLayout()
+        }
+    }
+
+    private func buildTwoColumnLayout() -> some View {
+        HStack(alignment: .top, spacing: 0) {
             List {
                 buildHeaderSection()
                 buildRejectedReviewTip()
                 buildPlatformSections()
-                buildGeneralSection()
-                buildAppStoreSection()
                 buildTestFlightSection()
             }
+            List {
+                buildGeneralSection()
+                buildAppStoreSection()
+            }
+        }
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private func buildSingleColumnLayout() -> some View {
+        List {
+            buildHeaderSection()
+            buildRejectedReviewTip()
+            buildPlatformSections()
+            buildGeneralSection()
+            buildAppStoreSection()
+            buildTestFlightSection()
         }
     }
 
