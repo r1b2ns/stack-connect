@@ -1,6 +1,19 @@
 import Foundation
 import StackProtocols
 
+/// Records handled errors as crash-reporter non-fatals. Split from
+/// `AnalyticsTracking` (interface segregation): only the few places that still
+/// hold a real `Error` need it.
+@MainActor
+protocol NonFatalErrorRecording: AnyObject {
+    /// Records `error` when analytics is enabled and `category` is worth it
+    /// (`AnalyticsErrorCategory.isReportableAsNonFatal`); dropped otherwise.
+    func recordNonFatal(_ error: Error, category: AnalyticsErrorCategory)
+}
+
+/// What a component that tracks events *and* records non-fatals depends on.
+typealias AnalyticsReporting = AnalyticsTracking & NonFatalErrorRecording
+
 /// The app's single analytics entry point. Owns the user opt-out gate
 /// (`AppSetting.analyticsEnabled`) and fans events out to every provider.
 ///
@@ -14,13 +27,17 @@ import StackProtocols
 /// - On launch, `applyCollectionSetting()` pushes the persisted value to every
 ///   provider so a vendor SDK never collects for an opted-out user.
 /// - Setting the current value again sends nothing.
+/// - User properties go through the same gate: while disabled they are only
+///   remembered in memory (never handed to a provider) and pushed on opt-in,
+///   so a re-enabled user is segmented correctly without waiting for the next
+///   account change or launch.
 ///
 /// The gate is read from `AppSettings` on every call, so there is no cached
 /// state that can drift from what the Settings screen shows.
 ///
 /// No user or device identifier is generated or attached.
 @MainActor
-final class AnalyticsService: AnalyticsTracking {
+final class AnalyticsService: AnalyticsTracking, AnalyticsUserPropertySetting, NonFatalErrorRecording {
 
     /// Built once, on first access, with the providers available in this build
     /// (Firebase only when `GoogleService-Info.plist` is bundled). `AppDelegate`
@@ -30,6 +47,10 @@ final class AnalyticsService: AnalyticsTracking {
     private let providers: [any AnalyticsProvider]
     private let settings: AppSettings
     private let standardParameters: [String: AnalyticsValue]
+
+    /// The latest value of every user property set this session, sent or not.
+    /// In memory only: it lets opt-in restore the segmentation.
+    private var userProperties: [AnalyticsUserProperty: String] = [:]
 
     /// The flush/reset work started by the last opt-out. Exposed so tests can
     /// await it deterministically.
@@ -55,6 +76,37 @@ final class AnalyticsService: AnalyticsTracking {
         dispatch(event)
     }
 
+    /// Sets user properties on every provider, but only while enabled (same
+    /// gate as `track`). Unchanged values are not sent again.
+    func setUserProperties(_ properties: [AnalyticsUserProperty: String]) {
+        let changed = properties.filter { userProperties[$0.key] != $0.value }
+        userProperties.merge(properties) { _, new in new }
+        guard isEnabled, !changed.isEmpty else { return } // The single gate.
+        dispatchUserProperties(changed)
+    }
+
+    /// Hands a scrubbed copy of `error` to every provider (Crashlytics), behind
+    /// the same gate as `track`. Only `server` / `unknown` categories are
+    /// recorded: the other ones are expected user-side failures.
+    func recordNonFatal(_ error: Error, category: AnalyticsErrorCategory) {
+        guard isEnabled, category.isReportableAsNonFatal else { return } // The single gate.
+        let scrubbed = Self.scrubbed(error, category: category)
+        for provider in providers {
+            provider.recordNonFatal(scrubbed)
+        }
+    }
+
+    /// `error`'s domain and code only, plus its category: the original
+    /// `userInfo` (messages, URLs, response bodies…) never leaves the device.
+    static func scrubbed(_ error: Error, category: AnalyticsErrorCategory) -> NSError {
+        let nsError = error as NSError
+        return NSError(
+            domain: nsError.domain,
+            code: nsError.code,
+            userInfo: [AnalyticsParameterKey.errorCategory: category.rawValue]
+        )
+    }
+
     /// Applies the persisted opt-out setting to every provider's own collection
     /// switch. Called once at launch.
     func applyCollectionSetting() {
@@ -73,6 +125,8 @@ final class AnalyticsService: AnalyticsTracking {
             for provider in providers {
                 provider.setCollectionEnabled(true)
             }
+            // Before `analytics_enabled`, so that event is already segmented.
+            dispatchUserProperties(userProperties)
             dispatch(.analyticsEnabled)
             Log.print.info("[Analytics] Sending enabled by the user")
         } else {
@@ -104,6 +158,16 @@ final class AnalyticsService: AnalyticsTracking {
         )
         for provider in providers {
             provider.send(enriched)
+        }
+    }
+
+    /// Sends without checking the gate, in a stable (sorted) order. Only
+    /// `setUserProperties` and `setEnabled` call it.
+    private func dispatchUserProperties(_ properties: [AnalyticsUserProperty: String]) {
+        for (property, value) in properties.sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
+            for provider in providers {
+                provider.setUserProperty(value, forName: property.rawValue)
+            }
         }
     }
 

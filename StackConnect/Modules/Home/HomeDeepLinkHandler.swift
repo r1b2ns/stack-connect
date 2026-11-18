@@ -93,8 +93,11 @@ private struct HomeDeepLinksModifier: ViewModifier {
     func body(content: Content) -> some View {
         let handler = HomeDeepLinkHandler(navigator: navigator)
         content
+            // Widget taps and other `stackconnect://` URLs go through the
+            // router too, which tracks where the open came from. The router
+            // sets `pending`, handled once by the `onReceive` below.
             .onOpenURL { url in
-                handler.handle(url)
+                DeepLinkRouter.shared.open(url, source: DeepLinkSource(openedURL: url))
             }
             .onReceive(DeepLinkRouter.shared.$pending.compactMap { $0 }) { url in
                 handler.handle(url)

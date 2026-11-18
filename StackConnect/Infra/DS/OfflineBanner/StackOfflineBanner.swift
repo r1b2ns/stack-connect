@@ -1,4 +1,5 @@
 import SwiftUI
+import StackProtocols
 
 // MARK: - Banner
 
@@ -32,9 +33,13 @@ struct StackOfflineBanner: View {
 /// content whenever the device is offline. Applied once at the app root — since
 /// the whole app is a single `NavigationStack`, that one spot covers every
 /// screen.
-private struct OfflineBannerModifier: ViewModifier {
+///
+/// Each time the banner appears, `offline_banner_shown` is tracked (without a
+/// screen: the banner is app-wide).
+struct OfflineBannerModifier: ViewModifier {
 
     @StateObject private var monitor = ConnectivityMonitor.shared
+    @Environment(\.analytics) private var analytics
 
     func body(content: Content) -> some View {
         content
@@ -45,6 +50,16 @@ private struct OfflineBannerModifier: ViewModifier {
                 }
             }
             .animation(.easeInOut(duration: 0.25), value: monitor.isConnected)
+            .onChange(of: monitor.isConnected, initial: true) { _, isConnected in
+                Self.trackBannerIfShown(isConnected: isConnected, with: analytics)
+            }
+    }
+
+    /// Sends `offline_banner_shown` when the banner is about to show. Called
+    /// on launch and on every connectivity change, so once per appearance.
+    static func trackBannerIfShown(isConnected: Bool, with analytics: any AnalyticsTracking) {
+        guard !isConnected else { return }
+        analytics.track(.action(.offlineBannerShown, on: nil))
     }
 }
 

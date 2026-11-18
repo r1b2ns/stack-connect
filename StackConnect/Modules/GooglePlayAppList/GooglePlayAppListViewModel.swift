@@ -146,6 +146,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     /// the icons: overlapping passes never ask twice).
     private var summaryFetchesInFlight = Set<String>()
     private let analytics: AnalyticsTracking
+    private let firstAppsLoaded: FirstAppsLoadedTracker
 
     init(
         account: AccountModel,
@@ -157,6 +158,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         },
         connectivity: ConnectivityProviding = ConnectivityMonitor.shared,
         analytics: AnalyticsTracking = AnalyticsService.shared,
+        firstAppsLoaded: FirstAppsLoadedTracker = .shared,
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.uiState = GooglePlayAppListUiState(account: account)
@@ -166,6 +168,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         self.accessCheckerFactory = accessCheckerFactory
         self.connectivity = connectivity
         self.analytics = analytics
+        self.firstAppsLoaded = firstAppsLoaded
         self.now = now
     }
 
@@ -221,6 +224,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         // One connection (one core provider) for the listing and the icons.
         let connection = connectionFactory(credentials)
         var syncFailedOffline = false
+        var syncedAppCount: Int?
 
         do {
             let remoteApps = try await connection.fetchApps().filter {
@@ -231,6 +235,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
             // Apps new to the list may already have a cached status.
             await loadCachedReleaseStatus()
             Log.print.info("[GooglePlayAppList] Synced \(remoteApps.count) apps for account: \(self.uiState.account.name)")
+            syncedAppCount = uiState.apps.count
         } catch {
             Log.print.error("[GooglePlayAppList] Sync failed: \(error.localizedDescription)")
             syncFailedOffline = GooglePlayErrorTranslator.isOffline(error)
@@ -253,6 +258,11 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         }
 
         uiState.isSyncing = false
+
+        // Last, so the activation milestone never holds back the list or icons.
+        if let syncedAppCount {
+            await firstAppsLoaded.recordAppsLoaded(count: syncedAppCount, provider: .googlePlay, on: .googlePlayAppList)
+        }
     }
 
     // MARK: - Add App Manually

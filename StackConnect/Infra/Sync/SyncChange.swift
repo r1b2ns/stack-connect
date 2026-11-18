@@ -42,16 +42,37 @@ struct SyncChange: Sendable {
         let reviewId: String
     }
 
+    /// One account leg's app list, loaded successfully (feeds the one-shot
+    /// `first_apps_loaded`, see `FirstAppsLoadedTracker`).
+    struct LoadedApps: Equatable, Sendable {
+        let provider: ProviderType
+        let count: Int
+    }
+
     var statusChanges: [StatusChange] = []
     var newReviews: [NewReview] = []
+    /// Successful legs, in completion order.
+    var loadedApps: [LoadedApps] = []
     /// Accounts whose leg failed (missing credentials, API error). Lets the
     /// run tell a clean sync from one with per-account failures, which are
     /// otherwise only recorded in each account's `SyncMetadata`.
     var failedAccountIds: Set<String> = []
+    /// Why each failed leg failed, for the `sync` analytics event (one entry
+    /// per failure; never the error's text).
+    var failureCategories: [AnalyticsErrorCategory] = []
 
     /// The result of an account leg that failed: no changes, one failure.
-    static func failed(accountId: String) -> SyncChange {
-        SyncChange(failedAccountIds: [accountId])
+    static func failed(accountId: String, category: AnalyticsErrorCategory = .unknown) -> SyncChange {
+        SyncChange(failedAccountIds: [accountId], failureCategories: [category])
+    }
+
+    /// The most frequent failure category of the run (ties broken by raw
+    /// value, so the result is deterministic); `nil` without failures.
+    var dominantFailureCategory: AnalyticsErrorCategory? {
+        let counts = Dictionary(failureCategories.map { ($0, 1) }, uniquingKeysWith: +)
+        return counts.max { lhs, rhs in
+            lhs.value != rhs.value ? lhs.value < rhs.value : lhs.key.rawValue > rhs.key.rawValue
+        }?.key
     }
 
     var isEmpty: Bool { statusChanges.isEmpty && newReviews.isEmpty }
@@ -60,7 +81,9 @@ struct SyncChange: Sendable {
         SyncChange(
             statusChanges: lhs.statusChanges + rhs.statusChanges,
             newReviews: lhs.newReviews + rhs.newReviews,
-            failedAccountIds: lhs.failedAccountIds.union(rhs.failedAccountIds)
+            loadedApps: lhs.loadedApps + rhs.loadedApps,
+            failedAccountIds: lhs.failedAccountIds.union(rhs.failedAccountIds),
+            failureCategories: lhs.failureCategories + rhs.failureCategories
         )
     }
 }

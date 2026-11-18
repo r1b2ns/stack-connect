@@ -7,6 +7,31 @@ enum AnalyticsAction: String, CaseIterable, Sendable {
 
     // MARK: Generic
     case refresh = "refresh"
+    /// A screen's first (automatic) load, as opposed to `refresh` (pull to
+    /// refresh, Retry). Sent with its outcome and `error_category`.
+    case load = "load"
+    /// A search session on a `.searchable` list: once per session, with
+    /// `result_count_bucket` only — never the query (`View.trackSearch`).
+    case search = "search"
+
+    // MARK: Sync & connectivity
+    /// One `SyncService` run (not a coalesced call), with `trigger`,
+    /// `duration_bucket`, `count` / `failed_count` (accounts) and
+    /// `error_category` on failure. Sent without `screen_name` from the
+    /// background refresh task.
+    case sync = "sync"
+    /// The global offline banner appeared (once per appearance, no screen).
+    case offlineBannerShown = "offline_banner_shown"
+
+    // MARK: Notifications & prompts
+    /// The system notification permission prompt was answered: `success`
+    /// (granted), `cancelled` (denied) or `failure`.
+    case requestNotificationPermission = "request_notification_permission"
+    /// The App Store review request was handed to StoreKit (which decides
+    /// whether it is actually displayed).
+    case reviewPromptRequested = "review_prompt_requested"
+    /// The Home "support the project" card became visible.
+    case tipCardShown = "tip_card_shown"
 
     // MARK: Home
     case shareAgreementsRequest = "share_agreements_request"
@@ -30,6 +55,12 @@ enum AnalyticsAction: String, CaseIterable, Sendable {
     case exportAccount = "export_account"
     case importAccount = "import_account"
     case reimportAccount = "reimport_account"
+
+    // MARK: Activation
+    /// The install's "first value" moment: the first time an app list loaded
+    /// with at least one app. Sent once per install (`FirstAppsLoadedTracker`)
+    /// with `count` (apps in that list) and `kind` (provider).
+    case firstAppsLoaded = "first_apps_loaded"
 
     // MARK: Apps
     case syncApps = "sync_apps"
@@ -149,6 +180,15 @@ enum AnalyticsAction: String, CaseIterable, Sendable {
     case deleteCampaign = "delete_campaign"
     case addGooglePlayApp = "add_google_play_app"
     case removeGooglePlayApp = "remove_google_play_app"
+
+    // MARK: Google Play releases
+    /// A committed Google Play release change (`GooglePlayReleaseWriteViewModel`),
+    /// with `kind` (`AnalyticsReleaseWriteKind`), `track` (`AnalyticsTrackKind`),
+    /// `send_for_review` and `error_category` on failure. Never a release
+    /// name, version code or custom track name.
+    case releaseWrite = "release_write"
+    /// Listing the bundles uploaded to Google Play (New Release sheet).
+    case fetchBundles = "fetch_bundles"
 }
 
 /// Result of an `AnalyticsAction`. Never carries error text: send an error

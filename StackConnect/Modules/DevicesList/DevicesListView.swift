@@ -43,6 +43,7 @@ struct DevicesListView<ViewModel: DevicesListViewModelProtocol>: View {
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search devices")
             )
+            .trackSearch(query: viewModel.uiState.searchQuery, resultCount: viewModel.uiState.filtered.count, on: .devicesList)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {

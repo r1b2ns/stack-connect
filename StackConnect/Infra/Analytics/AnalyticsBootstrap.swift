@@ -5,7 +5,8 @@ import Foundation
 ///
 /// Firebase is optional: `GoogleService-Info.plist` is git-ignored, so open
 /// source checkouts and CI build without it. When the file is absent (or the app
-/// is hosting unit tests) only the log provider is used.
+/// is hosting unit tests, or runs on fake data) only the log provider is used —
+/// so neither Analytics nor Crashlytics is ever set up there.
 enum AnalyticsBootstrap {
 
     static let firebaseConfigResource = "GoogleService-Info"
@@ -24,8 +25,8 @@ enum AnalyticsBootstrap {
             // I-COR000003 when no app exists yet. This runs once, from
             // `AnalyticsService.shared`'s initialiser.
             FirebaseApp.configure()
-            providers.append(FirebaseAnalyticsProvider())
-            Log.print.info("[Analytics] Firebase provider configured")
+            providers.append(contentsOf: firebaseProviders())
+            Log.print.info("[Analytics] Firebase providers configured (Analytics, Crashlytics)")
         } else {
             Log.print.info("[Analytics] Firebase not configured (no \(firebaseConfigResource).plist or running tests): using the log provider only")
         }
@@ -38,6 +39,13 @@ enum AnalyticsBootstrap {
         }
         #endif
         return providers
+    }
+
+    /// What a configured Firebase contributes: Analytics and Crashlytics, both
+    /// behind `AnalyticsService`'s opt-out gate. Only called after
+    /// `FirebaseApp.configure()`.
+    static func firebaseProviders() -> [any AnalyticsProvider] {
+        [FirebaseAnalyticsProvider(), CrashlyticsProvider()]
     }
 
     /// Firebase is used only when its config file is bundled, and never while

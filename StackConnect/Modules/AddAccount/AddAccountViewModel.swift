@@ -61,19 +61,25 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
 
     func save() async {
         analytics.track(.buttonTap(.save, on: .addAccount))
-        await performSave()
+        let failure = await performSave()
+        var parameters: [String: AnalyticsValue] = [AnalyticsParameterKey.kind: .string(uiState.providerType.rawValue)]
+        if let failure {
+            parameters.merge(failure.parameters) { _, category in category }
+        }
         analytics.track(.action(
             .createAccount,
             on: .addAccount,
-            result: uiState.isSaved ? .success : .failure,
-            parameters: [AnalyticsParameterKey.kind: .string(uiState.providerType.rawValue)]
+            result: failure == nil ? .success : .failure,
+            parameters: parameters
         ))
     }
 
-    private func performSave() async {
+    /// - Returns: why nothing was saved (for analytics only — the user sees
+    ///   `validationError`), or `nil` once the account is saved.
+    private func performSave() async -> AnalyticsErrorCategory? {
         guard !uiState.accountName.trimmingCharacters(in: .whitespaces).isEmpty else {
             uiState.validationError = String(localized: "Account name is required.")
-            return
+            return .validation
         }
 
         if uiState.providerType == .googlePlay, !GooglePlayDeveloperId.isAcceptable(uiState.googlePlayDeveloperId) {
@@ -81,18 +87,18 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
             // The input isn't known to be an ID (it may be any pasted text): private.
             Log.print.error("[AddAccount] Developer ID refused by the normalizer — length: \(input.count, privacy: .public), input: \"\(input)\"")
             uiState.validationError = GooglePlayDeveloperId.invalidMessage
-            return
+            return .validation
         }
 
         uiState.isValidating = true
         uiState.validationError = nil
+        defer { uiState.isValidating = false }
 
         do {
             // Check for duplicate credentials
             if let duplicateError = await checkDuplicateCredentials() {
                 uiState.validationError = duplicateError
-                uiState.isValidating = false
-                return
+                return .duplicate
             }
 
             // The role picker is hidden for providers without roles (Google
@@ -124,14 +130,12 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
                 let json = uiState.firebaseJSON.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !json.isEmpty else {
                     uiState.validationError = String(localized: "Service Account JSON is required.")
-                    uiState.isValidating = false
-                    return
+                    return .validation
                 }
 
                 guard let jsonData = json.data(using: .utf8) else {
                     uiState.validationError = String(localized: "Invalid JSON format.")
-                    uiState.isValidating = false
-                    return
+                    return .validation
                 }
 
                 let config = try FirebaseConfiguration(serviceAccountJSON: jsonData)
@@ -156,16 +160,23 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
                 keychain.setObject(credentials, forKey: "credentials.\(account.id)")
             }
 
-            try await storage.save(account, id: account.id)
+            do {
+                try await storage.save(account, id: account.id)
+            } catch {
+                uiState.validationError = error.localizedDescription
+                Log.print.error("[AddAccount] Saving the account failed: \(error.localizedDescription)")
+                return .storage
+            }
             uiState.isSaved = true
+            AccountsChange.post()
             Log.print.info("[AddAccount] Account saved: \(account.name)")
+            return nil
 
         } catch {
             uiState.validationError = friendlyMessage(for: error)
             Log.print.error("[AddAccount] Validation failed: \(error.localizedDescription)")
+            return AnalyticsErrorCategory(connectionError: error)
         }
-
-        uiState.isValidating = false
     }
 
     // MARK: - Private

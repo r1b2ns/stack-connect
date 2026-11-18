@@ -127,3 +127,44 @@ struct FirebaseAnalyticsPayload: Equatable {
         }
     }
 }
+
+// MARK: - User properties
+
+extension FirebaseAnalyticsPayload {
+
+    /// What `Analytics.setUserProperty(_:forName:)` receives.
+    struct UserProperty: Equatable {
+        let name: String
+        /// `nil` clears the property.
+        let value: String?
+    }
+
+    static let maxUserPropertyNameLength = 24
+    static let maxUserPropertyValueLength = 36
+
+    /// User property names Firebase sets itself and rejects from apps
+    /// (`user_id` goes through `setUserID`, which this app never calls).
+    static let reservedUserPropertyNames: Set<String> = [
+        "first_open_after_install", "first_open_time", "first_visit_time",
+        "last_deep_link_referrer", "user_id"
+    ]
+
+    /// Validates a user property against Firebase's limits, or `nil` when its
+    /// name is unusable (reserved, reserved prefix, empty or not
+    /// `[A-Za-z][A-Za-z0-9_]*`).
+    ///
+    /// Same policy as events: a too-long name is truncated to 24 characters
+    /// and a too-long value to 36 (both logged), never trapped.
+    static func userProperty(name raw: String, value: String?) -> UserProperty? {
+        guard let name = sanitizedName(raw, maxLength: maxUserPropertyNameLength),
+              !reservedUserPropertyNames.contains(name) else {
+            Log.print.warning("[Analytics][Firebase] Dropped user property with unusable name '\(raw)'")
+            return nil
+        }
+        guard let value, value.count > maxUserPropertyValueLength else {
+            return UserProperty(name: name, value: value)
+        }
+        Log.print.warning("[Analytics][Firebase] Truncated user property '\(name)' to \(maxUserPropertyValueLength) characters")
+        return UserProperty(name: name, value: String(value.prefix(maxUserPropertyValueLength)))
+    }
+}

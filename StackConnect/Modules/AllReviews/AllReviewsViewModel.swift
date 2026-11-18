@@ -121,7 +121,7 @@ final class AllReviewsViewModel: AllReviewsViewModelProtocol {
     /// Pull-to-refresh: fetch fresh data from the API, then reload from storage.
     /// Tracked as a `refresh` action with its outcome.
     func refresh() async {
-        await syncService.syncAll(mode: .full).value
+        await syncService.syncAll(mode: .full, trigger: .manual, screen: .allReviews).value
         let reloaded = await reload()
         let succeeded = reloaded && syncService.state.lastError == nil
         analytics.track(.action(.refresh, on: .allReviews, result: succeeded ? .success : .failure))

@@ -293,6 +293,7 @@ private struct AddCapabilitySheet<ViewModel: IdentifierDetailViewModelProtocol>:
             .trackScreen(.addCapability)
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchQuery, prompt: String(localized: "Search capabilities"))
+            .trackSearch(query: searchQuery, resultCount: availableEntries.count, on: .addCapability)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     StackTrackedButton(String(localized: "Close"), button: .close, on: .addCapability) { dismiss() }

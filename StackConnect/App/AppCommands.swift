@@ -29,7 +29,8 @@ struct AppCommands: Commands {
 
         CommandGroup(after: .toolbar) {
             Button(String(localized: "Refresh", comment: "Menu command: syncs every account.")) {
-                SyncService.shared.syncAll()
+                // User-initiated from the menu bar: not tied to one screen.
+                SyncService.shared.syncAll(trigger: .manual, screen: nil)
             }
             .keyboardShortcut("r", modifiers: .command)
         }

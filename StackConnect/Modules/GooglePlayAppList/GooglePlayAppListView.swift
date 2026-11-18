@@ -95,7 +95,6 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
-    @Environment(\.analytics) private var analytics
 
     var body: some View {
         // iOS 26 chrome of the App Store app list (prototype screen 1): large
@@ -107,6 +106,7 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search by name or package")
             )
+            .trackSearch(query: viewModel.uiState.searchQuery, resultCount: viewModel.uiState.filteredApps.count, on: .googlePlayAppList)
             .toolbar { buildToolbar() }
             .task { await viewModel.load() }
             .refreshable { await viewModel.refresh() }
@@ -141,10 +141,8 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
             StackErrorContentView(
                 message: error,
                 reportContext: errorReportContext,
-                onRetry: {
-                    analytics.track(.buttonTap(.tryAgain, on: .googlePlayAppList))
-                    Task { await viewModel.load() }
-                }
+                // The Retry tap is tracked by `StackErrorContentView`.
+                onRetry: { Task { await viewModel.load() } }
             ) {
                 if viewModel.uiState.canAddApps {
                     StackTrackedButton(String(localized: "Add Manually"), button: .add, on: .googlePlayAppList) {

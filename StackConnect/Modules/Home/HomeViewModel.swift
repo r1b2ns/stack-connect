@@ -129,18 +129,23 @@ final class HomeViewModel: HomeViewModelProtocol {
         tipCard.isCardVisiblePublisher
             .removeDuplicates()
             .sink { [weak self] isVisible in
-                self?.uiState.showTipCard = isVisible
+                guard let self else { return }
+                // `tip_card_shown` once each time the card appears.
+                if isVisible && !self.uiState.showTipCard {
+                    self.analytics.track(.action(.tipCardShown, on: .home))
+                }
+                self.uiState.showTipCard = isVisible
             }
             .store(in: &cancellables)
     }
 
     func triggerSync() {
-        syncService.syncAll()
+        syncService.syncAll(trigger: .foreground, screen: .home)
     }
 
     /// Pull-to-refresh. Tracked as a `refresh` action with the sync outcome.
     func refresh() async {
-        await syncService.syncAll().value
+        await syncService.syncAll(trigger: .manual, screen: .home).value
         await loadDashboard()
         analytics.track(.action(.refresh, on: .home, result: syncService.state.lastError == nil ? .success : .failure))
     }

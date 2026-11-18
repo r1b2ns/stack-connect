@@ -72,6 +72,7 @@ final class AnalyticsServiceTests: XCTestCase {
             func send(_ event: AnalyticsEvent) { enabledWhenSent[event.name] = settings.isEnabled(.analyticsEnabled) }
             func flush() async {}
             func reset() {}
+            func setUserProperty(_ value: String?, forName name: String) {}
         }
         let spy = SpyProvider(settings: settings)
         let service = AnalyticsService(providers: [spy], settings: settings)
@@ -191,6 +192,7 @@ final class AnalyticsServiceTests: XCTestCase {
             func send(_ event: AnalyticsEvent) {}
             func flush() async {}
             func reset() {}
+            func setUserProperty(_ value: String?, forName name: String) {}
         }
         let service = AnalyticsService(providers: [MinimalProvider()], settings: settings)
 
@@ -302,5 +304,50 @@ final class AnalyticsServiceTests: XCTestCase {
         let event = AnalyticsEvent(name: "button_tap", parameters: ["screen_name": .string("settings"), "button_name": .string("license")])
 
         XCTAssertEqual(LogAnalyticsProvider.format(event), "button_tap {button_name=license, screen_name=settings}")
+    }
+
+    // MARK: - User properties
+
+    func testUserPropertiesReachProvidersWhenEnabled() {
+        sut.setUserProperties([.accountCount: "2", .hasApple: "true"])
+
+        XCTAssertEqual(provider.userPropertyCalls.map(\.name), ["account_count", "has_apple"])
+        XCTAssertEqual(provider.userPropertyCalls.map(\.value), ["2", "true"])
+    }
+
+    func testUnchangedUserPropertiesAreNotSentAgain() {
+        sut.setUserProperties([.accountCount: "1", .hasApple: "true"])
+        sut.setUserProperties([.accountCount: "2", .hasApple: "true"])
+
+        XCTAssertEqual(provider.userPropertyCalls.map(\.name), ["account_count", "has_apple", "account_count"])
+        XCTAssertEqual(provider.userPropertyCalls.last?.value, "2")
+    }
+
+    func testUserPropertiesAreDroppedWhileDisabled() {
+        sut.setEnabled(false)
+        sut.setUserProperties([.accountCount: "1"])
+
+        XCTAssertTrue(provider.userPropertyCalls.isEmpty, "The opt-out gate also covers user properties")
+    }
+
+    func testOptInPushesTheLatestUserPropertiesBeforeTheEnabledEvent() async {
+        sut.setEnabled(false)
+        await sut.pendingFlush?.value
+        sut.setUserProperties([.accountCount: "1"])
+        sut.setUserProperties([.accountCount: "3+"])
+
+        sut.setEnabled(true)
+
+        let afterOptIn = provider.calls.drop { $0 != .setCollectionEnabled(true) }
+        XCTAssertEqual(Array(afterOptIn), [
+            .setCollectionEnabled(true),
+            .setUserProperty(name: "account_count", value: "3+"),
+            .send("analytics_enabled")
+        ])
+    }
+
+    func testLogProviderUserPropertyFormat() {
+        XCTAssertEqual(LogAnalyticsProvider.formatUserProperty(name: "has_apple", value: "true"), "user_property has_apple=true")
+        XCTAssertEqual(LogAnalyticsProvider.formatUserProperty(name: "has_apple", value: nil), "user_property has_apple=<nil>")
     }
 }

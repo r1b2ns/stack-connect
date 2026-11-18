@@ -20,6 +20,10 @@ struct GooglePlayNewReleaseSheet<Writes: GooglePlayReleaseWriteViewModelProtocol
 
     private var state: GooglePlayNewReleaseUiState { viewModel.uiState }
 
+    private var screen: AnalyticsScreen {
+        state.request.isPromotion ? .googlePlayPromoteRelease : .googlePlayNewRelease
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -31,12 +35,13 @@ struct GooglePlayNewReleaseSheet<Writes: GooglePlayReleaseWriteViewModelProtocol
             }
             .navigationTitle(state.request.isPromotion ? String(localized: "Promote Release") : String(localized: "New Release"))
             .navigationBarTitleDisplayMode(.inline)
+            .trackScreen(screen)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { dismiss() }
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: screen) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "Next")) {
+                    StackTrackedButton(String(localized: "Next"), button: .next, on: screen) {
                         if let write = viewModel.pendingWrite() {
                             writes.request(write)
                         }
@@ -220,7 +225,7 @@ private struct GooglePlayBundlePicker: View {
                 } else if let error = viewModel.uiState.bundlesError {
                     Label(error, systemImage: "exclamationmark.triangle.fill")
                         .foregroundStyle(.secondary)
-                    Button(String(localized: "Retry")) {
+                    StackTrackedButton(String(localized: "Retry"), button: .tryAgain, on: .googlePlayBundlePicker) {
                         Task { await viewModel.loadBundles() }
                     }
                 } else if viewModel.uiState.bundles.isEmpty {
@@ -244,6 +249,7 @@ private struct GooglePlayBundlePicker: View {
         }
         .navigationTitle(String(localized: "App Bundles"))
         .navigationBarTitleDisplayMode(.inline)
+        .trackScreen(.googlePlayBundlePicker)
         .task { await viewModel.loadBundles() }
     }
 }

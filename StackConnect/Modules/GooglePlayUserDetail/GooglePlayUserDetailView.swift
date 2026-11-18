@@ -65,8 +65,8 @@ struct GooglePlayUserDetailView<ViewModel: GooglePlayUserDetailViewModelProtocol
             user.accessState.isPendingInvitation ? String(localized: "Cancel Invitation") : String(localized: "Remove User"),
             isPresented: $viewModel.uiState.confirmRemove
         ) {
-            Button(user.accessState.isPendingInvitation ? String(localized: "Cancel Invitation") : String(localized: "Remove"),
-                   role: .destructive) {
+            StackTrackedButton(user.accessState.isPendingInvitation ? String(localized: "Cancel Invitation") : String(localized: "Remove"),
+                               button: .confirmDelete, on: .googlePlayUserDetail, role: .destructive) {
                 Task {
                     if await viewModel.remove() { dismiss() }
                 }
@@ -83,7 +83,7 @@ struct GooglePlayUserDetailView<ViewModel: GooglePlayUserDetailViewModelProtocol
             ),
             presenting: state.confirmRemoveGrant
         ) { grant in
-            Button(String(localized: "Remove"), role: .destructive) {
+            StackTrackedButton(String(localized: "Remove"), button: .confirmRemove, on: .googlePlayUserDetail, role: .destructive) {
                 Task { _ = await viewModel.removeGrant(grant) }
             }
             StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .googlePlayUserDetail, role: .cancel) {}
@@ -266,7 +266,7 @@ struct GooglePlayUserDetailView<ViewModel: GooglePlayUserDetailViewModelProtocol
                 buildGrantRow(grant)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         if state.access.grantRefusal(for: user, packageName: grant.packageName) == nil {
-                            Button(role: .destructive) {
+                            StackTrackedButton(.removeAppAccess, on: .googlePlayUserDetail, role: .destructive) {
                                 viewModel.requestRemoveGrant(grant)
                             } label: {
                                 Label(String(localized: "Remove Access"), systemImage: "minus.circle")
@@ -279,7 +279,7 @@ struct GooglePlayUserDetailView<ViewModel: GooglePlayUserDetailViewModelProtocol
                 Text("App Permissions (\(user.grants.count))")
                 Spacer()
                 if state.canAddGrant {
-                    Button(String(localized: "Add App")) {
+                    StackTrackedButton(String(localized: "Add App"), button: .addApp, on: .googlePlayUserDetail) {
                         viewModel.uiState.grantEditor = GooglePlayGrantEditorRequest(packageName: nil, permissions: [])
                     }
                     .font(.subheadline)
@@ -295,7 +295,7 @@ struct GooglePlayUserDetailView<ViewModel: GooglePlayUserDetailViewModelProtocol
 
     private func buildGrantRow(_ grant: GooglePlayGrantModel) -> some View {
         let editable = state.access.grantRefusal(for: user, packageName: grant.packageName) == nil
-        return Button {
+        return StackTrackedButton(.editAccess, on: .googlePlayUserDetail) {
             viewModel.uiState.grantEditor = GooglePlayGrantEditorRequest(packageName: grant.packageName, permissions: grant.appLevelPermissions)
         } label: {
             HStack(spacing: 12) {

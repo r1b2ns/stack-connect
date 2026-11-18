@@ -18,7 +18,7 @@ private struct GooglePlayTracksEntry: View {
 
     init(app: GooglePlayAppItem, account: AccountModel) {
         _viewModel = StateObject(wrappedValue: GooglePlayTracksViewModel(app: app, account: account))
-        _writes = StateObject(wrappedValue: GooglePlayReleaseWriteViewModel(app: app, account: account))
+        _writes = StateObject(wrappedValue: GooglePlayReleaseWriteViewModel(app: app, account: account, screen: .googlePlayTracks))
     }
 
     var body: some View {
@@ -41,6 +41,7 @@ struct GooglePlayTracksView<ViewModel: GooglePlayTracksViewModelProtocol, Writes
             hasContent: viewModel.uiState.hasContent,
             error: viewModel.uiState.error,
             errorReportContext: errorReportContext,
+            errorCategory: viewModel.uiState.errorCategory,
             onRetry: { Task { await viewModel.load() } }
         ) {
             buildContent()
@@ -63,6 +64,7 @@ struct GooglePlayTracksView<ViewModel: GooglePlayTracksViewModelProtocol, Writes
             isPresented: $viewModel.uiState.showSyncToast,
             message: String(localized: "Syncing tracks...")
         )
+        .trackScreen(.googlePlayTracks)
     }
 
     private var screenTitle: String {
@@ -106,7 +108,7 @@ struct GooglePlayTracksView<ViewModel: GooglePlayTracksViewModelProtocol, Writes
         } else {
             List {
                 if let error = viewModel.uiState.error {
-                    StackInlineErrorSection(message: error, reportContext: errorReportContext)
+                    StackInlineErrorSection(message: error, reportContext: errorReportContext, errorCategory: viewModel.uiState.errorCategory)
                 }
 
                 ForEach(tracks) { track in
@@ -123,7 +125,7 @@ struct GooglePlayTracksView<ViewModel: GooglePlayTracksViewModelProtocol, Writes
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(Array(track.releases.enumerated()), id: \.offset) { _, release in
-                    Button {
+                    StackTrackedButton(.release, on: .googlePlayTracks) {
                         homeCoordinator.navigateToGooglePlayReleaseDetail(release, track: track.track, app: viewModel.uiState.app, account: viewModel.uiState.account)
                     } label: {
                         GooglePlayReleaseRow(release: release)
@@ -136,7 +138,7 @@ struct GooglePlayTracksView<ViewModel: GooglePlayTracksViewModelProtocol, Writes
                 Label(track.kind.displayName, systemImage: track.kind.icon)
                 Spacer()
                 if writes.canPerform(.add) {
-                    Button {
+                    StackTrackedButton(.newRelease, on: .googlePlayTracks) {
                         writes.openNewRelease(track: track.track)
                     } label: {
                         Image(systemName: "plus.circle.fill")

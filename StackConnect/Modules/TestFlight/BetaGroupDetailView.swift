@@ -578,7 +578,7 @@ struct AddTesterSheet: View {
                     if isInviting {
                         ProgressView()
                     } else {
-                        Button(String(localized: "Invite")) {
+                        StackTrackedButton(String(localized: "Invite"), button: .invite, on: .addTester) {
                             onAdd(
                                 email.trimmingCharacters(in: .whitespaces),
                                 firstName.isEmpty ? nil : firstName,
@@ -891,7 +891,7 @@ struct InternalTesterPickerSheet: View {
                     if isInviting {
                         ProgressView()
                     } else {
-                        Button(String(localized: "Invite")) {
+                        StackTrackedButton(String(localized: "Invite"), button: .invite, on: .internalTesterPicker) {
                             let selectedMembers = members.filter { selected.contains($0.id) }
                             onInvite(selectedMembers)
                         }

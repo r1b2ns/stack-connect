@@ -42,6 +42,7 @@ struct CertificatesListView<ViewModel: CertificatesListViewModelProtocol>: View 
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search certificates")
             )
+            .trackSearch(query: viewModel.uiState.searchQuery, resultCount: viewModel.uiState.filteredCertificates.count, on: .certificatesList)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     StackTrackedButton(.add, on: .certificatesList) {

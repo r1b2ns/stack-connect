@@ -58,17 +58,20 @@ final class AppListViewModel: AppListViewModelProtocol {
     private let storage: PersistentStorable
     private let keychain: KeyStorable
     private let analytics: AnalyticsTracking
+    private let firstAppsLoaded: FirstAppsLoadedTracker
 
     init(
         account: AccountModel,
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
-        analytics: AnalyticsTracking = AnalyticsService.shared
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        firstAppsLoaded: FirstAppsLoadedTracker = .shared
     ) {
         self.uiState = AppListUiState(account: account)
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
         self.analytics = analytics
+        self.firstAppsLoaded = firstAppsLoaded
     }
 
     func loadApps() async {
@@ -180,6 +183,7 @@ final class AppListViewModel: AppListViewModelProtocol {
             }
 
             Log.print.info("[AppList] Synced \(appModels.count) apps for account: \(self.uiState.account.name)")
+            await firstAppsLoaded.recordAppsLoaded(count: appModels.count, provider: .apple, on: .appList)
 
         } catch {
             uiState.syncError = error.localizedDescription

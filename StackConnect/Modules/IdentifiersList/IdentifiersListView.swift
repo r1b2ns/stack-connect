@@ -43,6 +43,7 @@ struct IdentifiersListView<ViewModel: IdentifiersListViewModelProtocol>: View {
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search identifiers")
             )
+            .trackSearch(query: viewModel.uiState.searchQuery, resultCount: viewModel.uiState.filtered.count, on: .identifiersList)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     StackTrackedButton(.add, on: .identifiersList) {

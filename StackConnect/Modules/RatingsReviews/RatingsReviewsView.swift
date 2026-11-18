@@ -117,7 +117,7 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
                     buildLoadMoreButton()
                 }
                 if viewModel.uiState.filterRating != nil {
-                    Button(String(localized: "Show All Ratings")) {
+                    StackTrackedButton(String(localized: "Show All Ratings"), button: .showAllRatings, on: .ratingsReviews) {
                         Task { await viewModel.applyFilter(rating: nil) }
                     }
                 }
@@ -136,7 +136,7 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
             } actions: {
                 // A rating filter can hide every review: keep a way back.
                 if viewModel.uiState.filterRating != nil {
-                    Button(String(localized: "Show All Ratings")) {
+                    StackTrackedButton(String(localized: "Show All Ratings"), button: .showAllRatings, on: .ratingsReviews) {
                         Task { await viewModel.applyFilter(rating: nil) }
                     }
                 }
@@ -230,9 +230,12 @@ struct RatingsReviewsView<ViewModel: RatingsReviewsViewModelProtocol>: View {
     }
 
     private func buildLoadMoreButton() -> some View {
-        Button(viewModel.uiState.loadMoreError == nil
-            ? String(localized: "Load More Reviews")
-            : String(localized: "Try Again")
+        StackTrackedButton(
+            viewModel.uiState.loadMoreError == nil
+                ? String(localized: "Load More Reviews")
+                : String(localized: "Try Again"),
+            button: viewModel.uiState.loadMoreError == nil ? .loadMore : .tryAgain,
+            on: .ratingsReviews
         ) {
             Task { await viewModel.loadMore() }
         }

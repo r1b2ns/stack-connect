@@ -20,3 +20,18 @@ extension EnvironmentValues {
         set { self[AnalyticsTrackerKey.self] = newValue }
     }
 }
+
+/// The tracked screen a view is shown on, set by `.trackScreen(_:)` for its
+/// whole subtree. Shared components (error views, Share Error) read it to
+/// attribute their events without every call site passing the screen.
+/// `nil` outside any tracked screen.
+private struct AnalyticsScreenKey: EnvironmentKey {
+    static let defaultValue: AnalyticsScreen? = nil
+}
+
+extension EnvironmentValues {
+    var analyticsScreen: AnalyticsScreen? {
+        get { self[AnalyticsScreenKey.self] }
+        set { self[AnalyticsScreenKey.self] = newValue }
+    }
+}

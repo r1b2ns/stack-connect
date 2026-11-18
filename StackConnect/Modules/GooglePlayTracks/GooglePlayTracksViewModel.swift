@@ -49,7 +49,8 @@ final class GooglePlayTracksViewModel: GooglePlayTracksViewModelProtocol, Google
         account: AccountModel,
         keychain: KeyStorable = KeychainStorable.shared,
         storage: PersistentStorable? = nil,
-        connectionFactory: @escaping ConnectionFactory = { GooglePlayAccountConnection(credentials: $0) }
+        connectionFactory: @escaping ConnectionFactory = { GooglePlayAccountConnection(credentials: $0) },
+        analytics: AnalyticsReporting = AnalyticsService.shared
     ) {
         self.uiState = GooglePlayTracksUiState(account: account, app: app)
         self.cache = GooglePlayAppCacheStore(storage: storage ?? SwiftDataStorable.shared, accountId: account.id, packageName: app.packageName)
@@ -63,7 +64,9 @@ final class GooglePlayTracksViewModel: GooglePlayTracksViewModelProtocol, Google
             connectionFactory: connectionFactory,
             fetch: { connection, packageName in
                 try await connection.fetchTracks(packageName: packageName)
-            }
+            },
+            screen: .googlePlayTracks,
+            analytics: analytics
         )
     }
 

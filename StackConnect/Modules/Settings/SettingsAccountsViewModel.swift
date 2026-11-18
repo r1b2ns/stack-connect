@@ -154,21 +154,28 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
     // MARK: - Import
 
     /// Accepts a `.scexport` file of any provider (see `AccountImporter`).
+    /// - Returns: the user-facing error, or `nil` on success. The failure event
+    ///   carries the error's `error_category`, never its message.
     func importAccount(from url: URL, password: String, customName: String?) async -> String? {
         analytics.track(.buttonTap(.confirmImport, on: .importAccount))
         let error = await performImport(from: url, password: password, customName: customName)
-        analytics.track(.action(.importAccount, on: .importAccount, result: error == nil ? .success : .failure))
-        return error
+        analytics.track(.action(
+            .importAccount,
+            on: .importAccount,
+            result: error == nil ? .success : .failure,
+            parameters: error.map { AnalyticsErrorCategory(importReason: $0.reason).parameters } ?? [:]
+        ))
+        return error?.message
     }
 
-    private func performImport(from url: URL, password: String, customName: String?) async -> String? {
+    private func performImport(from url: URL, password: String, customName: String?) async -> AccountImportError? {
         switch await importer.importAccount(from: url, password: password, customName: customName) {
         case .success(let account):
             Log.print.info("[SettingsAccounts] Imported account: \(account.name) (\(account.providerType.displayName))")
             await loadAccounts()
             return nil // success
         case .failure(let error):
-            return error.message
+            return error
         }
     }
 }

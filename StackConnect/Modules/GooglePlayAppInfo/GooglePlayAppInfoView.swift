@@ -36,6 +36,7 @@ struct GooglePlayAppInfoView<ViewModel: GooglePlayAppInfoViewModelProtocol>: Vie
             hasContent: viewModel.uiState.hasContent,
             error: viewModel.uiState.error,
             errorReportContext: errorReportContext,
+            errorCategory: viewModel.uiState.errorCategory,
             onRetry: { Task { await viewModel.load() } }
         ) {
             buildContent()
@@ -51,6 +52,7 @@ struct GooglePlayAppInfoView<ViewModel: GooglePlayAppInfoViewModelProtocol>: Vie
             isPresented: $viewModel.uiState.showSyncToast,
             message: String(localized: "Syncing app details...")
         )
+        .trackScreen(.googlePlayAppInfo)
     }
 
     private var screenTitle: String {
@@ -67,7 +69,7 @@ struct GooglePlayAppInfoView<ViewModel: GooglePlayAppInfoViewModelProtocol>: Vie
     private func buildContent() -> some View {
         List {
             if let error = viewModel.uiState.error {
-                StackInlineErrorSection(message: error, reportContext: errorReportContext)
+                StackInlineErrorSection(message: error, reportContext: errorReportContext, errorCategory: viewModel.uiState.errorCategory)
             }
 
             if let details = viewModel.uiState.details {
@@ -147,6 +149,7 @@ struct GooglePlayAppInfoView<ViewModel: GooglePlayAppInfoViewModelProtocol>: Vie
                             .foregroundStyle(.primary)
                     }
                 }
+                .trackOpenURL(.contact, on: .googlePlayAppInfo)
             } else {
                 LabeledContent {
                     Text(value)

@@ -53,6 +53,15 @@ struct StackConnectApp: App {
             fatalError("Failed to create ModelContainer: \(error)")
         }
 
+        // Analytics derived from storage, now that it's ready: the account
+        // user properties (kept in sync on every account change) and the
+        // existing-install check of the one-shot `first_apps_loaded`. Not in a
+        // unit-test host, which must not read the simulator's real store.
+        if !Self.isUnitTestHost {
+            AnalyticsUserPropertiesUpdater.shared.start()
+            FirstAppsLoadedTracker.shared.seedForExistingInstall(storage: SwiftDataStorable.shared)
+        }
+
         try? Tips.configure([
             .displayFrequency(.immediate),
             .datastoreLocation(.applicationDefault)

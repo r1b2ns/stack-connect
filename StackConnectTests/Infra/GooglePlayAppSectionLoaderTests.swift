@@ -1,5 +1,6 @@
 import XCTest
 import StackCoreRust
+import StackProtocols
 @testable import StackConnect
 
 /// The loader behind every edit-based Google Play section (store listings,
@@ -40,7 +41,10 @@ final class GooglePlayAppSectionLoaderTests: XCTestCase {
         )
     }
 
-    private func makeLoader() -> GooglePlayAppSectionLoader<GooglePlayTracksCache, any GooglePlayTracksFetching> {
+    private func makeLoader(
+        screen: AnalyticsScreen? = nil,
+        analytics: MockAnalyticsTracker = MockAnalyticsTracker()
+    ) -> GooglePlayAppSectionLoader<GooglePlayTracksCache, any GooglePlayTracksFetching> {
         GooglePlayAppSectionLoader(
             account: account,
             app: app,
@@ -50,7 +54,9 @@ final class GooglePlayAppSectionLoaderTests: XCTestCase {
             connectionFactory: connection.tracksFactory,
             fetch: { connection, packageName in
                 try await connection.fetchTracks(packageName: packageName)
-            }
+            },
+            screen: screen,
+            analytics: analytics
         )
     }
 
@@ -288,6 +294,67 @@ final class GooglePlayAppSectionLoaderTests: XCTestCase {
         await details.loadIfNeeded()
 
         return [listings.uiState.error, tracks.uiState.error, details.uiState.error]
+    }
+
+    // MARK: - Analytics
+
+    func testFirstLoadAndRefreshAreTrackedOnTheScreen() async {
+        let analytics = MockAnalyticsTracker()
+        let host = SectionHost()
+        let loader = makeLoader(screen: .googlePlayTracks, analytics: analytics)
+
+        await loader.loadIfNeeded(into: host)
+        await loader.loadIfNeeded(into: host)
+        await loader.load(into: host)
+
+        XCTAssertEqual(analytics.results(of: .load), [.success], "Appearing again reads nothing, tracks nothing")
+        XCTAssertEqual(analytics.results(of: .refresh), [.success])
+        XCTAssertEqual(analytics.actions(of: .load).first?.parameters["screen_name"], .string("google_play_tracks"))
+    }
+
+    func testFailedLoadIsTrackedWithItsCategoryAndKeptForErrorShown() async {
+        connection.fetchTracksHandler = { _ in throw StackError.Http(status: 403, message: "The caller does not have permission") }
+        let analytics = MockAnalyticsTracker()
+        let host = SectionHost()
+        let loader = makeLoader(screen: .googlePlayTracks, analytics: analytics)
+
+        await loader.loadIfNeeded(into: host)
+
+        XCTAssertEqual(analytics.results(of: .load), [.failure])
+        XCTAssertEqual(analytics.actions(of: .load).first?.parameters["error_category"], .string("forbidden"))
+        XCTAssertEqual(host.uiState.errorCategory, .forbidden)
+        XCTAssertTrue(analytics.nonFatals.isEmpty, "Permission errors are expected, never non-fatals")
+    }
+
+    func testMissingCredentialsIsTrackedAsInvalidCredentials() async {
+        keychain = MockKeyStorable()
+        let analytics = MockAnalyticsTracker()
+        let host = SectionHost()
+        let loader = makeLoader(screen: .googlePlayTracks, analytics: analytics)
+
+        await loader.loadIfNeeded(into: host)
+
+        XCTAssertEqual(analytics.actions(of: .load).first?.parameters["error_category"], .string("invalid_credentials"))
+        XCTAssertEqual(host.uiState.errorCategory, .invalidCredentials)
+    }
+
+    func testServerFailureIsRecordedAsANonFatal() async {
+        connection.fetchTracksHandler = { _ in throw StackError.Http(status: 500, message: "Internal error") }
+        let analytics = MockAnalyticsTracker()
+        let loader = makeLoader(screen: .googlePlayTracks, analytics: analytics)
+
+        await loader.loadIfNeeded(into: SectionHost())
+
+        XCTAssertEqual(analytics.nonFatals.map(\.category), [.server])
+    }
+
+    func testWithoutAScreenNothingIsTracked() async {
+        let analytics = MockAnalyticsTracker()
+        let loader = makeLoader(analytics: analytics)
+
+        await loader.loadIfNeeded(into: SectionHost())
+
+        XCTAssertTrue(analytics.trackedEvents.isEmpty)
     }
 }
 

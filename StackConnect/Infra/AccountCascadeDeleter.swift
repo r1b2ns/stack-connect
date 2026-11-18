@@ -26,6 +26,9 @@ import Foundation
 /// 7. the `AccountModel` itself (`account.id`);
 /// 8. the keychain credentials (`"credentials.<accountId>"`).
 ///
+/// Then posts `AccountsChange` so account-derived state (analytics user
+/// properties) is recomputed, whichever screen deleted the account.
+///
 /// Error semantics:
 /// - Reads propagate. They all run before anything is deleted, so a failed read
 ///   leaves storage untouched and the caller can simply retry.
@@ -103,6 +106,7 @@ enum AccountCascadeDeleter {
 
         try await storage.delete(AccountModel.self, id: account.id)
         keychain.removeObject(forKey: "credentials.\(account.id)")
+        AccountsChange.post()
     }
 
     /// Removes the Play reviews the Home sync cached for this account's apps

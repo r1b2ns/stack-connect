@@ -1,5 +1,6 @@
 import XCTest
 import StackCoreRust
+import StackProtocols
 @testable import StackConnect
 
 /// The Google Play release write flow (plan T4, section 4): denied without the
@@ -47,7 +48,12 @@ final class GooglePlayReleaseWriteViewModelTests: XCTestCase {
 
     // MARK: - Helpers
 
-    private func makeSUT(account: AccountModel? = nil, credentials: Bool = true) -> GooglePlayReleaseWriteViewModel {
+    private func makeSUT(
+        account: AccountModel? = nil,
+        credentials: Bool = true,
+        analytics: MockAnalyticsTracker = MockAnalyticsTracker(),
+        screen: AnalyticsScreen = .googlePlayAppDetail
+    ) -> GooglePlayReleaseWriteViewModel {
         let account = account ?? owner
         if credentials {
             keychain.setObject(
@@ -64,7 +70,7 @@ final class GooglePlayReleaseWriteViewModelTests: XCTestCase {
             connectionFactory: connection.releaseWriteFactory,
             dashboardDidChange: { [weak self] _ in self?.dashboardRefreshes += 1 }
         )
-        return GooglePlayReleaseWriteViewModel(writer: writer)
+        return GooglePlayReleaseWriteViewModel(writer: writer, screen: screen, analytics: analytics)
     }
 
     private func imported(version: [AccountPermission]) -> AccountModel {
@@ -476,5 +482,81 @@ final class GooglePlayReleaseWriteViewModelTests: XCTestCase {
         )))
         detail.discardChanges()
         XCTAssertFalse(detail.uiState.hasChanges)
+    }
+
+    // MARK: - Analytics
+
+    func testSuccessfulHaltIsTrackedOnTheHostScreenWithKindAndTrackOnly() async throws {
+        try await seedCaches()
+        let analytics = MockAnalyticsTracker()
+        let sut = makeSUT(analytics: analytics, screen: .googlePlayTracks)
+
+        let ok = await sut.confirm(haltWrite())
+
+        XCTAssertTrue(ok)
+        let event = try XCTUnwrap(analytics.actions(of: .releaseWrite).first)
+        XCTAssertEqual(event.parameters, [
+            "action_name": .string("release_write"),
+            "screen_name": .string("google_play_tracks"),
+            "result": .string("success"),
+            "kind": .string("halt"),
+            "track": .string("production")
+        ], "Never the release name or version codes; halt has no checklist so no send_for_review")
+        XCTAssertTrue(analytics.nonFatals.isEmpty)
+    }
+
+    func testChecklistWriteIsTrackedOnTheChecklistWithSendForReview() async throws {
+        try await seedCaches()
+        let analytics = MockAnalyticsTracker()
+        let sut = makeSUT(analytics: analytics)
+        sut.start(.releaseToAll, release: rolling, track: "production")
+        let write = try XCTUnwrap(sut.uiState.checklistWrite)
+        sut.uiState.commitOptions.sendForReview = false
+
+        _ = await sut.confirm(write)
+
+        let event = try XCTUnwrap(analytics.actions(of: .releaseWrite).first)
+        XCTAssertEqual(event.parameters["screen_name"], .string("google_play_review_checklist"))
+        XCTAssertEqual(event.parameters["kind"], .string("complete"))
+        XCTAssertEqual(event.parameters["send_for_review"], .bool(false))
+    }
+
+    func testFailedWriteIsTrackedWithItsErrorCategory() async throws {
+        try await seedCaches()
+        connection.applyReleaseChangeHandler = { _ in
+            throw StackError.Http(status: 503, message: "Backend unavailable")
+        }
+        let analytics = MockAnalyticsTracker()
+        let sut = makeSUT(analytics: analytics)
+
+        _ = await sut.confirm(GooglePlayPendingWrite(track: "my-qa-track", change: .halt(versionCodes: ["4210"]), releaseTitle: "4.2.0"))
+
+        XCTAssertEqual(analytics.results(of: .releaseWrite), [.failure])
+        let event = try XCTUnwrap(analytics.actions(of: .releaseWrite).first)
+        XCTAssertEqual(event.parameters["error_category"], .string("server"))
+        XCTAssertEqual(event.parameters["track"], .string("custom"), "A custom track's name is never sent")
+        XCTAssertFalse(event.parameters.values.contains(.string("Backend unavailable")))
+        XCTAssertEqual(analytics.nonFatals.map(\.category), [.server], "Server failures are recorded as non-fatals")
+    }
+
+    func testDeniedWriteIsNotTracked() async {
+        let analytics = MockAnalyticsTracker()
+        let sut = makeSUT(account: imported(version: [.view]), analytics: analytics)
+
+        let ok = await sut.confirm(haltWrite())
+
+        XCTAssertFalse(ok)
+        XCTAssertTrue(analytics.actions(of: .releaseWrite).isEmpty, "Nothing was attempted")
+    }
+
+    func testReleaseWriteKindAndTrackKindMappings() {
+        XCTAssertEqual(AnalyticsReleaseWriteKind(.setRollout(versionCodes: [], userFraction: 0.1)), .setRollout)
+        XCTAssertEqual(AnalyticsReleaseWriteKind(.complete(versionCodes: [])), .complete)
+        XCTAssertEqual(AnalyticsReleaseWriteKind(.resume(versionCodes: [])), .resume)
+        XCTAssertEqual(AnalyticsTrackKind(track: "production"), .production)
+        XCTAssertEqual(AnalyticsTrackKind(track: "beta"), .openTesting)
+        XCTAssertEqual(AnalyticsTrackKind(track: "alpha"), .closedTesting)
+        XCTAssertEqual(AnalyticsTrackKind(track: "internal"), .internalTesting)
+        XCTAssertEqual(AnalyticsTrackKind(track: "Acme Partners"), .custom)
     }
 }

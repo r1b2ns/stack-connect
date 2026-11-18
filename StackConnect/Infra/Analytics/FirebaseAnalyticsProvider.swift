@@ -19,6 +19,11 @@ struct FirebaseAnalyticsProvider: AnalyticsProvider {
         Analytics.logEvent(payload.name, parameters: payload.parameters.isEmpty ? nil : payload.parameters)
     }
 
+    func setUserProperty(_ value: String?, forName name: String) {
+        guard let property = FirebaseAnalyticsPayload.userProperty(name: name, value: value) else { return }
+        Analytics.setUserProperty(property.value, forName: property.name)
+    }
+
     /// Firebase has no public flush: events are queued and uploaded by the SDK.
     func flush() async {}
 

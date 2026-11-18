@@ -45,6 +45,7 @@ struct RemoteConfigView<ViewModel: RemoteConfigViewModelProtocol>: View {
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search parameters")
             )
+            .trackSearch(query: viewModel.uiState.searchQuery, resultCount: viewModel.uiState.filteredParameters.count, on: .remoteConfig)
             .toolbar { buildToolbar() }
             .task { await viewModel.load() }
             .refreshable { await viewModel.refresh() }

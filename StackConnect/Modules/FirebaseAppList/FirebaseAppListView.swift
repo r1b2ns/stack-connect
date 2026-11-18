@@ -44,6 +44,7 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search by name, ID or bundle")
             )
+            .trackSearch(query: viewModel.uiState.searchQuery, resultCount: viewModel.uiState.filteredApps.count, on: .firebaseAppList)
             .toolbar { buildToolbar() }
             .task { await viewModel.load() }
             .refreshable { await viewModel.refresh() }

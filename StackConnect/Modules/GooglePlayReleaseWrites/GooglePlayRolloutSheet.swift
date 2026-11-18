@@ -85,15 +85,16 @@ struct GooglePlayRolloutSheet<Writes: GooglePlayReleaseWriteViewModelProtocol>: 
             }
             .navigationTitle(String(localized: "Staged Rollout"))
             .navigationBarTitleDisplayMode(.inline)
+            .trackScreen(.googlePlayRollout)
             .googlePlayReleaseWrites(writes, inSheet: true)
             .googlePlayReviewChecklistDestination(writes)
             .onChange(of: writes.uiState.revision) { dismiss() }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { dismiss() }
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .googlePlayRollout) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "Save")) { save() }
+                    StackTrackedButton(String(localized: "Save"), button: .save, on: .googlePlayRollout) { save() }
                         .fontWeight(.semibold)
                         .disabled(form.change(for: target) == nil)
                 }
@@ -172,12 +173,12 @@ struct GooglePlayRolloutSheet<Writes: GooglePlayReleaseWriteViewModelProtocol>: 
                                    value: String(localized: "\(GooglePlayPendingWrite.percent(fraction)) of users"))
                 }
                 if release.status == .inProgress {
-                    Button(String(localized: "Halt Rollout")) {
+                    StackTrackedButton(String(localized: "Halt Rollout"), button: .haltRollout, on: .googlePlayRollout) {
                         request(.halt(versionCodes: release.versionCodes))
                     }
                     .foregroundStyle(.orange)
                 } else {
-                    Button(String(localized: "Resume Rollout")) {
+                    StackTrackedButton(String(localized: "Resume Rollout"), button: .resumeRollout, on: .googlePlayRollout) {
                         request(.resume(versionCodes: release.versionCodes))
                     }
                 }

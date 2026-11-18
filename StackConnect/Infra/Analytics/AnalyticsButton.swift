@@ -31,6 +31,10 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     case back = "back"
     case `continue` = "continue"
     case download = "download"
+    case next = "next"
+    case loadMore = "load_more"
+    /// "Share Error" on a full-screen / inline error or an error alert.
+    case shareError = "share_error"
 
     // MARK: Home
     case customizeWidgets = "customize_widgets"
@@ -173,6 +177,7 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     case testInformation = "test_information"
     case testers = "testers"
     case resendInvite = "resend_invite"
+    case confirmResendInvite = "confirm_resend_invite"
 
     // MARK: Certificates / Identifiers / Profiles / Devices
     case certificate = "certificate"
@@ -221,6 +226,32 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     case messaging = "messaging"
     case parameter = "parameter"
     case duplicate = "duplicate"
+
+    // MARK: Ratings & Reviews
+    case showAllRatings = "show_all_ratings"
+
+    // MARK: Users (Google Play)
+    case addApp = "add_app"
+    case removeAppAccess = "remove_app_access"
+
+    // MARK: Google Play app & releases
+    case storeListings = "store_listings"
+    case storeListing = "store_listing"
+    case tracks = "tracks"
+    case appDetails = "app_details"
+    case seeAllTracks = "see_all_tracks"
+    case openPlayConsole = "open_play_console"
+    case newRelease = "new_release"
+    case stagedRollout = "staged_rollout"
+    case rollOut = "roll_out"
+    case increaseRollout = "increase_rollout"
+    case haltRollout = "halt_rollout"
+    case resumeRollout = "resume_rollout"
+    case releaseToAll = "release_to_all"
+    case promote = "promote"
+    /// A Play app's website / email / phone link (App Details).
+    case contact = "contact"
+    case promoVideo = "promo_video"
 }
 
 extension AnalyticsButton {

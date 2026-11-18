@@ -3,6 +3,10 @@ import StackProtocols
 
 /// Tracks a `screen_view` every time the modified view appears. Going back to a
 /// screen counts again, which matches the usual `screen_view` semantics.
+///
+/// Also publishes the screen as `\.analyticsScreen` to the modified view's
+/// subtree, so shared components inside it (error views, Share Error) report
+/// their events on this screen.
 struct StackTrackScreenModifier: ViewModifier {
 
     let screen: AnalyticsScreen
@@ -10,9 +14,11 @@ struct StackTrackScreenModifier: ViewModifier {
     @Environment(\.analytics) private var analytics
 
     func body(content: Content) -> some View {
-        content.onAppear {
-            Self.trackAppear(of: screen, with: analytics)
-        }
+        content
+            .onAppear {
+                Self.trackAppear(of: screen, with: analytics)
+            }
+            .environment(\.analyticsScreen, screen)
     }
 
     /// The side effect of `onAppear`, split out so it can be unit tested.

@@ -93,7 +93,7 @@ struct GooglePlayAccountSync: Sendable {
         } catch {
             Log.print.error("[Sync][GooglePlay] \(account.name) failed: \(error.localizedDescription)")
             await saveMetadata(appsSynced: 0, error: error.localizedDescription)
-            return .failed(accountId: account.id)
+            return .failed(accountId: account.id, category: AnalyticsErrorCategory(connectionError: error))
         }
 
         var apps = remote
@@ -122,6 +122,7 @@ struct GooglePlayAccountSync: Sendable {
             reviewsSaved = result.saved
         }
 
+        change.loadedApps = [SyncChange.LoadedApps(provider: .googlePlay, count: apps.count)]
         await saveMetadata(appsSynced: apps.count, error: nil)
         let modeLabel = mode == .lightweight ? "lightweight" : "full"
         Log.print.notice("[Sync][GooglePlay] \(account.name): \(apps.count) apps, \(reviewsSaved) reviews (\(modeLabel))")

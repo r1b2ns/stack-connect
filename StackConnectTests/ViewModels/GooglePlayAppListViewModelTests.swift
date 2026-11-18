@@ -10,6 +10,8 @@ final class GooglePlayAppListViewModelTests: XCTestCase {
     private var keychain: MockKeyStorable!
     private var connection: MockGooglePlayAccountConnection!
     private var accessChecker: MockGooglePlayAppAccessChecker!
+    private var analytics: MockAnalyticsTracker!
+    private var defaultsSuiteName: String!
 
     private let account = AccountModel(name: "Play Team", providerType: .googlePlay)
 
@@ -19,6 +21,8 @@ final class GooglePlayAppListViewModelTests: XCTestCase {
         keychain = MockKeyStorable()
         connection = MockGooglePlayAccountConnection()
         accessChecker = MockGooglePlayAppAccessChecker()
+        analytics = MockAnalyticsTracker()
+        defaultsSuiteName = "GooglePlayAppListViewModelTests.\(UUID().uuidString)"
         keychain.setObject(
             GooglePlayCredentials(serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON()),
             forKey: "credentials.\(account.id)"
@@ -30,6 +34,8 @@ final class GooglePlayAppListViewModelTests: XCTestCase {
         keychain = nil
         connection = nil
         accessChecker = nil
+        UserDefaults.standard.removePersistentDomain(forName: defaultsSuiteName)
+        analytics = nil
         try await super.tearDown()
     }
 
@@ -54,7 +60,12 @@ final class GooglePlayAppListViewModelTests: XCTestCase {
             storage: storage,
             connectionFactory: connection.appListFactory,
             accessCheckerFactory: { _ in checker },
-            connectivity: MockConnectivityProviding(online: online)
+            connectivity: MockConnectivityProviding(online: online),
+            analytics: analytics,
+            firstAppsLoaded: FirstAppsLoadedTracker(
+                defaults: UserDefaults(suiteName: defaultsSuiteName) ?? .standard,
+                analytics: analytics
+            )
         )
     }
 
@@ -569,6 +580,21 @@ extension GooglePlayAppListViewModelTests {
 
         XCTAssertEqual(connection.iconRequests.sorted(), ["com.a", "com.b"])
         XCTAssertEqual(sut.uiState.apps.map(\.packageName), ["com.a", "com.b"])
+    }
+
+    func testFirstSuccessfulLoadSendsFirstAppsLoadedOnce() async {
+        connection.fetchAppsHandler = { [playApp("com.a", name: "A")] }
+        let sut = makeSUT()
+
+        await sut.load()
+        await sut.load()
+
+        XCTAssertEqual(analytics.actions(of: .firstAppsLoaded), [
+            .action(.firstAppsLoaded, on: .googlePlayAppList, parameters: [
+                AnalyticsParameterKey.count: .int(1),
+                AnalyticsParameterKey.kind: .string("googlePlay")
+            ])
+        ])
     }
 
     func testIconFetchesAreBoundedInFlight() async {

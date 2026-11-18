@@ -47,6 +47,7 @@ struct BetaGroupTestersView<ViewModel: BetaGroupTestersViewModelProtocol>: View 
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: Text("Search testers")
             )
+            .trackSearch(query: viewModel.uiState.searchQuery, resultCount: viewModel.uiState.filteredTesters.count, on: .betaGroupTesters)
             .autocorrectionDisabled()
             .textInputAutocapitalization(.never)
             .task { await viewModel.load() }

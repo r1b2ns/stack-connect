@@ -119,7 +119,7 @@ final class AccountImporterTests: XCTestCase {
             serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON(privateKeyId: "new-key")
         ), customName: "Another name")
 
-        XCTAssertEqual(result, .failure(AccountImportError(message: duplicateError)))
+        XCTAssertEqual(result, .failure(AccountImportError(message: duplicateError, reason: .duplicate)))
         let accounts = try await storedAccounts()
         XCTAssertEqual(accounts.count, 1, "Nothing saved")
         XCTAssertEqual(keychain.storedKeys, keysBefore, "No credentials written")
@@ -157,7 +157,8 @@ final class AccountImporterTests: XCTestCase {
         let result = try await importFile(googlePlayPayload(serviceAccountJSON: #"{"type": "service_account", "client_email": "#))
 
         XCTAssertEqual(result, .failure(AccountImportError(
-            message: String(localized: "The Google Play service account key in this file is invalid. Ask the sender to export the account again.")
+            message: String(localized: "The Google Play service account key in this file is invalid. Ask the sender to export the account again."),
+            reason: .invalidFile
         )))
         let accounts = try await storedAccounts()
         XCTAssertTrue(accounts.isEmpty)
@@ -182,7 +183,8 @@ final class AccountImporterTests: XCTestCase {
         let result = try await importFile(payload)
 
         XCTAssertEqual(result, .failure(AccountImportError(
-            message: String(localized: "Invalid Google Play credentials. Required: serviceAccountJSON.")
+            message: String(localized: "Invalid Google Play credentials. Required: serviceAccountJSON."),
+            reason: .invalidFile
         )))
     }
 
@@ -195,7 +197,8 @@ final class AccountImporterTests: XCTestCase {
         )
 
         XCTAssertEqual(result, .failure(AccountImportError(
-            message: String(localized: "This file contains a \(ProviderType.googlePlay.displayName) account, but this is the \(ProviderType.apple.displayName) section.")
+            message: String(localized: "This file contains a \(ProviderType.googlePlay.displayName) account, but this is the \(ProviderType.apple.displayName) section."),
+            reason: .wrongProvider
         )))
         XCTAssertTrue(keychain.storedKeys.isEmpty)
     }
@@ -239,5 +242,42 @@ final class AccountImporterTests: XCTestCase {
         let imported = try await importFile(googlePlayPayload()).get()
 
         XCTAssertFalse(imported.canView(.users), "Files without a `users` permission hide the Users tab (fail closed)")
+    }
+
+    // MARK: - Failure reasons (analytics `error_category`)
+
+    func testWrongPasswordIsClassified() async throws {
+        let url = try makeImportFile(googlePlayPayload())
+
+        let result = await sut.importAccount(from: url, password: "not-the-password", customName: nil)
+
+        guard case .failure(let error) = result else { return XCTFail("Expected a failure") }
+        XCTAssertEqual(error.reason, .wrongPassword)
+    }
+
+    func testUnreadableFileIsAnInvalidFile() async {
+        let missing = FileManager.default.temporaryDirectory.appendingPathComponent("missing-\(UUID().uuidString).scexport")
+
+        let result = await sut.importAccount(from: missing, password: password, customName: nil)
+
+        guard case .failure(let error) = result else { return XCTFail("Expected a failure") }
+        XCTAssertEqual(error.reason, .invalidFile)
+    }
+
+    func testStorageFailureIsClassified() async throws {
+        await storage.failSave(AccountModel.self)
+
+        let result = try await importFile(googlePlayPayload())
+
+        guard case .failure(let error) = result else { return XCTFail("Expected a failure") }
+        XCTAssertEqual(error.reason, .storage)
+    }
+
+    func testSuccessfulImportPostsAccountsChange() async throws {
+        let posted = expectation(forNotification: .accountsDidChange, object: nil)
+
+        _ = try await importFile(googlePlayPayload()).get()
+
+        await fulfillment(of: [posted], timeout: 1)
     }
 }

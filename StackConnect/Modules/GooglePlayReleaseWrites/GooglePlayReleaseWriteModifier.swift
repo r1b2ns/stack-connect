@@ -38,6 +38,7 @@ struct GooglePlayReleaseWriteModifier<ViewModel: GooglePlayReleaseWriteViewModel
                 ),
                 presenting: alertWrite
             ) { write in
+                // The commit and its outcome are tracked by `confirm`.
                 Button(write.confirmLabel, role: write.isDestructive ? .destructive : nil) {
                     Task { await viewModel.confirm(write) }
                 }
@@ -148,6 +149,18 @@ extension GooglePlayReleaseAction {
     var writeKind: GooglePlayReleaseWriteAccess.Kind {
         self == .promote ? .add : .edit
     }
+
+    /// The `button_name` of this action's bar button / swipe action.
+    var analyticsButton: AnalyticsButton {
+        switch self {
+        case .rollOut:         return .rollOut
+        case .increaseRollout: return .increaseRollout
+        case .halt:            return .haltRollout
+        case .resume:          return .resumeRollout
+        case .releaseToAll:    return .releaseToAll
+        case .promote:         return .promote
+        }
+    }
 }
 
 /// Bottom bar of a release (prototype screen 3), from `GooglePlayReleaseActions`:
@@ -156,6 +169,8 @@ struct GooglePlayReleaseActionBar: View {
 
     let actions: [GooglePlayReleaseAction]
     let isBusy: Bool
+    /// Where the bar's taps are tracked.
+    let screen: AnalyticsScreen
     let perform: (GooglePlayReleaseAction) -> Void
 
     var body: some View {
@@ -180,7 +195,7 @@ struct GooglePlayReleaseActionBar: View {
     }
 
     private func button(_ action: GooglePlayReleaseAction, style: StackActionButtonLabel.Style) -> some View {
-        Button {
+        StackTrackedButton(action.analyticsButton, on: screen) {
             perform(action)
         } label: {
             StackActionButtonLabel(title: action.title, color: action.color, style: style)
