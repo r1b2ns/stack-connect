@@ -52,6 +52,7 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
                     app: app,
                     configContent: viewModel.uiState.configContent,
                     configFilename: viewModel.uiState.configFilename,
+                    configError: viewModel.uiState.configError,
                     onUpdateNickname: { newName in
                         Task { await viewModel.updateNickname(app, newName: newName) }
                     },
@@ -66,6 +67,7 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
                         viewModel.uiState.selectedApp = nil
                         viewModel.uiState.configContent = nil
                         viewModel.uiState.configFilename = nil
+                        viewModel.uiState.configError = nil
                     }
                 )
             }
@@ -133,25 +135,26 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
     private func buildList() -> some View {
         List {
             if !viewModel.uiState.iosApps.isEmpty {
-                buildSection(title: "iOS", icon: "apple.logo", color: .blue, apps: viewModel.uiState.iosApps)
+                buildSection(title: "iOS", glyph: .system("apple.logo"), color: .blue, apps: viewModel.uiState.iosApps)
             }
             if !viewModel.uiState.androidApps.isEmpty {
-                buildSection(title: "Android", icon: "smartphone", color: .green, apps: viewModel.uiState.androidApps)
+                buildSection(title: "Android", glyph: .android, color: .green, apps: viewModel.uiState.androidApps)
             }
             if !viewModel.uiState.webApps.isEmpty {
-                buildSection(title: "Web", icon: "globe", color: .purple, apps: viewModel.uiState.webApps)
+                buildSection(title: "Web", glyph: .system("globe"), color: .purple, apps: viewModel.uiState.webApps)
             }
         }
     }
 
     // MARK: - Section
 
-    private func buildSection(title: String, icon: String, color: Color, apps: [FirebaseAppModel]) -> some View {
+    private func buildSection(title: String, glyph: StackPlatformGlyph, color: Color, apps: [FirebaseAppModel]) -> some View {
         Section {
             ForEach(apps) { app in
                 StackTrackedButton(.app, on: .firebaseAppList) {
                     viewModel.uiState.configContent = nil
                     viewModel.uiState.configFilename = nil
+                    viewModel.uiState.configError = nil
                     viewModel.uiState.selectedApp = app
                 } label: {
                     buildAppRow(app, color: color)
@@ -160,7 +163,11 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
             }
         } header: {
             HStack {
-                Label(title, systemImage: icon)
+                Label {
+                    Text(title)
+                } icon: {
+                    glyph.image
+                }
                 Spacer()
                 Text("\(apps.count)")
                     .font(.caption)
@@ -173,12 +180,7 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
 
     private func buildAppRow(_ app: FirebaseAppModel, color: Color) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: app.platform.iconName)
-                .font(.body)
-                .foregroundStyle(.white)
-                .frame(width: 36, height: 36)
-                .background(color)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+            StackIconTile(glyph: app.platform.glyph, color: color, size: 36)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(app.displayName)
@@ -226,6 +228,7 @@ struct FirebaseAppDetailSheet: View {
     let app: FirebaseAppModel
     let configContent: String?
     let configFilename: String?
+    let configError: String?
     let onUpdateNickname: (String) -> Void
     let onFetchConfig: () -> Void
     let onDelete: () -> Void
@@ -266,7 +269,11 @@ struct FirebaseAppDetailSheet: View {
     private func buildInfoSection() -> some View {
         Section {
             HStack {
-                Label(String(localized: "Platform"), systemImage: app.platform.iconName)
+                Label {
+                    Text(String(localized: "Platform"))
+                } icon: {
+                    app.platform.glyph.image
+                }
                 Spacer()
                 Text(app.platform.displayName)
                     .foregroundStyle(.secondary)
@@ -346,6 +353,8 @@ struct FirebaseAppDetailSheet: View {
                             .foregroundStyle(.blue)
                     }
                 }
+            } else if let configError {
+                buildConfigError(configError)
             } else {
                 HStack {
                     Label(String(localized: "Loading config..."), systemImage: "doc.text.fill")
@@ -361,6 +370,22 @@ struct FirebaseAppDetailSheet: View {
             } else if app.platform == .android {
                 Text("google-services.json")
             }
+        }
+    }
+
+    private func buildConfigError(_ message: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Label(message, systemImage: "exclamationmark.triangle.fill")
+                .font(.footnote)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            StackTrackedButton(String(localized: "Retry"), button: .tryAgain, on: .firebaseAppDetail) {
+                onFetchConfig()
+            }
+            .font(.footnote)
+            .buttonStyle(.borderless)
         }
     }
 
@@ -446,9 +471,9 @@ struct CreateFirebaseAppSheet: View {
     private func buildPlatformStep() -> some View {
         List {
             Section {
-                buildPlatformOption(.ios, icon: "apple.logo", color: .blue, subtitle: "iPhone, iPad, Apple Watch")
-                buildPlatformOption(.android, icon: "smartphone", color: .green, subtitle: "Android phones and tablets")
-                buildPlatformOption(.web, icon: "globe", color: .purple, subtitle: "Web application")
+                buildPlatformOption(.ios, color: .blue, subtitle: "iPhone, iPad, Apple Watch")
+                buildPlatformOption(.android, color: .green, subtitle: "Android phones and tablets")
+                buildPlatformOption(.web, color: .purple, subtitle: "Web application")
             } header: {
                 Text("Select Platform")
             } footer: {
@@ -457,17 +482,12 @@ struct CreateFirebaseAppSheet: View {
         }
     }
 
-    private func buildPlatformOption(_ platform: FirebaseAppPlatform, icon: String, color: Color, subtitle: String) -> some View {
+    private func buildPlatformOption(_ platform: FirebaseAppPlatform, color: Color, subtitle: String) -> some View {
         StackTrackedButton(.select, on: .createFirebaseApp) {
             selectedPlatform = platform
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.body)
-                    .foregroundStyle(.white)
-                    .frame(width: 32, height: 32)
-                    .background(color)
-                    .clipShape(RoundedRectangle(cornerRadius: 7))
+                StackIconTile(glyph: platform.glyph, color: color, size: 32)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(platform.displayName)

@@ -28,7 +28,9 @@ struct TutorialBlock: Identifiable {
 
 /// Reusable, data-driven "How to" tutorial.
 ///
-/// Renders its own `Section` containing a collapsible `DisclosureGroup`. Each
+/// Renders its own `Section` containing a collapsible `DisclosureGroup` (or,
+/// with `isCollapsible: false`, the steps directly — for sheets whose title
+/// already names the guide, so a disclosure would only hide the content). Each
 /// ``TutorialBlock`` is shown with an SF Symbol header, an optional `ShareLink`
 /// and a list of numbered-circle steps. Drop it straight into a `Form`:
 ///
@@ -46,6 +48,9 @@ struct TutorialGuideView: View {
     let systemImage: String
     let blocks: [TutorialBlock]
     var caption: String? = nil
+    /// `false` shows the steps straight away with no disclosure row. Use it
+    /// when the guide is the whole screen (e.g. the "How to import?" sheet).
+    var isCollapsible: Bool = true
 
     var body: some View {
         // Single-block guides (API/JSON key) don't need a per-block header: the
@@ -55,29 +60,37 @@ struct TutorialGuideView: View {
         let showHeader = blocks.count > 1
 
         return Section {
-            DisclosureGroup {
-                VStack(alignment: .leading, spacing: 16) {
-                    ForEach(blocks) { block in
-                        buildBlock(block, showHeader: showHeader)
-                    }
-
-                    if let caption {
-                        Text(caption)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+            if isCollapsible {
+                DisclosureGroup {
+                    buildContent(showHeader: showHeader)
+                } label: {
+                    Label(label, systemImage: systemImage)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-                .padding(.vertical, 8)
-            } label: {
-                Label(label, systemImage: systemImage)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+            } else {
+                buildContent(showHeader: showHeader)
             }
         }
     }
 
     // MARK: - Builders
+
+    private func buildContent(showHeader: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            ForEach(blocks) { block in
+                buildBlock(block, showHeader: showHeader)
+            }
+
+            if let caption {
+                Text(caption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.vertical, 8)
+    }
 
     @ViewBuilder
     private func buildBlock(_ block: TutorialBlock, showHeader: Bool) -> some View {

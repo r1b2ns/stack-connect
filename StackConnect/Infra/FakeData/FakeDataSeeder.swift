@@ -14,7 +14,7 @@ import SwiftData
 enum FakeDataSeeder {
 
     /// Bump to re-seed existing fake stores after the seeded accounts change.
-    static let seedVersion = "v3"
+    static let seedVersion = "v4"
     static let markerTypeName = "FakeDataSeedMarker"
 
     enum AccountID {

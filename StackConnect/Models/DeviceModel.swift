@@ -13,13 +13,7 @@ struct DeviceModel: Identifiable, Hashable, Codable {
     var isEnabled: Bool { status == "ENABLED" }
 
     var platformDisplayName: String {
-        switch platform {
-        case "IOS":       return String(localized: "iOS, tvOS, watchOS, visionOS")
-        case "MAC_OS":    return String(localized: "macOS")
-        case "UNIVERSAL": return String(localized: "Universal")
-        case .some(let raw): return raw
-        case .none:       return "—"
-        }
+        BundleIdPlatformLabel.label(for: platform, style: .expanded)
     }
 
     var deviceClassDisplayName: String {

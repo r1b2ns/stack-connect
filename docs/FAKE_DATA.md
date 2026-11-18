@@ -106,8 +106,8 @@ expired ad hoc profile.
 
 ### App Store Connect — "Jordan Avery (Personal)" (App Manager key)
 
-Tide Tables (iOS, 1.6.0 Waiting for Review) and Pocket Haiku (iOS, 2.0.1 Ready
-for Sale), 2 users, 3 devices, 2 certificates.
+Tide Tables (iOS, 1.6.0 Ready for Sale, phased release day 2 of 7) and Pocket
+Haiku (iOS, 2.0.1 Ready for Sale), 2 users, 3 devices, 2 certificates.
 
 ### Firebase — "Northwind Labs"
 

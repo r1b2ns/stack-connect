@@ -1,0 +1,695 @@
+[
+  {
+    "file": "001-home-customize-widgets.png",
+    "title": "Customize Widgets",
+    "module": "Home",
+    "flow": "Home > grid button (top-right)",
+    "notes": "Sheet with Edit/Close toolbar; inset grouped list 'Active' of Home widgets (In Review, Awaiting Release, Recent Reviews) with colored icon tiles, title and subtitle. On iPad: candidate for a form-sheet / popover from the toolbar button.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "002-home-customize-widgets-edit-mode.png",
+    "title": "Customize Widgets - edit mode",
+    "module": "Home",
+    "flow": "Home > grid button > Edit",
+    "notes": "List in edit mode: red remove controls and reorder handles per widget; Edit becomes Done. All three widgets active, so no 'Available' section is shown. iPad: same list in a sheet/popover; reorder via drag.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "003-asc-accounts-list.png",
+    "title": "App Store Connect accounts",
+    "module": "AccountsList",
+    "flow": "Home > App Store Connect",
+    "notes": "Large-title list of ASC accounts with role badge (Admin, App Manager) and chevrons; '+' toolbar button to add an account. iPad: natural sidebar/primary column of a split view.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "004-asc-add-account-options.png",
+    "title": "Add Account options sheet",
+    "module": "AccountsList",
+    "flow": "Home > App Store Connect > +",
+    "notes": "Medium-detent sheet with Cancel and two actions: Create New, Import. iPad: popover anchored to the + button.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "005-add-account-asc-form.png",
+    "title": "Add Account - App Store Connect form",
+    "module": "AddAccount",
+    "flow": "Home > App Store Connect > + > Create New",
+    "notes": "Full-height sheet form: Cancel / Save (disabled until valid). General (Account Name, Role menu picker 'Unspecified'), App Store Connect Credentials (Issuer ID, Private Key ID with paste buttons, multiline Private Key .p8 editor, Import .p8 file), help row 'How to generate the API key'. iPad: form sheet.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "006-add-account-asc-role-menu.png",
+    "title": "Add Account - role menu",
+    "module": "AddAccount",
+    "flow": "Home > App Store Connect > + > Create New > Role",
+    "notes": "Pull-down menu of ASC roles (Unspecified, Admin, App Manager, Developer, Marketing, Sales, Finance, Customer Support) with checkmark on current value.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "007-add-account-asc-help-expanded.png",
+    "title": "Add Account - API key help expanded",
+    "module": "AddAccount",
+    "flow": "Home > App Store Connect > + > Create New > How to generate the API key",
+    "notes": "Disclosure group expanded inline with 6 numbered steps (blue numbered circles, title + caption). iPad: could sit in a side column next to the form.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "008-northwind-team-apps-tab.png",
+    "title": "Northwind Labs - team root (Apps tab)",
+    "module": "AppList",
+    "flow": "Home > App Store Connect > Northwind Labs",
+    "notes": "Team root: segmented control Apps/Users in the nav bar, gear button (account/team tools), search field, app rows with icon, per-platform version status lines, favorite star; floating archive button bottom-right. 'Syncing apps...' toast appears briefly on entry. Captured only as entry context for team-level screens.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "009-northwind-users-list.png",
+    "title": "Users and Access - list",
+    "module": "UserAccess",
+    "flow": "Home > App Store Connect > Northwind Labs > Users tab",
+    "notes": "Search by name/email, horizontally scrolling role filter chips (All, Account Holder, Admin, Finance, ...), 'Users' section with count 9. Rows: initials avatar, name, email, role caption, badge 'All Apps' / 'Pending' (no badge = limited app access). '+' toolbar button invites a user. iPad: list column + detail column; filter chips could become a sidebar filter or toolbar menu.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "010-northwind-users-list-2.png",
+    "title": "Users and Access - list (scrolled)",
+    "module": "UserAccess",
+    "flow": "Home > App Store Connect > Northwind Labs > Users tab (scrolled)",
+    "notes": "Remaining users visible (Priya Raman, Sofia Marquez) with multi-role captions such as 'App Manager, Access to Reports'; search field pinned under the nav bar while scrolling.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "011-user-detail-admin.png",
+    "title": "User detail - Admin",
+    "module": "UserDetail",
+    "flow": "Northwind Labs > Users > Mateus Rocha",
+    "notes": "Header card (initials avatar, name, email); Roles section with Edit link (Admin) and 'What do these permissions allow?' info row; Access section with Edit link (Access to All Apps, Provisioning Allowed with green checks); destructive 'Remove User' button. Visual nit: the Remove User icon is tinted blue while the label is red. iPad: detail pane of the users split view.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "012-user-detail-permissions-sheet.png",
+    "title": "User detail - permissions explainer sheet",
+    "module": "UserDetail",
+    "flow": "Northwind Labs > Users > Mateus Rocha > What do these permissions allow?",
+    "notes": "Medium-detent sheet with grabber, title 'Permissions', Done; one card per role of the user explaining what it allows. iPad: popover from the info row.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "013-user-detail-edit-role.png",
+    "title": "Edit Role sheet",
+    "module": "UserDetail",
+    "flow": "Northwind Labs > Users > Mateus Rocha > Roles Edit",
+    "notes": "Full-height sheet, Cancel/Save; single-choice list 'Primary Role' (Admin checked, Finance, Sales, Marketing, App Manager, Developer, Access to Reports, Customer Support, Read Only) with footer hint. Cancelled without saving. iPad: form sheet.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "014-user-detail-edit-access.png",
+    "title": "Edit Access sheet",
+    "module": "UserDetail",
+    "flow": "Northwind Labs > Users > Mateus Rocha > Access Edit",
+    "notes": "Sheet with Cancel/Save; 'Access to All Apps' toggle (on) with footer explaining scoping to specific apps. Note: the 'Provisioning Allowed' value shown on the detail is not editable here for Admin.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "015-user-detail-edit-access-toggle-off.png",
+    "title": "Edit Access - all apps toggled off (unsaved)",
+    "module": "UserDetail",
+    "flow": "Northwind Labs > Users > Mateus Rocha > Access Edit > toggle off",
+    "notes": "Same sheet with the toggle off; no app picker appears inline (visible-app selection lives in the detail's 'Visible Apps' section after saving). Cancelled. UX note: for an Admin, ASC always grants all apps, so offering this toggle may be misleading.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "016-user-detail-limited-access.png",
+    "title": "User detail - limited app access",
+    "module": "UserDetail",
+    "flow": "Northwind Labs > Users > Lukas Brenner",
+    "notes": "Developer with Access to All Apps off (grey x) and Provisioning Allowed; extra 'Visible Apps' section with count (2), 'Edit Visible Apps' action and footer. Remove User button at the bottom.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "017-user-detail-visible-apps-picker.png",
+    "title": "Visible Apps picker",
+    "module": "UserDetail",
+    "flow": "Northwind Labs > Users > Lukas Brenner > Edit Visible Apps",
+    "notes": "Sheet with Cancel/Save; multi-select list of team apps (name + bundle ID, checkmarks) and 'Selected: 2' footer. Cancelled. iPad: form sheet; no app icons in rows.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "018-user-detail-pending-invite.png",
+    "title": "User detail - pending invitation",
+    "module": "UserDetail",
+    "flow": "Northwind Labs > Users > Elena Petrova",
+    "notes": "Pending badge under email; Roles and Access are read-only (no Edit links) with footer 'Pending invitations can't be edited'; Invitation section with expiry date; destructive 'Cancel Invitation' button. Nit: the Roles footer sits very close to the 'Access' header.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "019-invite-user-form.png",
+    "title": "Invite User form",
+    "module": "UserAccess",
+    "flow": "Northwind Labs > Users > +",
+    "notes": "Full-height sheet: Cancel / 'Send Invite' (disabled until valid). User Information (Email, First Name, Last Name), Roles multi-select list (Admin ... Customer Support) with hint, Access toggles (Access to All Apps on, Provisioning Allowed off) with footer. Cancelled. iPad: form sheet, two-column layout possible (info + roles).",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "020-invite-user-form-scoped.png",
+    "title": "Invite User form - role selected, all-apps off (unsent)",
+    "module": "UserAccess",
+    "flow": "Northwind Labs > Users > + > select Developer, toggle Access to All Apps off",
+    "notes": "Multi-select role rows show a checkmark (Developer). With 'Access to All Apps' off no visible-app picker appears in the form (UserAccessView has no app selection for invites), so a scoped invite cannot choose its apps - functional gap worth addressing in the iPad design. Cancelled without sending.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "021-user-detail-account-holder.png",
+    "title": "User detail - Account Holder",
+    "module": "UserDetail",
+    "flow": "Northwind Labs > Users > Avery Chen",
+    "notes": "Account Holder + Admin roles, no role Edit (footer: role cannot be changed), Access editable, no Remove User button. UX nit: 'Access > Edit' is offered although ASC does not allow restricting the Account Holder's app access.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "022-northwind-users-filter-admin.png",
+    "title": "Users and Access - Admin filter",
+    "module": "UserAccess",
+    "flow": "Northwind Labs > Users > filter chip 'Admin'",
+    "notes": "Selected chip highlighted (blue capsule); list filtered to 2 users, section count updates.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "023-northwind-manage-account.png",
+    "title": "Manage Account (team tools)",
+    "module": "AccountManagement",
+    "flow": "Northwind Labs > Apps tab > gear button",
+    "notes": "Grouped menu: Certificates, Identifiers, Devices, Profiles (icon, title, subtitle, chevron); Export Account; destructive Delete Account. iPad: these four become sidebar destinations of the team.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "024-devices-list.png",
+    "title": "Devices list",
+    "module": "DevicesList",
+    "flow": "Northwind Labs > Manage Account > Devices",
+    "notes": "Inline title, search field, '+' toolbar menu; rows with device-class icon (iPhone, iPad, Mac, Apple TV, Vision Pro), name, class and green 'Enabled' status dot. iPad: list column with device detail on the right.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "025-device-detail.png",
+    "title": "Device detail",
+    "module": "DeviceDetail",
+    "flow": "Northwind Labs > Manage Account > Devices > Design iPad Pro 13\"",
+    "notes": "Editable Name field; Status row (green dot Enabled + red 'Disable' button, no confirmation dialog in code - not tapped) with footer about API limits; Details key/value list (UDID monospaced, Device Class, Model, Platform, Registered, ID). Data nit: an iPad lists Platform 'iOS, tvOS, watchOS, visionOS'. The disabled seed device ('Old QA iPhone 12') is filtered out of the list by DevicesListViewModel, so a disabled device detail is unreachable.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "026-devices-add-menu.png",
+    "title": "Devices - add menu",
+    "module": "DevicesList",
+    "flow": "Northwind Labs > Manage Account > Devices > +",
+    "notes": "Toolbar pull-down menu: Register Device, Import from File.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "027-register-device-form.png",
+    "title": "Register Device form",
+    "module": "DevicesList",
+    "flow": "Northwind Labs > Manage Account > Devices > + > Register Device",
+    "notes": "Sheet with Cancel / Register (disabled): Name field, Platform menu picker ('iOS, tvOS, watchOS, visionOS' vs macOS), monospaced UDID field with blue paste button, 'How to find the UDID' disclosure. Cancelled.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "028-register-device-udid-help.png",
+    "title": "Register Device - UDID help expanded",
+    "module": "DevicesList",
+    "flow": "Devices > + > Register Device > How to find the UDID",
+    "notes": "Expanded help with sub-sections 'From a Mac (Finder)' and 'From Xcode', each with numbered steps and a share button. iPad: help could live in an inspector/side panel.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "029-import-devices.png",
+    "title": "Import Devices (empty state)",
+    "module": "ImportDevices",
+    "flow": "Northwind Labs > Manage Account > Devices > + > Import from File",
+    "notes": "Pushed screen with centered empty state: icon, 'Bulk Import' title, description, prominent 'Choose File' capsule button; 'Supported formats' footnote pinned at the bottom (.deviceids, .txt). Note the subtitle text says '.txt with one UDID per line' while the footnote says .txt needs a header row plus UDID, Name, Platform columns - inconsistent copy. iPad: centered content max-width.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "030-import-devices-file-picker.png",
+    "title": "Import Devices - system file picker",
+    "module": "ImportDevices",
+    "flow": "Devices > + > Import from File > Choose File",
+    "notes": "System document picker (Recents empty on simulator). Dismissed with X. iPad: system picker appears as a form sheet.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "031-certificates-list.png",
+    "title": "Certificates list",
+    "module": "CertificatesList",
+    "flow": "Northwind Labs > Manage Account > Certificates",
+    "notes": "Fixed: platform tags now read 'macOS' and 'iOS' (no raw MAC_OS/IOS). Certificates grouped by type (Developer ID Application, Development, Distribution, Mac Installer Distribution) with expiry dates.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "032-certificate-detail-expiring-soon.png",
+    "title": "Certificate detail - expiring soon",
+    "module": "CertificateDetail",
+    "flow": "Northwind Labs > Manage Account > Certificates > Apple Development: Lukas Brenner",
+    "notes": "Fixed: Platform row now reads 'iOS'. Detail shows Name, Type, Platform, Serial Number, Status, Expiration, ID plus Download and Revoke actions.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "033-certificate-revoke-confirmation.png",
+    "title": "Certificate - revoke confirmation (unconfirmed)",
+    "module": "CertificateDetail",
+    "flow": "Certificates > Apple Development: Lukas Brenner > Revoke",
+    "notes": "Alert 'Revoke this certificate?' / 'This action cannot be undone.' with Cancel and destructive Revoke. Cancelled.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "034-certificate-detail-developer-id.png",
+    "title": "Certificate detail - Developer ID Application",
+    "module": "CertificateDetail",
+    "flow": "Certificates > Developer ID Application: Northwind Labs",
+    "notes": "Fixed: Platform row now reads 'macOS'. Developer ID Application certificate detail with Download and Revoke actions.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "035-create-certificate-step1-type.png",
+    "title": "New Certificate - step 1 Type",
+    "module": "CreateCertificate",
+    "flow": "Certificates > +",
+    "notes": "Pushed wizard with 3-step progress indicator (Type, Upload CSR, Done) under the nav bar. Software section lists certificate types as tappable rows; unsupported ones (Developer ID Installer, APNs SSL under Services) are greyed with caption 'Available only on developer.apple.com'. iPad: wizard as a form sheet; stepper can be wider.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "036-create-certificate-step1-services.png",
+    "title": "New Certificate - step 1 Services (scrolled)",
+    "module": "CreateCertificate",
+    "flow": "Certificates > + (scrolled)",
+    "notes": "Services section: most rows disabled ('Available only on developer.apple.com'); enabled Pass Type ID Certificate ('Requires a Pass Type ID') and Apple Pay Merchant Identity ('Requires a Merchant ID and accepted agreement'); footer note. Stepper header stays pinned.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "037-create-certificate-step2-csr.png",
+    "title": "New Certificate - step 2 Upload CSR",
+    "module": "CreateCertificate",
+    "flow": "Certificates > + > Apple Development",
+    "notes": "Stepper advanced to step 2. Selected Type card, 'Choose CSR file' picker row with caption and Keychain Access hint; bottom bar with disabled 'Create Certificate' primary button and 'Back'. Not submitted. iPad: bottom action bar becomes sheet toolbar buttons.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "038-identifiers-list.png",
+    "title": "Identifiers list",
+    "module": "IdentifiersList",
+    "flow": "Northwind Labs > Manage Account > Identifiers",
+    "notes": "Search, '+' toolbar button; rows with identifier icon, name and bundle ID (includes wildcard com.northwind.*). iPad: list + detail split.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "039-identifier-detail-capabilities.png",
+    "title": "Identifier detail - capabilities",
+    "module": "IdentifierDetail",
+    "flow": "Northwind Labs > Manage Account > Identifiers > Trailhead",
+    "notes": "Nav title is the bundle ID. Editable Name; Details with copy buttons (Bundle ID, Platform, Seed ID, ID); Capabilities list with green checks and red remove buttons (App Groups, HealthKit, Maps, Push Notifications, Sign In With Apple, iCloud), 'Add Capability' row and footer. Remove buttons not tapped. iPad: capabilities could be a two-column grid.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "040-identifier-add-capability-sheet.png",
+    "title": "Add Capability sheet",
+    "module": "IdentifierDetail",
+    "flow": "Identifiers > Trailhead > Add Capability",
+    "notes": "Full-height sheet with Close; alphabetical list of available capabilities each with a + button; bottom-floating search field 'Search capabilities'. Closed without adding. iPad: popover or form sheet.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "041-identifier-detail-wildcard.png",
+    "title": "Identifier detail - wildcard",
+    "module": "IdentifierDetail",
+    "flow": "Identifiers > Northwind Labs Wildcard",
+    "notes": "Wildcard bundle ID com.northwind.*, Platform 'Universal' (other identifiers show 'iOS, tvOS, watchOS, visionOS' - inconsistent platform labelling), empty capabilities state 'No capabilities enabled.' with Add Capability, destructive 'Delete Identifier' button (not tapped). Nit: Add Capability is offered for a wildcard ID although Apple restricts most capabilities to explicit IDs.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "042-new-identifier-form.png",
+    "title": "New Identifier form",
+    "module": "IdentifiersList",
+    "flow": "Identifiers > +",
+    "notes": "Sheet with Cancel / Create (disabled): Bundle ID field with reverse-DNS hint, Name (Description) field, Platform menu picker. Cancelled. iPad: form sheet.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "043-profiles-list.png",
+    "title": "Profiles list",
+    "module": "ProfilesList",
+    "flow": "Northwind Labs > Manage Account > Profiles",
+    "notes": "Search, '+' toolbar button; sections by profile type (Mac App Store, iOS Ad Hoc, iOS App Store, iOS Development, ...); rows with profile icon (red for invalid), name, bundle ID, status dot (Active / Invalid) and expiry ('Expired' in red). iPad: list + detail split.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "044-profile-detail-expired.png",
+    "title": "Profile detail - expired",
+    "module": "ProfileDetail",
+    "flow": "Northwind Labs > Manage Account > Profiles > Trailhead Ad Hoc (Field Test)",
+    "notes": "Fixed: Platform row now reads 'iOS'. Expired iOS Ad Hoc profile with Status and Expiration in red and Delete as the only action.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "045-profile-detail-active.png",
+    "title": "Profile detail - active (wildcard development)",
+    "module": "ProfileDetail",
+    "flow": "Profiles > Northwind Labs Team Development",
+    "notes": "Fixed: Platform row now reads 'iOS'. Active wildcard iOS Development profile with Download and Delete actions.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "046-create-profile-step1-type.png",
+    "title": "New Profile - step 1 Type",
+    "module": "CreateProfile",
+    "flow": "Profiles > +",
+    "notes": "Pushed 6-step wizard with a segmented progress bar and 'Step 1 of 6: Type' caption (different stepper style from the New Certificate wizard's numbered circles - inconsistent). Profile types grouped by platform (iOS/tvOS/visionOS/watchOS, macOS, tvOS, Mac Catalyst).",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "047-create-profile-step2-bundle-id.png",
+    "title": "New Profile - step 2 Bundle ID",
+    "module": "CreateProfile",
+    "flow": "Profiles > + > iOS Ad Hoc",
+    "notes": "Selected Type card, 'Show all bundle IDs' toggle, 'Choose a Bundle ID' list (name + bundle ID); bottom bar with Back.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "048-create-profile-step3-certificates.png",
+    "title": "New Profile - step 3 Certificates",
+    "module": "CreateProfile",
+    "flow": "Profiles > + > iOS Ad Hoc > Trailhead",
+    "notes": "Type summary card (the chosen bundle ID is not summarized), 'Show all certificates' toggle, multi-select radio list of eligible certificates (name, type, expiry) with footer; bottom bar Back / Continue (disabled until a selection).",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "049-create-profile-step4-devices.png",
+    "title": "New Profile - step 4 Devices",
+    "module": "CreateProfile",
+    "flow": "Profiles > + > iOS Ad Hoc > Trailhead > certificate > Continue",
+    "notes": "'Show all devices' toggle; 'Pick devices' list with Select All / Deselect All row and radio rows (name, class, UDID); bottom Back / Continue (disabled). iPad: a wider table with columns (name, class, UDID) fits well.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "050-create-profile-step5-name-summary.png",
+    "title": "New Profile - step 5 Name & summary",
+    "module": "CreateProfile",
+    "flow": "Profiles > + > iOS Ad Hoc > Trailhead > 1 certificate > 1 device > Continue",
+    "notes": "Profile name field with hint and Summary card (Type, Bundle ID, Certificates count, Devices count); bottom Back / 'Create Profile' (disabled until named). Not submitted - wizard abandoned via back button. Step 6 (Done) not reached on purpose.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "051-account-settings-northwind.png",
+    "title": "Account Settings - Northwind Labs",
+    "module": "Settings",
+    "flow": "Northwind Labs > Manage Account > Export Account",
+    "notes": "Despite the 'Export Account' row label this opens Account Settings (AccountSettingsView). Account section (Name with edit pencil, Provider, Role menu 'Admin', Origin, Created); Permissions section listing each area with its allowed actions (View, Edit, Delete, Add); 'Export Account' button. iPad: two-column key/value layout.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "052-export-account-form.png",
+    "title": "Export Account form",
+    "module": "Settings",
+    "flow": "Northwind Labs > Manage Account > Export Account > Export Account button",
+    "notes": "Sheet with Cancel / Export (disabled). Info card 'Share access with your team', Name field, Permissions as separate cards per area (Apps, Versions, Review and Rating, TestFlight...) each 'Not configured' with chevron and caption. Copy typo: 'Manager and reply user's app review' (should be 'Manage and reply to users' app reviews'). Layout nit: unusually large empty gap between the 'Permissions' header and the first card. iPad: form sheet.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "053-export-account-form-2.png",
+    "title": "Export Account form (scrolled)",
+    "module": "Settings",
+    "flow": "Export Account (scrolled to bottom)",
+    "notes": "Remaining permission cards (Users; Certificates, Identifiers, Devices & Profiles), 'Apps permissions' (All apps), Encryption section (Password / Confirm with reveal toggles, Generate strong password, Copy password disabled), Expiration toggle with explanatory footer.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "054-export-permission-picker-sheet.png",
+    "title": "Export - permission picker sheet",
+    "module": "Settings",
+    "flow": "Export Account > Certificates, Identifiers, Devices & Profiles",
+    "notes": "Fixed: sheet title 'Certificates, Identifiers, Devices & Profiles' is fully visible on one line next to OK. Options View / Edit / Delete / Add / None.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "055-export-apps-permission-picker.png",
+    "title": "Export - apps permission picker",
+    "module": "Settings",
+    "flow": "Export Account > Apps permissions",
+    "notes": "Large sheet (AppsPermissionPickerSheet) with 'Select All' and OK, app rows with icons, bundle IDs and radio buttons, bottom search field. The parent row reads 'All apps' while no app is checked here (empty selection means all) - potentially confusing. Closed with no changes.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "056-delete-account-confirmation.png",
+    "title": "Delete Account confirmation (unconfirmed)",
+    "module": "AccountManagement",
+    "flow": "Northwind Labs > Manage Account > Delete Account",
+    "notes": "Alert naming the account with Cancel / destructive Delete. Cancelled.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "057-personal-team-apps-tab.png",
+    "title": "Jordan Avery (Personal) - team root (Apps tab)",
+    "module": "AppList",
+    "flow": "Home > App Store Connect > Jordan Avery (Personal)",
+    "notes": "App Manager account: same layout with only 2 apps (Tide Tables, Pocket Haiku). Users tab is still offered. Entry context for the restricted team-level screens.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "058-personal-users-list.png",
+    "title": "Users and Access - personal team (App Manager)",
+    "module": "UserAccess",
+    "flow": "Jordan Avery (Personal) > Users tab",
+    "notes": "Same UI as the admin team with only 2 users (Jordan Avery Account Holder/Admin, Riley Park Developer). Invite '+' still shown; role filter chips show every role even when no user has it.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "059-personal-user-detail.png",
+    "title": "User detail - personal team (viewed as App Manager)",
+    "module": "UserDetail",
+    "flow": "Jordan Avery (Personal) > Users > Riley Park",
+    "notes": "Identical to the admin view: Roles Edit, Access Edit and Remove User are all offered even though the account role is App Manager - the UI is not restricted by the account's role (the API would decide).",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "060-personal-certificates-list.png",
+    "title": "Certificates list - personal team",
+    "module": "CertificatesList",
+    "flow": "Jordan Avery (Personal) > gear > Manage Account > Certificates",
+    "notes": "Fixed: platform tags now read 'iOS'. Personal team shows one Development and one Distribution certificate.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "061-personal-identifiers-list.png",
+    "title": "Identifiers list - personal team",
+    "module": "IdentifiersList",
+    "flow": "Jordan Avery (Personal) > Manage Account > Identifiers",
+    "notes": "Three identifiers (Tide Tables, Pocket Haiku, wildcard dev.javery.*); same layout as the admin team, no role-based restrictions in the UI.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "062-personal-devices-list.png",
+    "title": "Devices list - personal team",
+    "module": "DevicesList",
+    "flow": "Jordan Avery (Personal) > Manage Account > Devices",
+    "notes": "Three enabled devices (2 iPhones, 1 iPad); same layout and '+' menu.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "063-personal-profiles-list.png",
+    "title": "Profiles list - personal team",
+    "module": "ProfilesList",
+    "flow": "Jordan Avery (Personal) > Manage Account > Profiles",
+    "notes": "Three active profiles in 2 sections (iOS App Store, iOS Development).",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "064-personal-account-settings.png",
+    "title": "Account Settings - Jordan Avery (Personal)",
+    "module": "Settings",
+    "flow": "Jordan Avery (Personal) > Manage Account > Export Account",
+    "notes": "Role 'App Manager'. Permissions still list full 'View, Edit, Delete, Add' on every area (incl. Users and Certificates...) - permissions are not derived from the ASC role, so the App Manager account does not look restricted anywhere in team-level screens.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "065-settings.png",
+    "title": "Settings",
+    "module": "Settings",
+    "flow": "Home > Settings",
+    "notes": "Large-title grouped list: Accounts row; App Store Connect section ('Check list pre review' toggle with subtitle - awkward copy); Privacy section ('Share usage analytics' toggle + footer); About group (Support the Project, GitHub external link, License); destructive 'Delete All Accounts'; version footer 'StackConnect v2.4.0 (1)'. No feature-flag/debug screen is exposed. iPad: Settings as a sidebar with detail pane. Nit: the version footer has very low contrast.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "066-settings-accounts.png",
+    "title": "Settings - Accounts",
+    "module": "Settings",
+    "flow": "Home > Settings > Accounts",
+    "notes": "Large-title list grouped by provider (App Store Connect, Firebase, Google Play) with provider icons in section headers; rows show account name and role badge (Google Play row has no badge); '+' to add. Swipe actions (Delete / Export) exist per row - not triggered. iPad: master list for account settings detail.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "067-settings-accounts-swipe-actions.png",
+    "title": "Settings - Accounts row swipe actions",
+    "module": "Settings",
+    "flow": "Settings > Accounts > swipe left on Northwind Labs (ASC)",
+    "notes": "Trailing swipe actions Export (blue) and Delete (red); neither tapped. Nit: the swiped row's name/badge disappear entirely, leaving an empty pill with only the chevron. iPad: expose these as a context menu / toolbar actions in the detail.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "068-settings-edit-account-sheet.png",
+    "title": "Settings - edit account sheet",
+    "module": "Settings",
+    "flow": "Settings > Accounts > tap Northwind Labs (ASC)",
+    "notes": "Tapping a row opens a medium sheet (not a push, despite the chevron) with Cancel/Save, Name field and an Export button (ASC only; the Firebase account's sheet shows just the Name field). Cancelled without saving. iPad: popover or inline detail editing.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "069-settings-add-account-provider-picker.png",
+    "title": "Add Account - Select Provider",
+    "module": "Settings",
+    "flow": "Settings > Accounts > + > Create New",
+    "notes": "After the same Create New / Import options sheet as 004, a medium sheet 'Select Provider' lists App Store Connect, Firebase, Google Play with brand icons; Cancel.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "070-add-account-firebase-form.png",
+    "title": "Add Account - Firebase form",
+    "module": "AddAccount",
+    "flow": "Settings > Accounts > + > Create New > Firebase",
+    "notes": "Sheet Cancel/Save: General (Account Name, Role menu), Firebase Credentials multiline 'Service Account Key (JSON)' editor with paste button and 'Import .json file', help disclosure 'How to generate the JSON key'. Cancelled. Note: the Role picker offers ASC roles for a Firebase account.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "071-add-account-google-play-form.png",
+    "title": "Add Account - Google Play form",
+    "module": "AddAccount",
+    "flow": "Settings > Accounts > + > Create New > Google Play",
+    "notes": "Sheet Cancel/Save: Account Name (no Role picker), Google Play Credentials JSON editor with paste and 'Import .json file' plus long setup footer, Developer Account section with optional Developer ID field and footer, help disclosure 'How to set up the service account'. Cancelled.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "072-settings-import-account-sheet.png",
+    "title": "Import Account sheet",
+    "module": "Settings",
+    "flow": "Settings > Accounts > + > Import",
+    "notes": "Medium sheet with Cancel: document icon, explanation (.scexport encrypted file), 'How to import?' capsule link and prominent 'Import File' button.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "073-import-how-to-sheet-collapsed.png",
+    "title": "How to import? sheet (initial state)",
+    "module": "Settings",
+    "flow": "Settings > Accounts > + > Import > How to import?",
+    "notes": "Fixed: 'How to import?' sheet opens with all steps visible (source device 1-3, target device 1-3) and a share hint; no extra tap needed.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "075-tip-jar.png",
+    "title": "Support the Project (tip jar)",
+    "module": "TipJar",
+    "flow": "Home > Settings > Support the Project",
+    "notes": "Hero card (heart, 'Enjoying StackConnect?', free/open-source copy) and a list of three consumable tips (Coffee /bin/zsh.99, Snack .99, Lunch .99) with emoji, title, description and blue price capsule buttons. Products loaded (StoreKit), no purchase attempted. iPad: centered narrow column or popover.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "076-license.png",
+    "title": "License",
+    "module": "License",
+    "flow": "Home > Settings > License",
+    "notes": "Fixed: MIT License text now reflows as paragraphs at phone width with no ragged hard line breaks.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "077-settings-delete-all-confirmation.png",
+    "title": "Delete All Accounts confirmation (unconfirmed)",
+    "module": "Settings",
+    "flow": "Home > Settings > Delete All Accounts",
+    "notes": "Alert explaining permanent deletion of all accounts, apps, versions and credentials; Cancel / destructive 'Delete All'. Cancelled.",
+    "status": "ok",
+    "failure": null
+  },
+  {
+    "file": "078-users-search-no-results.png",
+    "title": "Users and Access - search no results",
+    "module": "UserAccess",
+    "flow": "Northwind Labs > Users > search 'zzqx'",
+    "notes": "Active search: nav bar collapses into the search field with a close (X) button; role chips remain; system ContentUnavailableView 'No Results for \"zzqx\"'. iPad: same empty state in the list column.",
+    "status": "ok",
+    "failure": null
+  }
+]

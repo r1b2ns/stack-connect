@@ -489,12 +489,7 @@ struct NewCampaignSheet: View {
             }
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: app.platform.iconName)
-                    .font(.body)
-                    .foregroundStyle(.white)
-                    .frame(width: 28, height: 28)
-                    .background(app.platform.color)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                StackIconTile(glyph: app.platform.glyph, color: app.platform.color, size: 28)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(app.displayName)

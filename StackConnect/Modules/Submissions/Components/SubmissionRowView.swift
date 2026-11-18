@@ -103,9 +103,8 @@ struct SubmissionRowView: View {
 
     private func formatDate(_ date: Date?) -> String {
         guard let date else { return "–" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM, EEE, HH:mm"
-        return formatter.string(from: date)
+        // Locale-aware "Nov 12, 2026 at 07:05" — same style as the other date rows.
+        return date.formatted(date: .abbreviated, time: .shortened)
     }
 
     private func stateColor(_ color: AppStoreStateColor) -> Color {

@@ -139,7 +139,7 @@ struct CertificatesListView<ViewModel: CertificatesListViewModelProtocol>: View 
 
                 HStack(spacing: 6) {
                     if let platform = cert.platform {
-                        Text(platform)
+                        Text(BundleIdPlatformLabel.label(for: platform))
                             .font(.caption2)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)

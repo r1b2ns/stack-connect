@@ -151,9 +151,8 @@ struct AppHistoryView<ViewModel: AppHistoryViewModelProtocol>: View {
     // MARK: - Helpers
 
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM dd, yyyy, HH:mm"
-        return formatter.string(from: date)
+        // Locale-aware, same style as the Submissions list and other date rows.
+        date.formatted(date: .abbreviated, time: .shortened)
     }
 
     private func stateColor(_ color: AppStoreStateColor) -> Color {

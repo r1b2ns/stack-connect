@@ -184,11 +184,13 @@ final class FakeFirebaseServer: @unchecked Sendable {
         }
 
         // /projects/{id}/{platform}Apps/{appId}[:remove | /config]
+        // App ids contain colons themselves ("1:483920175624:ios:8c1b…"), so only
+        // a known trailing custom method is split off — never the first colon.
         var appSegment = segments[4]
         var action: String?
-        if let colon = appSegment.firstIndex(of: ":") {
-            action = String(appSegment[appSegment.index(after: colon)...])
-            appSegment = String(appSegment[..<colon])
+        if appSegment.hasSuffix(":remove") {
+            action = "remove"
+            appSegment = String(appSegment.dropLast(":remove".count))
         }
         guard let index = state.project.apps.firstIndex(where: { $0.appId == appSegment }),
               !state.removedAppIds.contains(appSegment) else {
@@ -260,43 +262,78 @@ final class FakeFirebaseServer: @unchecked Sendable {
 
     private func configJSON(_ app: FakeFirebaseCatalog.App, project: FakeFirebaseCatalog.Project) -> [String: Any] {
         let apiKey = "AIzaFAKE-\(project.projectId)-\(app.appId.suffix(6))"
+        let storageBucket = "\(project.projectId).appspot.example"
+        let clientPrefix = "\(project.projectNumber)-\(app.appId.suffix(16))"
         switch app.platform {
         case .ios:
+            let bundleId = app.identifier ?? ""
             let plist = """
             <?xml version="1.0" encoding="UTF-8"?>
             <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
             <plist version="1.0">
             <dict>
-            \t<key>API_KEY</key><string>\(apiKey)</string>
-            \t<key>GCM_SENDER_ID</key><string>\(project.projectNumber)</string>
-            \t<key>BUNDLE_ID</key><string>\(app.identifier ?? "")</string>
-            \t<key>PROJECT_ID</key><string>\(project.projectId)</string>
-            \t<key>STORAGE_BUCKET</key><string>\(project.projectId).appspot.example</string>
-            \t<key>GOOGLE_APP_ID</key><string>\(app.appId)</string>
-            \t<key>IS_ANALYTICS_ENABLED</key><true/>
+            \t<key>CLIENT_ID</key>
+            \t<string>\(clientPrefix).apps.googleusercontent.example</string>
+            \t<key>REVERSED_CLIENT_ID</key>
+            \t<string>example.googleusercontent.apps.\(clientPrefix)</string>
+            \t<key>API_KEY</key>
+            \t<string>\(apiKey)</string>
+            \t<key>GCM_SENDER_ID</key>
+            \t<string>\(project.projectNumber)</string>
+            \t<key>PLIST_VERSION</key>
+            \t<string>1</string>
+            \t<key>BUNDLE_ID</key>
+            \t<string>\(bundleId)</string>
+            \t<key>PROJECT_ID</key>
+            \t<string>\(project.projectId)</string>
+            \t<key>STORAGE_BUCKET</key>
+            \t<string>\(storageBucket)</string>
+            \t<key>IS_ADS_ENABLED</key>
+            \t<false/>
+            \t<key>IS_ANALYTICS_ENABLED</key>
+            \t<true/>
+            \t<key>IS_APPINVITE_ENABLED</key>
+            \t<true/>
+            \t<key>IS_GCM_ENABLED</key>
+            \t<true/>
+            \t<key>IS_SIGNIN_ENABLED</key>
+            \t<true/>
+            \t<key>GOOGLE_APP_ID</key>
+            \t<string>\(app.appId)</string>
+            \t<key>DATABASE_URL</key>
+            \t<string>https://\(project.projectId)-default-rtdb.database.example</string>
             </dict>
             </plist>
             """
             return ["configFilename": "GoogleService-Info.plist", "configFileContents": Data(plist.utf8).base64EncodedString()]
         case .android:
             let services: [String: Any] = [
-                "project_info": ["project_number": project.projectNumber, "project_id": project.projectId,
-                                 "storage_bucket": "\(project.projectId).appspot.example"],
+                "project_info": [
+                    "project_number": project.projectNumber,
+                    "firebase_url": "https://\(project.projectId)-default-rtdb.database.example",
+                    "project_id": project.projectId,
+                    "storage_bucket": storageBucket
+                ],
                 "client": [[
                     "client_info": ["mobilesdk_app_id": app.appId,
                                     "android_client_info": ["package_name": app.identifier ?? ""]],
-                    "api_key": [["current_key": apiKey]]
+                    "oauth_client": [["client_id": "\(clientPrefix).apps.googleusercontent.example", "client_type": 3]],
+                    "api_key": [["current_key": apiKey]],
+                    "services": ["appinvite_service": ["other_platform_oauth_client": [
+                        ["client_id": "\(clientPrefix).apps.googleusercontent.example", "client_type": 3]
+                    ]]]
                 ]],
                 "configuration_version": "1"
             ]
             let data = (try? JSONSerialization.data(withJSONObject: services, options: [.prettyPrinted, .sortedKeys])) ?? Data()
             return ["configFilename": "google-services.json", "configFileContents": data.base64EncodedString()]
         case .web:
+            // The web config endpoint returns the fields directly (no file).
             return [
                 "projectId": project.projectId, "appId": app.appId, "apiKey": apiKey,
                 "authDomain": "\(project.projectId).auth.example",
                 "databaseURL": "https://\(project.projectId)-default-rtdb.database.example",
-                "storageBucket": "\(project.projectId).appspot.example",
+                "storageBucket": storageBucket,
                 "messagingSenderId": project.projectNumber,
                 "measurementId": "G-\(project.analyticsPropertyId.suffix(6))"
             ]

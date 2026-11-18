@@ -1606,19 +1606,14 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
         "IOS", "MAC_OS", "UNIVERSAL", "SERVICES"
     ]
 
+    /// Localized App Store category name (`PHOTO_AND_VIDEO` → "Photo & Video").
     static func formatCategoryId(_ id: String) -> String {
-        id.replacingOccurrences(of: "_", with: " ")
-            .split(separator: " ")
-            .map { $0.capitalized }
-            .joined(separator: " ")
+        AppStoreCategoryCatalog.displayName(forCategoryId: id)
     }
 
+    /// Localized subcategory name without the parent prefix (`GAMES_ACTION` → "Action").
     static func formatSubcategoryId(_ id: String, parentId: String?) -> String {
-        if let parentId, id.hasPrefix(parentId + "_") {
-            let suffix = String(id.dropFirst(parentId.count + 1))
-            return formatCategoryId(suffix)
-        }
-        return formatCategoryId(id)
+        AppStoreCategoryCatalog.displayName(forSubcategoryId: id, parentId: parentId)
     }
 
     /// Maps a Rust-core `AppStoreVersionInfo` to the app's `AppStoreVersionModel`.

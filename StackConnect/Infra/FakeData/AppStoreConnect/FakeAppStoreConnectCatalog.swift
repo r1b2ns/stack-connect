@@ -441,29 +441,11 @@ enum FakeAppStoreConnectCatalog {
 
     // MARK: - Pieces
 
-    static let categories: [AppCategoryInfo] = [
-        AppCategoryInfo(id: "BOOKS", subcategoryIds: []),
-        AppCategoryInfo(id: "BUSINESS", subcategoryIds: []),
-        AppCategoryInfo(id: "DEVELOPER_TOOLS", subcategoryIds: []),
-        AppCategoryInfo(id: "EDUCATION", subcategoryIds: []),
-        AppCategoryInfo(id: "ENTERTAINMENT", subcategoryIds: []),
-        AppCategoryInfo(id: "FINANCE", subcategoryIds: []),
-        AppCategoryInfo(id: "FOOD_AND_DRINK", subcategoryIds: []),
-        AppCategoryInfo(id: "GAMES", subcategoryIds: ["GAMES_ACTION", "GAMES_ADVENTURE", "GAMES_BOARD", "GAMES_CASUAL", "GAMES_PUZZLE", "GAMES_STRATEGY", "GAMES_WORD"]),
-        AppCategoryInfo(id: "HEALTH_AND_FITNESS", subcategoryIds: []),
-        AppCategoryInfo(id: "LIFESTYLE", subcategoryIds: []),
-        AppCategoryInfo(id: "MUSIC", subcategoryIds: []),
-        AppCategoryInfo(id: "NAVIGATION", subcategoryIds: []),
-        AppCategoryInfo(id: "NEWS", subcategoryIds: []),
-        AppCategoryInfo(id: "PHOTO_AND_VIDEO", subcategoryIds: []),
-        AppCategoryInfo(id: "PRODUCTIVITY", subcategoryIds: []),
-        AppCategoryInfo(id: "REFERENCE", subcategoryIds: []),
-        AppCategoryInfo(id: "SOCIAL_NETWORKING", subcategoryIds: []),
-        AppCategoryInfo(id: "SPORTS", subcategoryIds: []),
-        AppCategoryInfo(id: "TRAVEL", subcategoryIds: []),
-        AppCategoryInfo(id: "UTILITIES", subcategoryIds: []),
-        AppCategoryInfo(id: "WEATHER", subcategoryIds: [])
-    ]
+    /// The full ASC `appCategories` list (incl. GAMES / STICKERS subcategories),
+    /// sourced from the production catalog so the fake backend never drifts from it.
+    static let categories: [AppCategoryInfo] = AppStoreCategoryCatalog.all.map {
+        AppCategoryInfo(id: $0.id, subcategoryIds: $0.subcategories.map(\.id))
+    }
 
     static func certificateDisplayName(type: String, team: String) -> String {
         switch type {

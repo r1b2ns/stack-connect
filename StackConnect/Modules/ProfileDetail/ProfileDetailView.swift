@@ -123,7 +123,7 @@ struct ProfileDetailView<ViewModel: ProfileDetailViewModelProtocol>: View {
         Section {
             buildRow(label: String(localized: "Type"), value: profile.typeDisplayName)
             if let platform = profile.platform {
-                buildRow(label: String(localized: "Platform"), value: platform)
+                buildRow(label: String(localized: "Platform"), value: BundleIdPlatformLabel.label(for: platform))
             }
             if let bundleId = profile.bundleId {
                 buildRow(label: String(localized: "Bundle ID"), value: bundleId)

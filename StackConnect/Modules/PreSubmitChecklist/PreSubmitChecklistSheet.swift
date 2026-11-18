@@ -79,6 +79,11 @@ struct PreSubmitChecklistSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        // On iOS 26 a sheet below its largest detent gets a translucent glass
+        // background, so the presenting page's icons and buttons bled through the
+        // checklist rows at `.medium`. Pin an opaque grouped background so the
+        // sheet reads the same at every detent.
+        .presentationBackground(Color(uiColor: .systemGroupedBackground))
     }
 
     private var releaseTypeLabel: String {

@@ -25,7 +25,10 @@ struct AppCategoryPickerUiState {
     var selectedSecondaryCategoryId: String?
     var selectedSecondarySubcategoryId: String?
 
-    var isLoading = false
+    /// `true` until the first `load()` finishes. The form is only rendered once
+    /// `categories` is populated, so the pickers never see a selection without a
+    /// matching tag (SwiftUI logs "selection … is invalid" otherwise).
+    var isLoading = true
     var isSaving = false
     var error: String?
     var toastMessage: ToastMessage?
@@ -72,18 +75,31 @@ final class AppCategoryPickerViewModel: AppCategoryPickerViewModelProtocol {
 
     func load() async {
         uiState.isLoading = true
-        guard let connection = createConnection() else {
-            uiState.isLoading = false
-            return
+        var fetched: [AppCategoryModel] = []
+        if let connection = createConnection() {
+            do {
+                fetched = try await connection.fetchAppCategories()
+                Log.print.info("[AppCategoryPicker] Loaded \(fetched.count) categories")
+            } catch {
+                uiState.error = error.localizedDescription
+                Log.print.error("[AppCategoryPicker] Load failed: \(error.localizedDescription)")
+            }
         }
-        do {
-            uiState.categories = try await connection.fetchAppCategories()
-            Log.print.info("[AppCategoryPicker] Loaded \(self.uiState.categories.count) categories")
-        } catch {
-            uiState.error = error.localizedDescription
-            Log.print.error("[AppCategoryPicker] Load failed: \(error.localizedDescription)")
-        }
+        uiState.categories = Self.pickerCategories(fetched: fetched, selectedIds: [
+            uiState.selectedCategoryId,
+            uiState.selectedSubcategoryId,
+            uiState.selectedSecondaryCategoryId,
+            uiState.selectedSecondarySubcategoryId
+        ])
         uiState.isLoading = false
+    }
+
+    /// Categories offered by the pickers: the API list (or the full static ASC
+    /// catalog when it is unavailable), extended so every current selection has a
+    /// matching tag.
+    static func pickerCategories(fetched: [AppCategoryModel], selectedIds: [String?]) -> [AppCategoryModel] {
+        let base = fetched.isEmpty ? AppStoreCategoryCatalog.all : fetched
+        return AppStoreCategoryCatalog.ensuring(selectedIds, in: base)
     }
 
     func save() async {

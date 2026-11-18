@@ -78,6 +78,15 @@ final class FakeDataBackendsTests: XCTestCase {
         XCTAssertEqual(phased?.currentDayNumber, 3)
     }
 
+    func testTideTablesPhasedReleaseIsOnDayTwo() async throws {
+        let connection = appleConnection(issuerId: FakeAppStoreConnectCatalog.personalIssuerId)
+        let tideTables = try await connection.fetchAppStoreVersions(appId: FakeAppStoreConnectCatalog.tideTables.id)
+        let live = try XCTUnwrap(tideTables.first { $0.versionString == "1.6.0" })
+        let phased = try await connection.fetchPhasedRelease(versionId: live.id)
+        XCTAssertEqual(phased?.state, .active)
+        XCTAssertEqual(phased?.currentDayNumber, 2)
+    }
+
     func testReplyIsReflectedOnTheNextRead() async throws {
         let appId = FakeAppStoreConnectCatalog.ledger.id
         let reviews = try await appleConnection().fetchRecentReviews(appId: appId, limit: 50)
@@ -393,6 +402,86 @@ final class FakeDataBackendsTests: XCTestCase {
         let (template, headers) = try await provider.requestWithHeaders(FirebaseAPI.v1.remoteConfig(projectId: "trailhead-prod-4f2a1").get())
         XCTAssertFalse(template.parameters?.isEmpty ?? true)
         XCTAssertNotNil(headers["ETag"])
+    }
+
+    private func firebaseProvider() throws -> APIProviderFirebase {
+        let keys = FakeKeyStorable()
+        FakeDataSeeder.writeCredentials(into: keys)
+        let credentials: FirebaseCredentials = try XCTUnwrap(keys.object(forKey: "credentials.\(FakeDataSeeder.AccountID.northwindFirebase)"))
+        let factory = FakeFirebaseProviderFactory(server: FakeFirebaseServer(clock: clock))
+        return try XCTUnwrap(factory.makeProvider(serviceAccountJSON: credentials.serviceAccountJSON))
+    }
+
+    /// App ids contain colons ("1:483920175624:ios:…"): the config route must
+    /// resolve the full id the list returned, for every seeded app.
+    func testFirebaseConfigFileServedForEverySeededApp() async throws {
+        let provider = try firebaseProvider()
+        for project in FakeFirebaseCatalog.projects {
+            let projectPath = FirebaseAPI.v1beta1.projects.id(project.projectId)
+            let ios = try await provider.request(projectPath.iosApps.get(pageSize: 100)).apps ?? []
+            let android = try await provider.request(projectPath.androidApps.get(pageSize: 100)).apps ?? []
+            let web = try await provider.request(projectPath.webApps.get(pageSize: 100)).apps ?? []
+            XCTAssertEqual(ios.count + android.count + web.count, project.apps.count)
+
+            for app in ios {
+                let appId = try XCTUnwrap(app.appId)
+                let config = try await provider.request(projectPath.iosApps.id(appId).config())
+                XCTAssertEqual(config.configFilename, "GoogleService-Info.plist")
+                let plist = try XCTUnwrap(config.configFileContents.flatMap { Data(base64Encoded: $0) })
+                let dict = try XCTUnwrap(PropertyListSerialization.propertyList(from: plist, format: nil) as? [String: Any])
+                XCTAssertEqual(dict["GOOGLE_APP_ID"] as? String, appId)
+                XCTAssertEqual(dict["BUNDLE_ID"] as? String, app.bundleId)
+                XCTAssertEqual(dict["PROJECT_ID"] as? String, project.projectId)
+                XCTAssertEqual(dict["GCM_SENDER_ID"] as? String, project.projectNumber)
+            }
+            for app in android {
+                let appId = try XCTUnwrap(app.appId)
+                let config = try await provider.request(projectPath.androidApps.id(appId).config())
+                XCTAssertEqual(config.configFilename, "google-services.json")
+                let data = try XCTUnwrap(config.configFileContents.flatMap { Data(base64Encoded: $0) })
+                let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+                let info = try XCTUnwrap(json["project_info"] as? [String: Any])
+                XCTAssertEqual(info["project_id"] as? String, project.projectId)
+                let client = try XCTUnwrap((json["client"] as? [[String: Any]])?.first)
+                let clientInfo = try XCTUnwrap(client["client_info"] as? [String: Any])
+                XCTAssertEqual(clientInfo["mobilesdk_app_id"] as? String, appId)
+                XCTAssertEqual((clientInfo["android_client_info"] as? [String: Any])?["package_name"] as? String, app.packageName)
+            }
+            for app in web {
+                let appId = try XCTUnwrap(app.appId)
+                let config = try await provider.request(projectPath.webApps.id(appId).config())
+                XCTAssertNil(config.configFileContents)
+                XCTAssertEqual(config.appId, appId)
+                XCTAssertEqual(config.projectId, project.projectId)
+                XCTAssertEqual(config.messagingSenderId, project.projectNumber)
+                XCTAssertNotNil(config.apiKey)
+                XCTAssertNotNil(config.authDomain)
+            }
+        }
+    }
+
+    func testFirebaseUnknownAppConfigIsNotFound() async throws {
+        let provider = try firebaseProvider()
+        do {
+            _ = try await provider.request(FirebaseAPI.v1beta1.projects.id("trailhead-prod-4f2a1").iosApps.id("1:483920175624:ios:missing").config())
+            XCTFail("Expected a 404")
+        } catch {
+            XCTAssertTrue(error.localizedDescription.contains("404"), error.localizedDescription)
+        }
+    }
+
+    func testFirebaseRenameAndRemoveResolveColonAppIds() async throws {
+        let provider = try firebaseProvider()
+        let apps = FirebaseAPI.v1beta1.projects.id("trailhead-prod-4f2a1").androidApps
+        let appId = "1:483920175624:android:3e9d7c1b5a2f4e60"
+
+        let patched = try await provider.request(apps.id(appId).patch(PatchDisplayNameRequest(displayName: "Renamed"), updateMask: "displayName"))
+        XCTAssertEqual(patched.displayName, "Renamed")
+
+        _ = try await provider.request(apps.id(appId).remove())
+        let remaining = try await provider.request(apps.get(pageSize: 100)).apps ?? []
+        XCTAssertFalse(remaining.contains { $0.appId == appId })
+        XCTAssertEqual(remaining.count, 1)
     }
 
     // MARK: - Isolation

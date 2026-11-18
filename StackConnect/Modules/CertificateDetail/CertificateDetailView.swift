@@ -123,7 +123,7 @@ struct CertificateDetailView<ViewModel: CertificateDetailViewModelProtocol>: Vie
                 value: certificate.typeDisplayName
             )
             if let platform = certificate.platform {
-                buildRow(label: String(localized: "Platform"), value: platform)
+                buildRow(label: String(localized: "Platform"), value: BundleIdPlatformLabel.label(for: platform))
             }
             if let serial = certificate.serialNumber {
                 buildRow(label: String(localized: "Serial Number"), value: serial)

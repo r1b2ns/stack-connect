@@ -75,9 +75,8 @@ struct PermissionPickerSheet: View {
                     }
                 }
             }
-            .navigationTitle(resource.displayName)
+            .stackInlineNavigationTitle(resource.displayName)
             .trackScreen(.permissionPicker)
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     StackTrackedButton(String(localized: "OK"), button: .ok, on: .permissionPicker) {

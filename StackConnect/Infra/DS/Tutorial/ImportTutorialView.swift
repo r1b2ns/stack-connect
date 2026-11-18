@@ -3,7 +3,7 @@ import SwiftUI
 /// Presented sheet that explains the end-to-end `.scexport` import flow.
 ///
 /// Hosts ``TutorialGuideView`` inside a `Form` (the component renders a
-/// `Section`/`DisclosureGroup` and must live in a `Form`/`List`). The toolbar
+/// `Section` and must live in a `Form`/`List`). The toolbar
 /// adds a single combined-text `ShareLink` on top of the per-block shares the
 /// guide already provides, plus a Done button that dismisses the sheet.
 struct ImportTutorialView: View {
@@ -17,7 +17,10 @@ struct ImportTutorialView: View {
                     label: String(localized: "How to import?"),
                     systemImage: "questionmark.circle",
                     blocks: ImportTutorial.blocks,
-                    caption: String(localized: "Use the share button to send these steps to whoever is importing the account.")
+                    caption: String(localized: "Use the share button to send these steps to whoever is importing the account."),
+                    // The sheet title already says "How to import?": show the
+                    // steps right away instead of a lone collapsed row.
+                    isCollapsible: false
                 )
             }
             .navigationTitle(String(localized: "How to import?"))

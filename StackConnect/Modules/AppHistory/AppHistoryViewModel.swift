@@ -105,58 +105,12 @@ final class AppHistoryViewModel: AppHistoryViewModelProtocol {
         versions: [AppStoreVersionModel],
         submissions: [ReviewSubmissionModel]
     ) -> [AppHistoryGroup] {
-        let sortedVersions = versions.sorted {
-            ($0.createdDate ?? .distantPast) > ($1.createdDate ?? .distantPast)
-        }
-
-        return sortedVersions.map { version in
-            var entries: [AppHistoryEntry] = []
-
-            // Current state entry
-            if let state = version.appStoreState {
-                entries.append(AppHistoryEntry(
-                    id: "\(version.id)-state",
-                    activity: activityName(for: state),
-                    actorName: nil,
-                    date: version.createdDate,
-                    status: state.displayName,
-                    statusColor: state.color
-                ))
-            }
-
-            // Review submission entries
-            let versionSubmissions = submissions
-                .filter { $0.versionId == version.id }
-                .sorted { ($0.submittedDate ?? .distantPast) > ($1.submittedDate ?? .distantPast) }
-
-            for submission in versionSubmissions {
-                entries.append(AppHistoryEntry(
-                    id: "sub-\(submission.id)",
-                    activity: submissionActivity(for: submission.state),
-                    actorName: submission.submittedByName,
-                    date: submission.submittedDate,
-                    status: submission.stateDisplayName,
-                    statusColor: submission.stateColor
-                ))
-            }
-
-            // Version created entry
-            entries.append(AppHistoryEntry(
-                id: "\(version.id)-created",
-                activity: String(localized: "Version Created"),
-                actorName: nil,
-                date: version.createdDate,
-                status: String(localized: "Created"),
-                statusColor: .gray
-            ))
-
-            return AppHistoryGroup(
-                id: version.id,
-                versionString: version.versionString ?? "–",
-                platform: version.platform,
-                entries: entries
-            )
-        }
+        AppHistoryTimelineBuilder.buildGroups(
+            versions: versions,
+            submissions: submissions,
+            activityName: activityName(for:),
+            submissionActivity: submissionActivity(for:)
+        )
     }
 
     private func activityName(for state: AppStoreState) -> String {
@@ -193,6 +147,84 @@ final class AppHistoryViewModel: AppHistoryViewModelProtocol {
         case "CANCELING":          return String(localized: "Canceling Review")
         case "READY_FOR_REVIEW":   return String(localized: "Ready for Review")
         default:                   return String(localized: "Submitted for Review")
+        }
+    }
+}
+
+// MARK: - Timeline builder
+
+/// Builds the per-version history timeline (newest first).
+///
+/// ASC exposes no timestamp for when a version *reached* its current
+/// `appStoreState` — only its `createdDate`. The current-state entry used to be
+/// stamped with `createdDate`, so "Released to App Store" showed the creation day
+/// and sat above a later "Review Completed". It now carries no date and is pinned
+/// on top as the current status, while every dated event (review submissions,
+/// version creation) is ordered newest-first by its own timestamp.
+enum AppHistoryTimelineBuilder {
+
+    static func buildGroups(
+        versions: [AppStoreVersionModel],
+        submissions: [ReviewSubmissionModel],
+        activityName: (AppStoreState) -> String,
+        submissionActivity: (String?) -> String
+    ) -> [AppHistoryGroup] {
+        let sortedVersions = versions.sorted {
+            ($0.createdDate ?? .distantPast) > ($1.createdDate ?? .distantPast)
+        }
+
+        return sortedVersions.map { version in
+            var events: [AppHistoryEntry] = submissions
+                .filter { $0.versionId == version.id }
+                .map { submission in
+                    AppHistoryEntry(
+                        id: "sub-\(submission.id)",
+                        activity: submissionActivity(submission.state),
+                        actorName: submission.submittedByName,
+                        date: submission.submittedDate,
+                        status: submission.stateDisplayName,
+                        statusColor: submission.stateColor
+                    )
+                }
+
+            events.append(AppHistoryEntry(
+                id: "\(version.id)-created",
+                activity: String(localized: "Version Created"),
+                actorName: nil,
+                date: version.createdDate,
+                status: String(localized: "Created"),
+                statusColor: .gray
+            ))
+
+            // Newest first; "Version Created" is appended last so it stays at the
+            // bottom when a submission shares its exact timestamp (stable sort).
+            let orderedEvents = events.enumerated()
+                .sorted { lhs, rhs in
+                    let lDate = lhs.element.date ?? .distantPast
+                    let rDate = rhs.element.date ?? .distantPast
+                    return lDate == rDate ? lhs.offset < rhs.offset : lDate > rDate
+                }
+                .map(\.element)
+
+            var entries: [AppHistoryEntry] = []
+            if let state = version.appStoreState {
+                entries.append(AppHistoryEntry(
+                    id: "\(version.id)-state",
+                    activity: activityName(state),
+                    actorName: nil,
+                    date: nil,
+                    status: state.displayName,
+                    statusColor: state.color
+                ))
+            }
+            entries.append(contentsOf: orderedEvents)
+
+            return AppHistoryGroup(
+                id: version.id,
+                versionString: version.versionString ?? "–",
+                platform: version.platform,
+                entries: entries
+            )
         }
     }
 }

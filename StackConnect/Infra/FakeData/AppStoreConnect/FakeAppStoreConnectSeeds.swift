@@ -327,8 +327,8 @@ extension FakeAppStoreConnectCatalog {
         symbol: "water.waves", color: "1565C0",
         primaryCategory: "WEATHER", secondaryCategory: "TRAVEL",
         versions: [
-            FakeASCVersionSeed(platform: "IOS", version: "1.6.0", state: "WAITING_FOR_REVIEW", createdDaysAgo: 4, build: "160", submittedDaysAgo: 0.5),
-            FakeASCVersionSeed(platform: "IOS", version: "1.5.2", state: "READY_FOR_SALE", createdDaysAgo: 38, build: "152", submittedDaysAgo: 36)
+            FakeASCVersionSeed(platform: "IOS", version: "1.6.0", state: "READY_FOR_SALE", createdDaysAgo: 4, build: "160", phasedDay: 2, submittedDaysAgo: 3),
+            FakeASCVersionSeed(platform: "IOS", version: "1.5.2", state: "REPLACED_WITH_NEW_VERSION", createdDaysAgo: 38, build: "152", submittedDaysAgo: 36)
         ],
         texts: [
             ("en-US", FakeASCLocalizedText(

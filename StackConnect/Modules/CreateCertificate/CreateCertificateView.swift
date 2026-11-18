@@ -319,7 +319,7 @@ struct CreateCertificateView<ViewModel: CreateCertificateViewModelProtocol>: Vie
                 Section {
                     buildDetailRow(label: String(localized: "Type"), value: cert.typeDisplayName)
                     if let platform = cert.platform {
-                        buildDetailRow(label: String(localized: "Platform"), value: platform)
+                        buildDetailRow(label: String(localized: "Platform"), value: BundleIdPlatformLabel.label(for: platform))
                     }
                     if let serial = cert.serialNumber {
                         buildDetailRow(label: String(localized: "Serial Number"), value: serial)

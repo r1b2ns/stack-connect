@@ -1,0 +1,626 @@
+[
+  {
+    "file": "001-firebase-account-list.png",
+    "title": "Firebase accounts",
+    "module": "FirebaseAccountList",
+    "flow": "Home > Firebase",
+    "notes": "List of Firebase accounts (Northwind Labs) with project counts; '+' toolbar button to add an account. iPad: candidate for sidebar/primary column.",
+    "status": "ok"
+  },
+  {
+    "file": "002-firebase-add-account-sheet.png",
+    "title": "Add Firebase account sheet",
+    "module": "FirebaseAccountList",
+    "flow": "Home > Firebase > +",
+    "notes": "Sheet to add an account (import service-account JSON / options); dismissed without saving. iPad: form sheet.",
+    "status": "ok"
+  },
+  {
+    "file": "003-firebase-project-list.png",
+    "title": "Firebase projects",
+    "module": "FirebaseProjectList",
+    "flow": "Home > Firebase > Northwind Labs",
+    "notes": "Project list (Trailhead, Mosaic Notes, ...) with project IDs. iPad: middle column of a split view.",
+    "status": "ok"
+  },
+  {
+    "file": "004-firebase-project-detail-trailhead.png",
+    "title": "Project detail - Trailhead",
+    "module": "FirebaseProjectDetail",
+    "flow": "Firebase > Northwind Labs > Trailhead",
+    "notes": "Project header plus service rows (Apps, Remote Config, Messaging, Analytics...). Toolbar edit to reorder services. iPad: detail column / dashboard grid.",
+    "status": "ok"
+  },
+  {
+    "file": "005-firebase-project-detail-reorder-services.png",
+    "title": "Project detail - reorder services",
+    "module": "FirebaseProjectDetail",
+    "flow": "... > Trailhead > Edit",
+    "notes": "Edit mode with drag handles to reorder service rows; exited with Done, no change kept.",
+    "status": "ok"
+  },
+  {
+    "file": "006-firebase-app-list-trailhead.png",
+    "title": "Firebase app list - Trailhead",
+    "module": "FirebaseAppList",
+    "flow": "... > Trailhead > Apps",
+    "notes": "Fixed: Android rows (Trailhead Android, Trailhead Wear OS) now show the Android glyph in a green tile; no 'No symbol named \"android\"' fault in the log. Searchable list grouped by platform (iOS 1, Android 2, Web 1) with bundle/package and App ID; '+' to add an app.",
+    "status": "ok"
+  },
+  {
+    "file": "007-firebase-app-detail-ios-config-loading.png",
+    "title": "Firebase app detail - iOS",
+    "module": "FirebaseAppDetail",
+    "flow": "... > Apps > Trailhead iOS",
+    "notes": "Fixed: Configuration File row shows GoogleService-Info.plist loaded (with share button) instead of an infinite 'Loading config...'; log shows '[Firebase] Fetched config for 1:483920175624:ios:...'. Sheet: Information (platform, bundle ID, App ID), Display Name (nickname), Configuration File, Delete App (not tapped). Minor: footer under the config row repeats the file name.",
+    "status": "ok"
+  },
+  {
+    "file": "008-firebase-app-detail-nickname-edit.png",
+    "title": "Firebase app detail - nickname inline edit",
+    "module": "FirebaseAppDetail",
+    "flow": "... > Trailhead iOS > Nickname",
+    "notes": "Nickname field in edit state with keyboard; dismissed without saving.",
+    "status": "ok"
+  },
+  {
+    "file": "009-firebase-app-detail-android.png",
+    "title": "Firebase app detail - Android",
+    "module": "FirebaseAppDetail",
+    "flow": "... > Apps > Trailhead Android",
+    "notes": "Fixed: Configuration File row shows google-services.json loaded (with share button); Platform row shows the Android glyph; log shows 'Fetched config for 1:483920175624:android:...'. Same layout as iOS detail. Minor: footer repeats the file name and the Android platform glyph renders smaller than the other row icons.",
+    "status": "ok"
+  },
+  {
+    "file": "010-firebase-app-detail-web.png",
+    "title": "Firebase app detail - Web",
+    "module": "FirebaseAppDetail",
+    "flow": "... > Apps > Trailhead Planner (Web)",
+    "notes": "Fixed: Configuration File row shows firebase-config.json loaded (with share button); log shows 'Fetched config for 1:483920175624:web:...'. Web app: platform, URL identifier, App ID, nickname, config file, Delete App (not tapped).",
+    "status": "ok"
+  },
+  {
+    "file": "011-firebase-new-app-step1-platform.png",
+    "title": "New Firebase app - step 1 platform",
+    "module": "FirebaseNewApp",
+    "flow": "... > Apps > +",
+    "notes": "Recaptured: Android platform option now uses the Android glyph in a green tile. Two-step wizard with step indicator; platform choice iOS/Android/Web; Cancel/Next. Cancelled. iPad: form sheet.",
+    "status": "ok"
+  },
+  {
+    "file": "012-firebase-new-app-step2-details.png",
+    "title": "New Firebase app - step 2 details",
+    "module": "FirebaseNewApp",
+    "flow": "... > Apps > + > Next",
+    "notes": "Form fields for bundle ID / nickname / App Store ID; Cancel; nothing created.",
+    "status": "ok"
+  },
+  {
+    "file": "013-remote-config-template.png",
+    "title": "Remote Config - template",
+    "module": "RemoteConfig",
+    "flow": "... > Trailhead > Remote Config",
+    "notes": "Template version header, conditions summary, parameter list with types and default values; toolbar more menu and '+'. iPad: list + inspector.",
+    "status": "ok"
+  },
+  {
+    "file": "014-remote-config-template-2.png",
+    "title": "Remote Config - template (scrolled)",
+    "module": "RemoteConfig",
+    "flow": "... > Remote Config (scrolled)",
+    "notes": "Further parameters and parameter groups section.",
+    "status": "ok"
+  },
+  {
+    "file": "015-remote-config-more-menu.png",
+    "title": "Remote Config - more menu",
+    "module": "RemoteConfig",
+    "flow": "... > Remote Config > ...",
+    "notes": "Context menu: Conditions, version history and related actions. iPad: toolbar menu / popover.",
+    "status": "ok"
+  },
+  {
+    "file": "016-remote-config-conditions.png",
+    "title": "Remote Config - conditions",
+    "module": "RemoteConfig",
+    "flow": "... > Remote Config > Conditions",
+    "notes": "List of conditions with color tags and expressions; '+' to add.",
+    "status": "ok"
+  },
+  {
+    "file": "017-remote-config-edit-condition.png",
+    "title": "Remote Config - edit condition",
+    "module": "RemoteConfig",
+    "flow": "... > Conditions > condition",
+    "notes": "Condition form (name, color, expression rules); cancelled.",
+    "status": "ok"
+  },
+  {
+    "file": "018-remote-config-new-condition.png",
+    "title": "Remote Config - new condition",
+    "module": "RemoteConfig",
+    "flow": "... > Conditions > +",
+    "notes": "Empty condition form; cancelled.",
+    "status": "ok"
+  },
+  {
+    "file": "019-remote-config-parameter-edit-number.png",
+    "title": "Remote Config - edit number parameter",
+    "module": "RemoteConfig",
+    "flow": "... > Remote Config > parameter",
+    "notes": "Parameter edit form: key, type, default value, conditional values, description, group; cancelled, never published.",
+    "status": "ok"
+  },
+  {
+    "file": "020-remote-config-parameter-edit-json.png",
+    "title": "Remote Config - edit JSON parameter",
+    "module": "RemoteConfig",
+    "flow": "... > Remote Config > JSON parameter",
+    "notes": "JSON value editor variant of the parameter form; cancelled.",
+    "status": "ok"
+  },
+  {
+    "file": "021-remote-config-new-parameter.png",
+    "title": "Remote Config - new parameter",
+    "module": "RemoteConfig",
+    "flow": "... > Remote Config > +",
+    "notes": "Empty parameter form; cancelled.",
+    "status": "ok"
+  },
+  {
+    "file": "022-messaging-campaigns-empty.png",
+    "title": "Messaging - campaigns (empty)",
+    "module": "Messaging",
+    "flow": "... > Trailhead > Messaging",
+    "notes": "Segmented control Campaigns/Reports; empty state with compose call to action.",
+    "status": "ok"
+  },
+  {
+    "file": "023-messaging-reports-delivery-stats.png",
+    "title": "Messaging - delivery reports",
+    "module": "Messaging",
+    "flow": "... > Messaging > Reports",
+    "notes": "FCM delivery stats (sent, received, impressions, opens) with chart. iPad: wider chart / multi-column metrics.",
+    "status": "ok"
+  },
+  {
+    "file": "024-messaging-compose-campaign.png",
+    "title": "Messaging - compose notification",
+    "module": "Messaging",
+    "flow": "... > Messaging > Compose",
+    "notes": "Compose form (title, body, image, target, schedule); cancelled, never sent.",
+    "status": "ok"
+  },
+  {
+    "file": "025-analytics-dashboard-active-users.png",
+    "title": "Google Analytics - active users",
+    "module": "Analytics",
+    "flow": "... > Trailhead > Analytics",
+    "notes": "Active users chart with period selector and summary metrics. iPad: dashboard grid.",
+    "status": "ok"
+  },
+  {
+    "file": "026-firebase-project-detail-mosaic-notes.png",
+    "title": "Project detail - Mosaic Notes",
+    "module": "FirebaseProjectDetail",
+    "flow": "Firebase > Northwind Labs > Mosaic Notes",
+    "notes": "Second project detail for comparison.",
+    "status": "ok"
+  },
+  {
+    "file": "027-remote-config-mosaic-notes.png",
+    "title": "Remote Config - Mosaic Notes",
+    "module": "RemoteConfig",
+    "flow": "... > Mosaic Notes > Remote Config",
+    "notes": "Template for second project, different parameters.",
+    "status": "ok"
+  },
+  {
+    "file": "028-remote-config-parameter-edit-boolean.png",
+    "title": "Remote Config - edit boolean parameter",
+    "module": "RemoteConfig",
+    "flow": "... > Mosaic Remote Config > boolean parameter",
+    "notes": "Boolean value variant of the parameter form; cancelled.",
+    "status": "ok"
+  },
+  {
+    "file": "029-firebase-app-list-mosaic-notes.png",
+    "title": "Firebase app list - Mosaic Notes",
+    "module": "FirebaseAppList",
+    "flow": "... > Mosaic Notes > Apps",
+    "notes": "Fixed: Mosaic Notes Android row now shows the Android glyph in a green tile. iOS (2 incl. visionOS), Android 1, Web 1.",
+    "status": "ok"
+  },
+  {
+    "file": "030-google-play-account-list.png",
+    "title": "Google Play accounts",
+    "module": "GooglePlayAccountList",
+    "flow": "Home > Google Play",
+    "notes": "Account list (Northwind Labs).",
+    "status": "ok"
+  },
+  {
+    "file": "031-google-play-app-list-syncing-toast.png",
+    "title": "Google Play apps - syncing toast",
+    "module": "GooglePlayAppList",
+    "flow": "Google Play > Northwind Labs",
+    "notes": "Apps/Users segmented header, search, app rows with per-track status lines and 'Syncing apps...' toast (offline-first pattern).",
+    "status": "ok"
+  },
+  {
+    "file": "032-google-play-app-list.png",
+    "title": "Google Play apps",
+    "module": "GooglePlayAppList",
+    "flow": "Google Play > Northwind Labs",
+    "notes": "4 apps (Harbor Transit, Ledger Pocket, Mosaic Notes, Trailhead) with multi-line track status (published, not sent for review, approved-not-published, not approved, draft, in review, custom track city-partners). Floating '+' button bottom-left, settings gear top-right. List fits on one screen (no separate footer). iPad: middle column.",
+    "status": "ok"
+  },
+  {
+    "file": "033-google-play-add-app-sheet.png",
+    "title": "Add Google Play app sheet",
+    "module": "GooglePlayAppList",
+    "flow": "... > Apps > +",
+    "notes": "Sheet to add an app by package name; cancelled.",
+    "status": "ok"
+  },
+  {
+    "file": "034-google-play-manage-account.png",
+    "title": "Google Play account menu",
+    "module": "GooglePlayAccountSettings",
+    "flow": "... > Apps > gear",
+    "notes": "Account actions sheet/menu leading to account settings.",
+    "status": "ok"
+  },
+  {
+    "file": "035-google-play-account-settings-developer-id.png",
+    "title": "Google Play account settings",
+    "module": "GooglePlayAccountSettings",
+    "flow": "... > gear > Account Settings",
+    "notes": "Name, provider, Developer ID (editable, pencil - not changed), origin, created date; permission summary (Apps/Versions/Review and Rating/Users); Export Account.",
+    "status": "ok"
+  },
+  {
+    "file": "036-google-play-app-detail-trailhead.png",
+    "title": "App detail - Trailhead",
+    "module": "GooglePlayAppDetail",
+    "flow": "... > Apps > Trailhead",
+    "notes": "Header (icon, package, platform), Production with 20% staged rollout progress bar, Open testing in review, Internal testing draft + completed, 'See all tracks'. '+' new release.",
+    "status": "ok"
+  },
+  {
+    "file": "037-google-play-app-detail-trailhead-2.png",
+    "title": "App detail - Trailhead (scrolled)",
+    "module": "GooglePlayAppDetail",
+    "flow": "... > Trailhead (scrolled)",
+    "notes": "Store presence (Store Listings, App Details), Quality (Ratings & Reviews), Only in Play Console note + link.",
+    "status": "ok"
+  },
+  {
+    "file": "038-google-play-store-listings-languages.png",
+    "title": "Store listings - languages",
+    "module": "GooglePlayStoreListings",
+    "flow": "... > Trailhead > Store Listings",
+    "notes": "5 languages with titles and locale codes. iPad: list/detail split.",
+    "status": "ok"
+  },
+  {
+    "file": "039-google-play-store-listing-en-us.png",
+    "title": "Store listing - en-US",
+    "module": "GooglePlayStoreListings",
+    "flow": "... > Store Listings > English (US)",
+    "notes": "Title, short and full description with copy buttons, promo video link.",
+    "status": "ok"
+  },
+  {
+    "file": "040-google-play-store-listing-ja-jp.png",
+    "title": "Store listing - ja-JP",
+    "module": "GooglePlayStoreListings",
+    "flow": "... > Store Listings > Japanese",
+    "notes": "CJK text rendering; promo video 'Not set' empty state.",
+    "status": "ok"
+  },
+  {
+    "file": "041-google-play-app-details.png",
+    "title": "App details (contact info)",
+    "module": "GooglePlayAppDetail",
+    "flow": "... > Trailhead > App Details",
+    "notes": "Package name, default language, contact email/phone/website.",
+    "status": "ok"
+  },
+  {
+    "file": "042-google-play-reviews-list.png",
+    "title": "Ratings & reviews",
+    "module": "GooglePlayReviews",
+    "flow": "... > Trailhead > Ratings & Reviews",
+    "notes": "Filter by rating picker, 8 reviews with stars, date, author, 'Replied' badge.",
+    "status": "ok"
+  },
+  {
+    "file": "043-google-play-reviews-rating-filter-menu.png",
+    "title": "Reviews - rating filter menu",
+    "module": "GooglePlayReviews",
+    "flow": "... > Reviews > Filter",
+    "notes": "Pull-down menu All/5..1 stars.",
+    "status": "ok"
+  },
+  {
+    "file": "044-google-play-review-detail-replied.png",
+    "title": "Review detail - replied",
+    "module": "GooglePlayReviews",
+    "flow": "... > Reviews > Marcus Bell",
+    "notes": "Customer review card + developer response card (tap to edit); share button.",
+    "status": "ok"
+  },
+  {
+    "file": "045-google-play-review-detail-unreplied.png",
+    "title": "Review detail - unreplied",
+    "module": "GooglePlayReviews",
+    "flow": "... > Reviews > Jonas Keller",
+    "notes": "Write a Reply and Reply Templates actions.",
+    "status": "ok"
+  },
+  {
+    "file": "046-google-play-review-reply-form.png",
+    "title": "Reply to review form",
+    "module": "GooglePlayReviews",
+    "flow": "... > Review > Write a Reply",
+    "notes": "Sheet with text editor and 0/350 counter; Send disabled; cancelled.",
+    "status": "ok"
+  },
+  {
+    "file": "047-google-play-reply-templates-empty.png",
+    "title": "Reply templates - empty",
+    "module": "GooglePlayReviews",
+    "flow": "... > Review > Reply Templates",
+    "notes": "Half-height sheet with empty state 'No Templates' and New Template action; Done.",
+    "status": "ok"
+  },
+  {
+    "file": "048-google-play-tracks-trailhead.png",
+    "title": "Tracks & releases - Trailhead",
+    "module": "GooglePlayTracks",
+    "flow": "... > Trailhead > See all tracks",
+    "notes": "Sections per track (Production, Open testing, Internal testing) with '+' per track, release rows with status badges and rollout bar.",
+    "status": "ok"
+  },
+  {
+    "file": "049-google-play-release-detail-rolling-out.png",
+    "title": "Release detail - rolling out 20%",
+    "module": "GooglePlayReleaseDetail",
+    "flow": "... > Tracks > 4.2.0",
+    "notes": "Status header, build (app bundle), content (name, notes, in-app update priority), release notes per language; sticky bottom actions Halt Rollout / Increase Rollout / Release to All Users.",
+    "status": "ok"
+  },
+  {
+    "file": "050-google-play-release-detail-rolling-out-2.png",
+    "title": "Release detail - rolling out (scrolled)",
+    "module": "GooglePlayReleaseDetail",
+    "flow": "... > 4.2.0 (scrolled)",
+    "notes": "More language notes with char counters, Rollout section (staged 20%, country targeting), Play Console link.",
+    "status": "ok"
+  },
+  {
+    "file": "051-google-play-staged-rollout-form.png",
+    "title": "Staged rollout form",
+    "module": "GooglePlayReleaseDetail",
+    "flow": "... > 4.2.0 > Increase Rollout",
+    "notes": "Release method choice, percentage slider with step chips (1-99%), rollout status, Halt Rollout; Cancel/Save - cancelled.",
+    "status": "ok"
+  },
+  {
+    "file": "052-google-play-halt-rollout-confirm.png",
+    "title": "Halt rollout confirmation",
+    "module": "GooglePlayReleaseDetail",
+    "flow": "... > 4.2.0 > Halt Rollout",
+    "notes": "Alert explaining effect and Play edit; Cancel tapped.",
+    "status": "ok"
+  },
+  {
+    "file": "053-google-play-release-to-all-review-checklist.png",
+    "title": "Release to all users - review checklist",
+    "module": "GooglePlayReleaseDetail",
+    "flow": "... > 4.2.0 > Release to All Users",
+    "notes": "Review checklist sheet (bundle, name, notes missing in 2 languages warning, rollout), send-for-review toggle, in-progress review policy picker; Cancel/Publish - cancelled.",
+    "status": "ok"
+  },
+  {
+    "file": "054-google-play-new-release-form.png",
+    "title": "New release form",
+    "module": "GooglePlayNewRelease",
+    "flow": "... > Trailhead > +",
+    "notes": "Track picker with live status per track, source app bundle row, release name, in-app priority, release notes per language; Next disabled; cancelled.",
+    "status": "ok"
+  },
+  {
+    "file": "055-google-play-bundle-picker.png",
+    "title": "App bundle picker",
+    "module": "GooglePlayNewRelease",
+    "flow": "... > New Release > App Bundle",
+    "notes": "List of uploaded bundles (version code + SHA-256); back without selecting.",
+    "status": "ok"
+  },
+  {
+    "file": "056-google-play-release-detail-internal-completed.png",
+    "title": "Release detail - internal completed",
+    "module": "GooglePlayReleaseDetail",
+    "flow": "... > Trailhead > Internal 4.3.0 (4303)",
+    "notes": "Completed internal release; Actions: Promote to Another Track.",
+    "status": "ok"
+  },
+  {
+    "file": "057-google-play-promote-release-form.png",
+    "title": "Promote release form",
+    "module": "GooglePlayReleaseDetail",
+    "flow": "... > 4.3.0 > Promote",
+    "notes": "Target track picker, source, bundle, release name, notes; Cancel/Next - cancelled.",
+    "status": "ok"
+  },
+  {
+    "file": "058-google-play-app-detail-harbor-transit.png",
+    "title": "App detail - Harbor Transit",
+    "module": "GooglePlayAppDetail",
+    "flow": "... > Apps > Harbor Transit",
+    "notes": "Production completed, Internal 'Not sent for review', custom track city-partners.",
+    "status": "ok"
+  },
+  {
+    "file": "059-google-play-tracks-harbor-custom-track.png",
+    "title": "Tracks - Harbor Transit (custom track)",
+    "module": "GooglePlayTracks",
+    "flow": "... > Harbor Transit > See all tracks",
+    "notes": "Custom track 'city-partners' with tag icon alongside standard tracks.",
+    "status": "ok"
+  },
+  {
+    "file": "060-google-play-release-detail-custom-track.png",
+    "title": "Release detail - custom track",
+    "module": "GooglePlayReleaseDetail",
+    "flow": "... > Tracks > city-partners 2.0.0",
+    "notes": "Release on custom track, completed/published.",
+    "status": "ok"
+  },
+  {
+    "file": "061-google-play-app-detail-ledger-pocket.png",
+    "title": "App detail - Ledger Pocket",
+    "module": "GooglePlayAppDetail",
+    "flow": "... > Apps > Ledger Pocket",
+    "notes": "Production: 2.8.1 approved-not-published, 2.7.0 halted at 10% (orange bar), 2.6.3; closed and internal testing.",
+    "status": "ok"
+  },
+  {
+    "file": "062-google-play-release-detail-halted.png",
+    "title": "Release detail - halted",
+    "module": "GooglePlayReleaseDetail",
+    "flow": "... > Ledger Pocket > 2.7.0",
+    "notes": "Halted status; bottom actions Resume Rollout / Release to All Users.",
+    "status": "ok"
+  },
+  {
+    "file": "063-google-play-resume-rollout-confirm.png",
+    "title": "Resume rollout confirmation",
+    "module": "GooglePlayReleaseDetail",
+    "flow": "... > 2.7.0 > Resume Rollout",
+    "notes": "Alert; Cancel tapped.",
+    "status": "ok"
+  },
+  {
+    "file": "064-google-play-release-detail-approved-not-published.png",
+    "title": "Release detail - approved, not published",
+    "module": "GooglePlayReleaseDetail",
+    "flow": "... > Ledger Pocket > 2.8.1",
+    "notes": "Review status 'Approved, not published'; 2 languages of notes.",
+    "status": "ok"
+  },
+  {
+    "file": "065-google-play-app-detail-mosaic-notes.png",
+    "title": "App detail - Mosaic Notes",
+    "module": "GooglePlayAppDetail",
+    "flow": "... > Apps > Mosaic Notes",
+    "notes": "Production 5.2.0 not approved (red dot), open testing draft, internal published.",
+    "status": "ok"
+  },
+  {
+    "file": "066-google-play-release-detail-not-approved.png",
+    "title": "Release detail - not approved",
+    "module": "GooglePlayReleaseDetail",
+    "flow": "... > Mosaic Notes > 5.2.0",
+    "notes": "Review status 'Not approved'. Note: header badge reads 'Completed' (release status) next to 'Not approved' review status - possibly confusing but it is the API value.",
+    "status": "ok"
+  },
+  {
+    "file": "067-google-play-release-detail-draft.png",
+    "title": "Release detail - draft",
+    "module": "GooglePlayReleaseDetail",
+    "flow": "... > Mosaic Notes > Open testing 5.2.0",
+    "notes": "Draft release with single 'Roll Out' bottom action (not tapped).",
+    "status": "ok"
+  },
+  {
+    "file": "068-google-play-release-detail-in-review.png",
+    "title": "Release detail - in review",
+    "module": "GooglePlayReleaseDetail",
+    "flow": "... > Trailhead > Open testing 4.3.0-beta2",
+    "notes": "Review status 'In review'.",
+    "status": "ok"
+  },
+  {
+    "file": "069-google-play-users-list.png",
+    "title": "Google Play users",
+    "module": "GooglePlayUsers",
+    "flow": "Google Play > Northwind Labs > Users",
+    "notes": "Search, filter chips (All, Admins, Invited, Expired, Service accounts - last chip clipped by horizontal scroll), 10 users with initials avatar, permission summary, scope badge (All Apps / N Apps / Invited / Expired). '+' invite.",
+    "status": "ok"
+  },
+  {
+    "file": "070-google-play-users-list-2.png",
+    "title": "Google Play users (scrolled)",
+    "module": "GooglePlayUsers",
+    "flow": "... > Users (scrolled)",
+    "notes": "Invited, expired invitation, expired access, service accounts (ci-publisher, play-publisher); footer about swipe actions.",
+    "status": "ok"
+  },
+  {
+    "file": "071-google-play-user-detail-service-account-self.png",
+    "title": "User detail - own service account",
+    "module": "GooglePlayUsers",
+    "flow": "... > Users > play-publisher",
+    "notes": "Self-protection note (cannot be removed, keeps Admin); admin toggle on, account permissions dimmed; Save disabled.",
+    "status": "ok"
+  },
+  {
+    "file": "072-google-play-user-detail-pending-invitation.png",
+    "title": "User detail - pending invitation",
+    "module": "GooglePlayUsers",
+    "flow": "... > Users > kai.nakamura",
+    "notes": "Invited badge, access expiry date, permissions, per-app permission (Harbor Transit).",
+    "status": "ok"
+  },
+  {
+    "file": "073-google-play-user-detail-expired-invitation.png",
+    "title": "User detail - expired invitation",
+    "module": "GooglePlayUsers",
+    "flow": "... > Users > joana.lima",
+    "notes": "'Invitation expired' badge, app permission for Mosaic Notes.",
+    "status": "ok"
+  },
+  {
+    "file": "074-google-play-user-detail-expired-access.png",
+    "title": "User detail - expired access",
+    "module": "GooglePlayUsers",
+    "flow": "... > Users > Lena Fischer",
+    "notes": "'Access expired' badge, expiry 6 Nov 2026, Manage store presence on.",
+    "status": "ok"
+  },
+  {
+    "file": "075-google-play-user-detail-per-app-permissions.png",
+    "title": "User detail - per-app permissions",
+    "module": "GooglePlayUsers",
+    "flow": "... > Users > Support",
+    "notes": "No account-level permissions; App Permissions (3) list with Add App.",
+    "status": "ok"
+  },
+  {
+    "file": "076-google-play-user-detail-admin.png",
+    "title": "User detail - admin",
+    "module": "GooglePlayUsers",
+    "flow": "... > Users > Dana Whitfield",
+    "notes": "Admin toggle on; all account permissions implied (dimmed); no app-specific permissions.",
+    "status": "ok"
+  },
+  {
+    "file": "077-google-play-invite-user-form.png",
+    "title": "Invite user form",
+    "module": "GooglePlayUsers",
+    "flow": "... > Users > +",
+    "notes": "Email, access expiry, role preset chips (Admin, Release manager, Support, Finance - horizontally scrolled, last chip clipped), permission toggles; Send disabled; cancelled.",
+    "status": "ok"
+  },
+  {
+    "file": "078-google-play-users-filter-admins.png",
+    "title": "Users - Admins filter",
+    "module": "GooglePlayUsers",
+    "flow": "... > Users > Admins chip",
+    "notes": "Filtered list (2 admins).",
+    "status": "ok"
+  }
+]

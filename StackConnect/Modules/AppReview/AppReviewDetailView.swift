@@ -441,9 +441,7 @@ struct AppReviewDetailView<ViewModel: AppReviewDetailViewModelProtocol>: View {
 
     private func formatDate(_ date: Date?) -> String {
         guard let date else { return "–" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM, EEE, HH:mm"
-        return formatter.string(from: date)
+        return date.formatted(date: .abbreviated, time: .shortened)
     }
 
     private func stateColor(_ color: AppStoreStateColor) -> Color {

@@ -32,12 +32,14 @@ enum FirebaseAppPlatform: String, Hashable {
         }
     }
 
-    var iconName: String {
+    /// SF Symbols has no Android glyph: Android uses the shared `AndroidGlyph`
+    /// asset, like the rest of the app.
+    var glyph: StackPlatformGlyph {
         switch self {
-        case .ios:      return "apple.logo"
-        case .android:  return "android"
-        case .web:      return "globe"
-        case .unknown:  return "questionmark.circle"
+        case .ios:      return .system("apple.logo")
+        case .android:  return .android
+        case .web:      return .system("globe")
+        case .unknown:  return .system("questionmark.circle")
         }
     }
 
@@ -81,6 +83,9 @@ struct FirebaseAppListUiState {
     var confirmDeleteApp: FirebaseAppModel?
     var configContent: String?
     var configFilename: String?
+    /// Set when the config file could not be fetched: the detail sheet shows
+    /// it with a retry instead of the loading row.
+    var configError: String?
 
     var filteredApps: [FirebaseAppModel] {
         let query = searchQuery.trimmingCharacters(in: .whitespaces).lowercased()
@@ -217,7 +222,11 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
     }
 
     func fetchConfig(_ app: FirebaseAppModel) async {
-        guard let provider = createProvider() else { return }
+        uiState.configError = nil
+        guard let provider = createProvider() else {
+            uiState.configError = String(localized: "No credentials found for this account.")
+            return
+        }
         let projectId = uiState.project.projectId
 
         do {
@@ -230,6 +239,7 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
             case .web:
                 endpoint = FirebaseAPI.v1beta1.projects.id(projectId).webApps.id(app.appId).config()
             case .unknown:
+                uiState.configError = String(localized: "Couldn't load the configuration file.")
                 return
             }
 
@@ -253,11 +263,16 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
                 lines.append("}")
                 uiState.configContent = lines.joined(separator: "\n")
                 uiState.configFilename = "firebase-config.json"
+            } else {
+                // A response without file contents would otherwise leave the row loading forever.
+                uiState.configError = String(localized: "Couldn't load the configuration file.")
+                Log.print.error("[Firebase] Fetch config returned no file contents for \(app.appId)")
+                return
             }
 
             Log.print.info("[Firebase] Fetched config for \(app.appId)")
         } catch {
-            uiState.toastMessage = ToastMessage(String(localized: "Failed to fetch config"), icon: "exclamationmark.triangle.fill")
+            uiState.configError = String(localized: "Couldn't load the configuration file.")
             Log.print.error("[Firebase] Fetch config failed: \(error.localizedDescription)")
         }
     }

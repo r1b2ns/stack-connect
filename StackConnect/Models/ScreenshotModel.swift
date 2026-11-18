@@ -23,13 +23,9 @@ struct ScreenshotSetModel: Codable, Identifiable, Hashable {
         return nil
     }
 
+    /// Localized ASC name for the set's display type, e.g. `APP_IPHONE_67` → `iPhone 6.7" Display`.
     var displayName: String {
-        guard let displayType else { return "Unknown" }
-        return displayType
-            .replacingOccurrences(of: "APP_", with: "")
-            .replacingOccurrences(of: "IMESSAGE_APP_", with: "iMessage ")
-            .replacingOccurrences(of: "_", with: " ")
-            .capitalized
+        ScreenshotDisplayTypeName.displayName(for: displayType)
     }
 }
 

@@ -157,11 +157,9 @@ private struct CreateBundleIdSheet<ViewModel: IdentifiersListViewModelProtocol>:
     @State private var name = ""
     @State private var platformRaw = "IOS"
 
-    private let platforms = [
-        (raw: "IOS",       label: String(localized: "iOS, tvOS, watchOS, visionOS")),
-        (raw: "MAC_OS",    label: String(localized: "macOS")),
-        (raw: "UNIVERSAL", label: String(localized: "Universal"))
-    ]
+    private let platforms = ["IOS", "MAC_OS", "UNIVERSAL"].map {
+        (raw: $0, label: BundleIdPlatformLabel.label(for: $0, style: .expanded))
+    }
 
     private var canSubmit: Bool {
         !identifier.trimmingCharacters(in: .whitespaces).isEmpty &&
