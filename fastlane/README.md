@@ -67,8 +67,12 @@ Build and upload both Dev and Production betas to TestFlight in a single run.
 
 Upload App Store screenshots without building.
 
+    Only the locales present in the screenshots folder are touched. With overwrite:true the
+    existing screenshots of those locales are deleted first (other locales keep theirs).
+
     Usage:
       bundle exec fastlane screenshots
+      bundle exec fastlane screenshots path:/abs/folder overwrite:true
 
 ### ios metadata
 

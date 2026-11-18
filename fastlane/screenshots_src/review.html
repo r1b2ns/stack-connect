@@ -1,0 +1,14 @@
+<!doctype html><meta charset="utf-8"><title>Rendered screenshots</title>
+<style>body{margin:0;background:#d8d8de;padding:8px;font:12px system-ui}div{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}img{height:var(--h,300px);border-radius:6px}</style>
+<script>
+// ?frames=1,4,7&h=640 to look at a subset bigger
+const q = new URLSearchParams(location.search);
+const frames = (q.get('frames') || '1,2,3,4,5,6,7,8').split(',');
+const prefix = q.get('device') === 'ipad' ? 'iPad_13' : 'iPhone_6.9';
+document.documentElement.style.setProperty('--h', (q.get('h') || 300) + 'px');
+for (const l of ['en-US','pt-BR']) {
+  document.write(`<b>${l}</b><div>`);
+  for (const n of frames) document.write(`<img src="../screenshots/${l}/${prefix}_${n}.png?${Date.now()}">`);
+  document.write('</div>');
+}
+</script>

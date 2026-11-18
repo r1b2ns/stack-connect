@@ -153,16 +153,19 @@ platform :ios do
 
   # ── screenshots ─────────────────────────────────────────────────────────────
 
-  desc "Upload App Store screenshots without building.\n\n    Usage:\n      bundle exec fastlane screenshots"
-  lane :screenshots do
-    upload_to_app_store(
+  desc "Upload App Store screenshots without building.\n\n    Only the locales present in the screenshots folder are touched. With overwrite:true the\n    existing screenshots of those locales are deleted first (other locales keep theirs).\n\n    Usage:\n      bundle exec fastlane screenshots\n      bundle exec fastlane screenshots path:/abs/folder overwrite:true"
+  lane :screenshots do |options|
+    params = {
       app_identifier:             BUNDLE_ID,
       force:                      true,   # skip HTML report preview
       skip_binary_upload:         true,
       skip_screenshots:           false,
       skip_metadata:              true,
-      run_precheck_before_submit: false
-    )
+      run_precheck_before_submit: false,
+      overwrite_screenshots:      options[:overwrite].to_s == "true"
+    }
+    params[:screenshots_path] = options[:path] if options[:path]
+    upload_to_app_store(**params)
   end
 
   # ── metadata ────────────────────────────────────────────────────────────────

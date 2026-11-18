@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StackConnect Store Screenshots</title>
+<!--
+  Source for the App Store screenshots (iPhone 6.9", 1320x2868).
+  Preview:  open via a local server, e.g. `python3 -m http.server` at the repo root,
+            then /fastlane/screenshots_src/index.html
+  Render:   ?render=1&variant=A&frame=1&lang=en  → one frame at full size (used by render.sh)
+-->
+<style>
+:root { --w: 1320px; --h: 2868px; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif; background: #e9e9ee; color: #1d1d1f; }
+
+/* ---------- gallery chrome ---------- */
+.toolbar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 16px; background: rgba(233,233,238,.9); backdrop-filter: blur(12px); border-bottom: 1px solid #d2d2d7; }
+.toolbar h1 { font-size: 17px; margin: 0 8px 0 0; }
+.toolbar button { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 999px; border: 1px solid #c7c7cc; background: #fff; cursor: pointer; }
+.toolbar button[aria-pressed="true"] { background: #1d1d1f; color: #fff; border-color: #1d1d1f; }
+.variant { padding: 20px 16px 8px; }
+.variant h2 { font-size: 16px; margin: 0 0 4px; }
+.variant p { margin: 0 0 12px; color: #6e6e73; font-size: 13px; max-width: 900px; }
+.strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 12px; }
+.variant.panorama .strip { gap: 0; }
+.thumb { flex: 0 0 auto; width: calc(1320px * var(--s)); height: calc(2868px * var(--s)); position: relative; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+.variant.panorama .thumb { border-radius: 0; box-shadow: none; }
+.thumb > .frame { transform: scale(var(--s)); transform-origin: 0 0; position: absolute; left: 0; top: 0; }
+body { --s: .19; }
+
+/* ---------- frame (full size) ---------- */
+.frame { width: var(--w); height: var(--h); position: relative; overflow: hidden; }
+.copy { position: absolute; left: 96px; right: 96px; top: 190px; text-align: center; }
+.eyebrow { display: inline-flex; gap: 14px; align-items: center; font-size: 40px; font-weight: 600; letter-spacing: .02em; padding: 14px 30px; border-radius: 999px; margin-bottom: 44px; }
+.eyebrow i { width: 18px; height: 18px; border-radius: 50%; display: inline-block; }
+.headline { font-size: 112px; line-height: 1.04; font-weight: 800; letter-spacing: -.025em; margin: 0; }
+.sub { font-size: 50px; line-height: 1.3; font-weight: 500; margin: 36px auto 0; max-width: 1040px; opacity: .82; }
+
+.phone { position: absolute; border-radius: 172px; background: #111; padding: 26px; box-shadow: 0 60px 120px rgba(0,0,0,.28), inset 0 0 0 4px #3a3a3c; }
+.phone img { display: block; width: 100%; border-radius: 148px; }
+
+/* store chips */
+.chip-apple { background: rgba(10,132,255,.14); color: #0a64d6; } .chip-apple i { background: #0a84ff; }
+.chip-google { background: rgba(52,199,89,.16); color: #1b7f3b; } .chip-google i { background: #34c759; }
+.chip-both { background: rgba(94,92,230,.14); color: #4b48c7; } .chip-both i { background: linear-gradient(90deg,#0a84ff 50%,#34c759 50%); }
+
+/* ---------- Variant A: Classic gradient ---------- */
+.A { color: #fff; }
+.A.apple  { background: radial-gradient(120% 70% at 50% 0%, #4aa8ff 0%, #0a63d8 55%, #0b3f9e 100%); }
+.A.google { background: radial-gradient(120% 70% at 50% 0%, #4fdc84 0%, #129a4a 55%, #0b6a33 100%); }
+.A.both   { background: radial-gradient(120% 70% at 50% 0%, #6f8dff 0%, #3f4fd8 55%, #2a2d8f 100%); }
+.A .eyebrow { background: rgba(255,255,255,.18); color: #fff; }
+.A .eyebrow i { background: #fff; }
+.A .phone { left: 140px; width: 1040px; top: 900px; }
+
+/* ---------- Variant B: Zoom on the action ---------- */
+.B { background: #f2f2f7; }
+.B .copy { text-align: left; left: 104px; right: 104px; }
+.B .headline { font-size: 104px; }
+.B .sub { margin-left: 0; color: #3a3a3c; }
+.B .phone { left: 104px; width: 860px; top: 900px; box-shadow: 0 40px 90px rgba(0,0,0,.18), inset 0 0 0 4px #3a3a3c; }
+.B.ipad .copy { left: 120px; right: 120px; top: 150px; }
+.B.ipad .headline { font-size: 128px; }
+.B.ipad .sub { font-size: 58px; max-width: 1600px; }
+.B.ipad .eyebrow { font-size: 44px; }
+.B.nozoom .phone { left: 150px; width: 1020px; top: 860px; }
+.B .callout { position: absolute; right: 64px; width: 800px; border-radius: 56px; background: #fff; box-shadow: 0 50px 110px rgba(0,0,0,.22), 0 0 0 1px rgba(0,0,0,.04); overflow: hidden; }
+.B .callout .crop { width: 100%; background-repeat: no-repeat; }
+.B .callout .label { display: flex; align-items: center; gap: 16px; padding: 30px 40px; font-size: 40px; font-weight: 700; border-top: 1px solid #ececf0; }
+.B .callout .label i { width: 20px; height: 20px; border-radius: 50%; }
+.B.apple .accent { color: #0a64d6; } .B.apple .callout .label i { background: #0a84ff; }
+.B.google .accent { color: #1b7f3b; } .B.google .callout .label i { background: #34c759; }
+.B.both .accent { color: #4b48c7; } .B.both .callout .label i { background: linear-gradient(90deg,#0a84ff 50%,#34c759 50%); }
+.B .ring { position: absolute; width: 150px; height: 150px; border-radius: 50%; border: 10px solid rgba(10,132,255,.9); box-shadow: 0 0 0 22px rgba(10,132,255,.18); }
+.B.google .ring { border-color: rgba(52,199,89,.95); box-shadow: 0 0 0 22px rgba(52,199,89,.2); }
+
+/* ---------- Variant C: Dark release timeline (panorama) ---------- */
+.C { background: #0b1020; color: #fff; }
+.C .bg { position: absolute; inset: 0; background-repeat: no-repeat; }
+.C .copy { top: 210px; }
+.C .eyebrow { background: rgba(255,255,255,.08); color: #c9d2ff; }
+.C .eyebrow i { background: #8fa2ff; }
+.C.apple .eyebrow i { background: #4aa8ff; } .C.google .eyebrow i { background: #4fdc84; }
+.C .sub { color: #b9c0d8; opacity: 1; }
+.C .rail { position: absolute; left: 0; right: 0; top: 820px; height: 8px; background: linear-gradient(90deg, rgba(143,162,255,.35), rgba(143,162,255,.35)); }
+.C .stage { position: absolute; top: 760px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.C .stage b { width: 128px; height: 128px; border-radius: 50%; background: #0b1020; border: 10px solid #8fa2ff; display: grid; place-items: center; font-size: 52px; font-weight: 800; color: #fff; }
+.C.apple .stage b { border-color: #4aa8ff; } .C.google .stage b { border-color: #4fdc84; }
+.C .stage span { font-size: 40px; font-weight: 700; color: #c9d2ff; letter-spacing: .02em; }
+.C .phone { left: 170px; width: 980px; background: #1c1c1e; box-shadow: 0 60px 140px rgba(0,0,0,.55), inset 0 0 0 4px #48484a; }
+.C .phone.up { top: 1080px; } .C .phone.down { top: 1180px; }
+</style>
+</head>
+<body>
+<div class="toolbar" id="toolbar">
+  <h1>StackConnect — App Store screenshots</h1>
+  <button data-lang="en" aria-pressed="true">English</button>
+  <button data-lang="pt" aria-pressed="false">Português</button>
+  <span style="color:#6e6e73;font-size:13px">iPhone 6.9" · 1320×2868 · 8 frames per variation · fake data</span>
+</div>
+<main id="gallery"></main>
+
+<script>
+// Portuguese captures live in shots/pt/ (app UI in pt-BR).
+let LANG = 'en';
+let DEVICE = 'iphone';
+// iPad captures live in shots/ipad/ (and shots/ipad/pt/).
+const SHOT = n => `shots/${DEVICE === 'ipad' ? 'ipad/' : ''}${LANG === 'pt' ? 'pt/' : ''}${n}.png`;
+
+// Canvas and device geometry per target (App Store sizes).
+const DEV = {
+  iphone: { w: 1320, h: 2868, srcW: 1320,
+            phone:  { left: 104, width: 860, top: 900, pad: 26, radius: 172, inner: 148 },
+            nozoom: { left: 150, width: 1020, top: 860 },
+            card:   { w: 800, right: 64, minTop: 1000, bottomGap: 120 } },
+  ipad:   { w: 2064, h: 2752, srcW: 2064,
+            // statusBar: source rows hidden at the top (the iPad status bar shows the
+            // system date, which stays English in the Portuguese captures).
+            // inner radius is large enough to hide iPadOS's window-resize arc in the
+            // bottom-right corner of every capture.
+            phone:  { left: 120, width: 1440, top: 820, pad: 34, radius: 134, inner: 100, statusBar: 54 },
+            nozoom: { left: 232, width: 1600, top: 760 },
+            card:   { w: 1000, right: 80, minTop: 900, bottomGap: 120 } },
+};
+
+// Release-tracking story. Crop boxes are in source pixels (1320x2868).
+const FRAMES = [
+  { img: '01-home', store: 'both', stage: '1', stageLabel: { en: 'Overview', pt: 'Visão geral' },
+    crop: { x: 60, y: 1720, w: 1200, h: 660 }, cropPt: { x: 60, y: 1700, w: 1200, h: 730 }, cropIpad: { x: 60, y: 2080, w: 1040, h: 460 }, ring: null,
+    en: { eyebrow: 'App Store + Google Play', h: 'Every release.<br>Both stores.<br>One app.', s: 'What is in review and what is waiting to ship, on one screen.' },
+    pt: { eyebrow: 'App Store + Google Play', h: 'Todo lançamento.<br>Nas duas lojas.<br>Num só app.', s: 'O que está em revisão e o que falta publicar, numa tela só.' } },
+  { img: '02-asc-app-list', store: 'apple', stage: '2', stageLabel: { en: 'Status', pt: 'Status' },
+    crop: { x: 60, y: 690, w: 1200, h: 1180 }, cropIpad: { x: 60, y: 400, w: 1040, h: 770 }, ring: null,
+    en: { eyebrow: 'App Store', h: 'Know where every version stands', s: 'Preparing, in review, phased, rejected or live — at a glance.' },
+    pt: { eyebrow: 'App Store', h: 'Saiba onde cada versão está', s: 'Preparando, em revisão, faseada, rejeitada ou publicada — num relance.' } },
+  { img: '03-asc-in-review', store: 'apple', stage: '3', stageLabel: { en: 'In review', pt: 'Em revisão' },
+    crop: null, ring: null,
+    en: { eyebrow: 'App Store', h: 'Follow App Review as it happens', s: 'See each submission move from waiting to in review — or cancel it.' },
+    pt: { eyebrow: 'App Store', h: 'Acompanhe a revisão da Apple', s: 'Veja a submissão sair da fila e entrar em revisão — ou cancele.' } },
+  { img: '04-asc-phased', store: 'apple', stage: '4', stageLabel: { en: 'Phased', pt: 'Faseado' },
+    crop: { x: 60, y: 1050, w: 1200, h: 760 }, cropPt: { x: 60, y: 1000, w: 1200, h: 880 }, cropIpad: { x: 493, y: 1205, w: 1080, h: 640 }, ring: null,
+    en: { eyebrow: 'App Store', h: 'Steer phased releases day by day', s: 'Pause, resume or release to everyone in one tap.' },
+    pt: { eyebrow: 'App Store', h: 'Conduza o lançamento faseado dia a dia', s: 'Pause, retome ou libere para todos com um toque.' } },
+  { img: '05-play-tracks', store: 'google', stage: '5', stageLabel: { en: 'Tracks', pt: 'Tracks' },
+    crop: { x: 60, y: 330, w: 1200, h: 1160 }, cropIpad: { x: 60, y: 190, w: 1040, h: 680 }, ring: null,
+    en: { eyebrow: 'Google Play', h: 'Every Google Play track in one view', s: 'Production, testing and custom tracks with each release state.' },
+    pt: { eyebrow: 'Google Play', h: 'Todas as tracks do Google Play numa tela', s: 'Produção, testes e tracks personalizadas com o estado de cada release.' } },
+  { img: '06-play-rollout', store: 'google', stage: '6', stageLabel: { en: 'Rollout', pt: 'Rollout' },
+    crop: null, ring: null,
+    en: { eyebrow: 'Google Play', h: 'Grow your rollout with confidence', s: 'Raise, halt or complete a staged rollout from your iPhone.' },
+    pt: { eyebrow: 'Google Play', h: 'Aumente o rollout com segurança', s: 'Aumente, interrompa ou conclua o rollout gradual pelo iPhone.' } },
+  { img: '07-asc-pending-release', store: 'apple', stage: '7', stageLabel: { en: 'Release', pt: 'Publicar' },
+    crop: null, ring: null,
+    en: { eyebrow: 'App Store', h: 'Release the moment you’re ready', s: 'Approved and waiting for you? Ship it with one tap.' },
+    pt: { eyebrow: 'App Store', h: 'Publique quando estiver pronto', s: 'Aprovada e esperando por você? Publique com um toque.' } },
+  { img: '08-review-reply', store: 'both', stage: '8', stageLabel: { en: 'Reviews', pt: 'Avaliações' },
+    crop: null, ring: null,
+    en: { eyebrow: 'App Store + Google Play', h: 'Reply to reviews in seconds', s: 'Read what users say and answer right from your iPhone.' },
+    pt: { eyebrow: 'App Store + Google Play', h: 'Responda avaliações em segundos', s: 'Leia o que os usuários dizem e responda direto do iPhone.' } },
+];
+
+const VARIANTS = [
+  { id: 'A', name: { en: 'A · Classic gradient', pt: 'A · Gradiente clássico' },
+    note: { en: 'Store-coloured background (blue App Store, green Google Play, indigo for both), big headline, full phone. Closest to today’s set, refreshed.',
+            pt: 'Fundo na cor da loja (azul App Store, verde Google Play, índigo para as duas), título grande e o iPhone inteiro. Mais próximo do atual, renovado.' } },
+  { id: 'B', name: { en: 'B · Zoom on the action', pt: 'B · Zoom na ação' },
+    note: { en: 'Light background, left-aligned copy, smaller phone and a magnified card of the exact control being used (status, phased progress, rollout buttons).',
+            pt: 'Fundo claro, texto alinhado à esquerda, iPhone menor e um card ampliado do controle em uso (status, progresso faseado, botões de rollout).' } },
+  { id: 'C', name: { en: 'C · Release timeline (panorama)', pt: 'C · Linha do tempo do lançamento (panorama)' },
+    note: { en: 'Dark continuous background: side by side in the store, the frames form one release timeline with numbered stages (overview → status → review → phased → tracks → rollout → release).',
+            pt: 'Fundo escuro contínuo: lado a lado na loja, os prints formam uma linha do tempo do lançamento com etapas numeradas (visão geral → status → revisão → faseado → tracks → rollout → publicar).' } },
+];
+
+function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+
+function copyBlock(f, lang) {
+  // the copy is written for iPhone; on iPad say iPad
+  const fix = t => DEVICE === 'ipad' ? t.replace(/iPhone/g, 'iPad') : t;
+  const c = { eyebrow: f[lang].eyebrow, h: fix(f[lang].h), s: fix(f[lang].s) };
+  const box = el('div', 'copy');
+  box.append(el('div', `eyebrow chip-${f.store}`, `<i></i>${c.eyebrow}`));
+  box.append(el('div', 'headline', c.h));
+  box.append(el('p', 'sub', c.s));
+  return box;
+}
+
+function phone(f, extra = '') {
+  const p = el('div', `phone ${extra}`);
+  const img = el('img'); img.src = SHOT(f.img); img.alt = '';
+  p.append(img);
+  return p;
+}
+
+function placePhone(p, g) {
+  Object.assign(p.style, { left: `${g.left}px`, width: `${g.width}px`, top: `${g.top}px` });
+}
+
+function buildFrame(variantId, i, lang, device = 'iphone') {
+  LANG = lang; DEVICE = device;
+  const D = DEV[device];
+  const f = FRAMES[i];
+  const fr = el('div', `frame ${variantId} ${f.store} ${device}`);
+  fr.style.width = `${D.w}px`; fr.style.height = `${D.h}px`;
+  if (variantId === 'A') {
+    fr.append(copyBlock(f, lang), phone(f));
+  }
+  if (variantId === 'B') {
+    const box = copyBlock(f, lang);
+    box.querySelector('.eyebrow').className = `eyebrow chip-${f.store}`;
+    const ph = phone(f);
+    const P = D.phone;
+    ph.style.padding = `${P.pad}px`; ph.style.borderRadius = `${P.radius}px`;
+    const img = ph.querySelector('img');
+    img.style.borderRadius = `${P.inner}px`;
+    if (P.statusBar) {
+      // crop the status bar: the screen keeps its width, the image slides up under a clipping box
+      const s = (P.width - 2 * P.pad) / D.srcW;
+      const screen = el('div');
+      Object.assign(screen.style, { overflow: 'hidden', borderRadius: `${P.inner}px` });
+      img.style.marginTop = `${-P.statusBar * s}px`;
+      img.style.borderRadius = '0';
+      img.replaceWith(screen); screen.append(img);
+    }
+    fr.append(box, ph);
+    // crop of the region in use, per device and language (no crop → no magnified card)
+    const cr = device === 'ipad'
+      ? ((lang === 'pt' && f.cropIpadPt) || f.cropIpad)
+      : ((lang === 'pt' && f.cropPt) || f.crop);
+    if (!cr) { fr.classList.add('nozoom'); placePhone(ph, D.nozoom); return fr; }
+    placePhone(ph, P);
+    const C = D.card;
+    const scale = C.w / cr.w;
+    const card = el('div', 'callout');
+    const crop = el('div', 'crop');
+    crop.style.height = `${cr.h * scale}px`;
+    crop.style.backgroundImage = `url(${SHOT(f.img)})`;
+    crop.style.backgroundSize = `${D.srcW * scale}px auto`;
+    crop.style.backgroundPosition = `${-cr.x * scale}px ${-cr.y * scale}px`;
+    card.append(crop, el('div', 'label', `<i></i><span>${f.stageLabel[lang]}</span>`));
+    // place the card next to the same region on the phone, clamped to the canvas
+    card.style.width = `${C.w}px`; card.style.right = `${C.right}px`;
+    const phoneTop = P.top + P.pad, phoneScale = (P.width - 2 * P.pad) / D.srcW;
+    const regionTop = phoneTop + cr.y * phoneScale;
+    const cardH = cr.h * scale + 100;
+    card.style.top = `${Math.max(C.minTop, Math.min(D.h - cardH - C.bottomGap, regionTop - 40))}px`;
+    fr.append(card);
+  }
+  if (variantId === 'C') {
+    const bg = el('div', 'bg');
+    // one continuous glow across the 8 frames
+    bg.style.background = `
+      radial-gradient(900px 700px at ${2600 - i * 1320}px 1400px, rgba(10,132,255,.32), transparent 70%),
+      radial-gradient(900px 700px at ${6200 - i * 1320}px 1500px, rgba(52,199,89,.30), transparent 70%),
+      radial-gradient(800px 600px at ${9800 - i * 1320}px 1300px, rgba(94,92,230,.32), transparent 70%)`;
+    fr.append(bg, el('div', 'rail'));
+    const st = el('div', 'stage', `<b>${f.stage}</b><span>${f.stageLabel[lang]}</span>`);
+    fr.append(st);
+    const box = copyBlock(f, lang);
+    box.style.top = '170px';
+    box.querySelector('.headline').style.fontSize = '96px';
+    box.querySelector('.sub').style.display = 'none';
+    fr.append(box);
+    st.style.top = '700px';
+    fr.querySelector('.rail').style.top = '760px';
+    fr.append(phone(f, i % 2 ? 'down' : 'up'));
+  }
+  return fr;
+}
+
+const params = new URLSearchParams(location.search);
+if (params.get('render')) {
+  document.getElementById('toolbar').remove();
+  document.body.style.background = 'transparent';
+  const device = params.get('device') || 'iphone';
+  const build = d => buildFrame(params.get('variant') || 'A', (+params.get('frame') || 1) - 1, params.get('lang') || 'en', d);
+  if (device === 'iphone65') {
+    // iPhone 6.5" (1284x2778): the 6.9" design scaled down; same proportions within 0.4%,
+    // the last ~12px of background at the bottom fall outside the canvas.
+    const k = 1284 / 1320;
+    const box = el('div');
+    Object.assign(box.style, { width: '1284px', height: '2778px', overflow: 'hidden', position: 'relative' });
+    const fr = build('iphone');
+    Object.assign(fr.style, { transform: `scale(${k})`, transformOrigin: '0 0' });
+    box.append(fr); document.body.append(box);
+  } else {
+    document.body.append(build(device));
+  }
+} else {
+  let lang = 'en';
+  const render = () => {
+    const g = document.getElementById('gallery'); g.innerHTML = '';
+    for (const v of VARIANTS) {
+      const sec = el('section', `variant ${v.id === 'C' ? 'panorama' : ''}`);
+      sec.append(el('h2', null, v.name[lang]), el('p', null, v.note[lang]));
+      const strip = el('div', 'strip');
+      FRAMES.forEach((_, i) => { const t = el('div', 'thumb'); t.append(buildFrame(v.id, i, lang)); strip.append(t); });
+      sec.append(strip); g.append(sec);
+    }
+  };
+  document.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => {
+    lang = b.dataset.lang;
+    document.querySelectorAll('[data-lang]').forEach(x => x.setAttribute('aria-pressed', x === b));
+    render();
+  });
+  render();
+}
+</script>
+</body>
+</html>
