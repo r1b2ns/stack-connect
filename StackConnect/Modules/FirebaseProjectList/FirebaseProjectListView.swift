@@ -42,6 +42,7 @@ struct FirebaseProjectListView<ViewModel: FirebaseProjectListViewModelProtocol>:
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search by name or project ID")
             )
+            .trackSearch(query: viewModel.uiState.searchQuery, resultCount: viewModel.uiState.filteredProjects.count, on: .firebaseProjectList)
             .task { await viewModel.load() }
             .refreshable { await viewModel.refresh() }
             .toast(message: $viewModel.uiState.toastMessage)

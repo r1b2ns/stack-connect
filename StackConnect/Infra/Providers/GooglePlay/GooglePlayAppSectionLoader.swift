@@ -17,6 +17,8 @@ struct GooglePlayAppSectionState<Content> {
     /// Last failure, already user-facing. Full screen when nothing is cached,
     /// inline above the cached content otherwise.
     var error: String?
+    /// Analytics category of `error` (sent with `error_shown`), never its text.
+    var errorCategory: AnalyticsErrorCategory?
 
     var hasContent: Bool {
         content != nil
@@ -34,6 +36,7 @@ extension GooglePlayAppSectionUiState {
     var isLoading: Bool { section.isLoading }
     var isSyncing: Bool { section.isSyncing }
     var error: String? { section.error }
+    var errorCategory: AnalyticsErrorCategory? { section.errorCategory }
     var hasContent: Bool { section.hasContent }
 
     /// Writable so the sync toast can dismiss itself.
@@ -91,6 +94,12 @@ extension GooglePlayAppSectionHosting {
 /// instead of starting another. The connection is built once per loader, so
 /// every read of the screen goes through the same core provider, whose edit
 /// lock serialises the edit sessions it opens.
+///
+/// **Analytics.** With a `screen`, every load that actually runs is tracked as
+/// `load` (the screen's first read) or `refresh` (pull to refresh, Retry) with
+/// its result and, on failure, `error_category`; a load that only waited for
+/// one in flight sends nothing. `server` / `unknown` failures are also recorded
+/// as Crashlytics non-fatals (through the same opt-out gate).
 @MainActor
 final class GooglePlayAppSectionLoader<Entry: GooglePlayAppSectionCache, Connection: Sendable> {
 
@@ -107,6 +116,8 @@ final class GooglePlayAppSectionLoader<Entry: GooglePlayAppSectionCache, Connect
     private let cache: GooglePlayAppCacheStore<Entry>
     private let connectionFactory: ConnectionFactory
     private let fetch: Fetch
+    private let screen: AnalyticsScreen?
+    private let analytics: AnalyticsReporting
 
     /// Built on the first live read, then reused for every later one.
     private var connection: Connection?
@@ -116,6 +127,7 @@ final class GooglePlayAppSectionLoader<Entry: GooglePlayAppSectionCache, Connect
     /// - Parameters:
     ///   - resource: account rule needed to view the section.
     ///   - fetch: the section's live (edit-based) read.
+    ///   - screen: where loads are tracked; `nil` tracks nothing.
     init(
         account: AccountModel,
         app: GooglePlayAppItem,
@@ -124,7 +136,9 @@ final class GooglePlayAppSectionLoader<Entry: GooglePlayAppSectionCache, Connect
         keychain: KeyStorable,
         storage: PersistentStorable,
         connectionFactory: @escaping ConnectionFactory,
-        fetch: @escaping Fetch
+        fetch: @escaping Fetch,
+        screen: AnalyticsScreen? = nil,
+        analytics: AnalyticsReporting = AnalyticsService.shared
     ) {
         self.account = account
         self.app = app
@@ -134,6 +148,8 @@ final class GooglePlayAppSectionLoader<Entry: GooglePlayAppSectionCache, Connect
         self.cache = GooglePlayAppCacheStore(storage: storage, accountId: account.id, packageName: app.packageName)
         self.connectionFactory = connectionFactory
         self.fetch = fetch
+        self.screen = screen
+        self.analytics = analytics
     }
 
     /// Loads unless this loader already did (or is doing it). What a screen
@@ -141,12 +157,19 @@ final class GooglePlayAppSectionLoader<Entry: GooglePlayAppSectionCache, Connect
     func loadIfNeeded<Host: GooglePlayAppSectionHosting>(into host: Host) async
     where Host.UiState.Content == Content {
         guard !hasLoaded else { return }
-        await load(into: host)
+        await load(into: host, action: .load)
     }
 
     /// Loads again (pull to refresh, Retry). While a load is in flight it waits
     /// for that one instead of opening a second Play edit.
     func load<Host: GooglePlayAppSectionHosting>(into host: Host) async
+    where Host.UiState.Content == Content {
+        await load(into: host, action: .refresh)
+    }
+
+    // MARK: - Private
+
+    private func load<Host: GooglePlayAppSectionHosting>(into host: Host, action: AnalyticsAction) async
     where Host.UiState.Content == Content {
         if host.uiState.section.isSyncing {
             await inFlight?.value
@@ -158,25 +181,53 @@ final class GooglePlayAppSectionLoader<Entry: GooglePlayAppSectionCache, Connect
         // Unstructured, so the caller's cancellation (the screen's `.task`)
         // doesn't reach it.
         let task = Task {
-            await self.performLoad(into: host)
+            let failure = await self.performLoad(into: host)
             host.uiState.section.isSyncing = false
             self.inFlight = nil
+            self.track(action, failure: failure)
         }
         inFlight = task
         await task.value
     }
 
-    // MARK: - Private
+    /// One load's outcome, `nil` on success.
+    private enum LoadFailure {
+        case category(AnalyticsErrorCategory)
+        case error(Error)
 
-    private func performLoad<Host: GooglePlayAppSectionHosting>(into host: Host) async
+        var category: AnalyticsErrorCategory {
+            switch self {
+            case .category(let category): return category
+            case .error(let error): return AnalyticsErrorCategory(connectionError: error)
+            }
+        }
+    }
+
+    private func track(_ action: AnalyticsAction, failure: LoadFailure?) {
+        guard let screen else { return }
+        guard let failure else {
+            analytics.track(.action(action, on: screen, result: .success))
+            return
+        }
+        let category = failure.category
+        analytics.track(.action(action, on: screen, result: .failure, parameters: category.parameters))
+        if case .error(let error) = failure {
+            analytics.recordNonFatal(error, category: category)
+        }
+    }
+
+    /// Runs one load; returns why it failed, `nil` on success.
+    private func performLoad<Host: GooglePlayAppSectionHosting>(into host: Host) async -> LoadFailure?
     where Host.UiState.Content == Content {
         host.uiState.section.error = nil
+        host.uiState.section.errorCategory = nil
 
         // Defense in depth (D16): the menu checks this too, but a denied section
         // must never open an edit.
         if let denial = GooglePlayAppSectionAccess.denialMessage(account: account, app: app, resource: resource) {
             host.uiState.section.error = denial
-            return
+            host.uiState.section.errorCategory = .forbidden
+            return .category(.forbidden)
         }
 
         await host.prepareLoad()
@@ -190,13 +241,15 @@ final class GooglePlayAppSectionLoader<Entry: GooglePlayAppSectionCache, Connect
         guard let connection = liveConnection() else {
             Log.print.error("[\(self.logTag)] No credentials found for account: \(self.account.name)")
             host.uiState.section.error = String(localized: "No credentials found for this account.")
+            host.uiState.section.errorCategory = .invalidCredentials
             host.uiState.section.isLoading = false
-            return
+            return .category(.invalidCredentials)
         }
 
         // 2. Live read (temporary Play edit, D14).
         host.uiState.section.showSyncToast = host.uiState.section.hasContent
 
+        var failure: LoadFailure?
         do {
             let content = try await fetch(connection, app.packageName)
             host.uiState.section.content = host.present(content)
@@ -208,10 +261,13 @@ final class GooglePlayAppSectionLoader<Entry: GooglePlayAppSectionCache, Connect
             // says so — keep the content without a second warning.
             if !(GooglePlayErrorTranslator.isOffline(error) && host.uiState.section.hasContent) {
                 host.uiState.section.error = GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .appContentRead)
+                host.uiState.section.errorCategory = AnalyticsErrorCategory(connectionError: error)
             }
+            failure = .error(error)
         }
 
         host.uiState.section.isLoading = false
+        return failure
     }
 
     /// The connection for live reads, built once from the stored credentials;

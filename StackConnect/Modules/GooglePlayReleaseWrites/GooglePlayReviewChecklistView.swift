@@ -74,6 +74,7 @@ struct GooglePlayReviewChecklistView<Writes: GooglePlayReleaseWriteViewModelProt
         }
         .navigationTitle(String(localized: "Review Checklist"))
         .navigationBarTitleDisplayMode(.inline)
+        .trackScreen(.googlePlayReviewChecklist)
         .disabled(writes.uiState.isWriting)
         .overlay {
             if writes.uiState.isWriting {
@@ -85,11 +86,12 @@ struct GooglePlayReviewChecklistView<Writes: GooglePlayReleaseWriteViewModelProt
         .toolbar {
             if isRoot {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "Cancel")) { writes.cancelPendingWrite() }
+                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .googlePlayReviewChecklist) { writes.cancelPendingWrite() }
                 }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button(String(localized: "Publish")) {
+                // The commit and its outcome are tracked by `confirm`.
+                StackTrackedButton(String(localized: "Publish"), button: .publish, on: .googlePlayReviewChecklist) {
                     Task { await writes.confirm(write) }
                 }
                 .fontWeight(.semibold)

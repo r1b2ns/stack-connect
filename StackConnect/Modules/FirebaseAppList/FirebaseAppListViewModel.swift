@@ -111,16 +111,19 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
 
     private let keychain: KeyStorable
     private let analytics: AnalyticsTracking
+    private let firstAppsLoaded: FirstAppsLoadedTracker
 
     init(
         account: AccountModel,
         project: FirebaseProjectModel,
         keychain: KeyStorable = KeychainStorable.shared,
-        analytics: AnalyticsTracking = AnalyticsService.shared
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        firstAppsLoaded: FirstAppsLoadedTracker = .shared
     ) {
         self.uiState = FirebaseAppListUiState(account: account, project: project)
         self.keychain = keychain
         self.analytics = analytics
+        self.firstAppsLoaded = firstAppsLoaded
     }
 
     func load() async {
@@ -171,6 +174,7 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
             }
 
             Log.print.info("[Firebase] Loaded \(allApps.count) apps for project \(self.uiState.project.projectId)")
+            await firstAppsLoaded.recordAppsLoaded(count: allApps.count, provider: .firebase, on: .firebaseAppList)
         } catch {
             uiState.error = error.localizedDescription
             Log.print.error("[Firebase] Load apps failed: \(error.localizedDescription)")

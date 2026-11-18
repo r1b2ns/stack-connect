@@ -18,7 +18,7 @@ private struct GooglePlayAppDetailEntry: View {
 
     init(app: GooglePlayAppItem, account: AccountModel) {
         _viewModel = StateObject(wrappedValue: GooglePlayAppDetailViewModel(app: app, account: account))
-        _writes = StateObject(wrappedValue: GooglePlayReleaseWriteViewModel(app: app, account: account))
+        _writes = StateObject(wrappedValue: GooglePlayReleaseWriteViewModel(app: app, account: account, screen: .googlePlayAppDetail))
     }
 
     var body: some View {
@@ -54,7 +54,7 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol, 
             .toolbar {
                 if viewModel.uiState.isAppInScope && writes.canPerform(.add) {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button {
+                        StackTrackedButton(.newRelease, on: .googlePlayAppDetail) {
                             writes.openNewRelease(track: nil)
                         } label: {
                             Image(systemName: "plus")
@@ -64,6 +64,7 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol, 
                 }
             }
             .googlePlayReleaseWrites(writes)
+            .trackScreen(.googlePlayAppDetail)
             .alert(
                 String(localized: "Permission Denied"),
                 isPresented: Binding(
@@ -71,7 +72,7 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol, 
                     set: { if !$0 { viewModel.uiState.permissionDeniedMessage = nil } }
                 )
             ) {
-                Button(String(localized: "OK"), role: .cancel) {
+                StackTrackedButton(String(localized: "OK"), button: .ok, on: .googlePlayAppDetail, role: .cancel) {
                     viewModel.uiState.permissionDeniedMessage = nil
                 }
             } message: {
@@ -189,7 +190,7 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol, 
                 ForEach(sections) { section in
                     Section {
                         ForEach(section.rows) { row in
-                            Button {
+                            StackTrackedButton(.release, on: .googlePlayAppDetail) {
                                 open(row, in: section)
                             } label: {
                                 GooglePlayAppDetailReleaseRowView(row: row)
@@ -224,7 +225,7 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol, 
     private func buildSwipeActions(_ row: GooglePlayAppDetailReleaseRow, in section: GooglePlayAppDetailTrackSection) -> some View {
         if let release = row.release {
             ForEach(viewModel.releaseActions(for: row, in: section).reversed(), id: \.self) { action in
-                Button {
+                StackTrackedButton(action.analyticsButton, on: .googlePlayAppDetail) {
                     writes.start(action, release: release, track: section.track)
                 } label: {
                     Label(action.shortTitle, systemImage: action.icon)
@@ -235,7 +236,7 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol, 
     }
 
     private func buildSeeAllTracksRow() -> some View {
-        Button {
+        StackTrackedButton(.seeAllTracks, on: .googlePlayAppDetail) {
             open(.tracks)
         } label: {
             HStack {
@@ -258,6 +259,7 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol, 
                 .foregroundStyle(.secondary)
             if let url = URL(string: "https://play.google.com/console") {
                 Link(String(localized: "Open Play Console"), destination: url)
+                    .trackOpenURL(.openPlayConsole, on: .googlePlayAppDetail)
             }
         } header: {
             Text("Only in Play Console")
@@ -265,7 +267,7 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol, 
     }
 
     private func buildMenuRow(_ section: GooglePlayAppDetailSection) -> some View {
-        Button {
+        StackTrackedButton(section.analyticsButton, on: .googlePlayAppDetail) {
             open(section)
         } label: {
             StackListRow(icon: section.icon, iconColor: section.color, title: section.title)
@@ -317,6 +319,15 @@ struct GooglePlayAppDetailView<ViewModel: GooglePlayAppDetailViewModelProtocol, 
 // MARK: - Section color
 
 private extension GooglePlayAppDetailSection {
+    var analyticsButton: AnalyticsButton {
+        switch self {
+        case .ratingsReviews: return .ratingsReviews
+        case .storeListings:  return .storeListings
+        case .tracks:         return .tracks
+        case .appDetails:     return .appDetails
+        }
+    }
+
     var color: Color {
         switch self {
         case .ratingsReviews: return .yellow

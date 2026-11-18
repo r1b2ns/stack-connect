@@ -42,6 +42,7 @@ struct ProfilesListView<ViewModel: ProfilesListViewModelProtocol>: View {
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search profiles")
             )
+            .trackSearch(query: viewModel.uiState.searchQuery, resultCount: viewModel.uiState.filteredProfiles.count, on: .profilesList)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     StackTrackedButton(.add, on: .profilesList) {

@@ -47,6 +47,7 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search by name or email")
             )
+            .trackSearch(query: viewModel.uiState.searchQuery, resultCount: viewModel.uiState.filteredUsers.count, on: .userAccess)
             .trackScreen(.userAccess)
             .task { await viewModel.load() }
             .onAppear {

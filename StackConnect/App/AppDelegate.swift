@@ -40,6 +40,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         if !isFakeDataMode {
             Task { await LocalNotificationService.requestAuthorizationIfNeeded() }
         }
+        // `notifications_enabled`: now and whenever the app becomes active
+        // (the user may change the permission in Settings).
+        NotificationPermissionService.shared.startObserving()
 
         // One-time cleanup of analytics CSVs orphaned by the pre-per-app storage
         // layout. Runs off the launch path (utility priority) so it never blocks
@@ -95,7 +98,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         }
 
         let work = Task { @MainActor in
-            await SyncService.shared.syncAll(mode: .lightweight).value
+            await SyncService.shared.syncAll(mode: .lightweight, trigger: .background, screen: nil).value
         }
 
         refreshTask.expirationHandler = {
@@ -132,7 +135,7 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     ) {
         if let raw = response.notification.request.content.userInfo["deeplink"] as? String,
            let url = URL(string: raw) {
-            Task { @MainActor in DeepLinkRouter.shared.open(url) }
+            Task { @MainActor in DeepLinkRouter.shared.open(url, source: .notification) }
         }
         completionHandler()
     }

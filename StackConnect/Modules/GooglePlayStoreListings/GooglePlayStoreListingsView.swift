@@ -37,6 +37,7 @@ struct GooglePlayStoreListingsView<ViewModel: GooglePlayStoreListingsViewModelPr
             hasContent: viewModel.uiState.hasContent,
             error: viewModel.uiState.error,
             errorReportContext: errorReportContext,
+            errorCategory: viewModel.uiState.errorCategory,
             onRetry: { Task { await viewModel.load() } }
         ) {
             buildContent()
@@ -52,6 +53,7 @@ struct GooglePlayStoreListingsView<ViewModel: GooglePlayStoreListingsViewModelPr
             isPresented: $viewModel.uiState.showSyncToast,
             message: String(localized: "Syncing store listings...")
         )
+        .trackScreen(.googlePlayStoreListings)
     }
 
     private var screenTitle: String {
@@ -77,12 +79,12 @@ struct GooglePlayStoreListingsView<ViewModel: GooglePlayStoreListingsViewModelPr
         } else {
             List {
                 if let error = viewModel.uiState.error {
-                    StackInlineErrorSection(message: error, reportContext: errorReportContext)
+                    StackInlineErrorSection(message: error, reportContext: errorReportContext, errorCategory: viewModel.uiState.errorCategory)
                 }
 
                 Section {
                     ForEach(listings) { listing in
-                        Button {
+                        StackTrackedButton(.storeListing, on: .googlePlayStoreListings) {
                             homeCoordinator.navigateToGooglePlayStoreListingDetail(
                                 listing,
                                 isDefaultLanguage: listing.isLanguage(viewModel.uiState.defaultLanguage)

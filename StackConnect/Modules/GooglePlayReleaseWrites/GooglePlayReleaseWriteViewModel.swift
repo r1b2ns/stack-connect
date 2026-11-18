@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 // MARK: - Protocol
 
@@ -82,13 +83,23 @@ final class GooglePlayReleaseWriteViewModel: GooglePlayReleaseWriteViewModelProt
     @Published var uiState = GooglePlayReleaseWriteUiState()
 
     private let writer: GooglePlayReleaseWriter
+    /// The screen hosting the flow (app detail, tracks, release detail):
+    /// where commits and bundle listings are tracked.
+    private let screen: AnalyticsScreen
+    private let analytics: AnalyticsReporting
 
-    init(writer: GooglePlayReleaseWriter) {
+    init(
+        writer: GooglePlayReleaseWriter,
+        screen: AnalyticsScreen = .googlePlayAppDetail,
+        analytics: AnalyticsReporting = AnalyticsService.shared
+    ) {
         self.writer = writer
+        self.screen = screen
+        self.analytics = analytics
     }
 
-    convenience init(app: GooglePlayAppItem, account: AccountModel) {
-        self.init(writer: GooglePlayReleaseWriter(account: account, app: app))
+    convenience init(app: GooglePlayAppItem, account: AccountModel, screen: AnalyticsScreen) {
+        self.init(writer: GooglePlayReleaseWriter(account: account, app: app), screen: screen)
     }
 
     func canPerform(_ kind: GooglePlayReleaseWriteAccess.Kind) -> Bool {
@@ -126,7 +137,17 @@ final class GooglePlayReleaseWriteViewModel: GooglePlayReleaseWriteViewModelProt
     }
 
     func fetchBundles() async throws -> [GooglePlayBundleModel] {
-        try await writer.fetchBundles()
+        do {
+            let bundles = try await writer.fetchBundles()
+            analytics.track(.action(.fetchBundles, on: .googlePlayBundlePicker, result: .success,
+                                    parameters: [AnalyticsParameterKey.count: .int(bundles.count)]))
+            return bundles
+        } catch {
+            let category = AnalyticsErrorCategory(connectionError: error)
+            analytics.track(.action(.fetchBundles, on: .googlePlayBundlePicker, result: .failure, parameters: category.parameters))
+            analytics.recordNonFatal(error, category: category)
+            throw error
+        }
     }
 
     func openRollout(release: GooglePlayReleaseModel, track: String) {
@@ -150,12 +171,16 @@ final class GooglePlayReleaseWriteViewModel: GooglePlayReleaseWriteViewModelProt
         defer { uiState.isWriting = false }
         do {
             try await writer.apply(write.change, track: write.track, options: uiState.commitOptions)
+            trackWrite(write, result: .success)
             uiState.pendingWrite = nil
             uiState.toastMessage = ToastMessage(write.successMessage)
             uiState.revision += 1
             return true
         } catch {
             Log.print.error("[GooglePlayReleaseWrite] Write failed: \(error.localizedDescription)")
+            let category = AnalyticsErrorCategory(connectionError: error)
+            trackWrite(write, result: .failure, parameters: category.parameters)
+            analytics.recordNonFatal(error, category: category)
             let message = (error as? GooglePlayReleaseWriteError)?.errorDescription
                 ?? GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .releaseChange)
             if write.usesChecklist {
@@ -187,6 +212,24 @@ final class GooglePlayReleaseWriteViewModel: GooglePlayReleaseWriteViewModelProt
             listingLanguages: uiState.listingLanguages,
             liveVersionCode: GooglePlayReviewChecklist.liveVersionCode(on: track, excluding: write.change.versionCodes)
         )
+    }
+
+    /// `release_write` with the change's kind and track kind — never the
+    /// release name, version codes or a custom track's name.
+    private func trackWrite(
+        _ write: GooglePlayPendingWrite,
+        result: AnalyticsResult,
+        parameters: [String: AnalyticsValue] = [:]
+    ) {
+        var merged = parameters
+        merged[AnalyticsParameterKey.kind] = .string(AnalyticsReleaseWriteKind(write.change).rawValue)
+        merged[AnalyticsParameterKey.track] = .string(AnalyticsTrackKind(track: write.track).rawValue)
+        if write.usesChecklist {
+            merged[AnalyticsParameterKey.sendForReview] = .bool(uiState.commitOptions.sendForReview)
+        }
+        // A checklist confirmation is tracked on the checklist screen.
+        let screen = write.usesChecklist ? AnalyticsScreen.googlePlayReviewChecklist : self.screen
+        analytics.track(.action(.releaseWrite, on: screen, result: result, parameters: merged))
     }
 
     var errorContext: ErrorReportContext {

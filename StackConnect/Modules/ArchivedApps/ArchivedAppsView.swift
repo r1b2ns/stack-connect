@@ -43,6 +43,7 @@ struct ArchivedAppsView<ViewModel: ArchivedAppsViewModelProtocol>: View {
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search by name or bundle ID")
             )
+            .trackSearch(query: viewModel.uiState.searchQuery, resultCount: viewModel.uiState.filteredApps.count, on: .archivedApps)
             .task { await viewModel.loadApps() }
             .refreshable { await viewModel.refresh() }
             .overlay(alignment: .bottom) {

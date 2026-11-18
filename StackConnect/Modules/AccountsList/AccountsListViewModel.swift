@@ -155,12 +155,13 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
         analytics.track(.action(
             isReimport ? .reimportAccount : .importAccount,
             on: .accountsListImport,
-            result: error == nil ? .success : .failure
+            result: error == nil ? .success : .failure,
+            parameters: error.map { AnalyticsErrorCategory(importReason: $0.reason).parameters } ?? [:]
         ))
-        return error
+        return error?.message
     }
 
-    private func performImport(from url: URL, password: String, customName: String?) async -> String? {
+    private func performImport(from url: URL, password: String, customName: String?) async -> AccountImportError? {
         let options = AccountImporter.Options(
             expectedProvider: uiState.providerType,
             replacingAccountId: uiState.replacingAccountId
@@ -174,7 +175,7 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
             await loadAccounts()
             return nil
         case .failure(let error):
-            return error.message
+            return error
         }
     }
 }

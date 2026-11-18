@@ -1,4 +1,5 @@
 import Foundation
+import StackProtocols
 
 /// The single place that reacts to the end of a foreground sync with the
 /// prompts tied to it, in a fixed order:
@@ -16,10 +17,16 @@ final class PostSyncPrompts {
 
     let reviewPrompt: ReviewPromptService
     private let tipJarPrompt: TipJarPromptService
+    private let analytics: AnalyticsTracking
 
-    init(reviewPrompt: ReviewPromptService, tipJarPrompt: TipJarPromptService) {
+    init(
+        reviewPrompt: ReviewPromptService,
+        tipJarPrompt: TipJarPromptService,
+        analytics: AnalyticsTracking = AnalyticsService.shared
+    ) {
         self.reviewPrompt = reviewPrompt
         self.tipJarPrompt = tipJarPrompt
+        self.analytics = analytics
     }
 
     /// Handles the `old` → `new` sync state transition.
@@ -38,6 +45,8 @@ final class PostSyncPrompts {
         let shouldRequestReview = reviewPrompt.shouldRequestReview(syncSucceeded: succeeded)
         if shouldRequestReview {
             reviewPrompt.markRequestedThisLaunch()
+            // StoreKit decides whether the prompt is actually displayed.
+            analytics.track(.action(.reviewPromptRequested, on: .home))
         } else {
             Log.print.info("[ReviewPrompt] Not requesting (sync succeeded: \(succeeded), launch #\(self.reviewPrompt.launchCount), already requested: \(self.reviewPrompt.hasRequestedThisLaunch))")
         }

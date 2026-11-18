@@ -12,11 +12,13 @@ enum LocalNotificationService {
     // MARK: - Permission
 
     /// Requests notification permission the first time only (no-op afterwards).
-    static func requestAuthorizationIfNeeded() async {
-        let center = UNUserNotificationCenter.current()
-        let settings = await center.notificationSettings()
-        guard settings.authorizationStatus == .notDetermined else { return }
-        _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
+    /// The answer and `notifications_enabled` are tracked by
+    /// `NotificationPermissionService`.
+    @MainActor
+    static func requestAuthorizationIfNeeded(
+        permission: NotificationPermissionRequesting = NotificationPermissionService.shared
+    ) async {
+        await permission.requestAuthorization(options: [.alert, .sound, .badge])
     }
 
     // MARK: - Scheduling

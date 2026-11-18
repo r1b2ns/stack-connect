@@ -11,6 +11,7 @@ final class PostSyncPromptsTests: XCTestCase {
 
     private var reviewPrompt: ReviewPromptService!
     private var tipJarPrompt: TipJarPromptService!
+    private var analytics: MockAnalyticsTracker!
 
     override func tearDown() async throws {
         defaults.removePersistentDomain(forName: suiteName)
@@ -27,7 +28,8 @@ final class PostSyncPromptsTests: XCTestCase {
             reviewPrompt.registerLaunch()
         }
         tipJarPrompt = TipJarPromptService(defaults: defaults)
-        return PostSyncPrompts(reviewPrompt: reviewPrompt, tipJarPrompt: tipJarPrompt)
+        analytics = MockAnalyticsTracker()
+        return PostSyncPrompts(reviewPrompt: reviewPrompt, tipJarPrompt: tipJarPrompt, analytics: analytics)
     }
 
     private func running() -> SyncState {
@@ -58,6 +60,7 @@ final class PostSyncPromptsTests: XCTestCase {
 
         XCTAssertFalse(completeSync(sut))
         XCTAssertTrue(tipJarPrompt.isCardVisible)
+        XCTAssertTrue(analytics.actions(of: .reviewPromptRequested).isEmpty, "No review request, nothing tracked")
     }
 
     func testReviewLaunchRequestsReviewAndSkipsTheCard() {
@@ -67,6 +70,7 @@ final class PostSyncPromptsTests: XCTestCase {
         XCTAssertTrue(completeSync(sut))
         XCTAssertTrue(reviewPrompt.hasRequestedThisLaunch)
         XCTAssertFalse(tipJarPrompt.isCardVisible)
+        XCTAssertEqual(analytics.actions(of: .reviewPromptRequested).count, 1)
     }
 
     func testCardStaysOffForTheRestOfAReviewLaunch() {

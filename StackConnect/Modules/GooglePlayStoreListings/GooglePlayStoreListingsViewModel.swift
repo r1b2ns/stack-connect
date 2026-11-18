@@ -48,7 +48,8 @@ final class GooglePlayStoreListingsViewModel: GooglePlayStoreListingsViewModelPr
         account: AccountModel,
         keychain: KeyStorable = KeychainStorable.shared,
         storage: PersistentStorable? = nil,
-        connectionFactory: @escaping ConnectionFactory = { GooglePlayAccountConnection(credentials: $0) }
+        connectionFactory: @escaping ConnectionFactory = { GooglePlayAccountConnection(credentials: $0) },
+        analytics: AnalyticsReporting = AnalyticsService.shared
     ) {
         let storage: PersistentStorable = storage ?? SwiftDataStorable.shared
         self.uiState = GooglePlayStoreListingsUiState(account: account, app: app)
@@ -62,7 +63,9 @@ final class GooglePlayStoreListingsViewModel: GooglePlayStoreListingsViewModelPr
             connectionFactory: connectionFactory,
             fetch: { connection, packageName in
                 try await connection.fetchStoreListings(packageName: packageName)
-            }
+            },
+            screen: .googlePlayStoreListings,
+            analytics: analytics
         )
     }
 

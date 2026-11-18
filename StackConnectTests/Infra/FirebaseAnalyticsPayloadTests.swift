@@ -182,4 +182,37 @@ final class FirebaseAnalyticsPayloadTests: XCTestCase {
 
         XCTAssertEqual(payload.parameters.count, 8)
     }
+
+    // MARK: - User properties
+
+    func testEveryAppUserPropertyFitsFirebaseLimits() throws {
+        for property in AnalyticsUserProperty.allCases {
+            let mapped = try XCTUnwrap(FirebaseAnalyticsPayload.userProperty(name: property.rawValue, value: "3+"))
+            XCTAssertEqual(mapped, .init(name: property.rawValue, value: "3+"), "\(property) must pass unchanged")
+        }
+    }
+
+    func testUserPropertyNameIsTruncatedTo24Characters() throws {
+        let mapped = try XCTUnwrap(FirebaseAnalyticsPayload.userProperty(name: String(repeating: "a", count: 30), value: "x"))
+
+        XCTAssertEqual(mapped.name, String(repeating: "a", count: 24))
+    }
+
+    func testUserPropertyValueIsTruncatedTo36Characters() throws {
+        let mapped = try XCTUnwrap(FirebaseAnalyticsPayload.userProperty(name: "segment", value: String(repeating: "v", count: 50)))
+
+        XCTAssertEqual(mapped.value, String(repeating: "v", count: 36))
+    }
+
+    func testNilUserPropertyValueClearsIt() throws {
+        let mapped = try XCTUnwrap(FirebaseAnalyticsPayload.userProperty(name: "segment", value: nil))
+
+        XCTAssertNil(mapped.value)
+    }
+
+    func testReservedOrInvalidUserPropertyNamesAreDropped() {
+        for name in ["firebase_x", "google_x", "ga_x", "Firebase_x", "user_id", "first_open_time", "1abc", "has-dash", "", "émoji"] {
+            XCTAssertNil(FirebaseAnalyticsPayload.userProperty(name: name, value: "x"), name)
+        }
+    }
 }

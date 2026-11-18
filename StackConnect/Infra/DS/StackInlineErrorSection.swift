@@ -10,6 +10,9 @@ struct StackInlineErrorSection: View {
     let message: String
     /// Where the screen is, for the shared error report.
     let reportContext: ErrorReportContext
+    /// The error's category, when the caller still has the error. Sent with
+    /// `error_shown` (`presentation=inline`) on the tracked screen around it.
+    var errorCategory: AnalyticsErrorCategory? = nil
 
     var body: some View {
         Section {
@@ -23,6 +26,7 @@ struct StackInlineErrorSection: View {
                 StackErrorShareLink(message: message, context: reportContext, style: .icon)
                     .font(.footnote)
             }
+            .trackErrorShown(message, presentation: .inline, category: errorCategory)
         }
     }
 }

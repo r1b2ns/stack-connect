@@ -7,8 +7,8 @@ import StackCore
 enum WidgetDeepLink {
     static let scheme = "stackconnect"
 
-    static let home = URL(string: "\(scheme)://home")
-    static let reviews = URL(string: "\(scheme)://reviews")
+    static let home = URL(string: "\(scheme)://home?\(WidgetLinkSource.queryItem)")
+    static let reviews = URL(string: "\(scheme)://reviews?\(WidgetLinkSource.queryItem)")
 }
 
 // MARK: - Entry

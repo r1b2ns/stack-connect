@@ -17,8 +17,12 @@ struct StackErrorShareAlertButton: View {
     let context: ErrorReportContext
     @Binding var request: StackErrorShareRequest?
 
+    @Environment(\.analytics) private var analytics
+    @Environment(\.analyticsScreen) private var screen
+
     var body: some View {
         Button(String(localized: "Share Error")) {
+            StackTrackShareErrorTapModifier.trackTap(on: screen, with: analytics)
             let report = ErrorShareReport.make(message: message, context: context, environment: .current())
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(450))

@@ -28,6 +28,7 @@ struct GooglePlayStoreListingDetailView: View {
         }
         .navigationTitle(GooglePlayLanguage.displayName(for: listing.language))
         .navigationBarTitleDisplayMode(.inline)
+        .trackScreen(.googlePlayStoreListingDetail)
     }
 
     // MARK: - Sections
@@ -73,6 +74,7 @@ struct GooglePlayStoreListingDetailView: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
+                .trackOpenURL(.promoVideo, on: .googlePlayStoreListingDetail)
             } else if let video = listing.video, !video.isEmpty {
                 // Not a web link (`ExternalLinkURL`): shown, never opened.
                 Text(video)

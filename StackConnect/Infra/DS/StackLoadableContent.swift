@@ -12,6 +12,8 @@ struct StackLoadableContent<Content: View>: View {
     let error: String?
     /// Where the screen is, for the shared error report.
     let errorReportContext: ErrorReportContext
+    /// Category of `error`, when known, for its `error_shown` event.
+    var errorCategory: AnalyticsErrorCategory? = nil
     let onRetry: () -> Void
     @ViewBuilder var content: () -> Content
 
@@ -20,7 +22,7 @@ struct StackLoadableContent<Content: View>: View {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let error, !hasContent {
-            StackErrorContentView(message: error, reportContext: errorReportContext, onRetry: onRetry)
+            StackErrorContentView(message: error, reportContext: errorReportContext, errorCategory: errorCategory, onRetry: onRetry)
         } else {
             content()
         }

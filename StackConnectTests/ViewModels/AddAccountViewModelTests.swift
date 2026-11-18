@@ -145,12 +145,16 @@ final class AddAccountViewModelTests: XCTestCase {
     // Rust core) sits behind `googlePlayConnectionFactory`, so these tests inject
     // `MockGooglePlayAccountConnection` and never touch the network.
 
-    private func makeGooglePlaySUT(connection: MockGooglePlayAccountConnection) -> AddAccountViewModel {
+    private func makeGooglePlaySUT(
+        connection: MockGooglePlayAccountConnection,
+        analytics: AnalyticsTracking = MockAnalyticsTracker()
+    ) -> AddAccountViewModel {
         AddAccountViewModel(
             providerType: .googlePlay,
             storage: mockStorage,
             keychain: mockKeychain,
-            googlePlayConnectionFactory: connection.factory
+            googlePlayConnectionFactory: connection.factory,
+            analytics: analytics
         )
     }
 
@@ -289,7 +293,8 @@ final class AddAccountViewModelTests: XCTestCase {
         XCTAssertEqual(analytics.taps(of: .save), [.buttonTap(.save, on: .addAccount)])
         XCTAssertEqual(analytics.actions(of: .createAccount), [
             .action(.createAccount, on: .addAccount, result: .failure, parameters: [
-                AnalyticsParameterKey.kind: .string(ProviderType.firebase.rawValue)
+                AnalyticsParameterKey.kind: .string(ProviderType.firebase.rawValue),
+                AnalyticsParameterKey.errorCategory: .string("validation")
             ])
         ])
     }
@@ -309,5 +314,98 @@ final class AddAccountViewModelTests: XCTestCase {
         await sut.save()
 
         XCTAssertEqual(analytics.results(of: .createAccount), [.failure])
+        XCTAssertEqual(errorCategories(analytics), [.validation])
+    }
+
+    // MARK: - Analytics error category
+
+    private func errorCategories(_ analytics: MockAnalyticsTracker) -> [AnalyticsErrorCategory?] {
+        analytics.actions(of: .createAccount).map { event in
+            guard case .string(let raw)? = event.parameters[AnalyticsParameterKey.errorCategory] else { return nil }
+            return AnalyticsErrorCategory(rawValue: raw)
+        }
+    }
+
+    private func saveGooglePlay(
+        json: String = GooglePlayTestFixtures.serviceAccountJSON(),
+        developerId: String = "",
+        validate: @escaping @Sendable () async throws -> Void = {}
+    ) async -> MockAnalyticsTracker {
+        let analytics = MockAnalyticsTracker()
+        let connection = MockGooglePlayAccountConnection()
+        connection.validateHandler = validate
+        sut = makeGooglePlaySUT(connection: connection, analytics: analytics)
+        sut.uiState.accountName = "My Play"
+        sut.uiState.googlePlayJSON = json
+        sut.uiState.googlePlayDeveloperId = developerId
+        await sut.save()
+        return analytics
+    }
+
+    func testInvalidDeveloperIdIsAValidationFailure() async {
+        let analytics = await saveGooglePlay(developerId: "not an id")
+
+        XCTAssertEqual(errorCategories(analytics), [.validation])
+    }
+
+    func testMalformedPlayKeyIsAValidationFailure() async {
+        let analytics = await saveGooglePlay(json: #"{"type": "service_account", "client_email": "#)
+
+        XCTAssertEqual(errorCategories(analytics), [.validation])
+    }
+
+    func testDuplicatePlayKeyIsADuplicateFailure() async throws {
+        let existing = AccountModel(name: "Existing", providerType: .googlePlay)
+        try await mockStorage.save(existing, id: existing.id)
+        mockKeychain.setObject(
+            GooglePlayCredentials(serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON()),
+            forKey: "credentials.\(existing.id)"
+        )
+
+        let analytics = await saveGooglePlay()
+
+        XCTAssertEqual(errorCategories(analytics), [.duplicate])
+    }
+
+    func testRefusedKeyIsAnInvalidCredentialsFailureWithoutItsMessage() async throws {
+        let analytics = await saveGooglePlay { throw StackError.Auth(message: "secret detail") }
+
+        XCTAssertEqual(errorCategories(analytics), [.invalidCredentials])
+        let parameters = try XCTUnwrap(analytics.actions(of: .createAccount).first?.parameters)
+        XCTAssertFalse(parameters.values.contains { $0.stringValue.contains("secret detail") })
+    }
+
+    func testOfflineIsANetworkFailure() async {
+        let analytics = await saveGooglePlay { throw OfflineError.noConnection }
+
+        XCTAssertEqual(errorCategories(analytics), [.network])
+    }
+
+    func testForbiddenAndServerStatusesAreCategorised() async {
+        let forbidden = await saveGooglePlay { throw StackError.Http(status: 403, message: "x") }
+        let server = await saveGooglePlay { throw StackError.Http(status: 503, message: "x") }
+
+        XCTAssertEqual(errorCategories(forbidden), [.forbidden])
+        XCTAssertEqual(errorCategories(server), [.server])
+    }
+
+    func testStorageFailureIsAStorageFailure() async {
+        await mockStorage.failSave(AccountModel.self)
+
+        let analytics = await saveGooglePlay()
+
+        XCTAssertFalse(sut.uiState.isSaved)
+        XCTAssertFalse(sut.uiState.isValidating)
+        XCTAssertEqual(errorCategories(analytics), [.storage])
+    }
+
+    func testSuccessSendsNoErrorCategoryAndPostsAccountsChange() async {
+        let posted = expectation(forNotification: .accountsDidChange, object: nil)
+
+        let analytics = await saveGooglePlay()
+
+        await fulfillment(of: [posted], timeout: 1)
+        XCTAssertEqual(analytics.results(of: .createAccount), [.success])
+        XCTAssertEqual(errorCategories(analytics), [nil])
     }
 }

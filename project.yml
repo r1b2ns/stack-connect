@@ -101,8 +101,9 @@ packages:
     path: Packages/StackProtocols
   APIProviderFirebase:
     path: Packages/APIProviderFirebase
-  # Google Analytics for Firebase. App target only (never the widget). Pinned to
-  # an exact release; product `FirebaseAnalyticsCore` is the no-IDFA variant.
+  # Google Analytics for Firebase and Crashlytics. App target only (never the
+  # widget). Pinned to an exact release; product `FirebaseAnalyticsCore` is the
+  # no-IDFA variant.
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk
     exactVersion: 13.1.1
@@ -170,6 +171,10 @@ targets:
         GOOGLE_ANALYTICS_DEFAULT_ALLOW_ANALYTICS_STORAGE: true
         GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED: false
         GOOGLE_ANALYTICS_REGISTRATION_WITH_AD_NETWORK_ENABLED: false
+        # Crashlytics follows the same opt-out: off at every launch, turned on
+        # by AnalyticsService (CrashlyticsProvider) only for a user whose
+        # analytics setting is ON.
+        FirebaseCrashlyticsCollectionEnabled: false
 
     configFiles:
       Debug: Configs/Debug.xcconfig
@@ -195,8 +200,41 @@ targets:
       - package: APIProviderFirebase
       - package: Firebase
         product: FirebaseAnalyticsCore
+      - package: Firebase
+        product: FirebaseCrashlytics
       - target: StackConnectWidgetExtension
         embed: true
+
+    postBuildScripts:
+      # Uploads the dSYM to Crashlytics (Firebase's documented `run` script from
+      # the SPM checkout). Release builds for a device only, and a no-op (exit 0)
+      # when GoogleService-Info.plist isn't bundled (open-source / CI builds) or
+      # the checkout can't be found. No input files are declared (Firebase's
+      # CrashlyticsInputFiles.xcfilelist lists them for user script sandboxing,
+      # which this project doesn't enable): a missing input fails the build, and
+      # here the plist is optional and Debug builds have no dSYM.
+      - name: Upload dSYM to Crashlytics
+        basedOnDependencyAnalysis: false
+        showEnvVars: false
+        script: |
+          if [ "${CONFIGURATION}" != "Release" ]; then
+            echo "Crashlytics: skipping dSYM upload (${CONFIGURATION} build)"
+            exit 0
+          fi
+          if [ "${PLATFORM_NAME}" = "iphonesimulator" ]; then
+            echo "Crashlytics: skipping dSYM upload (simulator build)"
+            exit 0
+          fi
+          if [ ! -f "${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleService-Info.plist" ]; then
+            echo "Crashlytics: skipping dSYM upload (no GoogleService-Info.plist bundled)"
+            exit 0
+          fi
+          RUN_SCRIPT="${BUILD_DIR%/Build/*}/SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run"
+          if [ ! -x "${RUN_SCRIPT}" ]; then
+            echo "warning: Crashlytics run script not found at ${RUN_SCRIPT}; dSYM not uploaded"
+            exit 0
+          fi
+          "${RUN_SCRIPT}"
 
   StackConnectWidgetExtension:
     type: app-extension

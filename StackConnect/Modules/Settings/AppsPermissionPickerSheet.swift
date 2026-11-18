@@ -62,6 +62,7 @@ struct AppsPermissionPickerSheet: View {
                 text: $searchQuery,
                 prompt: String(localized: "Search apps")
             )
+            .trackSearch(query: searchQuery, resultCount: filteredApps.count, on: .appsPermissionPicker)
             .navigationTitle(String(localized: "Apps permissions"))
             .trackScreen(.appsPermissionPicker)
             .navigationBarTitleDisplayMode(.inline)

@@ -418,6 +418,7 @@ final class SettingsAccountsViewModelTests: XCTestCase {
 
         XCTAssertEqual(analytics.taps(of: .confirmImport).count, 1)
         XCTAssertEqual(analytics.results(of: .importAccount), [.success])
+        XCTAssertNil(analytics.actions(of: .importAccount).first?.parameters[AnalyticsParameterKey.errorCategory])
     }
 
     func testImportTracksFailureWithWrongPassword() async throws {
@@ -432,6 +433,11 @@ final class SettingsAccountsViewModelTests: XCTestCase {
 
         XCTAssertNotNil(error)
         XCTAssertEqual(analytics.results(of: .importAccount), [.failure])
+        XCTAssertEqual(
+            analytics.actions(of: .importAccount).first?.parameters[AnalyticsParameterKey.errorCategory],
+            .string("wrong_password"),
+            "Only the category is sent, never the error message"
+        )
     }
 
     func testRenameAccountTracksSaveTapAndSuccess() async throws {

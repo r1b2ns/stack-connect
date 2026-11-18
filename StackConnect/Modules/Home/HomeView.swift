@@ -18,8 +18,10 @@ private struct HomeEntry: View {
     var body: some View {
         HomeView(viewModel: viewModel)
             .environmentObject(coordinator)
+            // Widget taps and other `stackconnect://` URLs go through the
+            // router too, which tracks where the open came from.
             .onOpenURL { url in
-                handleDeepLink(url)
+                DeepLinkRouter.shared.open(url, source: DeepLinkSource(openedURL: url))
             }
             .onReceive(DeepLinkRouter.shared.$pending.compactMap { $0 }) { url in
                 handleDeepLink(url)

@@ -47,7 +47,8 @@ final class GooglePlayAppInfoViewModel: GooglePlayAppInfoViewModelProtocol, Goog
         account: AccountModel,
         keychain: KeyStorable = KeychainStorable.shared,
         storage: PersistentStorable? = nil,
-        connectionFactory: @escaping ConnectionFactory = { GooglePlayAccountConnection(credentials: $0) }
+        connectionFactory: @escaping ConnectionFactory = { GooglePlayAccountConnection(credentials: $0) },
+        analytics: AnalyticsReporting = AnalyticsService.shared
     ) {
         self.uiState = GooglePlayAppInfoUiState(account: account, app: app)
         self.loader = GooglePlayAppSectionLoader(
@@ -59,7 +60,9 @@ final class GooglePlayAppInfoViewModel: GooglePlayAppInfoViewModelProtocol, Goog
             connectionFactory: connectionFactory,
             fetch: { connection, packageName in
                 try await connection.fetchAppDetails(packageName: packageName)
-            }
+            },
+            screen: .googlePlayAppInfo,
+            analytics: analytics
         )
     }
 

@@ -1,6 +1,7 @@
 import Foundation
 import WidgetKit
 import StackCoreRust
+import StackProtocols
 #if DEBUG
 import UIKit
 import UserNotifications
@@ -74,6 +75,10 @@ final class SyncService: ObservableObject {
     private let appleConnectionFactory: AppleConnectionFactory
     private let googlePlayConnectionFactory: GooglePlayConnectionFactory
     private let widgetSnapshotWriter: WidgetSnapshotWriting
+    private let firstAppsLoaded: FirstAppsLoadedTracker
+    private let analytics: AnalyticsTracking
+    private let notificationPermission: NotificationPermissionRequesting
+    private let clock = ContinuousClock()
     private var rootTask: Task<Void, Never>?
 
     init(
@@ -81,13 +86,19 @@ final class SyncService: ObservableObject {
         keychain: KeyStorable = KeychainStorable.shared,
         appleConnectionFactory: AppleConnectionFactory? = nil,
         googlePlayConnectionFactory: GooglePlayConnectionFactory? = nil,
-        widgetSnapshotWriter: WidgetSnapshotWriting? = nil
+        widgetSnapshotWriter: WidgetSnapshotWriting? = nil,
+        firstAppsLoaded: FirstAppsLoadedTracker? = nil,
+        analytics: AnalyticsTracking? = nil,
+        notificationPermission: NotificationPermissionRequesting? = nil
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
         self.appleConnectionFactory = appleConnectionFactory ?? { AppleAccountConnection(credentials: $0) }
         self.googlePlayConnectionFactory = googlePlayConnectionFactory ?? { GooglePlayAccountConnection(credentials: $0) }
         self.widgetSnapshotWriter = widgetSnapshotWriter ?? { await WidgetDashboardSnapshotWriter.write(storage: $0) }
+        self.firstAppsLoaded = firstAppsLoaded ?? .shared
+        self.analytics = analytics ?? AnalyticsService.shared
+        self.notificationPermission = notificationPermission ?? NotificationPermissionService.shared
     }
 
     /// One account of a sync run with the connection built for it (`nil` when
@@ -105,14 +116,23 @@ final class SyncService: ObservableObject {
 
     /// Fire-and-forget. Safe to call repeatedly — already-running syncs are coalesced
     /// (subsequent callers receive the same in-flight Task and can await it if needed).
+    ///
+    /// Each run (not a coalesced call) is tracked as a `sync` action with its
+    /// `trigger`, on `screen` (`nil` for the background task).
+    ///
+    /// - Parameters:
+    ///   - trigger: what asked for the run. Defaults to `background` for a
+    ///     lightweight run, `foreground` otherwise.
+    ///   - screen: the screen that asked for it, if any.
     @discardableResult
-    func syncAll(mode: SyncMode = .full) -> Task<Void, Never> {
+    func syncAll(mode: SyncMode = .full, trigger: SyncTrigger? = nil, screen: AnalyticsScreen? = .home) -> Task<Void, Never> {
         if let rootTask {
             Log.print.info("[Sync] syncAll coalesced into in-flight sync")
             return rootTask
         }
+        let trigger = trigger ?? (mode == .lightweight ? .background : .foreground)
         let task = Task { [weak self] in
-            await self?.performSyncAll(mode: mode)
+            await self?.performSyncAll(mode: mode, trigger: trigger, screen: screen)
             self?.rootTask = nil
         }
         rootTask = task
@@ -121,7 +141,46 @@ final class SyncService: ObservableObject {
 
     // MARK: - Private (MainActor)
 
-    private func performSyncAll(mode: SyncMode) async {
+    private func performSyncAll(mode: SyncMode, trigger: SyncTrigger, screen: AnalyticsScreen?) async {
+        let startedAt = clock.now
+        let outcome = await runSyncAll(mode: mode)
+        trackSync(outcome, trigger: trigger, screen: screen, duration: clock.now - startedAt)
+    }
+
+    /// What a run did, for its `sync` analytics event.
+    struct RunOutcome: Equatable {
+        var accountCount = 0
+        var failedCount = 0
+        /// Set when the run failed as a whole or any account leg failed.
+        var errorCategory: AnalyticsErrorCategory?
+
+        var succeeded: Bool { errorCategory == nil && failedCount == 0 }
+    }
+
+    /// The `sync` action of a finished run (pure, unit tested).
+    static func syncEvent(
+        _ outcome: RunOutcome,
+        trigger: SyncTrigger,
+        screen: AnalyticsScreen?,
+        duration: Duration
+    ) -> AnalyticsEvent {
+        var parameters: [String: AnalyticsValue] = [
+            AnalyticsParameterKey.trigger: .string(trigger.rawValue),
+            AnalyticsParameterKey.durationBucket: .string(AnalyticsDurationBucket(duration: duration).rawValue),
+            AnalyticsParameterKey.count: .int(outcome.accountCount),
+            AnalyticsParameterKey.failedCount: .int(outcome.failedCount)
+        ]
+        if let category = outcome.errorCategory {
+            parameters.merge(category.parameters) { _, new in new }
+        }
+        return .action(.sync, on: screen, result: outcome.succeeded ? .success : .failure, parameters: parameters)
+    }
+
+    private func trackSync(_ outcome: RunOutcome, trigger: SyncTrigger, screen: AnalyticsScreen?, duration: Duration) {
+        analytics.track(Self.syncEvent(outcome, trigger: trigger, screen: screen, duration: duration))
+    }
+
+    private func runSyncAll(mode: SyncMode) async -> RunOutcome {
         var started = state
         started.isSyncing = true
         started.lastError = nil
@@ -139,14 +198,14 @@ final class SyncService: ObservableObject {
             state.lastError = error.localizedDescription
             state.isSyncing = false
             Log.print.error("[Sync] Failed to load accounts: \(error.localizedDescription)")
-            return
+            return RunOutcome(errorCategory: .storage)
         }
 
         guard !accounts.isEmpty else {
             state.isSyncing = false
             state.lastSyncedAt = .now
             await widgetSnapshotWriter(storage)
-            return
+            return RunOutcome()
         }
 
         // Build the per-account connections on MainActor (Keychain isn't Sendable).
@@ -210,6 +269,10 @@ final class SyncService: ObservableObject {
         finished.lastSyncedAt = .now
         finished.isSyncing = false
         state = finished
+        // Activation milestone: the first leg that brought at least one app.
+        if let first = changes.loadedApps.first(where: { $0.count > 0 }) {
+            await firstAppsLoaded.recordAppsLoaded(count: first.count, provider: first.provider, on: .home)
+        }
         await preloadWidgetIcons()
         await widgetSnapshotWriter(storage)
 
@@ -222,6 +285,11 @@ final class SyncService: ObservableObject {
         }
 
         Log.print.notice("[Sync] syncAll completed")
+        return RunOutcome(
+            accountCount: accounts.count,
+            failedCount: changes.failedAccountIds.count,
+            errorCategory: changes.dominantFailureCategory
+        )
     }
 
     /// Caches app icons into the shared App Group container so the widget can
@@ -256,7 +324,8 @@ final class SyncService: ObservableObject {
         let allowed: Bool
         switch settings.authorizationStatus {
         case .notDetermined:
-            allowed = (try? await center.requestAuthorization(options: [.alert, .sound])) == true
+            // Through the tracked prompt: its answer and `notifications_enabled`.
+            allowed = await notificationPermission.requestAuthorization(options: [.alert, .sound])
         case .denied:
             allowed = false
         case .authorized, .provisional, .ephemeral:
@@ -299,7 +368,7 @@ final class SyncService: ObservableObject {
         guard let connection else {
             Log.print.error("[Sync] No credentials for \(account.name)")
             await saveMetadata(storage: storage, accountId: account.id, appsSynced: 0, error: "Missing credentials")
-            return .failed(accountId: account.id)
+            return .failed(accountId: account.id, category: .invalidCredentials)
         }
         return await GooglePlayAccountSync(account: account, connection: connection, storage: storage, mode: mode).run()
     }
@@ -313,7 +382,7 @@ final class SyncService: ObservableObject {
         guard let connection else {
             Log.print.error("[Sync] No credentials for \(account.name)")
             await saveMetadata(storage: storage, accountId: account.id, appsSynced: 0, error: "Missing credentials")
-            return .failed(accountId: account.id)
+            return .failed(accountId: account.id, category: .invalidCredentials)
         }
 
         do {
@@ -414,6 +483,7 @@ final class SyncService: ObservableObject {
                 storage: storage
             )
             change.newReviews = reviewResult.new
+            change.loadedApps = [SyncChange.LoadedApps(provider: account.providerType, count: finalApps.count)]
 
             await saveMetadata(
                 storage: storage,
@@ -441,7 +511,7 @@ final class SyncService: ObservableObject {
             // Offline-first contract: a transient/non-agreement error must NOT
             // clear a previously-set flag, so we only clear on a clean sync.
             Log.print.error("[Sync] \(account.name) failed: \(error.localizedDescription)")
-            return .failed(accountId: account.id)
+            return .failed(accountId: account.id, category: AnalyticsErrorCategory(connectionError: error))
         }
     }
 

@@ -12,6 +12,8 @@ final class SyncServiceTests: XCTestCase {
     private var connections: [String: MockAppleAccountSyncing] = [:]
     private var playConnection: MockGooglePlayAccountConnection!
     private var snapshotWrites = 0
+    private var analytics: MockAnalyticsTracker!
+    private var defaultsSuiteName: String!
 
     override func setUp() async throws {
         try await super.setUp()
@@ -21,6 +23,12 @@ final class SyncServiceTests: XCTestCase {
         snapshotWrites = 0
         let playConnection = MockGooglePlayAccountConnection()
         self.playConnection = playConnection
+        analytics = MockAnalyticsTracker()
+        defaultsSuiteName = "SyncServiceTests.\(UUID().uuidString)"
+        let firstAppsLoaded = FirstAppsLoadedTracker(
+            defaults: UserDefaults(suiteName: defaultsSuiteName) ?? .standard,
+            analytics: analytics
+        )
         sut = StackConnect.SyncService(
             storage: mockStorage,
             keychain: mockKeychain,
@@ -28,11 +36,15 @@ final class SyncServiceTests: XCTestCase {
                 self?.connections[credentials.issuerID] ?? MockAppleAccountSyncing()
             },
             googlePlayConnectionFactory: playConnection.syncFactory,
-            widgetSnapshotWriter: { [weak self] _ in self?.snapshotWrites += 1 }
+            widgetSnapshotWriter: { [weak self] _ in self?.snapshotWrites += 1 },
+            firstAppsLoaded: firstAppsLoaded,
+            analytics: analytics
         )
     }
 
     override func tearDown() async throws {
+        UserDefaults.standard.removePersistentDomain(forName: defaultsSuiteName)
+        analytics = nil
         sut = nil
         mockStorage = nil
         mockKeychain = nil
@@ -98,6 +110,42 @@ final class SyncServiceTests: XCTestCase {
         XCTAssertEqual(playConnection.editBasedReadCount, 0)
         XCTAssertTrue(sut.state.accountsInProgress.isEmpty)
         XCTAssertEqual(sut.state.providerByAccountId[play.id], .googlePlay)
+    }
+
+    // MARK: - Activation (first_apps_loaded)
+
+    func testFirstSuccessfulSyncWithAppsSendsFirstAppsLoadedOnce() async throws {
+        let play = AccountModel(name: "Play", providerType: .googlePlay)
+        try await mockStorage.save(play, id: play.id)
+        mockKeychain.setObject(
+            GooglePlayCredentials(serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON()),
+            forKey: "credentials.\(play.id)"
+        )
+        playConnection.fetchAppsHandler = {
+            [
+                StackProtocols.AppInfo(id: "com.a", name: "A", bundleId: "com.a", platform: "ANDROID"),
+                StackProtocols.AppInfo(id: "com.b", name: "B", bundleId: "com.b", platform: "ANDROID")
+            ]
+        }
+
+        await sut.syncAll().value
+        await sut.syncAll().value
+
+        XCTAssertEqual(analytics.actions(of: .firstAppsLoaded), [
+            .action(.firstAppsLoaded, on: .home, parameters: [
+                AnalyticsParameterKey.count: .int(2),
+                AnalyticsParameterKey.kind: .string("googlePlay")
+            ])
+        ])
+    }
+
+    func testSyncWithoutAppsDoesNotSendFirstAppsLoaded() async throws {
+        let play = AccountModel(name: "Play", providerType: .googlePlay)
+        try await mockStorage.save(play, id: play.id)
+
+        await sut.syncAll().value
+
+        XCTAssertTrue(analytics.actions(of: .firstAppsLoaded).isEmpty)
     }
 
     func testGooglePlayAccountWithMissingCredentialsRecordsError() async throws {
@@ -811,5 +859,71 @@ final class SyncServiceTests: XCTestCase {
             versionString: versionString,
             appId: appId
         )
+    }
+
+    // MARK: - Analytics (`sync` action)
+
+    func testEachRunIsTrackedOnceWithTriggerAndScreen() async {
+        let first = sut.syncAll(trigger: .manual, screen: .allReviews)
+        let coalesced = sut.syncAll(trigger: .foreground, screen: .home)
+        await first.value
+        await coalesced.value
+
+        let events = analytics.actions(of: .sync)
+        XCTAssertEqual(events.count, 1, "A coalesced call is not a second run")
+        XCTAssertEqual(events.first?.parameters["trigger"], .string("manual"))
+        XCTAssertEqual(events.first?.parameters["screen_name"], .string("all_reviews"))
+        XCTAssertEqual(events.first?.parameters["result"], .string("success"))
+        XCTAssertEqual(events.first?.parameters["count"], .int(0))
+        XCTAssertNotNil(events.first?.parameters["duration_bucket"])
+    }
+
+    func testBackgroundRunIsTrackedWithoutAScreen() async {
+        await sut.syncAll(mode: .lightweight, trigger: .background, screen: nil).value
+
+        let event = analytics.actions(of: .sync).first
+        XCTAssertEqual(event?.parameters["trigger"], .string("background"))
+        XCTAssertNil(event?.parameters["screen_name"])
+    }
+
+    func testLightweightRunDefaultsToTheBackgroundTrigger() async {
+        await sut.syncAll(mode: .lightweight).value
+
+        XCTAssertEqual(analytics.actions(of: .sync).first?.parameters["trigger"], .string("background"))
+    }
+
+    func testFailedLegIsTrackedWithItsCategory() async throws {
+        // An Apple account without credentials fails its leg.
+        let account = AccountModel(name: "No Keys", providerType: .apple)
+        try await mockStorage.save(account, id: account.id)
+
+        await sut.syncAll().value
+
+        let event = try XCTUnwrap(analytics.actions(of: .sync).first)
+        XCTAssertEqual(event.parameters["result"], .string("failure"))
+        XCTAssertEqual(event.parameters["failed_count"], .int(1))
+        XCTAssertEqual(event.parameters["count"], .int(1))
+        XCTAssertEqual(event.parameters["error_category"], .string("invalid_credentials"))
+        XCTAssertEqual(event.parameters["trigger"], .string("foreground"))
+    }
+
+    func testSyncEventDurationBuckets() {
+        let outcome = StackConnect.SyncService.RunOutcome(accountCount: 2)
+        let buckets = [Duration.seconds(1), .seconds(5), .seconds(29), .seconds(45), .seconds(120)].map {
+            StackConnect.SyncService.syncEvent(outcome, trigger: .foreground, screen: .home, duration: $0)
+                .parameters["duration_bucket"]
+        }
+        XCTAssertEqual(buckets, ["under_5s", "5_15s", "15_30s", "30_60s", "over_60s"].map { AnalyticsValue.string($0) })
+    }
+
+    func testDominantFailureCategoryIsTheMostFrequentThenByName() {
+        let change = SyncChange.failed(accountId: "a", category: .network)
+            + SyncChange.failed(accountId: "b", category: .server)
+            + SyncChange.failed(accountId: "c", category: .server)
+        XCTAssertEqual(change.dominantFailureCategory, .server)
+
+        let tie = SyncChange.failed(accountId: "a", category: .server) + SyncChange.failed(accountId: "b", category: .network)
+        XCTAssertEqual(tie.dominantFailureCategory, .network, "Ties resolve alphabetically, deterministically")
+        XCTAssertNil(SyncChange().dominantFailureCategory)
     }
 }

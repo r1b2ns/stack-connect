@@ -385,6 +385,10 @@ final class AccountsListViewModelTests: XCTestCase {
         XCTAssertNotNil(error)
         XCTAssertEqual(analytics.taps(of: .confirmImport), [.buttonTap(.confirmImport, on: .accountsListImport)])
         XCTAssertEqual(analytics.results(of: .importAccount), [.failure])
+        XCTAssertEqual(
+            analytics.actions(of: .importAccount).first?.parameters[AnalyticsParameterKey.errorCategory],
+            .string("invalid_file")
+        )
     }
 
     func testReimportTracksReimportAction() async {

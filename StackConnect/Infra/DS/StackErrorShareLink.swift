@@ -7,6 +7,9 @@ import SwiftUI
 ///
 /// The report is synchronous text, so it's a plain `ShareLink`; it's built (and
 /// timestamped) when the link is rendered, i.e. when the error is shown.
+///
+/// The tap is tracked as `button_tap share_error` on the tracked screen around
+/// it (`\.analyticsScreen`); the report itself is never sent to analytics.
 struct StackErrorShareLink: View {
 
     enum Style {
@@ -29,6 +32,7 @@ struct StackErrorShareLink: View {
                 Label(String(localized: "Share Error"), systemImage: "square.and.arrow.up")
             }
             .accessibilityHint(Self.accessibilityHint)
+            .modifier(StackTrackShareErrorTapModifier())
         case .icon:
             ShareLink(item: report.text, subject: Text(report.subject)) {
                 Image(systemName: "square.and.arrow.up")
@@ -38,6 +42,7 @@ struct StackErrorShareLink: View {
             .buttonStyle(.borderless)
             .accessibilityLabel(String(localized: "Share Error"))
             .accessibilityHint(Self.accessibilityHint)
+            .modifier(StackTrackShareErrorTapModifier())
         }
     }
 

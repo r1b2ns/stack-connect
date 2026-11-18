@@ -47,8 +47,8 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
                 isPresented: isPresented(\.confirmRemove),
                 presenting: viewModel.uiState.confirmRemove
             ) { user in
-                Button(user.accessState.isPendingInvitation ? String(localized: "Cancel Invitation") : String(localized: "Remove"),
-                       role: .destructive) {
+                StackTrackedButton(user.accessState.isPendingInvitation ? String(localized: "Cancel Invitation") : String(localized: "Remove"),
+                                   button: .confirmDelete, on: .googlePlayUsers, role: .destructive) {
                     Task { await viewModel.remove(user) }
                 }
                 StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .googlePlayUsers, role: .cancel) {}
@@ -60,7 +60,7 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
                 isPresented: isPresented(\.confirmResend),
                 presenting: viewModel.uiState.confirmResend
             ) { user in
-                Button(String(localized: "Resend")) {
+                StackTrackedButton(String(localized: "Resend"), button: .confirmResendInvite, on: .googlePlayUsers) {
                     Task { await viewModel.resend(user) }
                 }
                 StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .googlePlayUsers, role: .cancel) {}
@@ -116,7 +116,8 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
             StackErrorContentView(
                 message: error,
                 reportContext: errorReportContext.withTechnicalDetails(state.errorDetails),
-                onRetry: retry
+                // The Retry tap is tracked by `StackErrorContentView`.
+                onRetry: { Task { await viewModel.load() } }
             )
         } else {
             buildList()
@@ -125,6 +126,7 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
                     placement: .navigationBarDrawer(displayMode: .always),
                     prompt: String(localized: "Search by name or email")
                 )
+                .trackSearch(query: viewModel.uiState.searchQuery, resultCount: viewModel.uiState.filteredUsers.count, on: .googlePlayUsers)
         }
     }
 

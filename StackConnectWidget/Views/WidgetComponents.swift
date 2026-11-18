@@ -298,6 +298,26 @@ struct WidgetReviewRow: View {
     }
 }
 
+/// Marks the URLs the widget opens so the app can tell a widget tap from any
+/// other `stackconnect://` URL (`DeepLinkSource` in the app, which reads the
+/// same `source=widget` query item; deep-link parsing ignores it).
+enum WidgetLinkSource {
+    static let name = "source"
+    static let value = "widget"
+    static let queryItem = "\(name)=\(value)"
+
+    /// `url` with `source=widget` added (unchanged if it can't be parsed).
+    static func marked(_ url: URL) -> URL {
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
+        var items = components.queryItems ?? []
+        if !items.contains(where: { $0.name == name }) {
+            items.append(URLQueryItem(name: name, value: value))
+        }
+        components.queryItems = items
+        return components.url ?? url
+    }
+}
+
 /// Opens `url` when tapped, or does nothing without one.
 struct WidgetRowLink<Content: View>: View {
     let url: String?
@@ -305,7 +325,7 @@ struct WidgetRowLink<Content: View>: View {
 
     var body: some View {
         // Explicit primary style: a link would otherwise tint its label.
-        if let url = url.flatMap(URL.init(string:)) {
+        if let url = url.flatMap(URL.init(string:)).map(WidgetLinkSource.marked) {
             Link(destination: url) { content.foregroundStyle(.primary) }
                 .tint(.primary)
         } else {

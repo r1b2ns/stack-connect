@@ -18,7 +18,7 @@ private struct GooglePlayReleaseDetailEntry: View {
 
     init(app: GooglePlayAppItem, account: AccountModel, track: String, release: GooglePlayReleaseModel) {
         _viewModel = StateObject(wrappedValue: GooglePlayReleaseDetailViewModel(app: app, account: account, track: track, release: release))
-        _writes = StateObject(wrappedValue: GooglePlayReleaseWriteViewModel(app: app, account: account))
+        _writes = StateObject(wrappedValue: GooglePlayReleaseWriteViewModel(app: app, account: account, screen: .googlePlayReleaseDetail))
     }
 
     var body: some View {
@@ -58,7 +58,7 @@ struct GooglePlayReleaseDetailView<ViewModel: GooglePlayReleaseDetailViewModelPr
         .googlePlayReleaseWrites(writes)
         .safeAreaInset(edge: .bottom) {
             if !state.hasChanges, let release = state.release {
-                GooglePlayReleaseActionBar(actions: state.actions.filter { $0 != .promote }, isBusy: writes.uiState.isWriting) { action in
+                GooglePlayReleaseActionBar(actions: state.actions.filter { $0 != .promote }, isBusy: writes.uiState.isWriting, screen: .googlePlayReleaseDetail) { action in
                     writes.start(action, release: release, track: state.track)
                 }
             }
@@ -73,6 +73,7 @@ struct GooglePlayReleaseDetailView<ViewModel: GooglePlayReleaseDetailViewModelPr
                 await writes.loadContext()
             }
         }
+        .trackScreen(.googlePlayReleaseDetail)
     }
 
     // MARK: - Toolbar
@@ -81,10 +82,10 @@ struct GooglePlayReleaseDetailView<ViewModel: GooglePlayReleaseDetailViewModelPr
     private func buildToolbar() -> some ToolbarContent {
         if state.hasChanges {
             ToolbarItem(placement: .cancellationAction) {
-                Button(String(localized: "Discard")) { viewModel.discardChanges() }
+                StackTrackedButton(String(localized: "Discard"), button: .discard, on: .googlePlayReleaseDetail) { viewModel.discardChanges() }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button(String(localized: "Save")) {
+                StackTrackedButton(String(localized: "Save"), button: .save, on: .googlePlayReleaseDetail) {
                     if let write = viewModel.metadataWrite() {
                         writes.request(write)
                     }
@@ -226,7 +227,7 @@ struct GooglePlayReleaseDetailView<ViewModel: GooglePlayReleaseDetailViewModelPr
 
     private func buildRolloutSection(_ release: GooglePlayReleaseModel) -> some View {
         Section {
-            Button {
+            StackTrackedButton(.stagedRollout, on: .googlePlayReleaseDetail) {
                 writes.openRollout(release: release, track: state.track)
             } label: {
                 StackSubtitleRow(
@@ -262,7 +263,7 @@ struct GooglePlayReleaseDetailView<ViewModel: GooglePlayReleaseDetailViewModelPr
     private func buildActionsSection(_ release: GooglePlayReleaseModel) -> some View {
         if state.actions.contains(.promote) {
             Section {
-                Button {
+                StackTrackedButton(.promote, on: .googlePlayReleaseDetail) {
                     writes.start(.promote, release: release, track: state.track)
                 } label: {
                     StackSubtitleRow(icon: "arrow.up", iconColor: .green, title: String(localized: "Promote to Another Track"))
@@ -278,6 +279,7 @@ struct GooglePlayReleaseDetailView<ViewModel: GooglePlayReleaseDetailViewModelPr
         Section {
             if let url = URL(string: "https://play.google.com/console") {
                 Link(String(localized: "Open Play Console"), destination: url)
+                    .trackOpenURL(.openPlayConsole, on: .googlePlayReleaseDetail)
             }
         } header: {
             Text("Only in Play Console")

@@ -3,9 +3,30 @@ import Foundation
 // MARK: - Errors
 
 /// Why an import saved nothing. `message` is user-facing copy, shown as is by
-/// the import alert.
+/// the import alert; `reason` is its stable, text-free classification (used by
+/// analytics, which must never see the message).
 struct AccountImportError: Error, Equatable {
+
+    /// A small, stable set: adding a case is fine, renaming one breaks the
+    /// analytics dashboards built on `AnalyticsErrorCategory(importReason:)`.
+    enum Reason: Equatable, Sendable {
+        /// The file could not be decrypted with this password.
+        case wrongPassword
+        /// Unreadable, not a `.scexport`, an unsupported version, or a payload
+        /// with missing / invalid fields or credentials.
+        case invalidFile
+        /// A valid file of another provider than the list it was imported into.
+        case wrongProvider
+        /// The same credentials are already stored under another account.
+        case duplicate
+        /// Everything was valid but saving the account failed.
+        case storage
+        /// Anything else (e.g. key derivation failed).
+        case unknown
+    }
+
     let message: String
+    let reason: Reason
 }
 
 // MARK: - Importer
@@ -69,7 +90,7 @@ struct AccountImporter {
         do {
             data = try Data(contentsOf: url)
         } catch {
-            return failure(String(localized: "Failed to read file."))
+            return failure(String(localized: "Failed to read file."), .invalidFile)
         }
 
         // 2. Decrypt
@@ -77,25 +98,28 @@ struct AccountImporter {
         do {
             jsonString = try AccountCrypto.decrypt(data: data, password: password)
         } catch {
-            return failure(error.localizedDescription)
+            return failure(error.localizedDescription, Self.reason(forDecryptionError: error))
         }
 
         // 3. Parse JSON
         guard let jsonData = jsonString.data(using: .utf8),
               let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
-            return failure(String(localized: "Invalid JSON format."))
+            return failure(String(localized: "Invalid JSON format."), .invalidFile)
         }
 
         // 4. Validate required fields
         guard let name = dict["name"] as? String, !name.isEmpty else {
-            return failure(String(localized: "Missing or invalid 'name' field."))
+            return failure(String(localized: "Missing or invalid 'name' field."), .invalidFile)
         }
         guard let providerRaw = dict["providerType"] as? String,
               let providerType = ProviderType(rawValue: providerRaw) else {
-            return failure(String(localized: "Missing or invalid 'providerType' field."))
+            return failure(String(localized: "Missing or invalid 'providerType' field."), .invalidFile)
         }
         if let expectedProvider = options.expectedProvider, providerType != expectedProvider {
-            return failure(String(localized: "This file contains a \(providerType.displayName) account, but this is the \(expectedProvider.displayName) section."))
+            return failure(
+                String(localized: "This file contains a \(providerType.displayName) account, but this is the \(expectedProvider.displayName) section."),
+                .wrongProvider
+            )
         }
 
         // 5. Optional fields
@@ -125,7 +149,7 @@ struct AccountImporter {
 
         // 6. Credentials: validate, check duplicates, store
         guard let credentials = dict["credentials"] as? [String: String] else {
-            return failure(String(localized: "Missing or invalid 'credentials' field."))
+            return failure(String(localized: "Missing or invalid 'credentials' field."), .invalidFile)
         }
 
         // A re-import reuses the replaced account's id so its offline data stays linked.
@@ -146,7 +170,7 @@ struct AccountImporter {
             accountName: accountName,
             existingAccounts: sameTypeAccounts
         ) {
-            return failure(credentialsError)
+            return .failure(credentialsError)
         }
 
         // 7. Create and save the account
@@ -164,16 +188,31 @@ struct AccountImporter {
 
         do {
             try await storage.save(account, id: account.id)
+            AccountsChange.post()
             return .success(account)
         } catch {
-            return failure(String(localized: "Failed to save imported account: \(error.localizedDescription)"))
+            return failure(String(localized: "Failed to save imported account: \(error.localizedDescription)"), .storage)
         }
     }
 
     // MARK: - Private
 
-    private func failure(_ message: String) -> Result<AccountModel, AccountImportError> {
-        .failure(AccountImportError(message: message))
+    private func failure(_ message: String, _ reason: AccountImportError.Reason) -> Result<AccountModel, AccountImportError> {
+        .failure(AccountImportError(message: message, reason: reason))
+    }
+
+    /// A wrong password and a corrupted file are indistinguishable to AES-GCM
+    /// (`invalidPassword` covers both); the user almost always mistyped it.
+    static func reason(forDecryptionError error: Error) -> AccountImportError.Reason {
+        guard let cryptoError = error as? AccountCryptoError else { return .unknown }
+        switch cryptoError {
+        case .invalidPassword, .decryptionFailed:
+            return .wrongPassword
+        case .invalidFileFormat, .unsupportedVersion:
+            return .invalidFile
+        case .encryptionFailed, .keyDerivationFailed:
+            return .unknown
+        }
     }
 
     /// Rules in the file; absent ⇒ empty (no permissions).
@@ -198,14 +237,14 @@ struct AccountImporter {
     /// Validates the provider credentials, rejects duplicates and stores them in
     /// the keychain under the new account id.
     ///
-    /// - Returns: a user-facing error (nothing stored), or `nil` once stored.
+    /// - Returns: why nothing was stored, or `nil` once stored.
     private func storeCredentials(
         _ credentials: [String: String],
         providerType: ProviderType,
         accountId: String,
         accountName: String,
         existingAccounts: [AccountModel]
-    ) -> String? {
+    ) -> AccountImportError? {
         let keychainKey = "credentials.\(accountId)"
 
         switch providerType {
@@ -213,7 +252,7 @@ struct AccountImporter {
             guard let issuerID = credentials[Key.issuerID], !issuerID.isEmpty,
                   let privateKeyID = credentials[Key.privateKeyID], !privateKeyID.isEmpty,
                   let privateKey = credentials[Key.privateKey], !privateKey.isEmpty else {
-                return String(localized: "Invalid Apple credentials. Required: issuerID, privateKeyID, privateKey.")
+                return AccountImportError(message: String(localized: "Invalid Apple credentials. Required: issuerID, privateKeyID, privateKey."), reason: .invalidFile)
             }
             // Same team key may be re-registered under a different name/role.
             // Only block an EXACT duplicate: same private key AND same account name.
@@ -230,7 +269,7 @@ struct AccountImporter {
 
         case .firebase:
             guard let json = credentials[Key.serviceAccountJSON], !json.isEmpty else {
-                return String(localized: "Invalid Firebase credentials. Required: serviceAccountJSON.")
+                return AccountImportError(message: String(localized: "Invalid Firebase credentials. Required: serviceAccountJSON."), reason: .invalidFile)
             }
             for existing in existingAccounts {
                 if let stored: FirebaseCredentials = keychain.object(forKey: "credentials.\(existing.id)"),
@@ -242,13 +281,13 @@ struct AccountImporter {
 
         case .googlePlay:
             guard let json = credentials[Key.serviceAccountJSON], !json.isEmpty else {
-                return String(localized: "Invalid Google Play credentials. Required: serviceAccountJSON.")
+                return AccountImportError(message: String(localized: "Invalid Google Play credentials. Required: serviceAccountJSON."), reason: .invalidFile)
             }
             // Shape check only, no network (same policy as the Apple path). The
             // parse error is not logged: the key file must never reach the logs.
             guard (try? GooglePlayServiceAccount(json: json)) != nil else {
                 Log.print.error("[AccountImporter] Rejected a Google Play file with an unusable service account key")
-                return String(localized: "The Google Play service account key in this file is invalid. Ask the sender to export the account again.")
+                return AccountImportError(message: String(localized: "The Google Play service account key in this file is invalid. Ask the sender to export the account again."), reason: .invalidFile)
             }
             // Same service account = same client_email (plan D4).
             if let existing = GooglePlayDuplicateAccountFinder.existingAccount(
@@ -265,7 +304,10 @@ struct AccountImporter {
         return nil
     }
 
-    private static func duplicateMessage(_ existing: AccountModel) -> String {
-        String(localized: "An account with these credentials already exists: \"\(existing.name)\".")
+    private static func duplicateMessage(_ existing: AccountModel) -> AccountImportError {
+        AccountImportError(
+            message: String(localized: "An account with these credentials already exists: \"\(existing.name)\"."),
+            reason: .duplicate
+        )
     }
 }
