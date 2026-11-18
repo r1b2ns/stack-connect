@@ -65,6 +65,16 @@ struct GooglePlayUserDetailUiState {
 
     var isSelf: Bool { access.isSelf(user) }
 
+    /// Footer of a user Google returned only part of (`partial`).
+    var partialAccessFooter: String {
+        switch account.authMethod {
+        case .keyFile:
+            return String(localized: "Google returned only part of this user's access (they also have access this service account can't see). Edit them in Play Console.")
+        case .googleSignIn:
+            return String(localized: "Google returned only part of this user's access (they also have access the signed-in Google account can't see). Edit them in Play Console.")
+        }
+    }
+
     var draftIsAdmin: Bool {
         draftAccountPermissions.contains(GooglePlayPermissionCatalog.adminPermission)
     }
@@ -226,7 +236,8 @@ final class GooglePlayUserDetailViewModel: GooglePlayUserDetailViewModelProtocol
             analytics.track(.action(.updateUserPermissions, on: .googlePlayUserDetail, result: .success))
         } catch {
             show(GooglePlayErrorTranslator.usersFailure(
-                error, call: usersCall(.update, developerId: developerId, email: user.email), logTag: "GooglePlayUserDetail"
+                error, call: usersCall(.update, developerId: developerId, email: user.email), logTag: "GooglePlayUserDetail",
+                authMethod: uiState.account.authMethod
             ))
             analytics.track(.action(.updateUserPermissions, on: .googlePlayUserDetail, result: .failure))
         }
@@ -256,7 +267,8 @@ final class GooglePlayUserDetailViewModel: GooglePlayUserDetailViewModelProtocol
             return true
         } catch {
             show(GooglePlayErrorTranslator.usersFailure(
-                error, call: usersCall(.delete, developerId: developerId, email: user.email), logTag: "GooglePlayUserDetail"
+                error, call: usersCall(.delete, developerId: developerId, email: user.email), logTag: "GooglePlayUserDetail",
+                authMethod: uiState.account.authMethod
             ))
             analytics.track(.action(.deleteUser, on: .googlePlayUserDetail, result: .failure))
             return false
@@ -294,7 +306,8 @@ final class GooglePlayUserDetailViewModel: GooglePlayUserDetailViewModelProtocol
             show(GooglePlayErrorTranslator.usersFailure(
                 error,
                 call: usersCall(.setGrant, developerId: developerId, email: user.email, packageName: packageName),
-                logTag: "GooglePlayUserDetail"
+                logTag: "GooglePlayUserDetail",
+                authMethod: uiState.account.authMethod
             ))
             analytics.track(.action(.updateAppAccess, on: .googlePlayAppPermissions, result: .failure))
             return false
@@ -329,7 +342,8 @@ final class GooglePlayUserDetailViewModel: GooglePlayUserDetailViewModelProtocol
             show(GooglePlayErrorTranslator.usersFailure(
                 error,
                 call: usersCall(.deleteGrant, developerId: developerId, email: user.email, packageName: grant.packageName),
-                logTag: "GooglePlayUserDetail"
+                logTag: "GooglePlayUserDetail",
+                authMethod: uiState.account.authMethod
             ))
             analytics.track(.action(.removeAppAccess, on: .googlePlayUserDetail, result: .failure))
             return false

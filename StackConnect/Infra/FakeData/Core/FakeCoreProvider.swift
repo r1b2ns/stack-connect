@@ -129,6 +129,22 @@ final class FakeCoreProviderFactory: CoreProviderMaking, @unchecked Sendable {
         }
     }
 
+    /// A Google sign-in account (`accountId` is its login ID) gets the fake
+    /// developer of that ID: an empty one unless seeded under it.
+    func connectWithAccessToken(
+        kind: ServiceKind,
+        accountId: String,
+        tokenProvider: AccessTokenProvider,
+        debugLogger: DebugLogger?
+    ) throws -> StackCoreRust.Provider {
+        switch kind {
+        case .appStoreConnect:
+            throw StackError.Unsupported(message: "App Store Connect has no access-token auth path.")
+        case .googlePlay:
+            return FakeGooglePlayProvider(developer: googlePlay.developer(clientEmail: accountId))
+        }
+    }
+
     func makeSyncService(
         provider: StackCoreRust.Provider,
         store: BlobStore,

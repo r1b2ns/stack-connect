@@ -38,6 +38,9 @@ enum AnalyticsErrorCategory: String, CaseIterable, Sendable {
     case invalidFile = "invalid_file"
     /// Everything was valid, but saving the account locally failed.
     case storage = "storage"
+    /// "Sign in with Google" completed, but a scope the step needs was left
+    /// unticked on the consent page (or the token lacks it).
+    case scopeDenied = "scope_denied"
     /// Anything not classified above (e.g. a rate limit or an HTTP 404).
     case unknown = "unknown"
 
@@ -72,6 +75,8 @@ extension AnalyticsErrorCategory {
             case .denied: self = .forbidden
             case .missingCredentials: self = .invalidCredentials
             }
+        case let googleError as GoogleAuthError:
+            self = Self(googleAuthError: googleError)
         case is GooglePlayServiceAccount.ParseError:
             // The offline format check of the pasted Play key.
             self = .validation
@@ -140,6 +145,33 @@ extension AnalyticsErrorCategory {
         case .requestGeneration:
             // Also wraps token-exchange failures, losing their cause: whether
             // it was the key or the network can't be told apart here.
+            self = .unknown
+        }
+    }
+
+    private init(googleAuthError: GoogleAuthError) {
+        switch googleAuthError {
+        case .accessDenied:
+            // Blocked app, not a test user, Workspace policy, consent refused.
+            self = .forbidden
+        case .invalidGrant, .signInExpired, .loginNotFound:
+            self = .invalidCredentials
+        case .network:
+            self = .network
+        case .noRefreshToken, .missingIdentity, .invalidTokenResponse:
+            self = .server
+        case .http(let status, _):
+            if googleAuthError.isScopeInsufficient {
+                self = .scopeDenied
+            } else if googleAuthError.isServiceDisabled {
+                // An API not enabled in StackConnect's own Cloud project.
+                self = .server
+            } else if googleAuthError.isQuotaExceeded {
+                self = .unknown
+            } else {
+                self = Self(httpStatus: status)
+            }
+        case .notConfigured, .cancelled, .webSessionFailedToStart, .callback:
             self = .unknown
         }
     }

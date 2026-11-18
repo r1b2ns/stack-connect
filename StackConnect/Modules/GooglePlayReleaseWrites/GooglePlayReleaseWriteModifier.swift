@@ -46,7 +46,7 @@ struct GooglePlayReleaseWriteModifier<ViewModel: GooglePlayReleaseWriteViewModel
                     viewModel.cancelPendingWrite()
                 }
             } message: { write in
-                Text(write.message)
+                Text(write.message(for: viewModel.uiState.authMethod))
             }
             .alert(
                 String(localized: "Couldn't Change the Release"),

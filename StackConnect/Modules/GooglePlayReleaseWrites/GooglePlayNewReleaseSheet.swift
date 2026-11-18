@@ -14,7 +14,8 @@ struct GooglePlayNewReleaseSheet<Writes: GooglePlayReleaseWriteViewModelProtocol
             request: request,
             tracks: writes.uiState.cachedTracks,
             listingLanguages: writes.uiState.listingLanguages,
-            loadBundles: { try await writes.fetchBundles() }
+            loadBundles: { try await writes.fetchBundles() },
+            authMethod: writes.uiState.authMethod
         ))
     }
 

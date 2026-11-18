@@ -21,6 +21,17 @@ final class FakeFirebaseProviderFactory: FirebaseProviderMaking, @unchecked Send
             authenticator: FakeFirebaseAuthenticator()
         )
     }
+
+    /// Google sign-in accounts: same in-process server, served as one fixed
+    /// placeholder identity (fake data seeds no such account).
+    func makeProvider(authenticator: RequestAuthenticating) -> APIProviderFirebase {
+        APIProviderFirebase(
+            authenticator: FakeFirebaseAuthenticator(),
+            requestExecutor: FakeFirebaseRequestExecutor(server: server, clientEmail: Self.googleSignInClientEmail)
+        )
+    }
+
+    static let googleSignInClientEmail = "google-sign-in@fake-data.invalid"
 }
 
 /// Adds a placeholder bearer token: fake requests are answered in-process.

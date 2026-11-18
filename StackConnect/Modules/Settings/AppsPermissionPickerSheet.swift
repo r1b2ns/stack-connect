@@ -36,24 +36,8 @@ struct AppsPermissionPickerSheet: View {
                     StackTrackedButton(.toggleApp, on: .appsPermissionPicker) {
                         toggle(app.bundleId)
                     } label: {
-                        HStack(spacing: 12) {
+                        StackSelectableRow(title: app.name, subtitle: app.bundleId, isSelected: isSelected) {
                             StackAppIcon(url: app.iconURL, size: 44, cornerRadius: 10)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(app.name)
-                                    .font(.body)
-                                    .foregroundStyle(.primary)
-
-                                Text(app.bundleId)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer()
-
-                            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(isSelected ? .accent : .secondary)
-                                .font(.title3)
                         }
                     }
                 }

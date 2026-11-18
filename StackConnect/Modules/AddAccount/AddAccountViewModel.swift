@@ -8,6 +8,20 @@ import APIProviderFirebase
 protocol AddAccountViewModelProtocol: ObservableObject {
     var uiState: AddAccountUiState { get set }
     func save() async
+
+    // MARK: Sign in with Google (Google Play and Firebase, plan Phase 2)
+
+    /// Switches between "Sign in with Google" and the service account JSON form.
+    func setCredentialMode(_ mode: AddAccountCredentialMode)
+    /// Opens Google's sign-in page, then lists what the login can add.
+    func signInWithGoogle() async
+    /// Asks Google again for the scopes the user left unticked (incremental).
+    func grantMissingGoogleAccess() async
+    func toggleGoogleItem(_ id: String)
+    func setAllGoogleItemsSelected(_ selected: Bool)
+    /// Add Account closed without saving: a login signed in here that no
+    /// account uses is signed out, so no orphan grant stays on the device.
+    func discardUnsavedGoogleLogin() async
 }
 
 // MARK: - UiState
@@ -27,6 +41,82 @@ struct AddAccountUiState {
     var isSaved = false
     var providerType: ProviderType
     var role: AccountRole = .unspecified
+
+    /// Whether "Sign in with Google" is offered (flag `googleSignIn`, a Play or
+    /// Firebase account, a build with an OAuth client ID).
+    var isGoogleSignInAvailable = false
+    var credentialMode: AddAccountCredentialMode = .keyFile
+    var google = GoogleSignInState()
+
+    var isGoogleSignInMode: Bool {
+        isGoogleSignInAvailable && credentialMode == .googleSignIn
+    }
+
+    /// Whether Save can run: a name for the key-file form; something picked
+    /// (and, for Play, a name) after signing in with Google.
+    var canSave: Bool {
+        if isGoogleSignInMode {
+            guard google.step == .picking, !google.selectedIds.isEmpty else { return false }
+            return providerType != .googlePlay || !accountName.trimmingCharacters(in: .whitespaces).isEmpty
+        }
+        return !accountName.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    var isBusy: Bool {
+        isValidating || google.step == .signingIn || google.step == .loading
+    }
+}
+
+/// How a new Play / Firebase account authenticates in Add Account (plan G2).
+enum AddAccountCredentialMode: Equatable {
+    /// "Sign in with Google": the primary path.
+    case googleSignIn
+    /// The service account JSON (or, for App Store Connect, the .p8 key): the
+    /// advanced path, and the only one when Google sign-in is unavailable.
+    case keyFile
+}
+
+/// The Google sign-in part of Add Account.
+struct GoogleSignInState: Equatable {
+
+    enum Step: Equatable {
+        /// Not signed in yet (or the sign-in was cancelled / failed).
+        case idle
+        /// Google's page is open.
+        case signingIn
+        /// Listing the Play apps / Firebase projects of the login.
+        case loading
+        /// The list is shown: pick what to add.
+        case picking
+    }
+
+    struct Item: Identifiable, Equatable {
+        let resource: GoogleAccessibleResource
+        /// Already added with this Google login: shown, not selectable.
+        let isAlreadyAdded: Bool
+        var id: String { resource.id }
+    }
+
+    var step: Step = .idle
+    var login: GoogleLogin?
+    /// The login was new to the device when signed in here.
+    var isNewLogin = false
+    var items: [Item] = []
+    var selectedIds: Set<String> = []
+    /// Features left off by unticked checkboxes on the consent page (plan R4).
+    var disabledFeatures: [GoogleScopeFeature] = []
+    /// The scopes behind `disabledFeatures`, asked again by "Grant Access".
+    var missingScopes: [String] = []
+    /// A failure to show (sign-in or listing).
+    var errorMessage: String?
+    /// Information, e.g. a login signed in again whose accounts work again.
+    var notice: String?
+
+    var selectableItems: [Item] { items.filter { !$0.isAlreadyAdded } }
+    var areAllSelected: Bool {
+        let selectable = selectableItems
+        return !selectable.isEmpty && selectable.allSatisfy { selectedIds.contains($0.id) }
+    }
 }
 
 // MARK: - Implementation
@@ -44,32 +134,59 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
     private let keychain: KeyStorable
     private let googlePlayConnectionFactory: GooglePlayConnectionFactory
     private let analytics: AnalyticsTracking
+    private let googleAuth: any GoogleAuthServicing
+    private let googleResources: any GoogleResourceListing
 
     init(
         providerType: ProviderType,
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
         googlePlayConnectionFactory: @escaping GooglePlayConnectionFactory = { GooglePlayAccountConnection(credentials: $0) },
-        analytics: AnalyticsTracking = AnalyticsService.shared
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        featureFlags: FeatureFlags = .shared,
+        googleAuth: (any GoogleAuthServicing)? = nil,
+        googleResources: (any GoogleResourceListing)? = nil
     ) {
+        let googleAuth = googleAuth ?? GoogleAuthService.shared
         self.uiState = AddAccountUiState(providerType: providerType)
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
         self.googlePlayConnectionFactory = googlePlayConnectionFactory
         self.analytics = analytics
+        self.googleAuth = googleAuth
+        self.googleResources = googleResources ?? GoogleResourceDirectory(tokens: googleAuth)
+
+        let offersGoogle = featureFlags.isEnabled(.googleSignIn)
+            && googleAuth.isConfigured
+            && !GoogleScopeFeature.features(for: providerType).isEmpty
+        uiState.isGoogleSignInAvailable = offersGoogle
+        uiState.credentialMode = offersGoogle ? .googleSignIn : .keyFile
     }
 
     func save() async {
         analytics.track(.buttonTap(.save, on: .addAccount))
-        let failure = await performSave()
+        let isGoogle = uiState.isGoogleSignInMode
+        let outcome: (failure: AnalyticsErrorCategory?, count: Int)
+        if isGoogle {
+            outcome = await performGoogleSave()
+        } else {
+            outcome = (await performSave(), 1)
+        }
         var parameters: [String: AnalyticsValue] = [AnalyticsParameterKey.kind: .string(uiState.providerType.rawValue)]
-        if let failure {
+        if isGoogle {
+            // Key-file creates keep their historic parameters (no auth_method).
+            parameters[AnalyticsParameterKey.authMethod] = .string(AccountAuthMethod.googleSignIn.analyticsValue)
+            if outcome.failure == nil {
+                parameters[AnalyticsParameterKey.count] = .int(outcome.count)
+            }
+        }
+        if let failure = outcome.failure {
             parameters.merge(failure.parameters) { _, category in category }
         }
         analytics.track(.action(
             .createAccount,
             on: .addAccount,
-            result: failure == nil ? .success : .failure,
+            result: outcome.failure == nil ? .success : .failure,
             parameters: parameters
         ))
     }
@@ -177,6 +294,293 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
             Log.print.error("[AddAccount] Validation failed: \(error.localizedDescription)")
             return AnalyticsErrorCategory(connectionError: error)
         }
+    }
+
+    // MARK: - Sign in with Google
+
+    func setCredentialMode(_ mode: AddAccountCredentialMode) {
+        guard mode != uiState.credentialMode, mode == .keyFile || uiState.isGoogleSignInAvailable else { return }
+        analytics.track(.buttonTap(mode == .keyFile ? .useServiceAccount : .useGoogleSignIn, on: .addAccount))
+        uiState.credentialMode = mode
+        uiState.validationError = nil
+    }
+
+    func signInWithGoogle() async {
+        guard uiState.isGoogleSignInMode, !uiState.isBusy else { return }
+        analytics.track(.buttonTap(.signInWithGoogle, on: .addAccount))
+        analytics.track(.action(.googleSignInStarted, on: .addAccount, parameters: kindParameters))
+
+        let previous = uiState.google
+        uiState.google.errorMessage = nil
+        uiState.google.notice = nil
+        uiState.validationError = nil
+        uiState.google.step = .signingIn
+
+        do {
+            let result = try await googleAuth.signIn(scopes: GoogleOAuthScope.signIn)
+            let usable = applyGrant(result)
+            trackSignIn(result: usable ? .success : .failure, missingScopeCount: result.missingScopes.count, failure: usable ? nil : .scopeDenied)
+            if usable {
+                await loadGoogleResources(isReturningLogin: !result.isNewLogin)
+            }
+        } catch {
+            handleSignInError(error, restoring: previous)
+        }
+    }
+
+    func grantMissingGoogleAccess() async {
+        guard let login = uiState.google.login, !uiState.google.missingScopes.isEmpty, !uiState.isBusy else { return }
+        analytics.track(.buttonTap(.grantMissingAccess, on: .addAccount))
+
+        let previous = uiState.google
+        let wasUsable = previous.step == .picking
+        uiState.google.errorMessage = nil
+        uiState.google.step = .signingIn
+
+        do {
+            let result = try await googleAuth.requestAdditionalScopes(uiState.google.missingScopes, for: login.loginId)
+            let missing = googleAuth.missingScopes(GoogleOAuthScope.signIn, for: login.loginId)
+            let usable = applyGrant(GoogleSignInResult(
+                login: result.login,
+                requestedScopes: result.requestedScopes,
+                missingScopes: missing,
+                isNewLogin: false
+            ))
+            trackSignIn(result: usable ? .success : .failure, missingScopeCount: missing.count, failure: usable ? nil : .scopeDenied)
+            if usable {
+                if wasUsable {
+                    uiState.google.step = .picking
+                    uiState.google.items = previous.items
+                    uiState.google.selectedIds = previous.selectedIds
+                } else {
+                    await loadGoogleResources(isReturningLogin: true)
+                }
+            }
+        } catch {
+            handleSignInError(error, restoring: previous)
+        }
+    }
+
+    func toggleGoogleItem(_ id: String) {
+        guard uiState.google.selectableItems.contains(where: { $0.id == id }) else { return }
+        if uiState.google.selectedIds.contains(id) {
+            uiState.google.selectedIds.remove(id)
+        } else {
+            uiState.google.selectedIds.insert(id)
+        }
+    }
+
+    func setAllGoogleItemsSelected(_ selected: Bool) {
+        analytics.track(.buttonTap(selected ? .selectAll : .selectNone, on: .addAccount))
+        uiState.google.selectedIds = selected ? Set(uiState.google.selectableItems.map(\.id)) : []
+    }
+
+    func discardUnsavedGoogleLogin() async {
+        guard !uiState.isSaved, uiState.google.isNewLogin, let login = uiState.google.login else { return }
+        let all = (try? await storage.fetchAll(AccountModel.self)) ?? []
+        guard GoogleLoginReferences.accounts(using: login.loginId, in: all, keychain: keychain).isEmpty else { return }
+        Log.print.info("[AddAccount] Closed without saving: signing out the unused Google login")
+        await googleAuth.signOut(loginId: login.loginId)
+    }
+
+    // MARK: Sign in with Google — private
+
+    private var kindParameters: [String: AnalyticsValue] {
+        [AnalyticsParameterKey.kind: .string(uiState.providerType.rawValue)]
+    }
+
+    private func trackSignIn(result: AnalyticsResult, missingScopeCount: Int? = nil, failure: AnalyticsErrorCategory? = nil) {
+        var parameters = kindParameters
+        if let missingScopeCount {
+            parameters[AnalyticsParameterKey.missingScopeCount] = .int(missingScopeCount)
+        }
+        if let failure {
+            parameters.merge(failure.parameters) { _, category in category }
+        }
+        analytics.track(.action(.googleSignIn, on: .addAccount, result: result, parameters: parameters))
+    }
+
+    /// Keeps the login and works out which features the missing scopes turn
+    /// off. - Returns: whether the provider can list anything to add.
+    private func applyGrant(_ result: GoogleSignInResult) -> Bool {
+        let provider = uiState.providerType
+        if uiState.google.login?.loginId != result.login.loginId {
+            uiState.google.isNewLogin = result.isNewLogin
+        }
+        uiState.google.login = result.login
+        uiState.google.disabledFeatures = GoogleScopeFeature.disabled(by: result.missingScopes, for: provider)
+        uiState.google.missingScopes = uiState.google.disabledFeatures.map(\.scope)
+
+        let requiredMissing = GoogleScopeFeature.requiredScopes(for: provider).filter(result.missingScopes.contains)
+        guard requiredMissing.isEmpty else {
+            Log.print.notice("[AddAccount] Google sign-in without a required scope (\(requiredMissing.count, privacy: .public) missing)")
+            uiState.google.step = .idle
+            uiState.google.items = []
+            uiState.google.selectedIds = []
+            uiState.google.errorMessage = String(localized: "Google didn't grant the access StackConnect needs to list your \(provider.displayName) data. Tap Grant Access and keep every checkbox ticked.")
+            return false
+        }
+        if provider == .googlePlay, uiState.accountName.trimmingCharacters(in: .whitespaces).isEmpty {
+            uiState.accountName = result.login.email ?? ""
+        }
+        return true
+    }
+
+    private func handleSignInError(_ error: Error, restoring previous: GoogleSignInState) {
+        if case GoogleAuthError.cancelled = error {
+            Log.print.info("[AddAccount] Google sign-in cancelled")
+            uiState.google = previous
+            uiState.google.errorMessage = nil
+            trackSignIn(result: .cancelled)
+            return
+        }
+        uiState.google = previous
+        uiState.google.errorMessage = error.localizedDescription
+        Log.print.error("[AddAccount] Google sign-in failed: \(error.localizedDescription, privacy: .public)")
+        trackSignIn(result: .failure, failure: AnalyticsErrorCategory(connectionError: error))
+    }
+
+    /// Lists the Play apps / Firebase projects of the login and marks those
+    /// already added with it.
+    private func loadGoogleResources(isReturningLogin: Bool) async {
+        guard let login = uiState.google.login else { return }
+        uiState.google.step = .loading
+
+        let resources: [GoogleAccessibleResource]
+        do {
+            switch uiState.providerType {
+            case .googlePlay: resources = try await googleResources.playApps(loginId: login.loginId)
+            case .firebase:   resources = try await googleResources.firebaseProjects(loginId: login.loginId)
+            case .apple:      resources = []
+            }
+        } catch {
+            uiState.google.step = .idle
+            uiState.google.errorMessage = error.localizedDescription
+            Log.print.error("[AddAccount] Listing what the Google login can access failed: \(error.localizedDescription, privacy: .public)")
+            analytics.track(.action(.load, on: .addAccount, result: .failure,
+                                    parameters: kindParameters.merging(AnalyticsErrorCategory.parameters(for: error)) { _, new in new }))
+            return
+        }
+
+        let existing = await existingAccounts(using: login.loginId)
+        let added = alreadyAddedIds(by: existing, among: resources)
+        uiState.google.items = resources.map { GoogleSignInState.Item(resource: $0, isAlreadyAdded: added.contains($0.id)) }
+        uiState.google.selectedIds = Set(uiState.google.selectableItems.map(\.id))
+        uiState.google.step = .picking
+
+        if isReturningLogin, !existing.isEmpty {
+            uiState.google.notice = String(localized: "You signed in again as \(login.displayName). Accounts already added with this Google account work again.")
+        }
+        if resources.isEmpty {
+            uiState.google.errorMessage = uiState.providerType == .googlePlay
+                ? String(localized: "This Google account can't see any Google Play app. Sign in with the account that has access in Play Console.")
+                : String(localized: "This Google account can't see any Firebase project. Sign in with the account that has access in the Firebase console.")
+        }
+    }
+
+    private func existingAccounts(using loginId: String) async -> [AccountModel] {
+        let all = (try? await storage.fetchAll(AccountModel.self)) ?? []
+        let sameProvider = all.filter { $0.providerType == uiState.providerType }
+        return GoogleLoginReferences.accounts(using: loginId, in: sameProvider, keychain: keychain)
+    }
+
+    /// Play: what an existing Play account of this login already covers (all
+    /// apps when it has no scope). Firebase: the project of each account.
+    private func alreadyAddedIds(by accounts: [AccountModel], among resources: [GoogleAccessibleResource]) -> Set<String> {
+        var ids = Set<String>()
+        for account in accounts {
+            for resource in resources where account.allowsApp(bundleId: resource.id) {
+                ids.insert(resource.id)
+            }
+        }
+        return ids
+    }
+
+    /// Creates the accounts picked after signing in with Google.
+    /// - Returns: why nothing was saved (analytics only) and how many accounts were added.
+    private func performGoogleSave() async -> (failure: AnalyticsErrorCategory?, count: Int) {
+        guard let login = uiState.google.login, uiState.google.step == .picking else {
+            uiState.validationError = String(localized: "Sign in with Google first.")
+            return (.validation, 0)
+        }
+        let selected = uiState.google.selectableItems.filter { uiState.google.selectedIds.contains($0.id) }
+        guard !selected.isEmpty else {
+            uiState.validationError = uiState.providerType == .googlePlay
+                ? String(localized: "Select at least one app.")
+                : String(localized: "Select at least one project.")
+            return (.validation, 0)
+        }
+
+        uiState.isValidating = true
+        uiState.validationError = nil
+        defer { uiState.isValidating = false }
+
+        let accounts: [AccountModel]
+        switch uiState.providerType {
+        case .googlePlay:
+            let name = uiState.accountName.trimmingCharacters(in: .whitespaces)
+            guard !name.isEmpty else {
+                uiState.validationError = String(localized: "Account name is required.")
+                return (.validation, 0)
+            }
+            guard GooglePlayDeveloperId.isAcceptable(uiState.googlePlayDeveloperId) else {
+                uiState.validationError = GooglePlayDeveloperId.invalidMessage
+                return (.validation, 0)
+            }
+            if let existing = await existingAccounts(using: login.loginId).first {
+                // One Play account per Google login: the sync would fetch the
+                // same apps twice otherwise.
+                uiState.validationError = String(localized: "This Google account is already added as \"\(existing.name)\".")
+                return (.duplicate, 0)
+            }
+            // Everything picked ⇒ no scope, so apps added later in Play Console show up too.
+            let everything = selected.count == uiState.google.items.count
+            accounts = [AccountModel(
+                name: name,
+                providerType: .googlePlay,
+                appsBundles: everything ? nil : selected.map(\.id).sorted(),
+                googlePlayDeveloperId: GooglePlayDeveloperId.normalized(uiState.googlePlayDeveloperId),
+                authMethod: .googleSignIn
+            )]
+        case .firebase:
+            // One account per project, named after it: the same shape as a
+            // project's service account (plan G5).
+            accounts = selected.map { item in
+                AccountModel(
+                    name: item.resource.title,
+                    providerType: .firebase,
+                    appsBundles: [item.id],
+                    authMethod: .googleSignIn
+                )
+            }
+        case .apple:
+            return (.validation, 0)
+        }
+
+        var saved = 0
+        for account in accounts {
+            switch account.providerType {
+            case .googlePlay:
+                keychain.setObject(GooglePlayCredentials(googleLoginId: login.loginId), forKey: "credentials.\(account.id)")
+            default:
+                keychain.setObject(FirebaseCredentials(googleLoginId: login.loginId), forKey: "credentials.\(account.id)")
+            }
+            do {
+                try await storage.save(account, id: account.id)
+                saved += 1
+            } catch {
+                keychain.removeObject(forKey: "credentials.\(account.id)")
+                Log.print.error("[AddAccount] Saving a Google sign-in account failed: \(error.localizedDescription)")
+                uiState.validationError = error.localizedDescription
+                if saved > 0 { AccountsChange.post() }
+                return (.storage, saved)
+            }
+        }
+
+        uiState.isSaved = true
+        AccountsChange.post()
+        Log.print.info("[AddAccount] Added \(saved, privacy: .public) \(self.uiState.providerType.rawValue, privacy: .public) account(s) with Google sign-in")
+        return (nil, saved)
     }
 
     // MARK: - Private

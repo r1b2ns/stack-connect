@@ -47,7 +47,9 @@ public final class APIProviderFirebase: @unchecked Sendable {
 
     // MARK: - Properties
 
-    private let configuration: FirebaseConfiguration
+    /// The service account, or `nil` for a provider authenticated with a
+    /// user's own OAuth token (`init(authenticator:requestExecutor:)`).
+    private let configuration: FirebaseConfiguration?
     private let authenticator: RequestAuthenticating
     private let requestExecutor: RequestExecutor
     private let encoder: JSONEncoder
@@ -123,6 +125,26 @@ public final class APIProviderFirebase: @unchecked Sendable {
         authenticator: RequestAuthenticating
     ) {
         self.configuration = configuration
+        self.requestExecutor = requestExecutor
+        self.authenticator = authenticator
+        self.encoder = JSONEncoder()
+        self.encoder.dateEncodingStrategy = .iso8601
+    }
+
+    /// Creates a provider authenticated by `authenticator` alone, without a
+    /// service account: e.g. a user's own Google OAuth login, whose access
+    /// token the authenticator adds to every request.
+    ///
+    /// - Parameters:
+    ///   - authenticator: Adds credentials to every outgoing request. Errors it
+    ///     throws that conform to `RequestAuthenticationError` reach the caller
+    ///     unchanged; any other error becomes `Error.requestGeneration`.
+    ///   - requestExecutor: Executes the authenticated requests.
+    public init(
+        authenticator: RequestAuthenticating,
+        requestExecutor: RequestExecutor = DefaultRequestExecutor()
+    ) {
+        self.configuration = nil
         self.requestExecutor = requestExecutor
         self.authenticator = authenticator
         self.encoder = JSONEncoder()
@@ -217,6 +239,10 @@ public final class APIProviderFirebase: @unchecked Sendable {
                 }
             }
             return try await authenticator.adapt(urlRequest)
+        } catch let error as RequestAuthenticationError {
+            // An authenticator that wants its cause seen (e.g. an expired
+            // user login) opts in; everything else keeps the historic wrapping.
+            throw error
         } catch {
             throw Error.requestGeneration
         }

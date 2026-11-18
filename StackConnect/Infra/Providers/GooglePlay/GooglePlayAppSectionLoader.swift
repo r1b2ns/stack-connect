@@ -260,7 +260,9 @@ final class GooglePlayAppSectionLoader<Entry: GooglePlayAppSectionCache, Connect
             // Offline with cached content: the global offline banner already
             // says so — keep the content without a second warning.
             if !(GooglePlayErrorTranslator.isOffline(error) && host.uiState.section.hasContent) {
-                host.uiState.section.error = GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .appContentRead)
+                host.uiState.section.error = GooglePlayErrorTranslator.friendlyMessage(
+                    for: error, operation: .appContentRead, authMethod: account.authMethod
+                )
                 host.uiState.section.errorCategory = AnalyticsErrorCategory(connectionError: error)
             }
             failure = .error(error)

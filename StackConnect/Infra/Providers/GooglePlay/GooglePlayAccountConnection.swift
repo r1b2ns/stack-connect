@@ -177,8 +177,11 @@ protocol GooglePlayReviewsConnecting: Sendable {
 ///
 /// The stored `GooglePlayCredentials` keep the whole service-account JSON (D2);
 /// it is parsed into `GooglePlayServiceAccount` when the core provider is first
-/// built. Errors are surfaced unchanged (`GooglePlayServiceAccount.ParseError`,
-/// `StackError`, `OfflineError`) — callers turn them into copy with
+/// built. An account added with "Sign in with Google" keeps only its login ID
+/// instead, and the core is authorized with the user's own access token
+/// (`GoogleSignInCoreTokenProvider`). Errors are surfaced unchanged
+/// (`GooglePlayServiceAccount.ParseError`, `StackError`, `OfflineError`, and
+/// `GoogleAuthError` for a sign-in failure) — callers turn them into copy with
 /// `GooglePlayErrorTranslator`.
 final class GooglePlayAccountConnection: AccountConnectionProtocol,
     GooglePlayAccountConnecting,
@@ -215,16 +218,27 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
     /// Lazily-built Rust core provider, reused across calls on this connection.
     private var rustProvider: StackCoreRust.Provider?
 
+    /// The core's token source for a "Sign in with Google" account; `nil` for
+    /// a service account.
+    private let signInTokenProvider: GoogleSignInCoreTokenProvider?
+
+    /// - Parameter googleTokens: the access tokens of a "Sign in with Google"
+    ///   account (default: the app's `GoogleAuthService`). Unused for a
+    ///   service account.
     init(
         credentials: GooglePlayCredentials,
         featureFlags: FeatureFlags = .shared,
         connectivity: ConnectivityProviding = ConnectivityMonitor.shared,
-        coreProviders: any CoreProviderMaking = BackendEnvironment.coreProviders
+        coreProviders: any CoreProviderMaking = BackendEnvironment.coreProviders,
+        googleTokens: (any GoogleAccessTokenProviding)? = nil
     ) {
         self.credentials = credentials
         self.featureFlags = featureFlags
         self.connectivity = connectivity
         self.coreProviders = coreProviders
+        self.signInTokenProvider = credentials.source.googleLoginId.map {
+            GoogleSignInCoreTokenProvider(loginId: $0, tokens: googleTokens ?? SharedGoogleAccessTokenProvider())
+        }
     }
 
     /// Throws `OfflineError.noConnection` when the device is offline so network
@@ -521,24 +535,43 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
 
     /// Lazily builds and caches the Rust core `Provider` for Google Play.
     ///
-    /// `connect(...)` is synchronous and offline: it reads the three secrets via
-    /// `GooglePlayCredentialStore` and parses the RSA key eagerly, so a bad key
-    /// throws `StackError.InvalidCredentials` here. The `accountId` is the
-    /// service account's `client_email` (plan D3) — a stable, credential-derived
-    /// identifier the read-only store ignores.
+    /// Both `connect` variants are synchronous and offline.
+    ///
+    /// - Service account: `connect(...)` reads the three secrets via
+    ///   `GooglePlayCredentialStore` and parses the RSA key eagerly, so a bad
+    ///   key throws `StackError.InvalidCredentials` here. The `accountId` is
+    ///   the service account's `client_email` (plan D3) — a stable,
+    ///   credential-derived identifier the read-only store ignores.
+    /// - "Sign in with Google": `connectWithAccessToken(...)` with
+    ///   `signInTokenProvider`, which the core asks for the user's access token
+    ///   before every request. The `accountId` is the login ID (Google's
+    ///   `sub`), the equally stable identifier of that credential; the core
+    ///   passes it back to the token provider.
     private func rustCoreProvider() throws -> StackCoreRust.Provider {
         try lock.withLock {
             if let rustProvider {
                 return rustProvider
             }
-            let serviceAccount = try GooglePlayServiceAccount(credentials: credentials)
+            let debugLogger: DebugLogger? = featureFlags.isEnabled(.useRustCoreDebugLogging) ? RustCoreDebugLogger() : nil
             do {
-                let provider = try coreProviders.connect(
-                    kind: .googlePlay,
-                    accountId: serviceAccount.clientEmail,
-                    store: GooglePlayCredentialStore(serviceAccount: serviceAccount),
-                    debugLogger: featureFlags.isEnabled(.useRustCoreDebugLogging) ? RustCoreDebugLogger() : nil
-                )
+                let provider: StackCoreRust.Provider
+                if let signInTokenProvider {
+                    provider = try coreProviders.connectWithAccessToken(
+                        kind: .googlePlay,
+                        accountId: signInTokenProvider.loginId,
+                        tokenProvider: signInTokenProvider,
+                        debugLogger: debugLogger
+                    )
+                    Log.print.info("[GooglePlay] Connected a Google sign-in account (Rust core)")
+                } else {
+                    let serviceAccount = try GooglePlayServiceAccount(credentials: credentials)
+                    provider = try coreProviders.connect(
+                        kind: .googlePlay,
+                        accountId: serviceAccount.clientEmail,
+                        store: GooglePlayCredentialStore(serviceAccount: serviceAccount),
+                        debugLogger: debugLogger
+                    )
+                }
                 rustProvider = provider
                 return provider
             } catch let error as StackError {
@@ -561,6 +594,11 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
     /// Logs a Rust-core error at the boundary and preserves the typed error, so
     /// `GooglePlayErrorTranslator` can still map it to user-facing copy.
     ///
+    /// For a "Sign in with Google" account, an `Auth` the token provider raised
+    /// (an expired or revoked login…) comes back as its `GoogleAuthError`, so
+    /// the screens show the same "sign in again for <email>" copy as Firebase.
+    /// Google's own 401 / 403 on a Play request stays a `StackError.Auth`.
+    ///
     /// The core's message is logged `.public` so it is readable outside Xcode:
     /// it carries no token or key (its own local rejections mask e-mails), but
     /// an `Auth` message names the service account's `client_email` unmasked
@@ -568,6 +606,9 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
     /// service account e-mail is what a Play Console admin grants access to).
     private func translate(_ error: StackError) -> Error {
         Log.print.error("[GooglePlay] Rust core error: \(error.localizedDescription, privacy: .public)")
+        if let signInError = signInTokenProvider?.signInError(for: error) {
+            return signInError
+        }
         return error
     }
 

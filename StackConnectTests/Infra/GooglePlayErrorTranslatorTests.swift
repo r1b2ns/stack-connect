@@ -50,6 +50,74 @@ final class GooglePlayErrorTranslatorTests: XCTestCase {
         )
     }
 
+    // MARK: - Google sign-in accounts
+
+    func testAuthLeadNamesTheSignedInGoogleAccount() {
+        let detail = "The caller does not have permission"
+
+        XCTAssertEqual(
+            GooglePlayErrorTranslator.friendlyMessage(for: StackError.Auth(message: detail), authMethod: .googleSignIn),
+            String(localized: "Google Play denied access to the signed-in Google account.") + "\n" + detail
+        )
+        XCTAssertEqual(
+            GooglePlayErrorTranslator.friendlyMessage(for: StackError.Auth(message: " "), authMethod: .googleSignIn),
+            String(localized: "Google Play denied access to the signed-in Google account.")
+        )
+        // A service account keeps its wording.
+        XCTAssertEqual(
+            GooglePlayErrorTranslator.friendlyMessage(for: StackError.Auth(message: " "), authMethod: .keyFile),
+            String(localized: "Google Play denied access to this service account.")
+        )
+    }
+
+    func testUsersAuthLeadNamesTheSignedInGoogleAccount() {
+        let signIn = String(localized: "To manage users, the signed-in Google account needs the “Admin (all permissions)” permission in Play Console › Users and permissions.")
+        let serviceAccount = String(localized: "To manage users, this service account needs the “Admin (all permissions)” permission in Play Console › Users and permissions.")
+
+        for operation in [GooglePlayErrorTranslator.Operation.users, .inviteUser, .userChange] {
+            XCTAssertEqual(
+                GooglePlayErrorTranslator.friendlyMessage(for: StackError.Auth(message: ""), operation: operation, authMethod: .googleSignIn),
+                signIn
+            )
+            XCTAssertEqual(
+                GooglePlayErrorTranslator.friendlyMessage(for: StackError.Auth(message: ""), operation: operation),
+                serviceAccount
+            )
+        }
+    }
+
+    func testForbiddenNamesTheSignedInGoogleAccount() {
+        XCTAssertEqual(
+            GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 403, message: ""), authMethod: .googleSignIn),
+            String(localized: "The signed-in Google account can't access this app. In Play Console › Users and permissions, give it access to the app and try again.")
+        )
+        XCTAssertEqual(
+            GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 403, message: ""), operation: .releaseChange, authMethod: .googleSignIn),
+            String(localized: "The signed-in Google account can't access this app. In Play Console › Users and permissions, give it access to the app and try again.")
+        )
+        XCTAssertEqual(
+            GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 403, message: "")),
+            String(localized: "This service account can't access this app. In Play Console › Users and permissions, give it access to the app and try again.")
+        )
+        XCTAssertEqual(
+            GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 403, message: ""), operation: .users, authMethod: .googleSignIn),
+            String(localized: "Google Play refused access to this developer account. Check the Developer ID, and that the signed-in Google account has the “Admin (all permissions)” permission.")
+        )
+        XCTAssertEqual(
+            GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 403, message: ""), operation: .users),
+            String(localized: "Google Play refused access to this developer account. Check the Developer ID, and that the service account has the “Admin (all permissions)” permission.")
+        )
+    }
+
+    func testUsersFailureUsesTheAccountsAuthMethod() {
+        let call = GooglePlayUsersCall(.list, developerId: "1234")
+        let failure = GooglePlayErrorTranslator.usersFailure(
+            StackError.Auth(message: ""), call: call, logTag: "Tests", authMethod: .googleSignIn
+        )
+
+        XCTAssertEqual(failure.message, String(localized: "To manage users, the signed-in Google account needs the “Admin (all permissions)” permission in Play Console › Users and permissions."))
+    }
+
     func testNetworkErrorIsTreatedAsOffline() {
         let error = StackError.Network(message: "error sending request: connection refused")
 

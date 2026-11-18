@@ -129,6 +129,18 @@ enum AccountOrigin: String, Codable, Hashable {
     case imported
 }
 
+// MARK: - Auth Method
+
+/// How the account authenticates. Not secret (the credentials themselves stay
+/// in the Keychain): it lets the lists and the export know an account signed
+/// in with Google without reading the Keychain.
+enum AccountAuthMethod: String, Codable, Hashable {
+    /// A key file: the App Store Connect `.p8` key or a Google service account JSON.
+    case keyFile
+    /// "Sign in with Google" (Firebase and Google Play, plan G5).
+    case googleSignIn
+}
+
 // MARK: - Account Role
 
 /// App Store Connect role associated with the API key backing this account.
@@ -182,6 +194,9 @@ struct AccountModel: Codable, Identifiable, Hashable {
     /// Per-app export scope. nil/empty ⇒ no restriction (all apps visible —
     /// legacy/created accounts). Non-empty ⇒ only apps whose bundleId ∈
     /// appsBundles are visible for this imported account. See `allowsApp`.
+    /// Google sign-in accounts (`authMethod == .googleSignIn`) use the same
+    /// scope for what was picked in Add Account: Play package names, or the
+    /// Firebase project ID of a Firebase account.
     var appsBundles: [String]?
     /// Google Play only: the numeric Play Console developer account ID the Users
     /// tab needs (`developers/{id}/users`, plan U3). Optional — set in Add
@@ -189,6 +204,9 @@ struct AccountModel: Codable, Identifiable, Hashable {
     /// in every Play Console URL), so it lives here, not in the Keychain, and
     /// travels in `.scexport` files.
     var googlePlayDeveloperId: String?
+    /// `.googleSignIn` for accounts added with "Sign in with Google"; every
+    /// account stored before that existed decodes as `.keyFile`.
+    var authMethod: AccountAuthMethod
 
     init(
         id: String = UUID().uuidString,
@@ -202,7 +220,8 @@ struct AccountModel: Codable, Identifiable, Hashable {
         hasPendingAgreements: Bool = false,
         pendingAgreementsDetectedAt: Date? = nil,
         appsBundles: [String]? = nil,
-        googlePlayDeveloperId: String? = nil
+        googlePlayDeveloperId: String? = nil,
+        authMethod: AccountAuthMethod = .keyFile
     ) {
         self.id = id
         self.name = name
@@ -216,12 +235,16 @@ struct AccountModel: Codable, Identifiable, Hashable {
         self.pendingAgreementsDetectedAt = pendingAgreementsDetectedAt
         self.appsBundles = appsBundles
         self.googlePlayDeveloperId = googlePlayDeveloperId
+        self.authMethod = authMethod
     }
 
     /// Only accounts created on this device, of a provider that supports export,
-    /// can be exported (an imported account can't be re-shared).
+    /// can be exported (an imported account can't be re-shared). Accounts
+    /// signed in with Google are never exported (plan G7): their refresh token
+    /// must not leave the device, and the receiving user signs in with their
+    /// own Google account instead.
     var isExportable: Bool {
-        origin == .created && providerType.supportsExport
+        origin == .created && providerType.supportsExport && authMethod != .googleSignIn
     }
 
     /// Rule resources that apply to this account's provider.
@@ -298,7 +321,8 @@ struct AccountModel: Codable, Identifiable, Hashable {
             hasPendingAgreements: hasPendingAgreements,
             pendingAgreementsDetectedAt: pendingAgreementsDetectedAt,
             appsBundles: appsBundles,
-            googlePlayDeveloperId: googlePlayDeveloperId ?? self.googlePlayDeveloperId
+            googlePlayDeveloperId: googlePlayDeveloperId ?? self.googlePlayDeveloperId,
+            authMethod: authMethod
         )
     }
 
@@ -330,10 +354,12 @@ struct AccountModel: Codable, Identifiable, Hashable {
         // decodeIfPresent ⇒ absent/null decodes to nil ⇒ no restriction (free backward compat).
         appsBundles = try container.decodeIfPresent([String].self, forKey: .appsBundles)
         googlePlayDeveloperId = try container.decodeIfPresent(String.self, forKey: .googlePlayDeveloperId)
+        authMethod = try container.decodeIfPresent(AccountAuthMethod.self, forKey: .authMethod) ?? .keyFile
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, providerType, createdAt, rules, origin, role, expirationDate
         case hasPendingAgreements, pendingAgreementsDetectedAt, appsBundles, googlePlayDeveloperId
+        case authMethod
     }
 }

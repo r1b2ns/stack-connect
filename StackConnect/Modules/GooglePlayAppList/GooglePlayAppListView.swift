@@ -114,6 +114,7 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
                 AddGooglePlayAppSheet(
                     isAdding: viewModel.uiState.isAdding,
                     error: viewModel.uiState.addError,
+                    footer: viewModel.uiState.addAppFooter,
                     onAdd: { packageName in
                         Task { await viewModel.addApp(packageName: packageName) }
                     },
@@ -315,6 +316,8 @@ struct AddGooglePlayAppSheet: View {
 
     let isAdding: Bool
     let error: String?
+    /// Who must have access to the app (service account or signed-in Google account).
+    let footer: String
     let onAdd: (String) -> Void
     let onCancel: () -> Void
 
@@ -334,7 +337,7 @@ struct AddGooglePlayAppSheet: View {
                 } header: {
                     Text("Application")
                 } footer: {
-                    Text("Enter the Android package name (e.g. com.example.myapp). The service account must have access to this app in the Google Play Console.")
+                    Text(footer)
                 }
 
                 if let error {

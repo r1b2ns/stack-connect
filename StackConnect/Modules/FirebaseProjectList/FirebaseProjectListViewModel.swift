@@ -108,7 +108,10 @@ final class FirebaseProjectListViewModel: FirebaseProjectListViewModelProtocol {
                     )
                 }
 
-                allProjects.append(contentsOf: mapped)
+                // A Google sign-in account is scoped to the project(s) picked in
+                // Add Account (`appsBundles` holds their project IDs; nil/empty
+                // ⇒ every project, as for service-account accounts).
+                allProjects.append(contentsOf: mapped.filter { uiState.account.allowsApp(bundleId: $0.projectId) })
                 pageToken = response.nextPageToken
             } while pageToken != nil
 
@@ -126,6 +129,6 @@ final class FirebaseProjectListViewModel: FirebaseProjectListViewModelProtocol {
 
     private func createProvider() -> APIProviderFirebase? {
         guard let credentials: FirebaseCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else { return nil }
-        return BackendEnvironment.firebaseProviders.makeProvider(serviceAccountJSON: credentials.serviceAccountJSON)
+        return BackendEnvironment.firebaseProviders.makeProvider(credentials: credentials)
     }
 }

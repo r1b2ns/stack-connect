@@ -307,7 +307,9 @@ final class GooglePlayUsersFoundationTests: XCTestCase {
         let storage = MockPersistentStorable()
         let sut = AddAccountViewModel(
             providerType: .googlePlay, storage: storage, keychain: MockKeyStorable(),
-            googlePlayConnectionFactory: { _ in MockGooglePlayAccountConnection() }
+            googlePlayConnectionFactory: { _ in MockGooglePlayAccountConnection() },
+            // The JSON form: Google sign-in is the default when its flag is ON.
+            featureFlags: .googleSignInOff
         )
         sut.uiState.accountName = "Play"
         sut.uiState.googlePlayJSON = GooglePlayTestFixtures.serviceAccountJSON()
@@ -324,7 +326,9 @@ final class GooglePlayUsersFoundationTests: XCTestCase {
         let storage = MockPersistentStorable()
         let sut = AddAccountViewModel(
             providerType: .googlePlay, storage: storage, keychain: MockKeyStorable(),
-            googlePlayConnectionFactory: { _ in MockGooglePlayAccountConnection() }
+            googlePlayConnectionFactory: { _ in MockGooglePlayAccountConnection() },
+            // The JSON form: Google sign-in is the default when its flag is ON.
+            featureFlags: .googleSignInOff
         )
         sut.uiState.accountName = "Play"
         sut.uiState.googlePlayJSON = GooglePlayTestFixtures.serviceAccountJSON()
@@ -342,7 +346,9 @@ final class GooglePlayUsersFoundationTests: XCTestCase {
         let storage = MockPersistentStorable()
         let sut = AddAccountViewModel(
             providerType: .googlePlay, storage: storage, keychain: MockKeyStorable(),
-            googlePlayConnectionFactory: { _ in MockGooglePlayAccountConnection() }
+            googlePlayConnectionFactory: { _ in MockGooglePlayAccountConnection() },
+            // The JSON form: Google sign-in is the default when its flag is ON.
+            featureFlags: .googleSignInOff
         )
         sut.uiState.accountName = "Play"
         sut.uiState.googlePlayJSON = GooglePlayTestFixtures.serviceAccountJSON()

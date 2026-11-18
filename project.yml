@@ -175,6 +175,11 @@ targets:
         # by AnalyticsService (CrashlyticsProvider) only for a user whose
         # analytics setting is ON.
         FirebaseCrashlyticsCollectionEnabled: false
+        # Sign in with Google: the iOS OAuth client ID, from GOOGLE_OAUTH_CLIENT_ID
+        # in Configs/Debug.xcconfig / Configs/Release.xcconfig. The redirect uses
+        # the reversed client ID through ASWebAuthenticationSession, so no URL
+        # type is declared.
+        GoogleOAuthClientID: "$(GOOGLE_OAUTH_CLIENT_ID)"
 
     configFiles:
       Debug: Configs/Debug.xcconfig

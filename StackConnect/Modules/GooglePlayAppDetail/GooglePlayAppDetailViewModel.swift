@@ -179,6 +179,19 @@ struct GooglePlayAppDetailUiState {
     /// footer. Tracks are reached through "See all tracks" under the release
     /// sections.
     let storeSections: [GooglePlayAppDetailSection] = [.storeListings, .appDetails]
+
+    /// The edit side-effect footer under Store presence. Google keeps one open
+    /// edit per caller and app: the service account, or the Google account a
+    /// "Sign in with Google" account signed in with.
+    var storeSectionsFooter: String {
+        switch account.authMethod {
+        case .keyFile:
+            return String(localized: "Opening these sections briefly opens a Play edit to read the data. Google allows one open edit per service account and app, so this cancels any edit this service account has open for the app — for example, a CI upload in progress. If your CI publishes with this service account, add a separate read-only one here instead.")
+        case .googleSignIn:
+            return String(localized: "Opening these sections briefly opens a Play edit to read the data. Google allows one open edit per account and app, so this cancels any edit open with your Google account for the app.",
+                          comment: "Footer under Store presence on a Google Play app added with Sign in with Google, explaining the side effect of reading these sections through a temporary Play edit.")
+        }
+    }
 }
 
 // MARK: - Implementation

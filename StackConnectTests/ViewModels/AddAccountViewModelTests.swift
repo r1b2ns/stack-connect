@@ -29,7 +29,9 @@ final class AddAccountViewModelTests: XCTestCase {
         sut = AddAccountViewModel(
             providerType: .apple,
             storage: mockStorage,
-            keychain: mockKeychain
+            keychain: mockKeychain,
+            // The JSON form: Google sign-in is the default when its flag is ON.
+            featureFlags: .googleSignInOff
         )
         sut.uiState.accountName = "   "
 
@@ -49,7 +51,9 @@ final class AddAccountViewModelTests: XCTestCase {
         sut = AddAccountViewModel(
             providerType: .firebase,
             storage: mockStorage,
-            keychain: mockKeychain
+            keychain: mockKeychain,
+            // The JSON form: Google sign-in is the default when its flag is ON.
+            featureFlags: .googleSignInOff
         )
         sut.uiState.accountName = "My Firebase"   // valid name, but no Service Account JSON
 
@@ -99,7 +103,9 @@ final class AddAccountViewModelTests: XCTestCase {
         sut = AddAccountViewModel(
             providerType: .apple,
             storage: mockStorage,
-            keychain: mockKeychain
+            keychain: mockKeychain,
+            // The JSON form: Google sign-in is the default when its flag is ON.
+            featureFlags: .googleSignInOff
         )
         sut.uiState.accountName = "Existing"        // same name
         sut.uiState.issuerID = "issuer-1"
@@ -123,7 +129,9 @@ final class AddAccountViewModelTests: XCTestCase {
         sut = AddAccountViewModel(
             providerType: .apple,
             storage: mockStorage,
-            keychain: mockKeychain
+            keychain: mockKeychain,
+            // The JSON form: Google sign-in is the default when its flag is ON.
+            featureFlags: .googleSignInOff
         )
         sut.uiState.accountName = "Different Role" // different name
         sut.uiState.issuerID = "issuer-1"
@@ -154,7 +162,9 @@ final class AddAccountViewModelTests: XCTestCase {
             storage: mockStorage,
             keychain: mockKeychain,
             googlePlayConnectionFactory: connection.factory,
-            analytics: analytics
+            analytics: analytics,
+            // The JSON form: Google sign-in is the default when its flag is ON.
+            featureFlags: .googleSignInOff
         )
     }
 
@@ -284,7 +294,9 @@ final class AddAccountViewModelTests: XCTestCase {
             providerType: .firebase,
             storage: mockStorage,
             keychain: mockKeychain,
-            analytics: analytics
+            analytics: analytics,
+            // The JSON form: Google sign-in is the default when its flag is ON.
+            featureFlags: .googleSignInOff
         )
         sut.uiState.accountName = "Firebase"
 
@@ -307,7 +319,9 @@ final class AddAccountViewModelTests: XCTestCase {
             providerType: .apple,
             storage: mockStorage,
             keychain: mockKeychain,
-            analytics: analytics
+            analytics: analytics,
+            // The JSON form: Google sign-in is the default when its flag is ON.
+            featureFlags: .googleSignInOff
         )
         sut.uiState.accountName = "   "
 

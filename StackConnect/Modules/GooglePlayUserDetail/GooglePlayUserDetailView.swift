@@ -184,7 +184,7 @@ struct GooglePlayUserDetailView<ViewModel: GooglePlayUserDetailViewModelProtocol
             )
         } footer: {
             if user.partial {
-                Text("Google returned only part of this user's access (they also have access this service account can't see). Edit them in Play Console.")
+                Text(state.partialAccessFooter)
             } else if state.isSelf {
                 Text("This is the service account StackConnect uses for this account: it can't be removed here and keeps its Admin permission.")
             }

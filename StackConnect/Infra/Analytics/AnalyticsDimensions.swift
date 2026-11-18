@@ -275,3 +275,15 @@ extension AnalyticsErrorCategory {
         self == .server || self == .unknown
     }
 }
+
+// MARK: - Account auth method
+
+extension AccountAuthMethod {
+    /// The `auth_method` value: stable snake_case, independent of the stored raw value.
+    var analyticsValue: String {
+        switch self {
+        case .keyFile:      return "key_file"
+        case .googleSignIn: return "google_sign_in"
+        }
+    }
+}

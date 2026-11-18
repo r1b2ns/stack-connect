@@ -282,7 +282,7 @@ struct GooglePlayUsersView<ViewModel: GooglePlayUsersViewModelProtocol>: View {
                             )
                         }
                     }
-                    Text("Google can't tell which developer account a service account belongs to: the ID is in Play Console › Settings › Developer account (and in every Play Console URL). The service account needs the “Admin (all permissions)” permission to manage users.")
+                    Text(state.developerIdFooter)
                 }
             }
 

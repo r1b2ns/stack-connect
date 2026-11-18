@@ -47,6 +47,22 @@ final class GooglePlayAppDetailViewModelTests: XCTestCase {
         )
     }
 
+    // MARK: - Credential-aware copy
+
+    func testStoreSectionsFooterFollowsTheAuthMethod() {
+        XCTAssertEqual(
+            makeSUT().uiState.storeSectionsFooter,
+            String(localized: "Opening these sections briefly opens a Play edit to read the data. Google allows one open edit per service account and app, so this cancels any edit this service account has open for the app — for example, a CI upload in progress. If your CI publishes with this service account, add a separate read-only one here instead.")
+        )
+        let signIn = AccountModel(name: "Signed In", providerType: .googlePlay, authMethod: .googleSignIn)
+        let footer = makeSUT(account: signIn).uiState.storeSectionsFooter
+        XCTAssertEqual(
+            footer,
+            String(localized: "Opening these sections briefly opens a Play edit to read the data. Google allows one open edit per account and app, so this cancels any edit open with your Google account for the app.")
+        )
+        XCTAssertFalse(footer.localizedCaseInsensitiveContains("service account"))
+    }
+
     // MARK: - No auto-fetch
 
     /// Opening the menu, plus building every section ViewModel the menu can push
