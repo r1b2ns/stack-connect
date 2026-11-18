@@ -263,38 +263,83 @@ private struct GooglePlayReleasePanel<Writes: GooglePlayReleaseWriteViewModelPro
                 }
             }
 
-            HStack(spacing: 12) {
-                if release.status == .inProgress {
-                    Button(String(localized: "Halt Rollout")) {
-                        request(.halt(versionCodes: release.versionCodes))
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(.orange)
-                } else if release.status == .halted {
-                    Button(String(localized: "Resume Rollout")) {
-                        request(.resume(versionCodes: release.versionCodes))
-                    }
-                    .buttonStyle(.bordered)
+            // Wide columns keep the single row; narrow ones (iPad split view detail,
+            // long pt-BR labels) stack the buttons full width instead of wrapping them.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    buildHaltResumeButton(fullWidth: false)
+                    Spacer()
+                    buildReleaseToAllButton(fullWidth: false)
+                    buildUpdateRolloutButton(fullWidth: false)
                 }
-
-                Spacer()
-
-                Button(String(localized: "Release to All Users")) {
-                    request(.complete(versionCodes: release.versionCodes))
+                VStack(spacing: 8) {
+                    buildUpdateRolloutButton(fullWidth: true)
+                    buildReleaseToAllButton(fullWidth: true)
+                    buildHaltResumeButton(fullWidth: true)
                 }
-                .buttonStyle(.bordered)
-
-                Button(String(localized: "Update Rollout", comment: "Tracks board: saves the chosen staged rollout percentage.")) {
-                    var percentage = form
-                    percentage.method = .percentage
-                    if let change = percentage.change(for: target) {
-                        request(change)
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(form.change(for: target) == nil || form.method != .percentage)
             }
             .disabled(writes.uiState.isWriting)
+        }
+    }
+
+    @ViewBuilder
+    private func buildHaltResumeButton(fullWidth: Bool) -> some View {
+        if release.status == .inProgress {
+            Button {
+                request(.halt(versionCodes: release.versionCodes))
+            } label: {
+                buildActionLabel(String(localized: "Halt Rollout"), fullWidth: fullWidth)
+            }
+            .buttonStyle(.bordered)
+            .tint(.orange)
+        } else if release.status == .halted {
+            Button {
+                request(.resume(versionCodes: release.versionCodes))
+            } label: {
+                buildActionLabel(String(localized: "Resume Rollout"), fullWidth: fullWidth)
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
+    private func buildReleaseToAllButton(fullWidth: Bool) -> some View {
+        Button {
+            request(.complete(versionCodes: release.versionCodes))
+        } label: {
+            buildActionLabel(String(localized: "Release to All Users"), fullWidth: fullWidth)
+        }
+        .buttonStyle(.bordered)
+    }
+
+    private func buildUpdateRolloutButton(fullWidth: Bool) -> some View {
+        Button {
+            var percentage = form
+            percentage.method = .percentage
+            if let change = percentage.change(for: target) {
+                request(change)
+            }
+        } label: {
+            buildActionLabel(
+                String(localized: "Update Rollout", comment: "Tracks board: saves the chosen staged rollout percentage."),
+                fullWidth: fullWidth
+            )
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(form.change(for: target) == nil || form.method != .percentage)
+    }
+
+    /// Single-line label: in the row it refuses to wrap (so `ViewThatFits` falls back
+    /// to the stacked layout), in the stack it stretches to the full column width.
+    @ViewBuilder
+    private func buildActionLabel(_ title: String, fullWidth: Bool) -> some View {
+        if fullWidth {
+            Text(title)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
+        } else {
+            Text(title)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         }
     }
 
