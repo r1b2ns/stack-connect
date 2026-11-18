@@ -149,7 +149,7 @@ struct SubmissionsView<ViewModel: SubmissionsViewModelProtocol>: View {
             ContentUnavailableView {
                 Label(String(localized: "No Submissions"), systemImage: "paperplane")
             } description: {
-                Text("No review submissions found for this app.")
+                Text(String(localized: "No review submissions found for this app."))
             }
         }
     }
