@@ -75,82 +75,7 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
                 }
             }
             .refreshable { await viewModel.refresh() }
-            .sheet(isPresented: $viewModel.uiState.showInviteUser) {
-                InviteUserSheet { email, firstName, lastName, roles, allApps, provisioning in
-                    Task {
-                        await viewModel.inviteUser(
-                            email: email,
-                            firstName: firstName,
-                            lastName: lastName,
-                            roles: roles,
-                            allAppsVisible: allApps,
-                            provisioningAllowed: provisioning
-                        )
-                    }
-                } onCancel: {
-                    viewModel.uiState.showInviteUser = false
-                }
-            }
-            .alert(
-                viewModel.uiState.confirmDeleteUser?.isPending == true
-                    ? String(localized: "Cancel Invitation")
-                    : String(localized: "Remove User"),
-                isPresented: Binding(
-                    get: { viewModel.uiState.confirmDeleteUser != nil },
-                    set: { if !$0 { viewModel.uiState.confirmDeleteUser = nil } }
-                )
-            ) {
-                Button(
-                    viewModel.uiState.confirmDeleteUser?.isPending == true
-                        ? String(localized: "Cancel Invitation")
-                        : String(localized: "Remove"),
-                    role: .destructive
-                ) {
-                    if let user = viewModel.uiState.confirmDeleteUser {
-                        Task { await viewModel.deleteUser(user) }
-                    }
-                }
-                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .userAccess, role: .cancel) {}
-            } message: {
-                if let user = viewModel.uiState.confirmDeleteUser {
-                    if user.isPending {
-                        Text("Cancel the invitation sent to \(user.email ?? user.displayName)?")
-                    } else {
-                        Text("Are you sure you want to remove \(user.displayName)? This action cannot be undone.")
-                    }
-                }
-            }
-            .alert(
-                String(localized: "Error"),
-                isPresented: Binding(
-                    get: { viewModel.uiState.inviteError != nil },
-                    set: { if !$0 { viewModel.uiState.inviteError = nil } }
-                )
-            ) {
-                StackTrackedButton(String(localized: "OK"), button: .ok, on: .userAccess, role: .cancel) {
-                    viewModel.uiState.inviteError = nil
-                }
-            } message: {
-                if let error = viewModel.uiState.inviteError {
-                    Text(error)
-                }
-            }
-            .alert(
-                String(localized: "Cannot Remove User"),
-                isPresented: Binding(
-                    get: { viewModel.uiState.deleteError != nil },
-                    set: { if !$0 { viewModel.uiState.deleteError = nil } }
-                )
-            ) {
-                StackTrackedButton(String(localized: "OK"), button: .ok, on: .userAccess, role: .cancel) {
-                    viewModel.uiState.deleteError = nil
-                }
-            } message: {
-                if let error = viewModel.uiState.deleteError {
-                    Text(error)
-                }
-            }
-            .toast(message: $viewModel.uiState.toastMessage)
+            .userAccessPresentations(viewModel: viewModel)
     }
 
     // MARK: - Content
@@ -280,6 +205,101 @@ struct UserAccessView<ViewModel: UserAccessViewModelProtocol>: View {
 
     // MARK: - Toolbar
 
+}
+
+// MARK: - Presentations
+
+extension View {
+    /// Invite sheet, remove confirmation, error alerts and toast of Users and
+    /// Access. Shared by the List (compact) and the Table (regular width).
+    func userAccessPresentations<ViewModel: UserAccessViewModelProtocol>(viewModel: ViewModel) -> some View {
+        modifier(UserAccessPresentationsModifier(viewModel: viewModel))
+    }
+}
+
+private struct UserAccessPresentationsModifier<ViewModel: UserAccessViewModelProtocol>: ViewModifier {
+
+    @ObservedObject var viewModel: ViewModel
+
+    func body(content: Content) -> some View {
+        content
+            .sheet(isPresented: $viewModel.uiState.showInviteUser) {
+                InviteUserSheet { email, firstName, lastName, roles, allApps, provisioning in
+                    Task {
+                        await viewModel.inviteUser(
+                            email: email,
+                            firstName: firstName,
+                            lastName: lastName,
+                            roles: roles,
+                            allAppsVisible: allApps,
+                            provisioningAllowed: provisioning
+                        )
+                    }
+                } onCancel: {
+                    viewModel.uiState.showInviteUser = false
+                }
+            }
+            .alert(
+                viewModel.uiState.confirmDeleteUser?.isPending == true
+                    ? String(localized: "Cancel Invitation")
+                    : String(localized: "Remove User"),
+                isPresented: Binding(
+                    get: { viewModel.uiState.confirmDeleteUser != nil },
+                    set: { if !$0 { viewModel.uiState.confirmDeleteUser = nil } }
+                )
+            ) {
+                Button(
+                    viewModel.uiState.confirmDeleteUser?.isPending == true
+                        ? String(localized: "Cancel Invitation")
+                        : String(localized: "Remove"),
+                    role: .destructive
+                ) {
+                    if let user = viewModel.uiState.confirmDeleteUser {
+                        Task { await viewModel.deleteUser(user) }
+                    }
+                }
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .userAccess, role: .cancel) {}
+            } message: {
+                if let user = viewModel.uiState.confirmDeleteUser {
+                    if user.isPending {
+                        Text("Cancel the invitation sent to \(user.email ?? user.displayName)?")
+                    } else {
+                        Text("Are you sure you want to remove \(user.displayName)? This action cannot be undone.")
+                    }
+                }
+            }
+            .alert(
+                String(localized: "Error"),
+                isPresented: Binding(
+                    get: { viewModel.uiState.inviteError != nil },
+                    set: { if !$0 { viewModel.uiState.inviteError = nil } }
+                )
+            ) {
+                StackTrackedButton(String(localized: "OK"), button: .ok, on: .userAccess, role: .cancel) {
+                    viewModel.uiState.inviteError = nil
+                }
+            } message: {
+                if let error = viewModel.uiState.inviteError {
+                    Text(error)
+                }
+            }
+            .alert(
+                String(localized: "Cannot Remove User"),
+                isPresented: Binding(
+                    get: { viewModel.uiState.deleteError != nil },
+                    set: { if !$0 { viewModel.uiState.deleteError = nil } }
+                )
+            ) {
+                StackTrackedButton(String(localized: "OK"), button: .ok, on: .userAccess, role: .cancel) {
+                    viewModel.uiState.deleteError = nil
+                }
+            } message: {
+                if let error = viewModel.uiState.deleteError {
+                    Text(error)
+                }
+            }
+            .toast(message: $viewModel.uiState.toastMessage)
+    }
 }
 
 // MARK: - Invite User Sheet

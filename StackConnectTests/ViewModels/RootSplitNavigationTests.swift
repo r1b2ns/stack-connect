@@ -33,6 +33,7 @@ final class RootSplitCoordinatorTests: XCTestCase {
         XCTAssertTrue(RootSidebarItem.settings.usesContentColumn)
         XCTAssertTrue(RootSidebarItem.releaseQueue(.inReview).usesContentColumn)
         XCTAssertTrue(RootSidebarItem.account(id: "a", section: .apps).usesContentColumn)
+        XCTAssertFalse(RootSidebarItem.account(id: "a", section: .users).usesContentColumn, "Users is a table + inspector")
     }
 
     func testContentColumnRoutesBecomeDetailRootInsteadOfPushing() {

@@ -132,6 +132,13 @@ struct RootSplitView<HomeVM: HomeViewModelProtocol, SidebarVM: RootSidebarViewMo
             RootDashboardView(viewModel: homeViewModel, sidebarViewModel: sidebarViewModel) { queue in
                 coordinator.select(.releaseQueue(queue))
             }
+        } else if case let .account(id, .users) = coordinator.selection {
+            if let account = sidebarViewModel.account(id: id) {
+                UserAccessTableViewFactory.build(account: account)
+                    .id(id)
+            } else {
+                ProgressView()
+            }
         } else if let route = coordinator.detailRoute {
             HomeRouteView(route: route)
                 .id(route)

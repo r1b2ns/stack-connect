@@ -101,9 +101,13 @@ enum RootSidebarItem: Hashable {
     }
 
     /// `true` when the item lists things in the middle column (three columns);
-    /// `false` when it opens straight in the detail column (two columns).
+    /// `false` when it opens straight in the wide detail column (two columns):
+    /// the Dashboard, and Users and Access (a table with an inspector).
     var usesContentColumn: Bool {
-        self != .dashboard
+        switch self {
+        case .dashboard, .account(_, .users): return false
+        default: return true
+        }
     }
 }
 
