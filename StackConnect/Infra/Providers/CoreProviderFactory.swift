@@ -19,6 +19,16 @@ protocol CoreProviderMaking: Sendable {
         debugLogger: DebugLogger?
     ) throws -> StackCoreRust.Provider
 
+    /// Mirrors the core's `connectWithAccessToken(kind:accountId:tokenProvider:debugLogger:)`:
+    /// a provider authorized with the access token `tokenProvider` returns
+    /// (Google Play accounts added with "Sign in with Google").
+    func connectWithAccessToken(
+        kind: ServiceKind,
+        accountId: String,
+        tokenProvider: AccessTokenProvider,
+        debugLogger: DebugLogger?
+    ) throws -> StackCoreRust.Provider
+
     /// Mirrors the core's `makeSyncService(provider:store:accountId:)`.
     func makeSyncService(
         provider: StackCoreRust.Provider,
@@ -37,6 +47,15 @@ struct RustCoreProviderFactory: CoreProviderMaking {
         debugLogger: DebugLogger?
     ) throws -> StackCoreRust.Provider {
         try StackCoreRust.connect(kind: kind, accountId: accountId, store: store, debugLogger: debugLogger)
+    }
+
+    func connectWithAccessToken(
+        kind: ServiceKind,
+        accountId: String,
+        tokenProvider: AccessTokenProvider,
+        debugLogger: DebugLogger?
+    ) throws -> StackCoreRust.Provider {
+        try StackCoreRust.connectWithAccessToken(kind: kind, accountId: accountId, tokenProvider: tokenProvider, debugLogger: debugLogger)
     }
 
     func makeSyncService(

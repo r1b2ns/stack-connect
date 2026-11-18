@@ -9,3 +9,9 @@ DEVELOPMENT_TEAM = VVAVW2S9CF
 CODE_SIGN_STYLE = Manual
 CODE_SIGN_IDENTITY = Apple Distribution
 PROVISIONING_PROFILE_SPECIFIER = match AppStore zeroSixteen.stackconnect
+
+// Sign in with Google (plan google-sign-in.md G1, G8): the iOS OAuth client ID
+// (public; iOS clients have no secret). Exposed to the app as the Info.plist
+// key GoogleOAuthClientID (project.yml) and read by GoogleOAuthConfiguration.
+// Spike Cloud project for now: swap here once the production project exists.
+GOOGLE_OAUTH_CLIENT_ID = 825216743615-s98fqhfl3l70uilpobd5joa8f4k26790.apps.googleusercontent.com

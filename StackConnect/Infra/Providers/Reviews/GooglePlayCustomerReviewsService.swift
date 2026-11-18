@@ -10,6 +10,8 @@ import StackCoreRust
 struct GooglePlayCustomerReviewsService: CustomerReviewsServicing {
 
     let connection: any GooglePlayReviewsConnecting
+    /// How the account calls Google Play: picks the error copy.
+    var authMethod: AccountAuthMethod = .keyFile
 
     var traits: CustomerReviewsTraits { .googlePlay }
 
@@ -58,7 +60,8 @@ struct GooglePlayCustomerReviewsService: CustomerReviewsServicing {
     func message(for error: Error, operation: CustomerReviewsOperation) -> String {
         GooglePlayErrorTranslator.friendlyMessage(
             for: error,
-            operation: operation == .reply ? .replyToReview : .general
+            operation: operation == .reply ? .replyToReview : .general,
+            authMethod: authMethod
         )
     }
 }

@@ -69,6 +69,16 @@ struct GooglePlayAppListUiState {
     var canDeleteApps: Bool {
         account.canDelete(.apps)
     }
+
+    /// Footer of the "add app by package name" sheet: who needs access to it.
+    var addAppFooter: String {
+        switch account.authMethod {
+        case .keyFile:
+            return String(localized: "Enter the Android package name (e.g. com.example.myapp). The service account must have access to this app in the Google Play Console.")
+        case .googleSignIn:
+            return String(localized: "Enter the Android package name (e.g. com.example.myapp). The signed-in Google account must have access to this app in the Google Play Console.")
+        }
+    }
 }
 
 /// One line of a Play app row: the headline release of one track
@@ -242,7 +252,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
             // Offline with a cached list: the global offline banner already says
             // so — keep the list without a second warning.
             if !(syncFailedOffline && !uiState.apps.isEmpty) {
-                uiState.error = GooglePlayErrorTranslator.friendlyMessage(for: error)
+                uiState.error = GooglePlayErrorTranslator.friendlyMessage(for: error, authMethod: uiState.account.authMethod)
             }
         }
 
@@ -316,7 +326,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
             analytics.track(.action(.addGooglePlayApp, on: .addGooglePlayApp, result: .success))
         } catch {
             analytics.track(.action(.addGooglePlayApp, on: .addGooglePlayApp, result: .failure))
-            uiState.addError = GooglePlayErrorTranslator.friendlyMessage(for: error)
+            uiState.addError = GooglePlayErrorTranslator.friendlyMessage(for: error, authMethod: uiState.account.authMethod)
             Log.print.error("[GooglePlayAppList] Add failed: \(error.localizedDescription)")
         }
 

@@ -100,6 +100,30 @@ final class GooglePlayAppListViewModelTests: XCTestCase {
         await storage.saveCallCount[String(describing: [GooglePlayAppItem].self)] ?? 0
     }
 
+    // MARK: - Credential-aware copy
+
+    func testAddAppFooterNamesWhoNeedsAccess() {
+        XCTAssertEqual(
+            makeSUT().uiState.addAppFooter,
+            String(localized: "Enter the Android package name (e.g. com.example.myapp). The service account must have access to this app in the Google Play Console.")
+        )
+        let signIn = AccountModel(name: "Signed In", providerType: .googlePlay, authMethod: .googleSignIn)
+        XCTAssertEqual(
+            makeSUT(account: signIn).uiState.addAppFooter,
+            String(localized: "Enter the Android package name (e.g. com.example.myapp). The signed-in Google account must have access to this app in the Google Play Console.")
+        )
+    }
+
+    func testSyncFailureOfAGoogleSignInAccountNamesTheSignedInGoogleAccount() async {
+        let detail = "The caller does not have permission"
+        connection.fetchAppsHandler = { throw StackError.Auth(message: detail) }
+        let sut = makeSUT(account: AccountModel(name: "Signed In", providerType: .googlePlay, authMethod: .googleSignIn))
+
+        await sut.load()
+
+        XCTAssertEqual(sut.uiState.error, String(localized: "Google Play denied access to the signed-in Google account.") + "\n" + detail)
+    }
+
     // MARK: - Offline-first load
 
     func testLoadShowsTheCacheBeforeSyncingFromTheAPI() async throws {

@@ -61,6 +61,13 @@ enum AnalyticsParameterKey {
     static let destination = "destination"
     /// Number of results of a search, bucketed: `AnalyticsCountBucket` raw value.
     static let resultCountBucket = "result_count_bucket"
+    /// How a new account authenticates: `AccountAuthMethod.analyticsValue`.
+    /// Sent by `create_account` for Google sign-in (`google_sign_in`, with
+    /// `count` accounts added); absent for the key-file path.
+    static let authMethod = "auth_method"
+    /// How many requested Google scopes the user left unticked on the consent
+    /// page (never which ones by name beyond this count).
+    static let missingScopeCount = "missing_scope_count"
 
     /// Shape of an account export (never its content): whether it expires and
     /// whether it is restricted to a subset of apps.

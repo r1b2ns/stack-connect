@@ -64,6 +64,32 @@ final class GooglePlayUsersViewModelTests: XCTestCase {
         try await storage.fetch(GooglePlayUsersCache.self, id: GooglePlayUsersCache.cacheKey(accountId: accountId))?.users
     }
 
+    // MARK: - Credential-aware copy
+
+    func testDeveloperIdFooterFollowsTheAuthMethod() async throws {
+        let serviceAccount = try await makeSUT(makeAccount(developerId: nil))
+        XCTAssertEqual(
+            serviceAccount.uiState.developerIdFooter,
+            String(localized: "Google can't tell which developer account a service account belongs to: the ID is in Play Console › Settings › Developer account (and in every Play Console URL). The service account needs the “Admin (all permissions)” permission to manage users.")
+        )
+        let signIn = try await makeSUT(AccountModel(id: "play.signin", name: "Play", providerType: .googlePlay, authMethod: .googleSignIn))
+        XCTAssertEqual(
+            signIn.uiState.developerIdFooter,
+            String(localized: "Google doesn't tell StackConnect which developer account to use: the ID is in Play Console › Settings › Developer account (and in every Play Console URL). The signed-in Google account needs the “Admin (all permissions)” permission to manage users.")
+        )
+    }
+
+    func testAUsersAuthFailureOfAGoogleSignInAccountNamesTheSignedInGoogleAccount() async throws {
+        let account = AccountModel(id: "play.signin", name: "Play", providerType: .googlePlay,
+                                   googlePlayDeveloperId: developerId, authMethod: .googleSignIn)
+        let sut = try await makeSUT(account)
+        connection.failNext(.fetch, with: StackError.Auth(message: ""))
+
+        await sut.load()
+
+        XCTAssertEqual(sut.uiState.error, String(localized: "To manage users, the signed-in Google account needs the “Admin (all permissions)” permission in Play Console › Users and permissions."))
+    }
+
     // MARK: - Setup state (plan U3)
 
     func testWithoutDeveloperIdShowsTheSetupStateAndRequestsNothing() async throws {

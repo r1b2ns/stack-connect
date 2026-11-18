@@ -68,6 +68,24 @@ struct GooglePlayReleaseWriteUiState {
     /// New Release / Promote sheet (prototype screen 5).
     var newRelease: GooglePlayNewReleaseRequest?
 
+    /// How the account calls Google Play: a service account or "Sign in with
+    /// Google". Picks the edit warnings' and errors' wording.
+    var authMethod: AccountAuthMethod = .keyFile
+
+    /// Said in the Staged Rollout sheet's footer.
+    var rolloutEditFooter: String {
+        authMethod == .googleSignIn
+            ? String(localized: "Saving opens a Play edit, updates the track and commits it. Any edit open with your Google account for the app elsewhere is cancelled.")
+            : String(localized: "Saving opens a Play edit, updates the track and commits it. Any edit this service account has open elsewhere (for example a CI upload) is cancelled.")
+    }
+
+    /// Said in the Review Checklist's "Google Play Review" footer.
+    var checklistEditFooter: String {
+        authMethod == .googleSignIn
+            ? String(localized: "Google validates the edit before committing. Publishing cancels any other edit open with your Google account for the app.")
+            : String(localized: "Google validates the edit before committing. Publishing cancels any other edit this service account has open for the app, such as a CI upload in progress.")
+    }
+
     /// The pending write when it is confirmed through the checklist.
     var checklistWrite: GooglePlayPendingWrite? {
         guard let pendingWrite, pendingWrite.usesChecklist else { return nil }
@@ -96,6 +114,7 @@ final class GooglePlayReleaseWriteViewModel: GooglePlayReleaseWriteViewModelProt
         self.writer = writer
         self.screen = screen
         self.analytics = analytics
+        uiState.authMethod = writer.account.authMethod
     }
 
     convenience init(app: GooglePlayAppItem, account: AccountModel, screen: AnalyticsScreen) {
@@ -182,7 +201,7 @@ final class GooglePlayReleaseWriteViewModel: GooglePlayReleaseWriteViewModelProt
             trackWrite(write, result: .failure, parameters: category.parameters)
             analytics.recordNonFatal(error, category: category)
             let message = (error as? GooglePlayReleaseWriteError)?.errorDescription
-                ?? GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .releaseChange)
+                ?? GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .releaseChange, authMethod: uiState.authMethod)
             if write.usesChecklist {
                 // The checklist stays open with the error (and Share Error).
                 uiState.checklistError = message

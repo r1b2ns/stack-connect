@@ -144,6 +144,25 @@ final class SyncServiceTests: XCTestCase {
         XCTAssertEqual(sut.state.providerByAccountId[play.id], .googlePlay)
     }
 
+    func testSyncAllRunsGooglePlayAccountsAddedWithGoogleSignIn() async throws {
+        let play = AccountModel(name: "Play", providerType: .googlePlay, authMethod: .googleSignIn)
+        try await mockStorage.save(play, id: play.id)
+        mockKeychain.setObject(GooglePlayCredentials(googleLoginId: "user-1"), forKey: "credentials.\(play.id)")
+        playConnection.fetchAppsHandler = {
+            [StackProtocols.AppInfo(id: "com.play", name: "Play App", bundleId: "com.play", platform: "ANDROID")]
+        }
+
+        await sut.syncAll().value
+
+        XCTAssertEqual(sut.state.lastRunAccountCount, 1)
+        XCTAssertEqual(playConnection.credentials.map(\.source), [.googleSignIn(loginId: "user-1")])
+        let list: [GooglePlayAppItem]? = try await mockStorage.fetch(
+            [GooglePlayAppItem].self, id: GooglePlayAppItem.cacheKey(accountId: play.id)
+        )
+        XCTAssertEqual(list?.map(\.packageName), ["com.play"])
+        XCTAssertEqual(sut.state.lastRunFailedAccountCount, 0)
+    }
+
     // MARK: - Activation (first_apps_loaded)
 
     func testFirstSuccessfulSyncWithAppsSendsFirstAppsLoadedOnce() async throws {

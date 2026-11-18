@@ -123,6 +123,8 @@ final class GooglePlayNewReleaseViewModel: GooglePlayNewReleaseViewModelProtocol
     private let tracks: [GooglePlayTrackModel]
     private let listingLanguages: [String]
     private let loadBundlesFromPlay: BundlesLoader
+    /// How the account calls Google Play: picks the error copy.
+    private let authMethod: AccountAuthMethod
     private var notesEdited = false
 
     static let standardTracks = ["production", "beta", "alpha", "internal"]
@@ -131,11 +133,13 @@ final class GooglePlayNewReleaseViewModel: GooglePlayNewReleaseViewModelProtocol
         request: GooglePlayNewReleaseRequest,
         tracks: [GooglePlayTrackModel],
         listingLanguages: [String],
-        loadBundles: @escaping BundlesLoader
+        loadBundles: @escaping BundlesLoader,
+        authMethod: AccountAuthMethod = .keyFile
     ) {
         self.tracks = tracks
         self.listingLanguages = listingLanguages
         self.loadBundlesFromPlay = loadBundles
+        self.authMethod = authMethod
 
         let custom = tracks.map(\.track).filter { !Self.standardTracks.contains($0) }.sorted()
         var names = Self.standardTracks + custom
@@ -185,7 +189,7 @@ final class GooglePlayNewReleaseViewModel: GooglePlayNewReleaseViewModelProtocol
             uiState.bundles = try await loadBundlesFromPlay()
         } catch {
             uiState.bundlesError = (error as? GooglePlayReleaseWriteError)?.errorDescription
-                ?? GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .appContentRead)
+                ?? GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .appContentRead, authMethod: authMethod)
         }
     }
 

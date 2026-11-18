@@ -80,7 +80,7 @@ struct GooglePlayRolloutSheet<Writes: GooglePlayReleaseWriteViewModelProtocol>: 
                 buildStatusSection()
                 Section {
                 } footer: {
-                    Text("Saving opens a Play edit, updates the track and commits it. Any edit this service account has open elsewhere (for example a CI upload) is cancelled.")
+                    Text(writes.uiState.rolloutEditFooter)
                 }
             }
             .navigationTitle(String(localized: "Staged Rollout"))

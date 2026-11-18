@@ -62,6 +62,11 @@ public protocol RequestAuthenticating {
     func adapt(_ urlRequest: URLRequest) async throws -> URLRequest
 }
 
+/// Marks an error thrown by a `RequestAuthenticating` that must reach the
+/// caller unchanged instead of being wrapped as
+/// `APIProviderFirebase.Error.requestGeneration`.
+public protocol RequestAuthenticationError: Error {}
+
 // MARK: - FirebaseAuthenticator
 
 /// Handles Google Service Account OAuth2 authentication.

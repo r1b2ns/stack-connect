@@ -66,6 +66,14 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     // MARK: Accounts
     case account = "account"
     case addAccount = "add_account"
+    /// Add Account: the primary "Sign in with Google" button (Play, Firebase).
+    case signInWithGoogle = "sign_in_with_google"
+    /// Add Account: switch to the service account JSON form (advanced path).
+    case useServiceAccount = "use_service_account"
+    /// Add Account: back from the JSON form to "Sign in with Google".
+    case useGoogleSignIn = "use_google_sign_in"
+    /// Add Account: ask Google again for the scopes left unticked.
+    case grantMissingAccess = "grant_missing_access"
     case createNew = "create_new"
     case editName = "edit_name"
     case certificates = "certificates"

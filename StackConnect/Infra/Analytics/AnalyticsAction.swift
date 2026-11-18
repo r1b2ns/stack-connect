@@ -65,6 +65,14 @@ enum AnalyticsAction: String, CaseIterable, Sendable {
     case exportAccount = "export_account"
     case importAccount = "import_account"
     case reimportAccount = "reimport_account"
+    /// "Sign in with Google" opened Google's page from Add Account, with `kind`
+    /// (provider). The first step of the Google sign-in funnel.
+    case googleSignInStarted = "google_sign_in_started"
+    /// The Google sign-in finished: `success` (consent completed, with
+    /// `missing_scope_count` for unticked checkboxes), `cancelled` (sheet
+    /// closed) or `failure` with `error_category`. Sent with `kind`. The
+    /// accounts then added are `create_account` with `auth_method`.
+    case googleSignIn = "google_sign_in"
 
     // MARK: Activation
     /// The install's "first value" moment: the first time an app list loaded

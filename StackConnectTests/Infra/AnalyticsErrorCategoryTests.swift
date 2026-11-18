@@ -11,7 +11,7 @@ final class AnalyticsErrorCategoryTests: XCTestCase {
     func testRawValuesAreStableSnakeCase() {
         XCTAssertEqual(AnalyticsErrorCategory.allCases.map(\.rawValue), [
             "validation", "duplicate", "invalid_credentials", "forbidden", "network",
-            "server", "wrong_password", "invalid_file", "storage", "unknown"
+            "server", "wrong_password", "invalid_file", "storage", "scope_denied", "unknown"
         ])
     }
 

@@ -128,6 +128,16 @@ struct GooglePlayUsersUiState {
     var access: GooglePlayUsersAccess {
         GooglePlayUsersAccess(account: account, serviceAccountEmail: serviceAccountEmail)
     }
+
+    /// The developer ID setup footer: why the ID is asked for and who needs Admin.
+    var developerIdFooter: String {
+        switch account.authMethod {
+        case .keyFile:
+            return String(localized: "Google can't tell which developer account a service account belongs to: the ID is in Play Console › Settings › Developer account (and in every Play Console URL). The service account needs the “Admin (all permissions)” permission to manage users.")
+        case .googleSignIn:
+            return String(localized: "Google doesn't tell StackConnect which developer account to use: the ID is in Play Console › Settings › Developer account (and in every Play Console URL). The signed-in Google account needs the “Admin (all permissions)” permission to manage users.")
+        }
+    }
 }
 
 // MARK: - Implementation
@@ -219,7 +229,7 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
             await saveCache()
             Log.print.info("[GooglePlayUsers] Synced \(users.count) users for account: \(self.uiState.account.name)")
         } catch {
-            let failure = GooglePlayErrorTranslator.usersFailure(error, call: usersCall(.list, developerId: developerId), logTag: "GooglePlayUsers")
+            let failure = GooglePlayErrorTranslator.usersFailure(error, call: usersCall(.list, developerId: developerId), logTag: "GooglePlayUsers", authMethod: uiState.account.authMethod)
             let offline = GooglePlayErrorTranslator.isOffline(error)
             if !(offline && !uiState.users.isEmpty) {
                 uiState.error = failure.message
@@ -326,7 +336,8 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
             analytics.track(.action(.deleteUser, on: .googlePlayUsers, result: .success))
         } catch {
             let failure = GooglePlayErrorTranslator.usersFailure(
-                error, call: usersCall(.delete, developerId: developerId, email: user.email), logTag: "GooglePlayUsers"
+                error, call: usersCall(.delete, developerId: developerId, email: user.email), logTag: "GooglePlayUsers",
+                authMethod: uiState.account.authMethod
             )
             showActionError(failure)
             analytics.track(.action(.deleteUser, on: .googlePlayUsers, result: .failure))
@@ -347,7 +358,8 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
         } catch {
             Log.print.error("[GooglePlayUsers] Resend failed removing the old invitation")
             let failure = GooglePlayErrorTranslator.usersFailure(
-                error, call: usersCall(.delete, developerId: developerId, email: user.email), logTag: "GooglePlayUsers"
+                error, call: usersCall(.delete, developerId: developerId, email: user.email), logTag: "GooglePlayUsers",
+                authMethod: uiState.account.authMethod
             )
             showActionError(failure)
             analytics.track(.action(.resendInvite, on: .googlePlayUsers, result: .failure))
@@ -370,7 +382,7 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
         } catch {
             // The old invitation is gone: the list must say so too.
             Log.print.error("[GooglePlayUsers] Resend failed sending the new invitation")
-            let failure = GooglePlayErrorTranslator.usersFailure(error, call: usersCall(.invite, developerId: developerId), logTag: "GooglePlayUsers")
+            let failure = GooglePlayErrorTranslator.usersFailure(error, call: usersCall(.invite, developerId: developerId), logTag: "GooglePlayUsers", authMethod: uiState.account.authMethod)
             uiState.users.removeAll { $0.id == user.id }
             await saveCache()
             let reason = failure.message
@@ -417,7 +429,7 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
             analytics.track(.action(.inviteUser, on: .googlePlayInviteUser, result: .success))
             return nil
         } catch {
-            let failure = GooglePlayErrorTranslator.usersFailure(error, call: usersCall(.invite, developerId: developerId), logTag: "GooglePlayUsers")
+            let failure = GooglePlayErrorTranslator.usersFailure(error, call: usersCall(.invite, developerId: developerId), logTag: "GooglePlayUsers", authMethod: uiState.account.authMethod)
             uiState.inviteErrorDetails = failure.technicalDetails
             analytics.track(.action(.inviteUser, on: .googlePlayInviteUser, result: .failure))
             return failure.message

@@ -19,7 +19,10 @@ enum CustomerReviewsServiceFactory {
             return AppleCustomerReviewsService(connection: AppleAccountConnection(credentials: credentials))
         case .googlePlay:
             guard let credentials: GooglePlayCredentials = keychain.object(forKey: key) else { return nil }
-            return GooglePlayCustomerReviewsService(connection: GooglePlayAccountConnection(credentials: credentials))
+            return GooglePlayCustomerReviewsService(
+                connection: GooglePlayAccountConnection(credentials: credentials),
+                authMethod: account.authMethod
+            )
         case .firebase:
             return nil
         }

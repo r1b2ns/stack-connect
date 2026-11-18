@@ -52,12 +52,28 @@ enum FeatureFlag: String, CaseIterable {
     /// Default: OFF, including in the DEBUG fake data mode.
     case googlePlayAccounts = "featureFlag.googlePlayAccounts"
 
+    /// Gates "Sign in with Google" in Add Account for Google Play and Firebase
+    /// (plan `google-sign-in.md` G9): the primary sign-in button and the
+    /// picker of the Play apps / Firebase projects found. When OFF, Add
+    /// Account shows only the service-account JSON form, as before. Accounts
+    /// already added with Google keep working whatever the flag says.
+    /// Default: ON in Debug builds, OFF in Release until the sign-in is
+    /// verified on device. Toggle at launch with
+    /// `-featureFlag.googleSignIn YES` / `NO`.
+    case googleSignIn = "featureFlag.googleSignIn"
+
     /// The compiled-in default used when no value is stored in `UserDefaults`.
     /// New flags ship OFF by default — the safe, fully-reversible value.
     var defaultValue: Bool {
         switch self {
         case .useRustCoreDebugLogging, .googlePlayReleaseWrites, .googlePlayAccounts:
             return false
+        case .googleSignIn:
+            #if DEBUG
+            return true
+            #else
+            return false
+            #endif
         }
     }
 
@@ -67,7 +83,7 @@ enum FeatureFlag: String, CaseIterable {
         switch self {
         case .googlePlayAccounts:
             return "google_play_accounts_enabled"
-        case .useRustCoreDebugLogging, .googlePlayReleaseWrites:
+        case .useRustCoreDebugLogging, .googlePlayReleaseWrites, .googleSignIn:
             return nil
         }
     }
