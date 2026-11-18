@@ -1,5 +1,5 @@
-// Version
-MARKETING_VERSION = 2.4.0
+// Version (shared with the widget extension)
+#include "Version.xcconfig"
 
 // Bundle identity & signing
 APP_DISPLAY_NAME = StackConnect
