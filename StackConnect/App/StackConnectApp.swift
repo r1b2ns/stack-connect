@@ -102,7 +102,7 @@ struct StackConnectApp: App {
 
     @ViewBuilder
     private func buildRoot() -> some View {
-        HomeViewFactory.build()
+        AppRootViewFactory.build()
             .offlineBanner()
             // App Store review request after a successful foreground sync,
             // every third launch, at most once per launch; then the Home tip

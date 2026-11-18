@@ -21,8 +21,24 @@ private struct UserAccessEntryView: View {
         _viewModel = StateObject(wrappedValue: UserAccessViewModel(account: account))
     }
 
+    /// Standalone entry (the split view's "Users and Access" sidebar item): it
+    /// carries the title and the Invite button the App List tab bar provides
+    /// on iPhone.
     var body: some View {
         UserAccessView(viewModel: viewModel)
+            .navigationTitle(String(localized: "Users and Access"))
+            .toolbar {
+                if account.canAdd(.users) {
+                    ToolbarItem(placement: .primaryAction) {
+                        StackTrackedButton(.inviteUser, on: .userAccess) {
+                            viewModel.uiState.showInviteUser = true
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .accessibilityLabel(String(localized: "Invite User"))
+                    }
+                }
+            }
     }
 }
 
