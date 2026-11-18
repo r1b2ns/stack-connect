@@ -7,6 +7,8 @@
 #   bundle exec fastlane beta_all      # uploads both dev and prod betas in one run
 #   bundle exec fastlane screenshots
 #   bundle exec fastlane metadata
+#   bundle exec fastlane creative_assets_catalog
+#   bundle exec fastlane creative_assets [dry_run:false] [overwrite:true]
 #   bundle exec fastlane release
 #
 # Required environment variables for beta* / release lanes (set in fastlane/.env):
@@ -15,6 +17,8 @@
 #   APP_STORE_CONNECT_API_KEY_CONTENT /   password prompt required
 
 default_platform(:ios)
+
+require_relative "creative_assets"
 
 # ─── Project constants ────────────────────────────────────────────────────────
 
@@ -167,6 +171,26 @@ platform :ios do
       skip_screenshots:           true,
       skip_metadata:              false,
       run_precheck_before_submit: false   # skip URL reachability checks
+    )
+  end
+
+  # ── creative assets (Header and Search Results) ────────────────────────────
+  # `deliver` cannot upload these yet (fastlane issue #30461), so they go through
+  # fastlane/creative_assets.rb. Images live in metadata/<locale>/creative_assets/.
+
+  desc "List the placement groups and image specs Apple accepts for the product page header and search results (read-only).\n\n    Usage:\n      bundle exec fastlane creative_assets_catalog"
+  lane :creative_assets_catalog do
+    CreativeAssets.print_catalog
+  end
+
+  desc "Upload the Header and Search Results images from metadata/<locale>/creative_assets/ to the editable version.\n\n    Dry run by default (plans only, uploads nothing).\n\n    Usage:\n      bundle exec fastlane creative_assets\n      bundle exec fastlane creative_assets dry_run:false\n      bundle exec fastlane creative_assets dry_run:false overwrite:true locales:en-US,pt-BR"
+  lane :creative_assets do |options|
+    CreativeAssets.run(
+      app_identifier: BUNDLE_ID || CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier),
+      metadata_path:  File.expand_path("metadata", __dir__),
+      locales:        options[:locales]&.to_s&.split(","),
+      dry_run:        options[:dry_run].to_s != "false",
+      overwrite:      options[:overwrite].to_s == "true"
     )
   end
 

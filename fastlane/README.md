@@ -81,6 +81,32 @@ Upload App Store metadata (description, keywords, URLs) without building.
     Usage:
       bundle exec fastlane metadata
 
+### ios creative_assets_catalog
+
+```sh
+[bundle exec] fastlane ios creative_assets_catalog
+```
+
+List the placement groups and image specs Apple accepts for the product page header and search results (read-only).
+
+    Usage:
+      bundle exec fastlane creative_assets_catalog
+
+### ios creative_assets
+
+```sh
+[bundle exec] fastlane ios creative_assets
+```
+
+Upload the Header and Search Results images from metadata/<locale>/creative_assets/ to the editable version.
+
+    Dry run by default (plans only, uploads nothing).
+
+    Usage:
+      bundle exec fastlane creative_assets
+      bundle exec fastlane creative_assets dry_run:false
+      bundle exec fastlane creative_assets dry_run:false overwrite:true locales:en-US,pt-BR
+
 ### ios release
 
 ```sh
