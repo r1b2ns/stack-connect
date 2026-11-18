@@ -1,1 +1,1 @@
-appstore,connect,firebase,utvecklare,testflight,analys,recensioner,hanterare,ios,verktyg
+google play,console,firebase,testflight,utvecklare,recensioner,analys,release,certifikat,team

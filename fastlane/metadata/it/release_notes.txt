@@ -1,7 +1,12 @@
-• Report Analytics — consulta e scarica le analitiche di App Store Connect direttamente nell'app, con report raggruppati per categoria e grafici giornalieri, settimanali o mensili. Segna i preferiti, nascondi quelli che non usi e gestisci i file scaricati da una schermata File dedicata
-• Invii — monitora, annulla e reinvia i tuoi invii di revisione dell'App Store per ogni app, con una gestione chiara del limite di invii simultanei di Apple
-• Gestione del team — modifica ruolo, risorse e app visibili di un membro, consulta i suoi permessi e rimuovi membri o annulla inviti dalla schermata di dettaglio dell'utente
-• Icone per piattaforma — le app multipiattaforma (come iOS + tvOS) ora mostrano l'icona reale di ciascuna piattaforma nel dettaglio dell'app e nei widget In attesa di pubblicazione
-• Modalità offline — un indicatore segnala quando sei offline; i dati in cache restano consultabili e le azioni che richiedono una connessione vengono bloccate in sicurezza
-• Esportazione mirata — limita l'esportazione di un account ai permessi di app specifiche, con un selettore di app con ricerca
+• Google Play Console — aggiungi account Google Play e vedi le tue app Play accanto alle app dell'App Store: release su ogni track, schede dello store, valutazioni e recensioni con risposte, e gestione degli utenti
+• Report Analytics — consulta e scarica gli analytics di App Store Connect, con report raggruppati per categoria e grafici giornalieri, settimanali o mensili. Segna i preferiti, nascondi quelli che non usi e gestisci i file scaricati da una schermata File dedicata
+• Invii — monitora, scarta e invia di nuovo i tuoi invii ad App Review per ogni app, con una gestione chiara del limite di invii simultanei di Apple
+• Gestione del team — modifica ruolo, risorse e app visibili di un membro, e rimuovi membri o annulla inviti
+• Modelli di risposta — salva le risposte più comuni alle recensioni e riutilizzale con un tocco
+• Promemoria accordi — un banner nella Home ti permette di chiedere al titolare dell'account di accettare gli accordi in sospeso
+• Icone per piattaforma — le app multipiattaforma ora mostrano l'icona reale di ogni piattaforma nel dettaglio dell'app e nei widget
+• Modalità offline — un indicatore mostra quando sei offline; i dati in cache restano consultabili e le azioni che richiedono una connessione sono bloccate
+• Esportazione limitata — limita l'esportazione di un account ad app specifiche, con un selettore di app con ricerca
+• Analytics di utilizzo — anonimi e facoltativi; disattivali quando vuoi in Impostazioni
+• Barattolo delle mance — StackConnect resta gratuita e open source; lascia una mancia facoltativa se ti è utile
 • Correzioni di bug e miglioramenti della stabilità

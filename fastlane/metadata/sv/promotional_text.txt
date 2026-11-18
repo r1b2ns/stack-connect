@@ -1,1 +1,1 @@
-Hantera alla dina utvecklarkonton på ett ställe. Nu med krypterad kontodelning för team!
+App Store Connect, Google Play Console och Firebase i en gratis app med öppen källkod. Releaser, recensioner, TestFlight, team och analys — direkt från din iPhone.

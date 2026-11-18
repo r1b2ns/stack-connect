@@ -1,7 +1,12 @@
-• Analytics-Berichte — sieh dir deine App-Store-Connect-Analytics direkt in der App an und lade sie herunter, mit nach Kategorie gruppierten Berichten und Tages-, Wochen- oder Monatsdiagrammen. Markiere Favoriten, blende ungenutzte aus und verwalte heruntergeladene Dateien in einem eigenen Dateien-Bereich
-• Einreichungen — verfolge, verwirf und reiche deine App-Review-Einreichungen pro App erneut ein, mit klarer Behandlung von Apples Limit gleichzeitiger Einreichungen
-• Team-Verwaltung — bearbeite Rolle, Ressourcen und sichtbare Apps eines Mitglieds, sieh dir seine Berechtigungen an und entferne Mitglieder oder ziehe Einladungen zurück, direkt in der Benutzerdetailansicht
-• Plattformspezifische Symbole — Apps für mehrere Plattformen (z. B. iOS + tvOS) zeigen jetzt das echte Symbol jeder Plattform in den App-Details und in den Widgets „Warten auf Freigabe“
-• Offline-Modus — eine Anzeige zeigt, wenn du offline bist; deine zwischengespeicherten Daten bleiben sichtbar und Aktionen, die eine Verbindung erfordern, werden sicher blockiert
-• Gezielter Export — beschränke den Export eines Kontos auf die Berechtigungen bestimmter Apps, mit durchsuchbarer App-Auswahl
+• Google Play Console – füge Google-Play-Konten hinzu und sieh deine Play-Apps neben deinen App-Store-Apps: Releases in allen Tracks, Store-Einträge, Bewertungen und Rezensionen mit Antworten sowie Nutzerverwaltung
+• Analytics-Berichte – sieh und lade deine App-Store-Connect-Analytics, mit nach Kategorie gruppierten Berichten und Tages-, Wochen- oder Monatsdiagrammen. Markiere Favoriten, blende nicht genutzte aus und verwalte heruntergeladene Dateien in einem eigenen Dateien-Bereich
+• Einreichungen – verfolge, verwirf und reiche deine App-Review-Einreichungen pro App erneut ein, mit klarem Umgang mit Apples Limit für gleichzeitige Einreichungen
+• Teamverwaltung – bearbeite Rolle, Ressourcen und sichtbare Apps eines Mitglieds, entferne Mitglieder oder ziehe Einladungen zurück
+• Antwortvorlagen – speichere deine häufigen Antworten auf Bewertungen und verwende sie mit einem Tippen wieder
+• Vereinbarungs-Erinnerung – über ein Banner im Start-Bereich kannst du den Account Holder bitten, ausstehende Vereinbarungen zu akzeptieren
+• Plattformspezifische Symbole – Apps für mehrere Plattformen zeigen in der App-Detailansicht und in Widgets jetzt das echte Symbol jeder Plattform
+• Offline-Modus – eine Anzeige zeigt, wenn du offline bist; zwischengespeicherte Daten bleiben sichtbar, und Aktionen, die eine Verbindung brauchen, sind gesperrt
+• Eingeschränkter Export – begrenze den Export eines Kontos auf bestimmte Apps, mit durchsuchbarer App-Auswahl
+• Nutzungsanalysen – anonym und optional; jederzeit in den Einstellungen deaktivierbar
+• Trinkgeld – StackConnect bleibt kostenlos und Open Source; hinterlasse ein freiwilliges Trinkgeld, wenn es dir hilft
 • Fehlerbehebungen und Stabilitätsverbesserungen

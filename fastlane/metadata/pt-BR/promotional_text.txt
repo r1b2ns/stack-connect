@@ -1,1 +1,1 @@
-Gerencie todas as suas contas de desenvolvedor em um só lugar. Agora com compartilhamento criptografado para equipes!
+App Store Connect, Google Play Console e Firebase em um só app gratuito e de código aberto. Versões, avaliações, TestFlight, equipes e analytics — direto do seu iPhone.

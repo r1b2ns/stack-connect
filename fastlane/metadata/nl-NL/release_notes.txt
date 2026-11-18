@@ -1,7 +1,12 @@
-• Analytics-rapporten — bekijk en download je App Store Connect-statistieken direct in de app, met rapporten gegroepeerd per categorie en dagelijkse, wekelijkse of maandelijkse grafieken. Markeer favorieten, verberg wat je niet gebruikt en beheer gedownloade bestanden vanuit een apart Bestanden-scherm
-• Inzendingen — volg, verwerp en dien je App Review-inzendingen per app opnieuw in, met een duidelijke afhandeling van Apples limiet voor gelijktijdige inzendingen
-• Teambeheer — bewerk de rol, resources en zichtbare apps van een lid, bekijk zijn rechten en verwijder leden of trek uitnodigingen in vanuit het gebruikersdetailscherm
-• Iconen per platform — multiplatform-apps (zoals iOS + tvOS) tonen nu het echte icoon van elk platform in de app-details en de widgets 'Wacht op release'
-• Offline-modus — een indicator laat zien wanneer je offline bent; je gebufferde gegevens blijven zichtbaar en acties die een verbinding vereisen worden veilig geblokkeerd
-• Gerichte export — beperk een account-export tot de rechten van specifieke apps, met een doorzoekbare app-kiezer
+• Google Play Console — voeg Google Play-accounts toe en zie je Play-apps naast je App Store-apps: releases op elke track, store-vermeldingen, beoordelingen en reviews met antwoorden, en gebruikersbeheer
+• Analyserapporten — bekijk en download je App Store Connect-analyses, met rapporten gegroepeerd per categorie en dagelijkse, wekelijkse of maandelijkse grafieken. Markeer favorieten, verberg wat je niet gebruikt en beheer gedownloade bestanden in een apart scherm Bestanden
+• Inzendingen — volg, verwijder en dien je App Review-inzendingen per app opnieuw in, met duidelijke afhandeling van de limiet van Apple voor gelijktijdige inzendingen
+• Teambeheer — bewerk de rol, resources en zichtbare apps van een lid, en verwijder leden of annuleer uitnodigingen
+• Antwoordsjablonen — bewaar je vaakgebruikte antwoorden op reviews en gebruik ze met één tik opnieuw
+• Herinnering voor overeenkomsten — met een banner op Home vraag je de Account Holder om openstaande overeenkomsten te accepteren
+• Pictogrammen per platform — apps voor meerdere platforms tonen nu het echte pictogram van elk platform in de appdetails en widgets
+• Offlinemodus — een indicator laat zien wanneer je offline bent; gegevens in de cache blijven zichtbaar en acties die een verbinding nodig hebben zijn geblokkeerd
+• Beperkte export — beperk de export van een account tot specifieke apps, met een doorzoekbare appkiezer
+• Gebruiksanalyses — anoniem en optioneel; zet ze op elk moment uit in Instellingen
+• Fooienpot — StackConnect blijft gratis en open source; laat een optionele fooi achter als het je helpt
 • Bugfixes en stabiliteitsverbeteringen

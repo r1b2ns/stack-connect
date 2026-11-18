@@ -1,1 +1,1 @@
-appstore,connect,firebase,developer,testflight,analytics,reviews,manager,ios,tools
+connect,google play,console,firebase,testflight,developer,reviews,analytics,release,certificates

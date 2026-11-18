@@ -1,37 +1,43 @@
-O StackConnect é o companheiro móvel completo para programadores de aplicações. Gere as suas contas do App Store Connect e do Firebase a partir de uma única e elegante aplicação nativa para iOS — com mais integrações em breve.
+O StackConnect é um companheiro gratuito e de código aberto para programadores de aplicações. Faça a gestão das suas contas do App Store Connect, Google Play Console e Firebase numa única aplicação nativa para iPhone e iPad.
 
-FUNCIONALIDADES PRINCIPAIS
+INÍCIO
+• Todas as lojas num relance: aplicações em revisão, a aguardar lançamento e avaliações recentes
+• Widgets no Ecrã Principal para Em Revisão, A Aguardar Lançamento e Avaliações Recentes
+• Um lembrete quando o Titular da Conta tem de aceitar novos contratos
 
-App Store Connect
-• Explore todas as suas aplicações com pesquisa, ordenação e favoritos
-• Veja e edite metadados de versão: descrição, novidades, texto promocional, palavras-chave, URLs
-• Gere versões de aplicações em todas as plataformas (iOS, macOS, tvOS, visionOS)
-• Submeta para revisão, cancele revisões, publique e rejeite versões
-• Edite informações da aplicação: bundle ID, SKU, categoria, direitos de conteúdo, classificação etária
-• Gere declarações de privacidade da aplicação por idioma
-• Gere declarações de acessibilidade por família de dispositivos
-• Explore avaliações de clientes com scroll infinito, filtre por classificação
-• Responda a avaliações e elimine respostas diretamente da aplicação
-• Veja análises da aplicação com gráficos diários: instalações, eliminações, transferências, impressões, visualizações de página
-• Gere grupos beta e testadores do TestFlight
-• Adicione builds a grupos beta, convide membros da equipa
-• Gere membros e funções da equipa
-• Acompanhe o histórico da aplicação e submissões de revisão
+APP STORE CONNECT
+• Explore as aplicações com pesquisa, ordenação, favoritos e aplicações arquivadas
+• Edite os metadados da versão, faça a gestão das localizações e pré-visualize capturas de ecrã
+• Faça a gestão de versões em iOS, macOS, tvOS e visionOS, incluindo o estado do lançamento faseado
+• Submeta para revisão com uma lista de verificação prévia; cancele, publique ou volte a submeter
+• Acompanhe e descarte submissões para o App Review
+• Edite as Informações da Aplicação, a categoria, a classificação etária e as declarações de privacidade e acessibilidade
+• Leia e responda às avaliações de clientes, com modelos de resposta reutilizáveis
+• Painel de analytics e relatórios de analytics do App Store Connect com gráficos diários, semanais e mensais; transfira e faça a gestão dos ficheiros de relatórios
+• TestFlight: grupos beta, testadores, builds e informações de revisão beta
+• Certificados, perfis de aprovisionamento, identificadores e dispositivos: crie, inspecione e importe
+• Equipa: convide membros, edite funções, recursos e aplicações visíveis
 
-Firebase
-• Explore projetos e aplicações do Firebase
-• Gere parâmetros e condições do Remote Config
-• Veja o painel de análises
-• Envie campanhas de Cloud Messaging com segmentação de audiência
+GOOGLE PLAY CONSOLE
+• Explore as suas aplicações e as respetivas informações
+• Acompanhe as versões em todas as faixas
+• Veja as fichas da loja
+• Leia e responda a classificações e avaliações
+• Convide e remova utilizadores e gira as respetivas permissões nas aplicações
 
-Gestão Multi-Conta
-• Adicione múltiplas contas por fornecedor
-• Permissões granulares por conta (aplicações, versões, utilizadores, avaliações, TestFlight, análises)
-• Hierarquia de permissões: ver, editar, eliminar, adicionar
-• Offline-first: carregamento instantâneo a partir da cache local, sincronização com a API em segundo plano
-• Eliminação em cascata: remover uma conta limpa todos os dados relacionados
+FIREBASE
+• Explore projetos e aplicações
+• Gira os parâmetros e as condições do Remote Config
+• Envie notificações do Cloud Messaging com segmentação de público
 
-Mais Integrações em Breve
-• O StackConnect está em crescimento ativo — para além do App Store Connect e do Firebase, mais integrações com plataformas de desenvolvimento estão a caminho. Fique atento.
+MULTICONTA E EQUIPAS
+• Adicione várias contas por fornecedor
+• Permissões granulares por conta e por aplicação
+• Partilhe contas com a sua equipa através de exportações encriptadas, limitadas a aplicações específicas
+• Offline-first: os dados em cache carregam instantaneamente e sincronizam em segundo plano; um indicador mostra quando está offline
 
-Privacidade em primeiro lugar: todas as credenciais são armazenadas de forma segura no Keychain do iOS. Os dados das contas são guardados localmente com SwiftData. Sem análises, sem rastreamento, sem servidores de terceiros — apenas o utilizador e as APIs oficiais da Apple/Google.
+PRIVACIDADE
+As credenciais ficam guardadas na Keychain do iOS e a aplicação comunica diretamente com as APIs oficiais da Apple, da Google e do Firebase — não existem servidores do StackConnect. Analytics de utilização anónimos ajudam a melhorar a aplicação e podem ser desativados a qualquer momento nos Ajustes.
+
+GRATUITO E DE CÓDIGO ABERTO
+O StackConnect tem licença MIT e é gratuito, sem anúncios nem subscrições. Se lhe poupa tempo, uma gorjeta opcional ajuda a mantê-lo vivo.

@@ -1,1 +1,1 @@
-在一個地方管理您所有的開發者帳號。現已支援加密帳號共享，適合團隊使用！
+App Store Connect、Google Play Console 與 Firebase，盡在一款免費開源 App。版本發佈、評論、TestFlight、團隊與分析數據，用 iPhone 就能輕鬆掌握。

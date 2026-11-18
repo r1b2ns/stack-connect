@@ -1,37 +1,43 @@
-StackConnect ist der All-in-One-Begleiter für App-Entwickler auf dem iPhone. Verwalte deine App Store Connect- und Firebase-Konten in einer einzigen, wunderschönen nativen iOS-App — weitere Integrationen folgen in Kürze.
+StackConnect ist ein kostenloser Open-Source-Begleiter für App-Entwickler. Verwalte deine Konten für App Store Connect, Google Play Console und Firebase in einer nativen App für iPhone und iPad.
 
-HAUPTFUNKTIONEN
+START
+• Alle Stores auf einen Blick: Apps in Prüfung, Apps mit Freigabe-Wartestatus und aktuelle Bewertungen
+• Widgets für den Home-Bildschirm: „In Prüfung“, „Wartet auf Veröffentlichung“ und „Neueste Bewertungen“
+• Eine Erinnerung, wenn der Account Holder neue Vereinbarungen akzeptieren muss
 
-App Store Connect
-- Durchsuche all deine Apps mit Suche, Sortierung und Favoriten
-- Versionsmetadaten anzeigen und bearbeiten: Beschreibung, Neuheiten, Werbetext, Keywords, URLs
-- App-Versionen über alle Plattformen verwalten (iOS, macOS, tvOS, visionOS)
-- Zur Prüfung einreichen, Prüfung abbrechen, veröffentlichen und Versionen ablehnen
-- App-Informationen bearbeiten: Bundle-ID, SKU, Kategorie, Inhaltsrechte, Altersfreigabe
-- Datenschutzangaben pro Sprache verwalten
-- Barrierefreiheitsangaben pro Gerätefamilie verwalten
-- Kundenbewertungen mit endlosem Scrollen durchsuchen, nach Bewertung filtern
-- Auf Bewertungen antworten und Antworten direkt in der App löschen
-- App-Analysen mit täglichen Diagrammen anzeigen: Installationen, Löschungen, Downloads, Impressionen, Seitenaufrufe
-- TestFlight-Betagruppen und Tester verwalten
-- Builds zu Betagruppen hinzufügen, Teammitglieder einladen
-- Teammitglieder und Rollen verwalten
-- App-Verlauf und Prüfeinreichungen nachverfolgen
+APP STORE CONNECT
+• Apps durchsuchen, sortieren, als Favoriten markieren und archivierte Apps anzeigen
+• Versionsmetadaten bearbeiten, Lokalisierungen verwalten und Screenshots in der Vorschau ansehen
+• Versionen für iOS, macOS, tvOS und visionOS verwalten, inklusive Status der phasenweisen Veröffentlichung
+• Zur Prüfung einreichen – mit Checkliste vor der Einreichung; abbrechen, veröffentlichen oder erneut einreichen
+• App-Review-Einreichungen verfolgen und verwerfen
+• App-Informationen, Kategorie, Altersfreigabe sowie Angaben zu Datenschutz und Bedienungshilfen bearbeiten
+• Kundenbewertungen lesen und beantworten, mit wiederverwendbaren Antwortvorlagen
+• Analytics-Dashboard und Analytics-Berichte von App Store Connect mit Tages-, Wochen- und Monatsdiagrammen; Berichtsdateien laden und verwalten
+• TestFlight: Beta-Gruppen, Tester, Builds und Informationen zur Beta-Prüfung
+• Zertifikate, Provisioning-Profile, Kennungen und Geräte: erstellen, ansehen und importieren
+• Team: Mitglieder einladen, Rollen, Ressourcen und sichtbare Apps bearbeiten
 
-Firebase
-- Firebase-Projekte und -Apps durchsuchen
-- Remote-Config-Parameter und -Bedingungen verwalten
-- Analytics-Dashboard anzeigen
-- Cloud-Messaging-Kampagnen mit Zielgruppenausrichtung senden
+GOOGLE PLAY CONSOLE
+• Apps und App-Informationen durchsuchen
+• Releases in allen Tracks verfolgen
+• Store-Einträge ansehen
+• Bewertungen und Rezensionen lesen und beantworten
+• Nutzer einladen und entfernen sowie ihre App-Berechtigungen verwalten
 
-Multi-Konto-Verwaltung
-- Mehrere Konten pro Anbieter hinzufügen
-- Detaillierte Berechtigungen pro Konto (Apps, Versionen, Benutzer, Bewertungen, TestFlight, Analytics)
-- Berechtigungshierarchie: Anzeigen, Bearbeiten, Löschen, Hinzufügen
-- Offline-first: Sofort aus dem lokalen Cache laden, im Hintergrund mit der API synchronisieren
-- Kaskadierende Löschung: Beim Entfernen eines Kontos werden alle zugehörigen Daten bereinigt
+FIREBASE
+• Projekte und Apps durchsuchen
+• Remote-Config-Parameter und -Bedingungen verwalten
+• Cloud-Messaging-Benachrichtigungen mit Zielgruppenauswahl senden
 
-Weitere Integrationen in Kürze
-- StackConnect wächst stetig — über App Store Connect und Firebase hinaus sind weitere Integrationen für Entwicklerplattformen in Planung. Bleib dran.
+MEHRERE KONTEN UND TEAMS
+• Mehrere Konten pro Anbieter hinzufügen
+• Detaillierte Berechtigungen pro Konto und pro App
+• Konten per verschlüsseltem Export mit dem Team teilen, begrenzt auf bestimmte Apps
+• Offline-first: Zwischengespeicherte Daten laden sofort und werden im Hintergrund synchronisiert; eine Anzeige zeigt, wenn du offline bist
 
-Datenschutz an erster Stelle: Alle Zugangsdaten werden sicher im iOS-Schlüsselbund gespeichert. Kontodaten werden lokal mit SwiftData zwischengespeichert. Keine Analysen, kein Tracking, keine Drittanbieter-Server — nur du und die offiziellen APIs von Apple/Google.
+DATENSCHUTZ
+Zugangsdaten werden im iOS-Schlüsselbund gespeichert, und die App kommuniziert direkt mit den offiziellen APIs von Apple, Google und Firebase – es gibt keine StackConnect-Server. Anonyme Nutzungsanalysen helfen, die App zu verbessern, und lassen sich jederzeit in den Einstellungen deaktivieren.
+
+KOSTENLOS UND OPEN SOURCE
+StackConnect steht unter der MIT-Lizenz und ist kostenlos – ohne Werbung und ohne Abos. Wenn es dir Zeit spart, hilft ein freiwilliges Trinkgeld, das Projekt am Laufen zu halten.

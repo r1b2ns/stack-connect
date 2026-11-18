@@ -1,7 +1,12 @@
-• Informes de Analytics — consulta y descarga tus estadísticas de App Store Connect dentro de la app, con informes agrupados por categoría y gráficos diarios, semanales o mensuales. Marca favoritos, oculta los que no uses y gestiona los archivos descargados desde una pantalla de Archivos dedicada
-• Envíos — sigue, descarta y reenvía tus envíos de revisión de la App Store por app, con un manejo claro del límite de envíos simultáneos de Apple
-• Gestión del equipo — edita el rol, los recursos y las apps visibles de un miembro, consulta sus permisos y elimina miembros o cancela invitaciones desde la pantalla de detalle del usuario
-• Iconos por plataforma — las apps multiplataforma (como iOS + tvOS) ahora muestran el icono real de cada plataforma en el detalle de la app y en los widgets de En espera de publicación
-• Modo sin conexión — un indicador te avisa cuando estás sin conexión; tus datos en caché siguen visibles y las acciones que requieren conexión se bloquean de forma segura
-• Exportación con alcance — limita la exportación de una cuenta a los permisos de apps concretas, con un selector de apps con búsqueda
+• Google Play Console: añade cuentas de Google Play y consulta tus apps de Play junto a tus apps de la App Store: versiones en todas las pistas, fichas de la tienda, valoraciones y reseñas con respuestas, y gestión de usuarios
+• Informes de analíticas: consulta y descarga tus analíticas de App Store Connect, con informes agrupados por categoría y gráficos diarios, semanales o mensuales. Marca favoritos, oculta los que no uses y gestiona los archivos descargados desde una pantalla de Archivos propia
+• Envíos: sigue, descarta y vuelve a enviar tus envíos a App Review de cada app, con un tratamiento claro del límite de envíos simultáneos de Apple
+• Gestión de equipo: edita el rol, los recursos y las apps visibles de un miembro, y elimina miembros o cancela invitaciones
+• Plantillas de respuesta: guarda tus respuestas habituales a las reseñas y reutilízalas con un toque
+• Recordatorio de acuerdos: un banner en Inicio te permite pedir al titular de la cuenta que acepte los acuerdos pendientes
+• Iconos por plataforma: las apps multiplataforma muestran ahora el icono real de cada plataforma en el detalle de la app y en los widgets
+• Modo sin conexión: un indicador muestra cuándo estás sin conexión; los datos en caché siguen visibles y las acciones que necesitan conexión quedan bloqueadas
+• Exportación acotada: limita la exportación de una cuenta a apps concretas, con un selector de apps con búsqueda
+• Analíticas de uso: anónimas y opcionales; desactívalas cuando quieras en Ajustes
+• Bote de propinas: StackConnect sigue siendo gratuita y de código abierto; deja una propina opcional si te resulta útil
 • Corrección de errores y mejoras de estabilidad

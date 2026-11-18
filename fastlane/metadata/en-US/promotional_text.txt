@@ -1,1 +1,1 @@
-Manage all your developer accounts in one place. Now with encrypted account sharing for teams!
+App Store Connect, Google Play Console and Firebase in one free, open-source app. Releases, reviews, TestFlight, teams and analytics — right from your iPhone.

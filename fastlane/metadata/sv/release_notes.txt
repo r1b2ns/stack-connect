@@ -1,7 +1,12 @@
-• Analytics-rapporter — visa och ladda ned din App Store Connect-statistik direkt i appen, med rapporter grupperade efter kategori och diagram per dag, vecka eller månad. Markera favoriter, dölj sådana du inte använder och hantera nedladdade filer från en egen Filer-vy
-• Inskickningar — följ, kasta och skicka in dina App Review-inskickningar på nytt per app, med tydlig hantering av Apples gräns för samtidiga inskickningar
-• Teamhantering — redigera en medlems roll, resurser och synliga appar, se medlemmens behörigheter och ta bort medlemmar eller dra tillbaka inbjudningar direkt i användarens detaljvy
-• Ikoner per plattform — appar för flera plattformar (som iOS + tvOS) visar nu varje plattforms riktiga ikon i appdetaljerna och i widgetarna Väntar på lansering
-• Offline-läge — en indikator visar när du är offline; dina cachade data går fortfarande att visa och åtgärder som kräver anslutning blockeras på ett säkert sätt
-• Riktad export — begränsa en kontoexport till behörigheterna för specifika appar, med en sökbar app-väljare
+• Google Play Console — lägg till Google Play-konton och se dina Play-appar bredvid dina App Store-appar: releaser i alla spår, butikssidor, betyg och recensioner med svar samt användarhantering
+• Analysrapporter — se och ladda ned din analys från App Store Connect, med rapporter grupperade efter kategori och dagliga, veckovisa eller månatliga diagram. Markera favoriter, dölj dem du inte använder och hantera nedladdade filer på en egen filskärm
+• Inskick — följ, avfärda och skicka in dina inskick till App Review igen för varje app, med tydlig hantering av Apples gräns för samtidiga inskick
+• Teamhantering — redigera en medlems roll, resurser och synliga appar, och ta bort medlemmar eller avbryt inbjudningar
+• Svarsmallar — spara dina vanligaste svar på recensioner och återanvänd dem med ett tryck
+• Avtalspåminnelse — en banner på Hem låter dig be kontoinnehavaren godkänna väntande avtal
+• Ikoner per plattform — appar för flera plattformar visar nu varje plattforms riktiga ikon i appdetaljerna och i widgetar
+• Offlineläge — en indikator visar när du är offline; cachad data kan fortfarande visas och åtgärder som kräver anslutning är blockerade
+• Begränsad export — begränsa en kontoexport till specifika appar, med en sökbar appväljare
+• Användningsanalys — anonym och valfri; stäng av den när som helst i Inställningar
+• Dricksburken — StackConnect förblir gratis och med öppen källkod; lämna en frivillig dricks om appen hjälper dig
 • Buggfixar och stabilitetsförbättringar

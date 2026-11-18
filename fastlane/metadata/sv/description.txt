@@ -1,37 +1,43 @@
-StackConnect är den kompletta mobilkompanjonen för apputvecklare. Hantera dina App Store Connect- och Firebase-konton från en enda, snygg nativ iOS-app — med fler integrationer på väg.
+StackConnect är ett gratis följeslagare med öppen källkod för apputvecklare. Hantera dina konton för App Store Connect, Google Play Console och Firebase i en och samma inbyggda app för iPhone och iPad.
 
-HUVUDFUNKTIONER
+HEM
+• Alla butiker på en blick: appar under granskning, appar som väntar på release och senaste recensioner
+• Widgetar för hemskärmen för Under granskning, Väntar på release och Senaste recensioner
+• En påminnelse när kontoinnehavaren behöver godkänna nya avtal
 
-App Store Connect
-• Bläddra bland alla dina appar med sökning, sortering och favoriter
-• Visa och redigera versionsmetadata: beskrivning, nyheter, kampanjtext, nyckelord, URL:er
-• Hantera appversioner på alla plattformar (iOS, macOS, tvOS, visionOS)
-• Skicka för granskning, avbryt granskning, publicera och avvisa versioner
-• Redigera appinformation: bundle-ID, SKU, kategori, innehållsrättigheter, åldersgräns
-• Hantera appens integritetsdeklarationer per språk
-• Hantera tillgänglighetsdeklarationer per enhetsfamilj
-• Bläddra bland kundrecensioner med oändlig scrollning, filtrera efter betyg
-• Svara på recensioner och ta bort svar direkt i appen
-• Visa appanalys med dagliga diagram: installationer, borttagningar, nedladdningar, visningar, sidvisningar
-• Hantera TestFlight-betagrupper och testare
-• Lägg till byggen i betagrupper, bjud in teammedlemmar
-• Hantera teammedlemmar och roller
-• Följ apphistorik och granskningsinskickningar
+APP STORE CONNECT
+• Bläddra bland appar med sökning, sortering, favoriter och arkiverade appar
+• Redigera versionsmetadata, hantera lokaliseringar och förhandsgranska skärmbilder
+• Hantera versioner för iOS, macOS, tvOS och visionOS, inklusive status för stegvis release
+• Skicka in för granskning med en checklista före inskick; avbryt, släpp eller skicka in igen
+• Följ och avfärda inskick till App Review
+• Redigera appinformation, kategori, åldersgräns samt integritets- och tillgänglighetsdeklarationer
+• Läs och svara på kundrecensioner, med återanvändbara svarsmallar
+• Analysöversikt plus analysrapporter från App Store Connect med dagliga, veckovisa och månatliga diagram; ladda ned och hantera rapportfiler
+• TestFlight: betagrupper, testare, byggen och information om betagranskning
+• Certifikat, provisioneringsprofiler, identifierare och enheter: skapa, granska och importera
+• Team: bjud in medlemmar, redigera roller, resurser och synliga appar
 
-Firebase
-• Bläddra bland Firebase-projekt och appar
-• Hantera Remote Config-parametrar och villkor
-• Visa analyspanelen
-• Skicka Cloud Messaging-kampanjer med målgruppsstyrning
+GOOGLE PLAY CONSOLE
+• Bläddra bland dina appar och deras appinformation
+• Följ releaser i alla spår
+• Visa butikssidor
+• Läs och svara på betyg och recensioner
+• Bjud in och ta bort användare och hantera deras appbehörigheter
 
-Hantering av flera konton
+FIREBASE
+• Bläddra bland projekt och appar
+• Hantera parametrar och villkor i Remote Config
+• Skicka Cloud Messaging-notiser med målgruppsinriktning
+
+FLERA KONTON OCH TEAM
 • Lägg till flera konton per leverantör
-• Detaljerade behörigheter per konto (appar, versioner, användare, recensioner, TestFlight, analys)
-• Behörighetshierarki: visa, redigera, ta bort, lägga till
-• Offline-first: ladda direkt från lokal cache, synka från API i bakgrunden
-• Kaskadradering: att ta bort ett konto rensar alla relaterade data
+• Detaljerade behörigheter per konto och per app
+• Dela konton med ditt team via krypterade exporter, begränsade till specifika appar
+• Offline först: cachad data laddas direkt och synkas i bakgrunden; en indikator visar när du är offline
 
-Fler integrationer kommer snart
-• StackConnect växer aktivt — utöver App Store Connect och Firebase är fler integrationer med utvecklarplattformar på väg. Håll utkik.
+INTEGRITET
+Inloggningsuppgifter lagras i iOS-nyckelringen, och appen kommunicerar direkt med Apples, Googles och Firebases officiella API:er — det finns inga StackConnect-servrar. Anonym användningsanalys hjälper oss att förbättra appen och kan stängas av när som helst i Inställningar.
 
-Integritet först: alla autentiseringsuppgifter lagras säkert i iOS Keychain. Kontodata cachas lokalt med SwiftData. Ingen analys, ingen spårning, inga tredjepartsservrar — bara du och Apples/Googles officiella API:er.
+GRATIS OCH ÖPPEN KÄLLKOD
+StackConnect har MIT-licens och är gratis, utan reklam och utan prenumerationer. Om appen sparar tid för dig hjälper en frivillig dricks oss att hålla den igång.

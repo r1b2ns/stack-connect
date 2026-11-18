@@ -1,37 +1,43 @@
-StackConnect is de alles-in-één mobiele metgezel voor app-ontwikkelaars. Beheer je App Store Connect- en Firebase-accounts vanuit één mooie, native iOS-app — met meer integraties binnenkort.
+StackConnect is een gratis, open-source hulpmiddel voor app-ontwikkelaars. Beheer je accounts voor App Store Connect, Google Play Console en Firebase vanuit één native app voor iPhone en iPad.
 
-BELANGRIJKSTE FUNCTIES
+HOME
+• Alle stores in één oogopslag: apps in beoordeling, apps die wachten op release en recente reviews
+• Widgets voor het beginscherm voor In beoordeling, Wacht op release en Recente reviews
+• Een herinnering wanneer de Account Holder nieuwe overeenkomsten moet accepteren
 
-App Store Connect
-• Blader door al je apps met zoeken, sorteren en favorieten
-• Bekijk en bewerk versiemetadata: beschrijving, nieuwe functies, promotietekst, trefwoorden, URL's
-• Beheer app-versies op alle platformen (iOS, macOS, tvOS, visionOS)
-• Dien in voor beoordeling, annuleer beoordeling, geef vrij en wijs versies af
-• Bewerk app-informatie: bundel-ID, SKU, categorie, inhoudsrechten, leeftijdsclassificatie
-• Beheer privacyverklaringen per taalregio
-• Beheer toegankelijkheidsverklaringen per apparaatfamilie
-• Blader door klantbeoordelingen met oneindig scrollen, filter op sterren
-• Reageer op beoordelingen en verwijder reacties rechtstreeks vanuit de app
-• Bekijk app-analyse met dagelijkse grafieken: installaties, verwijderingen, downloads, vertoningen, paginaweergaven
-• Beheer TestFlight-bètagroepen en testers
-• Voeg builds toe aan bètagroepen, nodig teamleden uit
-• Beheer teamleden en rollen
-• Volg app-geschiedenis en beoordelingsinzendingen
+APP STORE CONNECT
+• Blader door apps met zoeken, sorteren, favorieten en gearchiveerde apps
+• Bewerk versiemetadata, beheer lokalisaties en bekijk een voorbeeld van screenshots
+• Beheer versies op iOS, macOS, tvOS en visionOS, inclusief de status van gefaseerde release
+• Dien in ter beoordeling met een checklist vooraf; annuleer, geef vrij of dien opnieuw in
+• Volg en verwijder App Review-inzendingen
+• Bewerk app-informatie, categorie, leeftijdsclassificatie en verklaringen over privacy en toegankelijkheid
+• Lees en beantwoord klantreviews, met herbruikbare antwoordsjablonen
+• Analysedashboard plus analyserapporten van App Store Connect met dagelijkse, wekelijkse en maandelijkse grafieken; download en beheer rapportbestanden
+• TestFlight: betagroepen, testers, builds en informatie over betabeoordeling
+• Certificaten, provisioningprofielen, identifiers en apparaten: maak, bekijk en importeer
+• Team: nodig leden uit, bewerk rollen, resources en zichtbare apps
 
-Firebase
-• Blader door Firebase-projecten en -apps
-• Beheer Remote Config-parameters en -voorwaarden
-• Bekijk het analysedashboard
-• Stuur Cloud Messaging-campagnes met doelgroeptargeting
+GOOGLE PLAY CONSOLE
+• Blader door je apps en hun app-informatie
+• Volg releases op elke track
+• Bekijk store-vermeldingen
+• Lees en beantwoord beoordelingen en reviews
+• Nodig gebruikers uit en verwijder ze, en beheer hun app-rechten
 
-Meerdere accounts beheren
-• Voeg meerdere accounts toe per provider
-• Gedetailleerde machtigingen per account (apps, versies, gebruikers, beoordelingen, TestFlight, analyse)
-• Machtigingenhiërarchie: bekijken, bewerken, verwijderen, toevoegen
-• Offline-first: laad direct vanuit lokale cache, synchroniseer op de achtergrond via API
-• Doorlopende verwijdering: het verwijderen van een account ruimt alle gerelateerde gegevens op
+FIREBASE
+• Blader door projecten en apps
+• Beheer parameters en voorwaarden van Remote Config
+• Verstuur Cloud Messaging-meldingen met doelgroepselectie
 
-Meer integraties binnenkort
-• StackConnect groeit actief — naast App Store Connect en Firebase zijn er meer integraties met ontwikkelaarsplatformen op komst. Blijf op de hoogte.
+MEERDERE ACCOUNTS EN TEAMS
+• Voeg meerdere accounts per provider toe
+• Gedetailleerde rechten per account en per app
+• Deel accounts met je team via versleutelde exports, beperkt tot specifieke apps
+• Offline-first: gegevens in de cache laden direct en synchroniseren op de achtergrond; een indicator laat zien wanneer je offline bent
 
-Privacy voorop: alle inloggegevens worden veilig opgeslagen in de iOS-sleutelhanger. Accountgegevens worden lokaal gecacht met SwiftData. Geen analyse, geen tracking, geen servers van derden — alleen jij en de officiële API's van Apple/Google.
+PRIVACY
+Inloggegevens worden opgeslagen in de iOS-sleutelhanger, en de app communiceert rechtstreeks met de officiële API's van Apple, Google en Firebase — er zijn geen StackConnect-servers. Anonieme gebruiksanalyses helpen de app te verbeteren en kunnen op elk moment in Instellingen worden uitgezet.
+
+GRATIS EN OPEN SOURCE
+StackConnect heeft een MIT-licentie en is gratis, zonder advertenties en zonder abonnementen. Bespaart het je tijd, dan helpt een optionele fooi om het project draaiende te houden.

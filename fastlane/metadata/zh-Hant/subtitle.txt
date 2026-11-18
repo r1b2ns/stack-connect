@@ -1,1 +1,1 @@
-管理一切
+App Store、Play 與 Firebase

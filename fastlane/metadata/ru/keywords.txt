@@ -1,1 +1,1 @@
-appstore,connect,firebase,разработчик,testflight,аналитика,отзывы,менеджер,ios,инструменты
+google play,console,firebase,testflight,разработчик,отзывы,аналитика,релиз,сертификаты,команда

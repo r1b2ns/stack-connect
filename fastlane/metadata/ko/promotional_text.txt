@@ -1,1 +1,1 @@
-모든 개발자 계정을 한곳에서 관리하세요. 팀을 위한 암호화된 계정 공유 기능이 추가되었습니다!
+App Store Connect, Google Play Console, Firebase를 하나의 무료 오픈소스 앱에서. 출시, 리뷰, TestFlight, 팀, 분석까지 iPhone에서 바로 확인하세요.

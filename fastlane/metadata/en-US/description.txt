@@ -1,37 +1,43 @@
-StackConnect is the all-in-one mobile companion for app developers. Manage your App Store Connect and Firebase accounts from a single, beautiful native iOS app — with more integrations coming soon.
+StackConnect is a free, open-source companion for app developers. Manage your App Store Connect, Google Play Console and Firebase accounts from one native iPhone and iPad app.
 
-KEY FEATURES
+HOME
+• Every store at a glance: apps in review, awaiting release and recent reviews
+• Home Screen widgets for In Review, Awaiting Release and Recent Reviews
+• A reminder when the Account Holder needs to accept new agreements
 
-App Store Connect
-• Browse all your apps with search, sort, and favorites
-• View and edit version metadata: description, what's new, promotional text, keywords, URLs
-• Manage app versions across all platforms (iOS, macOS, tvOS, visionOS)
-• Submit for review, cancel review, release, and reject versions
-• Edit App Information: bundle ID, SKU, category, content rights, age rating
-• Manage app privacy declarations per locale
-• Manage accessibility declarations per device family
-• Browse customer reviews with infinite scroll, filter by rating
-• Reply to reviews and delete responses directly from the app
-• View app analytics with daily charts: installs, deletes, downloads, impressions, page views
-• Manage TestFlight beta groups and testers
-• Add builds to beta groups, invite team members
-• Manage team members and roles
-• Track app history and review submissions
+APP STORE CONNECT
+• Browse apps with search, sort, favorites and archived apps
+• Edit version metadata, manage localizations and preview screenshots
+• Manage versions on iOS, macOS, tvOS and visionOS, including phased release status
+• Submit for review with a pre-submission checklist; cancel, release or resubmit
+• Track and discard App Review submissions
+• Edit App Information, category, age rating, privacy and accessibility declarations
+• Read and reply to customer reviews, with reusable reply templates
+• Analytics dashboard plus App Store Connect analytics reports with daily, weekly and monthly charts; download and manage report files
+• TestFlight: beta groups, testers, builds and beta review information
+• Certificates, provisioning profiles, identifiers and devices: create, inspect and import
+• Team: invite members, edit roles, resources and visible apps
 
-Firebase
-• Browse Firebase projects and apps
+GOOGLE PLAY CONSOLE
+• Browse your apps and their app information
+• Follow releases on every track
+• View store listings
+• Read and reply to ratings and reviews
+• Invite and remove users and manage their app permissions
+
+FIREBASE
+• Browse projects and apps
 • Manage Remote Config parameters and conditions
-• View analytics dashboard
-• Send Cloud Messaging campaigns with audience targeting
+• Send Cloud Messaging notifications with audience targeting
 
-Multi-Account Management
-• Add multiple accounts per provider
-• Granular permissions per account (apps, versions, users, reviews, TestFlight, analytics)
-• Permissions hierarchy: view, edit, delete, add
-• Offline-first: load instantly from local cache, sync from API in background
-• Cascading deletion: removing an account cleans up all related data
+MULTI-ACCOUNT AND TEAMS
+• Add several accounts per provider
+• Granular permissions per account and per app
+• Share accounts with your team through encrypted exports, scoped to specific apps
+• Offline-first: cached data loads instantly and syncs in the background; an indicator shows when you are offline
 
-More Integrations Coming Soon
-• StackConnect is actively growing — beyond App Store Connect and Firebase, more developer platform integrations are on the way. Stay tuned.
+PRIVACY
+Credentials are stored in the iOS Keychain, and the app talks directly to the official Apple, Google and Firebase APIs — there are no StackConnect servers. Anonymous usage analytics help improve the app and can be turned off at any time in Settings.
 
-Privacy first: all credentials are stored securely in the iOS Keychain. Account data is cached locally with SwiftData. No analytics, no tracking, no third-party servers — just you and Apple/Google's official APIs.
+FREE AND OPEN SOURCE
+StackConnect is MIT-licensed and free, with no ads and no subscriptions. If it saves you time, an optional tip helps keep it going.
