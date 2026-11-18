@@ -34,11 +34,60 @@ struct AllReviewsAppGroup: Identifiable, Hashable {
     }
 }
 
+/// Which reviews the list shows (regular width offers the picker; compact
+/// always shows `.all`).
+enum AllReviewsFilter: String, CaseIterable, Identifiable {
+    case all
+    case appStore
+    case googlePlay
+    case unreplied
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all:        return String(localized: "All")
+        case .appStore:   return String(localized: "App Store")
+        case .googlePlay: return String(localized: "Google Play")
+        case .unreplied:  return String(localized: "Unreplied", comment: "Reviews filter: reviews without a developer reply.")
+        }
+    }
+
+    func includes(_ row: DashboardReview) -> Bool {
+        switch self {
+        case .all:        return true
+        case .appStore:   return row.provider == .apple
+        case .googlePlay: return row.provider == .googlePlay
+        case .unreplied:  return (row.review.responseBody ?? "").isEmpty
+        }
+    }
+}
+
 struct AllReviewsUiState {
     var groups: [AllReviewsAppGroup] = []
     var isLoading = false
+    var filter: AllReviewsFilter = .all
 
     var isEmpty: Bool { groups.isEmpty }
+
+    /// `groups` narrowed by `filter`; groups left without reviews are dropped.
+    var visibleGroups: [AllReviewsAppGroup] {
+        guard filter != .all else { return groups }
+        return groups.compactMap { group in
+            let reviews = group.reviews.filter(filter.includes)
+            guard !reviews.isEmpty else { return nil }
+            return AllReviewsAppGroup(
+                provider: group.provider, accountId: group.accountId, appId: group.appId, appName: group.appName,
+                iconUrl: group.iconUrl, platform: group.platform, target: group.target, account: group.account,
+                reviews: reviews
+            )
+        }
+    }
+
+    /// Reviews without a reply, across every store (the "Unreplied" badge).
+    var unrepliedCount: Int {
+        groups.reduce(0) { $0 + $1.reviews.filter(AllReviewsFilter.unreplied.includes).count }
+    }
 }
 
 // MARK: - Implementation

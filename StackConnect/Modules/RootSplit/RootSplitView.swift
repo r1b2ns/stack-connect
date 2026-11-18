@@ -99,7 +99,7 @@ struct RootSplitView<HomeVM: HomeViewModelProtocol, SidebarVM: RootSidebarViewMo
                 await sidebarViewModel.load()
             }
         case .recentReviews:
-            AllReviewsViewFactory.build()
+            AllReviewsViewFactory.build(showsFilter: true)
         case .account(let id, let section):
             if let account = sidebarViewModel.account(id: id) {
                 RootAccountContentView(account: account, section: section)
