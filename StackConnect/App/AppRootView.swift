@@ -52,6 +52,8 @@ struct AppRootView: View {
                 homeViewModel: homeViewModel,
                 sidebarViewModel: sidebarViewModel
             )
+            // Lets `AppCommands` reach the selection while this layout is up.
+            .focusedSceneObject(splitCoordinator)
         } else {
             HomeViewFactory.build(viewModel: homeViewModel, coordinator: homeCoordinator)
                 .homeDeepLinks(homeCoordinator)

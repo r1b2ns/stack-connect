@@ -135,6 +135,8 @@ final class RootSplitCoordinator: ObservableObject {
     /// Bumped whenever accounts may have changed behind the sidebar's back (an
     /// account deleted from a column), so it reloads.
     @Published private(set) var accountsRevision = 0
+    /// Bumped by the Find command (⌘F); see `stackSearchShortcutFocus()`.
+    @Published private(set) var searchRequest = 0
 
     let contentCoordinator = HomeCoordinator()
     let detailCoordinator = HomeCoordinator()
@@ -165,6 +167,11 @@ final class RootSplitCoordinator: ObservableObject {
     func showInDetail(_ route: HomeRoute) {
         detailRoute = route
         detailCoordinator.path = NavigationPath()
+    }
+
+    /// The Find command: focus the search field of the screen on display.
+    func requestSearch() {
+        searchRequest += 1
     }
 
     func returnToDashboard() {

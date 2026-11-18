@@ -100,6 +100,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 onSave: { try await viewModel.updatePromotionalText() }
             )
             .trackScreen(.versionPromotionalText)
+            .stackFormSheet()
         }
         .sheet(isPresented: $viewModel.uiState.showDescription) {
             StackTextView(
@@ -109,6 +110,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 onSave: { try await viewModel.updateDescription() }
             )
             .trackScreen(.versionDescription)
+            .stackFormSheet()
         }
         .sheet(isPresented: $viewModel.uiState.showWhatsNew) {
             StackTextView(
@@ -118,6 +120,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 onSave: { try await viewModel.updateWhatsNew() }
             )
             .trackScreen(.versionWhatsNew)
+            .stackFormSheet()
         }
         .sheet(isPresented: localizationPickerBinding) {
             if let field = viewModel.uiState.localizationPickerField {
@@ -129,10 +132,12 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 } onCancel: {
                     viewModel.uiState.localizationPickerField = nil
                 }
+                .stackFormSheet()
             }
         }
         .sheet(isPresented: $viewModel.uiState.showReleaseSheet) {
             VersionReleaseSheet(viewModel: viewModel)
+                .stackFormSheet()
         }
         .sheet(isPresented: $viewModel.uiState.showBuildPicker) {
             BuildPickerSheet(
@@ -150,9 +155,11 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                 viewModel.uiState.showBuildPicker = false
             }
             .task { await viewModel.loadAvailableBuilds() }
+            .stackFormSheet()
         }
         .sheet(isPresented: $viewModel.uiState.showPhasedReleaseSheet) {
             PhasedReleaseSheet(viewModel: viewModel)
+                .stackFormSheet()
         }
         .sheet(isPresented: $viewModel.uiState.showPreSubmitSheet) {
             if let checklist = viewModel.uiState.preSubmitChecklist {
@@ -162,6 +169,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
                     onSubmit: { Task { await viewModel.confirmPreSubmit() } },
                     onCancel: { viewModel.uiState.showPreSubmitSheet = false }
                 )
+                .stackFormSheet()
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -504,6 +512,7 @@ struct VersionDetailView<ViewModel: VersionDetailViewModelProtocol>: View {
         if action.isProminent {
             buildToolbarButtonBase(action)
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.return, modifiers: .command)
         } else {
             buildToolbarButtonBase(action)
                 .buttonStyle(.bordered)

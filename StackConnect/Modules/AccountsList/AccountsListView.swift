@@ -63,6 +63,7 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                     coordinator.showAddAccount = false
                     Task { await viewModel.loadAccounts() }
                 }
+                .stackFormSheet()
             }
             .sheet(isPresented: $coordinator.showImport) {
                 buildImportSheet()

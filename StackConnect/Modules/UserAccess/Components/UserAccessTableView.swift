@@ -63,6 +63,7 @@ struct UserAccessTableView<ViewModel: UserAccessViewModelProtocol>: View {
         }
         .navigationTitle(String(localized: "Users and Access"))
         .searchable(text: $viewModel.uiState.searchQuery, prompt: String(localized: "Search by name or email"))
+        .stackSearchShortcutFocus()
         .trackScreen(.userAccess)
         .toolbar { buildToolbar() }
         .inspector(isPresented: inspectorBinding) {

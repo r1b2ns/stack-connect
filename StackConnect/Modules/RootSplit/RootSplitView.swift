@@ -52,6 +52,7 @@ struct RootSplitView<HomeVM: HomeViewModelProtocol, SidebarVM: RootSidebarViewMo
         }
         // Sidebar beside the columns (not over them) whenever it is shown.
         .navigationSplitViewStyle(.balanced)
+        .environment(\.stackSearchRequest, coordinator.searchRequest)
         .task { await sidebarViewModel.load() }
         // Cheap local reload: picks up accounts added or removed from a column.
         .onChange(of: coordinator.selection) {

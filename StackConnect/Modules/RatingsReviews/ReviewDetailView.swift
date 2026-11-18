@@ -382,6 +382,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
             onDismiss: { viewModel.cancelReplySheet() }
         ) {
             buildReplySheet()
+                .stackFormSheet()
         }
         .sheet(
             isPresented: $viewModel.uiState.showTemplatesSheet,
@@ -394,6 +395,7 @@ struct ReviewDetailView<ViewModel: ReviewDetailViewModelProtocol>: View {
                 onSelect: { template in viewModel.selectTemplate(template) }
             )
             .presentationDetents([.medium, .large])
+            .stackFormSheet()
         }
         .alert(
             String(localized: "Delete Reply"),

@@ -238,6 +238,7 @@ private struct UserAccessPresentationsModifier<ViewModel: UserAccessViewModelPro
                 } onCancel: {
                     viewModel.uiState.showInviteUser = false
                 }
+                .stackFormSheet()
             }
             .alert(
                 viewModel.uiState.confirmDeleteUser?.isPending == true

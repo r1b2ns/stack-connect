@@ -137,6 +137,7 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search by name or bundle ID")
             )
+            .stackSearchShortcutFocus()
             .toast(
                 isPresented: $viewModel.uiState.showSyncToast,
                 message: String(localized: "Syncing apps...")

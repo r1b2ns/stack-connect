@@ -39,6 +39,7 @@ struct RootDashboardView<ViewModel: HomeViewModelProtocol, SidebarViewModel: Roo
         }
         .sheet(isPresented: $isCustomizingWidgets) {
             CustomizeWidgetsView(viewModel: viewModel)
+                .stackFormSheet()
         }
         .homePresentations(viewModel: viewModel)
     }

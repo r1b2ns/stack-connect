@@ -98,6 +98,9 @@ struct StackConnectApp: App {
                 buildRoot()
             }
         }
+        // Menu bar (Mac) and hardware keyboard shortcuts (iPad), driven by
+        // the split view's selection.
+        .commands { AppCommands() }
     }
 
     @ViewBuilder
