@@ -109,6 +109,55 @@ final class GooglePlayErrorTranslatorTests: XCTestCase {
         )
     }
 
+    func testSignInCopyNamesTheGoogleAccountEmailWhenKnown() {
+        let email = "dev@example.com"
+        XCTAssertEqual(
+            GooglePlayErrorTranslator.friendlyMessage(for: StackError.Auth(message: "detail"), authMethod: .googleSignIn, accountEmail: email),
+            String(localized: "Google Play denied access to the Google account \(email).") + "\ndetail"
+        )
+        XCTAssertEqual(
+            GooglePlayErrorTranslator.friendlyMessage(for: StackError.Auth(message: ""), operation: .users, authMethod: .googleSignIn, accountEmail: email),
+            String(localized: "To manage users, the Google account \(email) needs the “Admin (all permissions)” permission in Play Console › Users and permissions.")
+        )
+        XCTAssertEqual(
+            GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 403, message: ""), authMethod: .googleSignIn, accountEmail: email),
+            String(localized: "The Google account \(email) can't access this app. In Play Console › Users and permissions, give it access to the app and try again.")
+        )
+        XCTAssertEqual(
+            GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 403, message: ""), operation: .releaseChange, authMethod: .googleSignIn, accountEmail: email),
+            String(localized: "The Google account \(email) can't access this app. In Play Console › Users and permissions, give it access to the app and try again.")
+        )
+        XCTAssertEqual(
+            GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 403, message: ""), operation: .inviteUser, authMethod: .googleSignIn, accountEmail: email),
+            String(localized: "Google Play refused access to this developer account. Check the Developer ID, and that the Google account \(email) has the “Admin (all permissions)” permission.")
+        )
+    }
+
+    func testAnEmptyOrMissingEmailKeepsTheGenericSignInCopy() {
+        for email in [nil, "", "  "] as [String?] {
+            XCTAssertEqual(
+                GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 403, message: ""), authMethod: .googleSignIn, accountEmail: email),
+                String(localized: "The signed-in Google account can't access this app. In Play Console › Users and permissions, give it access to the app and try again.")
+            )
+        }
+    }
+
+    func testAServiceAccountNeverNamesAnEmail() {
+        XCTAssertEqual(
+            GooglePlayErrorTranslator.friendlyMessage(for: StackError.Http(status: 403, message: ""), authMethod: .keyFile, accountEmail: "dev@example.com"),
+            String(localized: "This service account can't access this app. In Play Console › Users and permissions, give it access to the app and try again.")
+        )
+    }
+
+    func testUsersFailureNamesTheEmail() {
+        let failure = GooglePlayErrorTranslator.usersFailure(
+            StackError.Auth(message: ""), call: GooglePlayUsersCall(.list, developerId: "1234"), logTag: "Tests",
+            authMethod: .googleSignIn, accountEmail: "dev@example.com"
+        )
+
+        XCTAssertEqual(failure.message, String(localized: "To manage users, the Google account \("dev@example.com") needs the “Admin (all permissions)” permission in Play Console › Users and permissions."))
+    }
+
     func testUsersFailureUsesTheAccountsAuthMethod() {
         let call = GooglePlayUsersCall(.list, developerId: "1234")
         let failure = GooglePlayErrorTranslator.usersFailure(

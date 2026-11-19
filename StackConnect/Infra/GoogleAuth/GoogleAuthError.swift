@@ -20,6 +20,10 @@ enum GoogleAuthError: LocalizedError, Equatable, Sendable {
     case invalidGrant
     /// `invalidGrant` for a known login: only that login must sign in again.
     case signInExpired(email: String?)
+    /// "Sign in again" (or an incremental request) for a known login came back
+    /// with another Google account: its grant is not stored, so the login is
+    /// never silently re-bound. `expectedEmail` is the login's own e-mail.
+    case differentAccount(expectedEmail: String?)
     /// No stored grant for the login an account refers to.
     case loginNotFound
     /// The code exchange returned no refresh token (nothing to keep).
@@ -82,6 +86,12 @@ enum GoogleAuthError: LocalizedError, Equatable, Sendable {
                 return String(localized: "The Google sign-in for \(email) expired or was revoked. Add the account again with Sign in with Google, using the same Google account, to restore access.")
             }
             return String(localized: "Your Google sign-in expired or was revoked. Add the account again with Sign in with Google, using the same Google account, to restore access.")
+        case .differentAccount(let expectedEmail):
+            if let expectedEmail {
+                return String(localized: "You signed in with a different Google account. Sign in with \(expectedEmail), the account this was added with.",
+                              comment: "Shown when Sign in again / Grant access returns another Google account than the one the StackConnect account uses. The placeholder is that Google account's e-mail.")
+            }
+            return String(localized: "You signed in with a different Google account. Sign in with the Google account this was added with.")
         case .loginNotFound:
             return String(localized: "This account's Google sign-in is missing on this device. Add the account again with Sign in with Google.")
         case .noRefreshToken, .missingIdentity, .invalidTokenResponse:

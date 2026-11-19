@@ -155,21 +155,9 @@ public final class APIProviderFirebase: @unchecked Sendable {
 
     /// Performs a request that expects no response body.
     public func request(_ endpoint: Request<Void>) async throws {
-        let urlRequest = try await authenticatedRequest(for: endpoint)
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Swift.Error>) in
-            requestExecutor.execute(urlRequest) { result in
-                switch result {
-                case .success(let response):
-                    guard 200..<300 ~= response.statusCode else {
-                        let errorResponse = self.decodeError(from: response.data)
-                        continuation.resume(throwing: Error.requestFailure(response.statusCode, errorResponse, response.requestURL))
-                        return
-                    }
-                    continuation.resume()
-                case .failure(let error):
-                    continuation.resume(throwing: Error.requestExecutorError(error))
-                }
-            }
+        let response = try await perform(endpoint)
+        guard 200..<300 ~= response.statusCode else {
+            throw Error.requestFailure(response.statusCode, decodeError(from: response.data), response.requestURL)
         }
     }
 
@@ -177,22 +165,40 @@ public final class APIProviderFirebase: @unchecked Sendable {
 
     /// Performs a request and returns the decoded response along with response headers.
     public func requestWithHeaders<T: Decodable>(_ endpoint: Request<T>) async throws -> (T, [AnyHashable: Any]) {
-        let urlRequest = try await authenticatedRequest(for: endpoint)
-        return try await withCheckedThrowingContinuation { continuation in
+        let response = try await perform(endpoint)
+        return (try decodeBody(T.self, from: response), response.headers)
+    }
+
+    // MARK: - Request (Decodable)
+
+    /// Performs a request and decodes the response.
+    public func request<T: Decodable>(_ endpoint: Request<T>) async throws -> T {
+        let response = try await perform(endpoint)
+        return try decodeBody(T.self, from: response)
+    }
+
+    // MARK: - Execution
+
+    /// Authenticates and executes `endpoint`. An HTTP 401 is retried once,
+    /// re-authenticated, when the authenticator is a `RequestReauthenticating`
+    /// that asks for it (e.g. a user access token revoked before it expired).
+    private func perform<T>(_ endpoint: Request<T>) async throws -> Response<Data> {
+        let response = try await execute(try await authenticatedRequest(for: endpoint))
+        guard response.statusCode == 401,
+              let reauthenticating = authenticator as? RequestReauthenticating,
+              await reauthenticating.shouldRetryAfterUnauthorized() else {
+            return response
+        }
+        // A second 401 is returned as is: no retry loop.
+        return try await execute(try await authenticatedRequest(for: endpoint))
+    }
+
+    private func execute(_ urlRequest: URLRequest) async throws -> Response<Data> {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Response<Data>, Swift.Error>) in
             requestExecutor.execute(urlRequest) { result in
                 switch result {
                 case .success(let response):
-                    guard let data = response.data, 200..<300 ~= response.statusCode else {
-                        let errorResponse = self.decodeError(from: response.data)
-                        continuation.resume(throwing: Error.requestFailure(response.statusCode, errorResponse, response.requestURL))
-                        return
-                    }
-                    do {
-                        let decoded = try Self.jsonDecoder.decode(T.self, from: data)
-                        continuation.resume(returning: (decoded, response.headers))
-                    } catch {
-                        continuation.resume(throwing: Error.decodingError(error, data))
-                    }
+                    continuation.resume(returning: response)
                 case .failure(let error):
                     continuation.resume(throwing: Error.requestExecutorError(error))
                 }
@@ -200,30 +206,14 @@ public final class APIProviderFirebase: @unchecked Sendable {
         }
     }
 
-    // MARK: - Request (Decodable)
-
-    /// Performs a request and decodes the response.
-    public func request<T: Decodable>(_ endpoint: Request<T>) async throws -> T {
-        let urlRequest = try await authenticatedRequest(for: endpoint)
-        return try await withCheckedThrowingContinuation { continuation in
-            requestExecutor.execute(urlRequest) { result in
-                switch result {
-                case .success(let response):
-                    guard let data = response.data, 200..<300 ~= response.statusCode else {
-                        let errorResponse = self.decodeError(from: response.data)
-                        continuation.resume(throwing: Error.requestFailure(response.statusCode, errorResponse, response.requestURL))
-                        return
-                    }
-                    do {
-                        let decoded = try Self.jsonDecoder.decode(T.self, from: data)
-                        continuation.resume(returning: decoded)
-                    } catch {
-                        continuation.resume(throwing: Error.decodingError(error, data))
-                    }
-                case .failure(let error):
-                    continuation.resume(throwing: Error.requestExecutorError(error))
-                }
-            }
+    private func decodeBody<T: Decodable>(_ type: T.Type, from response: Response<Data>) throws -> T {
+        guard let data = response.data, 200..<300 ~= response.statusCode else {
+            throw Error.requestFailure(response.statusCode, decodeError(from: response.data), response.requestURL)
+        }
+        do {
+            return try Self.jsonDecoder.decode(T.self, from: data)
+        } catch {
+            throw Error.decodingError(error, data)
         }
     }
 

@@ -12,6 +12,9 @@ protocol MessagingViewModelProtocol: ObservableObject {
     func loadApps() async
     func sendCampaign(_ draft: CampaignDraft) async
     func deleteCampaign(_ campaign: CampaignRecord) async
+    /// "Sign in again" of `uiState.googleAccessPrompt`, then reloads the
+    /// apps and the reports.
+    func resolveGoogleAccess() async
 }
 
 // MARK: - Tab
@@ -160,6 +163,10 @@ struct MessagingUiState {
     var reportApiActivationURL: String?
 
     var toastMessage: ToastMessage?
+
+    /// Set when the account's Google sign-in expired or was revoked
+    /// (`GoogleAccessRecovery`).
+    var googleAccessPrompt: GoogleAccessPrompt?
 }
 
 // MARK: - Implementation
@@ -172,18 +179,44 @@ final class MessagingViewModel: MessagingViewModelProtocol {
     private let keychain: KeyStorable
     private let storage: PersistentStorable
     private let analytics: AnalyticsTracking
+    private let googleAuth: any GoogleAuthServicing
+    private let googleAccess: GoogleAccessRecovery
+    /// The sign-in failure of the last campaign send, shown as "Sign in
+    /// again" once the send finished.
+    private var sendNeedsSignIn: Error?
 
     init(
         project: FirebaseProjectModel,
         account: AccountModel,
         keychain: KeyStorable = KeychainStorable.shared,
         storage: PersistentStorable? = nil,
-        analytics: AnalyticsTracking = AnalyticsService.shared
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        googleAuth: (any GoogleAuthServicing)? = nil
     ) {
         self.uiState = MessagingUiState(project: project, account: account)
         self.keychain = keychain
         self.storage = storage ?? SwiftDataStorable.shared
         self.analytics = analytics
+        let googleAuth = googleAuth ?? GoogleAuthService.shared
+        self.googleAuth = googleAuth
+        self.googleAccess = GoogleAccessRecovery(account: account, keychain: keychain, auth: googleAuth, analytics: analytics, screen: .messaging)
+    }
+
+    // MARK: - Google sign-in
+
+    func resolveGoogleAccess() async {
+        guard let prompt = uiState.googleAccessPrompt, !prompt.isWorking else { return }
+        guard await googleAccess.resolve(prompt, update: { uiState.googleAccessPrompt = $0 }) else { return }
+        uiState.googleAccessPrompt = nil
+        await loadApps()
+        await loadReports()
+    }
+
+    /// Shows "Sign in again" when `error` is an expired Google sign-in.
+    private func promptIfSignInRequired(_ error: Error) {
+        guard let prompt = googleAccess.prompt(for: error) else { return }
+        uiState.showNewCampaign = false
+        uiState.googleAccessPrompt = prompt
     }
 
     // MARK: - Load Apps
@@ -252,6 +285,7 @@ final class MessagingViewModel: MessagingViewModelProtocol {
             Log.print.info("[Messaging] Loaded \(apps.count) apps")
         } catch {
             Log.print.error("[Messaging] Failed to load apps: \(error.localizedDescription)")
+            promptIfSignInRequired(error)
         }
 
         uiState.isLoadingApps = false
@@ -387,6 +421,10 @@ final class MessagingViewModel: MessagingViewModelProtocol {
 
         uiState.isSending = false
         uiState.showNewCampaign = false
+        if let sendNeedsSignIn {
+            self.sendNeedsSignIn = nil
+            promptIfSignInRequired(sendNeedsSignIn)
+        }
 
         // Only the target type (an enum) and counts — never campaign content,
         // topics, conditions or app identifiers.
@@ -445,6 +483,13 @@ final class MessagingViewModel: MessagingViewModelProtocol {
                         allRows.append(row)
                     }
                 } catch let apiError as APIProviderFirebase.Error {
+                    if let message = googleAccess.unavailableMessage(for: apiError) {
+                        // StackConnect's own project: no activation link, and
+                        // every app would fail the same way.
+                        uiState.reportApiActivationURL = nil
+                        uiState.reportError = message
+                        break
+                    }
                     if case .requestFailure(_, let errorResponse, _) = apiError,
                        let errorResponse, errorResponse.isServiceDisabled {
                         uiState.reportApiActivationURL = errorResponse.activationURL
@@ -458,7 +503,15 @@ final class MessagingViewModel: MessagingViewModelProtocol {
             uiState.reports = allRows.sorted { $0.date > $1.date }
             Log.print.info("[Messaging] Loaded \(allRows.count) delivery reports")
         } catch {
-            uiState.reportError = error.localizedDescription
+            if googleAccess.requiresSignIn(error) {
+                promptIfSignInRequired(error)
+            } else if let message = googleAccess.unavailableMessage(for: error) {
+                uiState.reportError = message
+                uiState.isLoadingReports = false
+                return
+            } else {
+                uiState.reportError = error.localizedDescription
+            }
             Log.print.error("[Messaging] Reports failed: \(error.localizedDescription)")
         }
 
@@ -477,6 +530,9 @@ final class MessagingViewModel: MessagingViewModelProtocol {
             return response.name
         } catch {
             Log.print.error("[Messaging] Send failed: \(error.localizedDescription)")
+            if googleAccess.requiresSignIn(error) {
+                sendNeedsSignIn = error
+            }
             return nil
         }
     }
@@ -519,6 +575,6 @@ final class MessagingViewModel: MessagingViewModelProtocol {
 
     private func createProvider() -> APIProviderFirebase? {
         guard let credentials: FirebaseCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else { return nil }
-        return BackendEnvironment.firebaseProviders.makeProvider(credentials: credentials)
+        return BackendEnvironment.firebaseProviders.makeProvider(credentials: credentials, tokens: googleAuth)
     }
 }

@@ -74,6 +74,12 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     case useGoogleSignIn = "use_google_sign_in"
     /// Add Account: ask Google again for the scopes left unticked.
     case grantMissingAccess = "grant_missing_access"
+    /// Remote Config / Analytics of a Google sign-in account: ask Google for
+    /// the extra permission the screen needs.
+    case grantGoogleAccess = "grant_google_access"
+    /// A Firebase screen whose Google sign-in expired or was revoked: sign in
+    /// again with the same Google account.
+    case signInAgain = "sign_in_again"
     case createNew = "create_new"
     case editName = "edit_name"
     case certificates = "certificates"

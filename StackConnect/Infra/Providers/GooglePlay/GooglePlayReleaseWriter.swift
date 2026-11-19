@@ -41,6 +41,12 @@ final class GooglePlayReleaseWriter {
     private let dashboardDidChange: @MainActor (PersistentStorable) async -> Void
     private var connection: (any GooglePlayReleaseWriteConnecting)?
 
+    /// The Google account's e-mail of a "Sign in with Google" account (for
+    /// the error copy), `nil` for a service account.
+    var googleAccountEmail: String? {
+        GoogleLoginReferences.email(of: account, keychain: keychain)
+    }
+
     init(
         account: AccountModel,
         app: GooglePlayAppItem,

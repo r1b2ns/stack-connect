@@ -37,6 +37,7 @@ struct AnalyticsDashboardView<ViewModel: AnalyticsDashboardViewModelProtocol>: V
 
     var body: some View {
         buildContent()
+            .googleAccessPrompt(viewModel.uiState.googleAccessPrompt) { await viewModel.resolveGoogleAccess() }
             .navigationTitle(String(localized: "Analytics Dashboard"))
             .trackScreen(.analyticsDashboard)
             .navigationBarTitleDisplayMode(.inline)
