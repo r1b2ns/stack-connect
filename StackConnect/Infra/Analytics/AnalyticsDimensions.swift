@@ -284,6 +284,7 @@ extension AccountAuthMethod {
         switch self {
         case .keyFile:      return "key_file"
         case .googleSignIn: return "google_sign_in"
+        case .appleIdSignIn: return "apple_id_sign_in"
         }
     }
 }

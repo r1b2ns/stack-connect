@@ -81,6 +81,9 @@ final class SyncService: ObservableObject {
     /// Accounts of a hidden store (Google Play while `googlePlayAccounts` is
     /// OFF) are not synced: no request, no notification, no widget row.
     private let featureFlags: FeatureFlags
+    /// Which Apple ID sessions expired: their accounts are skipped by the
+    /// background refresh (plan `apple-id-sign-in.md` D7).
+    private let appleSessionStatus: AppleSessionStatusTracking
     private let clock = ContinuousClock()
     private var rootTask: Task<Void, Never>?
 
@@ -93,6 +96,7 @@ final class SyncService: ObservableObject {
         firstAppsLoaded: FirstAppsLoadedTracker? = nil,
         analytics: AnalyticsTracking? = nil,
         notificationPermission: NotificationPermissionRequesting? = nil,
+        appleSessionStatus: AppleSessionStatusTracking? = nil,
         featureFlags: FeatureFlags = .shared
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
@@ -104,6 +108,7 @@ final class SyncService: ObservableObject {
         self.analytics = analytics ?? AnalyticsService.shared
         self.notificationPermission = notificationPermission ?? NotificationPermissionService.shared
         self.featureFlags = featureFlags
+        self.appleSessionStatus = appleSessionStatus ?? AppleSessionStatusStore.shared
     }
 
     /// One account of a sync run with the connection built for it (`nil` when
@@ -199,6 +204,7 @@ final class SyncService: ObservableObject {
             // Firebase has nothing to sync in the background.
             let all: [AccountModel] = try await storage.fetchAll(AccountModel.self)
             accounts = featureFlags.visibleAccounts(all).filter { $0.providerType == .apple || $0.providerType == .googlePlay }
+                .filter { mode != .lightweight || !isAppleSessionExpired($0) }
         } catch {
             state.lastError = error.localizedDescription
             state.isSyncing = false
@@ -295,6 +301,21 @@ final class SyncService: ObservableObject {
             failedCount: changes.failedAccountIds.count,
             errorCategory: changes.dominantFailureCategory
         )
+    }
+
+    /// An account added with "Sign in with Apple ID" whose session App Store
+    /// Connect stopped accepting. A background task can't ask for a 2FA code,
+    /// so the lightweight (background) run leaves it alone until the user
+    /// signs in again (plan D7); a foreground run still tries, which surfaces
+    /// the sign-in prompt.
+    private func isAppleSessionExpired(_ account: AccountModel) -> Bool {
+        guard account.isAppleIdSession,
+              let reference = AppleSessionReferences.reference(of: account, keychain: keychain) else { return false }
+        let expired = appleSessionStatus.isExpired(appleId: reference.appleId)
+        if expired {
+            Log.print.info("[Sync] Skipping \(account.id, privacy: .public): its Apple ID session expired")
+        }
+        return expired
     }
 
     /// Caches app icons into the shared App Group container so the widget can

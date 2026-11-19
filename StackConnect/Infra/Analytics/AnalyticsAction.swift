@@ -83,6 +83,23 @@ enum AnalyticsAction: String, CaseIterable, Sendable {
     /// (sheet closed) or `failure` with `error_category` (`scope_denied` when
     /// the checkbox was left unticked). Sent with `kind`.
     case googleScopeGrant = "google_scope_grant"
+    /// "Sign in with Apple ID" sent the Apple ID and password (Add Account, or
+    /// a sign-in again after an expired session). The first step of the
+    /// Apple ID funnel. Never carries the Apple ID, the password or the code.
+    case appleIdSignInStarted = "apple_id_sign_in_started"
+    /// A two-factor code was requested by text message ("Send SMS instead"):
+    /// `success`, or `failure` with `error_category`.
+    case appleIdCodeRequested = "apple_id_code_requested"
+    /// The Apple ID sign-in finished: `success` (signed in, with `count` of
+    /// teams), `cancelled` (closed before the end) or `failure` with
+    /// `error_category` (`invalid_credentials` for a wrong password or code,
+    /// `forbidden` when the Apple ID needs action at appleid.apple.com,
+    /// `network`, `server`, `unknown`). The accounts then added are
+    /// `create_account` with `auth_method=apple_id_sign_in`.
+    case appleIdSignIn = "apple_id_sign_in"
+    /// App Store Connect stopped accepting an Apple ID session: its accounts
+    /// need a new sign-in. Sent once per expiry, screen-less.
+    case appleSessionExpired = "apple_session_expired"
 
     // MARK: Activation
     /// The install's "first value" moment: the first time an app list loaded

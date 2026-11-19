@@ -243,6 +243,9 @@ struct GooglePlayErrorDetails: Equatable, Sendable {
             return Facts(kind: "StackError.PendingAgreements", message: message)
         case .SubmissionNotRemovable(let message):
             return Facts(kind: "StackError.SubmissionNotRemovable", message: message)
+        case .SessionExpired(let message):
+            // App Store Connect–only (Apple ID session); never expected from Play.
+            return Facts(kind: "StackError.SessionExpired", message: message)
         }
     }
 

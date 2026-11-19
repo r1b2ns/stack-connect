@@ -425,6 +425,22 @@ private let UNIFFI_CALLBACK_UNEXPECTED_ERROR: Int32 = 2
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterUInt8: FfiConverterPrimitive {
+    typealias FfiType = UInt8
+    typealias SwiftType = UInt8
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt8 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: UInt8, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterUInt16: FfiConverterPrimitive {
     typealias FfiType = UInt16
     typealias SwiftType = UInt16
@@ -3501,6 +3517,330 @@ public func FfiConverterTypeAppStoreVersions_lift(_ handle: UInt64) throws -> Ap
 #endif
 public func FfiConverterTypeAppStoreVersions_lower(_ value: AppStoreVersions) -> UInt64 {
     return FfiConverterTypeAppStoreVersions.lower(value)
+}
+
+
+
+
+
+
+/**
+ * One Apple ID sign-in, from the password to the saved session.
+ *
+ * Errors (every method): [`StackError::InvalidCredentials`] when Apple
+ * rejects the password (`start`) or the code (`submit_code`; the sign-in
+ * then still waits for a code); [`StackError::SessionExpired`] when App
+ * Store Connect refuses the new session; [`StackError::Http`] for 429 / 5xx;
+ * [`StackError::Network`] for transport failures; [`StackError::Auth`] for
+ * everything else (an unsupported second factor, a locked Apple ID, a call
+ * out of order), with a message naming the cause.
+ */
+public protocol AppleIdSignInProtocol: AnyObject, Sendable {
+    
+    /**
+     * Ends the sign-in and returns the session blob for the host's secure
+     * storage (the bytes [`crate::ports::SessionStore::load`] hands back).
+     * One blob serves every team of the Apple ID: each account picks its team
+     * at connect. The object cannot be used afterwards.
+     *
+     * # Errors
+     * [`StackError::Auth`] unless signed in (the object stays usable then).
+     */
+    func finish() async throws  -> Data
+    
+    /**
+     * Asks Apple to text a code to the trusted phone `phone_id` (one of the
+     * `phones` of [`AppleSignInStep::NeedsCode`]).
+     *
+     * # Errors
+     * See the type docs.
+     */
+    func requestSms(phoneId: UInt64) async throws  -> AppleSignInStep
+    
+    /**
+     * Starts the sign-in with the Apple ID `email` and its `password`. The
+     * password is used for the SRP exchange only (it never goes on the wire)
+     * and wiped afterwards; the core never stores it.
+     *
+     * # Errors
+     * See the type docs.
+     */
+    func start(email: String, password: String) async throws  -> AppleSignInStep
+    
+    /**
+     * Submits the two-factor `code` the way `method` says (the trusted
+     * devices, or the phone a text message went to).
+     *
+     * # Errors
+     * [`StackError::InvalidCredentials`] for a wrong code (try again with
+     * the same object); otherwise see the type docs.
+     */
+    func submitCode(code: String, method: AppleCodeMethod) async throws  -> AppleSignInStep
+    
+    /**
+     * Every team the Apple ID belongs to, once signed in (empty before).
+     */
+    func teams() async  -> [AppleTeam]
+    
+}
+/**
+ * One Apple ID sign-in, from the password to the saved session.
+ *
+ * Errors (every method): [`StackError::InvalidCredentials`] when Apple
+ * rejects the password (`start`) or the code (`submit_code`; the sign-in
+ * then still waits for a code); [`StackError::SessionExpired`] when App
+ * Store Connect refuses the new session; [`StackError::Http`] for 429 / 5xx;
+ * [`StackError::Network`] for transport failures; [`StackError::Auth`] for
+ * everything else (an unsupported second factor, a locked Apple ID, a call
+ * out of order), with a message naming the cause.
+ */
+open class AppleIdSignIn: AppleIdSignInProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_appleidsignin(self.handle, $0) }
+    }
+    /**
+     * A fresh sign-in against Apple's production hosts. Offline.
+     *
+     * # Errors
+     * [`StackError::Network`] when the HTTP client cannot be built.
+     */
+public convenience init()throws  {
+    let handle =
+        try rustCallWithError(FfiConverterTypeStackError_lift) {
+    uniffi_stack_core_fn_constructor_appleidsignin_new($0
+    )
+}
+    self.init(unsafeFromHandle: handle)
+}
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_appleidsignin(handle, $0) }
+    }
+
+    
+    /**
+     * A sign-in over a saved session blob: its cookies (the two-factor trust
+     * cookie lets Apple skip the code) and its widget key. Use it to sign in
+     * again after [`StackError::SessionExpired`]. Offline.
+     *
+     * # Errors
+     * [`StackError::Decode`] when `blob` is not a session this core wrote;
+     * [`StackError::Network`] when the HTTP client cannot be built.
+     */
+public static func withSavedSession(blob: Data)throws  -> AppleIdSignIn  {
+    return try  FfiConverterTypeAppleIdSignIn_lift(try rustCallWithError(FfiConverterTypeStackError_lift) {
+    uniffi_stack_core_fn_constructor_appleidsignin_with_saved_session(
+        FfiConverterData.lower(blob),$0
+    )
+})
+}
+    
+
+    
+    /**
+     * Ends the sign-in and returns the session blob for the host's secure
+     * storage (the bytes [`crate::ports::SessionStore::load`] hands back).
+     * One blob serves every team of the Apple ID: each account picks its team
+     * at connect. The object cannot be used afterwards.
+     *
+     * # Errors
+     * [`StackError::Auth`] unless signed in (the object stays usable then).
+     */
+open func finish()async throws  -> Data  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appleidsignin_finish(
+                    self.uniffiCloneHandle()
+                    
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterData.lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Asks Apple to text a code to the trusted phone `phone_id` (one of the
+     * `phones` of [`AppleSignInStep::NeedsCode`]).
+     *
+     * # Errors
+     * See the type docs.
+     */
+open func requestSms(phoneId: UInt64)async throws  -> AppleSignInStep  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appleidsignin_request_sms(
+                    self.uniffiCloneHandle(),
+                    FfiConverterUInt64.lower(phoneId)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAppleSignInStep_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Starts the sign-in with the Apple ID `email` and its `password`. The
+     * password is used for the SRP exchange only (it never goes on the wire)
+     * and wiped afterwards; the core never stores it.
+     *
+     * # Errors
+     * See the type docs.
+     */
+open func start(email: String, password: String)async throws  -> AppleSignInStep  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appleidsignin_start(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(email),FfiConverterString.lower(password)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAppleSignInStep_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Submits the two-factor `code` the way `method` says (the trusted
+     * devices, or the phone a text message went to).
+     *
+     * # Errors
+     * [`StackError::InvalidCredentials`] for a wrong code (try again with
+     * the same object); otherwise see the type docs.
+     */
+open func submitCode(code: String, method: AppleCodeMethod)async throws  -> AppleSignInStep  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appleidsignin_submit_code(
+                    self.uniffiCloneHandle(),
+                    FfiConverterString.lower(code),FfiConverterTypeAppleCodeMethod_lower(method)
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAppleSignInStep_lift,
+            errorHandler: FfiConverterTypeStackError_lift
+        )
+}
+    
+    /**
+     * Every team the Apple ID belongs to, once signed in (empty before).
+     */
+open func teams()async  -> [AppleTeam]  {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_stack_core_fn_method_appleidsignin_teams(
+                    self.uniffiCloneHandle()
+                    
+                )
+            },
+            pollFunc: ffi_stack_core_rust_future_poll_rust_buffer,
+            completeFunc: ffi_stack_core_rust_future_complete_rust_buffer,
+            freeFunc: ffi_stack_core_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeAppleTeam.lift,
+            errorHandler: nil
+            
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppleIdSignIn: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = AppleIdSignIn
+
+    public static func lift(_ handle: UInt64) throws -> AppleIdSignIn {
+        return AppleIdSignIn(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: AppleIdSignIn) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppleIdSignIn {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: AppleIdSignIn, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppleIdSignIn_lift(_ handle: UInt64) throws -> AppleIdSignIn {
+    return try FfiConverterTypeAppleIdSignIn.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppleIdSignIn_lower(_ value: AppleIdSignIn) -> UInt64 {
+    return FfiConverterTypeAppleIdSignIn.lower(value)
 }
 
 
@@ -8853,6 +9193,283 @@ public func FfiConverterTypeReviews_lower(_ value: Reviews) -> UInt64 {
 
 
 /**
+ * Secure storage for the Apple ID web session of App Store Connect accounts
+ * added with "Sign in with Apple ID", implemented natively (the Keychain on
+ * iOS) and injected across the FFI boundary as a foreign trait through
+ * [`crate::facade::connect_with_apple_session`]. Mirrors [`CredentialStore`].
+ *
+ * The blob is opaque, versioned bytes the core wrote (the session cookies,
+ * the widget key and the last selected team). It is a credential: store it
+ * like a password and never log it. The core never stores the Apple ID
+ * password, so nothing here can sign in again by itself.
+ *
+ * The core reads the blob once, when the provider is built, and writes it
+ * back after every response that set cookies (Apple refreshes them), so the
+ * next launch restores the newest session. Several accounts (one per team)
+ * may share one Apple ID session: the host decides how `account_id` maps to
+ * its storage item, e.g. one item per Apple ID.
+ */
+public protocol SessionStore: AnyObject, Sendable {
+    
+    /**
+     * The session blob saved for `account_id`, if any.
+     */
+    func load(accountId: String)  -> Data?
+    
+    /**
+     * Stores or replaces the session blob for `account_id`.
+     */
+    func save(accountId: String, blob: Data) 
+    
+}
+/**
+ * Secure storage for the Apple ID web session of App Store Connect accounts
+ * added with "Sign in with Apple ID", implemented natively (the Keychain on
+ * iOS) and injected across the FFI boundary as a foreign trait through
+ * [`crate::facade::connect_with_apple_session`]. Mirrors [`CredentialStore`].
+ *
+ * The blob is opaque, versioned bytes the core wrote (the session cookies,
+ * the widget key and the last selected team). It is a credential: store it
+ * like a password and never log it. The core never stores the Apple ID
+ * password, so nothing here can sign in again by itself.
+ *
+ * The core reads the blob once, when the provider is built, and writes it
+ * back after every response that set cookies (Apple refreshes them), so the
+ * next launch restores the newest session. Several accounts (one per team)
+ * may share one Apple ID session: the host decides how `account_id` maps to
+ * its storage item, e.g. one item per Apple ID.
+ */
+open class SessionStoreImpl: SessionStore, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_sessionstore(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_sessionstore(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * The session blob saved for `account_id`, if any.
+     */
+open func load(accountId: String) -> Data?  {
+    return try!  FfiConverterOptionData.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_sessionstore_load(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(accountId),$0
+    )
+})
+}
+    
+    /**
+     * Stores or replaces the session blob for `account_id`.
+     */
+open func save(accountId: String, blob: Data)  {try! rustCall() {
+    uniffi_stack_core_fn_method_sessionstore_save(
+            self.uniffiCloneHandle(),
+        FfiConverterString.lower(accountId),
+        FfiConverterData.lower(blob),$0
+    )
+}
+}
+    
+
+    
+}
+
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceSessionStore {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    //
+    // Store the vtable directly.
+    static let vtable: UniffiVTableCallbackInterfaceSessionStore = UniffiVTableCallbackInterfaceSessionStore(
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            do {
+                try FfiConverterTypeSessionStore.handleMap.remove(handle: uniffiHandle)
+            } catch {
+                print("Uniffi callback interface SessionStore: handle missing in uniffiFree")
+            }
+        },
+        uniffiClone: { (uniffiHandle: UInt64) -> UInt64 in
+            do {
+                return try FfiConverterTypeSessionStore.handleMap.clone(handle: uniffiHandle)
+            } catch {
+                fatalError("Uniffi callback interface SessionStore: handle missing in uniffiClone")
+            }
+        },
+        load: { (
+            uniffiHandle: UInt64,
+            accountId: RustBuffer,
+            uniffiOutReturn: UnsafeMutablePointer<RustBuffer>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> Data? in
+                guard let uniffiObj = try? FfiConverterTypeSessionStore.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.load(
+                     accountId: try FfiConverterString.lift(accountId)
+                )
+            }
+
+            
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterOptionData.lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        save: { (
+            uniffiHandle: UInt64,
+            accountId: RustBuffer,
+            blob: RustBuffer,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterTypeSessionStore.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.save(
+                     accountId: try FfiConverterString.lift(accountId),
+                     blob: try FfiConverterData.lift(blob)
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        }
+    )
+
+    // Rust stores this pointer for future callback invocations, so it must live
+    // for the process lifetime (not just for the init function call).
+    static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfaceSessionStore> = {
+        let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfaceSessionStore>.allocate(capacity: 1)
+        ptr.initialize(to: vtable)
+        return UnsafePointer(ptr)
+    }()
+}
+
+private func uniffiCallbackInitSessionStore() {
+    uniffi_stack_core_fn_init_callback_vtable_sessionstore(UniffiCallbackInterfaceSessionStore.vtablePtr)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSessionStore: FfiConverter {
+    fileprivate static let handleMap = UniffiHandleMap<SessionStore>()
+
+    typealias FfiType = UInt64
+    typealias SwiftType = SessionStore
+
+    public static func lift(_ handle: UInt64) throws -> SessionStore {
+        if ((handle & 1) == 0) {
+            // Rust-generated handle, construct a new class that uses the handle to implement the
+            // interface
+            return SessionStoreImpl(unsafeFromHandle: handle)
+        } else {
+            // Swift-generated handle, get the object from the handle map
+            return try handleMap.remove(handle: handle)
+        }
+    }
+
+    public static func lower(_ value: SessionStore) -> UInt64 {
+         if let rustImpl = value as? SessionStoreImpl {
+             // Rust-implemented object.  Clone the handle and return it
+            return rustImpl.uniffiCloneHandle()
+         } else {
+            // Swift object, generate a new vtable handle and return that.
+            return handleMap.insert(obj: value)
+         }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SessionStore {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: SessionStore, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSessionStore_lift(_ handle: UInt64) throws -> SessionStore {
+    return try FfiConverterTypeSessionStore.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSessionStore_lower(_ value: SessionStore) -> UInt64 {
+    return FfiConverterTypeSessionStore.lower(value)
+}
+
+
+
+
+
+
+/**
  * UniFFI-exported Store Listings capability handle. A thin, binding-friendly
  * wrapper around a boxed [`StoreListingsImpl`]; async work runs on the tokio
  * runtime. Reached via [`crate::service::provider::Provider::store_listings`].
@@ -11482,6 +12099,174 @@ public func FfiConverterTypeAppStoreVersionInfo_lift(_ buf: RustBuffer) throws -
 #endif
 public func FfiConverterTypeAppStoreVersionInfo_lower(_ value: AppStoreVersionInfo) -> RustBuffer {
     return FfiConverterTypeAppStoreVersionInfo.lower(value)
+}
+
+
+/**
+ * An App Store Connect team (an olympus "provider").
+ */
+public struct AppleTeam: Equatable, Hashable {
+    /**
+     * `providerId`: what team switching and the session use.
+     */
+    public var providerId: UInt64
+    /**
+     * The team's display name.
+     */
+    public var name: String
+    /**
+     * `publicProviderId`, when Apple sends one.
+     */
+    public var publicProviderId: String?
+    /**
+     * `contentTypes` (e.g. `SOFTWARE`).
+     */
+    public var contentTypes: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * `providerId`: what team switching and the session use.
+         */providerId: UInt64, 
+        /**
+         * The team's display name.
+         */name: String, 
+        /**
+         * `publicProviderId`, when Apple sends one.
+         */publicProviderId: String?, 
+        /**
+         * `contentTypes` (e.g. `SOFTWARE`).
+         */contentTypes: [String]) {
+        self.providerId = providerId
+        self.name = name
+        self.publicProviderId = publicProviderId
+        self.contentTypes = contentTypes
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AppleTeam: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppleTeam: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppleTeam {
+        return
+            try AppleTeam(
+                providerId: FfiConverterUInt64.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                publicProviderId: FfiConverterOptionString.read(from: &buf), 
+                contentTypes: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AppleTeam, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.providerId, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.publicProviderId, into: &buf)
+        FfiConverterSequenceString.write(value.contentTypes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppleTeam_lift(_ buf: RustBuffer) throws -> AppleTeam {
+    return try FfiConverterTypeAppleTeam.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppleTeam_lower(_ value: AppleTeam) -> RustBuffer {
+    return FfiConverterTypeAppleTeam.lower(value)
+}
+
+
+/**
+ * A trusted phone number.
+ */
+public struct AppleTrustedPhone: Equatable, Hashable {
+    /**
+     * Apple's id for the number.
+     */
+    public var id: UInt64
+    /**
+     * The number as Apple masks it, e.g. `+49 •••• •••••85`.
+     */
+    public var maskedNumber: String
+    /**
+     * `sms` or `voice` (`pushMode`).
+     */
+    public var mode: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Apple's id for the number.
+         */id: UInt64, 
+        /**
+         * The number as Apple masks it, e.g. `+49 •••• •••••85`.
+         */maskedNumber: String, 
+        /**
+         * `sms` or `voice` (`pushMode`).
+         */mode: String) {
+        self.id = id
+        self.maskedNumber = maskedNumber
+        self.mode = mode
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AppleTrustedPhone: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppleTrustedPhone: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppleTrustedPhone {
+        return
+            try AppleTrustedPhone(
+                id: FfiConverterUInt64.read(from: &buf), 
+                maskedNumber: FfiConverterString.read(from: &buf), 
+                mode: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AppleTrustedPhone, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.id, into: &buf)
+        FfiConverterString.write(value.maskedNumber, into: &buf)
+        FfiConverterString.write(value.mode, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppleTrustedPhone_lift(_ buf: RustBuffer) throws -> AppleTrustedPhone {
+    return try FfiConverterTypeAppleTrustedPhone.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppleTrustedPhone_lower(_ value: AppleTrustedPhone) -> RustBuffer {
+    return FfiConverterTypeAppleTrustedPhone.lower(value)
 }
 
 
@@ -14257,6 +15042,292 @@ public func FfiConverterTypeUserInfo_lower(_ value: UserInfo) -> RustBuffer {
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
+ * Where Apple already sent a code.
+ */
+
+public enum AppleCodeDelivery: Equatable, Hashable {
+    
+    /**
+     * To the trusted devices.
+     */
+    case trustedDevices
+    /**
+     * By text message to this phone (automatically when the Apple ID has
+     * no trusted device and one phone, or after [`AppleSignIn::request_sms`]).
+     */
+    case phone(
+        /**
+         * [`AppleTrustedPhone::id`].
+         */phoneId: UInt64
+    )
+    /**
+     * Nowhere yet: pick a phone with [`AppleSignIn::request_sms`].
+     */
+    case notSent
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AppleCodeDelivery: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppleCodeDelivery: FfiConverterRustBuffer {
+    typealias SwiftType = AppleCodeDelivery
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppleCodeDelivery {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .trustedDevices
+        
+        case 2: return .phone(phoneId: try FfiConverterUInt64.read(from: &buf)
+        )
+        
+        case 3: return .notSent
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AppleCodeDelivery, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .trustedDevices:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .phone(phoneId):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt64.write(phoneId, into: &buf)
+            
+        
+        case .notSent:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppleCodeDelivery_lift(_ buf: RustBuffer) throws -> AppleCodeDelivery {
+    return try FfiConverterTypeAppleCodeDelivery.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppleCodeDelivery_lower(_ value: AppleCodeDelivery) -> RustBuffer {
+    return FfiConverterTypeAppleCodeDelivery.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * How a two-factor code is submitted.
+ */
+
+public enum AppleCodeMethod: Equatable, Hashable {
+    
+    /**
+     * A code shown on a trusted Apple device (pushed automatically).
+     */
+    case trustedDevice
+    /**
+     * A code sent by text message (or call) to a trusted phone.
+     */
+    case phone(
+        /**
+         * [`AppleTrustedPhone::id`].
+         */phoneId: UInt64
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AppleCodeMethod: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppleCodeMethod: FfiConverterRustBuffer {
+    typealias SwiftType = AppleCodeMethod
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppleCodeMethod {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .trustedDevice
+        
+        case 2: return .phone(phoneId: try FfiConverterUInt64.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AppleCodeMethod, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .trustedDevice:
+            writeInt(&buf, Int32(1))
+        
+        
+        case let .phone(phoneId):
+            writeInt(&buf, Int32(2))
+            FfiConverterUInt64.write(phoneId, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppleCodeMethod_lift(_ buf: RustBuffer) throws -> AppleCodeMethod {
+    return try FfiConverterTypeAppleCodeMethod.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppleCodeMethod_lower(_ value: AppleCodeMethod) -> RustBuffer {
+    return FfiConverterTypeAppleCodeMethod.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * What the caller does next.
+ */
+
+public enum AppleSignInStep: Equatable, Hashable {
+    
+    /**
+     * Apple wants a two-factor code.
+     */
+    case needsCode(
+        /**
+         * The ways a code can be submitted with [`AppleSignIn::submit_code`].
+         */methods: [AppleCodeMethod], 
+        /**
+         * The trusted phone numbers (masked by Apple).
+         */phones: [AppleTrustedPhone], 
+        /**
+         * How many digits the code has.
+         */codeLength: UInt8, 
+        /**
+         * Where a code was already sent, if anywhere.
+         */delivery: AppleCodeDelivery
+    )
+    /**
+     * The Apple ID must accept Apple's terms or upgrade its two-factor
+     * setup in a browser first (HTTP 412); this sign-in cannot continue.
+     */
+    case needsAcknowledgement
+    /**
+     * Signed in; [`AppleSignIn::into_session`] hands over the session.
+     */
+    case done(
+        /**
+         * Every team the Apple ID belongs to.
+         */teams: [AppleTeam]
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension AppleSignInStep: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppleSignInStep: FfiConverterRustBuffer {
+    typealias SwiftType = AppleSignInStep
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppleSignInStep {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .needsCode(methods: try FfiConverterSequenceTypeAppleCodeMethod.read(from: &buf), phones: try FfiConverterSequenceTypeAppleTrustedPhone.read(from: &buf), codeLength: try FfiConverterUInt8.read(from: &buf), delivery: try FfiConverterTypeAppleCodeDelivery.read(from: &buf)
+        )
+        
+        case 2: return .needsAcknowledgement
+        
+        case 3: return .done(teams: try FfiConverterSequenceTypeAppleTeam.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: AppleSignInStep, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .needsCode(methods,phones,codeLength,delivery):
+            writeInt(&buf, Int32(1))
+            FfiConverterSequenceTypeAppleCodeMethod.write(methods, into: &buf)
+            FfiConverterSequenceTypeAppleTrustedPhone.write(phones, into: &buf)
+            FfiConverterUInt8.write(codeLength, into: &buf)
+            FfiConverterTypeAppleCodeDelivery.write(delivery, into: &buf)
+            
+        
+        case .needsAcknowledgement:
+            writeInt(&buf, Int32(2))
+        
+        
+        case let .done(teams):
+            writeInt(&buf, Int32(3))
+            FfiConverterSequenceTypeAppleTeam.write(teams, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppleSignInStep_lift(_ buf: RustBuffer) throws -> AppleSignInStep {
+    return try FfiConverterTypeAppleSignInStep.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppleSignInStep_lower(_ value: AppleSignInStep) -> RustBuffer {
+    return FfiConverterTypeAppleSignInStep.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
  * A capability a provider may expose. The host calls [`Provider::capabilities`]
  * to learn what a connected account can do; capabilities a provider lacks make
  * the corresponding accessor (e.g. [`Provider::reviews`]) return `None`. Grows
@@ -15065,6 +16136,17 @@ public enum StackError: Swift.Error, Equatable, Hashable, Foundation.LocalizedEr
      */
     case ReleaseNotFound(message: String
     )
+    /**
+     * The Apple ID web session of an account added with "Sign in with Apple
+     * ID" is no longer accepted (App Store Connect answered HTTP 401, or
+     * refused the session while selecting its team). Nothing was retried: the
+     * core never holds the password, so the host must ask the user to sign in
+     * again. Never raised for an API-key account.
+     *
+     * Appended last: both bindings encode a variant by its position.
+     */
+    case SessionExpired(message: String
+    )
 
     
 
@@ -15122,6 +16204,9 @@ public struct FfiConverterTypeStackError: FfiConverterRustBuffer {
         case 9: return .ReleaseNotFound(
             message: try FfiConverterString.read(from: &buf)
             )
+        case 10: return .SessionExpired(
+            message: try FfiConverterString.read(from: &buf)
+            )
 
          default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -15177,6 +16262,11 @@ public struct FfiConverterTypeStackError: FfiConverterRustBuffer {
         
         case let .ReleaseNotFound(message):
             writeInt(&buf, Int32(9))
+            FfiConverterString.write(message, into: &buf)
+            
+        
+        case let .SessionExpired(message):
+            writeInt(&buf, Int32(10))
             FfiConverterString.write(message, into: &buf)
             
         }
@@ -15313,6 +16403,30 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionData: FfiConverterRustBuffer {
+    typealias SwiftType = Data?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterData.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterData.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -16340,6 +17454,56 @@ fileprivate struct FfiConverterSequenceTypeAppStoreVersionInfo: FfiConverterRust
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeAppleTeam: FfiConverterRustBuffer {
+    typealias SwiftType = [AppleTeam]
+
+    public static func write(_ value: [AppleTeam], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAppleTeam.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AppleTeam] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AppleTeam]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAppleTeam.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeAppleTrustedPhone: FfiConverterRustBuffer {
+    typealias SwiftType = [AppleTrustedPhone]
+
+    public static func write(_ value: [AppleTrustedPhone], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAppleTrustedPhone.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AppleTrustedPhone] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AppleTrustedPhone]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAppleTrustedPhone.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeBetaAppLocalizationInfo: FfiConverterRustBuffer {
     typealias SwiftType = [BetaAppLocalizationInfo]
 
@@ -16965,6 +18129,31 @@ fileprivate struct FfiConverterSequenceTypeUserInfo: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeAppleCodeMethod: FfiConverterRustBuffer {
+    typealias SwiftType = [AppleCodeMethod]
+
+    public static func write(_ value: [AppleCodeMethod], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAppleCodeMethod.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AppleCodeMethod] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AppleCodeMethod]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAppleCodeMethod.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeCapability: FfiConverterRustBuffer {
     typealias SwiftType = [Capability]
 
@@ -17279,6 +18468,54 @@ public func connectWithAccessToken(kind: ServiceKind, accountId: String, tokenPr
 })
 }
 /**
+ * Builds a connected App Store Connect [`Provider`] for an account added with
+ * "Sign in with Apple ID", authorized with the web session `session_store`
+ * holds for `account_id` (the blob [`crate::apple_id::AppleIdSignIn::finish`]
+ * returned) instead of an API key.
+ *
+ * `team_id` is the account's App Store Connect team (an
+ * [`crate::auth::apple_session::session::AppleTeam::provider_id`]); the
+ * session is switched to it before the first request when it acts for
+ * another team. Requests go to App Store Connect's web API
+ * (`appstoreconnect.apple.com/iris/v1`). After every response that refreshes
+ * cookies the core saves the session back through `session_store`.
+ *
+ * Provisioning (devices, bundle ids, certificates, profiles) goes to the
+ * Apple Developer Portal (`developer.apple.com/services-account`) with the
+ * account's *Developer Portal* team, which the core resolves from the Apple
+ * ID's portal teams on the first provisioning call (matched to the App Store
+ * Connect team by name) and saves with the session; a team it cannot match
+ * unambiguously makes provisioning calls fail with
+ * [`StackError::Unsupported`]. Renaming or deleting a bundle id and
+ * Analytics Reports are not reachable with a session: Analytics Reports are
+ * left out of `capabilities()`, and those calls fail with
+ * [`StackError::Unsupported`] without a request.
+ *
+ * Errors on this path: an HTTP 401 from App Store Connect, or a session it
+ * refuses while switching the team, is [`StackError::SessionExpired`]: the
+ * host must ask the user to sign in again (the core has no password to retry
+ * with).
+ *
+ * Synchronous and offline, like [`connect`]. When `debug_logger` is `Some`,
+ * requests are traced like [`connect`]'s, with the session's cookies, CSRF
+ * tokens and sign-in headers redacted.
+ *
+ * # Errors
+ * [`StackError::InvalidCredentials`] for a blank `account_id` or when the
+ * store has no session for it; [`StackError::Decode`] for a blob the core
+ * cannot read.
+ */
+public func connectWithAppleSession(accountId: String, teamId: UInt64, sessionStore: SessionStore, debugLogger: DebugLogger?)throws  -> Provider  {
+    return try  FfiConverterTypeProvider_lift(try rustCallWithError(FfiConverterTypeStackError_lift) {
+    uniffi_stack_core_fn_func_connect_with_apple_session(
+        FfiConverterString.lower(accountId),
+        FfiConverterUInt64.lower(teamId),
+        FfiConverterTypeSessionStore_lower(sessionStore),
+        FfiConverterOptionTypeDebugLogger.lower(debugLogger),$0
+    )
+})
+}
+/**
  * The credential form the host should render to connect an account of `kind`.
  */
 public func credentialSchema(kind: ServiceKind) -> [CredentialField]  {
@@ -17346,6 +18583,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_func_connect_with_access_token() != 64274) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_func_connect_with_apple_session() != 37659) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_stack_core_checksum_func_credential_schema() != 9978) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -17353,6 +18593,21 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_func_set_core_logger() != 61948) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appleidsignin_finish() != 3903) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appleidsignin_request_sms() != 5720) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appleidsignin_start() != 11626) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appleidsignin_submit_code() != 10085) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_appleidsignin_teams() != 63971) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_accesstokenprovider_access_token() != 61720) {
@@ -17383,6 +18638,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_debuglogger_log() != 63302) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_sessionstore_load() != 32491) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_sessionstore_save() != 6758) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_accessibilitydeclarations_create_accessibility_declaration() != 27936) {
@@ -17805,12 +19066,19 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_syncservice_sync_apps() != 30671) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_stack_core_checksum_constructor_appleidsignin_new() != 46512) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_constructor_appleidsignin_with_saved_session() != 1901) {
+        return InitializationResult.apiChecksumMismatch
+    }
 
     uniffiCallbackInitAccessTokenProvider()
     uniffiCallbackInitBlobStore()
     uniffiCallbackInitCoreLogger()
     uniffiCallbackInitCredentialStore()
     uniffiCallbackInitDebugLogger()
+    uniffiCallbackInitSessionStore()
     return InitializationResult.ok
 }()
 

@@ -25,6 +25,10 @@ enum AnalyticsScreen: String, CaseIterable, Sendable {
     case accountsListImport = "accounts_list_import"
     case accountsListAddOptions = "accounts_list_add_options"
     case addAccount = "add_account"
+    /// "Sign in with Apple ID" (Add Account, or signing in again).
+    case appleIdSignIn = "apple_id_sign_in"
+    /// The "sign in again" prompt of an expired Apple ID session.
+    case appleSessionExpired = "apple_session_expired"
 
     // MARK: Settings
     case settings = "settings"

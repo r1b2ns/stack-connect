@@ -135,7 +135,7 @@ struct GooglePlayUsersUiState {
     /// The developer ID setup footer: why the ID is asked for and who needs Admin.
     var developerIdFooter: String {
         switch account.authMethod {
-        case .keyFile:
+        case .keyFile, .appleIdSignIn:
             return String(localized: "Google can't tell which developer account a service account belongs to: the ID is in Play Console › Settings › Developer account (and in every Play Console URL). The service account needs the “Admin (all permissions)” permission to manage users.")
         case .googleSignIn:
             if let email = googleAccountEmail {

@@ -46,6 +46,16 @@ struct IdentifierDetailUiState {
     var isRenaming = false
     var isDeleting = false
     var errorMessage: String?
+
+    /// Renaming or deleting a bundle ID needs the App Store Connect API: an
+    /// account added with Sign in with Apple ID can't (plan G3).
+    var canRenameOrDelete: Bool { account.supportsBundleIdRenameAndDelete }
+
+    /// Why rename and delete are off, or `nil` when they are available.
+    var renameOrDeleteUnavailableReason: String? {
+        canRenameOrDelete ? nil
+            : String(localized: "Renaming or deleting an identifier needs an App Store Connect API key. Accounts added with Sign in with Apple ID can't do it: use developer.apple.com instead.")
+    }
 }
 
 // MARK: - Implementation
@@ -87,6 +97,7 @@ final class IdentifierDetailViewModel: IdentifierDetailViewModelProtocol {
 
     func rename(to newName: String) async -> Bool {
         analytics.track(.buttonTap(.save, on: .identifierDetail))
+        guard uiState.canRenameOrDelete else { return false }
         guard let connection = makeConnection() else {
             analytics.track(.action(.renameBundleId, on: .identifierDetail, result: .failure))
             return false
@@ -121,6 +132,7 @@ final class IdentifierDetailViewModel: IdentifierDetailViewModelProtocol {
 
     func delete() async -> Bool {
         analytics.track(.buttonTap(.confirmDelete, on: .identifierDetail))
+        guard uiState.canRenameOrDelete else { return false }
         guard let connection = makeConnection() else {
             analytics.track(.action(.deleteBundleId, on: .identifierDetail, result: .failure))
             return false

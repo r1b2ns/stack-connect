@@ -373,6 +373,10 @@ private final class RecordingCoreProviderFactory: CoreProviderMaking, @unchecked
         }
     }
 
+    func connectWithAppleSession(accountId: String, teamId: UInt64, sessionStore: SessionStore, debugLogger: DebugLogger?) throws -> StackCoreRust.Provider {
+        throw StackError.Unsupported(message: "Not used by these tests")
+    }
+
     func makeSyncService(provider: StackCoreRust.Provider, store: BlobStore, accountId: String) -> StackCoreRust.SyncService {
         fatalError("Not used by these tests")
     }

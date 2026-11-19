@@ -2,7 +2,8 @@ import SwiftUI
 
 /// A Firebase screen's `GoogleAccessPrompt` as a `StackPermissionRequestView`:
 /// "Grant access" for a missing sensitive permission (Remote Config,
-/// Analytics), or "Sign in again" for an expired or revoked Google login.
+/// Analytics), or "Sign in again" for an expired or revoked Google login
+/// (the provider-neutral `StackSignInAgainPromptView`).
 ///
 /// `onPrimary` runs the ViewModel's resolution (`GoogleAccessRecovery`),
 /// which tracks it; `onSecondary` is the path back (tracked as `back`).
@@ -29,16 +30,12 @@ struct StackGoogleAccessPromptView: View {
                 onSecondary: onSecondary
             )
         case .signInRequired:
-            StackPermissionRequestView(
-                systemImage: "person.crop.circle.badge.exclamationmark",
-                tint: .orange,
+            StackSignInAgainPromptView(
                 title: String(localized: "Sign In to Google Again"),
                 message: signInMessage,
                 feedback: prompt.feedback,
-                primaryTitle: String(localized: "Sign In Again"),
                 isWorking: prompt.isWorking,
                 onPrimary: onPrimary,
-                secondaryTitle: String(localized: "Go Back"),
                 onSecondary: onSecondary
             )
         }

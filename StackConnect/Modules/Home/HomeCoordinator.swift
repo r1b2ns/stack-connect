@@ -398,15 +398,21 @@ final class HomeCoordinator: MainCoordinatorProtocol {
         push(HomeRoute.reviewSubmissionDetail(submission: submission, account: account))
     }
 
+    /// The three Analytics Reports routes are refused for accounts added
+    /// with Sign in with Apple ID (`AccountModel.supportsAnalyticsReports`):
+    /// the web session can't reach them, whatever screen asks.
     func navigateToAnalyticsReports(appId: String, appName: String, account: AccountModel) {
+        guard account.supportsAnalyticsReports else { return }
         push(HomeRoute.analyticsReports(appId: appId, appName: appName, account: account))
     }
 
     func navigateToAnalyticsReportDetail(appId: String, appName: String, report: AnalyticsCatalogReport, account: AccountModel) {
+        guard account.supportsAnalyticsReports else { return }
         push(HomeRoute.analyticsReportDetail(appId: appId, appName: appName, report: report, account: account))
     }
 
     func navigateToAnalyticsReportFiles(appId: String, appName: String, report: AnalyticsCatalogReport, account: AccountModel) {
+        guard account.supportsAnalyticsReports else { return }
         push(HomeRoute.analyticsReportFiles(appId: appId, appName: appName, report: report, account: account))
     }
 
