@@ -29,6 +29,10 @@ enum AccountTransferCredentials {
         switch account.providerType {
         case .apple:
             guard let credentials: AppleCredentials = keychain.object(forKey: keychainKey) else { return nil }
+            // An Apple ID session is never exported (plan D7): it is a
+            // personal login. `AccountModel.isExportable` already hides the
+            // export; this is defense in depth.
+            guard case .apiKey = credentials.source else { return nil }
             return [
                 Key.issuerID: credentials.issuerID,
                 Key.privateKeyID: credentials.privateKeyID,

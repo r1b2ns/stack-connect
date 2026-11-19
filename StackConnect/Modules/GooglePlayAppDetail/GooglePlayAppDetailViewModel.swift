@@ -185,7 +185,7 @@ struct GooglePlayAppDetailUiState {
     /// "Sign in with Google" account signed in with.
     var storeSectionsFooter: String {
         switch account.authMethod {
-        case .keyFile:
+        case .keyFile, .appleIdSignIn:
             return String(localized: "Opening these sections briefly opens a Play edit to read the data. Google allows one open edit per service account and app, so this cancels any edit this service account has open for the app — for example, a CI upload in progress. If your CI publishes with this service account, add a separate read-only one here instead.")
         case .googleSignIn:
             return String(localized: "Opening these sections briefly opens a Play edit to read the data. Google allows one open edit per account and app, so this cancels any edit open with your Google account for the app.",

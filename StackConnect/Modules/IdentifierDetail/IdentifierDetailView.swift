@@ -103,8 +103,9 @@ struct IdentifierDetailView<ViewModel: IdentifierDetailViewModelProtocol>: View 
     private func buildNameSection() -> some View {
         Section {
             TextField(String(localized: "Name"), text: $editedName)
+                .disabled(!viewModel.uiState.canRenameOrDelete)
 
-            if nameChanged {
+            if nameChanged && viewModel.uiState.canRenameOrDelete {
                 Button {
                     Task {
                         let ok = await viewModel.rename(to: editedName)
@@ -125,6 +126,10 @@ struct IdentifierDetailView<ViewModel: IdentifierDetailViewModelProtocol>: View 
             }
         } header: {
             Text(String(localized: "Name"))
+        } footer: {
+            if let reason = viewModel.uiState.renameOrDeleteUnavailableReason {
+                Text(reason)
+            }
         }
     }
 
@@ -200,7 +205,11 @@ struct IdentifierDetailView<ViewModel: IdentifierDetailViewModelProtocol>: View 
                     }
                 }
             }
-            .disabled(viewModel.uiState.isDeleting)
+            .disabled(viewModel.uiState.isDeleting || !viewModel.uiState.canRenameOrDelete)
+        } footer: {
+            if let reason = viewModel.uiState.renameOrDeleteUnavailableReason {
+                Text(reason)
+            }
         }
     }
 

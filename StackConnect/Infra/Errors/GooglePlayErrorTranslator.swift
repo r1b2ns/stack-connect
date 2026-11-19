@@ -145,7 +145,7 @@ enum GooglePlayErrorTranslator {
             // or removed since the track was read. Nothing was changed.
             return String(localized: "This release changed on Google Play since it was loaded. Refresh and try again.")
 
-        case .PendingAgreements, .SubmissionNotRemovable:
+        case .PendingAgreements, .SubmissionNotRemovable, .SessionExpired:
             // App Store Connect–only cases; never expected from the Play provider.
             return genericMessage
         }
@@ -292,7 +292,7 @@ enum GooglePlayErrorTranslator {
 
         init(authMethod: AccountAuthMethod, email: String?) {
             switch authMethod {
-            case .keyFile:
+            case .keyFile, .appleIdSignIn:
                 self = .serviceAccount
             case .googleSignIn:
                 let trimmed = email?.trimmingCharacters(in: .whitespacesAndNewlines)

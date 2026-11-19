@@ -26,16 +26,29 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     /// `AppleCredentials`. Constructed once per connection.
     private lazy var rustCredentialStore = AppleCredentialStore(credentials: credentials)
 
+    /// The Keychain item of the Apple ID session, for accounts added with
+    /// "Sign in with Apple ID" (`credentials.webSession`). Shared by every
+    /// team account of the Apple ID (`AppleSessionKeychainStore`).
+    private let sessionStore: SessionStore
+
+    /// Where a `SessionExpired` answer is recorded, so the background refresh
+    /// skips the Apple ID's accounts and the app asks for a new sign-in.
+    private let sessionStatus: AppleSessionStatusTracking
+
     init(
         credentials: AppleCredentials,
         featureFlags: FeatureFlags = .shared,
         connectivity: ConnectivityProviding = ConnectivityMonitor.shared,
-        coreProviders: any CoreProviderMaking = BackendEnvironment.coreProviders
+        coreProviders: any CoreProviderMaking = BackendEnvironment.coreProviders,
+        sessionStore: SessionStore? = nil,
+        sessionStatus: AppleSessionStatusTracking = AppleSessionStatusStore.shared
     ) {
         self.credentials = credentials
         self.featureFlags = featureFlags
         self.connectivity = connectivity
         self.coreProviders = coreProviders
+        self.sessionStore = sessionStore ?? AppleSessionKeychainStore()
+        self.sessionStatus = sessionStatus
     }
 
     /// Guards mutating operations: throws `OfflineError.noConnection` when the
@@ -2201,20 +2214,37 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
 
     /// Lazily builds and caches the Rust core `Provider` for App Store Connect,
     /// reusing it across `validateCredentials()` and `fetchApps()` within this
-    /// connection. `connect(...)` reads credentials synchronously via the
-    /// `AppleCredentialStore` callback. The `accountId` is the issuer ID — a stable
-    /// per-connection identifier (the store is built per connection).
+    /// connection.
+    ///
+    /// - API key: `connect(...)` reads credentials synchronously via the
+    ///   `AppleCredentialStore` callback. The `accountId` is the issuer ID — a
+    ///   stable per-connection identifier (the store is built per connection).
+    /// - Apple ID session: `connectWithAppleSession(...)` with the normalized
+    ///   Apple ID as `accountId`, so the core loads and saves the session item
+    ///   every team account of that Apple ID shares, and the account's team.
     private func rustCoreProvider() throws -> StackCoreRust.Provider {
         if let rustProvider {
             return rustProvider
         }
+        let debugLogger: DebugLogger? = featureFlags.isEnabled(.useRustCoreDebugLogging) ? RustCoreDebugLogger() : nil
         do {
-            let provider = try coreProviders.connect(
-                kind: .appStoreConnect,
-                accountId: credentials.issuerID,
-                store: rustCredentialStore,
-                debugLogger: featureFlags.isEnabled(.useRustCoreDebugLogging) ? RustCoreDebugLogger() : nil
-            )
+            let provider: StackCoreRust.Provider
+            switch credentials.source {
+            case .apiKey:
+                provider = try coreProviders.connect(
+                    kind: .appStoreConnect,
+                    accountId: credentials.issuerID,
+                    store: rustCredentialStore,
+                    debugLogger: debugLogger
+                )
+            case .webSession(let session):
+                provider = try coreProviders.connectWithAppleSession(
+                    accountId: session.appleId,
+                    teamId: session.teamId,
+                    sessionStore: sessionStore,
+                    debugLogger: debugLogger
+                )
+            }
             rustProvider = provider
             return provider
         } catch let error as StackError {
@@ -2224,11 +2254,19 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
 
     /// Runs a Rust core async call, translating `StackError` into the app's error
     /// handling so callers behave the same as with the Swift SDK path.
+    ///
+    /// For an Apple ID session account it also keeps the session's status: a
+    /// `SessionExpired` marks the Apple ID expired (background refresh skips
+    /// it, the app asks to sign in again); a successful call clears the mark.
     private func callRustCore<T>(
         _ operation: () async throws -> T
     ) async throws -> T {
         do {
-            return try await operation()
+            let value = try await operation()
+            if let session = credentials.webSession, sessionStatus.isExpired(appleId: session.appleId) {
+                sessionStatus.markValid(appleId: session.appleId)
+            }
+            return value
         } catch let error as StackError {
             throw translate(error)
         }
@@ -2248,6 +2286,9 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     /// it was sent (an invited user or tester), which is accepted here.
     private func translate(_ error: StackError) -> Error {
         Log.print.error("[Apple] Rust core error: \(error.localizedDescription, privacy: .public)")
+        if case .SessionExpired = error, let session = credentials.webSession {
+            sessionStatus.markExpired(appleId: session.appleId)
+        }
         return error
     }
 }

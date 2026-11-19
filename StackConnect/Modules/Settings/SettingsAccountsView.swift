@@ -610,6 +610,13 @@ private struct EditAccountSheetContent: View {
                             Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
                         }
                     }
+                } else if let reason = account.exportUnavailableReason {
+                    Section {
+                        Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
+                            .foregroundStyle(.secondary)
+                    } footer: {
+                        Text(reason)
+                    }
                 }
             }
             .navigationTitle(account.name)

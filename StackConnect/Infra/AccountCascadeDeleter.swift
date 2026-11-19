@@ -27,7 +27,10 @@ import Foundation
 /// 8. the keychain credentials (`"credentials.<accountId>"`);
 /// 9. for an account signed in with Google, its Google login (revoked at
 ///    Google, best effort, and deleted from the Keychain) once no other
-///    account uses it (`GoogleLoginReferences`).
+///    account uses it (`GoogleLoginReferences`);
+/// 10. for an account signed in with an Apple ID, the Apple ID's shared
+///    session item (`appleSession.{appleId}`) and its expiry mark once no
+///    other account uses it (`AppleSessionReferences`).
 ///
 /// Then posts `AccountsChange` so account-derived state (analytics user
 /// properties) is recomputed, whichever screen deleted the account.
@@ -50,10 +53,12 @@ enum AccountCascadeDeleter {
         _ account: AccountModel,
         storage: PersistentStorable,
         keychain: KeyStorable,
-        googleAuth: (any GoogleAuthServicing)? = nil
+        googleAuth: (any GoogleAuthServicing)? = nil,
+        appleSessionStatus: AppleSessionStatusTracking = AppleSessionStatusStore.shared
     ) async throws {
         // Read before the credentials go.
         let googleLoginId = GoogleLoginReferences.loginId(of: account, keychain: keychain)
+        let appleSession = AppleSessionReferences.reference(of: account, keychain: keychain)
 
         let accountApps = try await storage.fetchAll(AppModel.self)
             .filter { $0.accountId == account.id }
@@ -115,6 +120,16 @@ enum AccountCascadeDeleter {
         keychain.removeObject(forKey: "credentials.\(account.id)")
         if let googleLoginId {
             await releaseGoogleLoginIfUnused(googleLoginId, storage: storage, keychain: keychain, googleAuth: googleAuth)
+        }
+        // Best effort, like the Google login: when the remaining accounts
+        // can't be read the session is kept, so no account loses it by mistake.
+        if let appleSession, let remaining = try? await storage.fetchAll(AccountModel.self) {
+            AppleSessionReferences.releaseSessionIfUnused(
+                appleSession.appleId,
+                remaining: remaining,
+                keychain: keychain,
+                status: appleSessionStatus
+            )
         }
         AccountsChange.post()
     }

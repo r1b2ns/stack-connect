@@ -71,7 +71,7 @@ struct GooglePlayUserDetailUiState {
     /// Footer of a user Google returned only part of (`partial`).
     var partialAccessFooter: String {
         switch account.authMethod {
-        case .keyFile:
+        case .keyFile, .appleIdSignIn:
             return String(localized: "Google returned only part of this user's access (they also have access this service account can't see). Edit them in Play Console.")
         case .googleSignIn:
             if let email = googleAccountEmail {

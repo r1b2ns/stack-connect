@@ -139,6 +139,9 @@ enum AccountAuthMethod: String, Codable, Hashable {
     case keyFile
     /// "Sign in with Google" (Firebase and Google Play, plan G5).
     case googleSignIn
+    /// "Sign in with Apple ID" (App Store Connect, plan `apple-id-sign-in.md`):
+    /// the Apple ID web session, shared by every team account of that Apple ID.
+    case appleIdSignIn
 }
 
 // MARK: - Account Role
@@ -242,9 +245,38 @@ struct AccountModel: Codable, Identifiable, Hashable {
     /// can be exported (an imported account can't be re-shared). Accounts
     /// signed in with Google are never exported (plan G7): their refresh token
     /// must not leave the device, and the receiving user signs in with their
-    /// own Google account instead.
+    /// own Google account instead. Accounts signed in with an Apple ID are
+    /// never exported either (Apple ID plan D7): the session is a personal
+    /// login (see `exportUnavailableReason`).
     var isExportable: Bool {
-        origin == .created && providerType.supportsExport && authMethod != .googleSignIn
+        origin == .created && providerType.supportsExport
+            && authMethod != .googleSignIn && authMethod != .appleIdSignIn
+    }
+
+    /// Why the export entry points are shown disabled, or `nil` when the
+    /// account has none to explain (exportable, or simply not exportable by
+    /// provider / origin, which hides them as before).
+    var exportUnavailableReason: String? {
+        guard authMethod == .appleIdSignIn else { return nil }
+        return String(localized: "Accounts added with Sign in with Apple ID can't be exported: the session is your personal Apple ID login. Share an App Store Connect API key instead.")
+    }
+
+    // MARK: - Apple ID session limits (plan `apple-id-sign-in.md` G3)
+
+    /// An App Store Connect account added with "Sign in with Apple ID".
+    var isAppleIdSession: Bool {
+        providerType == .apple && authMethod == .appleIdSignIn
+    }
+
+    /// Analytics Reports (and their detail and files screens) need the App
+    /// Store Connect API: the Apple ID web session has no route to them.
+    var supportsAnalyticsReports: Bool {
+        !isAppleIdSession
+    }
+
+    /// Renaming or deleting a bundle ID has no Apple ID session form.
+    var supportsBundleIdRenameAndDelete: Bool {
+        !isAppleIdSession
     }
 
     /// Rule resources that apply to this account's provider.
