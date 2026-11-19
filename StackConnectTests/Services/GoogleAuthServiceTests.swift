@@ -303,11 +303,89 @@ final class GoogleAuthServiceTests: XCTestCase {
         store.save(GoogleAuthFixtures.grant())
         http.respond(to: "/token", json: GoogleAuthFixtures.tokenResponse(idToken: GoogleAuthFixtures.idToken(sub: "someone-else")))
 
-        await assertThrows(GoogleAuthError.callback(.unexpectedRedirect)) {
+        await assertThrows(GoogleAuthError.differentAccount(expectedEmail: "dev@example.com")) {
             _ = try await self.sut.requestAdditionalScopes([GoogleOAuthScope.cloudPlatform], for: "user-1")
         }
         XCTAssertEqual(store.load(loginId: "user-1")?.refreshToken, "stored-refresh")
         XCTAssertNil(store.load(loginId: "someone-else"))
+    }
+
+    // MARK: - Sign in again
+
+    func testReauthenticateHintsTheLoginAndReplacesOnlyItsRefreshToken() async throws {
+        store.save(GoogleAuthFixtures.grant(scopes: GoogleOAuthScope.signIn + [GoogleOAuthScope.cloudPlatform]))
+        store.save(GoogleAuthFixtures.grant(loginId: "user-2", email: "other@example.com"))
+        http.respond(to: "/token", json: GoogleAuthFixtures.tokenResponse(
+            refreshToken: "new-refresh",
+            scopes: GoogleOAuthScope.signIn + [GoogleOAuthScope.cloudPlatform]
+        ))
+
+        let result = try await sut.reauthenticate(loginId: "user-1")
+
+        let items = try queryItems(XCTUnwrap(authenticator.authorizationURLs.first))
+        XCTAssertEqual(items["login_hint"], "dev@example.com")
+        let requested = Set(items["scope"]?.split(separator: " ").map(String.init) ?? [])
+        XCTAssertTrue(requested.isSuperset(of: GoogleOAuthScope.signIn), "at least the sign-in scopes")
+        XCTAssertTrue(requested.contains(GoogleOAuthScope.cloudPlatform), "scopes granted before are asked again")
+        XCTAssertEqual(result.login.loginId, "user-1")
+        XCTAssertFalse(result.isNewLogin)
+        XCTAssertEqual(store.load(loginId: "user-1")?.refreshToken, "new-refresh")
+        XCTAssertEqual(store.load(loginId: "user-2")?.refreshToken, "stored-refresh", "other logins untouched")
+    }
+
+    func testReauthenticateRefusesAnotherGoogleAccount() async throws {
+        store.save(GoogleAuthFixtures.grant())
+        http.respond(to: "/token", json: GoogleAuthFixtures.tokenResponse(
+            refreshToken: "intruder-refresh",
+            idToken: GoogleAuthFixtures.idToken(sub: "someone-else", email: "else@example.com")
+        ))
+
+        await assertThrows(GoogleAuthError.differentAccount(expectedEmail: "dev@example.com")) {
+            _ = try await self.sut.reauthenticate(loginId: "user-1")
+        }
+        XCTAssertEqual(store.load(loginId: "user-1")?.refreshToken, "stored-refresh", "never re-bound")
+        XCTAssertNil(store.load(loginId: "someone-else"), "the other account's grant is not kept")
+    }
+
+    func testReauthenticateRestoresALoginWhoseGrantIsMissing() async throws {
+        http.respond(to: "/token", json: GoogleAuthFixtures.tokenResponse(refreshToken: "new-refresh"))
+
+        let result = try await sut.reauthenticate(loginId: "user-1")
+
+        XCTAssertEqual(result.login.loginId, "user-1")
+        XCTAssertEqual(store.load(loginId: "user-1")?.refreshToken, "new-refresh")
+    }
+
+    // MARK: - Invalidation
+
+    func testInvalidatedAccessTokenIsRefreshedOnTheNextRequest() async throws {
+        store.save(GoogleAuthFixtures.grant())
+        http.respond(to: "/token", json: GoogleAuthFixtures.tokenResponse(accessToken: "first", refreshToken: nil, scopes: nil, idToken: nil), once: true)
+        http.respond(to: "/token", json: GoogleAuthFixtures.tokenResponse(accessToken: "second", refreshToken: nil, scopes: nil, idToken: nil))
+
+        let first = try await sut.accessToken(forLogin: "user-1")
+        let cached = try await sut.accessToken(forLogin: "user-1")
+        sut.invalidateAccessToken(forLogin: "user-1")
+        let refreshed = try await sut.accessToken(forLogin: "user-1")
+
+        XCTAssertEqual(first, "first")
+        XCTAssertEqual(cached, "first", "valid tokens are cached")
+        XCTAssertEqual(refreshed, "second")
+        XCTAssertEqual(http.requests(to: "/token").count, 2)
+        XCTAssertEqual(store.load(loginId: "user-1")?.refreshToken, "stored-refresh", "the refresh token is kept")
+    }
+
+    func testInvalidatingOneLoginKeepsTheOthersCached() async throws {
+        store.save(GoogleAuthFixtures.grant())
+        store.save(GoogleAuthFixtures.grant(loginId: "user-2"))
+        http.respond(to: "/token", json: GoogleAuthFixtures.tokenResponse(refreshToken: nil, scopes: nil, idToken: nil))
+        _ = try await sut.accessToken(forLogin: "user-1")
+        _ = try await sut.accessToken(forLogin: "user-2")
+
+        sut.invalidateAccessToken(forLogin: "user-1")
+        _ = try await sut.accessToken(forLogin: "user-2")
+
+        XCTAssertEqual(http.requests(to: "/token").count, 2, "user-2 still served from the cache")
     }
 
     // MARK: - Refresh

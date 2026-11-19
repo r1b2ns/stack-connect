@@ -51,6 +51,14 @@ public struct ErrorResponse: Decodable, CustomStringConvertible {
         error?.details?.compactMap(\.metadata?.activationUrl).first
     }
 
+    /// Whether the OAuth token lacks a scope the API needs
+    /// (`ACCESS_TOKEN_SCOPE_INSUFFICIENT`, or the legacy
+    /// `insufficientPermissions` reason Google sends with it).
+    public var isScopeInsufficient: Bool {
+        let reasons = (error?.details?.compactMap(\.reason) ?? []) + (error?.errors?.compactMap(\.reason) ?? [])
+        return reasons.contains("ACCESS_TOKEN_SCOPE_INSUFFICIENT") || reasons.contains("insufficientPermissions")
+    }
+
     /// Whether this error is specifically about a disabled API.
     public var isServiceDisabled: Bool {
         error?.details?.contains(where: { $0.reason == "SERVICE_DISABLED" }) == true

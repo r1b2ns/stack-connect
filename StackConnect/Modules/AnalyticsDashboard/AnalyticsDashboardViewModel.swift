@@ -9,6 +9,9 @@ protocol AnalyticsDashboardViewModelProtocol: ObservableObject {
     var uiState: AnalyticsDashboardUiState { get set }
     func load() async
     func refresh() async
+    /// The primary action of `uiState.googleAccessPrompt` ("Grant access" or
+    /// "Sign in again"), then a reload once resolved.
+    func resolveGoogleAccess() async
 }
 
 // MARK: - Chart Data Models
@@ -50,6 +53,10 @@ struct AnalyticsDashboardUiState {
     /// The linked GA4 property ID (numeric string)
     var propertyId: String?
     var propertyDisplayName: String?
+
+    /// Set instead of loading for a Google sign-in account that hasn't granted
+    /// the Analytics scope, or whose sign-in expired (`GoogleAccessRecovery`).
+    var googleAccessPrompt: GoogleAccessPrompt?
 }
 
 // MARK: - Implementation
@@ -61,16 +68,22 @@ final class AnalyticsDashboardViewModel: AnalyticsDashboardViewModelProtocol {
 
     private let keychain: KeyStorable
     private let analytics: AnalyticsTracking
+    private let googleAuth: any GoogleAuthServicing
+    private let googleAccess: GoogleAccessRecovery
 
     init(
         project: FirebaseProjectModel,
         account: AccountModel,
         keychain: KeyStorable = KeychainStorable.shared,
-        analytics: AnalyticsTracking = AnalyticsService.shared
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        googleAuth: (any GoogleAuthServicing)? = nil
     ) {
         self.uiState = AnalyticsDashboardUiState(project: project, account: account)
         self.keychain = keychain
         self.analytics = analytics
+        let googleAuth = googleAuth ?? GoogleAuthService.shared
+        self.googleAuth = googleAuth
+        self.googleAccess = GoogleAccessRecovery(account: account, keychain: keychain, auth: googleAuth, analytics: analytics, screen: .analyticsDashboard)
     }
 
     // MARK: - Load
@@ -82,12 +95,29 @@ final class AnalyticsDashboardViewModel: AnalyticsDashboardViewModelProtocol {
     /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
     func refresh() async {
         await performLoad()
-        analytics.track(.action(.refresh, on: .analyticsDashboard, result: uiState.error == nil ? .success : .failure))
+        let failed = uiState.error != nil || uiState.googleAccessPrompt != nil
+        analytics.track(.action(.refresh, on: .analyticsDashboard, result: failed ? .failure : .success))
+    }
+
+    func resolveGoogleAccess() async {
+        guard let prompt = uiState.googleAccessPrompt, !prompt.isWorking else { return }
+        guard await googleAccess.resolve(prompt, update: { uiState.googleAccessPrompt = $0 }) else { return }
+        uiState.googleAccessPrompt = nil
+        await performLoad()
     }
 
     private func performLoad() async {
         uiState.isLoading = true
         uiState.error = nil
+        uiState.apiActivationURL = nil
+
+        // Google sign-in without the Analytics scope: explain and ask first,
+        // never call the API for a certain 403 (plan G3).
+        uiState.googleAccessPrompt = googleAccess.promptBeforeLoading(.analytics)
+        guard uiState.googleAccessPrompt == nil else {
+            uiState.isLoading = false
+            return
+        }
 
         guard let provider = createProvider() else {
             uiState.error = String(localized: "No credentials found for this account.")
@@ -129,11 +159,16 @@ final class AnalyticsDashboardViewModel: AnalyticsDashboardViewModelProtocol {
 
             processReport(report)
             Log.print.info("[Analytics] Loaded report for property \(propertyId)")
-        } catch let apiError as APIProviderFirebase.Error {
-            handleAPIError(apiError)
         } catch {
-            uiState.error = error.localizedDescription
-            Log.print.error("[Analytics] Load failed: \(error.localizedDescription)")
+            if let prompt = googleAccess.prompt(for: error, feature: .analytics) {
+                uiState.googleAccessPrompt = prompt
+                Log.print.error("[Analytics] Load failed: \(error.localizedDescription)")
+            } else if let apiError = error as? APIProviderFirebase.Error {
+                handleAPIError(apiError)
+            } else {
+                uiState.error = error.localizedDescription
+                Log.print.error("[Analytics] Load failed: \(error.localizedDescription)")
+            }
         }
 
         uiState.isLoading = false
@@ -142,6 +177,12 @@ final class AnalyticsDashboardViewModel: AnalyticsDashboardViewModelProtocol {
     // MARK: - Error Handling
 
     private func handleAPIError(_ apiError: APIProviderFirebase.Error) {
+        if let message = googleAccess.unavailableMessage(for: apiError) {
+            // StackConnect's own project: no activation link (logged by the recovery).
+            uiState.apiActivationURL = nil
+            uiState.error = message
+            return
+        }
         switch apiError {
         case .requestFailure(_, let errorResponse, _):
             if let errorResponse, errorResponse.isServiceDisabled {
@@ -202,7 +243,7 @@ final class AnalyticsDashboardViewModel: AnalyticsDashboardViewModelProtocol {
 
     private func createProvider() -> APIProviderFirebase? {
         guard let credentials: FirebaseCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else { return nil }
-        return BackendEnvironment.firebaseProviders.makeProvider(credentials: credentials)
+        return BackendEnvironment.firebaseProviders.makeProvider(credentials: credentials, tokens: googleAuth)
     }
 }
 

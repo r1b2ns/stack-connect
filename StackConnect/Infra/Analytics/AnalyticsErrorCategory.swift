@@ -154,7 +154,7 @@ extension AnalyticsErrorCategory {
         case .accessDenied:
             // Blocked app, not a test user, Workspace policy, consent refused.
             self = .forbidden
-        case .invalidGrant, .signInExpired, .loginNotFound:
+        case .invalidGrant, .signInExpired, .loginNotFound, .differentAccount:
             self = .invalidCredentials
         case .network:
             self = .network

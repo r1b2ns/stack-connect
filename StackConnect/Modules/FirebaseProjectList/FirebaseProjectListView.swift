@@ -35,14 +35,17 @@ struct FirebaseProjectListView<ViewModel: FirebaseProjectListViewModelProtocol>:
 
     var body: some View {
         buildContent()
-            .navigationTitle(viewModel.uiState.account.name)
-            .trackScreen(.firebaseProjectList)
             .searchable(
                 text: $viewModel.uiState.searchQuery,
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: String(localized: "Search by name or project ID")
             )
             .trackSearch(query: viewModel.uiState.searchQuery, resultCount: viewModel.uiState.filteredProjects.count, on: .firebaseProjectList)
+            // Search and toolbar actions belong to the content: hidden while the
+            // Google access prompt replaces it (they would call the API without access).
+            .googleAccessPrompt(viewModel.uiState.googleAccessPrompt) { await viewModel.resolveGoogleAccess() }
+            .navigationTitle(viewModel.uiState.account.name)
+            .trackScreen(.firebaseProjectList)
             .task { await viewModel.load() }
             .refreshable { await viewModel.refresh() }
             .toast(message: $viewModel.uiState.toastMessage)
@@ -71,6 +74,10 @@ struct FirebaseProjectListView<ViewModel: FirebaseProjectListViewModelProtocol>:
                 Label(String(localized: "Error"), systemImage: "exclamationmark.triangle")
             } description: {
                 Text(error)
+            } actions: {
+                StackTrackedButton(String(localized: "Retry"), button: .tryAgain, on: .firebaseProjectList) {
+                    Task { await viewModel.load() }
+                }
             }
         } else {
             ContentUnavailableView {

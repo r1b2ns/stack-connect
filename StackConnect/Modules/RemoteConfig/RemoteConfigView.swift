@@ -37,9 +37,6 @@ struct RemoteConfigView<ViewModel: RemoteConfigViewModelProtocol>: View {
 
     var body: some View {
         buildContent()
-            .navigationTitle(String(localized: "Remote Config"))
-            .trackScreen(.remoteConfig)
-            .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $viewModel.uiState.searchQuery,
                 placement: .navigationBarDrawer(displayMode: .always),
@@ -47,6 +44,12 @@ struct RemoteConfigView<ViewModel: RemoteConfigViewModelProtocol>: View {
             )
             .trackSearch(query: viewModel.uiState.searchQuery, resultCount: viewModel.uiState.filteredParameters.count, on: .remoteConfig)
             .toolbar { buildToolbar() }
+            // Search and toolbar actions belong to the content: hidden while the
+            // Google access prompt replaces it (they would call the API without access).
+            .googleAccessPrompt(viewModel.uiState.googleAccessPrompt) { await viewModel.resolveGoogleAccess() }
+            .navigationTitle(String(localized: "Remote Config"))
+            .trackScreen(.remoteConfig)
+            .navigationBarTitleDisplayMode(.inline)
             .task { await viewModel.load() }
             .refreshable { await viewModel.refresh() }
             .sheet(item: $viewModel.uiState.selectedParameter) { item in

@@ -132,7 +132,10 @@ final class GooglePlayAppListReleaseStatusTests: XCTestCase {
         let limit = GooglePlayAppListViewModel.maxConcurrentSummaryFetches
 
         let loading = Task { await sut.load() }
-        await gate.waitForArrivals(limit + 1)
+        // Deterministic: wait (time-bounded) until the bound is reached, then
+        // give a broken bound every chance to start more before counting.
+        await gate.waitForArrivals(limit)
+        await gate.settle()
         let startedWhileBlocked = await gate.arrivals
         await gate.open()
         await loading.value

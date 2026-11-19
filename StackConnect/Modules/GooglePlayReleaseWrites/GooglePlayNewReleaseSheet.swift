@@ -15,7 +15,8 @@ struct GooglePlayNewReleaseSheet<Writes: GooglePlayReleaseWriteViewModelProtocol
             tracks: writes.uiState.cachedTracks,
             listingLanguages: writes.uiState.listingLanguages,
             loadBundles: { try await writes.fetchBundles() },
-            authMethod: writes.uiState.authMethod
+            authMethod: writes.uiState.authMethod,
+            accountEmail: writes.uiState.googleAccountEmail
         ))
     }
 

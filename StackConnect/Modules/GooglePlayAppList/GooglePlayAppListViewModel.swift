@@ -16,6 +16,9 @@ protocol GooglePlayAppListViewModelProtocol: ObservableObject {
 
 struct GooglePlayAppListUiState {
     var account: AccountModel
+    /// The Google account's e-mail of a "Sign in with Google" account, named
+    /// in its access copy; `nil` for a service account.
+    var googleAccountEmail: String?
     var apps: [GooglePlayAppItem] = []
     var isLoading = false
     var isSyncing = false
@@ -76,6 +79,10 @@ struct GooglePlayAppListUiState {
         case .keyFile:
             return String(localized: "Enter the Android package name (e.g. com.example.myapp). The service account must have access to this app in the Google Play Console.")
         case .googleSignIn:
+            if let email = googleAccountEmail {
+                return String(localized: "Enter the Android package name (e.g. com.example.myapp). The Google account \(email) must have access to this app in the Google Play Console.",
+                              comment: "Footer of the add-app-by-package-name sheet, account added with Sign in with Google. The placeholder is that Google account's e-mail.")
+            }
             return String(localized: "Enter the Android package name (e.g. com.example.myapp). The signed-in Google account must have access to this app in the Google Play Console.")
         }
     }
@@ -180,6 +187,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         self.analytics = analytics
         self.firstAppsLoaded = firstAppsLoaded
         self.now = now
+        self.uiState.googleAccountEmail = GoogleLoginReferences.email(of: account, keychain: keychain)
     }
 
     // MARK: - Load
@@ -252,7 +260,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
             // Offline with a cached list: the global offline banner already says
             // so — keep the list without a second warning.
             if !(syncFailedOffline && !uiState.apps.isEmpty) {
-                uiState.error = GooglePlayErrorTranslator.friendlyMessage(for: error, authMethod: uiState.account.authMethod)
+                uiState.error = GooglePlayErrorTranslator.friendlyMessage(for: error, authMethod: uiState.account.authMethod, accountEmail: uiState.googleAccountEmail)
             }
         }
 
@@ -326,7 +334,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
             analytics.track(.action(.addGooglePlayApp, on: .addGooglePlayApp, result: .success))
         } catch {
             analytics.track(.action(.addGooglePlayApp, on: .addGooglePlayApp, result: .failure))
-            uiState.addError = GooglePlayErrorTranslator.friendlyMessage(for: error, authMethod: uiState.account.authMethod)
+            uiState.addError = GooglePlayErrorTranslator.friendlyMessage(for: error, authMethod: uiState.account.authMethod, accountEmail: uiState.googleAccountEmail)
             Log.print.error("[GooglePlayAppList] Add failed: \(error.localizedDescription)")
         }
 

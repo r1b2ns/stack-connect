@@ -151,8 +151,14 @@ final class MockGoogleAuthService: GoogleAuthServicing {
     var additionalScopesResult: Result<GoogleSignInResult, Error> = .failure(GoogleAuthError.cancelled)
     var logins: [String: GoogleLogin] = [:]
     var accessTokenResult: Result<String, Error> = .success("access-token")
+    var reauthenticateResult: Result<GoogleSignInResult, Error> = .failure(GoogleAuthError.cancelled)
 
     private(set) var signInCalls: [[String]] = []
+    private(set) var reauthenticateCalls: [String] = []
+    private(set) var invalidatedLogins: [String] = []
+    /// Becomes `accessTokenResult` once a token is invalidated (a refresh
+    /// that succeeds, or fails with `invalid_grant`).
+    var accessTokenAfterInvalidation: Result<String, Error>?
     private(set) var additionalScopesCalls: [(scopes: [String], loginId: String)] = []
     private(set) var signOutCalls: [String] = []
 
@@ -168,6 +174,20 @@ final class MockGoogleAuthService: GoogleAuthServicing {
         let result = try additionalScopesResult.get()
         logins[result.login.loginId] = result.login
         return result
+    }
+
+    func reauthenticate(loginId: String) async throws -> GoogleSignInResult {
+        reauthenticateCalls.append(loginId)
+        let result = try reauthenticateResult.get()
+        logins[result.login.loginId] = result.login
+        return result
+    }
+
+    func invalidateAccessToken(forLogin loginId: String) async {
+        invalidatedLogins.append(loginId)
+        if let accessTokenAfterInvalidation {
+            accessTokenResult = accessTokenAfterInvalidation
+        }
     }
 
     func login(id loginId: String) -> GoogleLogin? { logins[loginId] }
@@ -224,6 +244,8 @@ struct StaticGoogleAccessTokenProvider: GoogleAccessTokenProviding {
         if let error { throw error }
         return token
     }
+
+    func invalidateAccessToken(forLogin loginId: String) async {}
 }
 
 // MARK: - Flags

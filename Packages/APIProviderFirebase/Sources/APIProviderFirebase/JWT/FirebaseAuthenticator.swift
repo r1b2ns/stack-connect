@@ -62,6 +62,15 @@ public protocol RequestAuthenticating {
     func adapt(_ urlRequest: URLRequest) async throws -> URLRequest
 }
 
+/// A `RequestAuthenticating` whose credential can be revoked before it
+/// expires (a user's own OAuth access token). On an HTTP 401 the provider asks
+/// it once whether to retry: it drops the cached credential and returns
+/// `true`, and the request is authenticated (`adapt`) and sent again. An error
+/// the second `adapt` throws (e.g. an expired login) reaches the caller.
+public protocol RequestReauthenticating: RequestAuthenticating {
+    func shouldRetryAfterUnauthorized() async -> Bool
+}
+
 /// Marks an error thrown by a `RequestAuthenticating` that must reach the
 /// caller unchanged instead of being wrapped as
 /// `APIProviderFirebase.Error.requestGeneration`.

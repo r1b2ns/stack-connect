@@ -36,9 +36,6 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
 
     var body: some View {
         buildContent()
-            .navigationTitle(viewModel.uiState.project.displayName)
-            .trackScreen(.firebaseAppList)
-            .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $viewModel.uiState.searchQuery,
                 placement: .navigationBarDrawer(displayMode: .always),
@@ -46,6 +43,12 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
             )
             .trackSearch(query: viewModel.uiState.searchQuery, resultCount: viewModel.uiState.filteredApps.count, on: .firebaseAppList)
             .toolbar { buildToolbar() }
+            // Search and toolbar actions belong to the content: hidden while the
+            // Google access prompt replaces it (they would call the API without access).
+            .googleAccessPrompt(viewModel.uiState.googleAccessPrompt) { await viewModel.resolveGoogleAccess() }
+            .navigationTitle(viewModel.uiState.project.displayName)
+            .trackScreen(.firebaseAppList)
+            .navigationBarTitleDisplayMode(.inline)
             .task { await viewModel.load() }
             .refreshable { await viewModel.refresh() }
             .sheet(item: $viewModel.uiState.selectedApp) { app in
@@ -123,6 +126,10 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
                 Label(String(localized: "Error"), systemImage: "exclamationmark.triangle")
             } description: {
                 Text(error)
+            } actions: {
+                StackTrackedButton(String(localized: "Retry"), button: .tryAgain, on: .firebaseAppList) {
+                    Task { await viewModel.load() }
+                }
             }
         } else {
             ContentUnavailableView {

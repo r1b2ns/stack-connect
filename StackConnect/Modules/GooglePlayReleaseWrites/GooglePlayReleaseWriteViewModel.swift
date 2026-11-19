@@ -71,6 +71,9 @@ struct GooglePlayReleaseWriteUiState {
     /// How the account calls Google Play: a service account or "Sign in with
     /// Google". Picks the edit warnings' and errors' wording.
     var authMethod: AccountAuthMethod = .keyFile
+    /// The Google account's e-mail of a "Sign in with Google" account, named
+    /// in its access copy; `nil` for a service account.
+    var googleAccountEmail: String?
 
     /// Said in the Staged Rollout sheet's footer.
     var rolloutEditFooter: String {
@@ -115,6 +118,7 @@ final class GooglePlayReleaseWriteViewModel: GooglePlayReleaseWriteViewModelProt
         self.screen = screen
         self.analytics = analytics
         uiState.authMethod = writer.account.authMethod
+        uiState.googleAccountEmail = writer.googleAccountEmail
     }
 
     convenience init(app: GooglePlayAppItem, account: AccountModel, screen: AnalyticsScreen) {
@@ -201,7 +205,7 @@ final class GooglePlayReleaseWriteViewModel: GooglePlayReleaseWriteViewModelProt
             trackWrite(write, result: .failure, parameters: category.parameters)
             analytics.recordNonFatal(error, category: category)
             let message = (error as? GooglePlayReleaseWriteError)?.errorDescription
-                ?? GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .releaseChange, authMethod: uiState.authMethod)
+                ?? GooglePlayErrorTranslator.friendlyMessage(for: error, operation: .releaseChange, authMethod: uiState.authMethod, accountEmail: uiState.googleAccountEmail)
             if write.usesChecklist {
                 // The checklist stays open with the error (and Share Error).
                 uiState.checklistError = message

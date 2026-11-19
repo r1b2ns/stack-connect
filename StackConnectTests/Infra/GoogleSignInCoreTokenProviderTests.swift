@@ -249,6 +249,36 @@ final class GoogleSignInCoreTokenProviderTests: XCTestCase {
         }
     }
 
+    // MARK: - Rejected tokens (no retry in the core)
+
+    func testGooglePlaysAuthRefusalDropsTheCachedTokenSoTheNextCallRefreshes() async {
+        let factory = RecordingCoreProviderFactory()
+        factory.googleRefusal = .Auth(message: "Google returned 401: Request had invalid authentication credentials")
+        let tokens = RecordingGoogleAccessTokenProvider(result: .success("revoked-token"))
+        let connection = GooglePlayAccountConnection(
+            credentials: GooglePlayCredentials(googleLoginId: "user-1"),
+            connectivity: MockConnectivityProviding(online: true),
+            coreProviders: factory,
+            googleTokens: tokens
+        )
+
+        _ = try? await connection.fetchApps()
+
+        XCTAssertEqual(tokens.invalidatedLogins, ["user-1"])
+        XCTAssertEqual(tokens.requestedLogins, ["user-1"], "no automatic retry")
+    }
+
+    func testOwnSignInFailuresAndHttpErrorsKeepTheCachedToken() async {
+        let tokens = RecordingGoogleAccessTokenProvider(result: .success("token"))
+        let sut = GoogleSignInCoreTokenProvider(loginId: "user-1", tokens: tokens)
+
+        await sut.tokenRejected(by: GoogleSignInCoreTokenProvider.coreError(for: GoogleAuthError.invalidGrant))
+        await sut.tokenRejected(by: .Http(status: 404, message: "Not found"))
+        await sut.tokenRejected(by: .Network(message: "offline"))
+
+        XCTAssertTrue(tokens.invalidatedLogins.isEmpty)
+    }
+
     // MARK: - Helpers
 
     /// Runs one token request that fails and returns the error as the core
@@ -286,12 +316,19 @@ private final class RecordingGoogleAccessTokenProvider: GoogleAccessTokenProvidi
 
     var requestedLogins: [String] { lock.withLock { _requestedLogins } }
 
+    private var _invalidatedLogins: [String] = []
+    var invalidatedLogins: [String] { lock.withLock { _invalidatedLogins } }
+
     func accessToken(forLogin loginId: String) async throws -> String {
         let result = lock.withLock {
             _requestedLogins.append(loginId)
             return _result
         }
         return try result.get()
+    }
+
+    func invalidateAccessToken(forLogin loginId: String) async {
+        lock.withLock { _invalidatedLogins.append(loginId) }
     }
 }
 

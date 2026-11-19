@@ -48,7 +48,8 @@ final class GooglePlayAppListViewModelTests: XCTestCase {
     private func makeSUT(account: AccountModel? = nil, online: Bool = true) -> GooglePlayAppListViewModel {
         let checker = accessChecker!
         let account = account ?? self.account
-        if account.id != self.account.id {
+        let existing: GooglePlayCredentials? = keychain.object(forKey: "credentials.\(account.id)")
+        if account.id != self.account.id, existing == nil {
             keychain.setObject(
                 GooglePlayCredentials(serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON()),
                 forKey: "credentials.\(account.id)"
@@ -112,6 +113,22 @@ final class GooglePlayAppListViewModelTests: XCTestCase {
             makeSUT(account: signIn).uiState.addAppFooter,
             String(localized: "Enter the Android package name (e.g. com.example.myapp). The signed-in Google account must have access to this app in the Google Play Console.")
         )
+    }
+
+    func testGoogleSignInCopyNamesTheAccountsEmail() async {
+        let signIn = AccountModel(id: "play.signin", name: "Signed In", providerType: .googlePlay, authMethod: .googleSignIn)
+        keychain.setObject(GooglePlayCredentials(googleLoginId: "user-1"), forKey: "credentials.\(signIn.id)")
+        GoogleLoginKeychainStore(keychain: keychain).save(GoogleAuthFixtures.grant(email: "dev@example.com"))
+        connection.fetchAppsHandler = { throw StackError.Auth(message: "") }
+        let sut = makeSUT(account: signIn)
+
+        XCTAssertEqual(sut.uiState.googleAccountEmail, "dev@example.com")
+        XCTAssertEqual(
+            sut.uiState.addAppFooter,
+            String(localized: "Enter the Android package name (e.g. com.example.myapp). The Google account \("dev@example.com") must have access to this app in the Google Play Console.")
+        )
+        await sut.load()
+        XCTAssertEqual(sut.uiState.error, String(localized: "Google Play denied access to the Google account \("dev@example.com")."))
     }
 
     func testSyncFailureOfAGoogleSignInAccountNamesTheSignedInGoogleAccount() async {
@@ -633,7 +650,8 @@ extension GooglePlayAppListViewModelTests {
         let limit = GooglePlayAppListViewModel.maxConcurrentIconFetches
 
         let loading = Task { await sut.load() }
-        await gate.waitForArrivals(limit + 1)   // bounded: returns once nothing else can arrive
+        await gate.waitForArrivals(limit)   // time-bounded, see AsyncGate
+        await gate.settle()                  // a broken bound would start more meanwhile
         let startedWhileBlocked = await gate.arrivals
         await gate.open()
         await loading.value
