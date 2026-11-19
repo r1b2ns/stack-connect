@@ -13,6 +13,8 @@ protocol FirebaseAppListViewModelProtocol: ObservableObject {
     func fetchConfig(_ app: FirebaseAppModel) async
     func removeApp(_ app: FirebaseAppModel) async
     func createApp(platform: FirebaseAppPlatform, identifier: String, nickname: String, appStoreId: String) async
+    /// "Sign in again" of `uiState.googleAccessPrompt`, then a reload.
+    func resolveGoogleAccess() async
 }
 
 // MARK: - App Model
@@ -86,6 +88,9 @@ struct FirebaseAppListUiState {
     /// Set when the config file could not be fetched: the detail sheet shows
     /// it with a retry instead of the loading row.
     var configError: String?
+    /// Set when the account's Google sign-in expired or was revoked
+    /// (`GoogleAccessRecovery`).
+    var googleAccessPrompt: GoogleAccessPrompt?
 
     var filteredApps: [FirebaseAppModel] {
         let query = searchQuery.trimmingCharacters(in: .whitespaces).lowercased()
@@ -112,18 +117,24 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
     private let keychain: KeyStorable
     private let analytics: AnalyticsTracking
     private let firstAppsLoaded: FirstAppsLoadedTracker
+    private let googleAuth: any GoogleAuthServicing
+    private let googleAccess: GoogleAccessRecovery
 
     init(
         account: AccountModel,
         project: FirebaseProjectModel,
         keychain: KeyStorable = KeychainStorable.shared,
         analytics: AnalyticsTracking = AnalyticsService.shared,
-        firstAppsLoaded: FirstAppsLoadedTracker = .shared
+        firstAppsLoaded: FirstAppsLoadedTracker = .shared,
+        googleAuth: (any GoogleAuthServicing)? = nil
     ) {
         self.uiState = FirebaseAppListUiState(account: account, project: project)
         self.keychain = keychain
         self.analytics = analytics
         self.firstAppsLoaded = firstAppsLoaded
+        let googleAuth = googleAuth ?? GoogleAuthService.shared
+        self.googleAuth = googleAuth
+        self.googleAccess = GoogleAccessRecovery(account: account, keychain: keychain, auth: googleAuth, analytics: analytics, screen: .firebaseAppList)
     }
 
     func load() async {
@@ -133,7 +144,24 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
     /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
     func refresh() async {
         await performLoad()
-        analytics.track(.action(.refresh, on: .firebaseAppList, result: uiState.error == nil ? .success : .failure))
+        let failed = uiState.error != nil || uiState.googleAccessPrompt != nil
+        analytics.track(.action(.refresh, on: .firebaseAppList, result: failed ? .failure : .success))
+    }
+
+    func resolveGoogleAccess() async {
+        guard let prompt = uiState.googleAccessPrompt, !prompt.isWorking else { return }
+        guard await googleAccess.resolve(prompt, update: { uiState.googleAccessPrompt = $0 }) else { return }
+        uiState.googleAccessPrompt = nil
+        await performLoad()
+    }
+
+    /// A write failed because the Google sign-in expired: offer "Sign in again".
+    private func promptIfSignInRequired(_ error: Error) {
+        if let prompt = googleAccess.prompt(for: error) {
+            uiState.selectedApp = nil
+            uiState.showCreateApp = false
+            uiState.googleAccessPrompt = prompt
+        }
     }
 
     /// Only the platform (an enum) is sent — never app IDs, names or identifiers.
@@ -144,6 +172,7 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
     private func performLoad() async {
         uiState.isLoading = true
         uiState.error = nil
+        uiState.googleAccessPrompt = nil
 
         do {
             guard let provider = createProvider() else {
@@ -157,9 +186,9 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
             async let iosResult = fetchIosApps(provider: provider)
             async let webResult = fetchWebApps(provider: provider)
 
-            let android = await androidResult
-            let ios = await iosResult
-            let web = await webResult
+            let android = try await androidResult
+            let ios = try await iosResult
+            let web = try await webResult
 
             var allApps: [FirebaseAppModel] = []
             allApps.append(contentsOf: android)
@@ -176,8 +205,15 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
             Log.print.info("[Firebase] Loaded \(allApps.count) apps for project \(self.uiState.project.projectId)")
             await firstAppsLoaded.recordAppsLoaded(count: allApps.count, provider: .firebase, on: .firebaseAppList)
         } catch {
-            uiState.error = error.localizedDescription
-            Log.print.error("[Firebase] Load apps failed: \(error.localizedDescription)")
+            if let prompt = googleAccess.prompt(for: error) {
+                uiState.googleAccessPrompt = prompt
+                Log.print.error("[Firebase] Load apps failed: \(error.localizedDescription)")
+            } else if let message = googleAccess.unavailableMessage(for: error) {
+                uiState.error = message
+            } else {
+                uiState.error = error.localizedDescription
+                Log.print.error("[Firebase] Load apps failed: \(error.localizedDescription)")
+            }
         }
 
         uiState.isLoading = false
@@ -221,6 +257,7 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
         } catch {
             analytics.track(.action(.updateNickname, on: .firebaseAppDetail, result: .failure, parameters: parameters))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to update nickname"), icon: "exclamationmark.triangle.fill")
+            promptIfSignInRequired(error)
             Log.print.error("[Firebase] Update nickname failed: \(error.localizedDescription)")
         }
     }
@@ -277,6 +314,7 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
             Log.print.info("[Firebase] Fetched config for \(app.appId)")
         } catch {
             uiState.configError = String(localized: "Couldn't load the configuration file.")
+            promptIfSignInRequired(error)
             Log.print.error("[Firebase] Fetch config failed: \(error.localizedDescription)")
         }
     }
@@ -315,6 +353,7 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
         } catch {
             analytics.track(.action(.deleteFirebaseApp, on: .firebaseAppList, result: .failure, parameters: parameters))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to remove app"), icon: "exclamationmark.triangle.fill")
+            promptIfSignInRequired(error)
             Log.print.error("[Firebase] Remove app failed: \(error.localizedDescription)")
         }
     }
@@ -365,13 +404,14 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
         } catch {
             analytics.track(.action(.createFirebaseApp, on: .createFirebaseApp, result: .failure, parameters: parameters))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to create app"), icon: "exclamationmark.triangle.fill")
+            promptIfSignInRequired(error)
             Log.print.error("[Firebase] Create app failed: \(error.localizedDescription)")
         }
     }
 
     // MARK: - Private
 
-    private func fetchAndroidApps(provider: APIProviderFirebase) async -> [FirebaseAppModel] {
+    private func fetchAndroidApps(provider: APIProviderFirebase) async throws -> [FirebaseAppModel] {
         do {
             let response = try await provider.request(
                 FirebaseAPI.v1beta1.projects.id(uiState.project.projectId).androidApps.get(pageSize: 100)
@@ -388,11 +428,15 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
             }
         } catch {
             Log.print.error("[Firebase] Fetch Android apps failed: \(error.localizedDescription)")
+            // One platform failing still shows the others, except when the
+            // Google sign-in expired or the API is disabled on StackConnect's
+            // side (sign-in accounts): every request fails then.
+            if googleAccess.requiresSignIn(error) || GoogleAccessRecovery.isServiceDisabled(error) && googleAccess.loginId != nil { throw error }
             return []
         }
     }
 
-    private func fetchIosApps(provider: APIProviderFirebase) async -> [FirebaseAppModel] {
+    private func fetchIosApps(provider: APIProviderFirebase) async throws -> [FirebaseAppModel] {
         do {
             let response = try await provider.request(
                 FirebaseAPI.v1beta1.projects.id(uiState.project.projectId).iosApps.get(pageSize: 100)
@@ -409,11 +453,15 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
             }
         } catch {
             Log.print.error("[Firebase] Fetch iOS apps failed: \(error.localizedDescription)")
+            // One platform failing still shows the others, except when the
+            // Google sign-in expired or the API is disabled on StackConnect's
+            // side (sign-in accounts): every request fails then.
+            if googleAccess.requiresSignIn(error) || GoogleAccessRecovery.isServiceDisabled(error) && googleAccess.loginId != nil { throw error }
             return []
         }
     }
 
-    private func fetchWebApps(provider: APIProviderFirebase) async -> [FirebaseAppModel] {
+    private func fetchWebApps(provider: APIProviderFirebase) async throws -> [FirebaseAppModel] {
         do {
             let response = try await provider.request(
                 FirebaseAPI.v1beta1.projects.id(uiState.project.projectId).webApps.get(pageSize: 100)
@@ -430,12 +478,16 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
             }
         } catch {
             Log.print.error("[Firebase] Fetch Web apps failed: \(error.localizedDescription)")
+            // One platform failing still shows the others, except when the
+            // Google sign-in expired or the API is disabled on StackConnect's
+            // side (sign-in accounts): every request fails then.
+            if googleAccess.requiresSignIn(error) || GoogleAccessRecovery.isServiceDisabled(error) && googleAccess.loginId != nil { throw error }
             return []
         }
     }
 
     private func createProvider() -> APIProviderFirebase? {
         guard let credentials: FirebaseCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else { return nil }
-        return BackendEnvironment.firebaseProviders.makeProvider(credentials: credentials)
+        return BackendEnvironment.firebaseProviders.makeProvider(credentials: credentials, tokens: googleAuth)
     }
 }

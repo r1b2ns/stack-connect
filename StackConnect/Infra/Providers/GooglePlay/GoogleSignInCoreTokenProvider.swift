@@ -60,6 +60,20 @@ final class GoogleSignInCoreTokenProvider: AccessTokenProvider {
         }
     }
 
+    // MARK: - Rejected tokens
+
+    /// Google Play answered `StackError.Auth` to a request this provider
+    /// authorized (an HTTP 401 / 403 from Google, not one of this provider's
+    /// own sign-in failures). The core never retries, so the cached access
+    /// token is dropped: if it was revoked before its expiry, the next request
+    /// refreshes it instead of failing again for up to an hour. A plain 403
+    /// (no access to the app) only costs one extra refresh.
+    func tokenRejected(by error: StackError) async {
+        guard case .Auth(let message) = error, GoogleSignInCoreAuthMarker.kind(in: message) == nil else { return }
+        await tokens.invalidateAccessToken(forLogin: loginId)
+        Log.print.info("[GooglePlay] Google Play refused the Google sign-in token; it is refreshed on the next request")
+    }
+
     // MARK: - Core error → app error
 
     /// The `GoogleAuthError` behind a core `StackError.Auth` that this
@@ -113,7 +127,7 @@ final class GoogleSignInCoreTokenProvider: AccessTokenProvider {
             return GoogleSignInCoreAuthMarker.authError(.notConfigured, detail: "Sign in with Google isn't configured in this build")
         case .http(let status, _):
             return GoogleSignInCoreAuthMarker.authError(.tokenError, detail: "Google refused the token request (HTTP \(status))")
-        case .cancelled, .webSessionFailedToStart, .accessDenied, .callback,
+        case .cancelled, .webSessionFailedToStart, .accessDenied, .callback, .differentAccount,
              .noRefreshToken, .missingIdentity, .invalidTokenResponse:
             return GoogleSignInCoreAuthMarker.authError(.tokenError, detail: "Google returned no usable access token")
         }
@@ -172,5 +186,9 @@ enum GoogleSignInCoreAuthMarker {
 struct SharedGoogleAccessTokenProvider: GoogleAccessTokenProviding {
     func accessToken(forLogin loginId: String) async throws -> String {
         try await GoogleAuthService.shared.accessToken(forLogin: loginId)
+    }
+
+    func invalidateAccessToken(forLogin loginId: String) async {
+        await GoogleAuthService.shared.invalidateAccessToken(forLogin: loginId)
     }
 }

@@ -18,6 +18,9 @@ protocol RemoteConfigViewModelProtocol: ObservableObject {
     func deleteCondition(at index: Int)
     func moveCondition(from source: IndexSet, to destination: Int)
     func duplicateCondition(_ condition: RemoteConfigCondition)
+    /// The primary action of `uiState.googleAccessPrompt` ("Grant access" or
+    /// "Sign in again"), then a reload once resolved.
+    func resolveGoogleAccess() async
 }
 
 // MARK: - Parameter Model
@@ -61,6 +64,9 @@ struct RemoteConfigUiState {
     var showCreateParameter = false
     var etag: String = "*"
     var searchQuery = ""
+    /// Set instead of loading for a Google sign-in account that hasn't granted
+    /// Remote Config's scope, or whose sign-in expired (`GoogleAccessRecovery`).
+    var googleAccessPrompt: GoogleAccessPrompt?
 
     var filteredParameters: [RemoteConfigParameterItem] {
         let query = searchQuery.trimmingCharacters(in: .whitespaces).lowercased()
@@ -81,6 +87,11 @@ final class RemoteConfigViewModel: RemoteConfigViewModelProtocol {
 
     private let keychain: KeyStorable
     private let analytics: AnalyticsTracking
+    private let googleAuth: any GoogleAuthServicing
+    private let googleAccess: GoogleAccessRecovery
+    /// The prompt was raised by a failed publish: resolving it must not reload
+    /// (that would drop the unpublished edits), the user publishes again.
+    private var isPromptFromPublish = false
 
     // Internal template (the full template we work with)
     private var currentTemplate: RemoteConfigTemplate = RemoteConfigTemplate()
@@ -89,11 +100,15 @@ final class RemoteConfigViewModel: RemoteConfigViewModelProtocol {
         project: FirebaseProjectModel,
         account: AccountModel,
         keychain: KeyStorable = KeychainStorable.shared,
-        analytics: AnalyticsTracking = AnalyticsService.shared
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        googleAuth: (any GoogleAuthServicing)? = nil
     ) {
         self.uiState = RemoteConfigUiState(project: project, account: account)
         self.keychain = keychain
         self.analytics = analytics
+        let googleAuth = googleAuth ?? GoogleAuthService.shared
+        self.googleAuth = googleAuth
+        self.googleAccess = GoogleAccessRecovery(account: account, keychain: keychain, auth: googleAuth, analytics: analytics, screen: .remoteConfig)
     }
 
     // MARK: - Load
@@ -105,12 +120,34 @@ final class RemoteConfigViewModel: RemoteConfigViewModelProtocol {
     /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
     func refresh() async {
         await performLoad()
-        analytics.track(.action(.refresh, on: .remoteConfig, result: uiState.error == nil ? .success : .failure))
+        let failed = uiState.error != nil || uiState.googleAccessPrompt != nil
+        analytics.track(.action(.refresh, on: .remoteConfig, result: failed ? .failure : .success))
+    }
+
+    func resolveGoogleAccess() async {
+        guard let prompt = uiState.googleAccessPrompt, !prompt.isWorking else { return }
+        let resolved = await googleAccess.resolve(prompt) { uiState.googleAccessPrompt = $0 }
+        guard resolved else { return }
+        uiState.googleAccessPrompt = nil
+        if isPromptFromPublish {
+            isPromptFromPublish = false
+        } else {
+            await performLoad()
+        }
     }
 
     private func performLoad() async {
         uiState.isLoading = true
         uiState.error = nil
+        isPromptFromPublish = false
+
+        // Google sign-in without Remote Config's scope: explain and ask first,
+        // never call the API for a certain 403 (plan G3).
+        uiState.googleAccessPrompt = googleAccess.promptBeforeLoading(.remoteConfig)
+        guard uiState.googleAccessPrompt == nil else {
+            uiState.isLoading = false
+            return
+        }
 
         guard let provider = createProvider() else {
             uiState.error = String(localized: "No credentials found for this account.")
@@ -130,8 +167,15 @@ final class RemoteConfigViewModel: RemoteConfigViewModelProtocol {
 
             Log.print.info("[RemoteConfig] Loaded \(self.uiState.parameters.count) parameters, \(self.uiState.conditions.count) conditions for project \(self.uiState.project.projectId)")
         } catch {
-            uiState.error = error.localizedDescription
-            Log.print.error("[RemoteConfig] Load failed: \(error.localizedDescription)")
+            if let prompt = googleAccess.prompt(for: error, feature: .remoteConfig) {
+                uiState.googleAccessPrompt = prompt
+                Log.print.error("[RemoteConfig] Load failed: \(error.localizedDescription)")
+            } else if let message = googleAccess.unavailableMessage(for: error) {
+                uiState.error = message
+            } else {
+                uiState.error = error.localizedDescription
+                Log.print.error("[RemoteConfig] Load failed: \(error.localizedDescription)")
+            }
         }
 
         uiState.isLoading = false
@@ -172,6 +216,10 @@ final class RemoteConfigViewModel: RemoteConfigViewModelProtocol {
         } catch {
             analytics.track(.action(.publishRemoteConfig, on: .remoteConfig, result: .failure, parameters: parameters))
             uiState.toastMessage = ToastMessage(String(localized: "Failed to publish"), icon: "exclamationmark.triangle.fill")
+            if let prompt = googleAccess.prompt(for: error, feature: .remoteConfig) {
+                isPromptFromPublish = true
+                uiState.googleAccessPrompt = prompt
+            }
             Log.print.error("[RemoteConfig] Save failed: \(error.localizedDescription)")
         }
 
@@ -296,6 +344,6 @@ final class RemoteConfigViewModel: RemoteConfigViewModelProtocol {
 
     private func createProvider() -> APIProviderFirebase? {
         guard let credentials: FirebaseCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else { return nil }
-        return BackendEnvironment.firebaseProviders.makeProvider(credentials: credentials)
+        return BackendEnvironment.firebaseProviders.makeProvider(credentials: credentials, tokens: googleAuth)
     }
 }

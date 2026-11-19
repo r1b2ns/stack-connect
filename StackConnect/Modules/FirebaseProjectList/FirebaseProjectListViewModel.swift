@@ -9,6 +9,8 @@ protocol FirebaseProjectListViewModelProtocol: ObservableObject {
     var uiState: FirebaseProjectListUiState { get set }
     func load() async
     func refresh() async
+    /// "Sign in again" of `uiState.googleAccessPrompt`, then a reload.
+    func resolveGoogleAccess() async
 }
 
 // MARK: - Project Model
@@ -34,6 +36,9 @@ struct FirebaseProjectListUiState {
     var error: String?
     var searchQuery = ""
     var toastMessage: ToastMessage?
+    /// Set when the account's Google sign-in expired or was revoked
+    /// (`GoogleAccessRecovery`).
+    var googleAccessPrompt: GoogleAccessPrompt?
 
     var filteredProjects: [FirebaseProjectModel] {
         let query = searchQuery.trimmingCharacters(in: .whitespaces).lowercased()
@@ -54,15 +59,21 @@ final class FirebaseProjectListViewModel: FirebaseProjectListViewModelProtocol {
 
     private let keychain: KeyStorable
     private let analytics: AnalyticsTracking
+    private let googleAuth: any GoogleAuthServicing
+    private let googleAccess: GoogleAccessRecovery
 
     init(
         account: AccountModel,
         keychain: KeyStorable = KeychainStorable.shared,
-        analytics: AnalyticsTracking = AnalyticsService.shared
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        googleAuth: (any GoogleAuthServicing)? = nil
     ) {
         self.uiState = FirebaseProjectListUiState(account: account)
         self.keychain = keychain
         self.analytics = analytics
+        let googleAuth = googleAuth ?? GoogleAuthService.shared
+        self.googleAuth = googleAuth
+        self.googleAccess = GoogleAccessRecovery(account: account, keychain: keychain, auth: googleAuth, analytics: analytics, screen: .firebaseProjectList)
     }
 
     func load() async {
@@ -72,12 +83,21 @@ final class FirebaseProjectListViewModel: FirebaseProjectListViewModelProtocol {
     /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
     func refresh() async {
         await performLoad()
-        analytics.track(.action(.refresh, on: .firebaseProjectList, result: uiState.error == nil ? .success : .failure))
+        let failed = uiState.error != nil || uiState.googleAccessPrompt != nil
+        analytics.track(.action(.refresh, on: .firebaseProjectList, result: failed ? .failure : .success))
+    }
+
+    func resolveGoogleAccess() async {
+        guard let prompt = uiState.googleAccessPrompt, !prompt.isWorking else { return }
+        guard await googleAccess.resolve(prompt, update: { uiState.googleAccessPrompt = $0 }) else { return }
+        uiState.googleAccessPrompt = nil
+        await performLoad()
     }
 
     private func performLoad() async {
         uiState.isLoading = true
         uiState.error = nil
+        uiState.googleAccessPrompt = nil
 
         do {
             guard let provider = createProvider() else {
@@ -118,8 +138,15 @@ final class FirebaseProjectListViewModel: FirebaseProjectListViewModelProtocol {
             uiState.projects = allProjects.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
             Log.print.info("[Firebase] Loaded \(allProjects.count) projects")
         } catch {
-            uiState.error = error.localizedDescription
-            Log.print.error("[Firebase] Load projects failed: \(error.localizedDescription)")
+            if let prompt = googleAccess.prompt(for: error) {
+                uiState.googleAccessPrompt = prompt
+                Log.print.error("[Firebase] Load projects failed: \(error.localizedDescription)")
+            } else if let message = googleAccess.unavailableMessage(for: error) {
+                uiState.error = message
+            } else {
+                uiState.error = error.localizedDescription
+                Log.print.error("[Firebase] Load projects failed: \(error.localizedDescription)")
+            }
         }
 
         uiState.isLoading = false
@@ -129,6 +156,6 @@ final class FirebaseProjectListViewModel: FirebaseProjectListViewModelProtocol {
 
     private func createProvider() -> APIProviderFirebase? {
         guard let credentials: FirebaseCredentials = keychain.object(forKey: "credentials.\(uiState.account.id)") else { return nil }
-        return BackendEnvironment.firebaseProviders.makeProvider(credentials: credentials)
+        return BackendEnvironment.firebaseProviders.makeProvider(credentials: credentials, tokens: googleAuth)
     }
 }

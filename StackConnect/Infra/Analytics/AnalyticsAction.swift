@@ -72,7 +72,17 @@ enum AnalyticsAction: String, CaseIterable, Sendable {
     /// `missing_scope_count` for unticked checkboxes), `cancelled` (sheet
     /// closed) or `failure` with `error_category`. Sent with `kind`. The
     /// accounts then added are `create_account` with `auth_method`.
+    /// Also sent by the Firebase screens' "Sign in again" (expired or revoked
+    /// login), on that screen, after `google_sign_in_started`.
     case googleSignIn = "google_sign_in"
+    /// "Grant access" on a Firebase screen of a Google sign-in account opened
+    /// Google's page for one extra (sensitive) scope, with `kind`
+    /// (`GoogleSensitiveScopeFeature.analyticsValue`: `remote_config`, `analytics`).
+    case googleScopeGrantStarted = "google_scope_grant_started"
+    /// The extra-scope request finished: `success` (granted), `cancelled`
+    /// (sheet closed) or `failure` with `error_category` (`scope_denied` when
+    /// the checkbox was left unticked). Sent with `kind`.
+    case googleScopeGrant = "google_scope_grant"
 
     // MARK: Activation
     /// The install's "first value" moment: the first time an app list loaded

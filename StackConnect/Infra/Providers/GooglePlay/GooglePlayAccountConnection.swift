@@ -355,6 +355,7 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
             // Google's 204 No Content for a track without releases.
             infos = []
         } catch let error as StackError {
+            await signInTokenProvider?.tokenRejected(by: error)
             throw translate(error)
         }
         Log.print.info("[GooglePlay] Fetched \(infos.count) release summaries for \(packageName) on \(track) (Rust core)")
@@ -581,12 +582,16 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
     }
 
     /// Runs a Rust core async call, routing `StackError` through `translate`.
+    /// For a "Sign in with Google" account, Google's own `Auth` refusal drops
+    /// the cached access token first (`GoogleSignInCoreTokenProvider.tokenRejected(by:)`):
+    /// the core doesn't retry, so the next call refreshes it.
     private func callRustCore<T>(
         _ operation: () async throws -> T
     ) async throws -> T {
         do {
             return try await operation()
         } catch let error as StackError {
+            await signInTokenProvider?.tokenRejected(by: error)
             throw translate(error)
         }
     }

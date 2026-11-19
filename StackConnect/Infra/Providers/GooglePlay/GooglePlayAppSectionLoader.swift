@@ -261,7 +261,8 @@ final class GooglePlayAppSectionLoader<Entry: GooglePlayAppSectionCache, Connect
             // says so — keep the content without a second warning.
             if !(GooglePlayErrorTranslator.isOffline(error) && host.uiState.section.hasContent) {
                 host.uiState.section.error = GooglePlayErrorTranslator.friendlyMessage(
-                    for: error, operation: .appContentRead, authMethod: account.authMethod
+                    for: error, operation: .appContentRead, authMethod: account.authMethod,
+                    accountEmail: GoogleLoginReferences.email(of: account, keychain: keychain)
                 )
                 host.uiState.section.errorCategory = AnalyticsErrorCategory(connectionError: error)
             }

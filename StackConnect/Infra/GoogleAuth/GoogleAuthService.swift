@@ -40,6 +40,14 @@ protocol GoogleAuthServicing: AnyObject, GoogleAccessTokenProviding {
     /// (`analytics.readonly`).
     func requestAdditionalScopes(_ scopes: [String], for loginId: String) async throws -> GoogleSignInResult
 
+    /// "Sign in again" for a login whose grant expired or was revoked
+    /// (`GoogleAuthError.requiresSignIn`, plan R5): opens Google's page with the
+    /// login's e-mail as `login_hint`, for the scopes it had (at least the
+    /// sign-in set), and replaces that login's grant only. Throws
+    /// `GoogleAuthError.differentAccount` when another Google account is
+    /// picked: nothing is stored then.
+    func reauthenticate(loginId: String) async throws -> GoogleSignInResult
+
     /// The stored login, or `nil`.
     func login(id loginId: String) -> GoogleLogin?
 
@@ -115,6 +123,14 @@ final class GoogleAuthService: GoogleAuthServicing {
         return try await authorize(scopes: scopes, expectedLoginId: loginId)
     }
 
+    func reauthenticate(loginId: String) async throws -> GoogleSignInResult {
+        // The grant may be gone (`loginNotFound`): the accounts still refer to
+        // the login, so signing in with the same Google user restores it.
+        let previous = store.load(loginId: loginId)
+        let scopes = Self.uniqued(GoogleOAuthScope.signIn + (previous?.grantedScopes.sorted() ?? []))
+        return try await authorize(scopes: scopes, expectedLoginId: loginId)
+    }
+
     private func authorize(scopes: [String], expectedLoginId: String?) async throws -> GoogleSignInResult {
         guard let configuration, let tokenClient else { throw GoogleAuthError.notConfigured }
 
@@ -153,9 +169,9 @@ final class GoogleAuthService: GoogleAuthServicing {
         }
         if let expectedLoginId, claims.subject != expectedLoginId {
             // Another Google account was picked in the chooser: its grant must
-            // not replace this login's.
-            Log.print.error("[GoogleAuth] Incremental authorization returned another Google account")
-            throw GoogleAuthError.callback(.unexpectedRedirect)
+            // not replace this login's (nor be stored as a new one).
+            Log.print.error("[GoogleAuth] Authorization for a known login returned another Google account")
+            throw GoogleAuthError.differentAccount(expectedEmail: previous?.email)
         }
 
         let existing = previous ?? store.load(loginId: claims.subject)
@@ -200,6 +216,11 @@ final class GoogleAuthService: GoogleAuthServicing {
         refreshTasks[loginId] = task
         defer { refreshTasks[loginId] = nil }
         return try await task.value
+    }
+
+    func invalidateAccessToken(forLogin loginId: String) {
+        guard accessTokens.removeValue(forKey: loginId) != nil else { return }
+        Log.print.info("[GoogleAuth] Cached access token dropped after Google rejected it")
     }
 
     /// Exchanges the stored refresh token for a new access token. A refresh

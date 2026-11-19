@@ -16,4 +16,10 @@ import Foundation
 public protocol GoogleAccessTokenProviding: Sendable {
     /// A valid access token for the login `loginId`.
     func accessToken(forLogin loginId: String) async throws -> String
+
+    /// Drops the cached access token of `loginId`, so the next
+    /// `accessToken(forLogin:)` refreshes it. Called when Google rejected the
+    /// token (HTTP 401) before its expiry, e.g. revoked from the user's Google
+    /// account settings. The refresh token is kept.
+    func invalidateAccessToken(forLogin loginId: String) async
 }

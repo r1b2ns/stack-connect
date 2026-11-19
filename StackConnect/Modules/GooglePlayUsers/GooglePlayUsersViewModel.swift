@@ -82,6 +82,9 @@ struct GooglePlayUsersUiState {
     var toastMessage: ToastMessage?
     /// The calling service account's `client_email` (self-protection, U7).
     var serviceAccountEmail: String?
+    /// The Google account's e-mail of a "Sign in with Google" account, named
+    /// in its access copy; `nil` for a service account.
+    var googleAccountEmail: String?
     var searchQuery = ""
     var selectedFilter: GooglePlayUsersFilter = .all
     /// Remove confirmation on screen.
@@ -135,6 +138,10 @@ struct GooglePlayUsersUiState {
         case .keyFile:
             return String(localized: "Google can't tell which developer account a service account belongs to: the ID is in Play Console › Settings › Developer account (and in every Play Console URL). The service account needs the “Admin (all permissions)” permission to manage users.")
         case .googleSignIn:
+            if let email = googleAccountEmail {
+                return String(localized: "Google doesn't tell StackConnect which developer account to use: the ID is in Play Console › Settings › Developer account (and in every Play Console URL). The Google account \(email) needs the “Admin (all permissions)” permission to manage users.",
+                              comment: "Developer ID setup footer, account added with Sign in with Google. The placeholder is that Google account's e-mail.")
+            }
             return String(localized: "Google doesn't tell StackConnect which developer account to use: the ID is in Play Console › Settings › Developer account (and in every Play Console URL). The signed-in Google account needs the “Admin (all permissions)” permission to manage users.")
         }
     }
@@ -173,6 +180,7 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
         self.connectionFactory = connectionFactory
         self.analytics = analytics
         self.uiState.serviceAccountEmail = Self.serviceAccountEmail(keychain: keychain, accountId: account.id)
+        self.uiState.googleAccountEmail = GoogleLoginReferences.email(of: account, keychain: keychain)
     }
 
     // MARK: - Load
@@ -229,7 +237,7 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
             await saveCache()
             Log.print.info("[GooglePlayUsers] Synced \(users.count) users for account: \(self.uiState.account.name)")
         } catch {
-            let failure = GooglePlayErrorTranslator.usersFailure(error, call: usersCall(.list, developerId: developerId), logTag: "GooglePlayUsers", authMethod: uiState.account.authMethod)
+            let failure = GooglePlayErrorTranslator.usersFailure(error, call: usersCall(.list, developerId: developerId), logTag: "GooglePlayUsers", authMethod: uiState.account.authMethod, accountEmail: uiState.googleAccountEmail)
             let offline = GooglePlayErrorTranslator.isOffline(error)
             if !(offline && !uiState.users.isEmpty) {
                 uiState.error = failure.message
@@ -337,7 +345,8 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
         } catch {
             let failure = GooglePlayErrorTranslator.usersFailure(
                 error, call: usersCall(.delete, developerId: developerId, email: user.email), logTag: "GooglePlayUsers",
-                authMethod: uiState.account.authMethod
+                authMethod: uiState.account.authMethod,
+                accountEmail: uiState.googleAccountEmail
             )
             showActionError(failure)
             analytics.track(.action(.deleteUser, on: .googlePlayUsers, result: .failure))
@@ -359,7 +368,8 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
             Log.print.error("[GooglePlayUsers] Resend failed removing the old invitation")
             let failure = GooglePlayErrorTranslator.usersFailure(
                 error, call: usersCall(.delete, developerId: developerId, email: user.email), logTag: "GooglePlayUsers",
-                authMethod: uiState.account.authMethod
+                authMethod: uiState.account.authMethod,
+                accountEmail: uiState.googleAccountEmail
             )
             showActionError(failure)
             analytics.track(.action(.resendInvite, on: .googlePlayUsers, result: .failure))
@@ -382,7 +392,7 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
         } catch {
             // The old invitation is gone: the list must say so too.
             Log.print.error("[GooglePlayUsers] Resend failed sending the new invitation")
-            let failure = GooglePlayErrorTranslator.usersFailure(error, call: usersCall(.invite, developerId: developerId), logTag: "GooglePlayUsers", authMethod: uiState.account.authMethod)
+            let failure = GooglePlayErrorTranslator.usersFailure(error, call: usersCall(.invite, developerId: developerId), logTag: "GooglePlayUsers", authMethod: uiState.account.authMethod, accountEmail: uiState.googleAccountEmail)
             uiState.users.removeAll { $0.id == user.id }
             await saveCache()
             let reason = failure.message
@@ -429,7 +439,7 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
             analytics.track(.action(.inviteUser, on: .googlePlayInviteUser, result: .success))
             return nil
         } catch {
-            let failure = GooglePlayErrorTranslator.usersFailure(error, call: usersCall(.invite, developerId: developerId), logTag: "GooglePlayUsers", authMethod: uiState.account.authMethod)
+            let failure = GooglePlayErrorTranslator.usersFailure(error, call: usersCall(.invite, developerId: developerId), logTag: "GooglePlayUsers", authMethod: uiState.account.authMethod, accountEmail: uiState.googleAccountEmail)
             uiState.inviteErrorDetails = failure.technicalDetails
             analytics.track(.action(.inviteUser, on: .googlePlayInviteUser, result: .failure))
             return failure.message

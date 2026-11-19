@@ -37,10 +37,13 @@ struct MessagingView<ViewModel: MessagingViewModelProtocol>: View {
 
     var body: some View {
         buildContent()
+            .toolbar { buildToolbar() }
+            // Search and toolbar actions belong to the content: hidden while the
+            // Google access prompt replaces it (they would call the API without access).
+            .googleAccessPrompt(viewModel.uiState.googleAccessPrompt) { await viewModel.resolveGoogleAccess() }
             .navigationTitle(String(localized: "Messaging"))
             .trackScreen(.messaging)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { buildToolbar() }
             .sheet(isPresented: $viewModel.uiState.showNewCampaign) {
                 NewCampaignSheet(
                     availableApps: viewModel.uiState.availableApps,

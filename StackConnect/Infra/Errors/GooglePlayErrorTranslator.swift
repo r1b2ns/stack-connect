@@ -45,14 +45,20 @@ enum GooglePlayErrorTranslator {
         case userChange
     }
 
-    /// - Parameter authMethod: how the account calls Google Play. The copy
-    ///   names a service account for `.keyFile` and the signed-in Google
-    ///   account for `.googleSignIn`.
+    /// - Parameters:
+    ///   - authMethod: how the account calls Google Play. The copy names a
+    ///     service account for `.keyFile` and the signed-in Google account for
+    ///     `.googleSignIn`.
+    ///   - accountEmail: that Google account's e-mail
+    ///     (`GoogleLoginReferences.email(of:keychain:)`), named in the access
+    ///     messages when known. Ignored for a service account.
     static func friendlyMessage(
         for error: Error,
         operation: Operation = .general,
-        authMethod: AccountAuthMethod = .keyFile
+        authMethod: AccountAuthMethod = .keyFile,
+        accountEmail: String? = nil
     ) -> String {
+        let caller = Caller(authMethod: authMethod, email: accountEmail)
         if let parseError = error as? GooglePlayServiceAccount.ParseError {
             return parseError.localizedDescription
         }
@@ -69,17 +75,31 @@ enum GooglePlayErrorTranslator {
             return String(localized: "The service account key is invalid. Download a new JSON key from Google Cloud and try again.")
 
         case .Auth(let message) where operation.isUsers:
-            let lead = authMethod == .googleSignIn
-                ? String(localized: "To manage users, the signed-in Google account needs the “Admin (all permissions)” permission in Play Console › Users and permissions.")
-                : String(localized: "To manage users, this service account needs the “Admin (all permissions)” permission in Play Console › Users and permissions.")
+            let lead: String
+            switch caller {
+            case .googleAccount(let email?):
+                lead = String(localized: "To manage users, the Google account \(email) needs the “Admin (all permissions)” permission in Play Console › Users and permissions.",
+                              comment: "Google Play users screen, account added with Sign in with Google. The placeholder is that Google account's e-mail.")
+            case .googleAccount(nil):
+                lead = String(localized: "To manage users, the signed-in Google account needs the “Admin (all permissions)” permission in Play Console › Users and permissions.")
+            case .serviceAccount:
+                lead = String(localized: "To manage users, this service account needs the “Admin (all permissions)” permission in Play Console › Users and permissions.")
+            }
             let detail = message.trimmingCharacters(in: .whitespacesAndNewlines)
             return detail.isEmpty ? lead : "\(lead)\n\(detail)"
 
         case .Auth(let message):
-            let lead = authMethod == .googleSignIn
-                ? String(localized: "Google Play denied access to the signed-in Google account.",
-                         comment: "Lead sentence shown when Google rejects the account a user signed in with (Sign in with Google). It is followed by Google's own (English) instructions on how to fix it.")
-                : String(localized: "Google Play denied access to this service account.")
+            let lead: String
+            switch caller {
+            case .googleAccount(let email?):
+                lead = String(localized: "Google Play denied access to the Google account \(email).",
+                              comment: "Lead sentence shown when Google rejects the account a user signed in with (Sign in with Google). The placeholder is that Google account's e-mail. It is followed by Google's own (English) instructions on how to fix it.")
+            case .googleAccount(nil):
+                lead = String(localized: "Google Play denied access to the signed-in Google account.",
+                              comment: "Lead sentence shown when Google rejects the account a user signed in with (Sign in with Google). It is followed by Google's own (English) instructions on how to fix it.")
+            case .serviceAccount:
+                lead = String(localized: "Google Play denied access to this service account.")
+            }
             let detail = message.trimmingCharacters(in: .whitespacesAndNewlines)
             return detail.isEmpty ? lead : "\(lead)\n\(detail)"
 
@@ -93,7 +113,7 @@ enum GooglePlayErrorTranslator {
             return quotaMessage(coreMessage: message)
 
         case .Http(let status, let message) where operation == .releaseChange:
-            return releaseChangeMessage(status: Int(status), googleMessage: message, authMethod: authMethod)
+            return releaseChangeMessage(status: Int(status), googleMessage: message, caller: caller)
 
         case .Http(let status, let message) where operation == .inviteUser && status == 400:
             return inviteRefusalMessage(googleMessage: message)
@@ -105,12 +125,12 @@ enum GooglePlayErrorTranslator {
             // was sent to Google at all).
             let lead = isLocalRejection(message) && status == 404
                 ? GooglePlayDeveloperId.invalidMessage
-                : httpMessage(status: Int(status), operation: operation, authMethod: authMethod)
+                : httpMessage(status: Int(status), operation: operation, caller: caller)
             let detail = message.trimmingCharacters(in: .whitespacesAndNewlines)
             return detail.isEmpty ? lead : "\(lead)\n\(detail)"
 
         case .Http(let status, _):
-            return httpMessage(status: Int(status), operation: operation, authMethod: authMethod)
+            return httpMessage(status: Int(status), operation: operation, caller: caller)
 
         case .Decode:
             return String(localized: "Google Play returned an unexpected response. Try again later.")
@@ -161,7 +181,7 @@ enum GooglePlayErrorTranslator {
 
     /// Release changes: Google explains every refusal in its message, so the
     /// known ones get actionable copy and the rest show Google's text.
-    private static func releaseChangeMessage(status: Int, googleMessage: String, authMethod: AccountAuthMethod) -> String {
+    private static func releaseChangeMessage(status: Int, googleMessage: String, caller: Caller) -> String {
         let detail = googleMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         let lowered = detail.lowercased()
         if lowered.contains("changesnotsentforreview") || lowered.contains("not be sent for review")
@@ -176,7 +196,7 @@ enum GooglePlayErrorTranslator {
             let lead = String(localized: "Google Play rejected this change. Nothing was published.")
             return detail.isEmpty ? lead : "\(lead)\n\(detail)"
         default:
-            return httpMessage(status: status, operation: .releaseChange, authMethod: authMethod)
+            return httpMessage(status: status, operation: .releaseChange, caller: caller)
         }
     }
 
@@ -249,12 +269,13 @@ enum GooglePlayErrorTranslator {
         _ error: Error,
         call: GooglePlayUsersCall,
         logTag: String,
-        authMethod: AccountAuthMethod = .keyFile
+        authMethod: AccountAuthMethod = .keyFile,
+        accountEmail: String? = nil
     ) -> GooglePlayUsersFailure {
         let details = GooglePlayErrorDetails(error: error, operation: call.operation, call: call)
         details.log(tag: logTag)
         return GooglePlayUsersFailure(
-            message: friendlyMessage(for: error, operation: call.operation, authMethod: authMethod),
+            message: friendlyMessage(for: error, operation: call.operation, authMethod: authMethod, accountEmail: accountEmail),
             technicalDetails: details.lines
         )
     }
@@ -263,17 +284,39 @@ enum GooglePlayErrorTranslator {
         String(localized: "Something went wrong while talking to Google Play. Try again.")
     }
 
-    private static func httpMessage(status: Int, operation: Operation, authMethod: AccountAuthMethod) -> String {
-        let isSignIn = authMethod == .googleSignIn
+    /// Who calls Google Play, as the copy names it.
+    private enum Caller {
+        case serviceAccount
+        /// "Sign in with Google", with the account's e-mail when known.
+        case googleAccount(email: String?)
+
+        init(authMethod: AccountAuthMethod, email: String?) {
+            switch authMethod {
+            case .keyFile:
+                self = .serviceAccount
+            case .googleSignIn:
+                let trimmed = email?.trimmingCharacters(in: .whitespacesAndNewlines)
+                self = .googleAccount(email: trimmed?.isEmpty == false ? trimmed : nil)
+            }
+        }
+    }
+
+    private static func httpMessage(status: Int, operation: Operation, caller: Caller) -> String {
         switch status {
         case 400 where operation == .replyToReview:
             return String(localized: "Google Play rejected this reply. Replies are limited to about \(GooglePlayReviewLimits.replyCharacterLimit) characters — shorten it and try again.")
         case 404 where operation == .userChange:
             return String(localized: "This user or app access is no longer on Google Play. Refresh and try again.")
-        case 403 where operation.isUsers && isSignIn:
-            return String(localized: "Google Play refused access to this developer account. Check the Developer ID, and that the signed-in Google account has the “Admin (all permissions)” permission.")
         case 403 where operation.isUsers:
-            return String(localized: "Google Play refused access to this developer account. Check the Developer ID, and that the service account has the “Admin (all permissions)” permission.")
+            switch caller {
+            case .googleAccount(let email?):
+                return String(localized: "Google Play refused access to this developer account. Check the Developer ID, and that the Google account \(email) has the “Admin (all permissions)” permission.",
+                              comment: "Google Play users screen, account added with Sign in with Google. The placeholder is that Google account's e-mail.")
+            case .googleAccount(nil):
+                return String(localized: "Google Play refused access to this developer account. Check the Developer ID, and that the signed-in Google account has the “Admin (all permissions)” permission.")
+            case .serviceAccount:
+                return String(localized: "Google Play refused access to this developer account. Check the Developer ID, and that the service account has the “Admin (all permissions)” permission.")
+            }
         case 404 where operation == .users || operation == .inviteUser:
             return String(localized: "Google Play found no developer account with this ID. Check the Developer ID in Play Console › Settings › Developer account.")
         case 409 where operation == .inviteUser:
@@ -281,10 +324,15 @@ enum GooglePlayErrorTranslator {
         case 403:
             // The core reports missing access as `.Auth`; a bare 403 is the same
             // problem without Google's detail.
-            if isSignIn {
+            switch caller {
+            case .googleAccount(let email?):
+                return String(localized: "The Google account \(email) can't access this app. In Play Console › Users and permissions, give it access to the app and try again.",
+                              comment: "Google Play error, account added with Sign in with Google. The placeholder is that Google account's e-mail.")
+            case .googleAccount(nil):
                 return String(localized: "The signed-in Google account can't access this app. In Play Console › Users and permissions, give it access to the app and try again.")
+            case .serviceAccount:
+                return String(localized: "This service account can't access this app. In Play Console › Users and permissions, give it access to the app and try again.")
             }
-            return String(localized: "This service account can't access this app. In Play Console › Users and permissions, give it access to the app and try again.")
         case 404 where operation == .replyToReview:
             return String(localized: "This review is no longer available on Google Play.")
         case 404 where operation == .appContentRead, 404 where operation == .releaseChange:
