@@ -30,7 +30,7 @@ struct GooglePlayPendingWrite: Identifiable, Hashable {
     /// account a "Sign in with Google" account signed in with.
     static func editWarning(for authMethod: AccountAuthMethod) -> String {
         switch authMethod {
-        case .keyFile:
+        case .keyFile, .appleIdSignIn:
             return String(localized: "This opens a Play edit and commits it. Any edit this service account has open for the app elsewhere (for example a CI upload) is cancelled.")
         case .googleSignIn:
             return String(localized: "This opens a Play edit and commits it. Any edit open with your Google account for the app elsewhere is cancelled.")

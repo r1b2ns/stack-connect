@@ -76,7 +76,7 @@ struct GooglePlayAppListUiState {
     /// Footer of the "add app by package name" sheet: who needs access to it.
     var addAppFooter: String {
         switch account.authMethod {
-        case .keyFile:
+        case .keyFile, .appleIdSignIn:
             return String(localized: "Enter the Android package name (e.g. com.example.myapp). The service account must have access to this app in the Google Play Console.")
         case .googleSignIn:
             if let email = googleAccountEmail {

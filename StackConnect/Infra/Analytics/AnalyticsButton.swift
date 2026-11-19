@@ -80,6 +80,19 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     /// A Firebase screen whose Google sign-in expired or was revoked: sign in
     /// again with the same Google account.
     case signInAgain = "sign_in_again"
+    /// Add Account (App Store Connect): open "Sign in with Apple ID", and its
+    /// primary button on the Apple ID and password screen.
+    case signInWithAppleId = "sign_in_with_apple_id"
+    /// Apple ID sign-in: submit the two-factor code.
+    case submitCode = "submit_code"
+    /// Apple ID sign-in: text the code to a trusted phone instead.
+    case sendSms = "send_sms"
+    /// Apple ID sign-in: (de)select a team to add.
+    case toggleTeam = "toggle_team"
+    /// Apple ID sign-in: open appleid.apple.com (the Apple ID needs action).
+    case openAppleIdWebsite = "open_apple_id_website"
+    /// The expired Apple ID session prompt: dismiss it for now.
+    case notNow = "not_now"
     case createNew = "create_new"
     case editName = "edit_name"
     case certificates = "certificates"

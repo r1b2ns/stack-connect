@@ -29,6 +29,17 @@ protocol CoreProviderMaking: Sendable {
         debugLogger: DebugLogger?
     ) throws -> StackCoreRust.Provider
 
+    /// Mirrors the core's `connectWithAppleSession(accountId:teamId:sessionStore:debugLogger:)`:
+    /// an App Store Connect provider authorized with the Apple ID web session
+    /// `sessionStore` holds for `accountId` (accounts added with "Sign in with
+    /// Apple ID"), acting for the team `teamId`.
+    func connectWithAppleSession(
+        accountId: String,
+        teamId: UInt64,
+        sessionStore: SessionStore,
+        debugLogger: DebugLogger?
+    ) throws -> StackCoreRust.Provider
+
     /// Mirrors the core's `makeSyncService(provider:store:accountId:)`.
     func makeSyncService(
         provider: StackCoreRust.Provider,
@@ -56,6 +67,15 @@ struct RustCoreProviderFactory: CoreProviderMaking {
         debugLogger: DebugLogger?
     ) throws -> StackCoreRust.Provider {
         try StackCoreRust.connectWithAccessToken(kind: kind, accountId: accountId, tokenProvider: tokenProvider, debugLogger: debugLogger)
+    }
+
+    func connectWithAppleSession(
+        accountId: String,
+        teamId: UInt64,
+        sessionStore: SessionStore,
+        debugLogger: DebugLogger?
+    ) throws -> StackCoreRust.Provider {
+        try StackCoreRust.connectWithAppleSession(accountId: accountId, teamId: teamId, sessionStore: sessionStore, debugLogger: debugLogger)
     }
 
     func makeSyncService(

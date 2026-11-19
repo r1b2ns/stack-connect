@@ -553,18 +553,22 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
             } label: {
                 StackListRow(icon: "star.fill", iconColor: .yellow, title: String(localized: "Ratings and Reviews"))
             }
-            StackTrackedButton(.analytics, on: .appDetail) {
-                guard account.canView(.analytics) else {
-                    denyPermission(String(localized: "You don't have permission to view analytics."))
-                    return
+            // Analytics Reports need the App Store Connect API: hidden for
+            // accounts added with Sign in with Apple ID.
+            if account.supportsAnalyticsReports {
+                StackTrackedButton(.analytics, on: .appDetail) {
+                    guard account.canView(.analytics) else {
+                        denyPermission(String(localized: "You don't have permission to view analytics."))
+                        return
+                    }
+                    homeCoordinator.navigateToAnalyticsReports(
+                        appId: viewModel.uiState.app.id,
+                        appName: viewModel.uiState.app.name,
+                        account: account
+                    )
+                } label: {
+                    StackListRow(icon: "chart.bar.xaxis", iconColor: .indigo, title: String(localized: "Analytics"), showsNewChip: true)
                 }
-                homeCoordinator.navigateToAnalyticsReports(
-                    appId: viewModel.uiState.app.id,
-                    appName: viewModel.uiState.app.name,
-                    account: account
-                )
-            } label: {
-                StackListRow(icon: "chart.bar.xaxis", iconColor: .indigo, title: String(localized: "Analytics"), showsNewChip: true)
             }
         } header: {
             Text("App Store")

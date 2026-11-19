@@ -68,6 +68,10 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
                     onDismiss()
                 }
             }
+            .navigationDestination(isPresented: $viewModel.uiState.isShowingAppleIdSignIn) {
+                // The accounts are saved by the sign-in itself: close Add Account.
+                AppleIdSignInViewFactory.build(mode: .addAccounts, onFinished: onDismiss)
+            }
         }
         // Cancel, swipe down or Save: a Google login signed in here but
         // never used by an account is signed out (no-op after a save).
@@ -89,6 +93,9 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
         if viewModel.uiState.providerType == .apple {
             buildAppleCredentialsSection()
             buildAppleTutorialSection()
+            if viewModel.uiState.isAppleIdSignInAvailable {
+                buildAppleIdSignInSection()
+            }
         }
 
         if viewModel.uiState.providerType == .firebase {
@@ -179,6 +186,23 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
             Text("App Store Connect Credentials")
         } footer: {
             Text("Paste or import the .p8 file content along with its Key ID and Issuer ID.")
+        }
+    }
+
+    /// "Sign in with Apple ID" (flag `appleIdSignIn`): the alternative to the
+    /// API key, without creating a key in App Store Connect.
+    private func buildAppleIdSignInSection() -> some View {
+        Section {
+            StackSignInButton(
+                title: String(localized: "Sign in with Apple ID"),
+                systemImage: "apple.logo"
+            ) {
+                viewModel.openAppleIdSignIn()
+            }
+        } header: {
+            Text("No API Key?")
+        } footer: {
+            Text("Sign in with your Apple ID and its two-factor code instead, then pick the teams to add. Your password is used once and not saved. Analytics Reports need an API key.")
         }
     }
 

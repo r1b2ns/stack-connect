@@ -65,6 +65,9 @@ enum AppleAPIErrorTranslator {
     }
 
     static func friendlyMessage(for error: Error) -> String {
+        if isSessionExpired(error) {
+            return sessionExpiredMessage
+        }
         guard case StackCoreRust.StackError.Http(let status, let message) = error else {
             return error.localizedDescription
         }
@@ -97,6 +100,20 @@ enum AppleAPIErrorTranslator {
         if !detail.isEmpty { return detail }
         if !title.isEmpty  { return title }
         return error.localizedDescription
+    }
+
+    // MARK: - Apple ID session
+
+    /// The Apple ID web session of an account added with "Sign in with Apple
+    /// ID" is no longer accepted: the user must sign in again (plan D5).
+    static func isSessionExpired(_ error: Error) -> Bool {
+        if case StackCoreRust.StackError.SessionExpired = error { return true }
+        return false
+    }
+
+    static var sessionExpiredMessage: String {
+        String(localized: "Your Apple ID session expired. Sign in again to keep using this account.",
+               comment: "Error on an App Store Connect screen of an account added with Sign in with Apple ID, when Apple no longer accepts its session.")
     }
 
     // MARK: - Pending agreements detection

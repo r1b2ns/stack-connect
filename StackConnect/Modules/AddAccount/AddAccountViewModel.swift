@@ -22,6 +22,11 @@ protocol AddAccountViewModelProtocol: ObservableObject {
     /// Add Account closed without saving: a login signed in here that no
     /// account uses is signed out, so no orphan grant stays on the device.
     func discardUnsavedGoogleLogin() async
+
+    // MARK: Sign in with Apple ID (App Store Connect, plan apple-id-sign-in.md)
+
+    /// Opens the "Sign in with Apple ID" screens (flag `appleIdSignIn`).
+    func openAppleIdSignIn()
 }
 
 // MARK: - UiState
@@ -47,6 +52,12 @@ struct AddAccountUiState {
     var isGoogleSignInAvailable = false
     var credentialMode: AddAccountCredentialMode = .keyFile
     var google = GoogleSignInState()
+
+    /// Whether "Sign in with Apple ID" is offered next to the API key form
+    /// (flag `appleIdSignIn`, an App Store Connect account).
+    var isAppleIdSignInAvailable = false
+    /// The Apple ID sign-in screens are pushed.
+    var isShowingAppleIdSignIn = false
 
     var isGoogleSignInMode: Bool {
         isGoogleSignInAvailable && credentialMode == .googleSignIn
@@ -161,6 +172,7 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
             && !GoogleScopeFeature.features(for: providerType).isEmpty
         uiState.isGoogleSignInAvailable = offersGoogle
         uiState.credentialMode = offersGoogle ? .googleSignIn : .keyFile
+        uiState.isAppleIdSignInAvailable = providerType == .apple && featureFlags.isEnabled(.appleIdSignIn)
     }
 
     func save() async {
@@ -381,6 +393,15 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
         guard GoogleLoginReferences.accounts(using: login.loginId, in: all, keychain: keychain).isEmpty else { return }
         Log.print.info("[AddAccount] Closed without saving: signing out the unused Google login")
         await googleAuth.signOut(loginId: login.loginId)
+    }
+
+    // MARK: - Sign in with Apple ID
+
+    func openAppleIdSignIn() {
+        guard uiState.isAppleIdSignInAvailable, !uiState.isBusy else { return }
+        analytics.track(.buttonTap(.signInWithAppleId, on: .addAccount))
+        uiState.validationError = nil
+        uiState.isShowingAppleIdSignIn = true
     }
 
     // MARK: Sign in with Google — private

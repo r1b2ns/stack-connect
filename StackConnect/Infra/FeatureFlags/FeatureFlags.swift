@@ -43,13 +43,24 @@ enum FeatureFlag: String, CaseIterable {
     /// `-featureFlag.googleSignIn YES` / `NO`.
     case googleSignIn = "featureFlag.googleSignIn"
 
+    /// Gates "Sign in with Apple ID" in Add Account for App Store Connect
+    /// (plan `apple-id-sign-in.md` D6): the option next to the API key form
+    /// and its three screens (Apple ID and password, two-factor code, team
+    /// picker). When OFF, Add Account shows only the API key form, as before.
+    /// Accounts already added with an Apple ID keep working whatever the flag
+    /// says (the remote kill switch for them is Phase 4).
+    /// Default: ON in Debug builds, OFF in Release until the review strategy
+    /// is settled (plan Q4). Toggle at launch with
+    /// `-featureFlag.appleIdSignIn YES` / `NO`.
+    case appleIdSignIn = "featureFlag.appleIdSignIn"
+
     /// The compiled-in default used when no value is stored in `UserDefaults`.
     /// New flags ship OFF by default — the safe, fully-reversible value.
     var defaultValue: Bool {
         switch self {
         case .useRustCoreDebugLogging, .googlePlayReleaseWrites:
             return false
-        case .googleSignIn:
+        case .googleSignIn, .appleIdSignIn:
             #if DEBUG
             return true
             #else

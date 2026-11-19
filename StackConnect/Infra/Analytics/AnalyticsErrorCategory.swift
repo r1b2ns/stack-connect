@@ -117,9 +117,11 @@ extension AnalyticsErrorCategory {
 
     private init(stackError: StackError) {
         switch stackError {
-        case .InvalidCredentials, .Auth:
+        case .InvalidCredentials, .Auth, .SessionExpired:
             // `.Auth` is the core's "the service refused this key / token"
             // (Apple 401, Google token exchange or access denied).
+            // `.SessionExpired`: the Apple ID web session of a "Sign in with
+            // Apple ID" account is no longer accepted (sign in again).
             self = .invalidCredentials
         case .PendingAgreements:
             self = .forbidden

@@ -91,9 +91,17 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
         }
 
         var byIssuer: [String: [AccountModel]] = [:]
+        var sessionKeys = Set<String>()
         for account in accounts {
             let creds: AppleCredentials? = keychain.object(forKey: "credentials.\(account.id)")
-            let key = creds?.issuerID ?? "unknown"
+            let key: String
+            if let session = creds?.webSession {
+                // "Sign in with Apple ID": no issuer ID; one group per team, no header.
+                key = "appleSession.\(session.teamId)"
+                sessionKeys.insert(key)
+            } else {
+                key = creds?.issuerID ?? "unknown"
+            }
             byIssuer[key, default: []].append(account)
         }
 
@@ -102,7 +110,7 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
             .map { key, accounts in
                 AccountGroup(
                     id: key,
-                    issuerID: key == "unknown" ? nil : key,
+                    issuerID: key == "unknown" || sessionKeys.contains(key) ? nil : key,
                     accounts: accounts.sorted { $0.name < $1.name }
                 )
             }

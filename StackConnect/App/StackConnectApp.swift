@@ -116,6 +116,9 @@ struct StackConnectApp: App {
     private func buildRoot() -> some View {
         AppRootViewFactory.build()
             .offlineBanner()
+            // "Sign in again" when an Apple ID session expires (accounts
+            // added with Sign in with Apple ID).
+            .appleSessionExpiryPrompt()
             // App Store review request after a successful foreground sync,
             // every third launch, at most once per launch; then the Home tip
             // card (never in the same launch as a review request).

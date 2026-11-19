@@ -183,6 +183,8 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
 
             if viewModel.uiState.account.isExportable {
                 buildExportSection()
+            } else if let reason = viewModel.uiState.account.exportUnavailableReason {
+                buildExportUnavailableSection(reason)
             }
         }
         .navigationTitle(String(localized: "Account Settings"))
@@ -377,6 +379,16 @@ struct AccountSettingsView<ViewModel: AccountSettingsViewModelProtocol>: View {
             } label: {
                 Label(String(localized: "Export Account"), systemImage: "square.and.arrow.up")
             }
+        }
+    }
+
+    /// Export shown off, with why (accounts added with Sign in with Apple ID).
+    private func buildExportUnavailableSection(_ reason: String) -> some View {
+        Section {
+            Label(String(localized: "Export Account"), systemImage: "square.and.arrow.up")
+                .foregroundStyle(.secondary)
+        } footer: {
+            Text(reason)
         }
     }
 }

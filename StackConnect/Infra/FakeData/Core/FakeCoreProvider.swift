@@ -145,6 +145,17 @@ final class FakeCoreProviderFactory: CoreProviderMaking, @unchecked Sendable {
         }
     }
 
+    /// A "Sign in with Apple ID" account (`accountId` is its Apple ID) gets
+    /// the fake team of that ID: an empty one unless seeded under it.
+    func connectWithAppleSession(
+        accountId: String,
+        teamId: UInt64,
+        sessionStore: SessionStore,
+        debugLogger: DebugLogger?
+    ) throws -> StackCoreRust.Provider {
+        FakeAppStoreConnectProvider(team: appStoreConnect.team(issuerId: accountId))
+    }
+
     func makeSyncService(
         provider: StackCoreRust.Provider,
         store: BlobStore,

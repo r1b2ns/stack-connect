@@ -1,6 +1,6 @@
 # StackConnect Privacy Policy
 
-_Last updated: November 18, 2026_
+_Last updated: November 19, 2026_
 
 StackConnect is an open-source iOS app for managing App Store Connect, Firebase and Google Play accounts from your iPhone or iPad. This policy explains what data the app handles, where it goes, and the choices you have.
 
@@ -11,17 +11,26 @@ StackConnect is an open-source iOS app for managing App Store Connect, Firebase 
 | Data | Where it is stored | Leaves the device? |
 |------|--------------------|--------------------|
 | API keys, `.p8` private keys, service-account JSON files and access tokens | iOS Keychain | Only to authenticate with Apple or Google (see section 2) |
+| The App Store Connect session of an account added with "Sign in with Apple ID" (the session cookies Apple returns, never the password) | iOS Keychain, one item per Apple ID | Only to Apple, with each request of that account |
 | Account names, apps, versions, builds, reviews, testers, users and other data loaded from the services you connect | On-device database (SwiftData), in the app's App Group container | No |
 | Widget data (app names, icons, recent reviews) | The same App Group container, shared only with the StackConnect widget | No |
 | Settings and preferences | On-device storage (UserDefaults) | No |
 
-Deleting an account in the app removes its credentials from the Keychain and its data from the database. Deleting the app removes all of it.
+Deleting an account in the app removes its credentials from the Keychain and its data from the database. The session of an Apple ID is removed with the last account that uses it. Deleting the app removes all of it.
+
+### Signing in with an Apple ID
+
+If you add an App Store Connect account with "Sign in with Apple ID" instead of an API key:
+
+- Your Apple ID password and your two-factor code are processed on your device and sent only to Apple, to sign in. They are never stored, logged, sent to the developer or included in analytics or crash reports.
+- What is kept is the session Apple returns (its cookies), stored in the iOS Keychain on this device. It is used only for requests to Apple's App Store Connect and Apple Developer websites, and it is never exported.
+- When the session expires, the app asks you to sign in again. It never retries with a stored password, because none is stored.
 
 ## 2. Services the app connects to on your behalf
 
 StackConnect talks **directly** from your device to the official APIs of the services you choose to connect, using the credentials you provide. No proxy or StackConnect server sits in between.
 
-- **Apple:** the App Store Connect API (`api.appstoreconnect.apple.com`) and the public iTunes Lookup API (`itunes.apple.com`), used for rating summaries.
+- **Apple:** the App Store Connect API (`api.appstoreconnect.apple.com`) and the public iTunes Lookup API (`itunes.apple.com`), used for rating summaries. Accounts added with "Sign in with Apple ID" use Apple's sign-in service (`idmsa.apple.com`), App Store Connect (`appstoreconnect.apple.com`) and the Apple Developer website (`developer.apple.com`) instead of the API.
 - **Google:** Google OAuth, the Firebase Management, Remote Config, Cloud Messaging and Analytics Data APIs, the Google Play Developer API, and Google Play image servers for app icons.
 
 What these services do with your requests is governed by their own policies:
@@ -54,7 +63,7 @@ To learn which features are used and where the app fails, StackConnect sends **a
 
 ### What is never collected
 
-- Account names, API keys, private keys, tokens or any other credential.
+- Account names, API keys, private keys, tokens, Apple ID passwords, two-factor codes, session cookies or any other credential.
 - App names, bundle identifiers, review text, tester or user names, email addresses, or any other content from your App Store Connect, Firebase or Google Play accounts.
 - Anything you type, including search queries.
 - The advertising identifier (IDFA) or the identifier for vendor (IDFV). StackConnect does not use App Tracking Transparency and does not track you across apps or websites.
@@ -78,7 +87,7 @@ The optional tip jar uses Apple's In-App Purchase. Payment is handled entirely b
 
 ## 5. Exported account files
 
-You can export an account to a file, for example to move it to another device. The file is encrypted with a password you choose. It is shared only where you send it, and it is never uploaded by the app.
+You can export an account to a file, for example to move it to another device. The file is encrypted with a password you choose. It is shared only where you send it, and it is never uploaded by the app. Accounts added with "Sign in with Google" or "Sign in with Apple ID" can't be exported.
 
 ## 6. Notifications
 
