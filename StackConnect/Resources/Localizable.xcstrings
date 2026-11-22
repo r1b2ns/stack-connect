@@ -2298,84 +2298,249 @@
         }
       }
     },
-    "Sign in with your Apple ID and its two-factor code instead, then pick the teams to add. Your password is used once and not saved. Analytics Reports need an API key." : {
+    "Sign in with your Apple ID and its two-factor code instead, then pick the teams to add. Your password is saved only in this device's Keychain. Analytics Reports need an API key." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Melde dich stattdessen mit deiner Apple-ID und ihrem Zwei-Faktor-Code an und wähle dann die Teams aus. Dein Passwort wird einmal verwendet und nicht gespeichert. Analytics-Berichte benötigen einen API-Schlüssel."
+            "value" : "Melde dich stattdessen mit deiner Apple-ID und ihrem Zwei-Faktor-Code an und wähle dann die Teams aus. Dein Passwort wird nur im Schlüsselbund dieses Geräts gespeichert. Analytics-Berichte benötigen einen API-Schlüssel."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inicia sesión con tu Apple ID y su código de doble factor y luego elige los equipos que quieres añadir. Tu contraseña se usa una vez y no se guarda. Los informes de Analytics necesitan una clave de API."
+            "value" : "Inicia sesión con tu Apple ID y su código de doble factor y luego elige los equipos que quieres añadir. Tu contraseña solo se guarda en el llavero de este dispositivo. Los informes de Analytics necesitan una clave de API."
           }
         },
         "es-MX" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inicia sesión con tu Apple ID y su código de dos factores y luego elige los equipos que quieres agregar. Tu contraseña se usa una vez y no se guarda. Los reportes de Analytics necesitan una clave de API."
+            "value" : "Inicia sesión con tu Apple ID y su código de dos factores y luego elige los equipos que quieres agregar. Tu contraseña solo se guarda en el llavero de este dispositivo. Los reportes de Analytics necesitan una clave de API."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Connectez-vous plutôt avec votre Identifiant Apple et son code à deux facteurs, puis choisissez les équipes à ajouter. Votre mot de passe sert une seule fois et n'est pas enregistré. Les rapports Analytics nécessitent une clé d'API."
+            "value" : "Connectez-vous plutôt avec votre Identifiant Apple et son code à deux facteurs, puis choisissez les équipes à ajouter. Votre mot de passe est enregistré uniquement dans le trousseau de cet appareil. Les rapports Analytics nécessitent une clé d'API."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Accedi invece con il tuo Apple ID e il suo codice a due fattori, poi scegli i team da aggiungere. La password viene usata una sola volta e non viene salvata. I report di Analytics richiedono una chiave API."
+            "value" : "Accedi invece con il tuo Apple ID e il suo codice a due fattori, poi scegli i team da aggiungere. La password viene salvata solo nel portachiavi di questo dispositivo. I report di Analytics richiedono una chiave API."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "代わりに Apple ID と2ファクタ認証コードでサインインし、追加するチームを選びます。パスワードは一度だけ使われ、保存されません。アナリティクスレポートには API キーが必要です。"
+            "value" : "代わりに Apple ID と2ファクタ認証コードでサインインし、追加するチームを選びます。パスワードはこのデバイスのキーチェーンにのみ保存されます。アナリティクスレポートには API キーが必要です。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "대신 Apple ID와 이중 인증 코드로 로그인한 다음 추가할 팀을 선택하세요. 암호는 한 번만 사용되며 저장되지 않습니다. 분석 보고서에는 API 키가 필요합니다."
+            "value" : "대신 Apple ID와 이중 인증 코드로 로그인한 다음 추가할 팀을 선택하세요. 암호는 이 기기의 키체인에만 저장됩니다. 분석 보고서에는 API 키가 필요합니다."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Log in plaats daarvan in met je Apple ID en de tweestapscode en kies daarna de teams. Je wachtwoord wordt één keer gebruikt en niet bewaard. Voor Analytics-rapporten is een API-sleutel nodig."
+            "value" : "Log in plaats daarvan in met je Apple ID en de tweestapscode en kies daarna de teams. Je wachtwoord wordt alleen in de sleutelhanger van dit apparaat bewaard. Voor Analytics-rapporten is een API-sleutel nodig."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Faça login com o seu Apple ID e o código de dois fatores e escolha as equipes a adicionar. A senha é usada uma vez e não é salva. Os relatórios do Analytics precisam de uma chave de API."
+            "value" : "Faça login com o seu Apple ID e o código de dois fatores e escolha as equipes a adicionar. A senha fica salva apenas nas Chaves deste dispositivo. Os relatórios do Analytics precisam de uma chave de API."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Em alternativa, inicie sessão com o seu ID Apple e o código de dois fatores e escolha as equipas a adicionar. A palavra-passe é usada uma vez e não é guardada. Os relatórios do Analytics precisam de uma chave de API."
+            "value" : "Em alternativa, inicie sessão com o seu ID Apple e o código de dois fatores e escolha as equipas a adicionar. A palavra-passe fica guardada apenas no porta-chaves deste dispositivo. Os relatórios do Analytics precisam de uma chave de API."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вместо этого войдите с Apple ID и кодом двухфакторной аутентификации, затем выберите команды. Пароль используется один раз и не сохраняется. Для отчетов Analytics нужен ключ API."
+            "value" : "Вместо этого войдите с Apple ID и кодом двухфакторной аутентификации, затем выберите команды. Пароль хранится только в связке ключей этого устройства. Для отчетов Analytics нужен ключ API."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Logga in med ditt Apple-ID och tvåfaktorskoden i stället och välj sedan teamen att lägga till. Lösenordet används en gång och sparas inte. Analytics-rapporter kräver en API-nyckel."
+            "value" : "Logga in med ditt Apple-ID och tvåfaktorskoden i stället och välj sedan teamen att lägga till. Lösenordet sparas bara i nyckelringen på den här enheten. Analytics-rapporter kräver en API-nyckel."
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "改用你的 Apple ID 及其雙重認證碼登入，然後選擇要加入的團隊。你的密碼只會使用一次，不會被儲存。分析報告需要 API 密鑰。"
+            "value" : "改用你的 Apple ID 及其雙重認證碼登入，然後選擇要加入的團隊。你的密碼只會儲存在此裝置的鑰匙圈中。分析報告需要 API 密鑰。"
+          }
+        }
+      }
+    },
+    "Signed in with the password saved on this device. Only the code is left." : {
+      "comment" : "Apple ID sign-in, code screen footer when the saved password was used.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit dem auf diesem Gerät gespeicherten Passwort angemeldet. Es fehlt nur noch der Code."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se ha usado la contraseña guardada en este dispositivo. Solo falta el código."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se usó la contraseña guardada en este dispositivo. Solo falta el código."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le mot de passe enregistré sur cet appareil a été utilisé. Il ne reste que le code."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "È stata usata la password salvata su questo dispositivo. Manca solo il codice."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このデバイスに保存されたパスワードを使用しました。あとはコードを入力するだけです。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기에 저장된 암호를 사용했습니다. 이제 코드만 입력하면 됩니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het op dit apparaat bewaarde wachtwoord is gebruikt. Alleen de code ontbreekt nog."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A senha salva neste dispositivo foi usada. Falta só o código."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Foi usada a palavra-passe guardada neste dispositivo. Falta só o código."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использован пароль, сохранённый на этом устройстве. Осталось ввести код."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lösenordet som sparats på den här enheten användes. Bara koden återstår."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已使用此裝置上儲存的密碼。只剩下輸入驗證碼。"
+          }
+        }
+      }
+    },
+    "StackConnect sends your password only to Apple. Once you're signed in, it's saved in the Keychain on this device only, never synced or exported, so signing in again only takes the code." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect sendet dein Passwort nur an Apple. Nach der Anmeldung wird es nur im Schlüsselbund dieses Geräts gespeichert, nie synchronisiert oder exportiert, sodass du bei der nächsten Anmeldung nur den Code eingeben musst."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect solo envía tu contraseña a Apple. Cuando inicias sesión, se guarda únicamente en el llavero de este dispositivo, sin sincronizarse ni exportarse, así que para volver a iniciar sesión solo necesitas el código."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect solo envía tu contraseña a Apple. Cuando inicias sesión, se guarda únicamente en el llavero de este dispositivo, sin sincronizarse ni exportarse, así que para volver a iniciar sesión solo necesitas el código."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect envoie votre mot de passe uniquement à Apple. Une fois connecté, il est enregistré dans le trousseau de cet appareil seulement, jamais synchronisé ni exporté : pour vous reconnecter, il ne vous faudra que le code."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect invia la password solo ad Apple. Dopo l'accesso viene salvata solo nel portachiavi di questo dispositivo, mai sincronizzata né esportata, così per accedere di nuovo basta il codice."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect はパスワードを Apple にのみ送信します。サインイン後は、このデバイスのキーチェーンにのみ保存され、同期やエクスポートはされません。次回のサインインではコードの入力だけで済みます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect는 암호를 Apple에만 보냅니다. 로그인하면 암호는 이 기기의 키체인에만 저장되며 동기화되거나 내보내지지 않으므로, 다시 로그인할 때는 코드만 입력하면 됩니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect stuurt je wachtwoord alleen naar Apple. Na het inloggen wordt het alleen in de sleutelhanger van dit apparaat bewaard, nooit gesynchroniseerd of geëxporteerd, zodat je bij opnieuw inloggen alleen de code nodig hebt."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O StackConnect envia sua senha somente para a Apple. Depois que você fizer login, ela fica salva apenas nas Chaves deste dispositivo, sem sincronização nem exportação, e para entrar de novo basta o código."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O StackConnect envia a sua palavra-passe apenas à Apple. Depois de iniciar sessão, fica guardada só no porta-chaves deste dispositivo, nunca sincronizada nem exportada, e para voltar a iniciar sessão basta o código."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect отправляет пароль только в Apple. После входа он хранится только в связке ключей этого устройства, без синхронизации и экспорта, поэтому для повторного входа понадобится только код."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect skickar ditt lösenord bara till Apple. När du har loggat in sparas det endast i nyckelringen på den här enheten, aldrig synkat eller exporterat, så nästa inloggning kräver bara koden."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect 只會把你的密碼傳送給 Apple。登入後，密碼只會儲存在此裝置的鑰匙圈中，不會同步或匯出，之後再次登入只需輸入驗證碼。"
           }
         }
       }
@@ -2790,6 +2955,89 @@
         }
       }
     },
+    "The saved password didn't work. It may have changed: enter your current Apple ID password." : {
+      "comment" : "Apple ID sign-in, password screen: the password saved on the device was refused by Apple and removed.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das gespeicherte Passwort hat nicht funktioniert. Es wurde vielleicht geändert: Gib dein aktuelles Apple-ID-Passwort ein."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La contraseña guardada no ha funcionado. Puede que haya cambiado: introduce la contraseña actual de tu Apple ID."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La contraseña guardada no funcionó. Puede que haya cambiado: ingresa la contraseña actual de tu Apple ID."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le mot de passe enregistré n'a pas fonctionné. Il a peut-être changé : saisissez le mot de passe actuel de votre Identifiant Apple."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La password salvata non ha funzionato. Potrebbe essere cambiata: inserisci la password attuale del tuo Apple ID."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存されたパスワードでサインインできませんでした。変更された可能性があります。現在の Apple ID パスワードを入力してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "저장된 암호가 작동하지 않았습니다. 암호가 변경되었을 수 있습니다. 현재 Apple ID 암호를 입력하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het bewaarde wachtwoord werkte niet. Het is misschien gewijzigd: voer je huidige Apple ID-wachtwoord in."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A senha salva não funcionou. Ela pode ter mudado: digite a senha atual do seu Apple ID."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A palavra-passe guardada não funcionou. Pode ter mudado: introduza a palavra-passe atual do seu ID Apple."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранённый пароль не подошёл. Возможно, он изменился: введите текущий пароль Apple ID."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det sparade lösenordet fungerade inte. Det kan ha ändrats: ange ditt nuvarande lösenord för Apple-ID."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已儲存的密碼無法使用，可能已經變更。請輸入你目前的 Apple ID 密碼。"
+          }
+        }
+      }
+    },
     "This Apple ID isn't a member of any App Store Connect team." : {
       "localizations" : {
         "de" : {
@@ -3036,6 +3284,89 @@
         }
       }
     },
+    "Use a Different Password" : {
+      "comment" : "Apple ID sign-in: button to type a password instead of the saved one.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anderes Passwort verwenden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar otra contraseña"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar otra contraseña"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser un autre mot de passe"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa un'altra password"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "別のパスワードを使用"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다른 암호 사용"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ander wachtwoord gebruiken"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar outra senha"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar outra palavra-passe"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использовать другой пароль"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Använd ett annat lösenord"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用其他密碼"
+          }
+        }
+      }
+    },
     "Use the Apple ID you sign in to App Store Connect with. You can add any of its teams next." : {
       "localizations" : {
         "de" : {
@@ -3114,6 +3445,89 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "請使用你登入 App Store Connect 的 Apple ID。接著即可加入其任何團隊。"
+          }
+        }
+      }
+    },
+    "Using the password saved on this device" : {
+      "comment" : "Apple ID sign-in: stands in for the password field when the saved password is used.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das auf diesem Gerät gespeicherte Passwort wird verwendet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se usa la contraseña guardada en este dispositivo"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se usa la contraseña guardada en este dispositivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilisation du mot de passe enregistré sur cet appareil"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viene usata la password salvata su questo dispositivo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このデバイスに保存されたパスワードを使用"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기에 저장된 암호 사용 중"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het op dit apparaat bewaarde wachtwoord wordt gebruikt"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usando a senha salva neste dispositivo"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A usar a palavra-passe guardada neste dispositivo"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Используется пароль, сохранённый на этом устройстве"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lösenordet som sparats på den här enheten används"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在使用此裝置上儲存的密碼"
           }
         }
       }
@@ -3443,88 +3857,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你的 App Store Connect Apple ID 工作階段已過期。請使用相同的 Apple ID 重新登入，以繼續使用其帳號。在此之前，這些帳號不會在背景重新整理。"
-          }
-        }
-      }
-    },
-    "Your password is used once to sign in and is not saved. StackConnect sends it only to Apple, and keeps just the resulting session in the Keychain on this device." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dein Passwort wird einmal zur Anmeldung verwendet und nicht gespeichert. StackConnect sendet es nur an Apple und behält nur die daraus entstehende Sitzung im Schlüsselbund dieses Geräts."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tu contraseña se usa una vez para iniciar sesión y no se guarda. StackConnect solo la envía a Apple y únicamente conserva la sesión resultante en el llavero de este dispositivo."
-          }
-        },
-        "es-MX" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tu contraseña se usa una vez para iniciar sesión y no se guarda. StackConnect solo la envía a Apple y únicamente conserva la sesión resultante en el llavero de este dispositivo."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Votre mot de passe sert une seule fois pour la connexion et n'est pas enregistré. StackConnect l'envoie uniquement à Apple et ne conserve que la session obtenue, dans le trousseau de cet appareil."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La password viene usata una sola volta per accedere e non viene salvata. StackConnect la invia solo ad Apple e conserva soltanto la sessione risultante nel portachiavi di questo dispositivo."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "パスワードはサインインに一度だけ使われ、保存されません。StackConnect はパスワードを Apple にのみ送信し、このデバイスのキーチェーンには結果のセッションだけを保存します。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "암호는 로그인할 때 한 번만 사용되며 저장되지 않습니다. StackConnect는 암호를 Apple에만 보내고, 그 결과로 생긴 세션만 이 기기의 키체인에 보관합니다."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Je wachtwoord wordt één keer gebruikt om in te loggen en niet bewaard. StackConnect stuurt het alleen naar Apple en bewaart alleen de resulterende sessie in de sleutelhanger van dit apparaat."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sua senha é usada uma vez para fazer login e não é salva. O StackConnect a envia somente para a Apple e guarda apenas a sessão resultante nas Chaves deste dispositivo."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A sua palavra-passe é usada uma vez para iniciar sessão e não é guardada. O StackConnect envia-a apenas à Apple e guarda só a sessão resultante no porta-chaves deste dispositivo."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Пароль используется один раз для входа и не сохраняется. StackConnect отправляет его только в Apple и хранит в связке ключей этого устройства лишь полученный сеанс."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lösenordet används en gång för att logga in och sparas inte. StackConnect skickar det bara till Apple och sparar endast den resulterande sessionen i nyckelringen på den här enheten."
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "你的密碼只會在登入時使用一次，不會被儲存。StackConnect 只會把密碼傳送給 Apple，並僅在此裝置的鑰匙圈中保留產生的工作階段。"
           }
         }
       }

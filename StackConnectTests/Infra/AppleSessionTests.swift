@@ -132,13 +132,16 @@ final class AppleSessionTests: XCTestCase {
         let first = try await addSessionAccount(team: 1)
         let second = try await addSessionAccount(team: 2)
         keychain.set(Data("blob".utf8), forKey: "appleSession.\(appleId)")
+        ApplePasswordKeychainStore(keychain: keychain).save("secret", for: appleId)
         status.markExpired(appleId: appleId)
 
         try await AccountCascadeDeleter.delete(first, storage: storage, keychain: keychain, appleSessionStatus: status)
         XCTAssertNotNil(keychain.data(forKey: "appleSession.\(appleId)"), "another team still uses it")
+        XCTAssertNotNil(keychain.string(forKey: "applePassword.\(appleId)"), "another team still uses the password")
 
         try await AccountCascadeDeleter.delete(second, storage: storage, keychain: keychain, appleSessionStatus: status)
         XCTAssertNil(keychain.data(forKey: "appleSession.\(appleId)"))
+        XCTAssertNil(keychain.string(forKey: "applePassword.\(appleId)"), "the saved password goes with the last account")
         XCTAssertFalse(status.isExpired(appleId: appleId), "the expiry mark goes with it")
     }
 
@@ -152,6 +155,65 @@ final class AppleSessionTests: XCTestCase {
 
         XCTAssertNil(keychain.data(forKey: "appleSession.\(appleId)"))
         XCTAssertNotNil(keychain.data(forKey: "appleSession.other@example.com"))
+    }
+
+    func testDeletingAnAccountKeepsOtherAppleIdsPasswords() async throws {
+        let mine = try await addSessionAccount(team: 1)
+        try await addSessionAccount(team: 1, appleId: "other@example.com")
+        let passwords = ApplePasswordKeychainStore(keychain: keychain)
+        passwords.save("mine", for: appleId)
+        passwords.save("theirs", for: "other@example.com")
+
+        try await AccountCascadeDeleter.delete(mine, storage: storage, keychain: keychain, appleSessionStatus: status)
+
+        XCTAssertNil(passwords.password(for: appleId))
+        XCTAssertEqual(passwords.password(for: "other@example.com"), "theirs")
+    }
+
+    // MARK: - Saved password item
+
+    func testPasswordIsKeyedByTheNormalizedAppleId() {
+        let store = ApplePasswordKeychainStore(keychain: keychain)
+
+        store.save("secret", for: " Dev@Example.com")
+
+        XCTAssertEqual(keychain.storedKeys, ["applePassword.dev@example.com"])
+        XCTAssertEqual(store.password(for: "DEV@example.com"), "secret")
+        XCTAssertTrue(store.hasPassword(for: appleId))
+        store.save("changed", for: appleId)
+        XCTAssertEqual(keychain.storedKeys.count, 1, "saving again replaces the same item")
+        XCTAssertEqual(store.password(for: appleId), "changed")
+    }
+
+    func testPasswordItemIsSeparateFromTheSession() {
+        let passwords = ApplePasswordKeychainStore(keychain: keychain)
+        let sessions = AppleSessionKeychainStore(keychain: keychain)
+        sessions.save(accountId: appleId, blob: Data("blob".utf8))
+        passwords.save("secret", for: appleId)
+
+        passwords.deletePassword(for: appleId)
+
+        XCTAssertNil(passwords.password(for: appleId))
+        XCTAssertFalse(passwords.hasPassword(for: appleId))
+        XCTAssertEqual(sessions.load(accountId: appleId), Data("blob".utf8), "the session stays")
+    }
+
+    func testEmptyPasswordIsNeitherSavedNorReturned() {
+        let store = ApplePasswordKeychainStore(keychain: keychain)
+
+        store.save("", for: appleId)
+        XCTAssertTrue(keychain.storedKeys.isEmpty)
+
+        keychain.set("", forKey: "applePassword.\(appleId)")
+        XCTAssertNil(store.password(for: appleId))
+    }
+
+    func testSavedPasswordIsNeverExported() async throws {
+        let account = try await addSessionAccount(team: 1)
+        ApplePasswordKeychainStore(keychain: keychain).save("secret", for: appleId)
+
+        XCTAssertNil(AccountTransferCredentials.exportPayload(for: account, keychain: keychain))
+        XCTAssertFalse(account.isExportable)
     }
 
     // MARK: - Status store

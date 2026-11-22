@@ -450,6 +450,239 @@ final class AppleIdSignInViewModelTests: XCTestCase {
         XCTAssertEqual(actions(.appleIdSignInStarted).last?.parameters[AnalyticsParameterKey.trigger], .string("sign_in_again"))
     }
 
+    // MARK: - Saved password
+
+    private var passwordKey: String { "applePassword.\(appleId)" }
+
+    private func taps(_ button: AnalyticsButton) -> [AnalyticsEvent] {
+        analytics.trackedEvents.filter { $0.parameters[AnalyticsParameterKey.buttonName] == .string(button.rawValue) }
+    }
+
+    func testPasswordIsSavedOnlyOnceTheSignInFinished() async {
+        let sut = await signedInSUT(teams: [.fixture(1, "Alpha")])
+
+        XCTAssertNil(keychain.string(forKey: passwordKey), "not before Apple accepted it and the session was taken")
+
+        await sut.save()
+
+        XCTAssertEqual(keychain.string(forKey: passwordKey), "secret")
+        XCTAssertEqual(sut.uiState.password, "", "the state never keeps it")
+    }
+
+    func testPasswordIsNotSavedWhenFinishFails() async {
+        flow.finishResult = .failure(StackError.Auth(message: "not signed in"))
+        let sut = await signedInSUT(teams: [.fixture(1, "Alpha")])
+
+        await sut.save()
+
+        XCTAssertNil(keychain.string(forKey: passwordKey))
+    }
+
+    func testPasswordIsNotSavedWhileWaitingForTheCode() async {
+        flow.startResults = [.success(needsCode())]
+        let sut = makeSUT()
+        sut.uiState.email = appleId
+        sut.uiState.password = "secret"
+
+        await sut.signIn()
+        sut.discard()
+
+        XCTAssertNil(keychain.string(forKey: passwordKey))
+    }
+
+    func testPasswordIsNotSavedWhenAppleRefusesIt() async {
+        flow.startResults = [.failure(StackError.InvalidCredentials(message: "the Apple ID or password is incorrect"))]
+        let sut = makeSUT()
+        sut.uiState.email = appleId
+        sut.uiState.password = "wrong"
+
+        await sut.signIn()
+
+        XCTAssertTrue(keychain.storedKeys.isEmpty)
+    }
+
+    func testSignInAgainWithASavedPasswordGoesStraightToTheCode() async {
+        keychain.set("saved", forKey: passwordKey)
+        flow.startResults = [.success(needsCode())]
+        let sut = makeSUT(.signInAgain(appleId: appleId))
+
+        await sut.signInWithSavedPasswordIfAvailable()
+
+        XCTAssertEqual(flow.starts, [.init(email: appleId, password: "saved")])
+        XCTAssertEqual(sut.uiState.step, .code)
+        XCTAssertTrue(sut.uiState.usesSavedPassword)
+        XCTAssertFalse(sut.uiState.isEmailEditable, "the Apple ID stays read-only")
+        XCTAssertEqual(sut.uiState.password, "")
+        XCTAssertTrue(taps(.signInWithAppleId).isEmpty, "not a tap: started on its own")
+        XCTAssertEqual(actions(.appleIdSignInStarted).count, 1)
+    }
+
+    func testSignInAgainWithASavedPasswordRunsOnce() async {
+        keychain.set("saved", forKey: passwordKey)
+        flow.startResults = [.success(needsCode())]
+        let sut = makeSUT(.signInAgain(appleId: appleId))
+
+        await sut.signInWithSavedPasswordIfAvailable()
+        await sut.signInWithSavedPasswordIfAvailable()
+
+        XCTAssertEqual(flow.starts.count, 1, "the screen appearing again doesn't restart it")
+    }
+
+    func testSignInAgainWithASavedPasswordAndTrustedSessionFinishesAndRefreshesIt() async {
+        keychain.set("saved", forKey: passwordKey)
+        flow.startResults = [.success(.done(teams: [.fixture(1, "Alpha")]))]
+        let sut = makeSUT(.signInAgain(appleId: appleId))
+
+        await sut.signInWithSavedPasswordIfAvailable()
+
+        XCTAssertEqual(sut.uiState.step, .finished)
+        XCTAssertEqual(keychain.string(forKey: passwordKey), "saved")
+        XCTAssertEqual(keychain.data(forKey: "appleSession.\(appleId)"), blob)
+    }
+
+    func testSignInAgainWithoutASavedPasswordAsksForIt() async {
+        let sut = makeSUT(.signInAgain(appleId: appleId))
+
+        await sut.signInWithSavedPasswordIfAvailable()
+
+        XCTAssertTrue(flow.starts.isEmpty)
+        XCTAssertEqual(sut.uiState.step, .credentials)
+        XCTAssertFalse(sut.uiState.usesSavedPassword)
+        XCTAssertFalse(sut.uiState.canSignIn, "a password is needed")
+    }
+
+    func testRefusedSavedPasswordIsDeletedAndThePasswordIsAskedFor() async {
+        keychain.set("old", forKey: passwordKey)
+        flow.startResults = [.failure(StackError.InvalidCredentials(message: "the Apple ID or password is incorrect"))]
+        let sut = makeSUT(.signInAgain(appleId: appleId))
+
+        await sut.signInWithSavedPasswordIfAvailable()
+
+        XCTAssertNil(keychain.string(forKey: passwordKey), "a changed password is forgotten")
+        XCTAssertEqual(sut.uiState.step, .credentials)
+        XCTAssertFalse(sut.uiState.usesSavedPassword, "the password field is back")
+        XCTAssertNil(sut.uiState.errorMessage)
+        XCTAssertEqual(sut.uiState.notice, String(localized: "The saved password didn't work. It may have changed: enter your current Apple ID password."))
+        XCTAssertEqual(actions(.appleIdSignIn).last?.parameters[AnalyticsParameterKey.errorCategory], .string("invalid_credentials"))
+    }
+
+    func testNewPasswordAfterARefusedSavedOneIsSaved() async {
+        keychain.set("old", forKey: passwordKey)
+        flow.startResults = [
+            .failure(StackError.InvalidCredentials(message: "the Apple ID or password is incorrect")),
+            .success(.done(teams: [.fixture(1, "Alpha")]))
+        ]
+        let sut = makeSUT(.signInAgain(appleId: appleId))
+        await sut.signInWithSavedPasswordIfAvailable()
+
+        sut.uiState.password = "new"
+        await sut.signIn()
+
+        XCTAssertEqual(flow.starts.map(\.password), ["old", "new"])
+        XCTAssertNil(sut.uiState.notice)
+        XCTAssertEqual(sut.uiState.step, .finished)
+        XCTAssertEqual(keychain.string(forKey: passwordKey), "new")
+    }
+
+    func testOtherFailuresWithTheSavedPasswordKeepIt() async {
+        keychain.set("saved", forKey: passwordKey)
+        flow.startResults = [.failure(StackError.Network(message: "offline"))]
+        let sut = makeSUT(.signInAgain(appleId: appleId))
+
+        await sut.signInWithSavedPasswordIfAvailable()
+
+        XCTAssertEqual(keychain.string(forKey: passwordKey), "saved", "only a refused password is removed")
+        XCTAssertTrue(sut.uiState.usesSavedPassword, "Continue retries with it")
+        XCTAssertTrue(sut.uiState.canSignIn)
+        XCTAssertEqual(sut.uiState.errorMessage, String(localized: "Couldn't reach Apple. Check your connection and try again."))
+    }
+
+    func testWrongCodeWithTheSavedPasswordKeepsIt() async {
+        keychain.set("saved", forKey: passwordKey)
+        flow.startResults = [.success(needsCode())]
+        flow.submitResults = [.failure(StackError.InvalidCredentials(message: "the verification code is incorrect"))]
+        let sut = makeSUT(.signInAgain(appleId: appleId))
+        await sut.signInWithSavedPasswordIfAvailable()
+
+        await sut.updateCode("000000")
+
+        XCTAssertEqual(sut.uiState.step, .code)
+        XCTAssertNotNil(sut.uiState.codeError)
+        XCTAssertEqual(keychain.string(forKey: passwordKey), "saved", "a wrong code says nothing about the password")
+    }
+
+    func testUseDifferentPasswordFromTheCodeGoesBackToThePasswordField() async {
+        keychain.set("saved", forKey: passwordKey)
+        flow.startResults = [.success(needsCode()), .success(.done(teams: [.fixture(1, "Alpha")]))]
+        let sut = makeSUT(.signInAgain(appleId: appleId))
+        await sut.signInWithSavedPasswordIfAvailable()
+
+        sut.useDifferentPassword()
+
+        XCTAssertEqual(sut.uiState.step, .credentials)
+        XCTAssertFalse(sut.uiState.usesSavedPassword)
+        XCTAssertNil(sut.uiState.codeMethod)
+        XCTAssertEqual(taps(.useDifferentPassword).count, 1)
+        XCTAssertEqual(keychain.string(forKey: passwordKey), "saved", "kept until a sign-in replaces it")
+
+        sut.uiState.password = "typed"
+        await sut.signIn()
+
+        XCTAssertEqual(flow.starts.map(\.password), ["saved", "typed"])
+        XCTAssertEqual(keychain.string(forKey: passwordKey), "typed", "refreshed by the successful sign-in")
+    }
+
+    func testWrongTypedPasswordKeepsTheSavedOne() async {
+        keychain.set("saved", forKey: passwordKey)
+        let sut = makeSUT(.signInAgain(appleId: appleId))
+        flow.startResults = [.success(needsCode())]
+        await sut.signInWithSavedPasswordIfAvailable()
+        sut.useDifferentPassword()
+        flow.startResults = [.failure(StackError.InvalidCredentials(message: "the Apple ID or password is incorrect"))]
+
+        sut.uiState.password = "typo"
+        await sut.signIn()
+
+        XCTAssertEqual(sut.uiState.errorMessage, String(localized: "The Apple ID or password is incorrect."))
+        XCTAssertEqual(keychain.string(forKey: passwordKey), "saved", "only the saved password being refused removes it")
+    }
+
+    func testAddAccountOffersTheSavedPasswordOfAKnownAppleId() async {
+        keychain.set("saved", forKey: passwordKey)
+        flow.startResults = [.success(needsCode())]
+        let sut = makeSUT()
+        await sut.signInWithSavedPasswordIfAvailable()
+        XCTAssertTrue(flow.starts.isEmpty, "Add Account never starts on its own")
+
+        sut.uiState.email = "other@example.com"
+        sut.emailDidChange()
+        XCTAssertFalse(sut.uiState.usesSavedPassword)
+
+        sut.uiState.email = "Dev@Example.com"
+        sut.emailDidChange()
+        XCTAssertTrue(sut.uiState.usesSavedPassword)
+        XCTAssertTrue(sut.uiState.canSignIn, "no password to type")
+
+        await sut.signIn()
+
+        XCTAssertEqual(flow.starts, [.init(email: "Dev@Example.com", password: "saved")])
+        XCTAssertEqual(sut.uiState.step, .code)
+    }
+
+    func testDeclinedSavedPasswordIsNotOfferedAgainForThatAppleId() {
+        keychain.set("saved", forKey: passwordKey)
+        let sut = makeSUT()
+        sut.uiState.email = appleId
+        sut.emailDidChange()
+
+        sut.useDifferentPassword()
+        sut.uiState.email = appleId + " "
+        sut.emailDidChange()
+
+        XCTAssertFalse(sut.uiState.usesSavedPassword)
+        XCTAssertFalse(sut.uiState.canSignIn)
+    }
+
     // MARK: - Cancel
 
     func testClosingBeforeTheEndIsTrackedAsCancelled() async {

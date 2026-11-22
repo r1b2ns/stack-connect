@@ -23,8 +23,8 @@ enum AppleSessionReferences {
         return accounts.filter { reference(of: $0, keychain: keychain)?.appleId == id }
     }
 
-    /// Removes `appleId`'s session and its expiry mark when no account of
-    /// `remaining` uses it any more.
+    /// Removes `appleId`'s session, its saved password and its expiry mark
+    /// when no account of `remaining` uses it any more.
     static func releaseSessionIfUnused(
         _ appleId: String,
         remaining: [AccountModel],
@@ -33,7 +33,8 @@ enum AppleSessionReferences {
     ) {
         guard accounts(using: appleId, in: remaining, keychain: keychain).isEmpty else { return }
         AppleSessionKeychainStore(keychain: keychain).deleteSession(for: appleId)
+        ApplePasswordKeychainStore(keychain: keychain).deletePassword(for: appleId)
         status.markValid(appleId: appleId)
-        Log.print.info("[AppleSession] Removed the Apple ID session: its last account was deleted")
+        Log.print.info("[AppleSession] Removed the Apple ID session and saved password: its last account was deleted")
     }
 }
