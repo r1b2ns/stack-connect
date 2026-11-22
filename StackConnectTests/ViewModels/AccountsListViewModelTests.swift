@@ -213,6 +213,119 @@ final class AccountsListViewModelTests: XCTestCase {
         XCTAssertEqual(sut.uiState.groups.first?.issuerID, "issuer-bbb")
     }
 
+    // MARK: - Sections by connection kind (API Key / Apple ID)
+
+    private func storeAppleIdSession(teamId: UInt64, for accountId: String) {
+        mockKeychain.setObject(
+            AppleCredentials(webSession: AppleWebSessionReference(appleId: "dev@example.com", teamId: teamId, teamName: "Team \(teamId)")),
+            forKey: "credentials.\(accountId)"
+        )
+    }
+
+    @discardableResult
+    private func seedAPIKeyAccount(_ name: String, issuerID: String) async throws -> AccountModel {
+        let account = AccountModel(name: name, providerType: .apple)
+        try await mockStorage.save(account, id: account.id)
+        storeAppleCredentials(issuerID: issuerID, for: account.id)
+        return account
+    }
+
+    @discardableResult
+    private func seedAppleIdAccount(_ name: String, teamId: UInt64) async throws -> AccountModel {
+        let account = AccountModel(name: name, providerType: .apple, authMethod: .appleIdSignIn)
+        try await mockStorage.save(account, id: account.id)
+        storeAppleIdSession(teamId: teamId, for: account.id)
+        return account
+    }
+
+    func testSplitsAppleAccountsIntoAPIKeyThenAppleIDSections() async throws {
+        try await seedAppleIdAccount("Session B", teamId: 2)
+        try await seedAPIKeyAccount("Key Z", issuerID: "issuer-zzz")
+        try await seedAppleIdAccount("Session A", teamId: 1)
+        try await seedAPIKeyAccount("Key A", issuerID: "issuer-aaa")
+
+        await sut.loadAccounts()
+
+        XCTAssertFalse(sut.uiState.showsTeamGroups)
+        XCTAssertEqual(sut.uiState.sections.map(\.connection), [.apiKey, .appleId])
+        XCTAssertEqual(sut.uiState.sections.map { $0.accounts.map(\.name) }, [["Key A", "Key Z"], ["Session A", "Session B"]])
+        XCTAssertTrue(sut.uiState.sections.allSatisfy { $0.issuerID == nil })
+    }
+
+    func testShowsOnlyTheAPIKeySectionWithItsHeaderWhenThereAreNoAppleIDAccounts() async throws {
+        try await seedAPIKeyAccount("Key A", issuerID: "issuer-aaa")
+        try await seedAPIKeyAccount("Key B", issuerID: "issuer-bbb")
+
+        await sut.loadAccounts()
+
+        XCTAssertEqual(sut.uiState.sections.count, 1)
+        XCTAssertEqual(sut.uiState.sections.first?.connection, .apiKey)
+        XCTAssertEqual(sut.uiState.sections.first?.accounts.map(\.name), ["Key A", "Key B"])
+    }
+
+    func testShowsOnlyTheAppleIDSectionWithItsHeaderWhenThereAreNoAPIKeyAccounts() async throws {
+        try await seedAppleIdAccount("Session", teamId: 1)
+
+        await sut.loadAccounts()
+
+        XCTAssertEqual(sut.uiState.sections.map(\.connection), [.appleId])
+        XCTAssertEqual(sut.uiState.sections.first?.accounts.map(\.name), ["Session"])
+    }
+
+    func testAPIKeyAccountWithUnreadableCredentialsStaysInTheAPIKeySection() async throws {
+        let orphan = AccountModel(name: "Orphan", providerType: .apple)
+        try await mockStorage.save(orphan, id: orphan.id)
+        try await seedAppleIdAccount("Session", teamId: 1)
+
+        await sut.loadAccounts()
+
+        XCTAssertEqual(sut.uiState.sections.map(\.connection), [.apiKey, .appleId])
+        XCTAssertEqual(sut.uiState.sections.first?.accounts.map(\.name), ["Orphan"])
+    }
+
+    func testTeamGroupsAreSplitInsideTheirConnectionSection() async throws {
+        try await seedAPIKeyAccount("A — Admin", issuerID: "issuer-aaa")
+        try await seedAPIKeyAccount("A — Developer", issuerID: "issuer-aaa")
+        try await seedAPIKeyAccount("B", issuerID: "issuer-bbb")
+        try await seedAppleIdAccount("Session", teamId: 1)
+
+        await sut.loadAccounts()
+
+        XCTAssertTrue(sut.uiState.showsTeamGroups)
+        let sections = sut.uiState.sections
+        XCTAssertEqual(sections.map(\.connection), [.apiKey, nil, .appleId], "Only the first team section of a connection shows its header")
+        XCTAssertEqual(sections.map(\.issuerID), ["issuer-aaa", "issuer-bbb", nil])
+        XCTAssertEqual(sections.map { $0.accounts.map(\.name) }, [["A — Admin", "A — Developer"], ["B"], ["Session"]])
+        XCTAssertEqual(Set(sections.map(\.id)).count, sections.count, "Section ids are unique")
+    }
+
+    func testDeletingTheLastAppleIDAccountRemovesItsSection() async throws {
+        try await seedAPIKeyAccount("Key", issuerID: "issuer-aaa")
+        let session = try await seedAppleIdAccount("Session", teamId: 1)
+        await sut.loadAccounts()
+        XCTAssertEqual(sut.uiState.sections.map(\.connection), [.apiKey, .appleId])
+
+        await sut.deleteAccount(session)
+
+        XCTAssertEqual(sut.uiState.sections.map(\.connection), [.apiKey])
+    }
+
+    func testOtherProvidersHaveASingleSectionWithoutHeaders() async throws {
+        let sut = makeGooglePlaySUT()
+        let b = AccountModel(name: "Play B", providerType: .googlePlay)
+        let a = AccountModel(name: "Play A", providerType: .googlePlay, authMethod: .googleSignIn)
+        try await mockStorage.save(b, id: b.id)
+        try await mockStorage.save(a, id: a.id)
+
+        await sut.loadAccounts()
+
+        XCTAssertEqual(sut.uiState.sections.count, 1)
+        let section = try XCTUnwrap(sut.uiState.sections.first)
+        XCTAssertNil(section.connection)
+        XCTAssertNil(section.issuerID)
+        XCTAssertEqual(section.accounts.map(\.name), ["Play A", "Play B"])
+    }
+
     // MARK: - Google Play import (Phase 2)
 
     private let password = "aVeryStrongPass123"
