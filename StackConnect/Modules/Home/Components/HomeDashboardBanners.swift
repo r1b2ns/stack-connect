@@ -129,6 +129,204 @@ struct HomeAgreementsBanners<ViewModel: HomeViewModelProtocol>: View {
     }
 }
 
+// MARK: - Sign In Again Banner
+
+/// "N accounts need you to sign in again": the accounts whose Apple ID session
+/// or Google login expired (`uiState.expiredSignIns`). With one expired
+/// sign-in its button starts that sign-in right away; with several it opens
+/// the list (`HomeSignInAgainListView`). The close button hides it until the
+/// next launch (rules in `HomeViewModel.dismissedSignInAccountIds`).
+struct HomeSignInAgainBanner<ViewModel: HomeViewModelProtocol>: View {
+
+    @ObservedObject var viewModel: ViewModel
+
+    private var state: HomeUiState { viewModel.uiState }
+
+    var body: some View {
+        if state.showSignInAgainBanner, !state.expiredSignIns.isEmpty {
+            StackBannerCard(
+                systemImage: "person.crop.circle.badge.exclamationmark",
+                tint: .orange,
+                title: title,
+                message: message,
+                onDismiss: { viewModel.dismissSignInAgainBanner() }
+            ) {
+                buildActionButton()
+            }
+        }
+    }
+
+    private var single: ExpiredSignIn? {
+        state.expiredSignIns.count == 1 ? state.expiredSignIns.first : nil
+    }
+
+    private var title: String {
+        let count = state.expiredAccountCount
+        if count == 1, let name = state.expiredSignIns.first?.accounts.first?.name {
+            return String(localized: "\"\(name)\" needs you to sign in again",
+                          comment: "Home banner title when one account's sign-in (Apple ID or Google) expired. The placeholder is the account name.")
+        }
+        return String(localized: "\(count) accounts need you to sign in again",
+                      comment: "Home banner title when several accounts' sign-ins (Apple ID or Google) expired.")
+    }
+
+    private var message: String {
+        guard let single else {
+            return String(localized: "\(state.expiredSignIns.count) sign-ins expired or were revoked. Choose one to sign in again.",
+                          comment: "Home sign-in-again banner body when several personal sign-ins (Apple IDs, Google accounts) expired.")
+        }
+        if let feedback = state.signInAgainFeedback[single.id] {
+            return feedback
+        }
+        if let login = single.login {
+            return String(localized: "The sign-in for \(login) expired or was revoked. Sign in again to keep syncing.",
+                          comment: "Home sign-in-again banner body. The placeholder is the Apple ID or the Google account's e-mail.")
+        }
+        return String(localized: "The sign-in expired or was revoked. Sign in again to keep syncing.",
+                      comment: "Home sign-in-again banner body when the Google account's e-mail is unknown.")
+    }
+
+    private func buildActionButton() -> some View {
+        let isWorking = single.map { state.workingSignInIds.contains($0.id) } ?? false
+        return Button {
+            Task { await viewModel.startSignInAgain() }
+        } label: {
+            HStack(spacing: 6) {
+                Text(String(localized: "Sign In Again"))
+                    .font(.footnote)
+                    .fontWeight(.semibold)
+                if isWorking {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
+        }
+        .buttonStyle(.borderless)
+        .tint(.orange)
+        .disabled(isWorking)
+        .accessibilityHint(single == nil
+            ? String(localized: "Shows the accounts to sign in again.", comment: "Accessibility hint of the Home sign-in-again banner button with several expired sign-ins.")
+            : String(localized: "Opens the sign-in for this account.", comment: "Accessibility hint of the Home sign-in-again banner button with one expired sign-in."))
+    }
+}
+
+// MARK: - Sign In Again Sheet
+
+/// What the "sign in again" banner opens: the Apple ID sign-in for one Apple
+/// ID, or the list of expired sign-ins (each row signs in again; an Apple ID
+/// pushes its sign-in inside the sheet).
+struct HomeSignInAgainSheetView<ViewModel: HomeViewModelProtocol>: View {
+
+    @ObservedObject var viewModel: ViewModel
+    let sheet: HomeSignInAgainSheet
+
+    var body: some View {
+        NavigationStack {
+            switch sheet {
+            case .apple(let appleId):
+                buildAppleSignIn(appleId: appleId)
+                    .toolbar { buildCloseButton() }
+            case .choose:
+                buildList()
+                    .navigationDestination(isPresented: Binding(
+                        get: { viewModel.uiState.appleSignInAgainId != nil },
+                        set: { if !$0 { viewModel.uiState.appleSignInAgainId = nil } }
+                    )) {
+                        if let appleId = viewModel.uiState.appleSignInAgainId {
+                            buildAppleSignIn(appleId: appleId)
+                        }
+                    }
+            }
+        }
+    }
+
+    private func buildAppleSignIn(appleId: String) -> some View {
+        AppleIdSignInViewFactory.build(mode: .signInAgain(appleId: appleId)) {
+            viewModel.appleSignInAgainFinished()
+        }
+    }
+
+    @ToolbarContentBuilder
+    private func buildCloseButton() -> some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            StackTrackedButton(.close, on: .home) {
+                viewModel.closeSignInAgainSheet()
+            } label: {
+                Text(String(localized: "Close"))
+            }
+        }
+    }
+
+    private func buildList() -> some View {
+        List {
+            ForEach(viewModel.uiState.expiredSignIns) { signIn in
+                buildRow(signIn)
+            }
+        }
+        .navigationTitle(String(localized: "Sign In Again"))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { buildCloseButton() }
+    }
+
+    private func buildRow(_ signIn: ExpiredSignIn) -> some View {
+        let isWorking = viewModel.uiState.workingSignInIds.contains(signIn.id)
+        return Section {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: signIn.systemImage)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(signIn.login ?? signIn.providerTitle)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text(signIn.accounts.map(\.name).formatted(.list(type: .and)))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    if let feedback = viewModel.uiState.signInAgainFeedback[signIn.id] {
+                        Text(feedback)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .accessibilityElement(children: .combine)
+
+            Button {
+                Task { await viewModel.signInAgain(signIn.id) }
+            } label: {
+                HStack {
+                    Text(String(localized: "Sign In Again"))
+                    Spacer()
+                    if isWorking {
+                        ProgressView()
+                    }
+                }
+            }
+            .disabled(isWorking)
+        } header: {
+            Text(signIn.providerTitle)
+        }
+    }
+}
+
+private extension ExpiredSignIn {
+    var providerTitle: String {
+        switch provider {
+        case .appleId: return String(localized: "Apple ID")
+        case .google: return String(localized: "Google account")
+        }
+    }
+
+    var systemImage: String {
+        switch provider {
+        case .appleId: return "apple.logo"
+        case .google: return "person.crop.circle"
+        }
+    }
+}
+
 // MARK: - Tip Card
 
 /// One-time "support the project" card (rules in `TipJarPromptService`).
@@ -211,7 +409,8 @@ struct HomeWidgetsEmptyState: View {
 // MARK: - Presentations
 
 extension View {
-    /// The agreements share sheet and the account expiration alerts of the Home.
+    /// The agreements share sheet, the sign-in-again sheet and the account
+    /// expiration alerts of the Home.
     func homePresentations<ViewModel: HomeViewModelProtocol>(viewModel: ViewModel) -> some View {
         modifier(HomePresentationsModifier(viewModel: viewModel))
     }
@@ -225,6 +424,12 @@ private struct HomePresentationsModifier<ViewModel: HomeViewModelProtocol>: View
         content
             .stackShareSheet(item: $viewModel.uiState.agreementShare) { payload in
                 payload.shareActivityItems
+            }
+            .sheet(item: Binding(
+                get: { viewModel.uiState.signInAgainSheet },
+                set: { if $0 == nil { viewModel.closeSignInAgainSheet() } }
+            )) { sheet in
+                HomeSignInAgainSheetView(viewModel: viewModel, sheet: sheet)
             }
             .alert(
                 String(localized: "Account Expired"),

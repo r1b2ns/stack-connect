@@ -26,6 +26,22 @@ protocol HomeViewModelProtocol: ObservableObject {
     /// The user closed the "support the project" card: tracks it and retires the
     /// card for good.
     func dismissTipCard()
+    /// The "sign in again" banner's button: with one expired sign-in, starts
+    /// it right away (`signInAgain(_:)`); with several, opens the list.
+    func startSignInAgain() async
+    /// Signs in again to one expired sign-in (`ExpiredSignIn.id`): the Apple
+    /// ID sign-in screens for an Apple ID session, Google's page for a Google
+    /// login.
+    func signInAgain(_ signInId: String) async
+    /// Re-reads the expired sign-ins from the status stores.
+    func reloadExpiredSignIns() async
+    /// The Apple ID sign-in of `uiState.appleSignInAgainId` finished.
+    func appleSignInAgainFinished()
+    /// Closes the sign-in-again sheet (list or Apple ID sign-in).
+    func closeSignInAgainSheet()
+    /// The banner's close button: hides it until the next launch, or until
+    /// another account's sign-in expires.
+    func dismissSignInAgainBanner()
 }
 
 // MARK: - UiState
@@ -50,6 +66,40 @@ struct HomeUiState {
     var agreementShare: AgreementSharePayload?
     /// The one-time "support the project" card (rules in `TipJarPromptService`).
     var showTipCard = false
+
+    // MARK: Sign in again
+
+    /// Every personal sign-in (Apple ID session, Google login) that expired,
+    /// with its accounts. Kept even while the banner is dismissed.
+    var expiredSignIns: [ExpiredSignIn] = []
+    /// The "sign in again" banner is visible.
+    var showSignInAgainBanner = false
+    /// The sheet shown over the Home, if any.
+    var signInAgainSheet: HomeSignInAgainSheet?
+    /// In the `.choose` sheet: the Apple ID whose sign-in is pushed.
+    var appleSignInAgainId: String?
+    /// Sign-ins whose Google page is open (`ExpiredSignIn.id`).
+    var workingSignInIds: Set<String> = []
+    /// Why the last attempt of a sign-in didn't work, per `ExpiredSignIn.id`.
+    var signInAgainFeedback: [String: String] = [:]
+
+    /// The total number of accounts that need a new sign-in.
+    var expiredAccountCount: Int { expiredSignIns.reduce(0) { $0 + $1.accounts.count } }
+}
+
+/// The sheet the "sign in again" banner opens.
+enum HomeSignInAgainSheet: Identifiable, Equatable {
+    /// The Apple ID sign-in screens for that Apple ID (one expired sign-in).
+    case apple(appleId: String)
+    /// The list of expired sign-ins to choose from.
+    case choose
+
+    var id: String {
+        switch self {
+        case .apple(let appleId): return "apple:\(appleId)"
+        case .choose: return "choose"
+        }
+    }
 }
 
 /// One-shot request to present the share sheet asking an account's Account Holder
@@ -80,6 +130,9 @@ final class HomeViewModel: HomeViewModelProtocol {
     private let analytics: AnalyticsTracking
     private let tipCard: TipJarCardPresenting
     private let featureFlags: FeatureFlags
+    private let signInExpiry: ExpiredSignInResolving
+    private let googleAuth: (any GoogleAuthServicing)?
+    private let notificationCenter: NotificationCenter
     private var cancellables = Set<AnyCancellable>()
 
     /// Preferences key of the dashboard layout (also seeded by the DEBUG fake data mode).
@@ -91,6 +144,14 @@ final class HomeViewModel: HomeViewModelProtocol {
     /// Pending-agreements banners dismissed this session (re-appear next launch if still flagged).
     private var dismissedAgreementAccountIds: Set<String> = []
 
+    /// Accounts whose expired sign-in was on screen when the user closed the
+    /// "sign in again" banner. In memory only, on purpose: this ViewModel
+    /// lives for the app run (owned by `AppRootViewFactory`), so the banner
+    /// stays closed across tabs and layouts, and is back on the next launch.
+    /// An account that expires after the close shows the banner again; one
+    /// that recovers is forgotten, so expiring again later shows it too.
+    private var dismissedSignInAccountIds: Set<String> = []
+
     init(
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
@@ -99,12 +160,18 @@ final class HomeViewModel: HomeViewModelProtocol {
         teamUsersFetcherFactory: TeamUsersFetcherFactory? = nil,
         analytics: AnalyticsTracking = AnalyticsService.shared,
         tipCard: TipJarCardPresenting = TipJarPromptService.shared,
-        featureFlags: FeatureFlags = .shared
+        featureFlags: FeatureFlags = .shared,
+        signInExpiry: ExpiredSignInResolving? = nil,
+        googleAuth: (any GoogleAuthServicing)? = nil,
+        notificationCenter: NotificationCenter = .default
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
         self.featureFlags = featureFlags
         self.analytics = analytics
         self.tipCard = tipCard
+        self.signInExpiry = signInExpiry ?? ExpiredSignInResolver(keychain: keychain)
+        self.googleAuth = googleAuth
+        self.notificationCenter = notificationCenter
         self.keychain = keychain
         self.preferences = preferences
         self.syncService = syncService
@@ -141,6 +208,14 @@ final class HomeViewModel: HomeViewModelProtocol {
                     self.analytics.track(.action(.tipCardShown, on: .home))
                 }
                 self.uiState.showTipCard = isVisible
+            }
+            .store(in: &cancellables)
+
+        // An Apple ID session or a Google login expired or works again.
+        notificationCenter.publisher(for: .signInStatusDidChange)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                Task { await self?.reloadExpiredSignIns() }
             }
             .store(in: &cancellables)
     }
@@ -183,6 +258,115 @@ final class HomeViewModel: HomeViewModelProtocol {
                 && $0.hasPendingAgreements
                 && !dismissedAgreementAccountIds.contains($0.id)
         }
+        applyExpiredSignIns(signInExpiry.expiredSignIns(in: accounts))
+    }
+
+    // MARK: - Sign In Again
+
+    /// Re-reads the expired sign-ins (a status store changed).
+    func reloadExpiredSignIns() async {
+        // Accounts of a hidden store (Google Play while `googlePlayAccounts`
+        // is OFF) never reach the banner, as in `checkExpiredAccounts()`.
+        let accounts = featureFlags.visibleAccounts((try? await storage.fetchAll(AccountModel.self)) ?? [])
+        applyExpiredSignIns(signInExpiry.expiredSignIns(in: accounts))
+    }
+
+    private func applyExpiredSignIns(_ signIns: [ExpiredSignIn]) {
+        uiState.expiredSignIns = signIns
+        let ids = Set(signIns.map(\.id))
+        uiState.workingSignInIds.formIntersection(ids)
+        uiState.signInAgainFeedback = uiState.signInAgainFeedback.filter { ids.contains($0.key) }
+
+        let expiredAccountIds = Set(signIns.flatMap { $0.accounts.map(\.id) })
+        // A recovered account forgets the close: expiring again shows the banner.
+        dismissedSignInAccountIds.formIntersection(expiredAccountIds)
+        uiState.showSignInAgainBanner = !expiredAccountIds.subtracting(dismissedSignInAccountIds).isEmpty
+
+        // Nothing left to choose from: close the list (never the Apple ID
+        // sign-in in progress, which closes itself when it finishes).
+        if signIns.isEmpty, uiState.signInAgainSheet == .choose, uiState.appleSignInAgainId == nil {
+            uiState.signInAgainSheet = nil
+        }
+    }
+
+    func startSignInAgain() async {
+        let signIns = uiState.expiredSignIns
+        if signIns.count == 1, let only = signIns.first {
+            await signInAgain(only.id)
+        } else if !signIns.isEmpty {
+            analytics.track(.buttonTap(.chooseSignInAgain, on: .home))
+            uiState.appleSignInAgainId = nil
+            uiState.signInAgainSheet = .choose
+        }
+    }
+
+    func signInAgain(_ signInId: String) async {
+        guard let signIn = uiState.expiredSignIns.first(where: { $0.id == signInId }),
+              !uiState.workingSignInIds.contains(signInId) else { return }
+        switch signIn.provider {
+        case .appleId(let appleId):
+            analytics.track(.buttonTap(.signInAgain, on: .home))
+            if uiState.signInAgainSheet == .choose {
+                uiState.appleSignInAgainId = appleId
+            } else {
+                uiState.signInAgainSheet = .apple(appleId: appleId)
+            }
+        case .google(let loginId):
+            await signInToGoogleAgain(signIn, loginId: loginId)
+        }
+    }
+
+    /// Google's page for the same Google user (`GoogleAccessRecovery`, which
+    /// tracks the tap and the outcome). On success `GoogleAuthService` records
+    /// the login as working again (`.signInStatusDidChange`); the list is
+    /// re-read right away and the accounts sync again.
+    private func signInToGoogleAgain(_ signIn: ExpiredSignIn, loginId: String) async {
+        let recovery = GoogleAccessRecovery(
+            loginId: loginId,
+            providerType: signIn.accounts.first?.providerType ?? .googlePlay,
+            auth: googleAuth,
+            analytics: analytics,
+            screen: .home
+        )
+        let prompt = GoogleAccessPrompt(reason: .signInRequired, email: signIn.login)
+        let resolved = await recovery.resolve(prompt) { update in
+            if update.isWorking {
+                self.uiState.workingSignInIds.insert(signIn.id)
+            } else {
+                self.uiState.workingSignInIds.remove(signIn.id)
+            }
+            self.uiState.signInAgainFeedback[signIn.id] = update.feedback
+        }
+        uiState.workingSignInIds.remove(signIn.id)
+        guard resolved else { return }
+        uiState.signInAgainFeedback[signIn.id] = nil
+        await reloadExpiredSignIns()
+        triggerSync()
+    }
+
+    func appleSignInAgainFinished() {
+        // `AppleIdSignInViewModel` already cleared the session's expiry.
+        if uiState.signInAgainSheet == .choose, uiState.expiredSignIns.count > 1 {
+            uiState.appleSignInAgainId = nil
+        } else {
+            uiState.signInAgainSheet = nil
+            uiState.appleSignInAgainId = nil
+        }
+        Task {
+            await reloadExpiredSignIns()
+            triggerSync()
+        }
+    }
+
+    func closeSignInAgainSheet() {
+        uiState.signInAgainSheet = nil
+        uiState.appleSignInAgainId = nil
+    }
+
+    func dismissSignInAgainBanner() {
+        analytics.track(.buttonTap(.dismissSignInAgainBanner, on: .home))
+        dismissedSignInAccountIds.formUnion(uiState.expiredSignIns.flatMap { $0.accounts.map(\.id) })
+        uiState.showSignInAgainBanner = false
     }
 
     // MARK: - Pending Agreements

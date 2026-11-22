@@ -20,6 +20,7 @@ struct RootDashboardView<ViewModel: HomeViewModelProtocol, SidebarViewModel: Roo
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 HomeSyncBanner(syncState: viewModel.uiState.syncState)
+                HomeSignInAgainBanner(viewModel: viewModel)
                 HomeAgreementsBanners(viewModel: viewModel)
                 HomeTipCard(viewModel: viewModel) {
                     coordinator.navigateToTipJar()

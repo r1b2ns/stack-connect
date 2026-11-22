@@ -10,6 +10,7 @@ final class GoogleAuthServiceTests: XCTestCase {
     private var http: MockGoogleHTTPClient!
     private var keychain: MockKeyStorable!
     private var authenticator: MockGoogleWebAuthenticator!
+    private var loginStatus: MockGoogleLoginStatus!
     private var clock: Date!
     private var sut: GoogleAuthService!
 
@@ -18,6 +19,7 @@ final class GoogleAuthServiceTests: XCTestCase {
         http = MockGoogleHTTPClient()
         keychain = MockKeyStorable()
         authenticator = MockGoogleWebAuthenticator()
+        loginStatus = MockGoogleLoginStatus()
         clock = Date(timeIntervalSince1970: 1_000_000)
         sut = makeService()
     }
@@ -36,6 +38,7 @@ final class GoogleAuthServiceTests: XCTestCase {
             http: http,
             store: GoogleLoginKeychainStore(keychain: keychain),
             authenticator: authenticator,
+            status: loginStatus,
             now: { [unowned self] in self.clock }
         )
     }
@@ -199,6 +202,7 @@ final class GoogleAuthServiceTests: XCTestCase {
         XCTAssertEqual(stored.email, "dev@example.com")
         XCTAssertEqual(Set(stored.grantedScopes), Set(GoogleOAuthScope.signIn))
         XCTAssertEqual(keychain.storedKeys, ["googleLogin.user-1"])
+        XCTAssertEqual(loginStatus.markedValid, ["user-1"], "a new grant clears the login's expiry")
     }
 
     func testSignInUsesTheCachedAccessTokenWithoutARefresh() async throws {
@@ -440,6 +444,8 @@ final class GoogleAuthServiceTests: XCTestCase {
         }
         XCTAssertTrue(GoogleAuthError.signInExpired(email: nil).requiresSignIn)
         XCTAssertNotNil(store.load(loginId: "user-1"), "kept, so signing in again with the same Google user restores its accounts")
+        XCTAssertEqual(loginStatus.markedExpired, ["user-1"], "recorded for the Home sign-in-again banner")
+        XCTAssertTrue(loginStatus.isExpired(loginId: "user-1"))
     }
 
     func testInvalidGrantOfOneLoginLeavesTheOthersWorking() async throws {
@@ -456,6 +462,7 @@ final class GoogleAuthServiceTests: XCTestCase {
             http: RoutingByRefreshToken(routes: ["stored-refresh": rejecting, "other-refresh": http]),
             store: store,
             authenticator: authenticator,
+            status: loginStatus,
             now: { [unowned self] in self.clock }
         )
 
@@ -486,6 +493,7 @@ final class GoogleAuthServiceTests: XCTestCase {
 
         await sut.signOut(loginId: "user-1")
 
+        XCTAssertEqual(loginStatus.markedValid, ["user-1"], "a signed-out login is no longer reported as expired")
         let revoke = try XCTUnwrap(http.requests(to: "/revoke").first)
         XCTAssertEqual(revoke.url, GoogleOAuthEndpoint.revoke)
         XCTAssertEqual(MockGoogleHTTPClient.formFields(of: revoke), ["token": "stored-refresh"])

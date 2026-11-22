@@ -258,3 +258,33 @@ extension FeatureFlags {
         return FeatureFlags(defaults: defaults)
     }
 }
+
+// MARK: - Login status mock
+
+/// In-memory `GoogleLoginStatusTracking`.
+final class MockGoogleLoginStatus: GoogleLoginStatusTracking, @unchecked Sendable {
+    private let lock = NSLock()
+    private var expired = Set<String>()
+    private(set) var markedExpired: [String] = []
+    private(set) var markedValid: [String] = []
+
+    init(expired: Set<String> = []) {
+        self.expired = expired
+    }
+
+    func isExpired(loginId: String) -> Bool { lock.withLock { expired.contains(loginId) } }
+
+    func markExpired(loginId: String) {
+        lock.withLock {
+            expired.insert(loginId)
+            markedExpired.append(loginId)
+        }
+    }
+
+    func markValid(loginId: String) {
+        lock.withLock {
+            expired.remove(loginId)
+            markedValid.append(loginId)
+        }
+    }
+}
