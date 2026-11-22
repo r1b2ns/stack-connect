@@ -169,6 +169,14 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
     private func buildSavedPasswordRow() -> some View {
         Label(String(localized: "Using the password saved on this device"), systemImage: "key.fill")
             .foregroundStyle(.secondary)
+        if !state.savesPassword {
+            // "Save password on this device" was turned off before the saved
+            // password row appeared: the off still applies.
+            StackNoticeRow(
+                text: String(localized: "Save password is off: this saved password will be removed once you're signed in."),
+                style: .info
+            )
+        }
         buildUseDifferentPasswordButton()
     }
 

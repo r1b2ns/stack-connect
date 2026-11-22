@@ -30,8 +30,13 @@ final class MockKeyStorable: KeyStorable {
         store[key] as? Data
     }
 
+    /// Every key written with a value, in order — lets tests tell a refresh
+    /// (same value written again) from an untouched item.
+    private(set) var writtenKeys: [String] = []
+
     func set(_ value: Any?, forKey key: String) {
         if let value {
+            writtenKeys.append(key)
             store[key] = value
         } else {
             store.removeValue(forKey: key)
