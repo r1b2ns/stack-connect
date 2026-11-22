@@ -14,7 +14,7 @@ struct RootTabViewFactory {
 
 // MARK: - View
 
-/// Two tabs: Accounts (the Home stack) and Settings. Each tab has its own
+/// Two tabs: Apps (the Home stack) and Settings. Each tab has its own
 /// `NavigationStack` driven by its own `HomeCoordinator`.
 struct RootTabView<HomeVM: HomeViewModelProtocol>: View {
 

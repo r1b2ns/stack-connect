@@ -12,19 +12,19 @@ enum RootTab: String, CaseIterable, Hashable {
 
     var title: String {
         switch self {
-        case .accounts: return String(localized: "Accounts")
+        case .accounts: return String(localized: "Apps")
         case .settings: return String(localized: "Settings")
         }
     }
 
     var systemImage: String {
         switch self {
-        case .accounts: return "person.2"
+        case .accounts: return "apps.iphone"
         case .settings: return "gearshape"
         }
     }
 
-    /// `destination` of the `navigate` action. The Accounts tab is the
+    /// `destination` of the `navigate` action. The Apps tab is the
     /// iPhone Home, the compact counterpart of the split view's dashboard.
     var analyticsDestination: AnalyticsSidebarDestination {
         switch self {
@@ -90,7 +90,7 @@ final class RootTabCoordinator: ObservableObject {
 
 // MARK: - Deep Links
 
-/// Every deep link opens in the Accounts tab, on top of the Home, as before
+/// Every deep link opens in the Apps tab, on top of the Home, as before
 /// the tab bar existed.
 extension RootTabCoordinator: HomeRootNavigating {
     func showHome() {
