@@ -22,7 +22,10 @@ enum GooglePlayAppListSync {
     /// return are kept. Deduped by package name — when the API starts returning a
     /// manually added app, the API entry (with its display name) wins. The API
     /// has no icons, so each entry keeps the cached icon of the current item with
-    /// the same package name. Sorted by display name.
+    /// the same package name. The user's own flags (`isFavorite`, `isArchived`)
+    /// are kept the same way, so a sync never unfavorites nor unarchives an app
+    /// (mirrors the App Store sync's `cached?.isArchived ?? false`). Sorted by
+    /// display name.
     static func merge(
         remote: [StackProtocols.AppInfo],
         into current: [GooglePlayAppItem]
@@ -30,19 +33,26 @@ enum GooglePlayAppListSync {
         var seen = Set<String>()
         var merged: [GooglePlayAppItem] = []
         var cachedIcons: [String: String] = [:]
+        var cachedItems: [String: GooglePlayAppItem] = [:]
         for app in current {
             if let iconUrl = app.iconUrl, cachedIcons[app.packageName] == nil {
                 cachedIcons[app.packageName] = iconUrl
             }
+            if cachedItems[app.packageName] == nil {
+                cachedItems[app.packageName] = app
+            }
         }
 
         for app in remote where seen.insert(app.bundleId).inserted {
+            let cached = cachedItems[app.bundleId]
             merged.append(GooglePlayAppItem(
                 id: app.bundleId,
                 packageName: app.bundleId,
                 title: app.name.isEmpty ? nil : app.name,
                 isManuallyAdded: false,
-                iconUrl: cachedIcons[app.bundleId]
+                iconUrl: cachedIcons[app.bundleId],
+                isFavorite: cached?.isFavorite ?? false,
+                isArchived: cached?.isArchived ?? false
             ))
         }
 

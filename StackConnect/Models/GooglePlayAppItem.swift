@@ -17,6 +17,19 @@ struct GooglePlayAppItem: Codable, Identifiable, Hashable {
     /// Optional, so lists cached before icons existed still decode.
     var iconUrl: String? = nil
 
+    /// Pinned to the top of the app list ("Favorites"), like `AppModel.isFavorite`.
+    /// Kept across syncs by `GooglePlayAppListSync.merge`.
+    var isFavorite: Bool = false
+
+    /// Hidden from the app list, the Home widgets and the background sync's
+    /// release status / reviews; listed under "Archived Apps" instead, like
+    /// `AppModel.isArchived`. Kept across syncs by `GooglePlayAppListSync.merge`.
+    var isArchived: Bool = false
+
+    private enum CodingKeys: String, CodingKey {
+        case id, packageName, title, isManuallyAdded, iconUrl, isFavorite, isArchived
+    }
+
     var displayName: String {
         title ?? packageName
     }
@@ -30,5 +43,24 @@ struct GooglePlayAppItem: Codable, Identifiable, Hashable {
     /// Shared by the app list and `AccountCascadeDeleter`.
     static func cacheKey(accountId: String) -> String {
         "googleplay-apps.\(accountId)"
+    }
+}
+
+// MARK: - Codable
+
+extension GooglePlayAppItem {
+    /// Custom decoding (in an extension, so the memberwise init stays) because
+    /// synthesized decoding requires every non-optional key: lists cached before
+    /// `isFavorite` / `isArchived` existed must still decode (as `false`), or the
+    /// whole cached list would be lost.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        packageName = try container.decode(String.self, forKey: .packageName)
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+        isManuallyAdded = try container.decode(Bool.self, forKey: .isManuallyAdded)
+        iconUrl = try container.decodeIfPresent(String.self, forKey: .iconUrl)
+        isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+        isArchived = try container.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
     }
 }

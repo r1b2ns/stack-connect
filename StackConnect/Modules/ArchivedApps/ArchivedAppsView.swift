@@ -4,8 +4,17 @@ import SwiftUI
 
 @MainActor
 struct ArchivedAppsViewFactory {
+    /// One route (`HomeRoute.archivedApps`) for every store: Google Play
+    /// accounts get their own list (`GooglePlayArchivedAppsView`), since their
+    /// apps are cached as `GooglePlayAppItem`, not `AppModel`.
+    @ViewBuilder
     static func build(account: AccountModel) -> some View {
-        ArchivedAppsEntry(account: account)
+        switch account.providerType {
+        case .googlePlay:
+            GooglePlayArchivedAppsEntry(account: account)
+        case .apple, .firebase:
+            ArchivedAppsEntry(account: account)
+        }
     }
 }
 

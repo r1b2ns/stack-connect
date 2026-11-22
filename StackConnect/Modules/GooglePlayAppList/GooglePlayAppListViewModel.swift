@@ -11,6 +11,8 @@ protocol GooglePlayAppListViewModelProtocol: ObservableObject {
     func refresh() async
     func addApp(packageName: String) async
     func removeApp(_ app: GooglePlayAppItem) async
+    func toggleArchive(app: GooglePlayAppItem) async
+    func toggleFavorite(app: GooglePlayAppItem) async
 }
 
 // MARK: - UiState
@@ -58,13 +60,27 @@ struct GooglePlayAppListUiState {
                       comment: "Google Play app list footer while Google's API quota pauses the release status. Argument: when it is retried, e.g. 14:35.")
     }
 
-    /// `apps` narrowed by `searchQuery` (name or package, case-insensitive).
+    /// Non-archived apps (archived ones live under "Archived Apps").
+    var visibleApps: [GooglePlayAppItem] {
+        apps.filter { !$0.isArchived }
+    }
+
+    /// `visibleApps` narrowed by `searchQuery` (name or package, case-insensitive).
     var filteredApps: [GooglePlayAppItem] {
         let query = searchQuery.trimmingCharacters(in: .whitespaces)
-        guard !query.isEmpty else { return apps }
-        return apps.filter {
+        guard !query.isEmpty else { return visibleApps }
+        return visibleApps.filter {
             $0.displayName.localizedCaseInsensitiveContains(query) || $0.packageName.localizedCaseInsensitiveContains(query)
         }
+    }
+
+    /// Favorites first section, like the App Store list.
+    var favoriteApps: [GooglePlayAppItem] {
+        filteredApps.filter { $0.isFavorite }
+    }
+
+    var regularApps: [GooglePlayAppItem] {
+        filteredApps.filter { !$0.isFavorite }
     }
 
     /// Manual "add app by package name" is allowed by the account's rules.
@@ -169,6 +185,10 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     private let analytics: AnalyticsTracking
     private let firstAppsLoaded: FirstAppsLoadedTracker
     private let statusProvider: AccountStatusProviding
+    /// Rewrites the WidgetKit snapshot (and reloads the widgets) after an
+    /// archive change, so the app leaves / rejoins the widgets right away.
+    /// Injected so tests never touch the App Group container.
+    private let dashboardDidChange: @MainActor (PersistentStorable) async -> Void
     private var cancellables = Set<AnyCancellable>()
 
     init(
@@ -183,7 +203,8 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         analytics: AnalyticsTracking = AnalyticsService.shared,
         firstAppsLoaded: FirstAppsLoadedTracker = .shared,
         now: @escaping @Sendable () -> Date = { Date() },
-        statusProvider: AccountStatusProviding? = nil
+        statusProvider: AccountStatusProviding? = nil,
+        dashboardDidChange: @escaping @MainActor (PersistentStorable) async -> Void = { await WidgetDashboardSnapshotWriter.write(storage: $0) }
     ) {
         self.uiState = GooglePlayAppListUiState(account: account)
         self.keychain = keychain
@@ -194,6 +215,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         self.analytics = analytics
         self.firstAppsLoaded = firstAppsLoaded
         self.now = now
+        self.dashboardDidChange = dashboardDidChange
         self.statusProvider = statusProvider ?? AccountStatusService(storage: storage, keychain: keychain)
         self.uiState.googleAccountEmail = GoogleLoginReferences.email(of: account, keychain: keychain)
 
@@ -383,6 +405,61 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         analytics.track(.action(.removeGooglePlayApp, on: .googlePlayAppList, result: saved ? .success : .failure))
     }
 
+    // MARK: - Archive / Favorite
+
+    /// Archives (hides from the list, widgets and background release status /
+    /// reviews) or unarchives an app. Optimistic, reverted when the save fails.
+    /// Mirrors `AppListViewModel.toggleArchive`.
+    func toggleArchive(app: GooglePlayAppItem) async {
+        analytics.track(.buttonTap(.archive, on: .googlePlayAppList))
+        guard let idx = uiState.apps.firstIndex(where: { $0.id == app.id }) else { return }
+        uiState.apps[idx].isArchived.toggle()
+        let updated = uiState.apps[idx]
+        let parameters = [AnalyticsParameterKey.enabled: AnalyticsValue.bool(updated.isArchived)]
+
+        if await saveToStorage() {
+            await dashboardDidChange(storage)
+            let text = updated.isArchived
+                ? String(localized: "App archived")
+                : String(localized: "App unarchived")
+            uiState.toastMessage = ToastMessage(text, icon: "archivebox.fill")
+            Log.print.info("[GooglePlayAppList] Toggled archive for \(updated.packageName): \(updated.isArchived)")
+            analytics.track(.action(.toggleArchive, on: .googlePlayAppList, result: .success, parameters: parameters))
+        } else {
+            // The list may have changed during the save: revert by id.
+            if let current = uiState.apps.firstIndex(where: { $0.id == updated.id }) {
+                uiState.apps[current].isArchived = !updated.isArchived
+            }
+            Log.print.error("[GooglePlayAppList] Toggle archive failed for \(updated.packageName)")
+            analytics.track(.action(.toggleArchive, on: .googlePlayAppList, result: .failure, parameters: parameters))
+        }
+    }
+
+    /// Pins an app to the "Favorites" section (or unpins it). Optimistic,
+    /// reverted when the save fails. Mirrors `AppListViewModel.toggleFavorite`.
+    func toggleFavorite(app: GooglePlayAppItem) async {
+        analytics.track(.buttonTap(.favorite, on: .googlePlayAppList))
+        guard let idx = uiState.apps.firstIndex(where: { $0.id == app.id }) else { return }
+        uiState.apps[idx].isFavorite.toggle()
+        let updated = uiState.apps[idx]
+        let parameters = [AnalyticsParameterKey.enabled: AnalyticsValue.bool(updated.isFavorite)]
+
+        if await saveToStorage() {
+            let text = updated.isFavorite
+                ? String(localized: "Added to favorites")
+                : String(localized: "Removed from favorites")
+            uiState.toastMessage = ToastMessage(text, icon: updated.isFavorite ? "star.fill" : "star")
+            Log.print.info("[GooglePlayAppList] Toggled favorite for \(updated.packageName): \(updated.isFavorite)")
+            analytics.track(.action(.toggleFavorite, on: .googlePlayAppList, result: .success, parameters: parameters))
+        } else {
+            if let current = uiState.apps.firstIndex(where: { $0.id == updated.id }) {
+                uiState.apps[current].isFavorite = !updated.isFavorite
+            }
+            Log.print.error("[GooglePlayAppList] Toggle favorite failed for \(updated.packageName)")
+            analytics.track(.action(.toggleFavorite, on: .googlePlayAppList, result: .failure, parameters: parameters))
+        }
+    }
+
     // MARK: - Merge
 
     /// Shared with the background sync leg (`GooglePlayAppListSync.merge`).
@@ -493,8 +570,10 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     ) async {
         guard uiState.canViewReleases, connectivity.isCurrentlyOnline() else { return }
 
+        // Archived apps keep their cached status but are never refreshed (like
+        // the App Store list, which only enriches non-archived apps).
         let packages = uiState.apps
-            .filter { isInScope($0) && !summaryFetchesInFlight.contains($0.packageName) }
+            .filter { !$0.isArchived && isInScope($0) && !summaryFetchesInFlight.contains($0.packageName) }
             .map(\.packageName)
         guard !packages.isEmpty else { return }
         summaryFetchesInFlight.formUnion(packages)

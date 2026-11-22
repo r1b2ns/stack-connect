@@ -112,12 +112,15 @@ struct GooglePlayAccountSync: Sendable {
         }
 
         var change = SyncChange()
+        // Archived apps are kept (and persisted above) but skip the expensive
+        // per-app calls, like the App Store leg (`SyncService`).
+        let activeApps = apps.filter { !$0.isArchived }
         if account.canView(.version) {
-            change.statusChanges = await syncReleaseSummaries(for: apps)
+            change.statusChanges = await syncReleaseSummaries(for: activeApps)
         }
         var reviewsSaved = 0
         if account.canView(.review) {
-            let result = await syncReviews(for: apps)
+            let result = await syncReviews(for: activeApps)
             change.newReviews = result.new
             reviewsSaved = result.saved
         }
