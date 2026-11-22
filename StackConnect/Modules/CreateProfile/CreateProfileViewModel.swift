@@ -374,7 +374,7 @@ final class CreateProfileViewModel: CreateProfileViewModelProtocol {
             try data.write(to: url, options: .atomic)
             return url
         } catch {
-            uiState.errorMessage = error.localizedDescription
+            uiState.errorMessage = error.userFacingMessage
             Log.print.error("[CreateProfile] Write failed: \(error.localizedDescription)")
             return nil
         }

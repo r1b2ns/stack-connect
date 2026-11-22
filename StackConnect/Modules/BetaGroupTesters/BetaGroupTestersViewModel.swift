@@ -95,7 +95,7 @@ final class BetaGroupTestersViewModel: BetaGroupTestersViewModelProtocol {
             Log.print.info("[BetaGroupTesters] Loaded \(self.uiState.testers.count) testers")
         } catch {
             succeeded = false
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[BetaGroupTesters] Load failed: \(error.localizedDescription)")
         }
 
@@ -124,7 +124,7 @@ final class BetaGroupTestersViewModel: BetaGroupTestersViewModelProtocol {
             analytics.track(.action(.inviteTester, on: .addTester, result: .success))
         } catch {
             analytics.track(.action(.inviteTester, on: .addTester, result: .failure))
-            uiState.inviteError = error.localizedDescription
+            uiState.inviteError = error.userFacingMessage
             Log.print.error("[BetaGroupTesters] Add tester failed: \(error.localizedDescription)")
         }
         uiState.isInvitingTesters = false

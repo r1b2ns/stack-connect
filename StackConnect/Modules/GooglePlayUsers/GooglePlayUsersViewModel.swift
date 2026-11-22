@@ -284,7 +284,7 @@ final class GooglePlayUsersViewModel: GooglePlayUsersViewModelProtocol {
                 try await storage.save(updated, id: updated.id)
             } catch {
                 Log.print.error("[GooglePlayUsers] Saving the developer ID \"\(developerId, privacy: .public)\" failed: \(error.localizedDescription, privacy: .public)")
-                uiState.developerIdError = String(localized: "The Developer ID couldn't be saved. Try again.") + "\n" + error.localizedDescription
+                uiState.developerIdError = String(localized: "The Developer ID couldn't be saved. Try again.") + "\n" + error.userFacingMessage
                 uiState.developerIdErrorDetails = GooglePlayDeveloperId.diagnosticLines(for: input, label: .entered)
                 analytics.track(.action(.saveDeveloperId, on: .googlePlayUsers, result: .failure))
                 return

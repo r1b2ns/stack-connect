@@ -2275,7 +2275,7 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
     /// Translates a Rust-core `StackError` for the app.
     ///
     /// `StackError` already conforms to `LocalizedError`, and every existing Apple
-    /// call site surfaces failures via `error.localizedDescription` / generic
+    /// call site surfaces failures via `error.userFacingMessage` / generic
     /// `catch`. We therefore preserve the typed error (so `errorDescription` flows
     /// through unchanged) while logging it at the boundary. This keeps caller
     /// behaviour identical to the Swift SDK path and gives us a single place to add

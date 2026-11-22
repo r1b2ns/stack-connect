@@ -78,7 +78,7 @@ struct AppleCustomerReviewsService: CustomerReviewsServicing {
 
     func message(for error: Error, operation: CustomerReviewsOperation) -> String {
         switch operation {
-        case .load:        return error.localizedDescription
+        case .load:        return error.userFacingMessage
         case .reply:       return String(localized: "Failed to send reply")
         case .deleteReply: return String(localized: "Failed to delete reply")
         }

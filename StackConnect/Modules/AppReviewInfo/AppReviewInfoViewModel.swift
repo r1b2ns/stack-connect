@@ -117,7 +117,7 @@ final class AppReviewInfoViewModel: AppReviewInfoViewModelProtocol {
             analytics.track(.action(.updateAppReviewInfo, on: .appReviewInfo, result: .success))
         } catch {
             analytics.track(.action(.updateAppReviewInfo, on: .appReviewInfo, result: .failure))
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[AppReviewInfo] Save failed: \(error.localizedDescription)")
         }
 

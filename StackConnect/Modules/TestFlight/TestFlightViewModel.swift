@@ -113,7 +113,7 @@ final class TestFlightViewModel: TestFlightViewModelProtocol {
             loadTesterCounts()
             return true
         } catch {
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             uiState.isLoading = false
             Log.print.error("[TestFlight] Load failed: \(error.localizedDescription)")
             return false
@@ -203,7 +203,7 @@ final class TestFlightViewModel: TestFlightViewModelProtocol {
             analytics.track(.action(.expireBuild, on: .testFlight, result: .success))
         } catch {
             analytics.track(.action(.expireBuild, on: .testFlight, result: .failure))
-            uiState.expireError = error.localizedDescription
+            uiState.expireError = error.userFacingMessage
             Log.print.error("[TestFlight] Expire build failed: \(error.localizedDescription)")
         }
         uiState.isExpiringBuild = false

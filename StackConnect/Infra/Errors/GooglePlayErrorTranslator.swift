@@ -66,7 +66,7 @@ enum GooglePlayErrorTranslator {
             return offlineError.localizedDescription
         }
         guard let stackError = error as? StackError else {
-            return error.localizedDescription
+            return error.userFacingMessage
         }
 
         switch stackError {
@@ -85,7 +85,7 @@ enum GooglePlayErrorTranslator {
             case .serviceAccount:
                 lead = String(localized: "To manage users, this service account needs the “Admin (all permissions)” permission in Play Console › Users and permissions.")
             }
-            let detail = message.trimmingCharacters(in: .whitespacesAndNewlines)
+            let detail = ServerErrorBody.readableText(message) ?? ""
             return detail.isEmpty ? lead : "\(lead)\n\(detail)"
 
         case .Auth(let message):
@@ -100,7 +100,7 @@ enum GooglePlayErrorTranslator {
             case .serviceAccount:
                 lead = String(localized: "Google Play denied access to this service account.")
             }
-            let detail = message.trimmingCharacters(in: .whitespacesAndNewlines)
+            let detail = ServerErrorBody.readableText(message) ?? ""
             return detail.isEmpty ? lead : "\(lead)\n\(detail)"
 
         case .Network:
@@ -126,7 +126,7 @@ enum GooglePlayErrorTranslator {
             let lead = isLocalRejection(message) && status == 404
                 ? GooglePlayDeveloperId.invalidMessage
                 : httpMessage(status: Int(status), operation: operation, caller: caller)
-            let detail = message.trimmingCharacters(in: .whitespacesAndNewlines)
+            let detail = ServerErrorBody.readableText(message) ?? ""
             return detail.isEmpty ? lead : "\(lead)\n\(detail)"
 
         case .Http(let status, _):
@@ -164,8 +164,7 @@ enum GooglePlayErrorTranslator {
         guard case .Http(let status, let message)? = error as? StackError, (400..<500).contains(Int(status)) else {
             return nil
         }
-        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
+        return ServerErrorBody.readableText(message)
     }
 
     // MARK: - Private
@@ -182,8 +181,8 @@ enum GooglePlayErrorTranslator {
     /// Release changes: Google explains every refusal in its message, so the
     /// known ones get actionable copy and the rest show Google's text.
     private static func releaseChangeMessage(status: Int, googleMessage: String, caller: Caller) -> String {
-        let detail = googleMessage.trimmingCharacters(in: .whitespacesAndNewlines)
-        let lowered = detail.lowercased()
+        let detail = ServerErrorBody.readableText(googleMessage) ?? ""
+        let lowered = googleMessage.lowercased()
         if lowered.contains("changesnotsentforreview") || lowered.contains("not be sent for review")
             || lowered.contains("must not be sent") {
             return String(localized: "Google Play requires these changes to be saved without sending them for review. Turn off “Send changes for review” and try again.")
@@ -203,11 +202,11 @@ enum GooglePlayErrorTranslator {
     /// A refused invitation: Google names an address that isn't a Google
     /// account; anything else shows Google's own text.
     private static func inviteRefusalMessage(googleMessage: String) -> String {
-        let detail = googleMessage.trimmingCharacters(in: .whitespacesAndNewlines)
-        let lowered = detail.lowercased()
+        let detail = ServerErrorBody.readableText(googleMessage) ?? ""
+        let lowered = googleMessage.lowercased()
         // The core's own check (an address it can't send, request not sent to
         // Google) is not Google refusing the account.
-        if !isLocalRejection(detail),
+        if !isLocalRejection(googleMessage),
            lowered.contains("google account") || lowered.contains("not a valid") || lowered.contains("invalid email") {
             return String(localized: "Google Play can only invite Google accounts. Check the address, or ask the person which Google account (Gmail or Google Workspace) to use.")
         }

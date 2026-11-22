@@ -70,7 +70,7 @@ final class ManageLocalizationsViewModel: ManageLocalizationsViewModelProtocol {
             uiState.localizations = try await connection.fetchAppInfoLocalizations(appInfoId: uiState.appInfoId)
             Log.print.info("[ManageLocalizations] Loaded \(self.uiState.localizations.count) localizations")
         } catch {
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[ManageLocalizations] Load failed: \(error.localizedDescription)")
         }
         uiState.isLoading = false
@@ -99,7 +99,7 @@ final class ManageLocalizationsViewModel: ManageLocalizationsViewModelProtocol {
             analytics.track(.action(.updateLocalization, on: .editLocalization, result: .success))
         } catch {
             analytics.track(.action(.updateLocalization, on: .editLocalization, result: .failure))
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[ManageLocalizations] Update failed: \(error.localizedDescription)")
         }
         uiState.isSaving = false
@@ -119,7 +119,7 @@ final class ManageLocalizationsViewModel: ManageLocalizationsViewModelProtocol {
             analytics.track(.action(.deleteLocalization, on: .manageLocalizations, result: .success))
         } catch {
             analytics.track(.action(.deleteLocalization, on: .manageLocalizations, result: .failure))
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[ManageLocalizations] Delete failed: \(error.localizedDescription)")
         }
     }
@@ -148,7 +148,7 @@ final class ManageLocalizationsViewModel: ManageLocalizationsViewModelProtocol {
             analytics.track(.action(.createLocalization, on: .addLocalization, result: .success))
         } catch {
             analytics.track(.action(.createLocalization, on: .addLocalization, result: .failure))
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[ManageLocalizations] Add failed: \(error.localizedDescription)")
         }
         uiState.isSaving = false

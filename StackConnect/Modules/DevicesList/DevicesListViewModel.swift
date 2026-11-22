@@ -71,7 +71,7 @@ final class DevicesListViewModel: DevicesListViewModelProtocol {
         if AppleAPIErrorTranslator.isPendingAgreement(error) {
             uiState.pendingAgreement = true
         } else {
-            uiState.errorMessage = error.localizedDescription
+            uiState.errorMessage = error.userFacingMessage
         }
     }
 
@@ -135,7 +135,7 @@ final class DevicesListViewModel: DevicesListViewModelProtocol {
             uiState.isCreating = false
             return true
         } catch {
-            uiState.createErrorMessage = error.localizedDescription
+            uiState.createErrorMessage = error.userFacingMessage
             Log.print.error("[Devices] Create failed: \(error.localizedDescription)")
             uiState.isCreating = false
             return false

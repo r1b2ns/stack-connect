@@ -76,7 +76,7 @@ final class BuildDetailViewModel: BuildDetailViewModelProtocol {
             Log.print.info("[BuildDetail] Loaded detail for build \(self.uiState.build.id)")
         } catch {
             succeeded = false
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[BuildDetail] Load failed: \(error.localizedDescription)")
         }
 

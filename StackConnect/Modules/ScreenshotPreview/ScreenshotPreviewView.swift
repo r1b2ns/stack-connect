@@ -249,7 +249,7 @@ final class ScreenshotPreviewViewModel: ObservableObject {
             analytics.track(.action(.downloadScreenshots, on: .screenshotPreview, result: .success, parameters: [AnalyticsParameterKey.count: .int(items.count)]))
         } catch {
             analytics.track(.action(.downloadScreenshots, on: .screenshotPreview, result: .failure, parameters: [AnalyticsParameterKey.count: .int(items.count)]))
-            downloadError = error.localizedDescription
+            downloadError = error.userFacingMessage
             Log.print.error("[Screenshots] Bulk download failed: \(error.localizedDescription)")
         }
     }
@@ -283,7 +283,7 @@ final class ScreenshotPreviewViewModel: ObservableObject {
             analytics.track(.action(.deleteScreenshots, on: .screenshotPreview, result: .success, parameters: [AnalyticsParameterKey.count: .int(sets.count)]))
         } catch {
             analytics.track(.action(.deleteScreenshots, on: .screenshotPreview, result: .failure, parameters: [AnalyticsParameterKey.count: .int(sets.count)]))
-            deleteError = error.localizedDescription
+            deleteError = error.userFacingMessage
             Log.print.error("[Screenshots] Delete all failed: \(error.localizedDescription)")
         }
     }

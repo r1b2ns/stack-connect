@@ -89,7 +89,7 @@ final class PlatformBuildsViewModel: PlatformBuildsViewModelProtocol {
             Log.print.info("[PlatformBuilds] Loaded \(page.builds.count) builds for \(self.uiState.platform), hasMore: \(page.hasNextPage)")
         } catch {
             succeeded = false
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[PlatformBuilds] Load failed: \(error.localizedDescription)")
         }
 
@@ -144,7 +144,7 @@ final class PlatformBuildsViewModel: PlatformBuildsViewModelProtocol {
             analytics.track(.action(.expireBuild, on: .platformBuilds, result: .success))
         } catch {
             analytics.track(.action(.expireBuild, on: .platformBuilds, result: .failure))
-            uiState.expireError = error.localizedDescription
+            uiState.expireError = error.userFacingMessage
             Log.print.error("[PlatformBuilds] Expire failed: \(error.localizedDescription)")
         }
         uiState.isExpiringBuild = false

@@ -63,7 +63,7 @@ struct StackTextView: View {
                                 try await onSave()
                                 dismiss()
                             } catch {
-                                errorMessage = error.localizedDescription
+                                errorMessage = error.userFacingMessage
                             }
                             isSaving = false
                         }

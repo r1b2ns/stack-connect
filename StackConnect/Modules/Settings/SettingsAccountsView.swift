@@ -489,7 +489,7 @@ private struct ImportAccountSheet: View {
 
             showNameAlert = true
         } catch {
-            decryptErrorMessage = error.localizedDescription
+            decryptErrorMessage = error.userFacingMessage
             showDecryptError = true
         }
     }

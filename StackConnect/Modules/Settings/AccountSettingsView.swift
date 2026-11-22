@@ -117,7 +117,7 @@ final class AccountSettingsViewModel: AccountSettingsViewModelProtocol {
         } catch {
             Log.print.error("[AccountSettings] Failed to save the developer ID \"\(developerId ?? "", privacy: .public)\": \(error.localizedDescription, privacy: .public)")
             uiState.toastMessage = ToastMessage(
-                String(localized: "The Developer ID couldn't be saved. Try again.") + "\n" + error.localizedDescription,
+                String(localized: "The Developer ID couldn't be saved. Try again.") + "\n" + error.userFacingMessage,
                 icon: "exclamationmark.triangle.fill"
             )
             analytics.track(.action(.saveAccount, on: .accountSettings, result: .failure))

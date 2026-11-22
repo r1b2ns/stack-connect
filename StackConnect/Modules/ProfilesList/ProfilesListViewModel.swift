@@ -80,7 +80,7 @@ final class ProfilesListViewModel: ProfilesListViewModelProtocol {
         if AppleAPIErrorTranslator.isPendingAgreement(error) {
             uiState.pendingAgreement = true
         } else {
-            uiState.errorMessage = error.localizedDescription
+            uiState.errorMessage = error.userFacingMessage
         }
     }
 

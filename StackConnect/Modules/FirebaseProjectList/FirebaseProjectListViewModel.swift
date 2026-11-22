@@ -164,7 +164,7 @@ final class FirebaseProjectListViewModel: FirebaseProjectListViewModelProtocol {
             } else if let message = googleAccess.unavailableMessage(for: error) {
                 uiState.error = message
             } else {
-                uiState.error = error.localizedDescription
+                uiState.error = error.userFacingMessage
                 Log.print.error("[Firebase] Load projects failed: \(error.localizedDescription)")
             }
         }

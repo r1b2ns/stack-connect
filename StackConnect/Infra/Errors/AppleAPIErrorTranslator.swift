@@ -2,7 +2,7 @@ import Foundation
 import StackCoreRust
 
 /// Turns core errors and raw Apple error payloads into short, user-facing messages.
-/// Falls back to Apple's `detail` field (or `error.localizedDescription`) so we
+/// Falls back to Apple's `detail` field (or `UserFacingErrorMapper`) so we
 /// never hide useful info for unknown cases.
 enum AppleAPIErrorTranslator {
 
@@ -69,7 +69,7 @@ enum AppleAPIErrorTranslator {
             return sessionExpiredMessage
         }
         guard case StackCoreRust.StackError.Http(let status, let message) = error else {
-            return error.localizedDescription
+            return error.userFacingMessage
         }
 
         let first = firstError(fromBody: message)
@@ -99,7 +99,7 @@ enum AppleAPIErrorTranslator {
         // Last resort: use Apple's `detail` (richer than `title`), or `title` if no detail.
         if !detail.isEmpty { return detail }
         if !title.isEmpty  { return title }
-        return error.localizedDescription
+        return error.userFacingMessage
     }
 
     // MARK: - Apple ID session

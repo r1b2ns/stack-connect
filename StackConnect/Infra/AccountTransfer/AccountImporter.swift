@@ -102,7 +102,7 @@ struct AccountImporter {
         do {
             jsonString = try AccountCrypto.decrypt(data: data, password: password)
         } catch {
-            return failure(error.localizedDescription, Self.reason(forDecryptionError: error))
+            return failure(error.userFacingMessage, Self.reason(forDecryptionError: error))
         }
 
         // 3. Parse JSON
@@ -204,7 +204,7 @@ struct AccountImporter {
             AccountsChange.post()
             return .success(account)
         } catch {
-            return failure(String(localized: "Failed to save imported account: \(error.localizedDescription)"), .storage)
+            return failure(String(localized: "Failed to save imported account: \(error.userFacingMessage)"), .storage)
         }
     }
 

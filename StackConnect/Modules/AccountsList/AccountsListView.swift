@@ -438,7 +438,7 @@ private struct AccountsListImportSheet: View {
             }
             showNameAlert = true
         } catch {
-            decryptErrorMessage = error.localizedDescription
+            decryptErrorMessage = error.userFacingMessage
             showDecryptError = true
         }
     }

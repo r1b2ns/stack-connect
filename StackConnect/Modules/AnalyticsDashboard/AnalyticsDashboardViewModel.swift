@@ -166,7 +166,7 @@ final class AnalyticsDashboardViewModel: AnalyticsDashboardViewModelProtocol {
             } else if let apiError = error as? APIProviderFirebase.Error {
                 handleAPIError(apiError)
             } else {
-                uiState.error = error.localizedDescription
+                uiState.error = error.userFacingMessage
                 Log.print.error("[Analytics] Load failed: \(error.localizedDescription)")
             }
         }
@@ -189,10 +189,10 @@ final class AnalyticsDashboardViewModel: AnalyticsDashboardViewModelProtocol {
                 uiState.apiActivationURL = errorResponse.activationURL
                 uiState.error = String(localized: "The Google Analytics Data API is not enabled for this project. Enable it in the Google Cloud Console to view analytics.")
             } else {
-                uiState.error = apiError.localizedDescription
+                uiState.error = apiError.userFacingMessage
             }
         default:
-            uiState.error = apiError.localizedDescription
+            uiState.error = apiError.userFacingMessage
         }
         Log.print.error("[Analytics] API error: \(apiError.localizedDescription)")
     }

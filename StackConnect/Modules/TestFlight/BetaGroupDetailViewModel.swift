@@ -118,7 +118,7 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
             Log.print.info("[BetaGroupDetail] Loaded \(self.uiState.builds.count) builds")
         } catch {
             succeeded = false
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[BetaGroupDetail] Load failed: \(error.localizedDescription)")
         }
 
@@ -278,7 +278,7 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
             analytics.track(.action(.submitBuildForBetaReview, on: .submitBuildForReview, result: .success))
         } catch {
             analytics.track(.action(.submitBuildForBetaReview, on: .submitBuildForReview, result: .failure))
-            uiState.submitError = error.localizedDescription
+            uiState.submitError = error.userFacingMessage
             Log.print.error("[BetaGroupDetail] Submit for review failed: \(error.localizedDescription)")
         }
         uiState.isSubmittingForReview = false
@@ -302,7 +302,7 @@ final class BetaGroupDetailViewModel: BetaGroupDetailViewModelProtocol {
             analytics.track(.action(.expireBuild, on: .betaGroupDetail, result: .success))
         } catch {
             analytics.track(.action(.expireBuild, on: .betaGroupDetail, result: .failure))
-            uiState.expireError = error.localizedDescription
+            uiState.expireError = error.userFacingMessage
             Log.print.error("[BetaGroupDetail] Expire failed: \(error.localizedDescription)")
         }
         uiState.isExpiringBuild = false

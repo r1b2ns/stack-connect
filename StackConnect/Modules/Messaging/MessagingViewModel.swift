@@ -495,7 +495,7 @@ final class MessagingViewModel: MessagingViewModelProtocol {
                         uiState.reportApiActivationURL = errorResponse.activationURL
                         uiState.reportError = String(localized: "The FCM Data API is not enabled for this project.")
                     } else {
-                        uiState.reportError = apiError.localizedDescription
+                        uiState.reportError = apiError.userFacingMessage
                     }
                 }
             }
@@ -510,7 +510,7 @@ final class MessagingViewModel: MessagingViewModelProtocol {
                 uiState.isLoadingReports = false
                 return
             } else {
-                uiState.reportError = error.localizedDescription
+                uiState.reportError = error.userFacingMessage
             }
             Log.print.error("[Messaging] Reports failed: \(error.localizedDescription)")
         }

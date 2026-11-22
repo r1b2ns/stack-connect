@@ -206,7 +206,7 @@ final class SyncService: ObservableObject {
             accounts = featureFlags.visibleAccounts(all).filter { $0.providerType == .apple || $0.providerType == .googlePlay }
                 .filter { mode != .lightweight || !isAppleSessionExpired($0) }
         } catch {
-            state.lastError = error.localizedDescription
+            state.lastError = error.userFacingMessage
             state.isSyncing = false
             Log.print.error("[Sync] Failed to load accounts: \(error.localizedDescription)")
             return RunOutcome(errorCategory: .storage)
@@ -531,7 +531,7 @@ final class SyncService: ObservableObject {
                 storage: storage,
                 accountId: account.id,
                 appsSynced: 0,
-                error: error.localizedDescription
+                error: error.userFacingMessage
             )
             if AppleAPIErrorTranslator.isPendingAgreement(error) {
                 logAgreementProbe(error, accountName: account.name)

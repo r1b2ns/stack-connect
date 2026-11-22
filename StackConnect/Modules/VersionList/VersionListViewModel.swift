@@ -107,7 +107,7 @@ final class VersionListViewModel: VersionListViewModelProtocol {
 
         } catch {
             succeeded = false
-            uiState.syncError = error.localizedDescription
+            uiState.syncError = error.userFacingMessage
             Log.print.error("[VersionList] Sync failed: \(error.localizedDescription)")
         }
 
