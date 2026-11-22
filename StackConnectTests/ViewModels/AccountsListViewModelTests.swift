@@ -247,7 +247,7 @@ final class AccountsListViewModelTests: XCTestCase {
         await sut.loadAccounts()
 
         XCTAssertFalse(sut.uiState.showsTeamGroups)
-        XCTAssertEqual(sut.uiState.sections.map(\.connection), [.apiKey, .appleId])
+        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.keyFile, .signIn])
         XCTAssertEqual(sut.uiState.sections.map { $0.accounts.map(\.name) }, [["Key A", "Key Z"], ["Session A", "Session B"]])
         XCTAssertTrue(sut.uiState.sections.allSatisfy { $0.issuerID == nil })
     }
@@ -259,7 +259,7 @@ final class AccountsListViewModelTests: XCTestCase {
         await sut.loadAccounts()
 
         XCTAssertEqual(sut.uiState.sections.count, 1)
-        XCTAssertEqual(sut.uiState.sections.first?.connection, .apiKey)
+        XCTAssertEqual(sut.uiState.sections.first?.connection?.kind, .keyFile)
         XCTAssertEqual(sut.uiState.sections.first?.accounts.map(\.name), ["Key A", "Key B"])
     }
 
@@ -268,7 +268,7 @@ final class AccountsListViewModelTests: XCTestCase {
 
         await sut.loadAccounts()
 
-        XCTAssertEqual(sut.uiState.sections.map(\.connection), [.appleId])
+        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.signIn])
         XCTAssertEqual(sut.uiState.sections.first?.accounts.map(\.name), ["Session"])
     }
 
@@ -279,7 +279,7 @@ final class AccountsListViewModelTests: XCTestCase {
 
         await sut.loadAccounts()
 
-        XCTAssertEqual(sut.uiState.sections.map(\.connection), [.apiKey, .appleId])
+        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.keyFile, .signIn])
         XCTAssertEqual(sut.uiState.sections.first?.accounts.map(\.name), ["Orphan"])
     }
 
@@ -293,7 +293,7 @@ final class AccountsListViewModelTests: XCTestCase {
 
         XCTAssertTrue(sut.uiState.showsTeamGroups)
         let sections = sut.uiState.sections
-        XCTAssertEqual(sections.map(\.connection), [.apiKey, nil, .appleId], "Only the first team section of a connection shows its header")
+        XCTAssertEqual(sections.map(\.connection?.kind), [.keyFile, nil, .signIn], "Only the first team section of a connection shows its header")
         XCTAssertEqual(sections.map(\.issuerID), ["issuer-aaa", "issuer-bbb", nil])
         XCTAssertEqual(sections.map { $0.accounts.map(\.name) }, [["A — Admin", "A — Developer"], ["B"], ["Session"]])
         XCTAssertEqual(Set(sections.map(\.id)).count, sections.count, "Section ids are unique")
@@ -303,27 +303,125 @@ final class AccountsListViewModelTests: XCTestCase {
         try await seedAPIKeyAccount("Key", issuerID: "issuer-aaa")
         let session = try await seedAppleIdAccount("Session", teamId: 1)
         await sut.loadAccounts()
-        XCTAssertEqual(sut.uiState.sections.map(\.connection), [.apiKey, .appleId])
+        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.keyFile, .signIn])
 
         await sut.deleteAccount(session)
 
-        XCTAssertEqual(sut.uiState.sections.map(\.connection), [.apiKey])
+        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.keyFile])
     }
 
-    func testOtherProvidersHaveASingleSectionWithoutHeaders() async throws {
-        let sut = makeGooglePlaySUT()
-        let b = AccountModel(name: "Play B", providerType: .googlePlay)
-        let a = AccountModel(name: "Play A", providerType: .googlePlay, authMethod: .googleSignIn)
-        try await mockStorage.save(b, id: b.id)
-        try await mockStorage.save(a, id: a.id)
+    func testAppleSectionsUseTheAppleProviderConnections() async throws {
+        try await seedAPIKeyAccount("Key", issuerID: "issuer-aaa")
+        try await seedAppleIdAccount("Session", teamId: 1)
 
         await sut.loadAccounts()
 
-        XCTAssertEqual(sut.uiState.sections.count, 1)
-        let section = try XCTUnwrap(sut.uiState.sections.first)
-        XCTAssertNil(section.connection)
-        XCTAssertNil(section.issuerID)
-        XCTAssertEqual(section.accounts.map(\.name), ["Play A", "Play B"])
+        XCTAssertEqual(
+            sut.uiState.sections.map(\.connection),
+            [AccountConnection(provider: .apple, kind: .keyFile), AccountConnection(provider: .apple, kind: .signIn)]
+        )
+    }
+
+    // MARK: Google sections (Service Account Key / Google Account)
+
+    private func seedGoogleAccounts(_ provider: ProviderType) async throws {
+        let accounts = [
+            AccountModel(name: "Signed In B", providerType: provider, authMethod: .googleSignIn),
+            AccountModel(name: "Key Z", providerType: provider),
+            AccountModel(name: "Signed In A", providerType: provider, authMethod: .googleSignIn),
+            AccountModel(name: "Key A", providerType: provider, authMethod: .keyFile),
+        ]
+        for account in accounts {
+            try await mockStorage.save(account, id: account.id)
+        }
+    }
+
+    func testSplitsGooglePlayAccountsIntoKeyFileThenSignInSections() async throws {
+        let sut = makeGooglePlaySUT()
+        try await seedGoogleAccounts(.googlePlay)
+
+        await sut.loadAccounts()
+
+        XCTAssertEqual(
+            sut.uiState.sections.map(\.connection),
+            [AccountConnection(provider: .googlePlay, kind: .keyFile), AccountConnection(provider: .googlePlay, kind: .signIn)]
+        )
+        XCTAssertEqual(sut.uiState.sections.map { $0.accounts.map(\.name) }, [["Key A", "Key Z"], ["Signed In A", "Signed In B"]])
+        XCTAssertTrue(sut.uiState.sections.allSatisfy { $0.issuerID == nil })
+        XCTAssertEqual(Set(sut.uiState.sections.map(\.id)).count, 2, "Section ids are unique")
+    }
+
+    func testSplitsFirebaseAccountsIntoKeyFileThenSignInSections() async throws {
+        let sut = AccountsListViewModel(providerType: .firebase, storage: mockStorage, keychain: mockKeychain)
+        try await seedGoogleAccounts(.firebase)
+
+        await sut.loadAccounts()
+
+        XCTAssertEqual(
+            sut.uiState.sections.map(\.connection),
+            [AccountConnection(provider: .firebase, kind: .keyFile), AccountConnection(provider: .firebase, kind: .signIn)]
+        )
+        XCTAssertEqual(sut.uiState.sections.map { $0.accounts.map(\.name) }, [["Key A", "Key Z"], ["Signed In A", "Signed In B"]])
+    }
+
+    func testShowsOnlyTheGoogleSignInSectionWithItsHeaderWhenThereAreNoKeyFileAccounts() async throws {
+        let sut = makeGooglePlaySUT()
+        let account = AccountModel(name: "Signed In", providerType: .googlePlay, authMethod: .googleSignIn)
+        try await mockStorage.save(account, id: account.id)
+
+        await sut.loadAccounts()
+
+        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.signIn])
+        XCTAssertEqual(sut.uiState.sections.first?.accounts.map(\.name), ["Signed In"])
+    }
+
+    func testShowsOnlyTheServiceAccountKeySectionWithItsHeaderWhenThereAreNoSignInAccounts() async throws {
+        let sut = AccountsListViewModel(providerType: .firebase, storage: mockStorage, keychain: mockKeychain)
+        let account = AccountModel(name: "Key", providerType: .firebase)
+        try await mockStorage.save(account, id: account.id)
+
+        await sut.loadAccounts()
+
+        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.keyFile])
+    }
+
+    func testDeletingTheLastGoogleSignInAccountRemovesItsSection() async throws {
+        let sut = makeGooglePlaySUT()
+        let key = AccountModel(name: "Key", providerType: .googlePlay)
+        let signedIn = AccountModel(name: "Signed In", providerType: .googlePlay, authMethod: .googleSignIn)
+        try await mockStorage.save(key, id: key.id)
+        try await mockStorage.save(signedIn, id: signedIn.id)
+        await sut.loadAccounts()
+        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.keyFile, .signIn])
+
+        await sut.deleteAccount(signedIn)
+
+        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.keyFile])
+    }
+
+    // MARK: Connection titles
+
+    func testConnectionTitlesAndIconsPerProvider() {
+        // Built with `String(localized:)` like production, so this holds in any simulator locale.
+        XCTAssertEqual(AccountConnection(provider: .apple, kind: .keyFile).title, String(localized: "API Key"))
+        XCTAssertEqual(AccountConnection(provider: .apple, kind: .signIn).title, String(localized: "Apple ID"))
+        for provider in [ProviderType.firebase, .googlePlay] {
+            XCTAssertEqual(AccountConnection(provider: provider, kind: .keyFile).title, String(localized: "Service Account Key"))
+            XCTAssertEqual(AccountConnection(provider: provider, kind: .signIn).title, String(localized: "Google Account"))
+        }
+        for provider in ProviderType.allCases {
+            XCTAssertEqual(AccountConnection(provider: provider, kind: .keyFile).iconName, "key.fill")
+            XCTAssertEqual(AccountConnection(provider: provider, kind: .signIn).iconName, "person.crop.circle")
+        }
+    }
+
+    func testConnectionKindFollowsTheAuthMethod() {
+        XCTAssertEqual(AccountModel(name: "a", providerType: .apple).connectionKind, .keyFile)
+        XCTAssertEqual(AccountModel(name: "a", providerType: .apple, authMethod: .appleIdSignIn).connectionKind, .signIn)
+        XCTAssertEqual(AccountModel(name: "f", providerType: .firebase).connectionKind, .keyFile)
+        XCTAssertEqual(AccountModel(name: "f", providerType: .firebase, authMethod: .googleSignIn).connectionKind, .signIn)
+        XCTAssertEqual(AccountModel(name: "g", providerType: .googlePlay, authMethod: .googleSignIn).connection,
+                       AccountConnection(provider: .googlePlay, kind: .signIn))
     }
 
     // MARK: - Google Play import (Phase 2)

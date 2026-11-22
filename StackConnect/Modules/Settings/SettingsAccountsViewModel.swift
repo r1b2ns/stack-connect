@@ -15,28 +15,30 @@ protocol SettingsAccountsViewModelProtocol: ObservableObject {
     func importAccount(from url: URL, password: String, customName: String?) async -> String?
 }
 
-// MARK: - Apple Section
+// MARK: - Section
 
-/// The App Store Connect accounts of one connection kind ("API Key" /
-/// "Apple ID"), in the list's name order. Only non-empty kinds get one.
-struct SettingsAppleAccountsSection: Identifiable, Hashable {
-    let connection: AppleConnectionKind
+/// The accounts of one provider and connection kind ("App Store Connect ·
+/// API Key", "Firebase · Google Account", ...), in the list's name order.
+/// Only non-empty kinds get one.
+struct SettingsAccountsSection: Identifiable, Hashable {
+    let connection: AccountConnection
     let accounts: [AccountModel]
 
-    var id: String { connection.rawValue }
+    var id: String { "\(connection.provider.rawValue).\(connection.kind.rawValue)" }
 }
 
 // MARK: - UiState
 
 struct SettingsAccountsUiState {
     var appleAccounts: [AccountModel] = []
-    /// `appleAccounts` split by connection kind, API key accounts first.
-    var appleSections: [SettingsAppleAccountsSection] = []
     var firebaseAccounts: [AccountModel] = []
     /// Empty while `googlePlayAccounts` is OFF (stored accounts stay hidden).
     var googlePlayAccounts: [AccountModel] = []
     /// Stores offered by the "Add Account" provider picker.
     var availableProviders: [ProviderType] = FeatureFlags.shared.availableProviders
+    /// What the list renders: App Store Connect, then Firebase, then Google
+    /// Play accounts, each split by connection kind (key file first).
+    var sections: [SettingsAccountsSection] = []
     var isLoading = false
     var editingName = ""
     var accountToDelete: AccountModel?
@@ -104,13 +106,15 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             uiState.appleAccounts = allAccounts
                 .filter { $0.providerType == .apple }
                 .sorted { $0.name < $1.name }
-            uiState.appleSections = Self.appleSections(from: uiState.appleAccounts)
             uiState.firebaseAccounts = allAccounts
                 .filter { $0.providerType == .firebase }
                 .sorted { $0.name < $1.name }
             uiState.googlePlayAccounts = allAccounts
                 .filter { $0.providerType == .googlePlay }
                 .sorted { $0.name < $1.name }
+            uiState.sections = Self.sections(from: uiState.appleAccounts)
+                + Self.sections(from: uiState.firebaseAccounts)
+                + Self.sections(from: uiState.googlePlayAccounts)
             uiState.accountStatuses = statusProvider.statuses(for: allAccounts)
         } catch {
             Log.print.error("[SettingsAccounts] Failed to load accounts: \(error.localizedDescription)")
@@ -118,12 +122,15 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
         uiState.isLoading = false
     }
 
-    /// Splits the (already sorted) Apple accounts by connection kind, keeping
-    /// their order inside each section and skipping empty kinds.
-    private static func appleSections(from accounts: [AccountModel]) -> [SettingsAppleAccountsSection] {
-        AppleConnectionKind.allCases.compactMap { kind in
-            let matching = accounts.filter { $0.appleConnectionKind == kind }
-            return matching.isEmpty ? nil : SettingsAppleAccountsSection(connection: kind, accounts: matching)
+    /// Splits the (already sorted) accounts of one provider by connection
+    /// kind, keeping their order inside each section and skipping empty kinds.
+    private static func sections(from accounts: [AccountModel]) -> [SettingsAccountsSection] {
+        guard let provider = accounts.first?.providerType else { return [] }
+        return AccountConnectionKind.allCases.compactMap { kind in
+            let matching = accounts.filter { $0.connectionKind == kind }
+            return matching.isEmpty
+                ? nil
+                : SettingsAccountsSection(connection: AccountConnection(provider: provider, kind: kind), accounts: matching)
         }
     }
 

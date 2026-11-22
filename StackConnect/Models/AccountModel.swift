@@ -144,28 +144,41 @@ enum AccountAuthMethod: String, Codable, Hashable {
     case appleIdSignIn
 }
 
-// MARK: - Apple Connection Kind
+// MARK: - Connection Kind
 
-/// How an App Store Connect account is connected. The accounts lists show one
-/// section per kind, in `allCases` order.
-enum AppleConnectionKind: String, CaseIterable, Hashable {
-    /// An App Store Connect API key (`.p8` "AuthKey").
-    case apiKey
-    /// "Sign in with Apple ID" (password + two-factor web session).
-    case appleId
+/// How an account is connected, independent of its provider. The accounts
+/// lists show one section per kind, in `allCases` order (key-based first).
+enum AccountConnectionKind: String, CaseIterable, Hashable {
+    /// A key file: the App Store Connect API key (`.p8` "AuthKey") or a Google
+    /// service account JSON key.
+    case keyFile
+    /// A personal sign-in: "Sign in with Apple ID" (password + two-factor web
+    /// session) or "Sign in with Google" (OAuth).
+    case signIn
+}
+
+/// A connection kind of a given provider: what an accounts list section
+/// header shows ("API Key" / "Apple ID", "Service Account Key" / "Google Account").
+struct AccountConnection: Hashable {
+    let provider: ProviderType
+    let kind: AccountConnectionKind
 
     /// Section header title.
     var title: String {
-        switch self {
-        case .apiKey:  return String(localized: "API Key")
-        case .appleId: return String(localized: "Apple ID")
+        switch (provider, kind) {
+        case (.apple, .keyFile): return String(localized: "API Key")
+        case (.apple, .signIn):  return String(localized: "Apple ID")
+        case (.firebase, .keyFile), (.googlePlay, .keyFile):
+            return String(localized: "Service Account Key")
+        case (.firebase, .signIn), (.googlePlay, .signIn):
+            return String(localized: "Google Account")
         }
     }
 
     var iconName: String {
-        switch self {
-        case .apiKey:  return "key.fill"
-        case .appleId: return "person.crop.circle"
+        switch kind {
+        case .keyFile: return "key.fill"
+        case .signIn:  return "person.crop.circle"
         }
     }
 }
@@ -305,10 +318,18 @@ struct AccountModel: Codable, Identifiable, Hashable {
         !isAppleIdSession
     }
 
-    /// How this App Store Connect account is connected, used to section the
+    /// How this account is connected (key file vs sign-in), used to section the
     /// accounts lists. Read from `authMethod`, so no Keychain access is needed.
-    var appleConnectionKind: AppleConnectionKind {
-        isAppleIdSession ? .appleId : .apiKey
+    var connectionKind: AccountConnectionKind {
+        switch authMethod {
+        case .keyFile:                       return .keyFile
+        case .googleSignIn, .appleIdSignIn:  return .signIn
+        }
+    }
+
+    /// `connectionKind` of this account's provider (section header title / icon).
+    var connection: AccountConnection {
+        AccountConnection(provider: providerType, kind: connectionKind)
     }
 
     /// Rule resources that apply to this account's provider.

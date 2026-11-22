@@ -142,7 +142,8 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
             }
     }
 
-    /// Connection header (Apple: "API Key" / "Apple ID") and/or team header.
+    /// Connection header ("API Key" / "Apple ID", "Service Account Key" /
+    /// "Google Account") and/or team header.
     @ViewBuilder
     private func buildSectionHeader(_ section: AccountsListSection) -> some View {
         if section.connection != nil || section.issuerID != nil {

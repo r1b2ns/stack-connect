@@ -175,31 +175,13 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
 
     private func buildList() -> some View {
         List {
-            ForEach(viewModel.uiState.appleSections) { section in
+            ForEach(viewModel.uiState.sections) { section in
                 buildProviderSection(
-                    title: ProviderType.apple.displayName,
+                    title: section.connection.provider.displayName,
                     subtitle: section.connection.title,
-                    icon: ProviderType.apple.iconName,
-                    color: ProviderType.apple.color,
+                    icon: section.connection.provider.iconName,
+                    color: section.connection.provider.color,
                     accounts: section.accounts
-                )
-            }
-
-            if !viewModel.uiState.firebaseAccounts.isEmpty {
-                buildProviderSection(
-                    title: ProviderType.firebase.displayName,
-                    icon: ProviderType.firebase.iconName,
-                    color: ProviderType.firebase.color,
-                    accounts: viewModel.uiState.firebaseAccounts
-                )
-            }
-
-            if !viewModel.uiState.googlePlayAccounts.isEmpty {
-                buildProviderSection(
-                    title: ProviderType.googlePlay.displayName,
-                    icon: ProviderType.googlePlay.iconName,
-                    color: ProviderType.googlePlay.color,
-                    accounts: viewModel.uiState.googlePlayAccounts
                 )
             }
         }
@@ -267,7 +249,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                     .foregroundStyle(color)
                 Text(title)
                 if let subtitle {
-                    // Connection kind of the Apple section ("API Key" / "Apple ID").
+                    // Connection kind of the section ("API Key", "Google Account", ...).
                     Text(verbatim: "·")
                     Text(subtitle)
                 }
