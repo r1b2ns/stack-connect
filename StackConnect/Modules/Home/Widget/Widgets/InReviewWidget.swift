@@ -12,15 +12,25 @@ final class InReviewWidget: HomeWidget, ObservableObject {
     /// then Google Play releases in review, not approved or not sent (plan H3).
     @Published private(set) var entries: [DashboardEntry] = []
     @Published private(set) var isLoading: Bool = false
+    /// Problems of the rows' accounts, keyed by account id: an affected
+    /// account's rows show its status chip (the list mixes accounts).
+    @Published private(set) var accountStatuses: [String: AccountStatus] = [:]
 
     private let storage: PersistentStorable
     /// Decides whether Google Play rows are shown (`googlePlayAccounts`).
     private let featureFlags: FeatureFlags
+    private let statusResolver: AccountStatusResolving
 
-    init(configuration: HomeWidgetConfiguration, storage: PersistentStorable, featureFlags: FeatureFlags = .shared) {
+    init(
+        configuration: HomeWidgetConfiguration,
+        storage: PersistentStorable,
+        featureFlags: FeatureFlags = .shared,
+        statusResolver: AccountStatusResolving? = nil
+    ) {
         self.configuration = configuration
         self.storage = storage
         self.featureFlags = featureFlags
+        self.statusResolver = statusResolver ?? AccountStatusResolver(keychain: KeychainStorable.shared)
     }
 
     func load() async {
@@ -31,6 +41,7 @@ final class InReviewWidget: HomeWidget, ObservableObject {
             // Accounts are loaded *before* categorizing: apps orphaned by an
             // account that went away must not be expanded, counted, or listed.
             let accounts = await HomeWidgetDataLoader.loadAccounts(storage: storage, featureFlags: featureFlags)
+            accountStatuses = statusResolver.statuses(for: Array(accounts.values))
             let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
             let active = HomeWidgetDataLoader.filterKnownAccounts(
                 allApps.filter { !$0.isArchived },
@@ -76,7 +87,7 @@ private struct InReviewWidgetView: View {
                     text: String(localized: "No apps in review")
                 )
             } else {
-                HomeDashboardEntryList(entries: widget.entries) { entry in
+                HomeDashboardEntryList(entries: widget.entries, accountStatuses: widget.accountStatuses) { entry in
                     coordinator.open(entry.target, accountId: entry.accountId, account: entry.account)
                 }
             }

@@ -231,6 +231,10 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                             StackCapsuleBadge(title: String(localized: "imported"), color: .yellow)
                         }
 
+                        if let status = viewModel.uiState.accountStatuses[account.id] {
+                            StackAccountStatusBadge(status: status)
+                        }
+
                         Spacer()
 
                         Image(systemName: "chevron.right")

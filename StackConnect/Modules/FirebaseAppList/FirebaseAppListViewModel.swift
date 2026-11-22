@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import APIProviderFirebase
 import StackProtocols
@@ -91,6 +92,9 @@ struct FirebaseAppListUiState {
     /// Set when the account's Google sign-in expired or was revoked
     /// (`GoogleAccessRecovery`).
     var googleAccessPrompt: GoogleAccessPrompt?
+    /// The account's problem (`AccountStatusResolving`), shown as a notice
+    /// above the list; `nil` when it has none.
+    var accountStatus: AccountStatus?
 
     var filteredApps: [FirebaseAppModel] {
         let query = searchQuery.trimmingCharacters(in: .whitespaces).lowercased()
@@ -119,6 +123,8 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
     private let firstAppsLoaded: FirstAppsLoadedTracker
     private let googleAuth: any GoogleAuthServicing
     private let googleAccess: GoogleAccessRecovery
+    private let statusProvider: AccountStatusProviding
+    private var cancellables = Set<AnyCancellable>()
 
     init(
         account: AccountModel,
@@ -126,7 +132,8 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
         keychain: KeyStorable = KeychainStorable.shared,
         analytics: AnalyticsTracking = AnalyticsService.shared,
         firstAppsLoaded: FirstAppsLoadedTracker = .shared,
-        googleAuth: (any GoogleAuthServicing)? = nil
+        googleAuth: (any GoogleAuthServicing)? = nil,
+        statusProvider: AccountStatusProviding? = nil
     ) {
         self.uiState = FirebaseAppListUiState(account: account, project: project)
         self.keychain = keychain
@@ -135,15 +142,28 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
         let googleAuth = googleAuth ?? GoogleAuthService.shared
         self.googleAuth = googleAuth
         self.googleAccess = GoogleAccessRecovery(account: account, keychain: keychain, auth: googleAuth, analytics: analytics, screen: .firebaseAppList)
+        self.statusProvider = statusProvider ?? AccountStatusService(keychain: keychain)
+
+        self.statusProvider.changes
+            .sink { [weak self] in self?.reloadAccountStatus() }
+            .store(in: &cancellables)
     }
 
     func load() async {
+        reloadAccountStatus()
         await performLoad()
+        reloadAccountStatus()
+    }
+
+    /// Resolves the account's status (sign-in, credentials, expiry).
+    func reloadAccountStatus() {
+        uiState.accountStatus = statusProvider.statuses(for: [uiState.account])[uiState.account.id]
     }
 
     /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
     func refresh() async {
         await performLoad()
+        reloadAccountStatus()
         let failed = uiState.error != nil || uiState.googleAccessPrompt != nil
         analytics.track(.action(.refresh, on: .firebaseAppList, result: failed ? .failure : .success))
     }

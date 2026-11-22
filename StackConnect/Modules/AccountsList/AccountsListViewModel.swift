@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import StackProtocols
 
@@ -51,6 +52,9 @@ struct AccountsListUiState {
     var providerType: ProviderType
     /// When set, the next import replaces this account in place, preserving its offline app data.
     var replacingAccountId: String?
+    /// Problems of the listed accounts (`AccountStatusResolving`), keyed by
+    /// account id; accounts without one are absent.
+    var accountStatuses: [String: AccountStatus] = [:]
 
     /// Team grouping is only meaningful when at least one team (issuerID) holds
     /// more than one account. Otherwise the list is shown flat, without headers.
@@ -71,13 +75,16 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
     private let importer: AccountImporter
     private let analytics: AnalyticsTracking
     private let featureFlags: FeatureFlags
+    private let statusProvider: AccountStatusProviding
+    private var cancellables = Set<AnyCancellable>()
 
     init(
         providerType: ProviderType,
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
         analytics: AnalyticsTracking = AnalyticsService.shared,
-        featureFlags: FeatureFlags = .shared
+        featureFlags: FeatureFlags = .shared,
+        statusProvider: AccountStatusProviding? = nil
     ) {
         let storage: PersistentStorable = storage ?? SwiftDataStorable.shared
         self.uiState = AccountsListUiState(providerType: providerType)
@@ -86,6 +93,14 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
         self.importer = AccountImporter(storage: storage, keychain: keychain, featureFlags: featureFlags)
         self.analytics = analytics
         self.featureFlags = featureFlags
+        self.statusProvider = statusProvider ?? AccountStatusService(storage: storage, keychain: keychain)
+
+        // A sign-in expired or works again, or a sync flagged/cleared agreements.
+        self.statusProvider.changes
+            .sink { [weak self] in
+                Task { await self?.loadAccounts() }
+            }
+            .store(in: &cancellables)
     }
 
     func loadAccounts() async {
@@ -95,6 +110,7 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
             for i in allAccounts.indices { allAccounts[i].fillMissingRules() }
             // A hidden store's list stays empty (its accounts are kept in storage).
             uiState.accounts = featureFlags.visibleAccounts(allAccounts).filter { $0.providerType == uiState.providerType }
+            uiState.accountStatuses = statusProvider.statuses(for: uiState.accounts)
             rebuildSections()
         } catch {
             Log.print.error("[AccountsList] Failed to load accounts: \(error.localizedDescription)")

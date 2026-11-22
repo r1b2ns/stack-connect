@@ -195,8 +195,10 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
                     StackCapsuleBadge(title: String(localized: "imported"), color: .yellow)
                 }
 
-                if account.isExpired {
-                    StackCapsuleBadge(title: String(localized: "expired"), color: .red)
+                // Replaces the former "expired" chip: an expired file is one
+                // of the "Disconnected" causes (`AccountStatusIssue.accessExpired`).
+                if let status = viewModel.uiState.accountStatuses[account.id] {
+                    StackAccountStatusBadge(status: status)
                 }
 
                 Spacer()

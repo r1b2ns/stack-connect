@@ -210,10 +210,12 @@ struct HomeWidgetFootnote: View {
 
 /// One In Review / Awaiting Release row: icon, name (with the platform glyph
 /// when the list shows no platform headers), status line and, for an awaiting
-/// release, its phased-release or staged-rollout progress.
+/// release, its phased-release or staged-rollout progress. An account with a
+/// problem adds its status chip under the name.
 struct HomeAppRowView: View {
     let entry: DashboardEntry
     var showsPlatform: Bool = false
+    var accountStatus: AccountStatus?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -232,6 +234,11 @@ struct HomeAppRowView: View {
                 }
 
                 StackStatusLine(color: entry.statusColor.color, text: entry.statusText, detail: entry.versionText, wraps: true)
+
+                if let accountStatus {
+                    StackAccountStatusBadge(status: accountStatus)
+                        .padding(.top, 2)
+                }
 
                 if let progress = entry.progress {
                     HomeDashboardProgressView(progress: progress)
@@ -253,6 +260,8 @@ struct HomeAppRowView: View {
 /// Awaiting Release widgets.
 struct HomeDashboardEntryList: View {
     let entries: [DashboardEntry]
+    /// Statuses keyed by account id (`AccountStatusResolving`).
+    var accountStatuses: [String: AccountStatus] = [:]
     let onSelect: (DashboardEntry) -> Void
 
     var body: some View {
@@ -267,7 +276,11 @@ struct HomeDashboardEntryList: View {
                 StackTrackedButton(.widgetApp, onCurrentScreenOr: .home) {
                     onSelect(entry)
                 } label: {
-                    HomeAppRowView(entry: entry, showsPlatform: !showsHeaders)
+                    HomeAppRowView(
+                        entry: entry,
+                        showsPlatform: !showsHeaders,
+                        accountStatus: accountStatuses[entry.accountId]
+                    )
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(.primary)
