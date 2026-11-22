@@ -65,7 +65,10 @@ final class ErrorShareReportTests: XCTestCase {
         XCTAssertTrue(report.text.contains("1.4.0 (42)"), "Version with its build")
         XCTAssertTrue(report.text.contains("iOS 26.1"))
         XCTAssertTrue(report.text.contains("iPhone (iPhone18,2)"))
-        XCTAssertTrue(report.text.contains("StackConnect"), "Report title names the app")
+        XCTAssertTrue(
+            report.text.hasPrefix(String(localized: "StackConnect — Error report", comment: "First line of the error report shared from an error screen.") + "\n"),
+            "Report title names the app"
+        )
     }
 
     func testDateIsISO8601WithTimeZoneOffset() {
@@ -82,8 +85,13 @@ final class ErrorShareReportTests: XCTestCase {
     func testSubjectNamesTheScreen() {
         let report = makeReport()
 
-        XCTAssertTrue(report.subject.contains("Ratings & Reviews"))
-        XCTAssertTrue(report.subject.contains("StackConnect"))
+        XCTAssertEqual(
+            report.subject,
+            String(
+                localized: "StackConnect error: \("Ratings & Reviews")",
+                comment: "Subject line (e.g. for Mail) of a shared error report. Argument: the screen the error was shown on."
+            )
+        )
         XCTAssertFalse(report.subject.contains("\n"))
     }
 

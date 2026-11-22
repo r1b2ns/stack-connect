@@ -4,10 +4,17 @@ import XCTest
 final class AnalyticsAwaitingCopyTests: XCTestCase {
 
     /// A fixed reference "now" so relative/expected-by phrasing is deterministic.
-    /// (RelativeDateTimeFormatter / DateFormatter output is locale-dependent, so
-    /// the assertions below only check stable, English substrings — never the
-    /// exact relative phrase.)
+    /// Expected copy is built the way production builds it (same localized key,
+    /// same `RelativeDateTimeFormatter` / `DateFormatter` setup), so the
+    /// assertions hold in any simulator language.
     private let now = Date(timeIntervalSince1970: 1_700_000_000)
+
+    /// The relative phrase production interpolates, e.g. "6 hours ago".
+    private func relativePhrase(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: date, relativeTo: now)
+    }
 
     private var sixHours: TimeInterval { 6 * 60 * 60 }
     private var seventyTwoHours: TimeInterval { 72 * 60 * 60 }
@@ -46,7 +53,7 @@ final class AnalyticsAwaitingCopyTests: XCTestCase {
     func testDetailWithoutRequestedAtIsTheGenericString() {
         let text = AnalyticsAwaitingCopy.detail(requestedAt: nil, isOverdue: false, now: now)
 
-        XCTAssertTrue(text.contains("This report has been requested"))
+        XCTAssertEqual(text, String(localized: "This report has been requested. Apple usually publishes the data within 24–48 hours."))
     }
 
     func testDetailBeforeWindowMentionsWindowAndIsNotOverdue() {
@@ -55,8 +62,9 @@ final class AnalyticsAwaitingCopyTests: XCTestCase {
         let text = AnalyticsAwaitingCopy.detail(requestedAt: requestedAt, isOverdue: false, now: now)
 
         XCTAssertFalse(AnalyticsAwaitingCopy.isOverdue(requestedAt: requestedAt, now: now))
-        XCTAssertTrue(text.contains("24–48 hours"))
-        XCTAssertFalse(text.contains("taking longer"))
+        let phrase = relativePhrase(requestedAt)
+        XCTAssertEqual(text, String(localized: "Requested \(phrase). Apple usually publishes analytics data within 24–48 hours of the request."))
+        XCTAssertNotEqual(text, String(localized: "Requested \(phrase). This is taking longer than the usual 24–48 hours — some report types aren't produced for every app."))
     }
 
     func testDetailAfterWindowMentionsTakingLonger() {
@@ -65,6 +73,7 @@ final class AnalyticsAwaitingCopyTests: XCTestCase {
         let text = AnalyticsAwaitingCopy.detail(requestedAt: requestedAt, isOverdue: true, now: now)
 
         XCTAssertTrue(AnalyticsAwaitingCopy.isOverdue(requestedAt: requestedAt, now: now))
-        XCTAssertTrue(text.contains("taking longer"))
+        let phrase = relativePhrase(requestedAt)
+        XCTAssertEqual(text, String(localized: "Requested \(phrase). This is taking longer than the usual 24–48 hours — some report types aren't produced for every app."))
     }
 }

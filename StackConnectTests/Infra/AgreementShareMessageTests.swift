@@ -1,12 +1,26 @@
 import XCTest
 @testable import StackConnect
 
-/// Assertions avoid full-sentence comparisons so they hold in any simulator
-/// language: they check the dynamic parts (name, team, link) and the variant.
+/// Expected sentences are built the way production builds them (same localized
+/// key and arguments), so the assertions hold in any simulator language.
 final class AgreementShareMessageTests: XCTestCase {
 
     private let teamName = "Acme Team"
     private let link = AppStoreConnectLinks.agreements.absoluteString
+
+    private func expectedNamedText(name: String, link: String) -> String {
+        String(
+            localized: "Hi \(name), the App Store Connect team \"\(teamName)\" has pending agreements. As Account Holder, please review and accept them: \(link)",
+            comment: "Share message asking a named App Store Connect Account Holder to accept pending agreements. Arguments: Account Holder name, team name, agreements URL."
+        )
+    }
+
+    private func expectedGenericText(link: String) -> String {
+        String(
+            localized: "Hi, the App Store Connect team \"\(teamName)\" has pending agreements that must be accepted by its Account Holder: \(link)",
+            comment: "Fallback share message used when the Account Holder could not be determined. Arguments: team name, agreements URL."
+        )
+    }
 
     private func makeUser(firstName: String?, lastName: String?, email: String?) -> UserModel {
         UserModel(
@@ -37,7 +51,7 @@ final class AgreementShareMessageTests: XCTestCase {
 
         XCTAssertTrue(message.text.contains("Jane Appleseed"))
         XCTAssertTrue(message.text.contains(teamName))
-        XCTAssertTrue(message.text.hasSuffix(link), "The agreements link must close the message")
+        XCTAssertEqual(message.text, expectedNamedText(name: "Jane Appleseed", link: link), "Name, team and the agreements link")
         XCTAssertFalse(message.text.contains("jane@example.com"), "The recipient's email must not be in the body")
         XCTAssertNotEqual(message.text, genericText)
         XCTAssertEqual(message.recipientTitle, "Jane Appleseed <jane@example.com>")
@@ -69,7 +83,7 @@ final class AgreementShareMessageTests: XCTestCase {
         let message = AgreementShareMessage.make(teamName: teamName, accountHolderName: nil, accountHolderEmail: nil)
 
         XCTAssertTrue(message.text.contains(teamName))
-        XCTAssertTrue(message.text.hasSuffix(link))
+        XCTAssertEqual(message.text, expectedGenericText(link: link))
         XCTAssertTrue(message.recipientTitle.contains(teamName), "Generic title should still point at the team's Account Holder")
         XCTAssertFalse(message.recipientTitle.contains("<"))
         XCTAssertFalse(message.subject.isEmpty)
@@ -146,7 +160,8 @@ final class AgreementShareMessageTests: XCTestCase {
 
         let message = AgreementShareMessage.make(teamName: teamName, accountHolderName: nil, accountHolderEmail: nil, url: url)
 
-        XCTAssertTrue(message.text.hasSuffix(url.absoluteString))
+        XCTAssertEqual(message.text, expectedGenericText(link: url.absoluteString))
+        XCTAssertTrue(message.text.contains(url.absoluteString))
         XCTAssertEqual(message.url, url)
     }
 

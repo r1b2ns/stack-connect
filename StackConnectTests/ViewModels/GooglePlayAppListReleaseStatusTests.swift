@@ -86,7 +86,10 @@ final class GooglePlayAppListReleaseStatusTests: XCTestCase {
             GooglePlayTrackStatusLine(track: "production", lifecycleState: .inReview, versionName: "4.2.0"),
             GooglePlayTrackStatusLine(track: "internal", lifecycleState: .draft, versionName: nil)
         ])
-        XCTAssertEqual(lines.first?.text, "\(String(localized: "Production")) · \(String(localized: "In review"))")
+        XCTAssertEqual(
+            lines.first?.text,
+            String(localized: "\(GooglePlayTrackKind(track: "production").displayName) · \(GooglePlayReleaseLifecycleState.inReview.displayName)")
+        )
         let cached = try await cachedSummaries("com.a")
         XCTAssertEqual(cached?.summaries.count, 3)
         XCTAssertNotNil(cached?.fetchedAt)

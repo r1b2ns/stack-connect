@@ -141,7 +141,7 @@ final class AppleAPIErrorTranslatorTests: XCTestCase {
 
     func testFriendlyMessageReturnsConcurrencyCopyForNestedCode() {
         let message = AppleAPIErrorTranslator.friendlyMessage(for: concurrentLimitError())
-        let expected = String(localized: "You've reached Apple's limit of 5 review submissions in progress for this app. Cancel or submit an existing one before starting a new review.")
+        let expected = String(localized: "You've reached Apple's limit of \(AppStoreReviewLimits.concurrentSubmissions) review submissions in progress for this app. Cancel or submit an existing one before starting a new review.")
         XCTAssertEqual(message, expected)
     }
 
