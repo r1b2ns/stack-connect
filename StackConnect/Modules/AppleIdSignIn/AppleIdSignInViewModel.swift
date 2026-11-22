@@ -455,7 +455,7 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
             } catch {
                 keychain.removeObject(forKey: key)
                 Log.print.error("[AppleIdSignIn] Saving an Apple ID account failed: \(error.localizedDescription, privacy: .public)")
-                uiState.errorMessage = error.localizedDescription
+                uiState.errorMessage = error.userFacingMessage
                 if saved > 0 { AccountsChange.post() }
                 trackCreateAccount(.failure, count: saved, failure: .storage)
                 return
@@ -661,7 +661,7 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
             return String(localized: "Couldn't reach Apple. Check your connection and try again.")
         }
         guard let stackError = error as? StackError else {
-            return error.localizedDescription
+            return error.userFacingMessage
         }
         switch stackError {
         case .InvalidCredentials:
@@ -683,7 +683,7 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
         case .Decode:
             return String(localized: "Apple returned an unexpected response. Try again later.")
         case .Unsupported, .PendingAgreements, .SubmissionNotRemovable, .ReleaseNotFound:
-            return stackError.localizedDescription
+            return stackError.userFacingMessage
         }
     }
 }

@@ -254,7 +254,7 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             persistSync(app: uiState.app, versions: versions, limit: versionsLimit)
 
         } catch {
-            uiState.syncError = error.localizedDescription
+            uiState.syncError = error.userFacingMessage
             Log.print.error("[AppDetail] Sync failed: \(error.localizedDescription)")
             uiState.isLoading = false
             return false
@@ -358,7 +358,7 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             await refresh()
 
         } catch {
-            uiState.createError = error.localizedDescription
+            uiState.createError = error.userFacingMessage
             Log.print.error("[AppDetail] Create version failed: \(error.localizedDescription)")
             analytics.track(.action(.createVersion, on: .createPlatform, result: .failure, parameters: parameters))
         }
@@ -381,7 +381,7 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             Log.print.info("[AppDetail] Deleted version \(id)")
             track(.deleteVersion, .success)
         } catch {
-            uiState.actionError = error.localizedDescription
+            uiState.actionError = error.userFacingMessage
             Log.print.error("[AppDetail] Delete version failed: \(error.localizedDescription)")
             track(.deleteVersion, .failure)
         }
@@ -449,7 +449,7 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             track(.submitForReview, .success)
             await refresh()
         } catch {
-            uiState.actionError = error.localizedDescription
+            uiState.actionError = error.userFacingMessage
             Log.print.error("[AppDetail] Submit for review failed: \(error.localizedDescription)")
             track(.submitForReview, .failure)
         }
@@ -472,7 +472,7 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             track(.cancelReview, .success)
             await refresh()
         } catch {
-            uiState.actionError = error.localizedDescription
+            uiState.actionError = error.userFacingMessage
             Log.print.error("[AppDetail] Cancel review failed: \(error.localizedDescription)")
             track(.cancelReview, .failure)
         }
@@ -495,7 +495,7 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             track(.releaseVersion, .success)
             await refresh()
         } catch {
-            uiState.actionError = error.localizedDescription
+            uiState.actionError = error.userFacingMessage
             Log.print.error("[AppDetail] Release version failed: \(error.localizedDescription)")
             track(.releaseVersion, .failure)
         }
@@ -518,7 +518,7 @@ final class AppDetailViewModel: AppDetailViewModelProtocol {
             track(.rejectVersion, .success)
             await refresh()
         } catch {
-            uiState.actionError = error.localizedDescription
+            uiState.actionError = error.userFacingMessage
             Log.print.error("[AppDetail] Reject version failed: \(error.localizedDescription)")
             track(.rejectVersion, .failure)
         }

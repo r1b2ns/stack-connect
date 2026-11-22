@@ -245,7 +245,7 @@ final class AnalyticsReportFilesViewModel: AnalyticsReportFilesViewModelProtocol
             analytics.track(.action(.shareFiles, on: .analyticsReportFiles, result: .success, parameters: parameters))
         } catch {
             analytics.track(.action(.shareFiles, on: .analyticsReportFiles, result: .failure, parameters: parameters))
-            uiState.errorMessage = error.localizedDescription
+            uiState.errorMessage = error.userFacingMessage
             Log.print.error("[AnalyticsFiles] Zip failed: \(error.localizedDescription)")
         }
     }

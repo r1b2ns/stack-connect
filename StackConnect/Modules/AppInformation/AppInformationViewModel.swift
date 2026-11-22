@@ -68,7 +68,7 @@ final class AppInformationViewModel: AppInformationViewModelProtocol {
             saveToCache(appInfo: appInfo, ageRating: ageRating)
             Log.print.info("[AppInformation] Loaded app info for \(self.uiState.app.id)")
         } catch {
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[AppInformation] Load failed: \(error.localizedDescription)")
         }
 
@@ -93,7 +93,7 @@ final class AppInformationViewModel: AppInformationViewModelProtocol {
             analytics.track(.action(.updateContentRights, on: .contentRights, result: .success, parameters: [AnalyticsParameterKey.kind: .string(value)]))
         } catch {
             analytics.track(.action(.updateContentRights, on: .contentRights, result: .failure, parameters: [AnalyticsParameterKey.kind: .string(value)]))
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[AppInformation] Content rights update failed: \(error.localizedDescription)")
         }
     }
@@ -113,7 +113,7 @@ final class AppInformationViewModel: AppInformationViewModelProtocol {
             analytics.track(.action(.updatePrimaryLocale, on: .appInformation, result: .success))
         } catch {
             analytics.track(.action(.updatePrimaryLocale, on: .appInformation, result: .failure))
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[AppInformation] Primary locale update failed: \(error.localizedDescription)")
         }
     }

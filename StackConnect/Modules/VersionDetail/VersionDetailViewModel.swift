@@ -559,7 +559,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             analytics.track(.action(.saveVersionMetadata, on: .versionDetail, result: .success))
         } catch {
             analytics.track(.action(.saveVersionMetadata, on: .versionDetail, result: .failure))
-            uiState.groupedFieldsError = error.localizedDescription
+            uiState.groupedFieldsError = error.userFacingMessage
             Log.print.error("[VersionDetail] Save grouped fields failed: \(error.localizedDescription)")
         }
 
@@ -599,7 +599,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             analytics.track(.action(.updateReleaseType, on: .versionRelease, result: .success, parameters: [AnalyticsParameterKey.kind: .string(uiState.selectedReleaseType.rawValue)]))
         } catch {
             analytics.track(.action(.updateReleaseType, on: .versionRelease, result: .failure, parameters: [AnalyticsParameterKey.kind: .string(uiState.selectedReleaseType.rawValue)]))
-            uiState.releaseError = error.localizedDescription
+            uiState.releaseError = error.userFacingMessage
             Log.print.error("[VersionDetail] Save release type failed: \(error.localizedDescription)")
         }
 
@@ -636,7 +636,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             analytics.track(.action(.updatePhasedRelease, on: .phasedRelease, result: .success, parameters: [AnalyticsParameterKey.enabled: .bool(usePhased)]))
         } catch {
             analytics.track(.action(.updatePhasedRelease, on: .phasedRelease, result: .failure, parameters: [AnalyticsParameterKey.enabled: .bool(usePhased)]))
-            uiState.phasedReleaseError = error.localizedDescription
+            uiState.phasedReleaseError = error.userFacingMessage
             Log.print.error("[VersionDetail] Phased release save failed: \(error.localizedDescription)")
         }
 
@@ -664,7 +664,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             analytics.track(.action(.pausePhasedRelease, on: .versionDetail, result: .success, parameters: [AnalyticsParameterKey.enabled: .bool(paused)]))
         } catch {
             analytics.track(.action(.pausePhasedRelease, on: .versionDetail, result: .failure, parameters: [AnalyticsParameterKey.enabled: .bool(paused)]))
-            uiState.phasedReleaseError = error.localizedDescription
+            uiState.phasedReleaseError = error.userFacingMessage
             Log.print.error("[VersionDetail] Pause phased release failed: \(error.localizedDescription)")
         }
 
@@ -682,7 +682,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
         do {
             uiState.availableBuilds = try await connection.fetchBuilds(appId: uiState.version.appId, limit: 50)
         } catch {
-            uiState.actionError = error.localizedDescription
+            uiState.actionError = error.userFacingMessage
             Log.print.error("[VersionDetail] Load builds failed: \(error.localizedDescription)")
         }
     }
@@ -710,7 +710,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             analytics.track(.action(.selectBuild, on: .buildPicker, result: .success))
         } catch {
             analytics.track(.action(.selectBuild, on: .buildPicker, result: .failure))
-            uiState.actionError = error.localizedDescription
+            uiState.actionError = error.userFacingMessage
             Log.print.error("[VersionDetail] Attach build failed: \(error.localizedDescription)")
         }
         uiState.isAttachingBuild = false
@@ -789,7 +789,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
                 uiState.submissionLimitReached = true
                 Log.print.error("[VersionDetail] Submit blocked: concurrent review submission limit reached")
             } else {
-                uiState.actionError = error.localizedDescription
+                uiState.actionError = error.userFacingMessage
                 Log.print.error("[VersionDetail] Submit for review failed: \(error.localizedDescription)")
             }
         }
@@ -813,7 +813,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             analytics.track(.action(.cancelReview, on: .versionDetail, result: .success))
         } catch {
             analytics.track(.action(.cancelReview, on: .versionDetail, result: .failure))
-            uiState.actionError = error.localizedDescription
+            uiState.actionError = error.userFacingMessage
             Log.print.error("[VersionDetail] Cancel review failed: \(error.localizedDescription)")
         }
 
@@ -836,7 +836,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             analytics.track(.action(.cancelSubmission, on: .versionDetail, result: .success))
         } catch {
             analytics.track(.action(.cancelSubmission, on: .versionDetail, result: .failure))
-            uiState.actionError = error.localizedDescription
+            uiState.actionError = error.userFacingMessage
             Log.print.error("[VersionDetail] Cancel submission failed: \(error.localizedDescription)")
         }
 
@@ -859,7 +859,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             analytics.track(.action(.releaseVersion, on: .versionDetail, result: .success))
         } catch {
             analytics.track(.action(.releaseVersion, on: .versionDetail, result: .failure))
-            uiState.actionError = error.localizedDescription
+            uiState.actionError = error.userFacingMessage
             Log.print.error("[VersionDetail] Release failed: \(error.localizedDescription)")
         }
 
@@ -882,7 +882,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             analytics.track(.action(.rejectVersion, on: .versionDetail, result: .success))
         } catch {
             analytics.track(.action(.rejectVersion, on: .versionDetail, result: .failure))
-            uiState.actionError = error.localizedDescription
+            uiState.actionError = error.userFacingMessage
             Log.print.error("[VersionDetail] Reject failed: \(error.localizedDescription)")
         }
 
@@ -908,7 +908,7 @@ final class VersionDetailViewModel: VersionDetailViewModelProtocol {
             analytics.track(.action(.completePhasedRelease, on: .versionDetail, result: .success))
         } catch {
             analytics.track(.action(.completePhasedRelease, on: .versionDetail, result: .failure))
-            uiState.actionError = error.localizedDescription
+            uiState.actionError = error.userFacingMessage
             Log.print.error("[VersionDetail] Complete phased release failed: \(error.localizedDescription)")
         }
 

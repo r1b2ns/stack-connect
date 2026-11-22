@@ -131,7 +131,7 @@ final class UserAccessViewModel: UserAccessViewModelProtocol {
             Log.print.info("[UserAccess] Loaded \(self.uiState.users.count) users")
         } catch {
             succeeded = false
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[UserAccess] Load failed: \(error.localizedDescription)")
         }
 
@@ -198,7 +198,7 @@ final class UserAccessViewModel: UserAccessViewModelProtocol {
             analytics.track(.action(.inviteUser, on: .inviteUser, result: .success, parameters: parameters))
         } catch {
             analytics.track(.action(.inviteUser, on: .inviteUser, result: .failure, parameters: parameters))
-            uiState.inviteError = error.localizedDescription
+            uiState.inviteError = error.userFacingMessage
             Log.print.error("[UserAccess] Invite failed: \(error.localizedDescription)")
         }
     }

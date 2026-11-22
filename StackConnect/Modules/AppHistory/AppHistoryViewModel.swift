@@ -91,7 +91,7 @@ final class AppHistoryViewModel: AppHistoryViewModelProtocol {
             Log.print.info("[AppHistory] Loaded \(versions.count) versions, \(submissions.count) submissions")
         } catch {
             succeeded = false
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[AppHistory] Failed to load: \(error.localizedDescription)")
         }
 

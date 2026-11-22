@@ -231,7 +231,7 @@ final class FirebaseAppListViewModel: FirebaseAppListViewModelProtocol {
             } else if let message = googleAccess.unavailableMessage(for: error) {
                 uiState.error = message
             } else {
-                uiState.error = error.localizedDescription
+                uiState.error = error.userFacingMessage
                 Log.print.error("[Firebase] Load apps failed: \(error.localizedDescription)")
             }
         }

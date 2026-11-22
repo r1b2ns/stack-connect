@@ -186,7 +186,7 @@ final class SubmissionsViewModel: SubmissionsViewModelProtocol {
             Log.print.info("[Submissions] Loaded \(self.uiState.submissions.count) submissions for \(self.uiState.appId)")
         } catch {
             succeeded = false
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[Submissions] Failed to load submissions: \(error.localizedDescription)")
         }
 
@@ -222,7 +222,7 @@ final class SubmissionsViewModel: SubmissionsViewModelProtocol {
                 Log.print.info("[Submissions] Discard: submission \(submission.id) not removable via API")
                 await load()
             } else {
-                uiState.error = error.localizedDescription
+                uiState.error = error.userFacingMessage
                 Log.print.error("[Submissions] Discard failed: \(error.localizedDescription)")
             }
         }
@@ -253,7 +253,7 @@ final class SubmissionsViewModel: SubmissionsViewModelProtocol {
                 Log.print.info("[Submissions] Submit: submission \(submission.id) not removable via API")
                 await load()
             } else {
-                uiState.error = error.localizedDescription
+                uiState.error = error.userFacingMessage
                 Log.print.error("[Submissions] Submit failed: \(error.localizedDescription)")
             }
         }

@@ -111,7 +111,7 @@ final class AppReviewDetailViewModel: AppReviewDetailViewModelProtocol {
             uiState.reviewDetail = try await connection.fetchAppReviewDetail(versionId: versionId)
             Log.print.info("[AppReviewDetail] Loaded review detail for version \(versionId)")
         } catch {
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[AppReviewDetail] Failed to load review detail: \(error.localizedDescription)")
         }
 
@@ -140,7 +140,7 @@ final class AppReviewDetailViewModel: AppReviewDetailViewModelProtocol {
             // Prefer the core's clean, actionable copy over `StackError`'s reflected
             // `errorDescription` when a submission can't be removed via the API.
             uiState.actionError = AppleAPIErrorTranslator.submissionNotRemovableMessage(error)
-                ?? error.localizedDescription
+                ?? error.userFacingMessage
             Log.print.error("[AppReviewDetail] Resubmit failed: \(error.localizedDescription)")
         }
         uiState.isPerformingAction = false
@@ -167,7 +167,7 @@ final class AppReviewDetailViewModel: AppReviewDetailViewModelProtocol {
             // the core's clean, actionable copy instead of `StackError`'s reflected
             // `errorDescription`; the existing error alert renders it fine.
             uiState.actionError = AppleAPIErrorTranslator.submissionNotRemovableMessage(error)
-                ?? error.localizedDescription
+                ?? error.userFacingMessage
             Log.print.error("[AppReviewDetail] Discard failed: \(error.localizedDescription)")
         }
         uiState.isPerformingAction = false

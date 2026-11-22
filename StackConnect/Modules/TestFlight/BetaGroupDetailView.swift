@@ -637,11 +637,11 @@ struct AddTesterSheet: View {
                 csvRows = CSVTesterParser.parse(text)
                 showCSVPreview = true
             } catch {
-                csvError = error.localizedDescription
+                csvError = error.userFacingMessage
                 Log.print.error("[AddTesterSheet] Failed to read CSV: \(error.localizedDescription)")
             }
         case .failure(let error):
-            csvError = error.localizedDescription
+            csvError = error.userFacingMessage
             Log.print.error("[AddTesterSheet] File picker failed: \(error.localizedDescription)")
         }
     }

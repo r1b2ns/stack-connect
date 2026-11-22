@@ -97,7 +97,7 @@ final class ScreenshotGridViewModel: ObservableObject {
             analytics.track(.action(.deleteScreenshots, on: .screenshotGrid, result: .success, parameters: [AnalyticsParameterKey.count: .int(ids.count)]))
         } catch {
             analytics.track(.action(.deleteScreenshots, on: .screenshotGrid, result: .failure, parameters: [AnalyticsParameterKey.count: .int(ids.count)]))
-            deleteError = error.localizedDescription
+            deleteError = error.userFacingMessage
             Log.print.error("[Screenshots] Delete selected failed: \(error.localizedDescription)")
         }
     }

@@ -292,7 +292,7 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
             do {
                 try await storage.save(account, id: account.id)
             } catch {
-                uiState.validationError = error.localizedDescription
+                uiState.validationError = error.userFacingMessage
                 Log.print.error("[AddAccount] Saving the account failed: \(error.localizedDescription)")
                 return .storage
             }
@@ -456,7 +456,7 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
             return
         }
         uiState.google = previous
-        uiState.google.errorMessage = error.localizedDescription
+        uiState.google.errorMessage = error.userFacingMessage
         Log.print.error("[AddAccount] Google sign-in failed: \(error.localizedDescription, privacy: .public)")
         trackSignIn(result: .failure, failure: AnalyticsErrorCategory(connectionError: error))
     }
@@ -476,7 +476,7 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
             }
         } catch {
             uiState.google.step = .idle
-            uiState.google.errorMessage = error.localizedDescription
+            uiState.google.errorMessage = error.userFacingMessage
             Log.print.error("[AddAccount] Listing what the Google login can access failed: \(error.localizedDescription, privacy: .public)")
             analytics.track(.action(.load, on: .addAccount, result: .failure,
                                     parameters: kindParameters.merging(AnalyticsErrorCategory.parameters(for: error)) { _, new in new }))
@@ -592,7 +592,7 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
             } catch {
                 keychain.removeObject(forKey: "credentials.\(account.id)")
                 Log.print.error("[AddAccount] Saving a Google sign-in account failed: \(error.localizedDescription)")
-                uiState.validationError = error.localizedDescription
+                uiState.validationError = error.userFacingMessage
                 if saved > 0 { AccountsChange.post() }
                 return (.storage, saved)
             }
@@ -611,7 +611,7 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
         case .googlePlay:
             return GooglePlayErrorTranslator.friendlyMessage(for: error)
         case .apple, .firebase:
-            return error.localizedDescription
+            return error.userFacingMessage
         }
     }
 

@@ -92,7 +92,7 @@ struct GooglePlayAccountSync: Sendable {
             remote = GooglePlayAppListSync.merge(remote: fetched, into: cached.filter(isInScope))
         } catch {
             Log.print.error("[Sync][GooglePlay] \(account.name) failed: \(error.localizedDescription)")
-            await saveMetadata(appsSynced: 0, error: error.localizedDescription)
+            await saveMetadata(appsSynced: 0, error: error.userFacingMessage)
             return .failed(accountId: account.id, category: AnalyticsErrorCategory(connectionError: error))
         }
 

@@ -223,7 +223,7 @@ final class CreateCertificateViewModel: CreateCertificateViewModelProtocol {
             analytics.track(.action(.importCsr, on: .createCertificate, result: .success))
         } catch {
             analytics.track(.action(.importCsr, on: .createCertificate, result: .failure))
-            uiState.errorMessage = String(localized: "Failed to read CSR file: \(error.localizedDescription)")
+            uiState.errorMessage = String(localized: "Failed to read CSR file: \(error.userFacingMessage)")
             Log.print.error("[CreateCertificate] CSR read failed: \(error.localizedDescription)")
         }
     }
@@ -274,7 +274,7 @@ final class CreateCertificateViewModel: CreateCertificateViewModelProtocol {
             analytics.track(.action(.createCertificate, on: .createCertificate, result: .success, parameters: parameters))
         } catch {
             analytics.track(.action(.createCertificate, on: .createCertificate, result: .failure, parameters: parameters))
-            uiState.errorMessage = error.localizedDescription
+            uiState.errorMessage = error.userFacingMessage
             Log.print.error("[CreateCertificate] Create failed: \(error.localizedDescription)")
         }
 
@@ -308,7 +308,7 @@ final class CreateCertificateViewModel: CreateCertificateViewModelProtocol {
             try data.write(to: url, options: .atomic)
             return url
         } catch {
-            uiState.errorMessage = error.localizedDescription
+            uiState.errorMessage = error.userFacingMessage
             Log.print.error("[CreateCertificate] Write failed: \(error.localizedDescription)")
             return nil
         }

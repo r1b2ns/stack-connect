@@ -126,7 +126,7 @@ final class BetaAppReviewInfoViewModel: BetaAppReviewInfoViewModelProtocol {
                 uiState.betaDescription = preferred.description ?? ""
             }
         } catch {
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[BetaAppReviewInfo] Load failed: \(error.localizedDescription)")
         }
 
@@ -186,7 +186,7 @@ final class BetaAppReviewInfoViewModel: BetaAppReviewInfoViewModelProtocol {
             analytics.track(.action(.updateBetaAppReviewInfo, on: .betaAppReviewInfo, result: .success))
         } catch {
             analytics.track(.action(.updateBetaAppReviewInfo, on: .betaAppReviewInfo, result: .failure))
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[BetaAppReviewInfo] Save failed: \(error.localizedDescription)")
         }
 

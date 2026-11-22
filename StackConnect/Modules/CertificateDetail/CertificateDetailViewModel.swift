@@ -78,7 +78,7 @@ final class CertificateDetailViewModel: CertificateDetailViewModelProtocol {
             Log.print.info("[CertificateDetail] Prepared download at \(url.lastPathComponent)")
             return url
         } catch {
-            uiState.errorMessage = error.localizedDescription
+            uiState.errorMessage = error.userFacingMessage
             Log.print.error("[CertificateDetail] Download prep failed: \(error.localizedDescription)")
             return nil
         }
@@ -106,7 +106,7 @@ final class CertificateDetailViewModel: CertificateDetailViewModelProtocol {
             )
             return true
         } catch {
-            uiState.errorMessage = error.localizedDescription
+            uiState.errorMessage = error.userFacingMessage
             Log.print.error("[CertificateDetail] Revoke failed: \(error.localizedDescription)")
             return false
         }

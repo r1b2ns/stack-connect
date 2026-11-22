@@ -97,7 +97,7 @@ final class ImportDevicesViewModel: ImportDevicesViewModelProtocol {
             ]))
         } catch {
             analytics.track(.action(.loadDevicesFile, on: .importDevices, result: .failure))
-            uiState.errorMessage = error.localizedDescription
+            uiState.errorMessage = error.userFacingMessage
             Log.print.error("[ImportDevices] Parse failed: \(error.localizedDescription)")
         }
     }
@@ -160,7 +160,7 @@ final class ImportDevicesViewModel: ImportDevicesViewModelProtocol {
                 uiState.failures.append(ImportFailure(
                     udid: device.udid,
                     name: device.name,
-                    message: error.localizedDescription
+                    message: error.userFacingMessage
                 ))
                 Log.print.error("[ImportDevices] Failed to register \(device.udid): \(error.localizedDescription)")
             }

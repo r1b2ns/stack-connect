@@ -210,7 +210,7 @@ final class AppListViewModel: AppListViewModelProtocol {
             await firstAppsLoaded.recordAppsLoaded(count: appModels.count, provider: .apple, on: .appList)
 
         } catch {
-            uiState.syncError = error.localizedDescription
+            uiState.syncError = error.userFacingMessage
             Log.print.error("[AppList] Sync failed: \(error.localizedDescription)")
             uiState.isLoading = false
             uiState.isSyncing = false

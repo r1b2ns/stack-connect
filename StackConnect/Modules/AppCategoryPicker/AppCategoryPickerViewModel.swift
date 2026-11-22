@@ -81,7 +81,7 @@ final class AppCategoryPickerViewModel: AppCategoryPickerViewModelProtocol {
                 fetched = try await connection.fetchAppCategories()
                 Log.print.info("[AppCategoryPicker] Loaded \(fetched.count) categories")
             } catch {
-                uiState.error = error.localizedDescription
+                uiState.error = error.userFacingMessage
                 Log.print.error("[AppCategoryPicker] Load failed: \(error.localizedDescription)")
             }
         }
@@ -122,7 +122,7 @@ final class AppCategoryPickerViewModel: AppCategoryPickerViewModelProtocol {
             analytics.track(.action(.updateCategory, on: .appCategoryPicker, result: .success))
         } catch {
             analytics.track(.action(.updateCategory, on: .appCategoryPicker, result: .failure))
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[AppCategoryPicker] Save failed: \(error.localizedDescription)")
         }
         uiState.isSaving = false

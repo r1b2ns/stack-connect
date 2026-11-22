@@ -98,7 +98,7 @@ final class AppPrivacyViewModel: AppPrivacyViewModelProtocol {
             Log.print.info("[AppPrivacy] Loaded \(self.uiState.localizations.count) localizations")
         } catch {
             succeeded = false
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[AppPrivacy] Failed to load: \(error.localizedDescription)")
         }
 

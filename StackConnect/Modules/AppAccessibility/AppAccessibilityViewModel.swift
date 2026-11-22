@@ -87,7 +87,7 @@ final class AppAccessibilityViewModel: AppAccessibilityViewModelProtocol {
             Log.print.info("[AppAccessibility] Loaded \(self.uiState.declarations.count) declarations")
         } catch {
             succeeded = false
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[AppAccessibility] Failed to load: \(error.localizedDescription)")
         }
 

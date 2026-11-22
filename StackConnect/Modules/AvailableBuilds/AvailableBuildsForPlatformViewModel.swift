@@ -92,7 +92,7 @@ final class AvailableBuildsForPlatformViewModel: AvailableBuildsForPlatformViewM
             Log.print.info("[AvailableBuilds] Loaded \(self.uiState.builds.count) builds for \(self.uiState.platform), hasMore: \(page.hasNextPage)")
         } catch {
             succeeded = false
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[AvailableBuilds] Load failed: \(error.localizedDescription)")
         }
 

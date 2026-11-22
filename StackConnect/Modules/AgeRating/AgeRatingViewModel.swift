@@ -103,7 +103,7 @@ final class AgeRatingViewModel: AgeRatingViewModelProtocol {
             analytics.track(.action(.updateAgeRating, on: .ageRating, result: .success))
         } catch {
             analytics.track(.action(.updateAgeRating, on: .ageRating, result: .failure))
-            uiState.error = error.localizedDescription
+            uiState.error = error.userFacingMessage
             Log.print.error("[AgeRating] Save failed: \(error.localizedDescription)")
         }
 

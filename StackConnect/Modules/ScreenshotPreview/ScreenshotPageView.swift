@@ -67,7 +67,7 @@ final class ScreenshotPageViewModel: ObservableObject {
             analytics.track(.action(.deleteScreenshots, on: .screenshotPage, result: .success, parameters: [AnalyticsParameterKey.count: .int(1)]))
         } catch {
             analytics.track(.action(.deleteScreenshots, on: .screenshotPage, result: .failure, parameters: [AnalyticsParameterKey.count: .int(1)]))
-            deleteError = error.localizedDescription
+            deleteError = error.userFacingMessage
             Log.print.error("[Screenshots] Delete screenshot failed: \(error.localizedDescription)")
         }
     }

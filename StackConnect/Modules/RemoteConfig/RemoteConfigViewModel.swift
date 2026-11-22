@@ -173,7 +173,7 @@ final class RemoteConfigViewModel: RemoteConfigViewModelProtocol {
             } else if let message = googleAccess.unavailableMessage(for: error) {
                 uiState.error = message
             } else {
-                uiState.error = error.localizedDescription
+                uiState.error = error.userFacingMessage
                 Log.print.error("[RemoteConfig] Load failed: \(error.localizedDescription)")
             }
         }

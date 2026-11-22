@@ -62,7 +62,7 @@ final class DeviceDetailViewModel: DeviceDetailViewModelProtocol {
             return true
         } catch {
             analytics.track(.action(.renameDevice, on: .deviceDetail, result: .failure))
-            uiState.errorMessage = error.localizedDescription
+            uiState.errorMessage = error.userFacingMessage
             Log.print.error("[DeviceDetail] Rename failed: \(error.localizedDescription)")
             uiState.isRenaming = false
             return false
@@ -89,7 +89,7 @@ final class DeviceDetailViewModel: DeviceDetailViewModelProtocol {
             analytics.track(.action(.toggleDeviceStatus, on: .deviceDetail, result: .success, parameters: parameters))
         } catch {
             analytics.track(.action(.toggleDeviceStatus, on: .deviceDetail, result: .failure, parameters: parameters))
-            uiState.errorMessage = error.localizedDescription
+            uiState.errorMessage = error.userFacingMessage
             Log.print.error("[DeviceDetail] Status toggle failed: \(error.localizedDescription)")
         }
 
