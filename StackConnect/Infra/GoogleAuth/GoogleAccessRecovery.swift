@@ -46,17 +46,40 @@ final class GoogleAccessRecovery {
     private let auth: any GoogleAuthServicing
     private let analytics: AnalyticsTracking
     private let screen: AnalyticsScreen
+    /// The `kind` parameter of the sign-in events (the account's provider).
+    private let providerType: ProviderType
 
-    init(
+    /// A Firebase screen's recovery: Google Play accounts and service
+    /// accounts get none (`loginId == nil`).
+    convenience init(
         account: AccountModel,
         keychain: KeyStorable,
         auth: (any GoogleAuthServicing)? = nil,
         analytics: AnalyticsTracking,
         screen: AnalyticsScreen
     ) {
-        self.loginId = account.providerType == .firebase
-            ? GoogleLoginReferences.loginId(of: account, keychain: keychain)
-            : nil
+        self.init(
+            loginId: account.providerType == .firebase
+                ? GoogleLoginReferences.loginId(of: account, keychain: keychain)
+                : nil,
+            providerType: .firebase,
+            auth: auth,
+            analytics: analytics,
+            screen: screen
+        )
+    }
+
+    /// The recovery of a known Google login, whatever the account's provider
+    /// (the Home "sign in again" banner, for Firebase and Google Play).
+    init(
+        loginId: String?,
+        providerType: ProviderType,
+        auth: (any GoogleAuthServicing)? = nil,
+        analytics: AnalyticsTracking,
+        screen: AnalyticsScreen
+    ) {
+        self.loginId = loginId
+        self.providerType = providerType
         self.auth = auth ?? GoogleAuthService.shared
         self.analytics = analytics
         self.screen = screen
@@ -184,7 +207,7 @@ final class GoogleAccessRecovery {
 
     private func signInAgain(loginId: String, prompt: GoogleAccessPrompt, update: (GoogleAccessPrompt) -> Void) async -> Bool {
         analytics.track(.buttonTap(.signInAgain, on: screen))
-        let kind = [AnalyticsParameterKey.kind: AnalyticsValue.string(ProviderType.firebase.rawValue)]
+        let kind = [AnalyticsParameterKey.kind: AnalyticsValue.string(providerType.rawValue)]
         analytics.track(.action(.googleSignInStarted, on: screen, parameters: kind))
 
         var next = prompt

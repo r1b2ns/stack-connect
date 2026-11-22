@@ -85,6 +85,8 @@ final class GoogleAuthService: GoogleAuthServicing {
     private let tokenClient: GoogleOAuthTokenClient?
     private let store: GoogleLoginStoring
     private let authenticator: GoogleWebAuthenticating
+    /// Which logins Google stopped accepting (read by the Home banner).
+    private let status: GoogleLoginStatusTracking
     private let now: () -> Date
 
     private struct CachedAccessToken {
@@ -101,12 +103,14 @@ final class GoogleAuthService: GoogleAuthServicing {
         http: GoogleHTTPClient = URLSessionGoogleHTTPClient(),
         store: GoogleLoginStoring? = nil,
         authenticator: GoogleWebAuthenticating? = nil,
+        status: GoogleLoginStatusTracking = GoogleLoginStatusStore.shared,
         now: @escaping () -> Date = Date.init
     ) {
         self.configuration = configuration
         self.tokenClient = configuration.map { GoogleOAuthTokenClient(configuration: $0, http: http) }
         self.store = store ?? GoogleLoginKeychainStore(keychain: KeychainStorable.shared)
         self.authenticator = authenticator ?? GoogleWebAuthenticator()
+        self.status = status
         self.now = now
     }
 
@@ -192,6 +196,7 @@ final class GoogleAuthService: GoogleAuthServicing {
         )
         store.save(grant)
         cache(response, for: grant.loginId, issuedAt: issuedAt)
+        status.markValid(loginId: grant.loginId)
 
         let missing = GoogleOAuthScope.missing(requested, in: granted)
         Log.print.info("[GoogleAuth] Signed in (new login: \(existing == nil)); \(granted.count) scope(s) granted, \(missing.count) requested scope(s) not granted")
@@ -236,6 +241,7 @@ final class GoogleAuthService: GoogleAuthServicing {
             // Expired (7 days in Testing), revoked, or the password changed
             // (plan R5): only this login must sign in again.
             accessTokens[loginId] = nil
+            status.markExpired(loginId: loginId)
             Log.print.error("[GoogleAuth] Refresh token rejected (invalid_grant); the login must sign in again")
             throw GoogleAuthError.signInExpired(email: grant.email)
         } catch let error as GoogleAuthError {
@@ -284,6 +290,7 @@ final class GoogleAuthService: GoogleAuthServicing {
         let grant = store.load(loginId: loginId)
         accessTokens[loginId] = nil
         store.remove(loginId: loginId)
+        status.markValid(loginId: loginId)
         guard let grant, let tokenClient else { return }
         do {
             try await tokenClient.revoke(token: grant.refreshToken)

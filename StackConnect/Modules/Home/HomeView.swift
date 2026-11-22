@@ -30,6 +30,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
         NavigationStack(path: $coordinator.path) {
             List {
                 HomeSyncBanner(syncState: viewModel.uiState.syncState)
+                HomeSignInAgainBanner(viewModel: viewModel)
                 HomeAgreementsBanners(viewModel: viewModel)
                 HomeTipCard(viewModel: viewModel) {
                     coordinator.navigateToTipJar()

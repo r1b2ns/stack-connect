@@ -16,9 +16,11 @@ extension Notification.Name {
 /// synchronous and thread-safe.
 protocol AppleSessionStatusTracking: Sendable {
     func isExpired(appleId: String) -> Bool
-    /// Records the expiry and posts `.appleSessionDidExpire`.
+    /// Records the expiry and posts `.appleSessionDidExpire` (and
+    /// `.signInStatusDidChange` when the expiry is new).
     func markExpired(appleId: String)
-    /// Records a working session again (a successful call, or a new sign-in).
+    /// Records a working session again (a successful call, or a new sign-in),
+    /// posting `.signInStatusDidChange` when it was expired.
     func markValid(appleId: String)
 }
 
@@ -63,14 +65,21 @@ final class AppleSessionStatusStore: AppleSessionStatusTracking, @unchecked Send
         } else {
             DispatchQueue.main.async { center.post(name: .appleSessionDidExpire, object: id, userInfo: userInfo) }
         }
+        if isNew {
+            center.postSignInStatusDidChange()
+        }
     }
 
     func markValid(appleId: String) {
         let id = AppleSessionKeychainStore.normalized(appleId)
-        lock.withLock {
+        let changed: Bool = lock.withLock {
             var ids = expired()
-            guard ids.remove(id) != nil else { return }
+            guard ids.remove(id) != nil else { return false }
             defaults.set(ids.sorted(), forKey: Self.defaultsKey)
+            return true
+        }
+        if changed {
+            center.postSignInStatusDidChange()
         }
     }
 

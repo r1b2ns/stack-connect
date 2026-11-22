@@ -45,6 +45,11 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     case openTipCard = "open_tip_card"
     /// The Home "support the project" card was closed.
     case dismissTipCard = "dismiss_tip_card"
+    /// The Home "sign in again" banner, with several expired sign-ins: open
+    /// the list to choose one. (With one, its button tracks `signInAgain`.)
+    case chooseSignInAgain = "choose_sign_in_again"
+    /// The Home "sign in again" banner was closed (until the next launch).
+    case dismissSignInAgainBanner = "dismiss_sign_in_again_banner"
     case widgetApp = "widget_app"
     case widgetReview = "widget_review"
     case appleProvider = "apple_provider"
@@ -77,8 +82,9 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     /// Remote Config / Analytics of a Google sign-in account: ask Google for
     /// the extra permission the screen needs.
     case grantGoogleAccess = "grant_google_access"
-    /// A Firebase screen whose Google sign-in expired or was revoked: sign in
-    /// again with the same Google account.
+    /// A Firebase screen whose Google sign-in expired or was revoked, or the
+    /// Home "sign in again" banner (Apple ID or Google): sign in again with
+    /// the same account.
     case signInAgain = "sign_in_again"
     /// Add Account (App Store Connect): open "Sign in with Apple ID", and its
     /// primary button on the Apple ID and password screen.
