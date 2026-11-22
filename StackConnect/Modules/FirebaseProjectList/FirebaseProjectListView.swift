@@ -60,6 +60,7 @@ struct FirebaseProjectListView<ViewModel: FirebaseProjectListViewModelProtocol>:
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.uiState.filteredProjects.isEmpty {
             buildEmptyState()
+                .stackAccountStatusInset(viewModel.uiState.accountStatus)
         } else {
             buildList()
         }
@@ -90,6 +91,8 @@ struct FirebaseProjectListView<ViewModel: FirebaseProjectListViewModelProtocol>:
 
     private func buildList() -> some View {
         List {
+            StackAccountStatusSection(status: viewModel.uiState.accountStatus)
+
             ForEach(viewModel.uiState.filteredProjects) { project in
                 StackTrackedButton(.project, on: .firebaseProjectList) {
                     homeCoordinator.navigateToFirebaseProjectDetail(

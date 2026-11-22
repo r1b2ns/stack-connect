@@ -159,6 +159,7 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.uiState.filteredApps.isEmpty {
             buildEmptyState()
+                .stackAccountStatusInset(viewModel.uiState.accountStatus)
         } else {
             buildList()
         }
@@ -186,6 +187,8 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
 
     private func buildList() -> some View {
         List {
+            StackAccountStatusSection(status: viewModel.uiState.accountStatus)
+
             if !isRunningOnMac {
                 TipView(swipeActionsTip)
                     .listRowBackground(Color(.secondarySystemGroupedBackground))

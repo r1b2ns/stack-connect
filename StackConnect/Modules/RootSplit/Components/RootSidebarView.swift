@@ -82,8 +82,8 @@ struct RootSidebarView<ViewModel: RootSidebarViewModelProtocol>: View {
             HStack {
                 Text(account.name)
                     .lineLimit(1)
-                if account.isExpired {
-                    StackCapsuleBadge(title: String(localized: "expired"), color: .red)
+                if let status = viewModel.uiState.accountStatuses[account.id] {
+                    StackAccountStatusBadge(status: status)
                 }
             }
         } icon: {

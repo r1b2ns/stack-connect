@@ -151,8 +151,10 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
                     }
                 }
             }
+            .stackAccountStatusInset(viewModel.uiState.accountStatus)
         } else if viewModel.uiState.apps.isEmpty {
             buildEmptyState()
+                .stackAccountStatusInset(viewModel.uiState.accountStatus)
         } else if viewModel.uiState.filteredApps.isEmpty {
             ContentUnavailableView.search(text: viewModel.uiState.searchQuery)
         } else {
@@ -190,6 +192,8 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
 
     private func buildList() -> some View {
         List {
+            StackAccountStatusSection(status: viewModel.uiState.accountStatus)
+
             // Inline banner for a failed sync while the cached list stays on screen.
             if let error = viewModel.uiState.error {
                 StackInlineErrorSection(message: error, reportContext: errorReportContext)

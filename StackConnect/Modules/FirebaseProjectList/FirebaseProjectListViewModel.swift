@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import APIProviderFirebase
 import StackProtocols
@@ -39,6 +40,9 @@ struct FirebaseProjectListUiState {
     /// Set when the account's Google sign-in expired or was revoked
     /// (`GoogleAccessRecovery`).
     var googleAccessPrompt: GoogleAccessPrompt?
+    /// The account's problem (`AccountStatusResolving`), shown as a notice
+    /// above the list; `nil` when it has none.
+    var accountStatus: AccountStatus?
 
     var filteredProjects: [FirebaseProjectModel] {
         let query = searchQuery.trimmingCharacters(in: .whitespaces).lowercased()
@@ -61,12 +65,15 @@ final class FirebaseProjectListViewModel: FirebaseProjectListViewModelProtocol {
     private let analytics: AnalyticsTracking
     private let googleAuth: any GoogleAuthServicing
     private let googleAccess: GoogleAccessRecovery
+    private let statusProvider: AccountStatusProviding
+    private var cancellables = Set<AnyCancellable>()
 
     init(
         account: AccountModel,
         keychain: KeyStorable = KeychainStorable.shared,
         analytics: AnalyticsTracking = AnalyticsService.shared,
-        googleAuth: (any GoogleAuthServicing)? = nil
+        googleAuth: (any GoogleAuthServicing)? = nil,
+        statusProvider: AccountStatusProviding? = nil
     ) {
         self.uiState = FirebaseProjectListUiState(account: account)
         self.keychain = keychain
@@ -74,15 +81,28 @@ final class FirebaseProjectListViewModel: FirebaseProjectListViewModelProtocol {
         let googleAuth = googleAuth ?? GoogleAuthService.shared
         self.googleAuth = googleAuth
         self.googleAccess = GoogleAccessRecovery(account: account, keychain: keychain, auth: googleAuth, analytics: analytics, screen: .firebaseProjectList)
+        self.statusProvider = statusProvider ?? AccountStatusService(keychain: keychain)
+
+        self.statusProvider.changes
+            .sink { [weak self] in self?.reloadAccountStatus() }
+            .store(in: &cancellables)
     }
 
     func load() async {
+        reloadAccountStatus()
         await performLoad()
+        reloadAccountStatus()
+    }
+
+    /// Resolves the account's status (sign-in, credentials, expiry).
+    func reloadAccountStatus() {
+        uiState.accountStatus = statusProvider.statuses(for: [uiState.account])[uiState.account.id]
     }
 
     /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
     func refresh() async {
         await performLoad()
+        reloadAccountStatus()
         let failed = uiState.error != nil || uiState.googleAccessPrompt != nil
         analytics.track(.action(.refresh, on: .firebaseProjectList, result: failed ? .failure : .success))
     }

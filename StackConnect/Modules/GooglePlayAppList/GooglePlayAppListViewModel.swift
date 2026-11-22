@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import StackProtocols
 
@@ -38,6 +39,9 @@ struct GooglePlayAppListUiState {
     /// End of the Google Play quota cooldown that pauses the release status
     /// refreshes (`GooglePlayQuotaCooldown`), `nil` when none is in force.
     var releaseStatusPausedUntil: Date?
+    /// The account's problem (`AccountStatusResolving`), shown as a notice
+    /// above the list; `nil` when it has none.
+    var accountStatus: AccountStatus?
 
     /// Release status is gated by the account's `version` rule (plan R5).
     var canViewReleases: Bool {
@@ -164,6 +168,8 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     private var summaryFetchesInFlight = Set<String>()
     private let analytics: AnalyticsTracking
     private let firstAppsLoaded: FirstAppsLoadedTracker
+    private let statusProvider: AccountStatusProviding
+    private var cancellables = Set<AnyCancellable>()
 
     init(
         account: AccountModel,
@@ -176,7 +182,8 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         connectivity: ConnectivityProviding = ConnectivityMonitor.shared,
         analytics: AnalyticsTracking = AnalyticsService.shared,
         firstAppsLoaded: FirstAppsLoadedTracker = .shared,
-        now: @escaping @Sendable () -> Date = { Date() }
+        now: @escaping @Sendable () -> Date = { Date() },
+        statusProvider: AccountStatusProviding? = nil
     ) {
         self.uiState = GooglePlayAppListUiState(account: account)
         self.keychain = keychain
@@ -187,7 +194,12 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
         self.analytics = analytics
         self.firstAppsLoaded = firstAppsLoaded
         self.now = now
+        self.statusProvider = statusProvider ?? AccountStatusService(storage: storage, keychain: keychain)
         self.uiState.googleAccountEmail = GoogleLoginReferences.email(of: account, keychain: keychain)
+
+        self.statusProvider.changes
+            .sink { [weak self] in self?.reloadAccountStatus() }
+            .store(in: &cancellables)
     }
 
     // MARK: - Load
@@ -204,7 +216,14 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     /// ⇒ every app): apps outside it are never shown nor persisted — mirroring
     /// the App Store `AppListViewModel`.
     func load() async {
+        reloadAccountStatus()
         await performLoad(trigger: .automatic)
+        reloadAccountStatus()
+    }
+
+    /// Resolves the account's status (sign-in, credentials, expiry).
+    func reloadAccountStatus() {
+        uiState.accountStatus = statusProvider.statuses(for: [uiState.account])[uiState.account.id]
     }
 
     /// Pull-to-refresh: same load, tracked as a `refresh` action with its
@@ -212,6 +231,7 @@ final class GooglePlayAppListViewModel: GooglePlayAppListViewModelProtocol {
     /// during a quota cooldown (once; a new hit extends it).
     func refresh() async {
         await performLoad(trigger: .userRefresh)
+        reloadAccountStatus()
         analytics.track(.action(.refresh, on: .googlePlayAppList, result: uiState.error == nil ? .success : .failure))
     }
 

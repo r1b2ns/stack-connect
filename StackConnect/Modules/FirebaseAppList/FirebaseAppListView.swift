@@ -112,6 +112,7 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if viewModel.uiState.filteredApps.isEmpty {
             buildEmptyState()
+                .stackAccountStatusInset(viewModel.uiState.accountStatus)
         } else {
             buildList()
         }
@@ -142,6 +143,8 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
 
     private func buildList() -> some View {
         List {
+            StackAccountStatusSection(status: viewModel.uiState.accountStatus)
+
             if !viewModel.uiState.iosApps.isEmpty {
                 buildSection(title: "iOS", glyph: .system("apple.logo"), color: .blue, apps: viewModel.uiState.iosApps)
             }

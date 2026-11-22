@@ -35,6 +35,9 @@ struct RootSidebarUiState {
         RootSidebarProviderSection(provider: $0, accounts: [])
     }
     var queueCounts: [RootReleaseQueue: Int] = [:]
+    /// Problems of the accounts (`AccountStatusResolving`), keyed by account
+    /// id; accounts without one are absent.
+    var accountStatuses: [String: AccountStatus] = [:]
     var hasLoaded = false
 }
 
@@ -62,6 +65,7 @@ final class RootSidebarViewModel: RootSidebarViewModelProtocol {
     private let queueCounter: (any HomeWidget) -> Int
     private let analytics: AnalyticsTracking
     private let featureFlags: FeatureFlags
+    private let statusProvider: AccountStatusProviding
     private var cancellables = Set<AnyCancellable>()
 
     /// - Parameters:
@@ -73,12 +77,19 @@ final class RootSidebarViewModel: RootSidebarViewModelProtocol {
         reloadTrigger: AnyPublisher<Void, Never>? = nil,
         queueCounter: ((any HomeWidget) -> Int)? = nil,
         analytics: AnalyticsTracking = AnalyticsService.shared,
-        featureFlags: FeatureFlags = .shared
+        featureFlags: FeatureFlags = .shared,
+        statusProvider: AccountStatusProviding? = nil
     ) {
         let storage: PersistentStorable = storage ?? SwiftDataStorable.shared
         self.storage = storage
         self.analytics = analytics
         self.featureFlags = featureFlags
+        // Sign-in changes only: a finished sync already reloads through `reloadTrigger`.
+        self.statusProvider = statusProvider ?? AccountStatusService(
+            storage: storage,
+            keychain: KeychainStorable.shared,
+            syncFinished: Empty<Void, Never>().eraseToAnyPublisher()
+        )
         self.queueWidgets = Dictionary(uniqueKeysWithValues: RootReleaseQueue.allCases.map { queue in
             (queue, HomeWidgetRegistry.make(for: HomeWidgetConfiguration(kind: queue.widgetKind), storage: storage, featureFlags: featureFlags))
         })
@@ -86,6 +97,15 @@ final class RootSidebarViewModel: RootSidebarViewModelProtocol {
 
         (reloadTrigger ?? Self.syncFinished)
             .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                guard let self else { return }
+                Task { await self.load() }
+            }
+            .store(in: &cancellables)
+
+        // A sign-in expired or works again: the account chips and the queue
+        // rows' chips change.
+        self.statusProvider.changes
             .sink { [weak self] in
                 guard let self else { return }
                 Task { await self.load() }
@@ -105,6 +125,7 @@ final class RootSidebarViewModel: RootSidebarViewModelProtocol {
             succeeded = false
         }
         uiState.providerSections = Self.sections(from: accounts, featureFlags: featureFlags)
+        uiState.accountStatuses = statusProvider.statuses(for: accounts)
 
         var counts: [RootReleaseQueue: Int] = [:]
         for (queue, widget) in queueWidgets {

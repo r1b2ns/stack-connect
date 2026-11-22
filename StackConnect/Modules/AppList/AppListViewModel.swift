@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import StackProtocols
 import WidgetKit
@@ -27,6 +28,9 @@ struct AppListUiState {
     /// Cached phased releases keyed by version id (and app id as a single-platform
     /// fallback), matching the `"phased.{versionId}"` scheme written by SyncService.
     var phasedByVersionId: [String: PhasedReleaseModel] = [:]
+    /// The account's problem (`AccountStatusResolving`), shown as a notice
+    /// above the apps; `nil` when it has none.
+    var accountStatus: AccountStatus?
 
     /// Non-archived apps, filtered by search query.
     var filteredApps: [AppModel] {
@@ -59,29 +63,49 @@ final class AppListViewModel: AppListViewModelProtocol {
     private let keychain: KeyStorable
     private let analytics: AnalyticsTracking
     private let firstAppsLoaded: FirstAppsLoadedTracker
+    private let statusProvider: AccountStatusProviding
+    private var cancellables = Set<AnyCancellable>()
 
     init(
         account: AccountModel,
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
         analytics: AnalyticsTracking = AnalyticsService.shared,
-        firstAppsLoaded: FirstAppsLoadedTracker = .shared
+        firstAppsLoaded: FirstAppsLoadedTracker = .shared,
+        statusProvider: AccountStatusProviding? = nil
     ) {
+        let storage: PersistentStorable = storage ?? SwiftDataStorable.shared
         self.uiState = AppListUiState(account: account)
-        self.storage = storage ?? SwiftDataStorable.shared
+        self.storage = storage
         self.keychain = keychain
         self.analytics = analytics
         self.firstAppsLoaded = firstAppsLoaded
+        self.statusProvider = statusProvider ?? AccountStatusService(storage: storage, keychain: keychain)
+
+        self.statusProvider.changes
+            .sink { [weak self] in
+                Task { await self?.reloadAccountStatus() }
+            }
+            .store(in: &cancellables)
     }
 
     func loadApps() async {
+        await reloadAccountStatus()
         _ = await syncApps()
+        await reloadAccountStatus()
     }
 
     /// Pull-to-refresh: same load, tracked as a `refresh` action with its outcome.
     func refresh() async {
         let synced = await syncApps()
+        await reloadAccountStatus()
         analytics.track(.action(.refresh, on: .appList, result: synced ? .success : .failure))
+    }
+
+    /// Re-reads the stored account (a sync may flag or clear its pending
+    /// agreements) and resolves its status.
+    func reloadAccountStatus() async {
+        uiState.accountStatus = await statusProvider.status(forAccountId: uiState.account.id)
     }
 
     /// Loads cached apps, then syncs from the API. Returns `true` when the API

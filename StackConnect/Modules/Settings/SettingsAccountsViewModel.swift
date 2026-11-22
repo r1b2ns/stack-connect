@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import StackProtocols
 
@@ -41,6 +42,9 @@ struct SettingsAccountsUiState {
     var accountToDelete: AccountModel?
     var showDeleteConfirmation = false
     var shareItem: ShareableFileURL?
+    /// Problems of the listed accounts (`AccountStatusResolving`), keyed by
+    /// account id; accounts without one are absent.
+    var accountStatuses: [String: AccountStatus] = [:]
 }
 
 // MARK: - Implementation
@@ -56,13 +60,16 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
     private let importer: AccountImporter
     private let analytics: AnalyticsTracking
     private let featureFlags: FeatureFlags
+    private let statusProvider: AccountStatusProviding
+    private var cancellables = Set<AnyCancellable>()
 
     init(
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
         exporter: AccountExporting? = nil,
         analytics: AnalyticsTracking = AnalyticsService.shared,
-        featureFlags: FeatureFlags = .shared
+        featureFlags: FeatureFlags = .shared,
+        statusProvider: AccountStatusProviding? = nil
     ) {
         let storage: PersistentStorable = storage ?? SwiftDataStorable.shared
         self.storage = storage
@@ -71,7 +78,15 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
         self.importer = AccountImporter(storage: storage, keychain: keychain, featureFlags: featureFlags)
         self.analytics = analytics
         self.featureFlags = featureFlags
+        self.statusProvider = statusProvider ?? AccountStatusService(storage: storage, keychain: keychain)
         uiState.availableProviders = featureFlags.availableProviders
+
+        // A sign-in expired or works again, or a sync flagged/cleared agreements.
+        self.statusProvider.changes
+            .sink { [weak self] in
+                Task { await self?.loadAccounts() }
+            }
+            .store(in: &cancellables)
     }
 
     func loadAccounts() async {
@@ -96,6 +111,7 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             uiState.googlePlayAccounts = allAccounts
                 .filter { $0.providerType == .googlePlay }
                 .sorted { $0.name < $1.name }
+            uiState.accountStatuses = statusProvider.statuses(for: allAccounts)
         } catch {
             Log.print.error("[SettingsAccounts] Failed to load accounts: \(error.localizedDescription)")
         }

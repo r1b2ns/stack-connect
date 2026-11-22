@@ -211,11 +211,15 @@ final class HomeViewModel: HomeViewModelProtocol {
             }
             .store(in: &cancellables)
 
-        // An Apple ID session or a Google login expired or works again.
+        // An Apple ID session or a Google login expired or works again: the
+        // banner, and the account status chips of the widget rows.
         notificationCenter.publisher(for: .signInStatusDidChange)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                Task { await self?.reloadExpiredSignIns() }
+                Task {
+                    await self?.reloadExpiredSignIns()
+                    await self?.reloadWidgets()
+                }
             }
             .store(in: &cancellables)
     }

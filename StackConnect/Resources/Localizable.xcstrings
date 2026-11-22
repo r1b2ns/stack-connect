@@ -83,6 +83,95 @@
         }
       }
     },
+    "Account status: %@. %@" : {
+      "comment" : "VoiceOver label of the account status chip. Arguments: the chip text (Disconnected / Action Needed), then the explanation.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Account-Status: %1$@. %2$@"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Account status: %1$@. %2$@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estado de la cuenta: %1$@. %2$@"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estado de la cuenta: %1$@. %2$@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "État du compte : %1$@. %2$@"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stato dell'account: %1$@. %2$@"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "アカウントの状態：%1$@。%2$@"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "계정 상태: %1$@. %2$@"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accountstatus: %1$@. %2$@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status da conta: %1$@. %2$@"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estado da conta: %1$@. %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Статус аккаунта: %1$@. %2$@"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontostatus: %1$@. %2$@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "帳號狀態：%1$@。%2$@"
+          }
+        }
+      }
+    },
     "Accounts added with Sign in with Apple ID can't be exported: the session is your personal Apple ID login. Share an App Store Connect API key instead." : {
       "localizations" : {
         "de" : {
@@ -248,6 +337,7 @@
       }
     },
     "Action Needed" : {
+      "comment" : "Chip on an account (or its apps) with something pending, e.g. App Store Connect agreements to accept.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -276,7 +366,7 @@
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Azione necessaria"
+            "value" : "Azione richiesta"
           }
         },
         "ja" : {
@@ -294,7 +384,7 @@
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Actie nodig"
+            "value" : "Actie vereist"
           }
         },
         "pt-BR" : {
@@ -490,6 +580,89 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "App Store Connect 不接受這次新的登入。請再試一次。"
+          }
+        }
+      }
+    },
+    "App Store Connect has agreements waiting to be accepted by the Account Holder. Some data may not sync until then." : {
+      "comment" : "Account status notice: pending App Store Connect agreements.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In App Store Connect warten Vereinbarungen darauf, vom Account Holder akzeptiert zu werden. Bis dahin werden manche Daten eventuell nicht synchronisiert."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store Connect tiene acuerdos pendientes de aceptación por el titular de la cuenta. Es posible que algunos datos no se sincronicen hasta entonces."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store Connect tiene acuerdos pendientes de aceptación por el titular de la cuenta. Es posible que algunos datos no se sincronicen hasta entonces."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store Connect a des contrats en attente d'acceptation par le titulaire du compte. Certaines données risquent de ne pas se synchroniser d'ici là."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store Connect ha accordi in attesa di essere accettati dal titolare dell'account. Fino ad allora alcuni dati potrebbero non sincronizzarsi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store Connect に、アカウント保有者の同意を待っている契約があります。同意されるまで、一部のデータが同期されない場合があります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store Connect에 계정 소유자의 동의를 기다리는 계약이 있습니다. 그때까지 일부 데이터가 동기화되지 않을 수 있습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store Connect heeft overeenkomsten die nog door de accounthouder moeten worden geaccepteerd. Tot die tijd worden sommige gegevens mogelijk niet gesynchroniseerd."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O App Store Connect tem contratos aguardando a aceitação do titular da conta. Alguns dados podem não sincronizar até lá."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O App Store Connect tem contratos a aguardar a aceitação do titular da conta. Alguns dados podem não ser sincronizados até lá."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В App Store Connect есть соглашения, ожидающие принятия владельцем аккаунта. До этого часть данных может не синхронизироваться."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store Connect har avtal som väntar på att godkännas av kontoinnehavaren. Vissa data kanske inte synkroniseras förrän dess."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store Connect 有協議正等待帳號持有人接受。在此之前，部分資料可能無法同步。"
           }
         }
       }
@@ -1310,6 +1483,89 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "裝置上沒收到驗證碼？請選擇受信任的電話號碼，Apple 就會傳送到該號碼。"
+          }
+        }
+      }
+    },
+    "Disconnected" : {
+      "comment" : "Chip on an account (or its apps) whose login expired or whose credentials can't be used.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Getrennt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desconectada"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desconectada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déconnecté"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disconnesso"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "接続切れ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연결 끊김"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niet verbonden"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desconectada"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desligada"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отключён"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frånkopplad"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已中斷連線"
           }
         }
       }
@@ -3038,6 +3294,89 @@
         }
       }
     },
+    "The credentials of this account are missing on this device. Remove the account and add it again." : {
+      "comment" : "Account status notice: no Keychain credentials for the account.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Zugangsdaten dieses Accounts fehlen auf diesem Gerät. Entferne den Account und füge ihn erneut hinzu."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faltan las credenciales de esta cuenta en este dispositivo. Elimina la cuenta y vuelve a añadirla."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faltan las credenciales de esta cuenta en este dispositivo. Elimina la cuenta y vuelve a agregarla."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les identifiants de ce compte sont absents de cet appareil. Supprimez le compte et ajoutez-le à nouveau."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le credenziali di questo account mancano su questo dispositivo. Rimuovi l'account e aggiungilo di nuovo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このデバイスにこのアカウントの認証情報がありません。アカウントを削除して、もう一度追加してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기에 이 계정의 자격 증명이 없습니다. 계정을 삭제하고 다시 추가하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De inloggegevens van dit account ontbreken op dit apparaat. Verwijder het account en voeg het opnieuw toe."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As credenciais desta conta não estão neste dispositivo. Remova a conta e adicione-a novamente."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As credenciais desta conta não existem neste dispositivo. Remova a conta e adicione-a novamente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На этом устройстве нет учётных данных этого аккаунта. Удалите аккаунт и добавьте его снова."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inloggningsuppgifterna för det här kontot saknas på den här enheten. Ta bort kontot och lägg till det igen."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此裝置上缺少此帳號的憑證。請移除帳號後再重新加入。"
+          }
+        }
+      }
+    },
     "The saved password didn't work. It may have changed: enter your current Apple ID password." : {
       "comment" : "Apple ID sign-in, password screen: the password saved on the device was refused by Apple and removed.",
       "localizations" : {
@@ -3117,6 +3456,89 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已儲存的密碼無法使用，可能已經變更。請輸入你目前的 Apple ID 密碼。"
+          }
+        }
+      }
+    },
+    "The sign-in of this account expired. Sign in again from the Home screen to sync it." : {
+      "comment" : "Account status notice: the Apple ID session or Google login expired.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Anmeldung dieses Accounts ist abgelaufen. Melde dich auf dem Startbildschirm erneut an, um ihn zu synchronisieren."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El inicio de sesión de esta cuenta ha caducado. Vuelve a iniciar sesión desde la pantalla de inicio para sincronizarla."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El inicio de sesión de esta cuenta expiró. Vuelve a iniciar sesión desde la pantalla de inicio para sincronizarla."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La connexion de ce compte a expiré. Reconnectez-vous depuis l'écran d'accueil pour le synchroniser."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'accesso a questo account è scaduto. Accedi di nuovo dalla schermata Home per sincronizzarlo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このアカウントのサインインの有効期限が切れました。同期するには、ホーム画面からもう一度サインインしてください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 계정의 로그인이 만료되었습니다. 동기화하려면 홈 화면에서 다시 로그인하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De aanmelding van dit account is verlopen. Meld je opnieuw aan vanaf het beginscherm om het te synchroniseren."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O login desta conta expirou. Entre novamente pela tela inicial para sincronizá-la."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O início de sessão desta conta expirou. Inicie sessão novamente a partir do ecrã principal para a sincronizar."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Срок входа в этот аккаунт истёк. Войдите снова на главном экране, чтобы синхронизировать его."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inloggningen för det här kontot har gått ut. Logga in igen från startskärmen för att synkronisera det."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此帳號的登入已過期。請從主畫面重新登入以同步。"
           }
         }
       }
@@ -3281,6 +3703,172 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "此 Apple ID 需要你先處理一些事項才能在這裡登入：Apple 要求你檢視或更新帳號中的某些內容（例如新條款或升級安全性）。請登入 appleid.apple.com 並依照步驟操作，然後再試一次。"
+          }
+        }
+      }
+    },
+    "This shared account expired. Re-import its file to keep using it." : {
+      "comment" : "Account status notice: an imported account file expired.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser geteilte Account ist abgelaufen. Importiere seine Datei erneut, um ihn weiter zu verwenden."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta cuenta compartida ha caducado. Vuelve a importar su archivo para seguir usándola."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta cuenta compartida expiró. Vuelve a importar su archivo para seguir usándola."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce compte partagé a expiré. Réimportez son fichier pour continuer à l'utiliser."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questo account condiviso è scaduto. Importa di nuovo il suo file per continuare a usarlo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この共有アカウントは有効期限が切れました。引き続き使用するには、ファイルを再読み込みしてください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 공유 계정이 만료되었습니다. 계속 사용하려면 파일을 다시 가져오세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dit gedeelde account is verlopen. Importeer het bestand opnieuw om het te blijven gebruiken."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta conta compartilhada expirou. Importe o arquivo novamente para continuar usando-a."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta conta partilhada expirou. Importe novamente o ficheiro para continuar a utilizá-la."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Срок действия этого общего аккаунта истёк. Импортируйте его файл заново, чтобы продолжить работу."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det här delade kontot har gått ut. Importera filen igen för att fortsätta använda det."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此共享帳號已過期。請重新匯入其檔案以繼續使用。"
+          }
+        }
+      }
+    },
+    "This shared account expires within 24 hours. Ask for a new file to keep using it." : {
+      "comment" : "Account status notice: an imported account file expires soon.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser geteilte Account läuft innerhalb von 24 Stunden ab. Bitte um eine neue Datei, um ihn weiter zu verwenden."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta cuenta compartida caduca en menos de 24 horas. Pide un archivo nuevo para seguir usándola."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta cuenta compartida expira en menos de 24 horas. Pide un archivo nuevo para seguir usándola."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce compte partagé expire dans moins de 24 heures. Demandez un nouveau fichier pour continuer à l'utiliser."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Questo account condiviso scade entro 24 ore. Chiedi un nuovo file per continuare a usarlo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この共有アカウントは24時間以内に有効期限が切れます。引き続き使用するには、新しいファイルを依頼してください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 공유 계정은 24시간 이내에 만료됩니다. 계속 사용하려면 새 파일을 요청하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dit gedeelde account verloopt binnen 24 uur. Vraag om een nieuw bestand om het te blijven gebruiken."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta conta compartilhada expira em até 24 horas. Peça um novo arquivo para continuar usando-a."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta conta partilhada expira dentro de 24 horas. Peça um novo ficheiro para continuar a utilizá-la."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Срок действия этого общего аккаунта истекает в течение 24 часов. Попросите новый файл, чтобы продолжить работу."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det här delade kontot går ut inom 24 timmar. Be om en ny fil för att fortsätta använda det."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此共享帳號將在 24 小時內過期。請索取新檔案以繼續使用。"
           }
         }
       }
