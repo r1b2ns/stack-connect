@@ -26,16 +26,16 @@ struct AccountGroup: Identifiable, Hashable {
 
 // MARK: - Section
 
-/// One `List` section of the accounts list. Apple accounts are split by how
-/// they are connected (`AppleConnectionKind`), API key accounts first; within a
-/// connection, team groups (`AccountGroup`) become their own sections when
-/// `AccountsListUiState.showsTeamGroups` is on. Other providers have a single
-/// section without a header.
+/// One `List` section of the accounts list. Accounts are split by how they
+/// are connected (`AccountConnectionKind`), key-based accounts first (Apple:
+/// "API Key" / "Apple ID"; Firebase and Google Play: "Service Account Key" /
+/// "Google Account"). Within an Apple connection, team groups (`AccountGroup`)
+/// become their own sections when `AccountsListUiState.showsTeamGroups` is on.
 struct AccountsListSection: Identifiable, Hashable {
     let id: String
-    /// Connection header to show, or `nil` for none: other providers, and the
-    /// following team sections of a connection (only its first one shows it).
-    let connection: AppleConnectionKind?
+    /// Connection header to show, or `nil` for the following team sections of
+    /// a connection (only its first one shows it).
+    let connection: AccountConnection?
     /// Team header (masked issuer ID), or `nil` when the section has none.
     let issuerID: String?
     let accounts: [AccountModel]
@@ -118,30 +118,25 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
         uiState.isLoading = false
     }
 
-    /// Rebuilds `groups` and `sections` from `uiState.accounts`. Apple accounts
-    /// are grouped by team separately for each connection kind, so a team group
+    /// Rebuilds `groups` and `sections` from `uiState.accounts`, one connection
+    /// kind at a time (key file, then sign-in), skipping empty kinds. Apple
+    /// accounts are grouped by team separately for each kind, so a team group
     /// never mixes API key and Apple ID accounts.
     private func rebuildSections() {
-        guard uiState.providerType == .apple else {
-            uiState.groups = buildGroups(from: uiState.accounts)
-            uiState.sections = uiState.groups.map {
-                AccountsListSection(id: $0.id, connection: nil, issuerID: nil, accounts: $0.accounts)
-            }
-            return
-        }
-
-        let groupsByKind: [(AppleConnectionKind, [AccountGroup])] = AppleConnectionKind.allCases.compactMap { kind in
-            let accounts = uiState.accounts.filter { $0.appleConnectionKind == kind }
+        let provider = uiState.providerType
+        let groupsByKind: [(AccountConnectionKind, [AccountGroup])] = AccountConnectionKind.allCases.compactMap { kind in
+            let accounts = uiState.accounts.filter { $0.connectionKind == kind }
             return accounts.isEmpty ? nil : (kind, buildGroups(from: accounts))
         }
         uiState.groups = groupsByKind.flatMap(\.1)
 
         let showsTeamGroups = uiState.showsTeamGroups
         uiState.sections = groupsByKind.flatMap { kind, groups -> [AccountsListSection] in
+            let connection = AccountConnection(provider: provider, kind: kind)
             guard showsTeamGroups else {
                 return [AccountsListSection(
                     id: kind.rawValue,
-                    connection: kind,
+                    connection: connection,
                     issuerID: nil,
                     accounts: groups.flatMap(\.accounts)
                 )]
@@ -149,7 +144,7 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
             return groups.enumerated().map { index, group in
                 AccountsListSection(
                     id: "\(kind.rawValue).\(group.id)",
-                    connection: index == 0 ? kind : nil,
+                    connection: index == 0 ? connection : nil,
                     issuerID: group.issuerID,
                     accounts: group.accounts
                 )
