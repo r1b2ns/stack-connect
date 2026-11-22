@@ -319,7 +319,9 @@ final class AddAccountGoogleSignInViewModelTests: XCTestCase {
         await sut.save()
 
         XCTAssertFalse(sut.uiState.isSaved)
-        XCTAssertEqual(sut.uiState.validationError, String(localized: "This Google account is already added as \"Mine\"."))
+        // Interpolated like production so the lookup hits the localized "%@" key.
+        let existingName = existing.name
+        XCTAssertEqual(sut.uiState.validationError, String(localized: "This Google account is already added as \"\(existingName)\"."))
         let saved = try await storage.fetchAll(AccountModel.self)
         XCTAssertEqual(saved.count, 1)
         XCTAssertEqual(analytics.actions(of: .createAccount).first?.parameters[AnalyticsParameterKey.errorCategory], .string("duplicate"))

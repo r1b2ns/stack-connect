@@ -195,7 +195,8 @@ final class UserDetailViewModelTests: XCTestCase {
 
         XCTAssertFalse(ok)
         XCTAssertNotNil(sut.uiState.errorMessage)
-        XCTAssertTrue(sut.uiState.errorMessage?.contains("Admin role") ?? false)
+        // The localized 403 copy, so the assertion holds in any simulator locale.
+        XCTAssertEqual(sut.uiState.errorMessage, String(localized: "Your App Store Connect API key isn't allowed to manage users. Managing Users and Access requires a key with the Admin role. Update the key's permissions in App Store Connect (Users and Access → Integrations) and try again."))
         // Optimistic update must NOT have happened on failure.
         XCTAssertEqual(sut.uiState.user.roles, ["DEVELOPER"])
         XCTAssertFalse(sut.uiState.isSaving)
@@ -317,7 +318,8 @@ final class UserDetailViewModelTests: XCTestCase {
 
         XCTAssertFalse(ok)
         XCTAssertNotNil(sut.uiState.errorMessage)
-        XCTAssertTrue(sut.uiState.errorMessage?.contains("Admin role") ?? false)
+        // The localized 403 copy, so the assertion holds in any simulator locale.
+        XCTAssertEqual(sut.uiState.errorMessage, String(localized: "Your App Store Connect API key isn't allowed to remove users. Managing Users and Access requires a key with the Admin role. Update the key's permissions in App Store Connect (Users and Access → Integrations) and try again."))
     }
 
     // MARK: - Guards: pending → edits disabled

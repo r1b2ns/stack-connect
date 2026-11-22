@@ -129,29 +129,37 @@ final class GooglePlayUsersFoundationTests: XCTestCase {
 
     func testSummary() {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
+        // Every expected line is built from the same localized names, list format
+        // and " · " joiner as `summary(for:)`, so the test holds in any simulator locale.
+        let replyToReviews = Catalog.all.first { $0.id == "replyToReviews" }!.accountName
+        let releaseToTesting = Catalog.all.first { $0.id == "releaseToTesting" }!.accountName
         XCTAssertEqual(Catalog.summary(for: GooglePlayUserModel(email: "a@x.example", developerAccountPermissions: [Catalog.adminPermission])),
-                       "Admin (all permissions)")
+                       Catalog.adminName)
         let support = GooglePlayUserModel(email: "s@x.example", grants: [
             GooglePlayGrantModel(packageName: "com.a", appLevelPermissions: ["CAN_VIEW_NON_FINANCIAL_DATA", "CAN_REPLY_TO_REVIEWS"])
         ])
         // Granted: the "1 App" badge carries the scope, so the line doesn't repeat it.
-        XCTAssertEqual(Catalog.summary(for: support), "Reply to reviews")
-        XCTAssertEqual(support.listBadge?.title, "1 App")
+        XCTAssertEqual(Catalog.summary(for: support), replyToReviews)
+        XCTAssertEqual(support.listBadge?.title, String(localized: "1 App"))
         var invited = support
         invited.accessStateRaw = GooglePlayUserAccessState.invited.rawValue
         // Invited: the badge shows the state, so the line keeps the app count.
-        XCTAssertEqual(Catalog.summary(for: invited), "Reply to reviews · 1 app")
+        XCTAssertEqual(Catalog.summary(for: invited), "\(replyToReviews) · \(String(localized: "1 app"))")
         let releases = GooglePlayUserModel(email: "r@x.example", grants: [
             GooglePlayGrantModel(packageName: "com.a", appLevelPermissions: ["CAN_MANAGE_PUBLIC_APKS", "CAN_MANAGE_PUBLIC_LISTING"]),
             GooglePlayGrantModel(packageName: "com.b", appLevelPermissions: ["CAN_MANAGE_TRACK_APKS"])
         ])
-        XCTAssertEqual(Catalog.summary(for: releases), "Releases, Store presence")
-        XCTAssertEqual(releases.listBadge?.title, "2 Apps")
+        let groups = [GooglePlayPermissionGroup.releases.title, GooglePlayPermissionGroup.storePresence.title]
+        XCTAssertEqual(Catalog.summary(for: releases), groups.formatted(.list(type: .and, width: .narrow)))
+        let appCount = 2
+        XCTAssertEqual(releases.listBadge?.title, String(localized: "\(appCount) Apps"))
         let service = GooglePlayUserModel(email: "ci@p.iam.gserviceaccount.com", developerAccountPermissions: ["CAN_MANAGE_TRACK_APKS_GLOBAL"])
-        XCTAssertEqual(Catalog.summary(for: service), "Service account · Release to testing tracks")
+        XCTAssertEqual(Catalog.summary(for: service), "\(String(localized: "Service account")) · \(releaseToTesting)")
         let expiring = GooglePlayUserModel(email: "e@x.example", expirationTime: now.addingTimeInterval(86_400),
                                            developerAccountPermissions: ["CAN_REPLY_TO_REVIEWS_GLOBAL"])
-        XCTAssertTrue(Catalog.summary(for: expiring, now: now).hasPrefix("Reply to reviews · expires "))
+        let expiryDate = now.addingTimeInterval(86_400).formatted(date: .abbreviated, time: .omitted)
+        XCTAssertEqual(Catalog.summary(for: expiring, now: now),
+                       "\(replyToReviews) · \(String(localized: "expires \(expiryDate)"))")
     }
 
     // MARK: - Presets

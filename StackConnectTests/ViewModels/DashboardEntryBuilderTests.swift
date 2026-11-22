@@ -25,7 +25,9 @@ final class DashboardEntryBuilderTests: XCTestCase {
 
         XCTAssertEqual(entries.map(\.versionText), ["5.2.0", "4.3.0-beta2", "2.0.0"])
         XCTAssertEqual(entries.map(\.statusColor), [.red, .orange, .gray])
-        XCTAssertEqual(entries.first?.statusText, "Production · Not approved")
+        // Same localized format as `GooglePlayTrackStatusLine.text`, so it holds in any locale.
+        let expectedStatus = String(localized: "\(GooglePlayTrackKind(track: "production").displayName) · \(GooglePlayReleaseLifecycleState.notApproved.displayName)")
+        XCTAssertEqual(entries.first?.statusText, expectedStatus)
         XCTAssertEqual(entries.first?.platform, .android)
         XCTAssertEqual(entries.first?.provider, .googlePlay)
         XCTAssertEqual(entries.first?.target, .googlePlay(source.app))
@@ -51,12 +53,17 @@ final class DashboardEntryBuilderTests: XCTestCase {
         let entries = DashboardEntryBuilder.googlePlayAwaitingRelease([source])
 
         XCTAssertEqual(entries.map(\.versionText), ["2.8.1", "4.2.0", "2.7.0"])
-        XCTAssertEqual(entries[0].statusText, "Production · Approved, not published")
+        // Built from the same localized formats and percent formatter as the builder,
+        // so the assertions hold in any simulator locale.
+        let production = GooglePlayTrackKind(track: "production").displayName
+        let rolloutPercent = 0.2.formatted(.percent.precision(.fractionLength(0...1)))
+        let haltedPercent = 0.1.formatted(.percent.precision(.fractionLength(0...1)))
+        XCTAssertEqual(entries[0].statusText, String(localized: "\(production) · \(GooglePlayReleaseLifecycleState.approvedNotPublished.displayName)"))
         XCTAssertNil(entries[0].progress)
-        XCTAssertEqual(entries[1].statusText, "Production · Rolling out 20%")
+        XCTAssertEqual(entries[1].statusText, String(localized: "\(production) · Rolling out \(rolloutPercent)"))
         XCTAssertEqual(entries[1].progress, .rollout(fraction: 0.2, halted: false, asOf: asOf))
         XCTAssertEqual(entries[1].statusColor, .blue)
-        XCTAssertEqual(entries[2].statusText, "Production · Halted at 10%")
+        XCTAssertEqual(entries[2].statusText, String(localized: "\(production) · Halted at \(haltedPercent)"))
         XCTAssertEqual(entries[2].progress?.isPaused, true)
     }
 

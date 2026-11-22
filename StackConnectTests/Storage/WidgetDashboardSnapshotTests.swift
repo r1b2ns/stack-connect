@@ -170,7 +170,9 @@ final class WidgetDashboardSnapshotTests: XCTestCase {
         let snapshot = try await snapshot()
 
         XCTAssertEqual(snapshot.inReview.map(\.platform), [.android])
-        XCTAssertEqual(snapshot.inReview.first?.statusText, "Production · Not approved")
+        // Same localized format as `GooglePlayTrackStatusLine.text`, so it holds in any locale.
+        let expectedStatus = String(localized: "\(GooglePlayTrackKind(track: "production").displayName) · \(GooglePlayReleaseLifecycleState.notApproved.displayName)")
+        XCTAssertEqual(snapshot.inReview.first?.statusText, expectedStatus)
         XCTAssertEqual(snapshot.inReview.first?.iconUrl, "https://play/icon")
         XCTAssertEqual(snapshot.recentReviews.first?.deepLink,
                        DeepLink.review(accountId: play.id, appId: "com.t", reviewId: "com.t/r1").url.absoluteString)
