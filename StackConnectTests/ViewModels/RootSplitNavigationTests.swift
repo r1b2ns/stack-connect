@@ -133,14 +133,14 @@ final class RootSplitCoordinatorTests: XCTestCase {
 
     func testPlainHomeCoordinatorStillPushesAndPopsToRoot() {
         let home = HomeCoordinator()
-        home.navigateToSettings()
+        home.navigateToSettingsAccounts()
         home.navigateToLicense()
         XCTAssertEqual(home.path.count, 2)
 
         home.popToRoot()
         XCTAssertTrue(home.path.isEmpty)
 
-        home.navigateToSettings()
+        home.navigateToSettingsAccounts()
         home.show(.license)
         XCTAssertEqual(home.path.count, 1)
     }

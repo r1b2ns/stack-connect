@@ -1,7 +1,6 @@
 import SwiftUI
 
 enum HomeRoute: Hashable {
-    case settings
     case settingsAccounts
     case license
     case tipJar
@@ -106,10 +105,6 @@ final class HomeCoordinator: MainCoordinatorProtocol {
         } else {
             path.removeLast(path.count)
         }
-    }
-
-    func navigateToSettings() {
-        push(HomeRoute.settings)
     }
 
     func navigateToSettingsAccounts() {

@@ -42,8 +42,9 @@ enum AnalyticsAction: String, CaseIterable, Sendable {
     // MARK: Split view (iPad / Mac)
     /// A split view sidebar destination was opened, with `destination`
     /// (`AnalyticsSidebarDestination`) and `source` (`AnalyticsNavigationOrigin`:
-    /// sidebar click, menu / keyboard command or dashboard KPI tile). Sent
-    /// without `screen_name`, and only when the selection actually changes.
+    /// sidebar click, menu / keyboard command, dashboard KPI tile or the
+    /// compact tab bar). Sent without `screen_name`, and only when the
+    /// selection actually changes.
     case navigate = "navigate"
     /// The Find menu command (⌘F) asked the screen on display to focus its
     /// search field, with `source`. Never the search text.

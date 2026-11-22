@@ -11,8 +11,6 @@ struct HomeRouteView: View {
 
     var body: some View {
         switch route {
-        case .settings:
-            SettingsViewFactory.build()
         case .settingsAccounts:
             SettingsAccountsViewFactory.build()
         case .license:

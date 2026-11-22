@@ -173,7 +173,7 @@ enum AnalyticsReleaseWriteKind: String, CaseIterable, Sendable {
 
 // MARK: - Split view navigation
 
-/// Where a split view navigation came from (`source` of the `navigate` and
+/// Where a root navigation (split view sidebar item or compact tab) came from (`source` of the `navigate` and
 /// `find` actions, and of the menu `refresh`). Same key as the deep-link
 /// `source` of `app_opened_from`: the action name tells the two value sets
 /// apart.
@@ -185,6 +185,8 @@ enum AnalyticsNavigationOrigin: String, CaseIterable, Sendable {
     case menuCommand = "menu_command"
     /// A release queue KPI tile on the iPad / Mac dashboard.
     case dashboardTile = "dashboard_tile"
+    /// The compact-width tab bar (Accounts / Settings).
+    case tabBar = "tab_bar"
 }
 
 /// The kind of split view sidebar item opened (`destination` of `navigate`).

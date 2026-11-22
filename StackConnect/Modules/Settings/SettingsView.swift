@@ -7,6 +7,27 @@ struct SettingsViewFactory {
     static func build() -> some View {
         SettingsEntry()
     }
+
+    /// Settings as the root of the compact Settings tab: its own
+    /// `NavigationStack`, driven by `coordinator` (owned by `RootTabCoordinator`),
+    /// so every screen reached from Settings pushes on this tab's stack.
+    static func buildTabRoot(coordinator: HomeCoordinator) -> some View {
+        SettingsTabRoot(coordinator: coordinator)
+    }
+}
+
+// MARK: - Tab Root
+
+private struct SettingsTabRoot: View {
+    @ObservedObject var coordinator: HomeCoordinator
+
+    var body: some View {
+        NavigationStack(path: $coordinator.path) {
+            SettingsEntry()
+                .homeNavigationDestinations()
+        }
+        .environmentObject(coordinator)
+    }
 }
 
 // MARK: - Entry
