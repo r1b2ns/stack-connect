@@ -202,7 +202,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
         } header: {
             Text("No API Key?")
         } footer: {
-            Text("Sign in with your Apple ID and its two-factor code instead, then pick the teams to add. Your password is saved only in this device's Keychain. Analytics Reports need an API key.")
+            Text("Sign in with your Apple ID and its two-factor code instead, then pick the teams to add. If you choose to, your password is saved only in this device's Keychain. Analytics Reports need an API key.")
         }
     }
 

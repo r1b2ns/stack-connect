@@ -121,6 +121,10 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
             }
         }
 
+        if !state.usesSavedPassword {
+            buildSavePasswordSection()
+        }
+
         if let notice = state.notice {
             Section {
                 StackNoticeRow(text: notice, style: .info)
@@ -129,7 +133,7 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
 
         Section {
             StackNoticeRow(
-                text: String(localized: "StackConnect sends your password only to Apple. Once you're signed in, it's saved in the Keychain on this device only, never synced or exported, so signing in again only takes the code."),
+                text: String(localized: "StackConnect sends your password only to Apple. It's saved only if you choose to, in the Keychain on this device only, never synced or exported."),
                 style: .privacy
             )
         }
@@ -145,6 +149,18 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
             .disabled(!state.canSignIn)
         } footer: {
             Text("Accounts with a security key as their second factor can't sign in here yet. Use an App Store Connect API key instead.")
+        }
+    }
+
+    /// "Save password on this device". Hidden while the saved password is used.
+    private func buildSavePasswordSection() -> some View {
+        Section {
+            Toggle(String(localized: "Save password on this device"), isOn: Binding(
+                get: { viewModel.uiState.savesPassword },
+                set: { viewModel.setSavesPassword($0) }
+            ))
+        } footer: {
+            Text("You'll only need the verification code next time. Stored in this device's Keychain.")
         }
     }
 

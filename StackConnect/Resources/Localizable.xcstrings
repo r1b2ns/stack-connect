@@ -2637,88 +2637,6 @@
         }
       }
     },
-    "Sign in with your Apple ID and its two-factor code instead, then pick the teams to add. Your password is saved only in this device's Keychain. Analytics Reports need an API key." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Melde dich stattdessen mit deiner Apple-ID und ihrem Zwei-Faktor-Code an und wähle dann die Teams aus. Dein Passwort wird nur im Schlüsselbund dieses Geräts gespeichert. Analytics-Berichte benötigen einen API-Schlüssel."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inicia sesión con tu Apple ID y su código de doble factor y luego elige los equipos que quieres añadir. Tu contraseña solo se guarda en el llavero de este dispositivo. Los informes de Analytics necesitan una clave de API."
-          }
-        },
-        "es-MX" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inicia sesión con tu Apple ID y su código de dos factores y luego elige los equipos que quieres agregar. Tu contraseña solo se guarda en el llavero de este dispositivo. Los reportes de Analytics necesitan una clave de API."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connectez-vous plutôt avec votre Identifiant Apple et son code à deux facteurs, puis choisissez les équipes à ajouter. Votre mot de passe est enregistré uniquement dans le trousseau de cet appareil. Les rapports Analytics nécessitent une clé d'API."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Accedi invece con il tuo Apple ID e il suo codice a due fattori, poi scegli i team da aggiungere. La password viene salvata solo nel portachiavi di questo dispositivo. I report di Analytics richiedono una chiave API."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "代わりに Apple ID と2ファクタ認証コードでサインインし、追加するチームを選びます。パスワードはこのデバイスのキーチェーンにのみ保存されます。アナリティクスレポートには API キーが必要です。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "대신 Apple ID와 이중 인증 코드로 로그인한 다음 추가할 팀을 선택하세요. 암호는 이 기기의 키체인에만 저장됩니다. 분석 보고서에는 API 키가 필요합니다."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Log in plaats daarvan in met je Apple ID en de tweestapscode en kies daarna de teams. Je wachtwoord wordt alleen in de sleutelhanger van dit apparaat bewaard. Voor Analytics-rapporten is een API-sleutel nodig."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Faça login com o seu Apple ID e o código de dois fatores e escolha as equipes a adicionar. A senha fica salva apenas nas Chaves deste dispositivo. Os relatórios do Analytics precisam de uma chave de API."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Em alternativa, inicie sessão com o seu ID Apple e o código de dois fatores e escolha as equipas a adicionar. A palavra-passe fica guardada apenas no porta-chaves deste dispositivo. Os relatórios do Analytics precisam de uma chave de API."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вместо этого войдите с Apple ID и кодом двухфакторной аутентификации, затем выберите команды. Пароль хранится только в связке ключей этого устройства. Для отчетов Analytics нужен ключ API."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Logga in med ditt Apple-ID och tvåfaktorskoden i stället och välj sedan teamen att lägga till. Lösenordet sparas bara i nyckelringen på den här enheten. Analytics-rapporter kräver en API-nyckel."
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "改用你的 Apple ID 及其雙重認證碼登入，然後選擇要加入的團隊。你的密碼只會儲存在此裝置的鑰匙圈中。分析報告需要 API 密鑰。"
-          }
-        }
-      }
-    },
     "Signed in with the password saved on this device. Only the code is left." : {
       "comment" : "Apple ID sign-in, code screen footer when the saved password was used.",
       "localizations" : {
@@ -2798,88 +2716,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已使用此裝置上儲存的密碼。只剩下輸入驗證碼。"
-          }
-        }
-      }
-    },
-    "StackConnect sends your password only to Apple. Once you're signed in, it's saved in the Keychain on this device only, never synced or exported, so signing in again only takes the code." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "StackConnect sendet dein Passwort nur an Apple. Nach der Anmeldung wird es nur im Schlüsselbund dieses Geräts gespeichert, nie synchronisiert oder exportiert, sodass du bei der nächsten Anmeldung nur den Code eingeben musst."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "StackConnect solo envía tu contraseña a Apple. Cuando inicias sesión, se guarda únicamente en el llavero de este dispositivo, sin sincronizarse ni exportarse, así que para volver a iniciar sesión solo necesitas el código."
-          }
-        },
-        "es-MX" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "StackConnect solo envía tu contraseña a Apple. Cuando inicias sesión, se guarda únicamente en el llavero de este dispositivo, sin sincronizarse ni exportarse, así que para volver a iniciar sesión solo necesitas el código."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "StackConnect envoie votre mot de passe uniquement à Apple. Une fois connecté, il est enregistré dans le trousseau de cet appareil seulement, jamais synchronisé ni exporté : pour vous reconnecter, il ne vous faudra que le code."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "StackConnect invia la password solo ad Apple. Dopo l'accesso viene salvata solo nel portachiavi di questo dispositivo, mai sincronizzata né esportata, così per accedere di nuovo basta il codice."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "StackConnect はパスワードを Apple にのみ送信します。サインイン後は、このデバイスのキーチェーンにのみ保存され、同期やエクスポートはされません。次回のサインインではコードの入力だけで済みます。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "StackConnect는 암호를 Apple에만 보냅니다. 로그인하면 암호는 이 기기의 키체인에만 저장되며 동기화되거나 내보내지지 않으므로, 다시 로그인할 때는 코드만 입력하면 됩니다."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "StackConnect stuurt je wachtwoord alleen naar Apple. Na het inloggen wordt het alleen in de sleutelhanger van dit apparaat bewaard, nooit gesynchroniseerd of geëxporteerd, zodat je bij opnieuw inloggen alleen de code nodig hebt."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O StackConnect envia sua senha somente para a Apple. Depois que você fizer login, ela fica salva apenas nas Chaves deste dispositivo, sem sincronização nem exportação, e para entrar de novo basta o código."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O StackConnect envia a sua palavra-passe apenas à Apple. Depois de iniciar sessão, fica guardada só no porta-chaves deste dispositivo, nunca sincronizada nem exportada, e para voltar a iniciar sessão basta o código."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "StackConnect отправляет пароль только в Apple. После входа он хранится только в связке ключей этого устройства, без синхронизации и экспорта, поэтому для повторного входа понадобится только код."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "StackConnect skickar ditt lösenord bara till Apple. När du har loggat in sparas det endast i nyckelringen på den här enheten, aldrig synkat eller exporterat, så nästa inloggning kräver bara koden."
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "StackConnect 只會把你的密碼傳送給 Apple。登入後，密碼只會儲存在此裝置的鑰匙圈中，不會同步或匯出，之後再次登入只需輸入驗證碼。"
           }
         }
       }
@@ -7674,9 +7510,7 @@
         }
       }
     },
-    "%lld of %lld apps" : {
-
-    },
+    "%lld of %lld apps" : {},
     "%lld of %lld characters" : {
       "comment" : "Accessibility label of the reply composer's character counter. Arguments: characters typed, character limit.",
       "localizations" : {
@@ -11425,9 +11259,7 @@
         }
       }
     },
-    "Access financial reports, sales and payments. Manage banking and tax details." : {
-
-    },
+    "Access financial reports, sales and payments. Manage banking and tax details." : {},
     "Access granted" : {
       "comment" : "Google Play user access state.",
       "localizations" : {
@@ -13340,9 +13172,7 @@
         }
       }
     },
-    "Active subscriptions by state, including trials and billing retry." : {
-
-    },
+    "Active subscriptions by state, including trials and billing retry." : {},
     "Active Users" : {
       "comment" : "A heading for the section that displays the number of active users.",
       "isCommentAutoGenerated" : true,
@@ -15067,9 +14897,7 @@
     "Additional Resources" : {
       "comment" : "Section header for the additional-resource role toggles in the user access editor."
     },
-    "Additions and removals of your Home Screen widgets." : {
-
-    },
+    "Additions and removals of your Home Screen widgets." : {},
     "Admin" : {
       "comment" : "Google Play invite preset.",
       "localizations" : {
@@ -16042,9 +15870,7 @@
         }
       }
     },
-    "All apps" : {
-
-    },
+    "All apps" : {},
     "All Apps" : {
       "comment" : "A section header that lists all apps, excluding favorites.",
       "isCommentAutoGenerated" : true,
@@ -22640,9 +22466,7 @@
         }
       }
     },
-    "Apps permissions" : {
-
-    },
+    "Apps permissions" : {},
     "Apps waiting on App Review" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -27624,9 +27448,7 @@
         }
       }
     },
-    "CarPlay App Usage" : {
-
-    },
+    "CarPlay App Usage" : {},
     "CarPlay Navigation" : {
       "comment" : "The \"CarPlay Navigation\" report is not available in the free version of the app.",
       "isCommentAutoGenerated" : true
@@ -28703,9 +28525,7 @@
         }
       }
     },
-    "Check again" : {
-
-    },
+    "Check again" : {},
     "Check list pre review" : {
       "comment" : "Title of the Settings toggle that enables the pre-submit review checklist.",
       "localizations" : {
@@ -29414,9 +29234,7 @@
         }
       }
     },
-    "Choose which apps the recipient can access. Leave as All apps to share everything." : {
-
-    },
+    "Choose which apps the recipient can access. Leave as All apps to share everything." : {},
     "Click the line under the device name (capacity / iOS version) — it cycles between Serial Number, UDID and ECID" : {
       "localizations" : {
         "de" : {
@@ -33292,9 +33110,7 @@
         }
       }
     },
-    "Crash counts across devices and app versions." : {
-
-    },
+    "Crash counts across devices and app versions." : {},
     "Create" : {
       "comment" : "The title of a button that creates a new beta group.",
       "isCommentAutoGenerated" : true,
@@ -43419,9 +43235,7 @@
         }
       }
     },
-    "Enable analytics reports" : {
-
-    },
+    "Enable analytics reports" : {},
     "Enable API" : {
       "comment" : "A button label that prompts the user to enable API access.",
       "isCommentAutoGenerated" : true,
@@ -43979,9 +43793,7 @@
         }
       }
     },
-    "Engagement with your notifications delivered in the scheduled summary." : {
-
-    },
+    "Engagement with your notifications delivered in the scheduled summary." : {},
     "Enjoying StackConnect?" : {
       "comment" : "Heading at the top of the tip jar screen; also the title of the Home card inviting the user to leave an optional tip.",
       "localizations" : {
@@ -45396,9 +45208,7 @@
         }
       }
     },
-    "Expected by %@" : {
-
-    },
+    "Expected by %@" : {},
     "Expiration" : {
       "localizations" : {
         "de" : {
@@ -51533,9 +51343,7 @@
         }
       }
     },
-    "First-time downloads, redownloads, and updates across territories." : {
-
-    },
+    "First-time downloads, redownloads, and updates across territories." : {},
     "First-time setup" : {
       "localizations" : {
         "de" : {
@@ -59718,21 +59526,11 @@
         }
       }
     },
-    "How often Live Activities from your app are started and viewed." : {
-
-    },
-    "How often users select media through the system Photos picker." : {
-
-    },
-    "How often your app matches audio using ShazamKit." : {
-
-    },
-    "How often your app turns on the device flashlight." : {
-
-    },
-    "How often your app's shortcuts are run from the Shortcuts app." : {
-
-    },
+    "How often Live Activities from your app are started and viewed." : {},
+    "How often users select media through the system Photos picker." : {},
+    "How often your app matches audio using ShazamKit." : {},
+    "How often your app turns on the device flashlight." : {},
+    "How often your app's shortcuts are run from the Shortcuts app." : {},
     "How to find the UDID" : {
       "localizations" : {
         "de" : {
@@ -62187,9 +61985,7 @@
         }
       }
     },
-    "Impressions, product page views, and how users find and engage with your app on the App Store." : {
-
-    },
+    "Impressions, product page views, and how users find and engage with your app on the App Store." : {},
     "In APIs & Services › Library, search for \"Google Play Developer Reporting API\" and tap Enable." : {
       "comment" : "Google Play setup tutorial step detail.",
       "localizations" : {
@@ -63637,9 +63433,7 @@
       "comment" : "Name of an analytics report that tracks app installations and deletions.",
       "isCommentAutoGenerated" : true
     },
-    "Installations and deletions of your app across devices." : {
-
-    },
+    "Installations and deletions of your app across devices." : {},
     "Installed" : {
       "comment" : "Label for the state of a beta tester who has installed the app.",
       "isCommentAutoGenerated" : true,
@@ -63809,9 +63603,7 @@
         }
       }
     },
-    "Installs broken down by platform and device type." : {
-
-    },
+    "Installs broken down by platform and device type." : {},
     "Integrations > App Store Connect API" : {
       "comment" : "Navigation link text in the Add Account view, leading to the \"Integrations > App Store Connect API\" section.",
       "isCommentAutoGenerated" : true,
@@ -63896,9 +63688,7 @@
         }
       }
     },
-    "Interactions and views of your Home Screen widgets." : {
-
-    },
+    "Interactions and views of your Home Screen widgets." : {},
     "Internal" : {
       "comment" : "A label for an internal beta group.",
       "isCommentAutoGenerated" : true,
@@ -65407,9 +65197,7 @@
         }
       }
     },
-    "Invitation" : {
-
-    },
+    "Invitation" : {},
     "Invitation cancelled" : {
       "comment" : "Message displayed as a toast when an invitation to add a user is cancelled.",
       "isCommentAutoGenerated" : true,
@@ -65577,9 +65365,7 @@
         }
       }
     },
-    "Invitation Expires" : {
-
-    },
+    "Invitation Expires" : {},
     "Invitation sent" : {
       "comment" : "Google Play users list: invitation not accepted yet.",
       "localizations" : {
@@ -68474,9 +68260,7 @@
         }
       }
     },
-    "Live Activities" : {
-
-    },
+    "Live Activities" : {},
     "Live: %@" : {
       "comment" : "Google Play track hint. Argument: release name.",
       "localizations" : {
@@ -71620,12 +71404,8 @@
         }
       }
     },
-    "Manage submissions" : {
-
-    },
-    "Manage Submissions" : {
-
-    },
+    "Manage submissions" : {},
+    "Manage Submissions" : {},
     "Manage team members, roles, and access" : {
       "comment" : "Footer description for the \"Users\" account rule resource.",
       "isCommentAutoGenerated" : true,
@@ -75216,9 +74996,7 @@
         }
       }
     },
-    "Navigation sessions and usage of your CarPlay app." : {
-
-    },
+    "Navigation sessions and usage of your CarPlay app." : {},
     "Needed only to manage users. It's the number in Play Console › Settings › Developer account (also in every Play Console URL). You can add it later in Account Settings." : {
       "localizations" : {
         "de" : {
@@ -78298,9 +78076,7 @@
         }
       }
     },
-    "No apps synced yet. Sync this account before scoping by app." : {
-
-    },
+    "No apps synced yet. Sync this account before scoping by app." : {},
     "No Archived Apps" : {
       "comment" : "A message displayed when a user has no archived apps.",
       "isCommentAutoGenerated" : true,
@@ -85205,9 +84981,7 @@
       "comment" : "A column header in the analytics report detail view.",
       "isCommentAutoGenerated" : true
     },
-    "Number and duration of active sessions in your app." : {
-
-    },
+    "Number and duration of active sessions in your app." : {},
     "Off keeps them in Play Console until you send them there." : {
       "localizations" : {
         "de" : {
@@ -88140,9 +87914,7 @@
         }
       }
     },
-    "Outcomes of location permission prompts, such as allow, deny, or precise." : {
-
-    },
+    "Outcomes of location permission prompts, such as allow, deny, or precise." : {},
     "Override" : {
       "localizations" : {
         "de" : {
@@ -89923,9 +89695,7 @@
         }
       }
     },
-    "Performance of re-engagement and retention messages shown on the App Store." : {
-
-    },
+    "Performance of re-engagement and retention messages shown on the App Store." : {},
     "Permission Denied" : {
       "comment" : "A title for an alert that is shown when the user denies a permission.",
       "isCommentAutoGenerated" : true,
@@ -90258,9 +90028,7 @@
         }
       }
     },
-    "Phased release" : {
-
-    },
+    "Phased release" : {},
     "Phased Release" : {
       "comment" : "A title and a subtitle displayed in a button.",
       "isCommentAutoGenerated" : true,
@@ -92047,9 +91815,7 @@
       "comment" : "Display name for the \"Pre-Orders\" report in the analytics catalog.",
       "isCommentAutoGenerated" : true
     },
-    "Pre-orders started and canceled before your app's release." : {
-
-    },
+    "Pre-orders started and canceled before your app's release." : {},
     "Prepare for Submission" : {
       "comment" : "Display name for the \"Prepare for Submission\" case in the AppStoreState enum.",
       "isCommentAutoGenerated" : true,
@@ -93445,9 +93211,7 @@
         }
       }
     },
-    "Proceeds, sales, and paying users from purchases and in-app purchases." : {
-
-    },
+    "Proceeds, sales, and paying users from purchases and in-app purchases." : {},
     "Processing" : {
       "comment" : "Label for a build state when the build is currently being processed.",
       "isCommentAutoGenerated" : true,
@@ -96628,9 +96392,7 @@
         }
       }
     },
-    "Rate at which users opt in to share their app analytics data." : {
-
-    },
+    "Rate at which users opt in to share their app analytics data." : {},
     "ratings" : {
       "comment" : "A string that shows the count of ratings, pluralized appropriately.",
       "isCommentAutoGenerated" : true,
@@ -102747,15 +102509,9 @@
       "comment" : "A warning message displayed when a report generation is paused due to inactivity, explaining that the displayed data may be outdated.",
       "isCommentAutoGenerated" : true
     },
-    "Requested %@. Apple usually publishes analytics data within 24–48 hours of the request." : {
-
-    },
-    "Requested %@. This is taking longer than the usual 24–48 hours — some report types aren't produced for every app." : {
-
-    },
-    "Requests and grants for access to the user's photo library." : {
-
-    },
+    "Requested %@. Apple usually publishes analytics data within 24–48 hours of the request." : {},
+    "Requested %@. This is taking longer than the usual 24–48 hours — some report types aren't produced for every app." : {},
+    "Requests and grants for access to the user's photo library." : {},
     "Required" : {
       "comment" : "A label indicating whether a demo account is required for a particular app.",
       "isCommentAutoGenerated" : true,
@@ -107385,9 +107141,7 @@
         }
       }
     },
-    "Search apps" : {
-
-    },
+    "Search apps" : {},
     "Search by name or bundle ID" : {
       "comment" : "A prompt for a searchable field in the navigation bar of the app list view.",
       "isCommentAutoGenerated" : true,
@@ -111616,12 +111370,8 @@
       "comment" : "Name of an analytics report that tracks the number of app sessions.",
       "isCommentAutoGenerated" : true
     },
-    "Sessions and engagement while your app runs in CarPlay." : {
-
-    },
-    "Sessions and installs generated by your App Clip." : {
-
-    },
+    "Sessions and engagement while your app runs in CarPlay." : {},
+    "Sessions and installs generated by your App Clip." : {},
     "Set expiration date" : {
       "comment" : "A toggle switch label that lets the user enable or disable an expiration date for the imported account.",
       "isCommentAutoGenerated" : true,
@@ -112416,9 +112166,7 @@
         }
       }
     },
-    "SharePlay sessions grouped by the activities your app offers." : {
-
-    },
+    "SharePlay sessions grouped by the activities your app offers." : {},
     "SharePlay Usage" : {
       "comment" : "Name of an analytics report within the \"Frameworks\" category, specifically for \"SharePlay Usage\".",
       "isCommentAutoGenerated" : true
@@ -112676,9 +112424,7 @@
         }
       }
     },
-    "Shortcut App Usage" : {
-
-    },
+    "Shortcut App Usage" : {},
     "Shortcuts Actions Usage" : {
       "comment" : "This report is not available in the App Store Connect dashboard.",
       "isCommentAutoGenerated" : true
@@ -117238,9 +116984,7 @@
         }
       }
     },
-    "Submission limit reached" : {
-
-    },
+    "Submission limit reached" : {},
     "Submission resubmitted" : {
       "comment" : "Toast shown after a review submission is resubmitted."
     },
@@ -117942,9 +117686,7 @@
       "comment" : "Name of an analytics report within the \"App Store Commerce\" section, specifically for \"Subscription Events\".",
       "isCommentAutoGenerated" : true
     },
-    "Subscription lifecycle events: sign-ups, renewals, cancellations, and refunds." : {
-
-    },
+    "Subscription lifecycle events: sign-ups, renewals, cancellations, and refunds." : {},
     "Subscription State" : {
       "comment" : "Name of an analytics report that provides information about the state of app store subscriptions.",
       "isCommentAutoGenerated" : true
@@ -127541,9 +127283,7 @@
         }
       }
     },
-    "This report has been requested. Apple usually publishes the data within 24–48 hours." : {
-
-    },
+    "This report has been requested. Apple usually publishes the data within 24–48 hours." : {},
     "This report has no chartable numeric metric." : {
       "comment" : "Indicates that the report has no chartable numeric metric.",
       "isCommentAutoGenerated" : true
@@ -131844,12 +131584,8 @@
         }
       }
     },
-    "Usage of ARKit world-tracking sessions in your app." : {
-
-    },
-    "Usage of the app actions your app exposes to Shortcuts." : {
-
-    },
+    "Usage of ARKit world-tracking sessions in your app." : {},
+    "Usage of the app actions your app exposes to Shortcuts." : {},
     "Use a service account JSON instead" : {
       "comment" : "Add Account: button that switches from Google sign-in to the service account JSON form (advanced).",
       "localizations" : {
@@ -135638,9 +135374,7 @@
     "View-only access to App Store Connect. Cannot make any changes." : {
       "comment" : "Description of the READ_ONLY user role: view-only access with no ability to make changes."
     },
-    "Views and engagement from your app's shareable App Store web preview pages." : {
-
-    },
+    "Views and engagement from your app's shareable App Store web preview pages." : {},
     "Visible Apps" : {
       "comment" : "Section header and sheet title for a user's visible apps."
     },
@@ -135953,9 +135687,7 @@
         }
       }
     },
-    "Waiting for Apple" : {
-
-    },
+    "Waiting for Apple" : {},
     "Waiting for Export Compliance" : {
       "comment" : "The localized string for the \"Waiting for Export Compliance\" case in the AppStoreState enum.",
       "isCommentAutoGenerated" : true,
@@ -141073,6 +140805,334 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "開啟此帳戶的登入畫面。"
+          }
+        }
+      }
+    },
+    "Save password on this device" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passwort auf diesem Gerät sichern"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar la contraseña en este dispositivo"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar la contraseña en este dispositivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrer le mot de passe sur cet appareil"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salva la password su questo dispositivo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このデバイスにパスワードを保存"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기에 암호 저장"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wachtwoord op dit apparaat bewaren"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvar a senha neste dispositivo"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar a palavra-passe neste dispositivo"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить пароль на этом устройстве"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spara lösenordet på den här enheten"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在此裝置上儲存密碼"
+          }
+        }
+      }
+    },
+    "You'll only need the verification code next time. Stored in this device's Keychain." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim nächsten Mal brauchst du nur den Bestätigungscode. Gespeichert im Schlüsselbund dieses Geräts."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La próxima vez solo necesitarás el código de verificación. Se guarda en el llavero de este dispositivo."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La próxima vez solo necesitarás el código de verificación. Se guarda en el llavero de este dispositivo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La prochaine fois, seul le code de vérification vous sera demandé. Enregistré dans le trousseau de cet appareil."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La prossima volta ti servirà solo il codice di verifica. Salvata nel portachiavi di questo dispositivo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "次回は確認コードの入力だけで済みます。このデバイスのキーチェーンに保存されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다음에는 확인 코드만 입력하면 됩니다. 이 기기의 키체인에 저장됩니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De volgende keer heb je alleen de verificatiecode nodig. Bewaard in de sleutelhanger van dit apparaat."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Na próxima vez, você só vai precisar do código de verificação. Fica salva nas Chaves deste dispositivo."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Da próxima vez, só vai precisar do código de verificação. Fica guardada no porta-chaves deste dispositivo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В следующий раз понадобится только код проверки. Хранится в связке ключей этого устройства."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nästa gång behöver du bara verifieringskoden. Sparas i nyckelringen på den här enheten."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下次只需輸入驗證碼。儲存在此裝置的鑰匙圈中。"
+          }
+        }
+      }
+    },
+    "StackConnect sends your password only to Apple. It's saved only if you choose to, in the Keychain on this device only, never synced or exported." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect sendet dein Passwort nur an Apple. Es wird nur gespeichert, wenn du das möchtest, und zwar nur im Schlüsselbund dieses Geräts, nie synchronisiert oder exportiert."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect solo envía tu contraseña a Apple. Solo se guarda si tú lo eliges, únicamente en el llavero de este dispositivo, sin sincronizarse ni exportarse."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect solo envía tu contraseña a Apple. Solo se guarda si tú lo eliges, únicamente en el llavero de este dispositivo, sin sincronizarse ni exportarse."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect envoie votre mot de passe uniquement à Apple. Il n'est enregistré que si vous le choisissez, dans le trousseau de cet appareil seulement, jamais synchronisé ni exporté."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect invia la password solo ad Apple. Viene salvata solo se lo scegli, unicamente nel portachiavi di questo dispositivo, mai sincronizzata né esportata."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect はパスワードを Apple にのみ送信します。保存するのは選択した場合のみで、このデバイスのキーチェーンにだけ保存され、同期やエクスポートはされません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect는 암호를 Apple에만 보냅니다. 저장을 선택한 경우에만 이 기기의 키체인에 저장되며 동기화되거나 내보내지지 않습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect stuurt je wachtwoord alleen naar Apple. Het wordt alleen bewaard als je daarvoor kiest, uitsluitend in de sleutelhanger van dit apparaat, nooit gesynchroniseerd of geëxporteerd."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O StackConnect envia sua senha somente para a Apple. Ela só é salva se você escolher, apenas nas Chaves deste dispositivo, sem sincronização nem exportação."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O StackConnect envia a sua palavra-passe apenas à Apple. Só fica guardada se o escolher, apenas no porta-chaves deste dispositivo, nunca sincronizada nem exportada."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect отправляет пароль только в Apple. Он сохраняется, только если вы этого хотите, и только в связке ключей этого устройства, без синхронизации и экспорта."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect skickar ditt lösenord bara till Apple. Det sparas bara om du väljer det, endast i nyckelringen på den här enheten, aldrig synkat eller exporterat."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect 只會把你的密碼傳送給 Apple。只有在你選擇儲存時，密碼才會儲存在此裝置的鑰匙圈中，不會同步或匯出。"
+          }
+        }
+      }
+    },
+    "Sign in with your Apple ID and its two-factor code instead, then pick the teams to add. If you choose to, your password is saved only in this device's Keychain. Analytics Reports need an API key." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Melde dich stattdessen mit deiner Apple-ID und ihrem Zwei-Faktor-Code an und wähle dann die Teams aus. Wenn du möchtest, wird dein Passwort nur im Schlüsselbund dieses Geräts gespeichert. Analytics-Berichte benötigen einen API-Schlüssel."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicia sesión con tu Apple ID y su código de doble factor y luego elige los equipos que quieres añadir. Si así lo eliges, tu contraseña solo se guarda en el llavero de este dispositivo. Los informes de Analytics necesitan una clave de API."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicia sesión con tu Apple ID y su código de dos factores y luego elige los equipos que quieres agregar. Si así lo eliges, tu contraseña solo se guarda en el llavero de este dispositivo. Los reportes de Analytics necesitan una clave de API."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez-vous plutôt avec votre Identifiant Apple et son code à deux facteurs, puis choisissez les équipes à ajouter. Si vous le souhaitez, votre mot de passe est enregistré uniquement dans le trousseau de cet appareil. Les rapports Analytics nécessitent une clé d'API."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accedi invece con il tuo Apple ID e il suo codice a due fattori, poi scegli i team da aggiungere. Se lo scegli, la password viene salvata solo nel portachiavi di questo dispositivo. I report di Analytics richiedono una chiave API."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "代わりに Apple ID と2ファクタ認証コードでサインインし、追加するチームを選びます。選択した場合、パスワードはこのデバイスのキーチェーンにのみ保存されます。アナリティクスレポートには API キーが必要です。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "대신 Apple ID와 이중 인증 코드로 로그인한 다음 추가할 팀을 선택하세요. 선택하면 암호는 이 기기의 키체인에만 저장됩니다. 분석 보고서에는 API 키가 필요합니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log in plaats daarvan in met je Apple ID en de tweestapscode en kies daarna de teams. Als je daarvoor kiest, wordt je wachtwoord alleen in de sleutelhanger van dit apparaat bewaard. Voor Analytics-rapporten is een API-sleutel nodig."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faça login com o seu Apple ID e o código de dois fatores e escolha as equipes a adicionar. Se você escolher, a senha fica salva apenas nas Chaves deste dispositivo. Os relatórios do Analytics precisam de uma chave de API."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Em alternativa, inicie sessão com o seu ID Apple e o código de dois fatores e escolha as equipas a adicionar. Se o escolher, a palavra-passe fica guardada apenas no porta-chaves deste dispositivo. Os relatórios do Analytics precisam de uma chave de API."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вместо этого войдите с Apple ID и кодом двухфакторной аутентификации, затем выберите команды. Если вы захотите, пароль будет храниться только в связке ключей этого устройства. Для отчетов Analytics нужен ключ API."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logga in med ditt Apple-ID och tvåfaktorskoden i stället och välj sedan teamen att lägga till. Om du väljer det sparas lösenordet bara i nyckelringen på den här enheten. Analytics-rapporter kräver en API-nyckel."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "改用你的 Apple ID 及其雙重認證碼登入，然後選擇要加入的團隊。如果你選擇儲存，密碼只會儲存在此裝置的鑰匙圈中。分析報告需要 API 密鑰。"
           }
         }
       }

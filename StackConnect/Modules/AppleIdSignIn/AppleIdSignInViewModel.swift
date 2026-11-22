@@ -22,6 +22,10 @@ protocol AppleIdSignInViewModelProtocol: ObservableObject {
     /// "Use a different password": back to the password field, without the
     /// saved password (which stays saved until a sign-in replaces it).
     func useDifferentPassword()
+    /// "Save password on this device": whether the typed password is kept in
+    /// the Keychain once the sign-in finished. Off also removes a password
+    /// saved earlier for the Apple ID (once the sign-in finished).
+    func setSavesPassword(_ savesPassword: Bool)
     /// Stores the typed code (digits only, up to `codeLength`) and submits it
     /// once complete (screen 2).
     func updateCode(_ code: String) async
@@ -86,6 +90,10 @@ struct AppleIdSignInUiState: Equatable {
     /// A password is saved on this device for `email`, and this sign-in uses
     /// it: the password field is hidden ("Use a different password" shows it).
     var usesSavedPassword = false
+    /// "Save password on this device" (on by default, so it is also on when a
+    /// password is already saved for the Apple ID). Applied only once the
+    /// sign-in finished; not shown while the saved password is used.
+    var savesPassword = true
 
     var code = ""
     var codeLength = AppleIdSignInUiState.defaultCodeLength
@@ -251,6 +259,12 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
             // The code belongs to the saved password's attempt: start over.
             resetToCredentials()
         }
+    }
+
+    func setSavesPassword(_ savesPassword: Bool) {
+        guard uiState.savesPassword != savesPassword, uiState.step == .credentials, !uiState.isWorking else { return }
+        analytics.track(.buttonTap(savesPassword ? .savePasswordOn : .savePasswordOff, on: .appleIdSignIn))
+        uiState.savesPassword = savesPassword
     }
 
     private func performSignIn() async {
@@ -549,10 +563,7 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
         do {
             let blob = try await flow.finish()
             sessionStore.save(accountId: appleId, blob: blob)
-            if let pendingPassword {
-                passwordStore.save(pendingPassword, for: appleId)
-                Log.print.info("[AppleIdSignIn] Saved the Apple ID password in the Keychain")
-            }
+            storePassword()
             endFlow()
             sessionStatus.markValid(appleId: appleId)
             return true
@@ -560,6 +571,21 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
             Log.print.error("[AppleIdSignIn] Finishing the sign-in failed: \(error.localizedDescription, privacy: .public)")
             uiState.errorMessage = Self.message(for: error, stage: .password)
             return false
+        }
+    }
+
+    /// Applies "Save password on this device" once Apple accepted the
+    /// password: saves (or refreshes) it when on, or when the saved one was
+    /// used (the toggle isn't shown then); otherwise removes any password
+    /// saved earlier for the Apple ID.
+    private func storePassword() {
+        if uiState.usesSavedPassword || uiState.savesPassword {
+            guard let pendingPassword else { return }
+            passwordStore.save(pendingPassword, for: appleId)
+            Log.print.info("[AppleIdSignIn] Saved the Apple ID password in the Keychain")
+        } else if passwordStore.hasPassword(for: appleId) {
+            passwordStore.deletePassword(for: appleId)
+            Log.print.info("[AppleIdSignIn] Not saving the Apple ID password: removed the one saved earlier")
         }
     }
 
