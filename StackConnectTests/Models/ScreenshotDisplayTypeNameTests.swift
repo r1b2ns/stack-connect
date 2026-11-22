@@ -80,7 +80,7 @@ final class ScreenshotDisplayTypeNameTests: XCTestCase {
 
     func testNeverFallsBackToMechanicalTitleCase() {
         XCTAssertNotEqual(name("APP_IPHONE_67"), "Iphone 67")
-        XCTAssertTrue(name("APP_IPHONE_67").hasPrefix("iPhone"))
+        XCTAssertEqual(name("APP_IPHONE_67"), display("iPhone", 6.7))
         XCTAssertTrue(name("APP_IPAD_97").contains("iPad"))
     }
 }
