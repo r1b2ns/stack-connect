@@ -23,11 +23,30 @@ struct AccountGroup: Identifiable, Hashable {
     let accounts: [AccountModel]
 }
 
+// MARK: - Section
+
+/// One `List` section of the accounts list. Apple accounts are split by how
+/// they are connected (`AppleConnectionKind`), API key accounts first; within a
+/// connection, team groups (`AccountGroup`) become their own sections when
+/// `AccountsListUiState.showsTeamGroups` is on. Other providers have a single
+/// section without a header.
+struct AccountsListSection: Identifiable, Hashable {
+    let id: String
+    /// Connection header to show, or `nil` for none: other providers, and the
+    /// following team sections of a connection (only its first one shows it).
+    let connection: AppleConnectionKind?
+    /// Team header (masked issuer ID), or `nil` when the section has none.
+    let issuerID: String?
+    let accounts: [AccountModel]
+}
+
 // MARK: - UiState
 
 struct AccountsListUiState {
     var accounts: [AccountModel] = []
     var groups: [AccountGroup] = []
+    /// What the list renders, built from `groups` (see `AccountsListSection`).
+    var sections: [AccountsListSection] = []
     var isLoading = false
     var providerType: ProviderType
     /// When set, the next import replaces this account in place, preserving its offline app data.
@@ -76,11 +95,50 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
             for i in allAccounts.indices { allAccounts[i].fillMissingRules() }
             // A hidden store's list stays empty (its accounts are kept in storage).
             uiState.accounts = featureFlags.visibleAccounts(allAccounts).filter { $0.providerType == uiState.providerType }
-            uiState.groups = buildGroups(from: uiState.accounts)
+            rebuildSections()
         } catch {
             Log.print.error("[AccountsList] Failed to load accounts: \(error.localizedDescription)")
         }
         uiState.isLoading = false
+    }
+
+    /// Rebuilds `groups` and `sections` from `uiState.accounts`. Apple accounts
+    /// are grouped by team separately for each connection kind, so a team group
+    /// never mixes API key and Apple ID accounts.
+    private func rebuildSections() {
+        guard uiState.providerType == .apple else {
+            uiState.groups = buildGroups(from: uiState.accounts)
+            uiState.sections = uiState.groups.map {
+                AccountsListSection(id: $0.id, connection: nil, issuerID: nil, accounts: $0.accounts)
+            }
+            return
+        }
+
+        let groupsByKind: [(AppleConnectionKind, [AccountGroup])] = AppleConnectionKind.allCases.compactMap { kind in
+            let accounts = uiState.accounts.filter { $0.appleConnectionKind == kind }
+            return accounts.isEmpty ? nil : (kind, buildGroups(from: accounts))
+        }
+        uiState.groups = groupsByKind.flatMap(\.1)
+
+        let showsTeamGroups = uiState.showsTeamGroups
+        uiState.sections = groupsByKind.flatMap { kind, groups -> [AccountsListSection] in
+            guard showsTeamGroups else {
+                return [AccountsListSection(
+                    id: kind.rawValue,
+                    connection: kind,
+                    issuerID: nil,
+                    accounts: groups.flatMap(\.accounts)
+                )]
+            }
+            return groups.enumerated().map { index, group in
+                AccountsListSection(
+                    id: "\(kind.rawValue).\(group.id)",
+                    connection: index == 0 ? kind : nil,
+                    issuerID: group.issuerID,
+                    accounts: group.accounts
+                )
+            }
+        }
     }
 
     /// Groups the filtered accounts by team. Apple accounts are grouped by the
@@ -126,6 +184,7 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
             await cascadeDelete(uiState.accounts[index])
         }
         uiState.accounts.remove(atOffsets: offsets)
+        rebuildSections()
     }
 
     /// Deletes a single account (and its related data) then reloads. Used by the

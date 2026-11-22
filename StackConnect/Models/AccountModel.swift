@@ -144,6 +144,32 @@ enum AccountAuthMethod: String, Codable, Hashable {
     case appleIdSignIn
 }
 
+// MARK: - Apple Connection Kind
+
+/// How an App Store Connect account is connected. The accounts lists show one
+/// section per kind, in `allCases` order.
+enum AppleConnectionKind: String, CaseIterable, Hashable {
+    /// An App Store Connect API key (`.p8` "AuthKey").
+    case apiKey
+    /// "Sign in with Apple ID" (password + two-factor web session).
+    case appleId
+
+    /// Section header title.
+    var title: String {
+        switch self {
+        case .apiKey:  return String(localized: "API Key")
+        case .appleId: return String(localized: "Apple ID")
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .apiKey:  return "key.fill"
+        case .appleId: return "person.crop.circle"
+        }
+    }
+}
+
 // MARK: - Account Role
 
 /// App Store Connect role associated with the API key backing this account.
@@ -277,6 +303,12 @@ struct AccountModel: Codable, Identifiable, Hashable {
     /// Renaming or deleting a bundle ID has no Apple ID session form.
     var supportsBundleIdRenameAndDelete: Bool {
         !isAppleIdSession
+    }
+
+    /// How this App Store Connect account is connected, used to section the
+    /// accounts lists. Read from `authMethod`, so no Keychain access is needed.
+    var appleConnectionKind: AppleConnectionKind {
+        isAppleIdSession ? .appleId : .apiKey
     }
 
     /// Rule resources that apply to this account's provider.

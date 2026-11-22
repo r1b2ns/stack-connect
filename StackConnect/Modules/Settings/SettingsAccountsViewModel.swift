@@ -14,10 +14,23 @@ protocol SettingsAccountsViewModelProtocol: ObservableObject {
     func importAccount(from url: URL, password: String, customName: String?) async -> String?
 }
 
+// MARK: - Apple Section
+
+/// The App Store Connect accounts of one connection kind ("API Key" /
+/// "Apple ID"), in the list's name order. Only non-empty kinds get one.
+struct SettingsAppleAccountsSection: Identifiable, Hashable {
+    let connection: AppleConnectionKind
+    let accounts: [AccountModel]
+
+    var id: String { connection.rawValue }
+}
+
 // MARK: - UiState
 
 struct SettingsAccountsUiState {
     var appleAccounts: [AccountModel] = []
+    /// `appleAccounts` split by connection kind, API key accounts first.
+    var appleSections: [SettingsAppleAccountsSection] = []
     var firebaseAccounts: [AccountModel] = []
     /// Empty while `googlePlayAccounts` is OFF (stored accounts stay hidden).
     var googlePlayAccounts: [AccountModel] = []
@@ -76,6 +89,7 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             uiState.appleAccounts = allAccounts
                 .filter { $0.providerType == .apple }
                 .sorted { $0.name < $1.name }
+            uiState.appleSections = Self.appleSections(from: uiState.appleAccounts)
             uiState.firebaseAccounts = allAccounts
                 .filter { $0.providerType == .firebase }
                 .sorted { $0.name < $1.name }
@@ -86,6 +100,15 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
             Log.print.error("[SettingsAccounts] Failed to load accounts: \(error.localizedDescription)")
         }
         uiState.isLoading = false
+    }
+
+    /// Splits the (already sorted) Apple accounts by connection kind, keeping
+    /// their order inside each section and skipping empty kinds.
+    private static func appleSections(from accounts: [AccountModel]) -> [SettingsAppleAccountsSection] {
+        AppleConnectionKind.allCases.compactMap { kind in
+            let matching = accounts.filter { $0.appleConnectionKind == kind }
+            return matching.isEmpty ? nil : SettingsAppleAccountsSection(connection: kind, accounts: matching)
+        }
     }
 
     func updateAccountName(accountId: String, newName: String) async {

@@ -117,22 +117,15 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
         }
     }
 
-    @ViewBuilder
     private func buildList() -> some View {
         List {
-            if viewModel.uiState.showsTeamGroups {
-                ForEach(viewModel.uiState.groups) { group in
-                    Section {
-                        ForEach(group.accounts) { account in
-                            buildSwipeableRow(account)
-                        }
-                    } header: {
-                        buildGroupHeader(group)
+            ForEach(viewModel.uiState.sections) { section in
+                Section {
+                    ForEach(section.accounts) { account in
+                        buildSwipeableRow(account)
                     }
-                }
-            } else {
-                ForEach(viewModel.uiState.groups.flatMap(\.accounts)) { account in
-                    buildSwipeableRow(account)
+                } header: {
+                    buildSectionHeader(section)
                 }
             }
         }
@@ -149,16 +142,22 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
             }
     }
 
+    /// Connection header (Apple: "API Key" / "Apple ID") and/or team header.
     @ViewBuilder
-    private func buildGroupHeader(_ group: AccountGroup) -> some View {
-        if let issuerID = group.issuerID {
-            // Mask the issuerID: show only a short suffix to avoid leaking the full id.
-            Label(
-                String(localized: "Team ••••\(String(issuerID.suffix(6)))"),
-                systemImage: "person.2"
-            )
-        } else {
-            EmptyView()
+    private func buildSectionHeader(_ section: AccountsListSection) -> some View {
+        if section.connection != nil || section.issuerID != nil {
+            VStack(alignment: .leading, spacing: 6) {
+                if let connection = section.connection {
+                    Label(connection.title, systemImage: connection.iconName)
+                }
+                if let issuerID = section.issuerID {
+                    // Mask the issuerID: show only a short suffix to avoid leaking the full id.
+                    Label(
+                        String(localized: "Team ••••\(String(issuerID.suffix(6)))"),
+                        systemImage: "person.2"
+                    )
+                }
+            }
         }
     }
 

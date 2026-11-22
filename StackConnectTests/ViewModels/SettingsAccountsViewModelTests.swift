@@ -60,6 +60,44 @@ final class SettingsAccountsViewModelTests: XCTestCase {
         ["issuerID": "issuer", "privateKeyID": "kid", "privateKey": "pk"]
     }
 
+    // MARK: - Apple sections by connection kind
+
+    func testAppleAccountsAreSplitIntoAPIKeyThenAppleIDSectionsInNameOrder() async throws {
+        let sessionB = AccountModel(name: "Session B", providerType: .apple, authMethod: .appleIdSignIn)
+        let keyZ = AccountModel(name: "Key Z", providerType: .apple)
+        let sessionA = AccountModel(name: "Session A", providerType: .apple, authMethod: .appleIdSignIn)
+        let keyA = AccountModel(name: "Key A", providerType: .apple)
+        let firebase = AccountModel(name: "Firebase", providerType: .firebase, authMethod: .googleSignIn)
+        for account in [sessionB, keyZ, sessionA, keyA, firebase] {
+            try await storage.save(account, id: account.id)
+        }
+
+        await sut.loadAccounts()
+
+        XCTAssertEqual(sut.uiState.appleSections.map(\.connection), [.apiKey, .appleId])
+        XCTAssertEqual(sut.uiState.appleSections.map { $0.accounts.map(\.name) }, [["Key A", "Key Z"], ["Session A", "Session B"]])
+        XCTAssertEqual(sut.uiState.appleAccounts.count, 4)
+        XCTAssertEqual(sut.uiState.firebaseAccounts.map(\.name), ["Firebase"])
+    }
+
+    func testOnlyNonEmptyAppleSectionsAreShown() async throws {
+        let key = AccountModel(name: "Key", providerType: .apple)
+        try await storage.save(key, id: key.id)
+
+        await sut.loadAccounts()
+
+        XCTAssertEqual(sut.uiState.appleSections.map(\.connection), [.apiKey])
+    }
+
+    func testNoAppleSectionsWithoutAppleAccounts() async throws {
+        let play = AccountModel(name: "Play", providerType: .googlePlay)
+        try await storage.save(play, id: play.id)
+
+        await sut.loadAccounts()
+
+        XCTAssertTrue(sut.uiState.appleSections.isEmpty)
+    }
+
     // MARK: - Delete
 
     func testDeleteAccountRemovesItsReplyTemplatesAndReloads() async throws {

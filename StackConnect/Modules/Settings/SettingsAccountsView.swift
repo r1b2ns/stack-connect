@@ -175,12 +175,13 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
 
     private func buildList() -> some View {
         List {
-            if !viewModel.uiState.appleAccounts.isEmpty {
+            ForEach(viewModel.uiState.appleSections) { section in
                 buildProviderSection(
                     title: ProviderType.apple.displayName,
+                    subtitle: section.connection.title,
                     icon: ProviderType.apple.iconName,
                     color: ProviderType.apple.color,
-                    accounts: viewModel.uiState.appleAccounts
+                    accounts: section.accounts
                 )
             }
 
@@ -206,6 +207,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
 
     private func buildProviderSection(
         title: String,
+        subtitle: String? = nil,
         icon: String,
         color: Color,
         accounts: [AccountModel]
@@ -260,6 +262,11 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                 Image(systemName: icon)
                     .foregroundStyle(color)
                 Text(title)
+                if let subtitle {
+                    // Connection kind of the Apple section ("API Key" / "Apple ID").
+                    Text(verbatim: "·")
+                    Text(subtitle)
+                }
             }
         }
     }
