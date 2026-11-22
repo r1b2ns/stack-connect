@@ -165,11 +165,17 @@ extension AnalyticsEvent {
     /// A split view sidebar destination opened from `origin` (no screen: the
     /// split view root is not one). Only the item kind, never an account.
     static func navigate(to item: RootSidebarItem, from origin: AnalyticsNavigationOrigin) -> AnalyticsEvent {
+        navigate(to: AnalyticsSidebarDestination(item), from: origin)
+    }
+
+    /// A root destination opened from `origin`: a split view sidebar item, or
+    /// a compact tab (`RootTab.analyticsDestination`). No screen.
+    static func navigate(to destination: AnalyticsSidebarDestination, from origin: AnalyticsNavigationOrigin) -> AnalyticsEvent {
         .action(
             .navigate,
             on: nil,
             parameters: [
-                AnalyticsParameterKey.destination: .string(AnalyticsSidebarDestination(item).rawValue),
+                AnalyticsParameterKey.destination: .string(destination.rawValue),
                 AnalyticsParameterKey.source: .string(origin.rawValue)
             ]
         )

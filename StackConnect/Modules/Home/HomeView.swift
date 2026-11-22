@@ -4,10 +4,9 @@ import SwiftUI
 
 @MainActor
 struct HomeViewFactory {
-    /// The compact-width root (iPhone, narrow iPad / Mac windows): the Home
-    /// stack driven by `coordinator`. Both objects are owned by
-    /// `AppRootViewFactory`, so they survive size-class changes.
-    static func build(viewModel: HomeViewModel, coordinator: HomeCoordinator) -> some View {
+    /// The Home stack driven by `coordinator`: the Accounts tab of the
+    /// compact-width root (`RootTabView`) builds `HomeView` the same way.
+    static func build<ViewModel: HomeViewModelProtocol>(viewModel: ViewModel, coordinator: HomeCoordinator) -> some View {
         HomeView(viewModel: viewModel)
             .environmentObject(coordinator)
     }
@@ -105,39 +104,11 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
                             coordinator.navigateToAccountsList(provider)
                         }
                 }
-
-                buildSettingsCard()
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
         }
         .listRowBackground(Color.clear)
     }
-
-    private func buildSettingsCard() -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 40))
-                .foregroundStyle(.gray)
-
-            Text(String(localized: "Settings"))
-                .font(.headline)
-                .foregroundStyle(.primary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 140)
-        .background(Color.gray.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-        )
-        .onTapGesture {
-            analytics.track(.buttonTap(.settings, on: .home))
-            coordinator.navigateToSettings()
-        }
-    }
-
 }
 
 // MARK: - Agreement Share Activity Items

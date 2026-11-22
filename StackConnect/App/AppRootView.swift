@@ -13,18 +13,18 @@ struct AppRootViewFactory {
 
 /// Owns the navigation state of both root layouts for the whole app life, so a
 /// size-class change (rotation, multitasking, resizing a Mac window) swaps the
-/// layout without losing the Home data, the compact stack or the split view
-/// selection.
+/// layout without losing the Home data, the compact tab and stacks or the split
+/// view selection.
 private struct AppRootEntry: View {
     @StateObject private var homeViewModel = HomeViewModel()
-    @StateObject private var homeCoordinator = HomeCoordinator()
+    @StateObject private var tabCoordinator = RootTabCoordinator()
     @StateObject private var splitCoordinator = RootSplitCoordinator()
     @StateObject private var sidebarViewModel = RootSidebarViewModel()
 
     var body: some View {
         AppRootView(
             homeViewModel: homeViewModel,
-            homeCoordinator: homeCoordinator,
+            tabCoordinator: tabCoordinator,
             splitCoordinator: splitCoordinator,
             sidebarViewModel: sidebarViewModel,
             userProperties: AnalyticsService.shared
@@ -35,15 +35,15 @@ private struct AppRootEntry: View {
 // MARK: - View
 
 /// Picks the root by horizontal size class only, never by device idiom or
-/// orientation: compact width (iPhone, Slide Over, a narrow window) keeps the
-/// iPhone Home stack exactly as it is; regular width gets `RootSplitView`.
+/// orientation: compact width (iPhone, Slide Over, a narrow window) gets the
+/// Accounts / Settings tab bar (`RootTabView`); regular width gets `RootSplitView`.
 ///
 /// The layout picked is also the `ui_layout` user property, set at launch and
 /// again whenever the size class changes.
 struct AppRootView: View {
 
     let homeViewModel: HomeViewModel
-    let homeCoordinator: HomeCoordinator
+    let tabCoordinator: RootTabCoordinator
     let splitCoordinator: RootSplitCoordinator
     let sidebarViewModel: RootSidebarViewModel
     let userProperties: any AnalyticsUserPropertySetting
@@ -61,8 +61,8 @@ struct AppRootView: View {
                 // Lets `AppCommands` reach the selection while this layout is up.
                 .focusedSceneObject(splitCoordinator)
             } else {
-                HomeViewFactory.build(viewModel: homeViewModel, coordinator: homeCoordinator)
-                    .homeDeepLinks(homeCoordinator)
+                RootTabViewFactory.build(coordinator: tabCoordinator, homeViewModel: homeViewModel)
+                    .homeDeepLinks(tabCoordinator)
             }
         }
         .onChange(of: horizontalSizeClass, initial: true) { _, sizeClass in
