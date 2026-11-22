@@ -140891,6 +140891,89 @@
         }
       }
     },
+    "Save password is off: this saved password will be removed once you're signed in." : {
+      "comment" : "Apple ID sign-in, password screen: shown under the saved password when Save password on this device was turned off; the saved password is deleted after a successful sign-in.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„Passwort sichern“ ist aus: Dieses gespeicherte Passwort wird nach der Anmeldung entfernt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«Guardar contraseña» está desactivado: esta contraseña guardada se eliminará al iniciar sesión."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«Guardar contraseña» está desactivado: esta contraseña guardada se eliminará al iniciar sesión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "« Enregistrer le mot de passe » est désactivé : ce mot de passe enregistré sera supprimé une fois connecté."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«Salva password» è disattivato: questa password salvata verrà rimossa dopo l’accesso."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「パスワードを保存」がオフです：サインイン後、この保存済みパスワードは削除されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "'암호 저장'이 꺼져 있음: 로그인하면 이 저장된 암호가 제거됩니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "'Wachtwoord bewaren' staat uit: dit bewaarde wachtwoord wordt verwijderd zodra je bent ingelogd."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"Salvar senha\" está desativado: esta senha salva será removida quando você entrar."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\"Guardar palavra-passe\" está desativado: esta palavra-passe guardada será removida quando iniciar sessão."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«Сохранять пароль» выключено: этот сохранённый пароль будет удалён после входа."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "”Spara lösenord” är av: det sparade lösenordet tas bort när du har loggat in."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「儲存密碼」已關閉：登入後將移除此儲存的密碼。"
+          }
+        }
+      }
+    },
     "You'll only need the verification code next time. Stored in this device's Keychain." : {
       "localizations" : {
         "de" : {

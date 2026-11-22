@@ -92,7 +92,8 @@ struct AppleIdSignInUiState: Equatable {
     var usesSavedPassword = false
     /// "Save password on this device" (on by default, so it is also on when a
     /// password is already saved for the Apple ID). Applied only once the
-    /// sign-in finished; not shown while the saved password is used.
+    /// sign-in finished, also when the saved password is used: off then
+    /// removes it. Never reset when the saved-password row comes and goes.
     var savesPassword = true
 
     var code = ""
@@ -575,11 +576,13 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
     }
 
     /// Applies "Save password on this device" once Apple accepted the
-    /// password: saves (or refreshes) it when on, or when the saved one was
-    /// used (the toggle isn't shown then); otherwise removes any password
-    /// saved earlier for the Apple ID.
+    /// password: saves (or refreshes, when the saved one was used) it when
+    /// on; otherwise removes any password saved earlier for the Apple ID.
+    /// An explicit off is honored even when the saved password was used for
+    /// this sign-in. Signing in again with the saved password never shows
+    /// the toggle, so it stays on there and the password is refreshed.
     private func storePassword() {
-        if uiState.usesSavedPassword || uiState.savesPassword {
+        if uiState.savesPassword {
             guard let pendingPassword else { return }
             passwordStore.save(pendingPassword, for: appleId)
             Log.print.info("[AppleIdSignIn] Saved the Apple ID password in the Keychain")

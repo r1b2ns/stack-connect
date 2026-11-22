@@ -763,19 +763,60 @@ final class AppleIdSignInViewModelTests: XCTestCase {
         XCTAssertEqual(keychain.string(forKey: passwordKey), "saved", "nothing changes before the sign-in finished")
     }
 
-    func testSavedPasswordInUseIsRefreshedWhateverTheHiddenToggle() async {
+    func testSavePasswordOffDeletesTheSavedPasswordInUseOnceSignedIn() async {
         keychain.set("saved", forKey: passwordKey)
         let sut = makeSUT()
         sut.setSavesPassword(false)
         sut.uiState.email = appleId
         sut.emailDidChange()
         XCTAssertTrue(sut.uiState.usesSavedPassword)
+        XCTAssertFalse(sut.uiState.savesPassword, "the saved-password row doesn't reset the off")
         flow.startResults = [.success(.done(teams: [.fixture(1, "Alpha")]))]
 
         await sut.signIn()
+        XCTAssertEqual(flow.starts.map(\.password), ["saved"], "the saved password is still used to sign in")
+        XCTAssertEqual(keychain.string(forKey: passwordKey), "saved", "nothing changes before the sign-in finished")
+
         await sut.save()
 
-        XCTAssertEqual(keychain.string(forKey: passwordKey), "saved", "the toggle isn't shown while the saved password is used")
+        XCTAssertEqual(sut.uiState.step, .finished)
+        XCTAssertNil(keychain.string(forKey: passwordKey), "an explicit off is honored")
+        XCTAssertEqual(keychain.data(forKey: "appleSession.\(appleId)"), blob, "the session is still kept")
+    }
+
+    func testSavePasswordOffSurvivesTheSavedPasswordRowComingAndGoing() {
+        keychain.set("saved", forKey: passwordKey)
+        let sut = makeSUT()
+        sut.setSavesPassword(false)
+
+        sut.uiState.email = appleId
+        sut.emailDidChange()
+        XCTAssertTrue(sut.uiState.usesSavedPassword)
+        sut.uiState.email = "other@example.com"
+        sut.emailDidChange()
+        XCTAssertFalse(sut.uiState.usesSavedPassword)
+        sut.uiState.email = appleId
+        sut.emailDidChange()
+        sut.useDifferentPassword()
+
+        XCTAssertFalse(sut.uiState.usesSavedPassword)
+        XCTAssertFalse(sut.uiState.savesPassword, "the toggle shows the off again")
+    }
+
+    func testSignInAgainPromptWithTheSavedPasswordRefreshesIt() async {
+        keychain.set("saved", forKey: passwordKey)
+        flow.startResults = [.success(needsCode())]
+        flow.submitResults = [.success(.done(teams: [.fixture(1, "Alpha")]))]
+        let sut = makeSUT(.signInAgain(appleId: appleId))
+        await sut.signInWithSavedPasswordIfAvailable()
+        XCTAssertTrue(sut.uiState.usesSavedPassword)
+        XCTAssertTrue(sut.uiState.savesPassword, "the toggle is never shown here, so it stays on")
+
+        await sut.updateCode("123456")
+
+        XCTAssertEqual(sut.uiState.step, .finished)
+        XCTAssertEqual(keychain.string(forKey: passwordKey), "saved")
+        XCTAssertEqual(keychain.writtenKeys.filter { $0 == passwordKey }.count, 2, "written again once signed in: refreshed, not just left")
     }
 
     func testSavePasswordToggleIsTrackedWithoutThePassword() {
