@@ -73,9 +73,12 @@ final class AccountImporterTests: XCTestCase {
         try await storage.fetchAll(AccountModel.self)
     }
 
-    private let duplicateError = String(
-        localized: "An account with these credentials already exists: \"Existing\"."
-    )
+    /// Interpolated like production so the lookup hits the localized "%@" key
+    /// (a literal name would be a different, untranslated key).
+    private let duplicateError: String = {
+        let existingName = "Existing"
+        return String(localized: "An account with these credentials already exists: \"\(existingName)\".")
+    }()
 
     // MARK: - Google Play hidden (googlePlayAccounts OFF)
 

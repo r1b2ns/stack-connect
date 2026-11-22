@@ -152,7 +152,9 @@ final class GooglePlayAccountSyncTests: XCTestCase {
         XCTAssertEqual(changed.statusChanges.count, 1)
         XCTAssertEqual(changed.statusChanges.first?.appId, "com.a")
         XCTAssertEqual(changed.statusChanges.first?.appName, "Alpha")
-        XCTAssertEqual(changed.statusChanges.first?.status.text, "Production · Approved, not published (2.8.1)")
+        // Same localized status line as `SyncChange.StatusLabel(googlePlay:)`, so it holds in any locale.
+        let line = String(localized: "\(GooglePlayTrackKind(track: "production").displayName) · \(GooglePlayReleaseLifecycleState.approvedNotPublished.displayName)")
+        XCTAssertEqual(changed.statusChanges.first?.status.text, "\(line) (2.8.1)")
         XCTAssertEqual(changed.statusChanges.first?.status.color, .yellow)
     }
 

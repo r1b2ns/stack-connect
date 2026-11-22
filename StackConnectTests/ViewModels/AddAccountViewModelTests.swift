@@ -82,9 +82,12 @@ final class AddAccountViewModelTests: XCTestCase {
     //     validation (which fails offline), so we only assert that the failure
     //     is NOT the duplicate message.
 
-    private let duplicateError = String(
-        localized: "An account with these credentials already exists: \"Existing\"."
-    )
+    /// Interpolated like production so the lookup hits the localized "%@" key
+    /// (a literal name would be a different, untranslated key).
+    private let duplicateError: String = {
+        let existingName = "Existing"
+        return String(localized: "An account with these credentials already exists: \"\(existingName)\".")
+    }()
 
     /// Stores an existing Apple account named "Existing" with the given private key.
     private func seedExistingAppleAccount(privateKey: String) async throws {
