@@ -12,7 +12,7 @@ StackConnect is an open-source iOS app for managing App Store Connect, Firebase 
 |------|--------------------|--------------------|
 | API keys, `.p8` private keys, service-account JSON files and access tokens | iOS Keychain | Only to authenticate with Apple or Google (see section 2) |
 | The App Store Connect session of an account added with "Sign in with Apple ID" (the session cookies Apple returns) | iOS Keychain, one item per Apple ID | Only to Apple, with each request of that account |
-| The Apple ID password of an account added with "Sign in with Apple ID", saved after a successful sign-in | iOS Keychain, one item per Apple ID, on this device only (not synced, not backed up to other devices) | Only to Apple, when you sign in again with that Apple ID |
+| The Apple ID password of an account added with "Sign in with Apple ID", only if you leave "Save password on this device" on (saved after a successful sign-in) | iOS Keychain, one item per Apple ID, on this device only (not synced, not backed up to other devices) | Only to Apple, when you sign in again with that Apple ID |
 | Account names, apps, versions, builds, reviews, testers, users and other data loaded from the services you connect | On-device database (SwiftData), in the app's App Group container | No |
 | Widget data (app names, icons, recent reviews) | The same App Group container, shared only with the StackConnect widget | No |
 | Settings and preferences | On-device storage (UserDefaults) | No |
@@ -24,8 +24,8 @@ Deleting an account in the app removes its credentials from the Keychain and its
 If you add an App Store Connect account with "Sign in with Apple ID" instead of an API key:
 
 - Your Apple ID password and your two-factor code are processed on your device and sent only to Apple, to sign in. They are never logged, sent to the developer or included in analytics or crash reports. The two-factor code is never stored.
-- What is kept is the session Apple returns (its cookies) and, once Apple accepted it, your Apple ID password. Both are stored in the iOS Keychain on this device only: they are not synced through iCloud Keychain, can only be read while the device is unlocked, and are never exported. The session is used only for requests to Apple's App Store Connect and Apple Developer websites; the password only to sign in to Apple again.
-- When the session expires, the app asks you to sign in again. If a password is saved, it signs in with it and you only type the two-factor code; you can choose "Use a Different Password" instead. If Apple refuses the saved password (for example because you changed it), the app deletes it and asks you for the current one.
+- What is kept is the session Apple returns (its cookies) and, only if you choose "Save password on this device" on the password screen (on by default), your Apple ID password once Apple accepted it. Both are stored in the iOS Keychain on this device only: they are not synced through iCloud Keychain, can only be read while the device is unlocked, and are never exported. The session is used only for requests to Apple's App Store Connect and Apple Developer websites; the password only to sign in to Apple again.
+- When the session expires, the app asks you to sign in again. If you turn "Save password on this device" off, the password is not saved, and a password saved earlier for that Apple ID is deleted once you're signed in. If a password is saved, the app signs in with it and you only type the two-factor code; you can choose "Use a Different Password" instead. If Apple refuses the saved password (for example because you changed it), the app deletes it and asks you for the current one.
 
 ## 2. Services the app connects to on your behalf
 
