@@ -1,10 +1,9 @@
 import SwiftUI
 
 /// Reusable Design System list row with the layout
-/// `{icon} {title} ——— [badge] [New chip] {chevron}` used across
+/// `{icon} {title} ——— [badge] {chevron}` used across
 /// navigational lists (e.g. `AppDetailView`'s General / App Store /
-/// TestFlight sections). Optionally shows an accent-colored "New" chip
-/// just before the chevron via `showsNewChip`.
+/// TestFlight sections).
 /// Render it as the `label` of a `Button`/`NavigationLink`; the tap and
 /// navigation logic belong to the caller.
 struct StackListRow: View {
@@ -18,7 +17,6 @@ struct StackListRow: View {
     let iconColor: Color
     let title: String
     var badge: Badge? = nil
-    var showsNewChip: Bool = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -33,18 +31,6 @@ struct StackListRow: View {
                 Image(systemName: "exclamationmark.circle.fill")
                     .foregroundStyle(.orange)
                     .font(.body)
-            }
-
-            if showsNewChip {
-                Text(String(localized: "New"))
-                    .font(.caption2)
-                    .fontWeight(.semibold)
-                    .lineLimit(1)
-                    .fixedSize()
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 2)
-                    .background(Color.accentColor, in: Capsule())
             }
 
             Image(systemName: "chevron.right")

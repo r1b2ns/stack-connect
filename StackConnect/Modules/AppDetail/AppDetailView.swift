@@ -490,8 +490,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                     icon: "paperplane.fill",
                     iconColor: .blue,
                     title: String(localized: "Submissions"),
-                    badge: viewModel.uiState.hasReviewIssues ? .exclamation : nil,
-                    showsNewChip: true
+                    badge: viewModel.uiState.hasReviewIssues ? .exclamation : nil
                 )
             }
             StackTrackedButton(.history, on: .appDetail) {
@@ -567,7 +566,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                         account: account
                     )
                 } label: {
-                    StackListRow(icon: "chart.bar.xaxis", iconColor: .indigo, title: String(localized: "Analytics"), showsNewChip: true)
+                    StackListRow(icon: "chart.bar.xaxis", iconColor: .indigo, title: String(localized: "Analytics"))
                 }
             }
         } header: {
