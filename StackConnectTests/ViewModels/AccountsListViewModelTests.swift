@@ -395,7 +395,9 @@ final class AccountsListViewModelTests: XCTestCase {
 
         let error = await sut.importAccount(from: url, password: password, customName: "Another name")
 
-        XCTAssertEqual(error, String(localized: "An account with these credentials already exists: \"Existing\"."))
+        // Interpolated like production so the lookup hits the localized "%@" key.
+        let existingName = existing.name
+        XCTAssertEqual(error, String(localized: "An account with these credentials already exists: \"\(existingName)\"."))
         let saved = try await mockStorage.fetchAll(AccountModel.self)
         XCTAssertEqual(saved.map(\.id), [existing.id])
     }

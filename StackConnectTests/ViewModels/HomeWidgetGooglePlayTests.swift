@@ -46,14 +46,21 @@ final class HomeWidgetGooglePlayTests: XCTestCase {
 
         XCTAssertEqual(widget.entries.map(\.name), ["Pulse Timer", "Trailhead"])
         XCTAssertEqual(widget.entries.map(\.platform), [.iOS, .android])
-        XCTAssertEqual(widget.entries.last?.statusText, "Open testing · In review")
+        // Built from the same localized format as `GooglePlayTrackStatusLine.text`,
+        // so the assertion holds in any simulator locale.
+        let expected = String(localized: "\(GooglePlayTrackKind(track: "beta").displayName) · \(GooglePlayReleaseLifecycleState.inReview.displayName)")
+        XCTAssertEqual(widget.entries.last?.statusText, expected)
     }
 
     func testAwaitingReleaseShowsTheCachedRolloutWithItsFootnote() async {
         let widget = AwaitingReleaseWidget(configuration: .init(kind: .awaitingRelease), storage: storage, featureFlags: .googlePlayOn)
         await widget.load()
 
-        XCTAssertEqual(widget.entries.map(\.statusText), ["Production · Rolling out 20%"])
+        // Same localized format and percent formatter as the Awaiting Release rollout row,
+        // so the assertion holds in any simulator locale.
+        let percent = 0.2.formatted(.percent.precision(.fractionLength(0...1)))
+        let expected = String(localized: "\(GooglePlayTrackKind(track: "production").displayName) · Rolling out \(percent)")
+        XCTAssertEqual(widget.entries.map(\.statusText), [expected])
         XCTAssertTrue(widget.showsRolloutFootnote)
     }
 
