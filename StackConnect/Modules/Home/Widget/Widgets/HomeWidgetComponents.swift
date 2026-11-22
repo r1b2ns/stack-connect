@@ -100,7 +100,8 @@ enum HomeWidgetDataLoader {
 
     /// The Google Play apps the dashboard may show: every app cached for a
     /// known Play account allowed to `resource` (`.version` for the status
-    /// widgets, `.review` for reviews), inside the account's per-app scope.
+    /// widgets, `.review` for reviews), inside the account's per-app scope and
+    /// not archived.
     /// With `includesReleaseCaches` each app also carries its release
     /// summaries and tracks caches. Never opens an edit nor hits the network.
     static func loadGooglePlaySources(
@@ -118,7 +119,8 @@ enum HomeWidgetDataLoader {
         var sources: [GooglePlayDashboardSource] = []
         for account in playAccounts {
             let apps = ((try? await storage.fetch([GooglePlayAppItem].self, id: GooglePlayAppItem.cacheKey(accountId: account.id))) ?? nil) ?? []
-            for app in apps where account.allowsApp(bundleId: app.packageName) {
+            // Archived apps stay off the dashboard, like archived App Store apps.
+            for app in apps where !app.isArchived && account.allowsApp(bundleId: app.packageName) {
                 var summaries: GooglePlayReleaseSummariesCache?
                 var tracks: GooglePlayTracksCache?
                 if includesReleaseCaches {

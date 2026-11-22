@@ -1,4 +1,5 @@
 import SwiftUI
+import TipKit
 
 // MARK: - Factory
 
@@ -96,6 +97,13 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
+    /// Same tip as the App Store list (archive / favorite by swiping).
+    private let swipeActionsTip = AppListSwipeActionsTip()
+
+    private var isRunningOnMac: Bool {
+        ProcessInfo.processInfo.isiOSAppOnMac
+    }
+
     var body: some View {
         // iOS 26 chrome of the App Store app list (prototype screen 1): large
         // account title, search drawer, round glass toolbar buttons.
@@ -152,7 +160,9 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
                 }
             }
             .stackAccountStatusInset(viewModel.uiState.accountStatus)
-        } else if viewModel.uiState.apps.isEmpty {
+        } else if viewModel.uiState.visibleApps.isEmpty {
+            // No apps, or every app archived (still reachable from the
+            // bottom bar's "Archived").
             buildEmptyState()
                 .stackAccountStatusInset(viewModel.uiState.accountStatus)
         } else if viewModel.uiState.filteredApps.isEmpty {
@@ -199,19 +209,63 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
                 StackInlineErrorSection(message: error, reportContext: errorReportContext)
             }
 
-            Section {
-                ForEach(viewModel.uiState.filteredApps) { app in
-                    Button {
-                        homeCoordinator.navigateToGooglePlayAppDetail(app, account: viewModel.uiState.account)
-                    } label: {
-                        buildAppRow(app)
+            if !isRunningOnMac {
+                TipView(swipeActionsTip)
+                    .listRowBackground(Color(.secondarySystemGroupedBackground))
+                    .padding(.zero)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+            }
+
+            // Favorites first, like the App Store list.
+            if !viewModel.uiState.favoriteApps.isEmpty {
+                Section {
+                    ForEach(viewModel.uiState.favoriteApps) { app in
+                        buildAppButton(app)
                     }
-                    .foregroundStyle(.primary)
-                    .contextMenu { buildAppContextMenu(app) }
+                } header: {
+                    Label(String(localized: "Favorites"), systemImage: "star.fill")
+                }
+            }
+
+            Section {
+                ForEach(viewModel.uiState.regularApps) { app in
+                    buildAppButton(app)
+                }
+            } header: {
+                if !viewModel.uiState.favoriteApps.isEmpty {
+                    Text(String(localized: "All Apps"))
                 }
             } footer: {
                 buildReleaseStatusPausedFooter()
             }
+        }
+    }
+
+    private func buildAppButton(_ app: GooglePlayAppItem) -> some View {
+        Button {
+            homeCoordinator.navigateToGooglePlayAppDetail(app, account: viewModel.uiState.account)
+        } label: {
+            buildAppRow(app)
+        }
+        .foregroundStyle(.primary)
+        .contextMenu { buildAppContextMenu(app) }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button {
+                Task { await viewModel.toggleArchive(app: app) }
+            } label: {
+                Label(String(localized: "Archive"), systemImage: "archivebox.fill")
+            }
+            .tint(.gray)
+
+            Button {
+                Task { await viewModel.toggleFavorite(app: app) }
+            } label: {
+                Label(
+                    app.isFavorite ? String(localized: "Unfavorite") : String(localized: "Favorite"),
+                    systemImage: app.isFavorite ? "star.slash.fill" : "star.fill"
+                )
+            }
+            .tint(.yellow)
         }
     }
 
@@ -249,10 +303,43 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
 
             Spacer()
 
+            if isRunningOnMac {
+                buildInlineArchiveButton(app)
+            }
+
+            buildFavoriteStar(app)
+
             Image(systemName: "chevron.right")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
+    }
+
+    /// Mac: one-click archive in the row (the iPhone swipe action).
+    private func buildInlineArchiveButton(_ app: GooglePlayAppItem) -> some View {
+        Button {
+            Task { await viewModel.toggleArchive(app: app) }
+        } label: {
+            Image(systemName: "archivebox.fill")
+                .foregroundStyle(.gray)
+        }
+        .buttonStyle(.borderless)
+        .help(String(localized: "Archive"))
+        .accessibilityLabel(String(localized: "Archive"))
+    }
+
+    /// Star toggle, like the App Store list's.
+    private func buildFavoriteStar(_ app: GooglePlayAppItem) -> some View {
+        Button {
+            Task { await viewModel.toggleFavorite(app: app) }
+        } label: {
+            Image(systemName: app.isFavorite ? "star.fill" : "star")
+                .font(.caption)
+                .foregroundStyle(app.isFavorite ? AnyShapeStyle(.yellow) : AnyShapeStyle(.tertiary))
+        }
+        .buttonStyle(.borderless)
+        .help(app.isFavorite ? String(localized: "Unfavorite") : String(localized: "Favorite"))
+        .accessibilityLabel(app.isFavorite ? String(localized: "Unfavorite") : String(localized: "Favorite"))
     }
 
     /// One line per track with a release ("● Production · In review (4.2.0)"),
@@ -284,6 +371,19 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
 
     @ViewBuilder
     private func buildAppContextMenu(_ app: GooglePlayAppItem) -> some View {
+        Button {
+            Task { await viewModel.toggleFavorite(app: app) }
+        } label: {
+            Label(
+                app.isFavorite ? String(localized: "Unfavorite") : String(localized: "Favorite"),
+                systemImage: app.isFavorite ? "star.slash.fill" : "star.fill"
+            )
+        }
+        Button {
+            Task { await viewModel.toggleArchive(app: app) }
+        } label: {
+            Label(String(localized: "Archive"), systemImage: "archivebox.fill")
+        }
         if app.isManuallyAdded && viewModel.uiState.canDeleteApps {
             Button(role: .destructive) {
                 Task { await viewModel.removeApp(app) }
@@ -298,17 +398,22 @@ struct GooglePlayAppListView<ViewModel: GooglePlayAppListViewModelProtocol>: Vie
     @ToolbarContentBuilder
     private func buildToolbar() -> some ToolbarContent {
         // The title, the tab switch and the gear belong to the entry.
-        // "Add by package name" floats bottom-leading, where the App Store
-        // list keeps Archived (archive stays out for Play, plan R9).
-        if viewModel.uiState.canAddApps {
-            ToolbarItemGroup(placement: .bottomBar) {
+        // "Add by package name" floats bottom-leading; Archived sits
+        // bottom-trailing, like the App Store list.
+        ToolbarItemGroup(placement: .bottomBar) {
+            if viewModel.uiState.canAddApps {
                 StackTrackedButton(.add, on: .googlePlayAppList) {
                     viewModel.uiState.showAddApp = true
                 } label: {
                     Label(String(localized: "Add App"), systemImage: "plus")
                 }
                 .accessibilityLabel(String(localized: "Add App"))
-                Spacer()
+            }
+            Spacer()
+            StackTrackedButton(.archivedApps, on: .googlePlayAppList) {
+                homeCoordinator.navigateToArchivedApps(account: viewModel.uiState.account)
+            } label: {
+                Label(String(localized: "Archived"), systemImage: "archivebox")
             }
         }
     }

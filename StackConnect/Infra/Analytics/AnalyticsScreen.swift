@@ -152,6 +152,7 @@ enum AnalyticsScreen: String, CaseIterable, Sendable {
 
     // MARK: Google Play
     case googlePlayAppList = "google_play_app_list"
+    case googlePlayArchivedApps = "google_play_archived_apps"
     case addGooglePlayApp = "add_google_play_app"
     case googlePlayUsers = "google_play_users"
     case googlePlayUserDetail = "google_play_user_detail"
