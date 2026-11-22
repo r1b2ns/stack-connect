@@ -73,6 +73,8 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
         .onChange(of: state.step) { _, step in
             if step == .finished { onFinished() }
         }
+        .onChange(of: state.email) { _, _ in viewModel.emailDidChange() }
+        .task { await viewModel.signInWithSavedPasswordIfAvailable() }
         .onDisappear { viewModel.discard() }
     }
 
@@ -100,11 +102,15 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
                 .submitLabel(.next)
                 .onSubmit { focusedField = .password }
 
-            SecureField(String(localized: "Password"), text: $viewModel.uiState.password)
-                .textContentType(.password)
-                .focused($focusedField, equals: .password)
-                .submitLabel(.go)
-                .onSubmit { Task { await viewModel.signIn() } }
+            if state.usesSavedPassword {
+                buildSavedPasswordRow()
+            } else {
+                SecureField(String(localized: "Password"), text: $viewModel.uiState.password)
+                    .textContentType(.password)
+                    .focused($focusedField, equals: .password)
+                    .submitLabel(.go)
+                    .onSubmit { Task { await viewModel.signIn() } }
+            }
         } header: {
             Text("Apple ID")
         } footer: {
@@ -115,9 +121,15 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
             }
         }
 
+        if let notice = state.notice {
+            Section {
+                StackNoticeRow(text: notice, style: .info)
+            }
+        }
+
         Section {
             StackNoticeRow(
-                text: String(localized: "Your password is used once to sign in and is not saved. StackConnect sends it only to Apple, and keeps just the resulting session in the Keychain on this device."),
+                text: String(localized: "StackConnect sends your password only to Apple. Once you're signed in, it's saved in the Keychain on this device only, never synced or exported, so signing in again only takes the code."),
                 style: .privacy
             )
         }
@@ -136,10 +148,35 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
         }
     }
 
+    /// Stands in for the password field when the saved password is used.
+    @ViewBuilder
+    private func buildSavedPasswordRow() -> some View {
+        Label(String(localized: "Using the password saved on this device"), systemImage: "key.fill")
+            .foregroundStyle(.secondary)
+        buildUseDifferentPasswordButton()
+    }
+
+    private func buildUseDifferentPasswordButton() -> some View {
+        Button(String(localized: "Use a Different Password")) {
+            viewModel.useDifferentPassword()
+            focusedField = .password
+        }
+        .disabled(state.isWorking)
+    }
+
     // MARK: - Screen 2: two-factor code
 
     @ViewBuilder
     private func buildCodeContent() -> some View {
+        if state.usesSavedPassword {
+            Section {
+                LabeledContent(String(localized: "Apple ID"), value: state.email)
+                buildUseDifferentPasswordButton()
+            } footer: {
+                Text("Signed in with the password saved on this device. Only the code is left.")
+            }
+        }
+
         Section {
             StackVerificationCodeField(
                 code: state.code,

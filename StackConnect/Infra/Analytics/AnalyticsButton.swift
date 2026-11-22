@@ -91,6 +91,8 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     case toggleTeam = "toggle_team"
     /// Apple ID sign-in: open appleid.apple.com (the Apple ID needs action).
     case openAppleIdWebsite = "open_apple_id_website"
+    /// Apple ID sign-in: type a password instead of the one saved on the device.
+    case useDifferentPassword = "use_different_password"
     /// The expired Apple ID session prompt: dismiss it for now.
     case notNow = "not_now"
     case createNew = "create_new"

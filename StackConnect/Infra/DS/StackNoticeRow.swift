@@ -49,7 +49,7 @@ struct StackNoticeRow: View {
 
 #Preview {
     Form {
-        StackNoticeRow(text: "Your password is used once to sign in and is not saved.", style: .privacy)
+        StackNoticeRow(text: "Your password is saved only in this device's Keychain.", style: .privacy)
         StackNoticeRow(text: "Enter the code shown on your Apple devices.")
         StackNoticeRow(text: "Signed in.", style: .success)
     }
