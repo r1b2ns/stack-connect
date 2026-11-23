@@ -113,7 +113,7 @@ enum AppleAPIErrorTranslator {
 
     static var sessionExpiredMessage: String {
         String(localized: "Your Apple ID session expired. Sign in again to keep using this account.",
-               comment: "Error on an App Store Connect screen of an account added with Sign in with Apple ID, when Apple no longer accepts its session.")
+               comment: "Error on an App Store Connect screen of an account added with email and password, when Apple no longer accepts its session.")
     }
 
     // MARK: - Pending agreements detection

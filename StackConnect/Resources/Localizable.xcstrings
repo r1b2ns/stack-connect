@@ -6578,6 +6578,95 @@
         }
       }
     },
+    "A Direct Connection" : {
+      "comment" : "Connection guide, page 1 title: the app talks directly to the service being connected.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine direkte Verbindung"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Direct Connection"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una conexión directa"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una conexión directa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une connexion directe"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una connessione diretta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "直接接続"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "직접 연결"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Een directe verbinding"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma conexão direta"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma ligação direta"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прямое подключение"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En direkt anslutning"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "直接連線"
+          }
+        }
+      }
+    },
     "A draft stays on the track without being served to anyone. Staged rollout is available for production and open testing." : {
       "localizations" : {
         "de" : {
@@ -9300,84 +9389,91 @@
         }
       }
     },
-    "Accounts added with Sign in with Apple ID can't be exported: the session is your personal Apple ID login. Share an App Store Connect API key instead." : {
+    "Accounts added with email and password can't be exported: the session is your personal Apple ID login. Share an App Store Connect API key instead." : {
+      "comment" : "Account Settings: why an App Store Connect account added with email and password (Apple ID web session) can't be exported.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mit „Mit Apple-ID anmelden“ hinzugefügte Accounts können nicht exportiert werden: Die Sitzung ist deine persönliche Apple-ID-Anmeldung. Teile stattdessen einen App Store Connect-API-Schlüssel."
+            "value" : "Mit E-Mail und Passwort hinzugefügte Accounts können nicht exportiert werden: Die Sitzung ist deine persönliche Apple-ID-Anmeldung. Teile stattdessen einen App Store Connect-API-Schlüssel."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accounts added with email and password can't be exported: the session is your personal Apple ID login. Share an App Store Connect API key instead."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Las cuentas añadidas con Iniciar sesión con el Apple ID no se pueden exportar: la sesión es tu inicio de sesión personal del Apple ID. Comparte una clave de API de App Store Connect en su lugar."
+            "value" : "Las cuentas añadidas con correo y contraseña no se pueden exportar: la sesión es tu inicio de sesión personal del Apple ID. Comparte una clave de API de App Store Connect en su lugar."
           }
         },
         "es-MX" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Las cuentas agregadas con Iniciar sesión con el Apple ID no se pueden exportar: la sesión es tu inicio de sesión personal del Apple ID. Comparte una clave de API de App Store Connect en su lugar."
+            "value" : "Las cuentas agregadas con correo y contraseña no se pueden exportar: la sesión es tu inicio de sesión personal del Apple ID. Comparte una clave de API de App Store Connect en su lugar."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les comptes ajoutés avec « Se connecter avec l'Identifiant Apple » ne peuvent pas être exportés : la session est votre connexion personnelle. Partagez plutôt une clé d'API App Store Connect."
+            "value" : "Les comptes ajoutés avec e-mail et mot de passe ne peuvent pas être exportés : la session est votre connexion personnelle à votre Identifiant Apple. Partagez plutôt une clé d'API App Store Connect."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gli account aggiunti con Accedi con Apple ID non si possono esportare: la sessione è il tuo accesso personale con l'Apple ID. Condividi invece una chiave API di App Store Connect."
+            "value" : "Gli account aggiunti con email e password non si possono esportare: la sessione è il tuo accesso personale con l'Apple ID. Condividi invece una chiave API di App Store Connect."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple ID でサインインして追加したアカウントは書き出せません。セッションはあなた個人の Apple ID ログインだからです。代わりに App Store Connect API キーを共有してください。"
+            "value" : "メールアドレスとパスワードで追加したアカウントは書き出せません。セッションはあなた個人の Apple ID ログインだからです。代わりに App Store Connect API キーを共有してください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple ID로 로그인하여 추가한 계정은 내보낼 수 없습니다. 세션은 개인 Apple ID 로그인이기 때문입니다. 대신 App Store Connect API 키를 공유하세요."
+            "value" : "이메일과 암호로 추가한 계정은 내보낼 수 없습니다. 세션은 개인 Apple ID 로그인이기 때문입니다. 대신 App Store Connect API 키를 공유하세요."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Accounts die zijn toegevoegd met Inloggen met Apple ID kunnen niet worden geëxporteerd: de sessie is je persoonlijke Apple ID-login. Deel in plaats daarvan een App Store Connect API-sleutel."
+            "value" : "Accounts die zijn toegevoegd met e-mail en wachtwoord kunnen niet worden geëxporteerd: de sessie is je persoonlijke Apple ID-login. Deel in plaats daarvan een App Store Connect API-sleutel."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Contas adicionadas com Fazer login com o Apple ID não podem ser exportadas: a sessão é o seu login pessoal do Apple ID. Compartilhe uma chave de API do App Store Connect em vez disso."
+            "value" : "Contas adicionadas com e-mail e senha não podem ser exportadas: a sessão é o seu login pessoal do Apple ID. Compartilhe uma chave de API do App Store Connect em vez disso."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "As contas adicionadas com Iniciar sessão com o ID Apple não podem ser exportadas: a sessão é o seu início de sessão pessoal. Partilhe antes uma chave de API do App Store Connect."
+            "value" : "As contas adicionadas com e-mail e palavra-passe não podem ser exportadas: a sessão é o seu início de sessão pessoal do ID Apple. Partilhe antes uma chave de API do App Store Connect."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Учетные записи, добавленные через вход с Apple ID, нельзя экспортировать: сеанс — это ваш личный вход в Apple ID. Вместо этого поделитесь ключом API App Store Connect."
+            "value" : "Учетные записи, добавленные по электронной почте и паролю, нельзя экспортировать: сеанс — это ваш личный вход в Apple ID. Вместо этого поделитесь ключом API App Store Connect."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konton som lagts till med Logga in med Apple-ID kan inte exporteras: sessionen är din personliga Apple-ID-inloggning. Dela en API-nyckel för App Store Connect i stället."
+            "value" : "Konton som lagts till med e-post och lösenord kan inte exporteras: sessionen är din personliga Apple-ID-inloggning. Dela en API-nyckel för App Store Connect i stället."
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "使用 Apple ID 登入加入的帳號無法匯出：此工作階段是你個人的 Apple ID 登入。請改為分享 App Store Connect API 密鑰。"
+            "value" : "使用電子郵件和密碼加入的帳號無法匯出：此工作階段是你個人的 Apple ID 登入。請改為分享 App Store Connect API 金鑰。"
           }
         }
       }
@@ -10354,6 +10450,95 @@
         }
       }
     },
+    "Add a service account's JSON key file. Suited to shared team accounts and automation." : {
+      "comment" : "Add Account method chooser and connection guide: what the service account method needs.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Füge die JSON-Schlüsseldatei eines Dienstkontos hinzu. Geeignet für gemeinsam genutzte Team-Accounts und Automatisierung."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a service account's JSON key file. Suited to shared team accounts and automation."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añade el archivo de clave JSON de una cuenta de servicio. Ideal para cuentas de equipo compartidas y automatización."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrega el archivo de clave JSON de una cuenta de servicio. Ideal para cuentas de equipo compartidas y automatización."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoutez le fichier de clé JSON d’un compte de service. Adapté aux comptes d’équipe partagés et à l’automatisation."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aggiungi il file della chiave JSON di un account di servizio. Adatto ad account di team condivisi e all’automazione."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サービスアカウントの JSON キーファイルを追加します。チームで共有するアカウントや自動化に適しています。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서비스 계정의 JSON 키 파일을 추가합니다. 팀 공유 계정과 자동화에 적합합니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voeg het JSON-sleutelbestand van een serviceaccount toe. Geschikt voor gedeelde teamaccounts en automatisering."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicione o arquivo de chave JSON de uma conta de serviço. Ideal para contas de equipe compartilhadas e automação."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicione o ficheiro de chave JSON de uma conta de serviço. Ideal para contas de equipa partilhadas e automatização."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавьте JSON-файл ключа сервисного аккаунта. Подходит для общих командных аккаунтов и автоматизации."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lägg till JSON-nyckelfilen för ett tjänstkonto. Passar för delade teamkonton och automatisering."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加入服務帳戶的 JSON 金鑰檔案。適合團隊共用的帳戶與自動化。"
+          }
+        }
+      }
+    },
     "Add Account" : {
       "comment" : "A button to add a new account.",
       "isCommentAutoGenerated" : true,
@@ -10517,6 +10702,95 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "加入帳號⋯"
+          }
+        }
+      }
+    },
+    "Add an App Store Connect API key: its .p8 file, Key ID and Issuer ID. Works with every feature, including Analytics Reports." : {
+      "comment" : "Add Account method chooser and connection guide: what the API key method needs.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Füge einen App Store Connect-API-Schlüssel hinzu: seine .p8-Datei, die Key ID und die Issuer ID. Funktioniert mit allen Funktionen, auch mit Analytics-Berichten."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add an App Store Connect API key: its .p8 file, Key ID and Issuer ID. Works with every feature, including Analytics Reports."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añade una clave de API de App Store Connect: su archivo .p8, su Key ID y su Issuer ID. Funciona con todas las funciones, incluidos los informes de Analytics."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrega una clave de API de App Store Connect: su archivo .p8, su Key ID y su Issuer ID. Funciona con todas las funciones, incluidos los reportes de Analytics."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoutez une clé d’API App Store Connect : son fichier .p8, son Key ID et son Issuer ID. Fonctionne avec toutes les fonctionnalités, y compris les rapports Analytics."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aggiungi una chiave API di App Store Connect: il file .p8, il Key ID e l’Issuer ID. Funziona con tutte le funzioni, compresi i report di Analytics."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store Connect API キー（.p8 ファイル、Key ID、Issuer ID）を追加します。アナリティクスレポートを含むすべての機能で使えます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store Connect API 키(.p8 파일, Key ID, Issuer ID)를 추가합니다. 분석 보고서를 포함한 모든 기능에서 작동합니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voeg een App Store Connect API-sleutel toe: het .p8-bestand, de Key ID en de Issuer ID. Werkt met alle functies, ook Analytics-rapporten."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicione uma chave de API do App Store Connect: o arquivo .p8, o Key ID e o Issuer ID. Funciona com todos os recursos, incluindo os relatórios do Analytics."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicione uma chave de API do App Store Connect: o ficheiro .p8, o Key ID e o Issuer ID. Funciona com todas as funcionalidades, incluindo os relatórios do Analytics."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавьте ключ API App Store Connect: файл .p8, Key ID и Issuer ID. Работает со всеми функциями, включая отчеты Analytics."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lägg till en API-nyckel för App Store Connect: dess .p8-fil, Key ID och Issuer ID. Fungerar med alla funktioner, även Analytics-rapporter."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加入 App Store Connect API 金鑰：其 .p8 檔案、Key ID 與 Issuer ID。適用於所有功能，包括分析報告。"
           }
         }
       }
@@ -22522,6 +22796,12 @@
             "value" : "Atrás"
           }
         },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atrás"
+          }
+        },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -22556,6 +22836,30 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Voltar"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voltar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Назад"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tillbaka"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "返回"
           }
         }
       }
@@ -26905,6 +27209,95 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Escolher arquivo"
+          }
+        }
+      }
+    },
+    "Choose How to Connect" : {
+      "comment" : "Connection guide, last page title when the service can be connected in more than one way.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbindungsart wählen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose How to Connect"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige cómo conectarte"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige cómo conectarte"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez comment vous connecter"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scegli come connetterti"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "接続方法を選択"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연결 방법 선택"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kies hoe je verbinding maakt"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha como se conectar"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha como ligar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите способ подключения"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Välj hur du ansluter"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選擇連線方式"
           }
         }
       }
@@ -33549,6 +33942,95 @@
         }
       }
     },
+    "Data you load is kept on this device, for offline use" : {
+      "comment" : "Connection guide, page 1 fact: data loaded from the service is cached on the device.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geladene Daten werden für die Offline-Nutzung auf diesem Gerät gespeichert"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Data you load is kept on this device, for offline use"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los datos que cargas se guardan en este dispositivo para usarlos sin conexión"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los datos que cargas se guardan en este dispositivo para usarlos sin conexión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les données chargées sont conservées sur cet appareil, pour un usage hors ligne"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I dati caricati restano su questo dispositivo, per l’uso offline"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "読み込んだデータはオフラインで使えるようにこのデバイスに保存されます"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "불러온 데이터는 오프라인 사용을 위해 이 기기에 보관됩니다"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geladen gegevens worden op dit apparaat bewaard, voor offline gebruik"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Os dados carregados ficam neste dispositivo, para uso offline"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Os dados carregados ficam neste dispositivo, para utilização offline"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загруженные данные хранятся на этом устройстве для работы офлайн"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Data du läser in sparas på den här enheten för användning offline"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "載入的資料會保存在此裝置上，供離線使用"
+          }
+        }
+      }
+    },
     "Date" : {
       "comment" : "Label for the date of a review submission.",
       "isCommentAutoGenerated" : true,
@@ -39183,8 +39665,8 @@
         },
         "es-MX" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "Listo"
           }
         },
         "fr" : {
@@ -39225,26 +39707,26 @@
         },
         "pt-PT" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "Concluído"
           }
         },
         "ru" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "Готово"
           }
         },
         "sv" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "Klar"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "完成"
           }
         }
       }
@@ -41517,6 +41999,95 @@
           "stringUnit" : {
             "state" : "new",
             "value" : ""
+          }
+        }
+      }
+    },
+    "Email and Password" : {
+      "comment" : "Connection guide, page 2: heading of the note about the App Store Connect email and password method.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-Mail und Passwort"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Email and Password"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correo y contraseña"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Correo y contraseña"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-mail et mot de passe"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Email e password"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メールアドレスとパスワード"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이메일과 암호"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-mail en wachtwoord"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-mail e senha"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-mail e palavra-passe"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эл. почта и пароль"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E-post och lösenord"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "電子郵件和密碼"
           }
         }
       }
@@ -57865,6 +58436,95 @@
         }
       }
     },
+    "Here's what you'll use to connect to %@." : {
+      "comment" : "Connection guide, last page with a single way to connect. The placeholder is the service being connected.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Damit verbindest du dich mit %@."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Here's what you'll use to connect to %@."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto es lo que usarás para conectarte a %@."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto es lo que usarás para conectarte a %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voici ce que vous utiliserez pour vous connecter à %@."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ecco cosa userai per connetterti con %@."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ への接続には次の方法を使います。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@에 연결할 때 사용할 방법입니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hiermee maak je verbinding met %@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Veja o que você vai usar para se conectar ao %@."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eis o que vai usar para ligar ao %@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вот что вы будете использовать для подключения к %@."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Så här ansluter du till %@."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你將使用以下方式連線到 %@。"
+          }
+        }
+      }
+    },
     "Hi %@, the App Store Connect team \"%@\" has pending agreements. As Account Holder, please review and accept them: %@" : {
       "comment" : "Share message asking a named App Store Connect Account Holder to accept pending agreements. Arguments: Account Holder name, team name, agreements URL.",
       "localizations" : {
@@ -58363,6 +59023,95 @@
         }
       }
     },
+    "How It Works" : {
+      "comment" : "Title of the connection guide, and of the Add Account entry that reopens it.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "So funktioniert’s"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How It Works"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo funciona"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo funciona"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fonctionnement"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Come funziona"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仕組み"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "작동 방식"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zo werkt het"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como funciona"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como funciona"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как это работает"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Så fungerar det"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "運作方式"
+          }
+        }
+      }
+    },
     "How often Live Activities from your app are started and viewed." : {
 
     },
@@ -58377,6 +59126,95 @@
     },
     "How often your app's shortcuts are run from the Shortcuts app." : {
 
+    },
+    "How StackConnect handles your credentials" : {
+      "comment" : "Add Account: subtitle of the entry that opens the connection guide.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie StackConnect mit deinen Zugangsdaten umgeht"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How StackConnect handles your credentials"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo trata StackConnect tus credenciales"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo maneja StackConnect tus credenciales"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comment StackConnect traite vos identifiants"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Come StackConnect gestisce le tue credenziali"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect による認証情報の取り扱い"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect가 자격 증명을 다루는 방식"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoe StackConnect met je inloggegevens omgaat"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como o StackConnect lida com suas credenciais"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como o StackConnect trata as suas credenciais"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как StackConnect обращается с вашими учетными данными"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hur StackConnect hanterar dina inloggningsuppgifter"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect 如何處理你的憑證"
+          }
+        }
+      }
     },
     "How to find the UDID" : {
       "localizations" : {
@@ -58697,6 +59535,273 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "如何設定服務帳戶"
+          }
+        }
+      }
+    },
+    "How would you like to connect to %@?" : {
+      "comment" : "Add Account method chooser, above the cards. The placeholder is the service being connected, e.g. App Store Connect.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie möchtest du dich mit %@ verbinden?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How would you like to connect to %@?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Cómo quieres conectarte a %@?"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Cómo quieres conectarte a %@?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comment souhaitez-vous vous connecter à %@ ?"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Come vuoi connetterti con %@?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ への接続方法を選んでください"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@에 어떻게 연결하시겠습니까?"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoe wil je verbinding maken met %@?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como você quer se conectar ao %@?"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como pretende ligar ao %@?"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как вы хотите подключиться к %@?"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hur vill du ansluta till %@?"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你想如何連線到 %@？"
+          }
+        }
+      }
+    },
+    "How You'll Connect" : {
+      "comment" : "Connection guide, last page title when the service can be connected in one way only.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "So verbindest du dich"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How You'll Connect"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo te conectarás"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo te conectarás"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comment vous vous connecterez"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Come ti connetterai"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "接続方法"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연결 방법"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zo maak je verbinding"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como você vai se conectar"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como vai ligar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как вы подключитесь"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Så ansluter du"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連線方式"
+          }
+        }
+      }
+    },
+    "How Your Password Is Used" : {
+      "comment" : "Title of the sheet explaining what happens to the App Store Connect password, and of the link that opens it.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "So wird dein Passwort verwendet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How Your Password Is Used"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo se usa tu contraseña"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo se usa tu contraseña"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilisation de votre mot de passe"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Come viene usata la password"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "パスワードの使われ方"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "암호가 사용되는 방식"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zo wordt je wachtwoord gebruikt"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como sua senha é usada"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como a sua palavra-passe é usada"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Как используется ваш пароль"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Så används ditt lösenord"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的密碼如何使用"
           }
         }
       }
@@ -65921,6 +67026,95 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "這是免費且開放原始碼的 App。如果它幫你節省了時間，不妨留下一點小費。"
+          }
+        }
+      }
+    },
+    "It's then kept in this device's Keychain, readable only while the device is unlocked, and never synced through iCloud or restored to other devices. It's deleted with the last account that uses it." : {
+      "comment" : "How Your Password Is Used, step 3 detail.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es wird dann im Schlüsselbund dieses Geräts aufbewahrt, ist nur lesbar, solange das Gerät entsperrt ist, und wird nie über iCloud synchronisiert oder auf anderen Geräten wiederhergestellt. Es wird mit dem letzten Account gelöscht, der es verwendet."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "It's then kept in this device's Keychain, readable only while the device is unlocked, and never synced through iCloud or restored to other devices. It's deleted with the last account that uses it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entonces se guarda en el llavero de este dispositivo, solo se puede leer mientras el dispositivo está desbloqueado y nunca se sincroniza por iCloud ni se restaura en otros dispositivos. Se elimina con la última cuenta que la usa."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entonces se guarda en el llavero de este dispositivo, solo se puede leer mientras el dispositivo está desbloqueado y nunca se sincroniza por iCloud ni se restaura en otros dispositivos. Se elimina con la última cuenta que la usa."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il est alors conservé dans le trousseau de cet appareil, lisible uniquement lorsque l’appareil est déverrouillé, et n’est jamais synchronisé via iCloud ni restauré sur d’autres appareils. Il est supprimé avec le dernier compte qui l’utilise."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viene quindi conservata nel portachiavi di questo dispositivo, leggibile solo quando il dispositivo è sbloccato, e non viene mai sincronizzata tramite iCloud né ripristinata su altri dispositivi. Viene eliminata insieme all’ultimo account che la usa."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "その場合はこのデバイスのキーチェーンに保存され、デバイスのロックが解除されているときだけ読み取れます。iCloud で同期されたり、ほかのデバイスに復元されたりすることはありません。最後にそれを使うアカウントを削除すると、一緒に削除されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 경우 이 기기의 키체인에 보관되며, 기기 잠금이 해제된 동안에만 읽을 수 있고 iCloud로 동기화되거나 다른 기기에 복원되지 않습니다. 해당 암호를 사용하는 마지막 계정을 삭제하면 함께 삭제됩니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Het wordt dan bewaard in de sleutelhanger van dit apparaat, is alleen leesbaar als het apparaat ontgrendeld is en wordt nooit via iCloud gesynchroniseerd of op andere apparaten hersteld. Het wordt verwijderd met het laatste account dat het gebruikt."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nesse caso, ela fica nas Chaves deste dispositivo, só pode ser lida com o dispositivo desbloqueado e nunca é sincronizada pelo iCloud nem restaurada em outros dispositivos. Ela é apagada com a última conta que a usa."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nesse caso, fica no porta-chaves deste dispositivo, só pode ser lida com o dispositivo desbloqueado e nunca é sincronizada através do iCloud nem restaurada noutros dispositivos. É eliminada com a última conta que a usa."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тогда он хранится в связке ключей этого устройства, доступен для чтения только при разблокированном устройстве и никогда не синхронизируется через iCloud и не восстанавливается на других устройствах. Он удаляется вместе с последней учетной записью, которая его использует."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det sparas då i nyckelringen på den här enheten, kan bara läsas när enheten är upplåst och synkas aldrig via iCloud eller återställs på andra enheter. Det raderas med det sista kontot som använder det."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此時密碼會保存在此裝置的鑰匙圈中，只有在裝置解鎖時才能讀取，且絕不會透過 iCloud 同步或還原到其他裝置。使用它的最後一個帳號刪除時，密碼也會一併刪除。"
           }
         }
       }
@@ -74194,6 +75388,362 @@
         }
       }
     },
+    "Never in logs, analytics or crash reports" : {
+      "comment" : "Credentials (connection guide) or the Apple ID password (How Your Password Is Used) never appear in logs, analytics or crash reports.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie in Logs, Analysen oder Absturzberichten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Never in logs, analytics or crash reports"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca en registros, análisis ni informes de fallos"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca en registros, análisis ni reportes de fallas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jamais dans les journaux, les données d’analyse ou les rapports de plantage"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mai nei log, nelle analisi o nei report sugli arresti anomali"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ログ、分析データ、クラッシュレポートには一切含まれません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "로그, 분석 데이터, 충돌 보고서에 절대 포함되지 않음"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nooit in logs, analyses of crashrapporten"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca em logs, dados de análise ou relatórios de falhas"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca em registos, dados de análise ou relatórios de falhas"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ни в журналах, ни в аналитике, ни в отчетах о сбоях"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aldrig i loggar, analysdata eller kraschrapporter"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "絕不會出現在記錄、分析資料或當機報告中"
+          }
+        }
+      }
+    },
+    "Never sent to the developer" : {
+      "comment" : "Connection guide, page 2 fact about credentials.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie an den Entwickler gesendet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Never sent to the developer"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca se envían al desarrollador"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca se envían al desarrollador"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jamais envoyés au développeur"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mai inviate allo sviluppatore"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開発者に送信されることはありません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "개발자에게 전송되지 않음"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nooit naar de ontwikkelaar gestuurd"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca enviadas ao desenvolvedor"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca enviadas ao programador"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Никогда не отправляются разработчику"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skickas aldrig till utvecklaren"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "絕不會傳送給開發者"
+          }
+        }
+      }
+    },
+    "Never synced through iCloud or sent to a StackConnect server" : {
+      "comment" : "Trust panel of the App Store Connect email and password screen.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie über iCloud synchronisiert oder an einen StackConnect-Server gesendet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Never synced through iCloud or sent to a StackConnect server"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca se sincroniza por iCloud ni se envía a un servidor de StackConnect"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca se sincroniza por iCloud ni se envía a un servidor de StackConnect"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jamais synchronisé via iCloud ni envoyé à un serveur StackConnect"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mai sincronizzata tramite iCloud né inviata a un server di StackConnect"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud で同期されたり、StackConnect のサーバに送信されたりすることはありません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud로 동기화되거나 StackConnect 서버로 전송되지 않음"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nooit via iCloud gesynchroniseerd of naar een StackConnect-server gestuurd"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca sincronizada pelo iCloud nem enviada a um servidor do StackConnect"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca sincronizada através do iCloud nem enviada para um servidor do StackConnect"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Никогда не синхронизируется через iCloud и не отправляется на сервер StackConnect"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synkas aldrig via iCloud eller skickas till en StackConnect-server"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "絕不會透過 iCloud 同步，也不會傳送到 StackConnect 伺服器"
+          }
+        }
+      }
+    },
+    "Never to the developer or anyone else." : {
+      "comment" : "How Your Password Is Used, step 2 detail.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nie an den Entwickler oder an andere."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Never to the developer or anyone else."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca al desarrollador ni a nadie más."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca al desarrollador ni a nadie más."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jamais au développeur ni à qui que ce soit d’autre."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mai allo sviluppatore o ad altri."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開発者やほかの誰かに送られることはありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "개발자나 다른 누구에게도 전송되지 않습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nooit naar de ontwikkelaar of iemand anders."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca ao desenvolvedor nem a mais ninguém."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca ao programador nem a mais ninguém."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Никогда разработчику или кому-либо еще."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aldrig till utvecklaren eller någon annan."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "絕不會傳送給開發者或其他任何人。"
+          }
+        }
+      }
+    },
     "New" : {
       "comment" : "Small badge shown on a list row to mark a newly added feature.",
       "extractionState" : "stale",
@@ -75514,8 +77064,8 @@
         },
         "es-MX" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "Siguiente"
           }
         },
         "fr" : {
@@ -75556,26 +77106,26 @@
         },
         "pt-PT" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "Seguinte"
           }
         },
         "ru" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "Далее"
           }
         },
         "sv" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "Nästa"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "下一步"
           }
         }
       }
@@ -81114,6 +82664,184 @@
         }
       }
     },
+    "No StackConnect account to create" : {
+      "comment" : "Connection guide, page 1 fact.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein StackConnect-Account nötig"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No StackConnect account to create"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay que crear ninguna cuenta de StackConnect"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay que crear ninguna cuenta de StackConnect"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun compte StackConnect à créer"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun account StackConnect da creare"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect のアカウント作成は不要"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect 계정을 만들 필요 없음"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geen StackConnect-account nodig"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma conta do StackConnect para criar"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma conta do StackConnect para criar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не нужно создавать аккаунт StackConnect"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inget StackConnect-konto att skapa"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不需建立 StackConnect 帳號"
+          }
+        }
+      }
+    },
+    "No StackConnect server in between" : {
+      "comment" : "Connection guide, page 1 fact.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein StackConnect-Server dazwischen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No StackConnect server in between"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin servidores de StackConnect de por medio"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin servidores de StackConnect de por medio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun serveur StackConnect entre les deux"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessun server di StackConnect nel mezzo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "間に StackConnect のサーバはありません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "중간에 StackConnect 서버가 없음"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geen StackConnect-server ertussen"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum servidor do StackConnect no meio"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum servidor do StackConnect pelo meio"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без серверов StackConnect посередине"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ingen StackConnect-server emellan"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中間沒有 StackConnect 伺服器"
+          }
+        }
+      }
+    },
     "No Store Listings" : {
       "comment" : "Empty state title when a Google Play app has no store listing.",
       "localizations" : {
@@ -83286,6 +85014,95 @@
         }
       }
     },
+    "Not synced through iCloud or restored to other devices" : {
+      "comment" : "Connection guide, page 2 fact about credentials.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht über iCloud synchronisiert oder auf anderen Geräten wiederhergestellt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not synced through iCloud or restored to other devices"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se sincronizan por iCloud ni se restauran en otros dispositivos"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se sincronizan por iCloud ni se restauran en otros dispositivos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ni synchronisés via iCloud, ni restaurés sur d’autres appareils"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non sincronizzate tramite iCloud né ripristinate su altri dispositivi"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud で同期されたり、ほかのデバイスに復元されたりしません"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud로 동기화되거나 다른 기기에 복원되지 않음"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niet via iCloud gesynchroniseerd of op andere apparaten hersteld"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não são sincronizadas pelo iCloud nem restauradas em outros dispositivos"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não são sincronizadas através do iCloud nem restauradas noutros dispositivos"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не синхронизируются через iCloud и не восстанавливаются на других устройствах"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Synkas inte via iCloud eller återställs på andra enheter"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不會透過 iCloud 同步，也不會還原到其他裝置"
+          }
+        }
+      }
+    },
     "Notes" : {
       "comment" : "A label displayed above the text field for adding additional notes.",
       "isCommentAutoGenerated" : true,
@@ -84745,6 +86562,95 @@
         }
       }
     },
+    "Only on this screen. StackConnect has no server of its own, so your password never passes through the developer." : {
+      "comment" : "How Your Password Is Used, step 1 detail.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur auf diesem Bildschirm. StackConnect hat keinen eigenen Server, daher geht dein Passwort nie über den Entwickler."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only on this screen. StackConnect has no server of its own, so your password never passes through the developer."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo en esta pantalla. StackConnect no tiene servidores propios, así que tu contraseña nunca pasa por el desarrollador."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo en esta pantalla. StackConnect no tiene servidores propios, así que tu contraseña nunca pasa por el desarrollador."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uniquement sur cet écran. StackConnect n’a pas de serveur à lui : votre mot de passe ne passe donc jamais par le développeur."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo in questa schermata. StackConnect non ha server propri, quindi la password non passa mai dallo sviluppatore."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "この画面でだけ入力します。StackConnect は独自のサーバを持たないため、パスワードが開発者を経由することはありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 화면에서만 입력합니다. StackConnect에는 자체 서버가 없으므로 암호가 개발자를 거치지 않습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alleen op dit scherm. StackConnect heeft geen eigen server, dus je wachtwoord komt nooit langs de ontwikkelaar."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Somente nesta tela. O StackConnect não tem servidor próprio, então sua senha nunca passa pelo desenvolvedor."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apenas neste ecrã. O StackConnect não tem servidor próprio, por isso a sua palavra-passe nunca passa pelo programador."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только на этом экране. У StackConnect нет собственного сервера, поэтому ваш пароль никогда не проходит через разработчика."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bara på den här skärmen. StackConnect har ingen egen server, så ditt lösenord passerar aldrig utvecklaren."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只在此畫面輸入。StackConnect 沒有自己的伺服器，因此你的密碼絕不會經過開發者。"
+          }
+        }
+      }
+    },
     "Only screens visited and buttons tapped are collected. Account names, keys, bundle IDs and your app data are never sent." : {
       "comment" : "Footer of the Privacy section in Settings explaining what usage analytics collect.",
       "localizations" : {
@@ -85566,6 +87472,184 @@
           "stringUnit" : {
             "state" : "new",
             "value" : ""
+          }
+        }
+      }
+    },
+    "Open Source" : {
+      "comment" : "Connection guide, page 3 title: the app's code is public.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Source"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Source"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código abierto"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código abierto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open source"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open source"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オープンソース"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오픈 소스"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open source"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código aberto"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código aberto"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открытый исходный код"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öppen källkod"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開放原始碼"
+          }
+        }
+      }
+    },
+    "Open source and auditable" : {
+      "comment" : "Trust panel of the App Store Connect email and password screen: anyone can read the code.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open Source und überprüfbar"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open source and auditable"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código abierto y auditable"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código abierto y auditable"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open source et vérifiable"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open source e verificabile"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "オープンソースで検証可能"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "오픈 소스로 누구나 검증 가능"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open source en controleerbaar"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código aberto e auditável"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código aberto e auditável"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открытый код, который можно проверить"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öppen källkod som kan granskas"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "開放原始碼，可供稽核"
           }
         }
       }
@@ -87198,6 +89282,95 @@
           "stringUnit" : {
             "state" : "new",
             "value" : ""
+          }
+        }
+      }
+    },
+    "Page %lld of %lld" : {
+      "comment" : "Accessibility label of a paged guide's page indicator. Arguments: the current page, the page count.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seite %lld von %lld"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page %lld of %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Página %lld de %lld"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Página %lld de %lld"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Page %lld sur %lld"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pagina %lld di %lld"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld / %lld ページ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld/%lld페이지"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pagina %lld van %lld"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Página %lld de %lld"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Página %lld de %lld"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Страница %lld из %lld"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sida %lld av %lld"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "第 %lld 頁，共 %lld 頁"
           }
         }
       }
@@ -91936,8 +94109,8 @@
         },
         "es-MX" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "Política de privacidad"
           }
         },
         "fr" : {
@@ -91978,26 +94151,26 @@
         },
         "pt-PT" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "Política de privacidade"
           }
         },
         "ru" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "Политика конфиденциальности"
           }
         },
         "sv" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "Integritetspolicy"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : ""
+            "state" : "translated",
+            "value" : "隱私權政策"
           }
         }
       }
@@ -100998,84 +103171,91 @@
         }
       }
     },
-    "Renaming or deleting an identifier needs an App Store Connect API key. Accounts added with Sign in with Apple ID can't do it: use developer.apple.com instead." : {
+    "Renaming or deleting an identifier needs an App Store Connect API key. Accounts added with email and password can't do it: use developer.apple.com instead." : {
+      "comment" : "Identifier detail: why an App Store Connect account added with email and password (Apple ID web session) can't rename or delete a bundle ID.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zum Umbenennen oder Löschen einer ID ist ein App Store Connect-API-Schlüssel nötig. Mit „Mit Apple-ID anmelden“ hinzugefügte Accounts können das nicht: Verwende stattdessen developer.apple.com."
+            "value" : "Zum Umbenennen oder Löschen einer ID ist ein App Store Connect-API-Schlüssel nötig. Mit E-Mail und Passwort hinzugefügte Accounts können das nicht: Verwende stattdessen developer.apple.com."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renaming or deleting an identifier needs an App Store Connect API key. Accounts added with email and password can't do it: use developer.apple.com instead."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Para cambiar el nombre o eliminar un identificador se necesita una clave de API de App Store Connect. Las cuentas añadidas con Iniciar sesión con el Apple ID no pueden hacerlo: usa developer.apple.com."
+            "value" : "Para cambiar el nombre o eliminar un identificador se necesita una clave de API de App Store Connect. Las cuentas añadidas con correo y contraseña no pueden hacerlo: usa developer.apple.com."
           }
         },
         "es-MX" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Para cambiar el nombre o eliminar un identificador se necesita una clave de API de App Store Connect. Las cuentas agregadas con Iniciar sesión con el Apple ID no pueden hacerlo: usa developer.apple.com."
+            "value" : "Para cambiar el nombre o eliminar un identificador se necesita una clave de API de App Store Connect. Las cuentas agregadas con correo y contraseña no pueden hacerlo: usa developer.apple.com."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Renommer ou supprimer un identifiant nécessite une clé d'API App Store Connect. Les comptes ajoutés avec « Se connecter avec l'Identifiant Apple » ne le peuvent pas : utilisez plutôt developer.apple.com."
+            "value" : "Renommer ou supprimer un identifiant nécessite une clé d'API App Store Connect. Les comptes ajoutés avec e-mail et mot de passe ne le peuvent pas : utilisez plutôt developer.apple.com."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Per rinominare o eliminare un identificatore serve una chiave API di App Store Connect. Gli account aggiunti con Accedi con Apple ID non possono farlo: usa invece developer.apple.com."
+            "value" : "Per rinominare o eliminare un identificatore serve una chiave API di App Store Connect. Gli account aggiunti con email e password non possono farlo: usa invece developer.apple.com."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ID の名前変更や削除には App Store Connect API キーが必要です。Apple ID でサインインして追加したアカウントではできないため、developer.apple.com を使ってください。"
+            "value" : "ID の名前変更や削除には App Store Connect API キーが必要です。メールアドレスとパスワードで追加したアカウントではできないため、developer.apple.com を使ってください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "식별자의 이름을 변경하거나 삭제하려면 App Store Connect API 키가 필요합니다. Apple ID로 로그인하여 추가한 계정은 할 수 없으니 developer.apple.com을 이용하세요."
+            "value" : "식별자의 이름을 변경하거나 삭제하려면 App Store Connect API 키가 필요합니다. 이메일과 암호로 추가한 계정은 할 수 없으니 developer.apple.com을 이용하세요."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Voor het hernoemen of verwijderen van een ID is een App Store Connect API-sleutel nodig. Accounts die met Inloggen met Apple ID zijn toegevoegd, kunnen dat niet: gebruik developer.apple.com."
+            "value" : "Voor het hernoemen of verwijderen van een ID is een App Store Connect API-sleutel nodig. Accounts die met e-mail en wachtwoord zijn toegevoegd, kunnen dat niet: gebruik developer.apple.com."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Renomear ou apagar um identificador exige uma chave de API do App Store Connect. Contas adicionadas com Fazer login com o Apple ID não podem fazer isso: use developer.apple.com."
+            "value" : "Renomear ou apagar um identificador exige uma chave de API do App Store Connect. Contas adicionadas com e-mail e senha não podem fazer isso: use developer.apple.com."
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mudar o nome ou eliminar um identificador requer uma chave de API do App Store Connect. As contas adicionadas com Iniciar sessão com o ID Apple não o podem fazer: use developer.apple.com."
+            "value" : "Mudar o nome ou eliminar um identificador requer uma chave de API do App Store Connect. As contas adicionadas com e-mail e palavra-passe não o podem fazer: use developer.apple.com."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Для переименования или удаления идентификатора нужен ключ API App Store Connect. Учетные записи, добавленные через вход с Apple ID, этого не могут: используйте developer.apple.com."
+            "value" : "Для переименования или удаления идентификатора нужен ключ API App Store Connect. Учетные записи, добавленные по электронной почте и паролю, этого не могут: используйте developer.apple.com."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "För att byta namn på eller radera en identifierare krävs en API-nyckel för App Store Connect. Konton som lagts till med Logga in med Apple-ID kan inte göra det: använd developer.apple.com i stället."
+            "value" : "För att byta namn på eller radera en identifierare krävs en API-nyckel för App Store Connect. Konton som lagts till med e-post och lösenord kan inte göra det: använd developer.apple.com i stället."
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重新命名或刪除識別碼需要 App Store Connect API 密鑰。使用 Apple ID 登入加入的帳號無法執行：請改用 developer.apple.com。"
+            "value" : "重新命名或刪除識別碼需要 App Store Connect API 金鑰。使用電子郵件和密碼加入的帳號無法執行：請改用 developer.apple.com。"
           }
         }
       }
@@ -106341,6 +108521,184 @@
         }
       }
     },
+    "Saved only if you choose, and only in this device's Keychain" : {
+      "comment" : "Trust panel of the App Store Connect email and password screen: where the password is kept.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur gespeichert, wenn du es möchtest, und nur im Schlüsselbund dieses Geräts"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved only if you choose, and only in this device's Keychain"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo se guarda si tú lo eliges, y solo en el llavero de este dispositivo"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo se guarda si tú lo eliges, y solo en el llavero de este dispositivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistré uniquement si vous le choisissez, et seulement dans le trousseau de cet appareil"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvata solo se lo scegli, e solo nel portachiavi di questo dispositivo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存するのは選択した場合だけで、このデバイスのキーチェーンにのみ保存されます"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "선택한 경우에만, 이 기기의 키체인에만 저장됨"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alleen bewaard als je daarvoor kiest, en alleen in de sleutelhanger van dit apparaat"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salva só se você escolher, e apenas nas Chaves deste dispositivo"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardada só se o escolher, e apenas no porta-chaves deste dispositivo"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохраняется, только если вы этого хотите, и только в связке ключей этого устройства"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sparas bara om du väljer det, och bara i nyckelringen på den här enheten"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只有在你選擇時才會儲存，且只存放在此裝置的鑰匙圈中"
+          }
+        }
+      }
+    },
+    "Saved only if you turn on \"Save password on this device\"" : {
+      "comment" : "How Your Password Is Used, step 3 title. \"Save password on this device\" is the toggle of the password screen: use its translation.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur gespeichert, wenn du „Passwort auf diesem Gerät sichern“ aktivierst"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved only if you turn on \"Save password on this device\""
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo se guarda si activas «Guardar la contraseña en este dispositivo»"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo se guarda si activas “Guardar la contraseña en este dispositivo”"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistré uniquement si vous activez « Enregistrer le mot de passe sur cet appareil »"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvata solo se attivi “Salva la password su questo dispositivo”"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「このデバイスにパスワードを保存」をオンにした場合のみ保存されます"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“이 기기에 암호 저장”을 켠 경우에만 저장됨"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alleen bewaard als je ‘Wachtwoord op dit apparaat bewaren’ aanzet"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salva só se você ativar “Salvar a senha neste dispositivo”"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardada só se ativar «Guardar a palavra-passe neste dispositivo»"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохраняется, только если включить «Сохранить пароль на этом устройстве»"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sparas bara om du slår på ”Spara lösenordet på den här enheten”"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只有在你開啟「在此裝置上儲存密碼」時才會儲存"
+          }
+        }
+      }
+    },
     "Saving opens a Play edit, updates the track and commits it. Any edit open with your Google account for the app elsewhere is cancelled." : {
       "comment" : "Footer of the Google Play Staged Rollout sheet for an account added with Sign in with Google.",
       "localizations" : {
@@ -110363,6 +112721,184 @@
         }
       }
     },
+    "Sent only to Apple, over an encrypted connection, to sign you in" : {
+      "comment" : "How Your Password Is Used, step 2 title.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur an Apple gesendet, über eine verschlüsselte Verbindung, um dich anzumelden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sent only to Apple, over an encrypted connection, to sign you in"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se envía solo a Apple, por una conexión cifrada, para iniciar tu sesión"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se envía solo a Apple, por una conexión cifrada, para iniciar tu sesión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envoyé uniquement à Apple, via une connexion chiffrée, pour vous connecter"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inviata solo ad Apple, tramite una connessione crittografata, per farti accedere"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サインインのため、暗号化された接続で Apple にのみ送信されます"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "로그인을 위해 암호화된 연결로 Apple에만 전송됨"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alleen naar Apple gestuurd, via een versleutelde verbinding, om je in te loggen"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviada só para a Apple, por uma conexão criptografada, para fazer seu login"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviada apenas à Apple, através de uma ligação encriptada, para iniciar a sua sessão"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправляется только в Apple по зашифрованному соединению для входа"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skickas bara till Apple, via en krypterad anslutning, för att logga in dig"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只會透過加密連線傳送給 Apple，以便讓你登入"
+          }
+        }
+      }
+    },
+    "Sent only to Apple, to sign you in" : {
+      "comment" : "Trust panel of the App Store Connect email and password screen: where the password goes.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur an Apple gesendet, um dich anzumelden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sent only to Apple, to sign you in"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se envía solo a Apple, para iniciar tu sesión"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se envía solo a Apple, para iniciar tu sesión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envoyé uniquement à Apple, pour vous connecter"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inviata solo ad Apple, per farti accedere"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サインインのために Apple にのみ送信されます"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "로그인을 위해 Apple에만 전송됨"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alleen naar Apple gestuurd, om je in te loggen"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviada só para a Apple, para fazer seu login"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviada apenas à Apple, para iniciar a sua sessão"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отправляется только в Apple для входа"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skickas bara till Apple, för att logga in dig"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "只會傳送給 Apple，以便讓你登入"
+          }
+        }
+      }
+    },
     "Serial Number" : {
       "localizations" : {
         "de" : {
@@ -112959,6 +115495,184 @@
         }
       }
     },
+    "Sign in on Google's page with the account you use for %@, then pick what to add. No key file needed." : {
+      "comment" : "Add Account method chooser and connection guide: the Google sign-in method. The placeholder is the service being connected, e.g. Firebase.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Melde dich auf der Seite von Google mit dem Konto an, das du für %@ verwendest, und wähle dann aus, was hinzugefügt werden soll. Keine Schlüsseldatei nötig."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in on Google's page with the account you use for %@, then pick what to add. No key file needed."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicia sesión en la página de Google con la cuenta que usas en %@ y elige qué añadir. No necesitas ningún archivo de clave."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicia sesión en la página de Google con la cuenta que usas en %@ y elige qué agregar. No necesitas ningún archivo de clave."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez-vous sur la page de Google avec le compte que vous utilisez pour %@, puis choisissez ce qu’il faut ajouter. Aucun fichier de clé n’est nécessaire."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accedi alla pagina di Google con l’account che usi per %@, poi scegli cosa aggiungere. Nessun file di chiave necessario."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ で使っているアカウントで Google のページからサインインし、追加するものを選びます。キーファイルは不要です。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@에서 사용하는 계정으로 Google 페이지에서 로그인한 다음 추가할 항목을 선택하세요. 키 파일이 필요 없습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log op de pagina van Google in met het account dat je voor %@ gebruikt en kies daarna wat je wilt toevoegen. Geen sleutelbestand nodig."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faça login na página do Google com a conta que você usa no %@ e escolha o que adicionar. Não precisa de arquivo de chave."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicie sessão na página da Google com a conta que usa no %@ e escolha o que adicionar. Não precisa de ficheiro de chave."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Войдите на странице Google с аккаунтом, который вы используете для %@, затем выберите, что добавить. Файл ключа не нужен."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logga in på Googles sida med kontot du använder för %@ och välj sedan vad som ska läggas till. Ingen nyckelfil behövs."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 Google 的頁面上使用你在 %@ 所用的帳戶登入，然後選擇要加入的項目。不需要金鑰檔案。"
+          }
+        }
+      }
+    },
+    "Sign in to App Store Connect" : {
+      "comment" : "Title of the App Store Connect email and password screen. Must not read as Apple's \"Sign in with Apple\".",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei App Store Connect anmelden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in to App Store Connect"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar sesión en App Store Connect"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar sesión en App Store Connect"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se connecter à App Store Connect"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accedi ad App Store Connect"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store Connect にサインイン"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store Connect에 로그인"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inloggen bij App Store Connect"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fazer login no App Store Connect"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar sessão no App Store Connect"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вход в App Store Connect"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logga in på App Store Connect"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "登入 App Store Connect"
+          }
+        }
+      }
+    },
     "Sign In to Apple Again" : {
       "localizations" : {
         "de" : {
@@ -113123,84 +115837,91 @@
         }
       }
     },
-    "Sign in with Apple ID" : {
+    "Sign in with email and password" : {
+      "comment" : "Add Account: the App Store Connect option that signs in with the Apple ID email and password plus a two-factor code. Must not read as Apple's \"Sign in with Apple\" button.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mit Apple-ID anmelden"
+            "value" : "Mit E-Mail und Passwort anmelden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in with email and password"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Iniciar sesión con el Apple ID"
+            "value" : "Iniciar sesión con correo y contraseña"
           }
         },
         "es-MX" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Iniciar sesión con el Apple ID"
+            "value" : "Iniciar sesión con correo y contraseña"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se connecter avec l'Identifiant Apple"
+            "value" : "Se connecter avec e-mail et mot de passe"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Accedi con Apple ID"
+            "value" : "Accedi con email e password"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple ID でサインイン"
+            "value" : "メールアドレスとパスワードでサインイン"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple ID로 로그인"
+            "value" : "이메일과 암호로 로그인"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Inloggen met Apple ID"
+            "value" : "Inloggen met e-mail en wachtwoord"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fazer login com o Apple ID"
+            "value" : "Fazer login com e-mail e senha"
           }
         },
         "pt-PT" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Iniciar sessão com o ID Apple"
+            "value" : "Iniciar sessão com e-mail e palavra-passe"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Войти с Apple ID"
+            "value" : "Войти по электронной почте и паролю"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Logga in med Apple-ID"
+            "value" : "Logga in med e-post och lösenord"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "使用 Apple ID 登入"
+            "value" : "使用電子郵件和密碼登入"
           }
         }
       }
@@ -113786,88 +116507,6 @@
         }
       }
     },
-    "Sign in with your Apple ID and its two-factor code instead, then pick the teams to add. If you choose to, your password is saved only in this device's Keychain. Analytics Reports need an API key." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Melde dich stattdessen mit deiner Apple-ID und ihrem Zwei-Faktor-Code an und wähle dann die Teams aus. Wenn du möchtest, wird dein Passwort nur im Schlüsselbund dieses Geräts gespeichert. Analytics-Berichte benötigen einen API-Schlüssel."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inicia sesión con tu Apple ID y su código de doble factor y luego elige los equipos que quieres añadir. Si así lo eliges, tu contraseña solo se guarda en el llavero de este dispositivo. Los informes de Analytics necesitan una clave de API."
-          }
-        },
-        "es-MX" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inicia sesión con tu Apple ID y su código de dos factores y luego elige los equipos que quieres agregar. Si así lo eliges, tu contraseña solo se guarda en el llavero de este dispositivo. Los reportes de Analytics necesitan una clave de API."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Connectez-vous plutôt avec votre Identifiant Apple et son code à deux facteurs, puis choisissez les équipes à ajouter. Si vous le souhaitez, votre mot de passe est enregistré uniquement dans le trousseau de cet appareil. Les rapports Analytics nécessitent une clé d'API."
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Accedi invece con il tuo Apple ID e il suo codice a due fattori, poi scegli i team da aggiungere. Se lo scegli, la password viene salvata solo nel portachiavi di questo dispositivo. I report di Analytics richiedono una chiave API."
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "代わりに Apple ID と2ファクタ認証コードでサインインし、追加するチームを選びます。選択した場合、パスワードはこのデバイスのキーチェーンにのみ保存されます。アナリティクスレポートには API キーが必要です。"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "대신 Apple ID와 이중 인증 코드로 로그인한 다음 추가할 팀을 선택하세요. 선택하면 암호는 이 기기의 키체인에만 저장됩니다. 분석 보고서에는 API 키가 필요합니다."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Log in plaats daarvan in met je Apple ID en de tweestapscode en kies daarna de teams. Als je daarvoor kiest, wordt je wachtwoord alleen in de sleutelhanger van dit apparaat bewaard. Voor Analytics-rapporten is een API-sleutel nodig."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Faça login com o seu Apple ID e o código de dois fatores e escolha as equipes a adicionar. Se você escolher, a senha fica salva apenas nas Chaves deste dispositivo. Os relatórios do Analytics precisam de uma chave de API."
-          }
-        },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Em alternativa, inicie sessão com o seu ID Apple e o código de dois fatores e escolha as equipas a adicionar. Se o escolher, a palavra-passe fica guardada apenas no porta-chaves deste dispositivo. Os relatórios do Analytics precisam de uma chave de API."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вместо этого войдите с Apple ID и кодом двухфакторной аутентификации, затем выберите команды. Если вы захотите, пароль будет храниться только в связке ключей этого устройства. Для отчетов Analytics нужен ключ API."
-          }
-        },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Logga in med ditt Apple-ID och tvåfaktorskoden i stället och välj sedan teamen att lägga till. Om du väljer det sparas lösenordet bara i nyckelringen på den här enheten. Analytics-rapporter kräver en API-nyckel."
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "改用你的 Apple ID 及其雙重認證碼登入，然後選擇要加入的團隊。如果你選擇儲存，密碼只會儲存在此裝置的鑰匙圈中。分析報告需要 API 密鑰。"
-          }
-        }
-      }
-    },
     "Sign-In Information" : {
       "comment" : "A section header that indicates the contents of the section.",
       "isCommentAutoGenerated" : true,
@@ -114305,6 +116944,95 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "模擬"
+          }
+        }
+      }
+    },
+    "Skip" : {
+      "comment" : "Connection guide: skips the rest of the guide and goes on to add the account.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Überspringen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Omitir"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Omitir"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passer"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salta"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "スキップ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "건너뛰기"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Overslaan"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pular"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignorar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропустить"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoppa över"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "略過"
           }
         }
       }
@@ -114971,6 +117699,95 @@
         }
       }
     },
+    "Source Code on GitHub" : {
+      "comment" : "Link to the app's open-source repository on GitHub.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quellcode auf GitHub"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Source Code on GitHub"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código fuente en GitHub"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código fuente en GitHub"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Code source sur GitHub"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codice sorgente su GitHub"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub のソースコード"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub의 소스 코드"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Broncode op GitHub"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código-fonte no GitHub"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código-fonte no GitHub"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Исходный код на GitHub"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Källkod på GitHub"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub 上的原始碼"
+          }
+        }
+      }
+    },
     "Source: %@" : {
       "comment" : "Error report technical line. Argument: where the error came from (Google Play, a local check, the network, the key file).",
       "localizations" : {
@@ -115300,6 +118117,184 @@
           "stringUnit" : {
             "state" : "new",
             "value" : ""
+          }
+        }
+      }
+    },
+    "StackConnect connects this device straight to %@, using only the access you give it." : {
+      "comment" : "Connection guide, page 1. The placeholder is the service being connected, e.g. App Store Connect.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect verbindet dieses Gerät direkt mit %@ und nutzt dabei nur den Zugriff, den du erteilst."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect connects this device straight to %@, using only the access you give it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect conecta este dispositivo directamente con %@, usando solo el acceso que tú le das."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect conecta este dispositivo directamente con %@, usando solo el acceso que tú le das."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect relie cet appareil directement à %@, en utilisant uniquement l’accès que vous lui accordez."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect collega direttamente questo dispositivo con %@, usando solo l’accesso che gli concedi."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect はこのデバイスを %@ に直接接続し、あなたが許可したアクセスだけを使います。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect는 이 기기를 %@에 직접 연결하며, 사용자가 허용한 접근 권한만 사용합니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect verbindt dit apparaat rechtstreeks met %@ en gebruikt alleen de toegang die jij geeft."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O StackConnect conecta este dispositivo diretamente ao %@, usando só o acesso que você concede."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O StackConnect liga este dispositivo diretamente ao %@, usando apenas o acesso que concede."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect подключает это устройство напрямую к %@, используя только тот доступ, который вы предоставили."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect ansluter den här enheten direkt till %@ och använder bara den åtkomst du ger."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect 會讓此裝置直接連線到 %@，只使用你授予的存取權限。"
+          }
+        }
+      }
+    },
+    "StackConnect sends anonymous usage analytics and crash reports. They never include credentials, and you can turn them off in Settings." : {
+      "comment" : "Connection guide, page 2 footnote. Must stay consistent with the App Privacy label (analytics and crash data are collected).",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect sendet anonyme Nutzungsanalysen und Absturzberichte. Sie enthalten nie Zugangsdaten und lassen sich in den Einstellungen ausschalten."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect sends anonymous usage analytics and crash reports. They never include credentials, and you can turn them off in Settings."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect envía análisis de uso anónimos e informes de fallos. Nunca incluyen credenciales y puedes desactivarlos en Ajustes."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect envía análisis de uso anónimos y reportes de fallas. Nunca incluyen credenciales y puedes desactivarlos en Ajustes."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect envoie des données d’utilisation anonymes et des rapports de plantage. Ils n’incluent jamais d’identifiants, et vous pouvez les désactiver dans Réglages."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect invia analisi di utilizzo anonime e report sugli arresti anomali. Non includono mai credenziali e puoi disattivarli in Impostazioni."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect は匿名の使用状況データとクラッシュレポートを送信します。認証情報が含まれることはなく、「設定」でオフにできます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect는 익명의 사용 분석 데이터와 충돌 보고서를 보냅니다. 자격 증명은 절대 포함되지 않으며, 설정에서 끌 수 있습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect verstuurt anonieme gebruiksanalyses en crashrapporten. Daarin staan nooit inloggegevens, en je kunt ze uitzetten in Instellingen."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O StackConnect envia dados de uso anônimos e relatórios de falhas. Eles nunca incluem credenciais, e você pode desativá-los em Ajustes."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O StackConnect envia dados de utilização anónimos e relatórios de falhas. Nunca incluem credenciais e pode desativá-los nas Definições."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect отправляет анонимную аналитику использования и отчеты о сбоях. В них никогда нет учетных данных, и их можно отключить в настройках."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect skickar anonym användningsanalys och kraschrapporter. De innehåller aldrig inloggningsuppgifter, och du kan stänga av dem i Inställningar."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect 會傳送匿名的使用分析與當機報告。其中絕不包含憑證，你也可以在「設定」中關閉。"
           }
         }
       }
@@ -115721,6 +118716,95 @@
           "stringUnit" : {
             "state" : "new",
             "value" : ""
+          }
+        }
+      }
+    },
+    "StackConnect's code is public on GitHub. Anyone can read it and check how credentials are stored and used." : {
+      "comment" : "Connection guide, page 3.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Code von StackConnect ist öffentlich auf GitHub. Jeder kann ihn lesen und prüfen, wie Zugangsdaten gespeichert und verwendet werden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect's code is public on GitHub. Anyone can read it and check how credentials are stored and used."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El código de StackConnect es público en GitHub. Cualquiera puede leerlo y comprobar cómo se guardan y usan las credenciales."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El código de StackConnect es público en GitHub. Cualquiera puede leerlo y comprobar cómo se guardan y usan las credenciales."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le code de StackConnect est public sur GitHub. Tout le monde peut le lire et vérifier comment les identifiants sont stockés et utilisés."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il codice di StackConnect è pubblico su GitHub. Chiunque può leggerlo e verificare come vengono salvate e usate le credenziali."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect のコードは GitHub で公開されています。誰でも読んで、認証情報がどのように保存・使用されるかを確認できます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect의 코드는 GitHub에 공개되어 있습니다. 누구나 코드를 읽고 자격 증명이 어떻게 저장되고 사용되는지 확인할 수 있습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De code van StackConnect staat openbaar op GitHub. Iedereen kan hem lezen en controleren hoe inloggegevens worden bewaard en gebruikt."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O código do StackConnect é público no GitHub. Qualquer pessoa pode lê-lo e verificar como as credenciais são armazenadas e usadas."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O código do StackConnect é público no GitHub. Qualquer pessoa pode lê-lo e verificar como as credenciais são guardadas e usadas."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код StackConnect открыт на GitHub. Любой может прочитать его и проверить, как хранятся и используются учетные данные."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnects kod är öppen på GitHub. Vem som helst kan läsa den och kontrollera hur inloggningsuppgifter sparas och används."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "StackConnect 的程式碼公開在 GitHub 上。任何人都能閱讀並查看憑證如何儲存與使用。"
           }
         }
       }
@@ -117107,6 +120191,95 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "商店：%@"
+          }
+        }
+      }
+    },
+    "Stored in the iOS Keychain, on this device only" : {
+      "comment" : "Connection guide, page 2 fact about credentials.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Im iOS-Schlüsselbund gespeichert, nur auf diesem Gerät"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stored in the iOS Keychain, on this device only"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se guardan en el llavero de iOS, solo en este dispositivo"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se guardan en el llavero de iOS, solo en este dispositivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stockés dans le trousseau iOS, sur cet appareil uniquement"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvate nel portachiavi di iOS, solo su questo dispositivo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS のキーチェーンに、このデバイス上にのみ保存"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iOS 키체인에 이 기기에만 저장됨"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewaard in de iOS-sleutelhanger, alleen op dit apparaat"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Armazenadas nas Chaves do iOS, apenas neste dispositivo"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardadas no porta-chaves do iOS, apenas neste dispositivo"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Хранятся в связке ключей iOS только на этом устройстве"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sparas i iOS-nyckelringen, bara på den här enheten"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "儲存在 iOS 鑰匙圈中，僅限此裝置"
           }
         }
       }
@@ -122725,6 +125898,95 @@
         }
       }
     },
+    "The .p8 private key only signs short-lived tokens on this device; the key itself is never sent. It leaves this device only if you export the account yourself, in a file encrypted with a password you choose." : {
+      "comment" : "Connection guide, page 2: how an App Store Connect API key is handled.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der private .p8-Schlüssel signiert auf diesem Gerät nur kurzlebige Tokens; der Schlüssel selbst wird nie gesendet. Er verlässt dieses Gerät nur, wenn du den Account selbst exportierst, in einer Datei, die mit einem Passwort deiner Wahl verschlüsselt ist."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The .p8 private key only signs short-lived tokens on this device; the key itself is never sent. It leaves this device only if you export the account yourself, in a file encrypted with a password you choose."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clave privada .p8 solo firma tokens de corta duración en este dispositivo; la clave en sí nunca se envía. Solo sale de este dispositivo si exportas la cuenta tú mismo, en un archivo cifrado con una contraseña que tú eliges."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clave privada .p8 solo firma tokens de corta duración en este dispositivo; la clave en sí nunca se envía. Solo sale de este dispositivo si exportas la cuenta tú mismo, en un archivo cifrado con una contraseña que tú eliges."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clé privée .p8 ne fait que signer des jetons de courte durée sur cet appareil ; la clé elle-même n’est jamais envoyée. Elle ne quitte cet appareil que si vous exportez vous-même le compte, dans un fichier chiffré avec un mot de passe de votre choix."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La chiave privata .p8 firma solo token di breve durata su questo dispositivo; la chiave in sé non viene mai inviata. Lascia questo dispositivo solo se esporti tu l’account, in un file crittografato con una password che scegli tu."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ".p8 秘密鍵はこのデバイス上で有効期限の短いトークンに署名するだけで、鍵そのものが送信されることはありません。あなたが自分でアカウントを書き出した場合にだけ、選んだパスワードで暗号化されたファイルとしてこのデバイスの外に出ます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ".p8 개인 키는 이 기기에서 수명이 짧은 토큰에 서명할 뿐이며, 키 자체는 전송되지 않습니다. 사용자가 직접 계정을 내보내는 경우에만, 직접 정한 암호로 암호화된 파일로 이 기기를 떠납니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De privésleutel (.p8) ondertekent op dit apparaat alleen kortlevende tokens; de sleutel zelf wordt nooit verstuurd. Hij verlaat dit apparaat alleen als je het account zelf exporteert, in een bestand dat is versleuteld met een wachtwoord dat jij kiest."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A chave privada .p8 apenas assina tokens de curta duração neste dispositivo; a chave em si nunca é enviada. Ela só sai deste dispositivo se você mesmo exportar a conta, em um arquivo criptografado com uma senha que você escolhe."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A chave privada .p8 apenas assina tokens de curta duração neste dispositivo; a chave em si nunca é enviada. Só sai deste dispositivo se exportar a conta, num ficheiro encriptado com uma palavra-passe à sua escolha."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрытый ключ .p8 лишь подписывает краткосрочные токены на этом устройстве; сам ключ никогда не отправляется. Он покидает устройство, только если вы сами экспортируете учетную запись в файл, зашифрованный выбранным вами паролем."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Den privata .p8-nyckeln signerar bara kortlivade token på den här enheten; själva nyckeln skickas aldrig. Den lämnar bara enheten om du själv exporterar kontot, i en fil som krypteras med ett lösenord du väljer."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ".p8 私密金鑰只會在此裝置上簽署短效權杖；金鑰本身絕不會傳送出去。只有在你自行匯出帳號時，它才會以你選擇的密碼加密成檔案離開此裝置。"
+          }
+        }
+      }
+    },
     "The account \"%@\" has expired. Re-import its file to keep using it, or it will stay locked." : {
       "comment" : "A message shown in an alert when an account has expired. The argument is the name of the account that has expired.",
       "isCommentAutoGenerated" : true,
@@ -126180,6 +129442,184 @@
         }
       }
     },
+    "The service account's private key only signs short-lived tokens on this device; the key itself is never sent." : {
+      "comment" : "Connection guide, page 2: how a service account key is handled, for a service whose accounts can't be exported.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der private Schlüssel des Dienstkontos signiert auf diesem Gerät nur kurzlebige Tokens; der Schlüssel selbst wird nie gesendet."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The service account's private key only signs short-lived tokens on this device; the key itself is never sent."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clave privada de la cuenta de servicio solo firma tokens de corta duración en este dispositivo; la clave en sí nunca se envía."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clave privada de la cuenta de servicio solo firma tokens de corta duración en este dispositivo; la clave en sí nunca se envía."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clé privée du compte de service ne fait que signer des jetons de courte durée sur cet appareil ; la clé elle-même n’est jamais envoyée."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La chiave privata dell’account di servizio firma solo token di breve durata su questo dispositivo; la chiave in sé non viene mai inviata."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サービスアカウントの秘密鍵はこのデバイス上で有効期限の短いトークンに署名するだけで、鍵そのものが送信されることはありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서비스 계정의 개인 키는 이 기기에서 수명이 짧은 토큰에 서명할 뿐이며, 키 자체는 전송되지 않습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De privésleutel van het serviceaccount ondertekent op dit apparaat alleen kortlevende tokens; de sleutel zelf wordt nooit verstuurd."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A chave privada da conta de serviço apenas assina tokens de curta duração neste dispositivo; a chave em si nunca é enviada."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A chave privada da conta de serviço apenas assina tokens de curta duração neste dispositivo; a chave em si nunca é enviada."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрытый ключ сервисного аккаунта лишь подписывает краткосрочные токены на этом устройстве; сам ключ никогда не отправляется."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tjänstkontots privata nyckel signerar bara kortlivade token på den här enheten; själva nyckeln skickas aldrig."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "服務帳戶的私密金鑰只會在此裝置上簽署短效權杖；金鑰本身絕不會傳送出去。"
+          }
+        }
+      }
+    },
+    "The service account's private key only signs short-lived tokens on this device; the key itself is never sent. It leaves this device only if you export the account yourself, in a file encrypted with a password you choose." : {
+      "comment" : "Connection guide, page 2: how a service account key is handled, for a service whose accounts can be exported.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der private Schlüssel des Dienstkontos signiert auf diesem Gerät nur kurzlebige Tokens; der Schlüssel selbst wird nie gesendet. Er verlässt dieses Gerät nur, wenn du den Account selbst exportierst, in einer Datei, die mit einem Passwort deiner Wahl verschlüsselt ist."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The service account's private key only signs short-lived tokens on this device; the key itself is never sent. It leaves this device only if you export the account yourself, in a file encrypted with a password you choose."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clave privada de la cuenta de servicio solo firma tokens de corta duración en este dispositivo; la clave en sí nunca se envía. Solo sale de este dispositivo si exportas la cuenta tú mismo, en un archivo cifrado con una contraseña que tú eliges."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clave privada de la cuenta de servicio solo firma tokens de corta duración en este dispositivo; la clave en sí nunca se envía. Solo sale de este dispositivo si exportas la cuenta tú mismo, en un archivo cifrado con una contraseña que tú eliges."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La clé privée du compte de service ne fait que signer des jetons de courte durée sur cet appareil ; la clé elle-même n’est jamais envoyée. Elle ne quitte cet appareil que si vous exportez vous-même le compte, dans un fichier chiffré avec un mot de passe de votre choix."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La chiave privata dell’account di servizio firma solo token di breve durata su questo dispositivo; la chiave in sé non viene mai inviata. Lascia questo dispositivo solo se esporti tu l’account, in un file crittografato con una password che scegli tu."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サービスアカウントの秘密鍵はこのデバイス上で有効期限の短いトークンに署名するだけで、鍵そのものが送信されることはありません。あなたが自分でアカウントを書き出した場合にだけ、選んだパスワードで暗号化されたファイルとしてこのデバイスの外に出ます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서비스 계정의 개인 키는 이 기기에서 수명이 짧은 토큰에 서명할 뿐이며, 키 자체는 전송되지 않습니다. 사용자가 직접 계정을 내보내는 경우에만, 직접 정한 암호로 암호화된 파일로 이 기기를 떠납니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De privésleutel van het serviceaccount ondertekent op dit apparaat alleen kortlevende tokens; de sleutel zelf wordt nooit verstuurd. Hij verlaat dit apparaat alleen als je het account zelf exporteert, in een bestand dat is versleuteld met een wachtwoord dat jij kiest."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A chave privada da conta de serviço apenas assina tokens de curta duração neste dispositivo; a chave em si nunca é enviada. Ela só sai deste dispositivo se você mesmo exportar a conta, em um arquivo criptografado com uma senha que você escolhe."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A chave privada da conta de serviço apenas assina tokens de curta duração neste dispositivo; a chave em si nunca é enviada. Só sai deste dispositivo se exportar a conta, num ficheiro encriptado com uma palavra-passe à sua escolha."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрытый ключ сервисного аккаунта лишь подписывает краткосрочные токены на этом устройстве; сам ключ никогда не отправляется. Он покидает устройство, только если вы сами экспортируете учетную запись в файл, зашифрованный выбранным вами паролем."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tjänstkontots privata nyckel signerar bara kortlivade token på den här enheten; själva nyckeln skickas aldrig. Den lämnar bara enheten om du själv exporterar kontot, i en fil som krypteras med ett lösenord du väljer."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "服務帳戶的私密金鑰只會在此裝置上簽署短效權杖；金鑰本身絕不會傳送出去。只有在你自行匯出帳號時，它才會以你選擇的密碼加密成檔案離開此裝置。"
+          }
+        }
+      }
+    },
     "The service is temporarily unavailable. Try again in a few minutes." : {
       "comment" : "Error for an HTTP 5xx answer without a readable explanation.",
       "localizations" : {
@@ -126867,6 +130307,95 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ainda não há builds para esta plataforma."
+          }
+        }
+      }
+    },
+    "There's more than one way to connect to %@. Pick one on the next screen." : {
+      "comment" : "Connection guide, last page. The placeholder is the service being connected, e.g. App Store Connect.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es gibt mehr als eine Möglichkeit, dich mit %@ zu verbinden. Wähle eine auf dem nächsten Bildschirm."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "There's more than one way to connect to %@. Pick one on the next screen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hay más de una forma de conectarte a %@. Elige una en la siguiente pantalla."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hay más de una forma de conectarte a %@. Elige una en la siguiente pantalla."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il existe plusieurs façons de vous connecter à %@. Choisissez-en une sur l’écran suivant."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ci sono più modi per connetterti con %@. Scegline uno nella prossima schermata."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ への接続方法は複数あります。次の画面で1つ選んでください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@에 연결하는 방법은 여러 가지입니다. 다음 화면에서 하나를 선택하세요."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Er is meer dan één manier om verbinding te maken met %@. Kies er een op het volgende scherm."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Há mais de uma forma de se conectar ao %@. Escolha uma na próxima tela."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Há mais do que uma forma de ligar ao %@. Escolha uma no ecrã seguinte."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключиться к %@ можно несколькими способами. Выберите один на следующем экране."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det finns mer än ett sätt att ansluta till %@. Välj ett på nästa skärm."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連線到 %@ 的方式不只一種。請在下一個畫面中選擇。"
           }
         }
       }
@@ -132736,6 +136265,95 @@
         }
       }
     },
+    "Two-factor codes aren't saved at all." : {
+      "comment" : "How Your Password Is Used, step 4 detail.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zwei-Faktor-Codes werden überhaupt nicht gespeichert."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Two-factor codes aren't saved at all."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los códigos de doble factor no se guardan nunca."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los códigos de dos factores no se guardan nunca."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les codes à deux facteurs ne sont jamais enregistrés."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I codici a due fattori non vengono mai salvati."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2ファクタ認証コードは一切保存されません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이중 인증 코드는 전혀 저장되지 않습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tweestapscodes worden helemaal niet bewaard."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Os códigos de dois fatores nunca são salvos."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Os códigos de dois fatores nunca são guardados."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коды двухфакторной аутентификации не сохраняются вовсе."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tvåfaktorskoder sparas inte alls."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "雙重認證碼完全不會儲存。"
+          }
+        }
+      }
+    },
     "Type" : {
       "comment" : "A label describing the type of a beta group.",
       "isCommentAutoGenerated" : true,
@@ -134551,6 +138169,184 @@
         }
       }
     },
+    "Use a service account key" : {
+      "comment" : "Add Account method chooser: card that connects with a Google service account JSON key file.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dienstkontoschlüssel verwenden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use a service account key"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar una clave de cuenta de servicio"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar una clave de cuenta de servicio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser une clé de compte de service"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa una chiave dell’account di servizio"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "サービスアカウントキーを使用"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "서비스 계정 키 사용"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Een serviceaccountsleutel gebruiken"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar uma chave de conta de serviço"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar uma chave de conta de serviço"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использовать ключ сервисного аккаунта"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Använd en tjänstkontonyckel"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用服務帳戶金鑰"
+          }
+        }
+      }
+    },
+    "Use an API key" : {
+      "comment" : "Add Account method chooser: card that connects App Store Connect with an API key (.p8).",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API-Schlüssel verwenden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use an API key"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar una clave de API"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar una clave de API"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser une clé d’API"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa una chiave API"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API キーを使用"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API 키 사용"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Een API-sleutel gebruiken"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar uma chave de API"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar uma chave de API"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Использовать ключ API"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Använd en API-nyckel"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用 API 金鑰"
+          }
+        }
+      }
+    },
     "Use Another Google Account" : {
       "comment" : "Add Account: button that signs in with a different Google account.",
       "localizations" : {
@@ -134908,6 +138704,184 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "請使用你登入 App Store Connect 的 Apple ID。接著即可加入其任何團隊。"
+          }
+        }
+      }
+    },
+    "Use the email and password of your Apple ID, plus its two-factor code, then pick the teams to add. If you choose to, your password is saved only in this device's Keychain. Analytics Reports need an API key." : {
+      "comment" : "Add Account (App Store Connect): footer under the \"Sign in with email and password\" button.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwende stattdessen die E-Mail-Adresse und das Passwort deiner Apple-ID sowie ihren Zwei-Faktor-Code und wähle dann die Teams aus. Wenn du möchtest, wird dein Passwort nur im Schlüsselbund dieses Geräts gespeichert. Analytics-Berichte benötigen einen API-Schlüssel."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the email and password of your Apple ID, plus its two-factor code, then pick the teams to add. If you choose to, your password is saved only in this device's Keychain. Analytics Reports need an API key."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa el correo y la contraseña de tu Apple ID, además de su código de doble factor, y luego elige los equipos que quieres añadir. Si así lo eliges, tu contraseña solo se guarda en el llavero de este dispositivo. Los informes de Analytics necesitan una clave de API."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa el correo y la contraseña de tu Apple ID, además de su código de dos factores, y luego elige los equipos que quieres agregar. Si así lo eliges, tu contraseña solo se guarda en el llavero de este dispositivo. Los reportes de Analytics necesitan una clave de API."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilisez l'adresse e-mail et le mot de passe de votre Identifiant Apple, ainsi que son code à deux facteurs, puis choisissez les équipes à ajouter. Si vous le souhaitez, votre mot de passe est enregistré uniquement dans le trousseau de cet appareil. Les rapports Analytics nécessitent une clé d'API."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa l'email e la password del tuo Apple ID, più il suo codice a due fattori, poi scegli i team da aggiungere. Se lo scegli, la password viene salvata solo nel portachiavi di questo dispositivo. I report di Analytics richiedono una chiave API."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple ID のメールアドレスとパスワード、および2ファクタ認証コードを使い、追加するチームを選びます。選択した場合、パスワードはこのデバイスのキーチェーンにのみ保存されます。アナリティクスレポートには API キーが必要です。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple ID의 이메일과 암호, 그리고 이중 인증 코드를 사용한 다음 추가할 팀을 선택하세요. 선택하면 암호는 이 기기의 키체인에만 저장됩니다. 분석 보고서에는 API 키가 필요합니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gebruik het e-mailadres en wachtwoord van je Apple ID plus de tweestapscode en kies daarna de teams. Als je daarvoor kiest, wordt je wachtwoord alleen in de sleutelhanger van dit apparaat bewaard. Voor Analytics-rapporten is een API-sleutel nodig."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use o e-mail e a senha do seu Apple ID, mais o código de dois fatores, e escolha as equipes a adicionar. Se você escolher, a senha fica salva apenas nas Chaves deste dispositivo. Os relatórios do Analytics precisam de uma chave de API."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use o e-mail e a palavra-passe do seu ID Apple, mais o código de dois fatores, e escolha as equipas a adicionar. Se o escolher, a palavra-passe fica guardada apenas no porta-chaves deste dispositivo. Os relatórios do Analytics precisam de uma chave de API."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Используйте адрес электронной почты и пароль своего Apple ID, а также код двухфакторной аутентификации, затем выберите команды. Если вы захотите, пароль будет храниться только в связке ключей этого устройства. Для отчетов Analytics нужен ключ API."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Använd e-postadressen och lösenordet för ditt Apple-ID plus tvåfaktorskoden och välj sedan teamen att lägga till. Om du väljer det sparas lösenordet bara i nyckelringen på den här enheten. Analytics-rapporter kräver en API-nyckel."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用你 Apple ID 的電子郵件和密碼，加上雙重認證碼，然後選擇要加入的團隊。如果你選擇儲存，密碼只會儲存在此裝置的鑰匙圈中。分析報告需要 API 金鑰。"
+          }
+        }
+      }
+    },
+    "Use the email and password you sign in to App Store Connect with, plus a two-factor code. No API key needed; Analytics Reports aren't available." : {
+      "comment" : "Add Account method chooser and connection guide: what the email and password method needs.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwende die E-Mail-Adresse und das Passwort, mit denen du dich bei App Store Connect anmeldest, sowie einen Zwei-Faktor-Code. Kein API-Schlüssel nötig; Analytics-Berichte sind nicht verfügbar."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the email and password you sign in to App Store Connect with, plus a two-factor code. No API key needed; Analytics Reports aren't available."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa el correo y la contraseña con los que inicias sesión en App Store Connect, más un código de doble factor. No necesitas clave de API; los informes de Analytics no están disponibles."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa el correo y la contraseña con los que inicias sesión en App Store Connect, más un código de dos factores. No necesitas clave de API; los reportes de Analytics no están disponibles."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilisez l’adresse e-mail et le mot de passe avec lesquels vous vous connectez à App Store Connect, plus un code à deux facteurs. Aucune clé d’API n’est nécessaire ; les rapports Analytics ne sont pas disponibles."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa l’email e la password con cui accedi ad App Store Connect, più un codice a due fattori. Nessuna chiave API necessaria; i report di Analytics non sono disponibili."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store Connect へのサインインに使うメールアドレスとパスワード、および2ファクタ認証コードを使います。API キーは不要ですが、アナリティクスレポートは利用できません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store Connect에 로그인할 때 사용하는 이메일과 암호, 그리고 이중 인증 코드를 사용합니다. API 키는 필요 없지만 분석 보고서는 사용할 수 없습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gebruik het e-mailadres en wachtwoord waarmee je inlogt bij App Store Connect, plus een tweestapscode. Geen API-sleutel nodig; Analytics-rapporten zijn niet beschikbaar."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use o e-mail e a senha com que você faz login no App Store Connect, mais um código de dois fatores. Não precisa de chave de API; os relatórios do Analytics não ficam disponíveis."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use o e-mail e a palavra-passe com que inicia sessão no App Store Connect, mais um código de dois fatores. Não precisa de chave de API; os relatórios do Analytics não ficam disponíveis."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Используйте адрес электронной почты и пароль, с которыми вы входите в App Store Connect, и код двухфакторной аутентификации. Ключ API не нужен, но отчеты Analytics будут недоступны."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Använd e-postadressen och lösenordet du loggar in på App Store Connect med, plus en tvåfaktorskod. Ingen API-nyckel behövs; Analytics-rapporter är inte tillgängliga."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用你登入 App Store Connect 的電子郵件和密碼，加上雙重認證碼。不需要 API 金鑰，但無法使用分析報告。"
           }
         }
       }
@@ -139769,6 +143743,95 @@
         }
       }
     },
+    "What you use to connect to %@ is kept on this device and used only for that." : {
+      "comment" : "Connection guide, page 2. The placeholder is the service being connected, e.g. Firebase.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was du zum Verbinden mit %@ verwendest, bleibt auf diesem Gerät und wird nur dafür genutzt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What you use to connect to %@ is kept on this device and used only for that."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lo que usas para conectarte a %@ se queda en este dispositivo y solo se usa para eso."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lo que usas para conectarte a %@ se queda en este dispositivo y solo se usa para eso."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce que vous utilisez pour vous connecter à %@ reste sur cet appareil et ne sert qu’à cela."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciò che usi per connetterti con %@ resta su questo dispositivo e serve solo a quello."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ への接続に使う情報はこのデバイスに保存され、その目的にだけ使われます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@에 연결하는 데 사용하는 정보는 이 기기에 보관되며 그 목적으로만 사용됩니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wat je gebruikt om verbinding te maken met %@, blijft op dit apparaat en wordt alleen daarvoor gebruikt."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O que você usa para se conectar ao %@ fica neste dispositivo e só é usado para isso."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O que usa para ligar ao %@ fica neste dispositivo e só é usado para isso."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "То, что вы используете для подключения к %@, хранится на этом устройстве и используется только для этого."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Det du använder för att ansluta till %@ stannar på den här enheten och används bara till det."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你用來連線到 %@ 的資訊會保存在此裝置上，且只用於此用途。"
+          }
+        }
+      }
+    },
     "What's New" : {
       "comment" : "Title of the \"What's New\" text view.",
       "isCommentAutoGenerated" : true,
@@ -141933,6 +145996,184 @@
         }
       }
     },
+    "You type it on this device" : {
+      "comment" : "How Your Password Is Used, step 1 title.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du gibst es auf diesem Gerät ein"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You type it on this device"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La escribes en este dispositivo"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La escribes en este dispositivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vous le saisissez sur cet appareil"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La digiti su questo dispositivo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "このデバイスで入力します"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이 기기에서 입력합니다"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Je typt het op dit apparaat"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Você a digita neste dispositivo"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escreve-a neste dispositivo"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вы вводите его на этом устройстве"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du skriver det på den här enheten"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你在此裝置上輸入"
+          }
+        }
+      }
+    },
+    "You type your Google password on Google's own page, never in StackConnect. Only the access Google grants is kept, in this device's Keychain." : {
+      "comment" : "Connection guide, page 2: how Sign in with Google is handled.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Google-Passwort gibst du auf Googles eigener Seite ein, nie in StackConnect. Nur der von Google gewährte Zugriff wird im Schlüsselbund dieses Geräts aufbewahrt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You type your Google password on Google's own page, never in StackConnect. Only the access Google grants is kept, in this device's Keychain."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escribes tu contraseña de Google en la propia página de Google, nunca en StackConnect. Solo se guarda el acceso que concede Google, en el llavero de este dispositivo."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escribes tu contraseña de Google en la propia página de Google, nunca en StackConnect. Solo se guarda el acceso que concede Google, en el llavero de este dispositivo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vous saisissez votre mot de passe Google sur la page de Google, jamais dans StackConnect. Seul l’accès accordé par Google est conservé, dans le trousseau de cet appareil."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digiti la password di Google nella pagina di Google, mai in StackConnect. Viene conservato solo l’accesso concesso da Google, nel portachiavi di questo dispositivo."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google のパスワードは Google 自身のページで入力し、StackConnect に入力することはありません。保存されるのは Google が許可したアクセスだけで、このデバイスのキーチェーンに保存されます。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google 암호는 StackConnect가 아닌 Google 페이지에서 직접 입력합니다. Google이 허용한 접근 권한만 이 기기의 키체인에 보관됩니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Je typt je Google-wachtwoord op de eigen pagina van Google, nooit in StackConnect. Alleen de toegang die Google geeft, wordt bewaard in de sleutelhanger van dit apparaat."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Você digita sua senha do Google na própria página do Google, nunca no StackConnect. Só o acesso concedido pelo Google fica guardado, nas Chaves deste dispositivo."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escreve a sua palavra-passe Google na própria página da Google, nunca no StackConnect. Só o acesso concedido pela Google fica guardado, no porta-chaves deste dispositivo."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пароль Google вы вводите на странице самой Google, а не в StackConnect. Хранится только предоставленный Google доступ — в связке ключей этого устройства."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du skriver ditt Google-lösenord på Googles egen sida, aldrig i StackConnect. Bara den åtkomst Google ger sparas, i nyckelringen på den här enheten."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你是在 Google 自己的頁面輸入 Google 密碼，絕不會在 StackConnect 中輸入。只有 Google 授予的存取權限會保存在此裝置的鑰匙圈中。"
+          }
+        }
+      }
+    },
     "You'll only need the verification code next time. Stored in this device's Keychain." : {
       "localizations" : {
         "de" : {
@@ -142241,7 +146482,7 @@
       }
     },
     "Your Apple ID session expired. Sign in again to keep using this account." : {
-      "comment" : "Error on an App Store Connect screen of an account added with Sign in with Apple ID, when Apple no longer accepts its session.",
+      "comment" : "Error on an App Store Connect screen of an account added with email and password, when Apple no longer accepts its session.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -142485,6 +146726,95 @@
           "stringUnit" : {
             "state" : "new",
             "value" : ""
+          }
+        }
+      }
+    },
+    "Your Credentials Stay on This Device" : {
+      "comment" : "Connection guide, page 2 title.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Zugangsdaten bleiben auf diesem Gerät"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your Credentials Stay on This Device"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tus credenciales se quedan en este dispositivo"
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tus credenciales se quedan en este dispositivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vos identifiants restent sur cet appareil"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le tue credenziali restano su questo dispositivo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "認証情報はこのデバイスにとどまります"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "자격 증명은 이 기기에 남아 있습니다"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Je inloggegevens blijven op dit apparaat"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suas credenciais ficam neste dispositivo"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As suas credenciais ficam neste dispositivo"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваши учетные данные остаются на этом устройстве"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dina inloggningsuppgifter stannar på den här enheten"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的憑證只留在此裝置上"
           }
         }
       }
@@ -142898,6 +147228,95 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你的 Google 登入已過期或遭撤銷。請重新使用 Google 帳戶登入。"
+          }
+        }
+      }
+    },
+    "Your password is sent only to Apple, to sign you in. It's saved on this device only if you turn on \"Save password on this device\". Two-factor codes are never saved." : {
+      "comment" : "Connection guide, page 2: how the email and password method handles the password. \"Save password on this device\" is the toggle of the password screen.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Passwort wird nur an Apple gesendet, um dich anzumelden. Es wird nur auf diesem Gerät gespeichert, wenn du „Passwort auf diesem Gerät sichern“ aktivierst. Zwei-Faktor-Codes werden nie gespeichert."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your password is sent only to Apple, to sign you in. It's saved on this device only if you turn on \"Save password on this device\". Two-factor codes are never saved."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu contraseña se envía solo a Apple, para iniciar tu sesión. Solo se guarda en este dispositivo si activas «Guardar la contraseña en este dispositivo». Los códigos de doble factor nunca se guardan."
+          }
+        },
+        "es-MX" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu contraseña se envía solo a Apple, para iniciar tu sesión. Solo se guarda en este dispositivo si activas “Guardar la contraseña en este dispositivo”. Los códigos de dos factores nunca se guardan."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre mot de passe est envoyé uniquement à Apple, pour vous connecter. Il n’est enregistré sur cet appareil que si vous activez « Enregistrer le mot de passe sur cet appareil ». Les codes à deux facteurs ne sont jamais enregistrés."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La password viene inviata solo ad Apple, per farti accedere. Viene salvata su questo dispositivo solo se attivi “Salva la password su questo dispositivo”. I codici a due fattori non vengono mai salvati."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "パスワードはサインインのために Apple にのみ送信されます。このデバイスに保存されるのは「このデバイスにパスワードを保存」をオンにした場合だけです。2ファクタ認証コードは保存されません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "암호는 로그인을 위해 Apple에만 전송됩니다. “이 기기에 암호 저장”을 켠 경우에만 이 기기에 저장됩니다. 이중 인증 코드는 저장되지 않습니다."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Je wachtwoord wordt alleen naar Apple gestuurd, om je in te loggen. Het wordt alleen op dit apparaat bewaard als je ‘Wachtwoord op dit apparaat bewaren’ aanzet. Tweestapscodes worden nooit bewaard."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua senha é enviada só para a Apple, para fazer seu login. Ela só é salva neste dispositivo se você ativar “Salvar a senha neste dispositivo”. Os códigos de dois fatores nunca são salvos."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A sua palavra-passe é enviada apenas à Apple, para iniciar a sua sessão. Só fica guardada neste dispositivo se ativar «Guardar a palavra-passe neste dispositivo». Os códigos de dois fatores nunca são guardados."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пароль отправляется только в Apple для входа. Он сохраняется на этом устройстве, только если включить «Сохранить пароль на этом устройстве». Коды двухфакторной аутентификации никогда не сохраняются."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ditt lösenord skickas bara till Apple, för att logga in dig. Det sparas bara på den här enheten om du slår på ”Spara lösenordet på den här enheten”. Tvåfaktorskoder sparas aldrig."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你的密碼只會傳送給 Apple，以便讓你登入。只有在你開啟「在此裝置上儲存密碼」時，密碼才會儲存在此裝置上。雙重認證碼絕不會儲存。"
           }
         }
       }

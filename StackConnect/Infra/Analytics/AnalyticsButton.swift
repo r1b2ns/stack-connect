@@ -35,6 +35,8 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     case loadMore = "load_more"
     /// "Share Error" on a full-screen / inline error or an error alert.
     case shareError = "share_error"
+    /// Skips the rest of a paged guide (the connection guide).
+    case skip = "skip"
 
     // MARK: Home
     case customizeWidgets = "customize_widgets"
@@ -107,6 +109,26 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     case savePasswordOff = "save_password_off"
     /// The expired Apple ID session prompt: dismiss it for now.
     case notNow = "not_now"
+    /// Add Account's method chooser: the API key card (App Store Connect).
+    /// The other cards report `use_apple_id_sign_in`, `use_google_sign_in`
+    /// and `use_service_account` (see `connectionMethodButton(for:)`).
+    case useApiKey = "use_api_key"
+    /// Add Account's method chooser: the "Sign in with email and password"
+    /// card (App Store Connect).
+    case useAppleIdSignIn = "use_apple_id_sign_in"
+    /// Add Account (method chooser or form): reopens the connection guide.
+    case howItWorks = "how_it_works"
+    /// The email and password screen's trust panel: opens "How Your Password
+    /// Is Used".
+    case howPasswordIsUsed = "how_password_is_used"
+    /// Opens the open-source repository on GitHub (connection guide, "How
+    /// Your Password Is Used").
+    case sourceCode = "source_code"
+    /// Opens one source file on GitHub ("How Your Password Is Used").
+    case sourceFile = "source_file"
+    /// Opens StackConnect's privacy policy (connection guide, "How Your
+    /// Password Is Used").
+    case privacyPolicy = "privacy_policy"
     case createNew = "create_new"
     case editName = "edit_name"
     case certificates = "certificates"
@@ -302,6 +324,17 @@ extension AnalyticsButton {
         case .apple: return .appleProvider
         case .firebase: return .firebaseProvider
         case .googlePlay: return .googlePlayProvider
+        }
+    }
+
+    /// The method chooser card of `method` (Add Account). Google sign-in and
+    /// the service account reuse the names of the in-form switch they replace.
+    static func connectionMethodButton(for method: AccountConnectionMethod) -> AnalyticsButton {
+        switch method {
+        case .apiKey:         return .useApiKey
+        case .appleIdSignIn:  return .useAppleIdSignIn
+        case .googleSignIn:   return .useGoogleSignIn
+        case .serviceAccount: return .useServiceAccount
         }
     }
 }

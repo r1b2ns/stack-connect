@@ -107,6 +107,19 @@ final class AppleIdSignInResumeChallengeTests: XCTestCase {
         XCTAssertEqual(autoReauth.discarded, [appleId], "the challenge is used up")
     }
 
+    func testResumedChallengeKeepsTheSavedPassword() async {
+        leavePendingChallenge()
+        pendingFlow.submitResults = [.success(.done(teams: [.fixture(1, "Alpha")]))]
+        let sut = makeSUT()
+        XCTAssertTrue(sut.uiState.savesPassword, "a password is saved: on, though the toggle isn't shown")
+
+        await sut.updateCode("123456")
+
+        XCTAssertEqual(sut.uiState.step, .finished)
+        XCTAssertEqual(keychain.string(forKey: passwordKey), "saved", "never removed by the off default")
+        XCTAssertEqual(keychain.writtenKeys.filter { $0 == passwordKey }.count, 2, "written again once signed in: refreshed")
+    }
+
     func testResumedTextMessageCodeIsShown() {
         leavePendingChallenge(delivery: .phone(phoneId: AppleTrustedPhone.fixture.id))
 

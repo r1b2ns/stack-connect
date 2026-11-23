@@ -10,9 +10,9 @@ StackConnect is an open-source iOS app for managing App Store Connect, Firebase 
 
 | Data | Where it is stored | Leaves the device? |
 |------|--------------------|--------------------|
-| API keys, `.p8` private keys, service-account JSON files and access tokens (including Google sign-in tokens) | iOS Keychain, on this device only (not synced, not backed up to other devices); readable after the first unlock since the device started, so background refresh works | Only to authenticate with Apple or Google (see section 2) |
-| The App Store Connect session of an account added with "Sign in with Apple ID" (the session cookies Apple returns) | iOS Keychain, one item per Apple ID, on this device only (not synced, not backed up to other devices); readable after the first unlock since the device started, so background refresh works | Only to Apple, with each request of that account |
-| The Apple ID password of an account added with "Sign in with Apple ID", only if you leave "Save password on this device" on (saved after a successful sign-in) | iOS Keychain, one item per Apple ID, on this device only (not synced, not backed up to other devices); readable only while the device is unlocked | Only to Apple, when the app signs you in again with that Apple ID (on its own once its session expires, or when you sign in again) |
+| API keys, `.p8` private keys, service-account JSON files and access tokens (including Google sign-in tokens) | iOS Keychain, on this device only (not synced, not backed up to other devices); readable after the first unlock since the device started, so background refresh works | Only to authenticate with Apple or Google (see section 2). Private keys only sign short-lived tokens on the device and are never sent themselves. An account you export yourself is included in its encrypted file (see section 5) |
+| The App Store Connect session of an account added with "Sign in with email and password" (the session cookies Apple returns) | iOS Keychain, one item per Apple ID, on this device only (not synced, not backed up to other devices); readable after the first unlock since the device started, so background refresh works | Only to Apple, with each request of that account |
+| The Apple ID password of an account added with "Sign in with email and password", only if you turn on "Save password on this device" (saved after a successful sign-in) | iOS Keychain, one item per Apple ID, on this device only (not synced, not backed up to other devices); readable only while the device is unlocked | Only to Apple, when the app signs you in again with that Apple ID (on its own once its session expires, or when you sign in again) |
 | Account names, apps, versions, builds, reviews, testers, users and other data loaded from the services you connect | On-device database (SwiftData), in the app's App Group container | No |
 | Widget data (app names, icons, recent reviews) | The same App Group container, shared only with the StackConnect widget | No |
 | Settings and preferences | On-device storage (UserDefaults) | No |
@@ -21,19 +21,19 @@ Credentials and sessions written while the device is locked are kept in the app'
 
 Deleting an account in the app removes its credentials from the Keychain and its data from the database. The session and the saved password of an Apple ID are removed with the last account that uses them. Deleting the app removes all of it.
 
-### Signing in with an Apple ID
+### Signing in with email and password (App Store Connect)
 
-If you add an App Store Connect account with "Sign in with Apple ID" instead of an API key:
+If you add an App Store Connect account with "Sign in with email and password" (the email and password of your Apple ID) instead of an API key:
 
 - Your Apple ID password and your two-factor code are processed on your device and sent only to Apple, to sign in. They are never logged, sent to the developer or included in analytics or crash reports. The two-factor code is never stored.
-- What is kept is the session Apple returns (its cookies) and, only if you choose "Save password on this device" on the password screen (on by default), your Apple ID password once Apple accepted it. Both are stored in the iOS Keychain on this device only: they are not synced through iCloud Keychain and are never exported. The session can be read after the first unlock since the device started (so the background refresh can use it while the device is locked); the password can only be read while the device is unlocked. The session is used only for requests to Apple's App Store Connect and Apple Developer websites; the password only to sign in to Apple again.
+- What is kept is the session Apple returns (its cookies) and, only if you turn on "Save password on this device" on the password screen (off by default; it starts on only when a password is already saved for that Apple ID), your Apple ID password once Apple accepted it. Both are stored in the iOS Keychain on this device only: they are not synced through iCloud Keychain and are never exported. The session can be read after the first unlock since the device started (so the background refresh can use it while the device is locked); the password can only be read while the device is unlocked. The session is used only for requests to Apple's App Store Connect and Apple Developer websites; the password only to sign in to Apple again.
 - When the session expires and a password is saved, the app signs in again with it on its own, once per expiry and only while the app is open on screen (never from the background refresh). If Apple accepts it without a two-factor code, the session is renewed and nothing else is asked. If Apple sends a code, the Home screen asks you to enter it; the password is not asked again. If that attempt fails, or no password is saved, the app asks you to sign in again. If you turn "Save password on this device" off, the password is not saved, and a password saved earlier for that Apple ID is deleted once you're signed in. If a password is saved, the app signs in with it and you only type the two-factor code; you can choose "Use a Different Password" instead. If Apple refuses the saved password (for example because you changed it), the app deletes it and asks you for the current one.
 
 ## 2. Services the app connects to on your behalf
 
 StackConnect talks **directly** from your device to the official APIs of the services you choose to connect, using the credentials you provide. No proxy or StackConnect server sits in between.
 
-- **Apple:** the App Store Connect API (`api.appstoreconnect.apple.com`) and the public iTunes Lookup API (`itunes.apple.com`), used for rating summaries. Accounts added with "Sign in with Apple ID" use Apple's sign-in service (`idmsa.apple.com`), App Store Connect (`appstoreconnect.apple.com`) and the Apple Developer website (`developer.apple.com`) instead of the API.
+- **Apple:** the App Store Connect API (`api.appstoreconnect.apple.com`) and the public iTunes Lookup API (`itunes.apple.com`), used for rating summaries. Accounts added with "Sign in with email and password" use Apple's sign-in service (`idmsa.apple.com`), App Store Connect (`appstoreconnect.apple.com`) and the Apple Developer website (`developer.apple.com`) instead of the API.
 - **Google:** Google OAuth, the Firebase Management, Remote Config, Cloud Messaging and Analytics Data APIs, the Google Play Developer API, and Google Play image servers for app icons.
 
 What these services do with your requests is governed by their own policies:
@@ -90,7 +90,7 @@ The optional tip jar uses Apple's In-App Purchase. Payment is handled entirely b
 
 ## 5. Exported account files
 
-You can export an account to a file, for example to move it to another device. The file is encrypted with a password you choose. It is shared only where you send it, and it is never uploaded by the app. Accounts added with "Sign in with Google" or "Sign in with Apple ID" can't be exported.
+You can export an account to a file, for example to move it to another device. The file is encrypted with a password you choose. It is shared only where you send it, and it is never uploaded by the app. Accounts added with "Sign in with Google" or "Sign in with email and password" can't be exported.
 
 ## 6. Notifications
 
