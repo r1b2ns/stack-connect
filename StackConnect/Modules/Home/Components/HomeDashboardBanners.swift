@@ -136,6 +136,10 @@ struct HomeAgreementsBanners<ViewModel: HomeViewModelProtocol>: View {
 /// sign-in its button starts that sign-in right away; with several it opens
 /// the list (`HomeSignInAgainListView`). The close button hides it until the
 /// next launch (rules in `HomeViewModel.dismissedSignInAccountIds`).
+///
+/// One Apple ID whose automatic sign-in waits for the code Apple sent
+/// (`uiState.awaitingCodeSignIns`) asks for that code instead: "Confirm your
+/// Apple account", and "Enter Code" opens the sign-in at the code step.
 struct HomeSignInAgainBanner<ViewModel: HomeViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
@@ -160,7 +164,16 @@ struct HomeSignInAgainBanner<ViewModel: HomeViewModelProtocol>: View {
         state.expiredSignIns.count == 1 ? state.expiredSignIns.first : nil
     }
 
+    /// Where the code of the single expired sign-in went, when its automatic
+    /// sign-in waits for it.
+    private var awaitingCode: AppleSessionCodeDestination? {
+        single.flatMap { state.awaitingCodeSignIns[$0.id] }
+    }
+
     private var title: String {
+        if awaitingCode != nil {
+            return HomeSignInAgainCopy.awaitingCodeTitle
+        }
         let count = state.expiredAccountCount
         if count == 1, let name = state.expiredSignIns.first?.accounts.first?.name {
             return String(localized: "\"\(name)\" needs you to sign in again",
@@ -178,6 +191,9 @@ struct HomeSignInAgainBanner<ViewModel: HomeViewModelProtocol>: View {
         if let feedback = state.signInAgainFeedback[single.id] {
             return feedback
         }
+        if let awaitingCode {
+            return HomeSignInAgainCopy.awaitingCodeMessage(awaitingCode)
+        }
         if let login = single.login {
             return String(localized: "The sign-in for \(login) expired or was revoked. Sign in again to keep syncing.",
                           comment: "Home sign-in-again banner body. The placeholder is the Apple ID or the Google account's e-mail.")
@@ -192,7 +208,7 @@ struct HomeSignInAgainBanner<ViewModel: HomeViewModelProtocol>: View {
             Task { await viewModel.startSignInAgain() }
         } label: {
             HStack(spacing: 6) {
-                Text(String(localized: "Sign In Again"))
+                Text(awaitingCode == nil ? String(localized: "Sign In Again") : HomeSignInAgainCopy.enterCode)
                     .font(.footnote)
                     .fontWeight(.semibold)
                 if isWorking {
@@ -288,6 +304,10 @@ struct HomeSignInAgainSheetView<ViewModel: HomeViewModelProtocol>: View {
                         Text(feedback)
                             .font(.footnote)
                             .foregroundStyle(.red)
+                    } else if let awaitingCode = viewModel.uiState.awaitingCodeSignIns[signIn.id] {
+                        Text(HomeSignInAgainCopy.awaitingCodeMessage(awaitingCode))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -297,7 +317,9 @@ struct HomeSignInAgainSheetView<ViewModel: HomeViewModelProtocol>: View {
                 Task { await viewModel.signInAgain(signIn.id) }
             } label: {
                 HStack {
-                    Text(String(localized: "Sign In Again"))
+                    Text(viewModel.uiState.awaitingCodeSignIns[signIn.id] == nil
+                         ? String(localized: "Sign In Again")
+                         : HomeSignInAgainCopy.enterCode)
                     Spacer()
                     if isWorking {
                         ProgressView()
@@ -307,6 +329,35 @@ struct HomeSignInAgainSheetView<ViewModel: HomeViewModelProtocol>: View {
             .disabled(isWorking)
         } header: {
             Text(signIn.providerTitle)
+        }
+    }
+}
+
+/// The copy of an Apple ID whose automatic sign-in waits for the code Apple
+/// sent (banner and list).
+enum HomeSignInAgainCopy {
+
+    static var awaitingCodeTitle: String {
+        String(localized: "Confirm your Apple account",
+               comment: "Home banner title when the automatic Apple ID sign-in needs the two-factor code Apple just sent.")
+    }
+
+    static var enterCode: String {
+        String(localized: "Enter Code",
+               comment: "Home banner button that opens the Apple ID sign-in at the two-factor code step.")
+    }
+
+    static func awaitingCodeMessage(_ destination: AppleSessionCodeDestination) -> String {
+        switch destination {
+        case .trustedDevices:
+            return String(localized: "Apple sent a code to your devices.",
+                          comment: "Home banner body: the automatic Apple ID sign-in needs the code shown on the user's Apple devices.")
+        case .phone:
+            return String(localized: "Apple sent a code to your phone.",
+                          comment: "Home banner body: the automatic Apple ID sign-in needs the code texted to the user's trusted phone.")
+        case .notSent:
+            return String(localized: "Apple needs a code to confirm it's you.",
+                          comment: "Home banner body: the automatic Apple ID sign-in needs a two-factor code, not sent yet (the user picks a phone).")
         }
     }
 }
@@ -425,6 +476,7 @@ private struct HomePresentationsModifier<ViewModel: HomeViewModelProtocol>: View
             .stackShareSheet(item: $viewModel.uiState.agreementShare) { payload in
                 payload.shareActivityItems
             }
+            .toast(message: $viewModel.uiState.toastMessage)
             .sheet(item: Binding(
                 get: { viewModel.uiState.signInAgainSheet },
                 set: { if $0 == nil { viewModel.closeSignInAgainSheet() } }

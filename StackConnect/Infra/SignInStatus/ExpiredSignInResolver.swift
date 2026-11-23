@@ -45,7 +45,10 @@ struct ExpiredSignIn: Identifiable, Equatable, Sendable {
     let login: String?
     let accounts: [Account]
 
-    var id: String {
+    var id: String { Self.id(of: provider) }
+
+    /// The `id` of the expired sign-in of `provider`.
+    static func id(of provider: Provider) -> String {
         switch provider {
         case .appleId(let appleId): return "apple:\(appleId)"
         case .google(let loginId): return "google:\(loginId)"

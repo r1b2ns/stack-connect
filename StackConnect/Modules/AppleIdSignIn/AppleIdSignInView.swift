@@ -22,7 +22,11 @@ private struct AppleIdSignInEntry: View {
 
     init(mode: AppleIdSignInMode, onFinished: @escaping () -> Void) {
         self.onFinished = onFinished
-        _viewModel = StateObject(wrappedValue: AppleIdSignInViewModel(mode: mode))
+        // Signing in again resumes the code step an automatic sign-in left.
+        _viewModel = StateObject(wrappedValue: AppleIdSignInViewModel(
+            mode: mode,
+            pendingChallenges: AppleSessionAutoReauthenticator.shared
+        ))
     }
 
     var body: some View {

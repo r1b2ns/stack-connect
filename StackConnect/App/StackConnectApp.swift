@@ -70,6 +70,9 @@ struct StackConnectApp: App {
         // unit-test host, which must not read the simulator's real store.
         if !Self.isUnitTestHost {
             AnalyticsUserPropertiesUpdater.shared.start()
+            // Signs in again on its own, with the saved password, to an Apple
+            // ID whose session expired (foreground only, once per expiry).
+            AppleSessionAutoReauthenticator.shared.start()
             FirstAppsLoadedTracker.shared.seedForExistingInstall(storage: SwiftDataStorable.shared)
         }
 

@@ -82,6 +82,13 @@ struct HomeUiState {
     var workingSignInIds: Set<String> = []
     /// Why the last attempt of a sign-in didn't work, per `ExpiredSignIn.id`.
     var signInAgainFeedback: [String: String] = [:]
+    /// Apple ID sign-ins (`ExpiredSignIn.id`) whose automatic sign-in waits
+    /// for the code Apple sent, with where it went: the banner asks for the
+    /// code instead of a new sign-in.
+    var awaitingCodeSignIns: [String: AppleSessionCodeDestination] = [:]
+    /// The automatic Apple ID sign-in's progress ("Reconnecting…",
+    /// "reconnected").
+    var toastMessage: ToastMessage?
 
     /// The total number of accounts that need a new sign-in.
     var expiredAccountCount: Int { expiredSignIns.reduce(0) { $0 + $1.accounts.count } }
@@ -133,6 +140,7 @@ final class HomeViewModel: HomeViewModelProtocol {
     private let signInExpiry: ExpiredSignInResolving
     private let googleAuth: (any GoogleAuthServicing)?
     private let notificationCenter: NotificationCenter
+    private let autoReauth: (any AppleSessionAutoReauthenticating)?
     private var cancellables = Set<AnyCancellable>()
 
     /// Preferences key of the dashboard layout (also seeded by the DEBUG fake data mode).
@@ -163,8 +171,10 @@ final class HomeViewModel: HomeViewModelProtocol {
         featureFlags: FeatureFlags = .shared,
         signInExpiry: ExpiredSignInResolving? = nil,
         googleAuth: (any GoogleAuthServicing)? = nil,
-        notificationCenter: NotificationCenter = .default
+        notificationCenter: NotificationCenter = .default,
+        autoReauth: (any AppleSessionAutoReauthenticating)? = nil
     ) {
+        self.autoReauth = autoReauth
         self.storage = storage ?? SwiftDataStorable.shared
         self.featureFlags = featureFlags
         self.analytics = analytics
@@ -222,6 +232,10 @@ final class HomeViewModel: HomeViewModelProtocol {
                 }
             }
             .store(in: &cancellables)
+
+        autoReauth?.events
+            .sink { [weak self] event in self?.autoReauthEvent(event) }
+            .store(in: &cancellables)
     }
 
     func triggerSync() {
@@ -269,13 +283,41 @@ final class HomeViewModel: HomeViewModelProtocol {
 
     /// Re-reads the expired sign-ins (a status store changed).
     func reloadExpiredSignIns() async {
+        await reloadExpiredSignIns(revealing: nil)
+    }
+
+    /// - Parameter signInId: an expired sign-in whose banner shows again
+    ///   even if it was closed.
+    private func reloadExpiredSignIns(revealing signInId: String?) async {
         // Accounts of a hidden store (Google Play while `googlePlayAccounts`
         // is OFF) never reach the banner, as in `checkExpiredAccounts()`.
         let accounts = featureFlags.visibleAccounts((try? await storage.fetchAll(AccountModel.self)) ?? [])
-        applyExpiredSignIns(signInExpiry.expiredSignIns(in: accounts))
+        let signIns = signInExpiry.expiredSignIns(in: accounts)
+        if let signInId, let revealed = signIns.first(where: { $0.id == signInId }) {
+            dismissedSignInAccountIds.subtract(revealed.accounts.map(\.id))
+        }
+        applyExpiredSignIns(signIns)
     }
 
-    private func applyExpiredSignIns(_ signIns: [ExpiredSignIn]) {
+    private func applyExpiredSignIns(_ allSignIns: [ExpiredSignIn]) {
+        // An Apple ID signing in again on its own is no banner (its chips say
+        // "Reconnecting…"); one waiting for its code asks for it.
+        var signIns: [ExpiredSignIn] = []
+        var awaitingCode: [String: AppleSessionCodeDestination] = [:]
+        for signIn in allSignIns {
+            guard case .appleId(let appleId) = signIn.provider, let state = autoReauth?.state(for: appleId) else {
+                signIns.append(signIn)
+                continue
+            }
+            switch state {
+            case .reconnecting:
+                continue
+            case .awaitingCode(let destination):
+                awaitingCode[signIn.id] = destination
+                signIns.append(signIn)
+            }
+        }
+        uiState.awaitingCodeSignIns = awaitingCode
         uiState.expiredSignIns = signIns
         let ids = Set(signIns.map(\.id))
         uiState.workingSignInIds.formIntersection(ids)
@@ -309,7 +351,9 @@ final class HomeViewModel: HomeViewModelProtocol {
               !uiState.workingSignInIds.contains(signInId) else { return }
         switch signIn.provider {
         case .appleId(let appleId):
-            analytics.track(.buttonTap(.signInAgain, on: .home))
+            // The sheet resumes the automatic sign-in's code step on its own.
+            let button: AnalyticsButton = uiState.awaitingCodeSignIns[signInId] == nil ? .signInAgain : .enterCode
+            analytics.track(.buttonTap(button, on: .home))
             if uiState.signInAgainSheet == .choose {
                 uiState.appleSignInAgainId = appleId
             } else {
@@ -365,6 +409,31 @@ final class HomeViewModel: HomeViewModelProtocol {
     func closeSignInAgainSheet() {
         uiState.signInAgainSheet = nil
         uiState.appleSignInAgainId = nil
+    }
+
+    /// The automatic Apple ID sign-in: a toast while it runs and once it
+    /// succeeded (then the accounts sync again). Apple sending a code shows
+    /// the banner again, even if it was closed: the code waits for the user.
+    private func autoReauthEvent(_ event: AppleSessionAutoReauthEvent) {
+        switch event {
+        case .started:
+            uiState.toastMessage = ToastMessage(
+                String(localized: "Reconnecting Apple account…", comment: "Home toast while the app signs in again on its own to an expired Apple ID with the saved password."),
+                icon: "arrow.triangle.2.circlepath"
+            )
+        case .finished(let appleId, let outcome):
+            switch outcome {
+            case .done:
+                uiState.toastMessage = ToastMessage(
+                    String(localized: "Apple account reconnected", comment: "Home toast once the app signed in again on its own to an expired Apple ID.")
+                )
+                triggerSync()
+            case .invalidCredentials, .failed, .needsCode:
+                uiState.toastMessage = nil
+            }
+            let revealed = outcome == .needsCode ? ExpiredSignIn.id(of: .appleId(appleId)) : nil
+            Task { await reloadExpiredSignIns(revealing: revealed) }
+        }
     }
 
     func dismissSignInAgainBanner() {

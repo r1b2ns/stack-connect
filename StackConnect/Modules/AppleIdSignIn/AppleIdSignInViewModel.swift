@@ -166,7 +166,7 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
 
     /// Builds the core's sign-in: a fresh one, or one over the saved session
     /// (its trust cookie can spare the code when signing in again).
-    typealias SignInFactory = (_ savedSession: Data?) throws -> any AppleIdSignInProtocol
+    typealias SignInFactory = AppleSessionRenewal.SignInFactory
 
     static let appleIdWebsite = URL(string: "https://appleid.apple.com")
 
@@ -174,12 +174,13 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
-    private let sessionStore: AppleSessionKeychainStore
+    private let renewal: AppleSessionRenewal
     private let passwordStore: ApplePasswordKeychainStore
-    private let sessionStatus: AppleSessionStatusTracking
     private let roleResolver: any AppleSessionRoleResolving
     private let analytics: AnalyticsTracking
-    private let makeSignIn: SignInFactory
+    /// The challenges automatic sign-ins left at the code step
+    /// (`AppleSessionAutoReauthenticator`), resumed when signing in again.
+    private let pendingChallenges: (any AppleSessionPendingChallengeProviding)?
 
     /// The core's sign-in in progress.
     private var flow: (any AppleIdSignInProtocol)?
@@ -191,6 +192,9 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
     private var hasTriedSavedPassword = false
     /// Apple IDs whose saved password the user chose not to use (Add Account).
     private var declinedSavedPassword = Set<String>()
+    /// `flow` is an automatic sign-in's pending challenge (resumed at the
+    /// code step, the password not asked).
+    private var resumedChallenge = false
 
     init(
         mode: AppleIdSignInMode,
@@ -199,24 +203,37 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
         sessionStatus: AppleSessionStatusTracking = AppleSessionStatusStore.shared,
         roleResolver: (any AppleSessionRoleResolving)? = nil,
         analytics: AnalyticsTracking = AnalyticsService.shared,
+        pendingChallenges: (any AppleSessionPendingChallengeProviding)? = nil,
         makeSignIn: SignInFactory? = nil
     ) {
         self.uiState = AppleIdSignInUiState(mode: mode)
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
-        self.sessionStore = AppleSessionKeychainStore(keychain: keychain)
-        self.passwordStore = ApplePasswordKeychainStore(keychain: keychain)
-        self.sessionStatus = sessionStatus
+        self.renewal = AppleSessionRenewal(keychain: keychain, sessionStatus: sessionStatus, makeSignIn: makeSignIn)
+        self.passwordStore = renewal.passwordStore
         self.roleResolver = roleResolver ?? AppleSessionRoleResolver()
         self.analytics = analytics
-        self.makeSignIn = makeSignIn ?? Self.coreSignIn
+        self.pendingChallenges = pendingChallenges
+        if case .signInAgain(let appleId) = mode,
+           let challenge = pendingChallenges?.pendingChallenge(for: appleId) {
+            resume(challenge)
+        }
     }
 
-    private static func coreSignIn(_ savedSession: Data?) throws -> any AppleIdSignInProtocol {
-        if let savedSession {
-            return try AppleIdSignIn.withSavedSession(blob: savedSession)
-        }
-        return try AppleIdSignIn()
+    /// Starts at the code screen of an automatic sign-in Apple left waiting
+    /// for a code (already sent): the saved password was used, so it isn't
+    /// asked. Stale or gone, `submitCode` falls back to a new sign-in.
+    private func resume(_ challenge: AppleSessionPendingChallenge) {
+        Log.print.info("[AppleIdSignIn] Resuming the automatic sign-in at the code step")
+        flow = challenge.flow
+        // Saved again (refreshed) once the sign-in finished, as when the
+        // saved password is used by hand.
+        pendingPassword = passwordStore.password(for: challenge.appleId)
+        resumedChallenge = true
+        hasStarted = true
+        hasTriedSavedPassword = true
+        uiState.usesSavedPassword = true
+        showCode(methods: challenge.methods, phones: challenge.phones, codeLength: challenge.codeLength, delivery: challenge.delivery)
     }
 
     private var appleId: String { AppleSessionKeychainStore.normalized(uiState.email) }
@@ -292,7 +309,7 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
         defer { uiState.isWorking = false }
 
         do {
-            let flow = try makeSignIn(savedSession())
+            let flow = try renewal.makeFlow(reusingSessionOf: savedSessionAppleId)
             self.flow = flow
             pendingPassword = password
             let step = try await flow.start(email: email, password: password)
@@ -324,8 +341,7 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
     /// `start`'s `InvalidCredentials` is a wrong Apple ID or password (the
     /// core maps a wrong code to it only from `submitCode`).
     static func isWrongPassword(_ error: Error) -> Bool {
-        if case StackError.InvalidCredentials? = error as? StackError { return true }
-        return false
+        AppleSessionRenewal.isWrongPassword(error)
     }
 
     // MARK: - Screen 2: two-factor code
@@ -360,8 +376,23 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
             uiState.codeError = String(localized: "That code isn't right. Check it and try again.")
             trackSignIn(.failure, failure: .invalidCredentials)
         } catch {
+            if resumedChallenge, !OfflineError.isConnectivityFailure(error) {
+                await restartAfterStaleChallenge(error)
+                return
+            }
             fail(error, message: Self.message(for: error, stage: .code))
         }
+    }
+
+    /// The resumed challenge no longer works (it expired with its code): sign
+    /// in again with the saved password, which sends a new code; without one,
+    /// back to the password field.
+    private func restartAfterStaleChallenge(_ error: Error) async {
+        Log.print.notice("[AppleIdSignIn] The resumed sign-in was refused (\(error.localizedDescription, privacy: .public)): signing in again")
+        resetToCredentials()
+        uiState.isWorking = false
+        hasTriedSavedPassword = false
+        await signInWithSavedPasswordIfAvailable()
     }
 
     func requestSms(phoneId: UInt64) async {
@@ -397,6 +428,11 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
     }
 
     private func resetToCredentials() {
+        if resumedChallenge {
+            // The user left the automatic sign-in's code: it can't be resumed.
+            resumedChallenge = false
+            pendingChallenges?.discardPendingChallenge(for: appleId)
+        }
         endFlow()
         uiState.step = .credentials
         uiState.code = ""
@@ -532,6 +568,8 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
         switch uiState.mode {
         case .signInAgain:
             guard await storeSession() else { return }
+            pendingChallenges?.discardPendingChallenge(for: appleId)
+            resumedChallenge = false
             Log.print.info("[AppleIdSignIn] Signed in again: the Apple ID session was replaced")
             conclude()
         case .addAccounts:
@@ -562,33 +600,18 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
     private func storeSession() async -> Bool {
         guard let flow else { return false }
         do {
-            let blob = try await flow.finish()
-            sessionStore.save(accountId: appleId, blob: blob)
-            storePassword()
+            try await renewal.storeSession(
+                of: flow,
+                appleId: appleId,
+                password: pendingPassword,
+                savesPassword: uiState.savesPassword
+            )
             endFlow()
-            sessionStatus.markValid(appleId: appleId)
             return true
         } catch {
             Log.print.error("[AppleIdSignIn] Finishing the sign-in failed: \(error.localizedDescription, privacy: .public)")
             uiState.errorMessage = Self.message(for: error, stage: .password)
             return false
-        }
-    }
-
-    /// Applies "Save password on this device" once Apple accepted the
-    /// password: saves (or refreshes, when the saved one was used) it when
-    /// on; otherwise removes any password saved earlier for the Apple ID.
-    /// An explicit off is honored even when the saved password was used for
-    /// this sign-in. Signing in again with the saved password never shows
-    /// the toggle, so it stays on there and the password is refreshed.
-    private func storePassword() {
-        if uiState.savesPassword {
-            guard let pendingPassword else { return }
-            passwordStore.save(pendingPassword, for: appleId)
-            Log.print.info("[AppleIdSignIn] Saved the Apple ID password in the Keychain")
-        } else if passwordStore.hasPassword(for: appleId) {
-            passwordStore.deletePassword(for: appleId)
-            Log.print.info("[AppleIdSignIn] Not saving the Apple ID password: removed the one saved earlier")
         }
     }
 
@@ -610,9 +633,11 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
         trackSignIn(.failure, failure: AnalyticsErrorCategory(connectionError: error))
     }
 
-    private func savedSession() -> Data? {
+    /// Signing in again reuses the Apple ID's saved session (its trust
+    /// cookie can spare the code); Add Account starts fresh.
+    private var savedSessionAppleId: String? {
         guard case .signInAgain = uiState.mode else { return nil }
-        return sessionStore.load(accountId: appleId)
+        return appleId
     }
 
     // MARK: - Analytics

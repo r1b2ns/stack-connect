@@ -13,7 +13,7 @@ extension View {
 
 private struct AppleSessionExpiryPromptModifier: ViewModifier {
 
-    @StateObject private var viewModel = AppleSessionPromptViewModel()
+    @StateObject private var viewModel = AppleSessionPromptViewModel(autoReauth: AppleSessionAutoReauthenticator.shared)
 
     func body(content: Content) -> some View {
         content

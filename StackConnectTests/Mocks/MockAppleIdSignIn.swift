@@ -70,6 +70,8 @@ final class MockAppleSessionStatus: AppleSessionStatusTracking, @unchecked Senda
 
     func isExpired(appleId: String) -> Bool { lock.withLock { expired.contains(appleId) } }
 
+    func expiredAppleIds() -> Set<String> { lock.withLock { expired } }
+
     func markExpired(appleId: String) {
         lock.withLock {
             expired.insert(appleId)

@@ -12,6 +12,9 @@ enum AccountStatusIssue: Int, Comparable, CaseIterable, Sendable {
     /// refused, or a Google login Google stopped accepting (see
     /// `ExpiredSignInResolver`).
     case signInExpired
+    /// The Apple ID session expired and the app is signing in again on its
+    /// own with the saved password (`AppleSessionAutoReauthenticator`).
+    case signInReconnecting
     /// An imported account whose shared file expired (`AccountModel.isExpired`).
     case accessExpired
     /// The account's credentials are missing from this device's Keychain.
@@ -30,6 +33,8 @@ enum AccountStatusIssue: Int, Comparable, CaseIterable, Sendable {
         switch self {
         case .signInExpired, .accessExpired, .missingCredentials:
             return .disconnected
+        case .signInReconnecting:
+            return .reconnecting
         case .pendingAgreements, .accessExpiringSoon:
             return .needsAttention
         }
@@ -45,6 +50,8 @@ struct AccountStatus: Equatable, Sendable {
     enum Level: Equatable, Sendable {
         /// The account can't sync: its login or credentials are unusable.
         case disconnected
+        /// The sign-in is being renewed on its own: it syncs again shortly.
+        case reconnecting
         /// The account syncs, but something is pending on the user's side.
         case needsAttention
     }
@@ -59,8 +66,12 @@ struct AccountStatus: Equatable, Sendable {
         self.issues = sorted
     }
 
+    /// The most severe level of `issues`: disconnected, then reconnecting,
+    /// then needs attention.
     var level: Level {
-        issues.contains { $0.level == .disconnected } ? .disconnected : .needsAttention
+        if issues.contains(where: { $0.level == .disconnected }) { return .disconnected }
+        if issues.contains(where: { $0.level == .reconnecting }) { return .reconnecting }
+        return .needsAttention
     }
 }
 
@@ -80,7 +91,9 @@ extension AccountStatusResolving {
 }
 
 /// `AccountStatusResolving` over what the app already tracks:
-/// - expired sign-ins (`ExpiredSignInResolving`: Apple ID session, Google login);
+/// - expired sign-ins (`ExpiredSignInResolving`: Apple ID session, Google login),
+///   shown as reconnecting while an automatic Apple ID sign-in runs
+///   (`AppleSessionAutoReauthStateProviding`);
 /// - the Keychain credentials (`credentials.{accountId}`);
 /// - the account record (`isExpired`, `isExpiringSoon`, `hasPendingAgreements`).
 ///
@@ -92,20 +105,37 @@ struct AccountStatusResolver: AccountStatusResolving {
 
     private let keychain: KeyStorable
     private let signInExpiry: ExpiredSignInResolving
+    private let autoReauth: any AppleSessionAutoReauthStateProviding
 
-    init(keychain: KeyStorable, signInExpiry: ExpiredSignInResolving? = nil) {
+    init(
+        keychain: KeyStorable,
+        signInExpiry: ExpiredSignInResolving? = nil,
+        autoReauth: (any AppleSessionAutoReauthStateProviding)? = nil
+    ) {
         self.keychain = keychain
         self.signInExpiry = signInExpiry ?? ExpiredSignInResolver(keychain: keychain)
+        self.autoReauth = autoReauth ?? AppleSessionAutoReauthenticator.shared
     }
 
     func statuses(for accounts: [AccountModel]) -> [String: AccountStatus] {
-        let expiredSignInIds = Set(signInExpiry.expiredSignIns(in: accounts).flatMap { $0.accounts.map(\.id) })
+        var expiredSignInIds = Set<String>()
+        var reconnectingIds = Set<String>()
+        for signIn in signInExpiry.expiredSignIns(in: accounts) {
+            let ids = signIn.accounts.map(\.id)
+            if case .appleId(let appleId) = signIn.provider, autoReauth.state(for: appleId) == .reconnecting {
+                reconnectingIds.formUnion(ids)
+            } else {
+                expiredSignInIds.formUnion(ids)
+            }
+        }
 
         var result: [String: AccountStatus] = [:]
         for account in accounts {
             var issues: [AccountStatusIssue] = []
             if expiredSignInIds.contains(account.id) {
                 issues.append(.signInExpired)
+            } else if reconnectingIds.contains(account.id) {
+                issues.append(.signInReconnecting)
             }
             if account.isExpired {
                 issues.append(.accessExpired)
