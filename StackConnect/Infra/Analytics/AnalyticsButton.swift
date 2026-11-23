@@ -50,6 +50,9 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     case chooseSignInAgain = "choose_sign_in_again"
     /// The Home "sign in again" banner was closed (until the next launch).
     case dismissSignInAgainBanner = "dismiss_sign_in_again_banner"
+    /// The Home banner (or its list) of an Apple ID whose automatic sign-in
+    /// is waiting for the two-factor code Apple sent: type it.
+    case enterCode = "enter_code"
     case widgetApp = "widget_app"
     case widgetReview = "widget_review"
     case appleProvider = "apple_provider"

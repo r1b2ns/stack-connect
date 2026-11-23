@@ -16,7 +16,7 @@ struct AppRootViewFactory {
 /// layout without losing the Home data, the compact tab and stacks or the split
 /// view selection.
 private struct AppRootEntry: View {
-    @StateObject private var homeViewModel = HomeViewModel()
+    @StateObject private var homeViewModel = HomeViewModel(autoReauth: AppleSessionAutoReauthenticator.shared)
     @StateObject private var tabCoordinator = RootTabCoordinator()
     @StateObject private var splitCoordinator = RootSplitCoordinator()
     @StateObject private var sidebarViewModel = RootSidebarViewModel()

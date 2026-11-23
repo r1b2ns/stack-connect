@@ -8,6 +8,8 @@ extension AccountStatus.Level {
         switch self {
         case .disconnected:
             return String(localized: "Disconnected", comment: "Chip on an account (or its apps) whose login expired or whose credentials can't be used.")
+        case .reconnecting:
+            return String(localized: "Reconnecting…", comment: "Chip on an account (or its apps) whose expired Apple ID sign-in the app is renewing on its own with the saved password.")
         case .needsAttention:
             return String(localized: "Action Needed", comment: "Chip on an account (or its apps) with something pending, e.g. App Store Connect agreements to accept.")
         }
@@ -16,6 +18,7 @@ extension AccountStatus.Level {
     var color: Color {
         switch self {
         case .disconnected:   return .red
+        case .reconnecting:   return .blue
         case .needsAttention: return .orange
         }
     }
@@ -23,6 +26,7 @@ extension AccountStatus.Level {
     var systemImage: String {
         switch self {
         case .disconnected:   return "bolt.horizontal.circle.fill"
+        case .reconnecting:   return "arrow.triangle.2.circlepath"
         case .needsAttention: return "exclamationmark.triangle.fill"
         }
     }
@@ -34,6 +38,8 @@ extension AccountStatusIssue {
         switch self {
         case .signInExpired:
             return String(localized: "The sign-in of this account expired. Sign in again from the Home screen to sync it.", comment: "Account status notice: the Apple ID session or Google login expired.")
+        case .signInReconnecting:
+            return String(localized: "The sign-in of this account expired. Signing in again with the saved password…", comment: "Account status notice: the app is renewing the expired Apple ID session on its own.")
         case .accessExpired:
             return String(localized: "This shared account expired. Re-import its file to keep using it.", comment: "Account status notice: an imported account file expired.")
         case .missingCredentials:

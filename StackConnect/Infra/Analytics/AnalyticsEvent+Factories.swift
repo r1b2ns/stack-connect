@@ -68,6 +68,9 @@ enum AnalyticsParameterKey {
     /// How many requested Google scopes the user left unticked on the consent
     /// page (never which ones by name beyond this count).
     static let missingScopeCount = "missing_scope_count"
+    /// How an automatic Apple ID sign-in ended:
+    /// `AppleSessionAutoReauthOutcome` raw value.
+    static let outcome = "outcome"
 
     /// Shape of an account export (never its content): whether it expires and
     /// whether it is restricted to a subset of apps.

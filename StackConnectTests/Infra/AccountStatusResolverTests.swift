@@ -82,6 +82,32 @@ final class AccountStatusResolverTests: XCTestCase {
         XCTAssertEqual(status?.issues, [.signInExpired])
     }
 
+    func testAppleIdSigningInAgainOnItsOwnIsReconnecting() {
+        let account = appleIdAccount()
+        appleStatus.markExpired(appleId: appleId)
+        let autoReauth = MockAppleSessionAutoReauthenticator()
+        autoReauth.states[appleId] = .reconnecting
+        let sut = AccountStatusResolver(
+            keychain: keychain,
+            signInExpiry: ExpiredSignInResolver(keychain: keychain, appleStatus: appleStatus, googleStatus: googleStatus),
+            autoReauth: autoReauth
+        )
+
+        let status = sut.status(for: account)
+
+        XCTAssertEqual(status?.level, .reconnecting)
+        XCTAssertEqual(status?.issues, [.signInReconnecting])
+        XCTAssertEqual(status?.level.title, String(localized: "Reconnecting…"))
+
+        autoReauth.states[appleId] = .awaitingCode(.trustedDevices)
+        XCTAssertEqual(sut.status(for: account)?.issues, [.signInExpired], "waiting for the code: disconnected until typed")
+    }
+
+    func testReconnectingGivesWayToDisconnected() {
+        XCTAssertEqual(AccountStatus(issues: [.signInReconnecting, .pendingAgreements])?.level, .reconnecting)
+        XCTAssertEqual(AccountStatus(issues: [.signInReconnecting, .missingCredentials])?.level, .disconnected)
+    }
+
     func testExpiredGoogleLoginIsDisconnected() {
         let account = googleAccount(provider: .firebase)
         googleStatus.markExpired(loginId: "user-1")

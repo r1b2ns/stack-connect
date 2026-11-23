@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import StackProtocols
 
@@ -41,6 +42,12 @@ struct AppleSessionPromptUiState: Equatable {
 /// root of the app, offers the sign-in once per Apple ID per launch. The
 /// screens themselves show the translated error
 /// (`AppleAPIErrorTranslator.sessionExpiredMessage`).
+///
+/// An expiry the automatic sign-in handles (a saved password,
+/// `AppleSessionAutoReauthenticating`) shows no prompt: it renews the session
+/// on its own, or leaves a code to type from the Home banner. The prompt
+/// shows only once that attempt falls back to the manual sign-in (wrong
+/// password, any other failure), and closes if it succeeds meanwhile.
 @MainActor
 final class AppleSessionPromptViewModel: AppleSessionPromptViewModelProtocol {
 
@@ -51,13 +58,20 @@ final class AppleSessionPromptViewModel: AppleSessionPromptViewModelProtocol {
     /// Apple IDs whose prompt was dismissed with "Not Now" this launch.
     private var snoozed = Set<String>()
     private var observer: NSObjectProtocol?
+    private let autoReauth: (any AppleSessionAutoReauthenticating)?
+    private var cancellables = Set<AnyCancellable>()
 
     init(
         analytics: AnalyticsTracking = AnalyticsService.shared,
-        center: NotificationCenter? = .default
+        center: NotificationCenter? = .default,
+        autoReauth: (any AppleSessionAutoReauthenticating)? = nil
     ) {
         self.analytics = analytics
         self.center = center
+        self.autoReauth = autoReauth
+        autoReauth?.events
+            .sink { [weak self] event in self?.autoReauthEvent(event) }
+            .store(in: &cancellables)
         guard let center else { return }
         observer = center.addObserver(forName: .appleSessionDidExpire, object: nil, queue: .main) { [weak self] note in
             guard let appleId = note.object as? String else { return }
@@ -76,9 +90,29 @@ final class AppleSessionPromptViewModel: AppleSessionPromptViewModelProtocol {
         if isNew {
             analytics.track(.action(.appleSessionExpired, on: nil))
         }
+        if autoReauth?.handlesExpiry(of: appleId) == true {
+            Log.print.info("[AppleSession] The automatic sign-in handles the expiry: no prompt")
+            return
+        }
+        showPrompt(appleId: appleId)
+    }
+
+    private func showPrompt(appleId: String) {
         guard uiState.prompt == nil, !snoozed.contains(appleId) else { return }
         uiState.prompt = AppleSessionPrompt(appleId: appleId)
         uiState.isSigningIn = false
+    }
+
+    /// The automatic sign-in ended: the manual prompt takes over after a
+    /// failure, and a prompt left over closes after a success (unless the
+    /// user is already signing in there).
+    private func autoReauthEvent(_ event: AppleSessionAutoReauthEvent) {
+        guard case let .finished(appleId, outcome) = event else { return }
+        if outcome.fallsBackToManualSignIn {
+            showPrompt(appleId: appleId)
+        } else if outcome == .done, uiState.prompt?.appleId == appleId, !uiState.isSigningIn {
+            uiState = AppleSessionPromptUiState()
+        }
     }
 
     func signInAgain() {

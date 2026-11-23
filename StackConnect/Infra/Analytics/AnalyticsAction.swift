@@ -101,6 +101,13 @@ enum AnalyticsAction: String, CaseIterable, Sendable {
     /// App Store Connect stopped accepting an Apple ID session: its accounts
     /// need a new sign-in. Sent once per expiry, screen-less.
     case appleSessionExpired = "apple_session_expired"
+    /// An expired Apple ID session was signed in again on its own with the
+    /// password saved on the device (once per expiry, foreground only),
+    /// screen-less. `outcome`: `done` (`success`), `needs_code` (`pending`:
+    /// Apple sent a code, the user finishes from the Home banner),
+    /// `invalid_credentials` or `failed` (`failure`, with `error_category`).
+    /// Never carries the Apple ID or the password.
+    case appleSessionAutoReauth = "apple_session_auto_reauth"
 
     // MARK: Activation
     /// The install's "first value" moment: the first time an app list loaded

@@ -16,6 +16,8 @@ extension Notification.Name {
 /// synchronous and thread-safe.
 protocol AppleSessionStatusTracking: Sendable {
     func isExpired(appleId: String) -> Bool
+    /// The normalized Apple IDs whose session is currently expired.
+    func expiredAppleIds() -> Set<String>
     /// Records the expiry and posts `.appleSessionDidExpire` (and
     /// `.signInStatusDidChange` when the expiry is new).
     func markExpired(appleId: String)
@@ -45,6 +47,10 @@ final class AppleSessionStatusStore: AppleSessionStatusTracking, @unchecked Send
 
     func isExpired(appleId: String) -> Bool {
         lock.withLock { expired().contains(AppleSessionKeychainStore.normalized(appleId)) }
+    }
+
+    func expiredAppleIds() -> Set<String> {
+        lock.withLock { expired() }
     }
 
     func markExpired(appleId: String) {
