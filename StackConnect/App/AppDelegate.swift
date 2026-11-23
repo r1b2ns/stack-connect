@@ -54,6 +54,15 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             }
         }
 
+        // Keychain items the background needs become readable after the first
+        // unlock (one-time migration), and writes deferred while the device was
+        // locked are replayed on unlock. Never on the fake data mode's in-memory
+        // store, nor on the simulator's real Keychain while unit tests run.
+        let isUnitTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        if !isFakeDataMode && !isUnitTestHost {
+            KeychainProtectedDataMaintenance.shared.start(with: KeychainStorable.shared)
+        }
+
         registerBackgroundRefresh()
         scheduleBackgroundRefresh()
         return true

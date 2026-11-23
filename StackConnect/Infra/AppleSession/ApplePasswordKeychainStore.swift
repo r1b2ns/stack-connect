@@ -5,9 +5,13 @@ import Foundation
 ///
 /// **One item per Apple ID**, next to its session blob
 /// (`AppleSessionKeychainStore`): `applePassword.{normalizedAppleId}`. The
-/// Keychain item is `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` and not
-/// synchronizable (`KeychainStorable` writes every item that way), so it never
-/// leaves this device, iCloud Keychain and backups to other devices included.
+/// Keychain item is `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`
+/// (`accessibility`, applied to every `applePassword.` key by
+/// `KeychainAccessibilityPolicy.standard`): stricter than the other items,
+/// which background sync reads after the first unlock, because the password is
+/// only used in the foreground. Like every `KeychainStorable` item it is
+/// device-only and not synchronizable, so it never leaves this device, iCloud
+/// Keychain and backups to other devices included.
 ///
 /// The password is written only once a sign-in finished (Apple accepted it),
 /// removed as soon as Apple refuses it (it changed), and removed with the last
@@ -20,6 +24,9 @@ import Foundation
 final class ApplePasswordKeychainStore: @unchecked Sendable {
 
     static let itemPrefix = "applePassword."
+
+    /// Readable only while the device is unlocked (see the type's comment).
+    static let accessibility: KeychainAccessibility = .whenUnlockedThisDeviceOnly
 
     private let keychain: KeyStorable
     private let lock = NSLock()
