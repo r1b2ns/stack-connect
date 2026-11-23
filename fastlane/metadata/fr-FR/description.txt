@@ -1,7 +1,7 @@
-StackConnect est un compagnon gratuit et open source pour les développeurs d'apps. Gérez vos comptes App Store Connect, Google Play Console et Firebase depuis une seule app native pour iPhone et iPad.
+StackConnect est un compagnon gratuit et open source pour App Store Connect et Firebase. Gérez vos comptes développeur depuis une seule app native pour iPhone et iPad.
 
 ACCUEIL
-• Tous les stores d'un coup d'œil : apps en cours de revue, en attente de publication et avis récents
+• L'essentiel d'un coup d'œil : apps en cours de revue, en attente de publication et avis récents
 • Widgets d'écran d'accueil pour En cours de revue, En attente de publication et Avis récents
 • Un rappel quand le titulaire du compte doit accepter de nouveaux accords
 
@@ -18,13 +18,6 @@ APP STORE CONNECT
 • Certificats, profils de provisionnement, identifiants et appareils : créez, consultez et importez
 • Équipe : invitez des membres, modifiez les rôles, les ressources et les apps visibles
 
-GOOGLE PLAY CONSOLE
-• Parcourez vos apps et leurs informations
-• Suivez les versions sur chaque canal
-• Consultez les fiches Play Store
-• Lisez et répondez aux notes et avis
-• Invitez et retirez des utilisateurs, et gérez leurs autorisations par app
-
 FIREBASE
 • Parcourez les projets et les apps
 • Gérez les paramètres et conditions de Remote Config
@@ -37,7 +30,7 @@ MULTI-COMPTES ET ÉQUIPES
 • Priorité au hors ligne : les données en cache s'affichent instantanément et se synchronisent en arrière-plan ; un indicateur signale quand vous êtes hors ligne
 
 CONFIDENTIALITÉ
-Les identifiants sont stockés dans le trousseau iOS, et l'app communique directement avec les API officielles d'Apple, de Google et de Firebase — il n'y a aucun serveur StackConnect. Des statistiques d'usage anonymes aident à améliorer l'app et peuvent être désactivées à tout moment dans les réglages.
+Les identifiants sont stockés dans le trousseau iOS, et l'app communique directement avec les API officielles d'Apple et de Firebase — il n'y a aucun serveur StackConnect. Des statistiques d'usage anonymes aident à améliorer l'app et peuvent être désactivées à tout moment dans les réglages.
 
 GRATUIT ET OPEN SOURCE
 StackConnect est sous licence MIT et gratuit, sans publicité ni abonnement. Si l'app vous fait gagner du temps, un pourboire facultatif aide à la faire vivre.

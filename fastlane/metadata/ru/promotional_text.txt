@@ -1,1 +1,1 @@
-App Store Connect, Google Play Console и Firebase в одном бесплатном приложении с открытым кодом. Релизы, отзывы, TestFlight, команды и аналитика — прямо на вашем iPhone.
+App Store Connect и Firebase в одном бесплатном приложении с открытым кодом. Релизы, отзывы, TestFlight, команды и аналитика — прямо на вашем iPhone.

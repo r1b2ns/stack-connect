@@ -1,1 +1,1 @@
-App Store Connect、Google Play Console、Firebaseを、無料のオープンソースアプリひとつで。リリース、レビュー、TestFlight、チーム、分析までiPhoneからすぐに確認できます。
+App Store ConnectとFirebaseを、無料のオープンソースアプリひとつで。リリース、レビュー、TestFlight、チーム、分析までiPhoneからすぐに確認できます。

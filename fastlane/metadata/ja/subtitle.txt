@@ -1,1 +1,1 @@
-App Store・Play・Firebase管理
+App Store Connect・Firebase管理

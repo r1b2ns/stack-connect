@@ -27,6 +27,17 @@ struct StackConnectApp: App {
         // setting to the SDK before anything can be tracked.
         AnalyticsService.shared.applyCollectionSetting()
 
+        // Remote feature flags, right after Firebase was (maybe) configured and
+        // before any screen reads a flag: the values activated by the previous
+        // launch are frozen for this one (Google Play surfaces read
+        // `googlePlayAccounts` once per launch); a fresh fetch applies next launch.
+        RemoteFeatureFlagsBootstrap.install(firebaseConfigured: AnalyticsBootstrap.didConfigureFirebase)
+        if !Self.isUnitTestHost {
+            // The widget extension can't read `FeatureFlags`: mirror the value
+            // resolved for this launch into the App Group.
+            SharedFeatureFlags.setGooglePlayAccountsEnabled(FeatureFlags.shared.isEnabled(.googlePlayAccounts))
+        }
+
         // Listen to `Transaction.updates` as early as possible, so a tip
         // approved while the app was closed is finished right away.
         tipJarTransactionObserver = Self.isUnitTestHost ? nil : TipJarTransactionObserver()

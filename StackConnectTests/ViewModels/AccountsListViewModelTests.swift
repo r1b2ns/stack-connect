@@ -218,7 +218,7 @@ final class AccountsListViewModelTests: XCTestCase {
     private let password = "aVeryStrongPass123"
 
     private func makeGooglePlaySUT() -> AccountsListViewModel {
-        AccountsListViewModel(providerType: .googlePlay, storage: mockStorage, keychain: mockKeychain)
+        AccountsListViewModel(providerType: .googlePlay, storage: mockStorage, keychain: mockKeychain, featureFlags: .googlePlayOn)
     }
 
     private func makeImportFile(_ payload: [String: Any]) throws -> URL {
@@ -241,6 +241,16 @@ final class AccountsListViewModelTests: XCTestCase {
             "credentials": ["serviceAccountJSON": serviceAccountJSON],
             "appsBundles": ["com.example.one"]
         ]
+    }
+
+    func testGooglePlayListIsEmptyWhileGooglePlayIsHidden() async throws {
+        let hidden = AccountsListViewModel(providerType: .googlePlay, storage: mockStorage, keychain: mockKeychain, featureFlags: .googlePlayOff)
+        try await mockStorage.save(AccountModel(id: "play", name: "Play", providerType: .googlePlay), id: "play")
+
+        await hidden.loadAccounts()
+
+        XCTAssertTrue(hidden.uiState.accounts.isEmpty)
+        XCTAssertTrue(hidden.uiState.groups.isEmpty)
     }
 
     func testImportGooglePlayAccountRestoresCredentialsAndScope() async throws {

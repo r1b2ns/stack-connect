@@ -150,6 +150,21 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertNil(keychain.string(forKey: "credentials.\(second.id)"))
     }
 
+    func testDeleteAllAccountsKeepsHiddenGooglePlayAccounts() async throws {
+        let storage = MockPersistentStorable()
+        let keychain = MockKeyStorable()
+        let sut = SettingsViewModel(storage: storage, keychain: keychain, analytics: MockAnalyticsTracker(), featureFlags: .googlePlayOff)
+        let apple = AccountModel(name: "Apple", providerType: .apple)
+        let play = AccountModel(name: "Play", providerType: .googlePlay)
+        try await seedAccount(apple, storage: storage, keychain: keychain)
+        try await storage.save(play, id: play.id)
+
+        await sut.deleteAllAccounts()
+
+        let accounts = try await storage.fetchAll(AccountModel.self)
+        XCTAssertEqual(accounts.map(\.id), [play.id], "Only the accounts the user can see are deleted")
+    }
+
     func testDeleteAllAccountsKeepsGoingWhenOneAccountFails() async throws {
         let storage = MockPersistentStorable()
         let keychain = MockKeyStorable()

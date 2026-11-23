@@ -1,4 +1,3 @@
-• Google Play Console — adicione contas do Google Play e veja as suas aplicações da Play junto das aplicações da App Store: versões em todas as faixas, fichas da loja, classificações e avaliações com respostas, e gestão de utilizadores
 • Relatórios de Analytics — veja e transfira os seus analytics do App Store Connect, com relatórios agrupados por categoria e gráficos diários, semanais ou mensais. Marque favoritos, oculte os que não utiliza e faça a gestão dos ficheiros transferidos num ecrã dedicado de Ficheiros
 • Submissões — acompanhe, descarte e volte a submeter as suas submissões para o App Review de cada aplicação, com tratamento claro do limite de submissões em simultâneo da Apple
 • Gestão de Equipa — edite a função, os recursos e as aplicações visíveis de um membro, e remova membros ou cancele convites

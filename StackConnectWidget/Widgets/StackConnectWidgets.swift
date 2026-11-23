@@ -24,7 +24,9 @@ struct InReviewWidget: Widget {
             .containerBackground(.background, for: .widget)
         }
         .configurationDisplayName(String(localized: "In Review"))
-        .description(String(localized: "Apps waiting on App Store or Google Play review."))
+        .description(SharedFeatureFlags.isGooglePlayAccountsEnabled()
+            ? String(localized: "Apps waiting on App Store or Google Play review.")
+            : String(localized: "Apps waiting on App Store review."))
         .supportedFamilies([.systemMedium, .systemLarge])
     }
 }

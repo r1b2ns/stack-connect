@@ -31,7 +31,9 @@ protocol HomeViewModelProtocol: ObservableObject {
 // MARK: - UiState
 
 struct HomeUiState {
-    var providers: [ProviderType] = ProviderType.allCases
+    /// The store cards, narrowed to the available stores (Google Play only
+    /// while `googlePlayAccounts` is ON). Set by the ViewModel.
+    var providers: [ProviderType] = FeatureFlags.shared.availableProviders
     var widgets: [any HomeWidget] = []
     var isLoading = false
     var syncState = SyncState()
@@ -77,6 +79,7 @@ final class HomeViewModel: HomeViewModelProtocol {
     private let teamUsersFetcherFactory: TeamUsersFetcherFactory
     private let analytics: AnalyticsTracking
     private let tipCard: TipJarCardPresenting
+    private let featureFlags: FeatureFlags
     private var cancellables = Set<AnyCancellable>()
 
     /// Preferences key of the dashboard layout (also seeded by the DEBUG fake data mode).
@@ -95,9 +98,11 @@ final class HomeViewModel: HomeViewModelProtocol {
         syncService: SyncService = .shared,
         teamUsersFetcherFactory: TeamUsersFetcherFactory? = nil,
         analytics: AnalyticsTracking = AnalyticsService.shared,
-        tipCard: TipJarCardPresenting = TipJarPromptService.shared
+        tipCard: TipJarCardPresenting = TipJarPromptService.shared,
+        featureFlags: FeatureFlags = .shared
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
+        self.featureFlags = featureFlags
         self.analytics = analytics
         self.tipCard = tipCard
         self.keychain = keychain
@@ -112,6 +117,7 @@ final class HomeViewModel: HomeViewModelProtocol {
             return AppleAccountConnection(credentials: credentials)
         }
 
+        uiState.providers = featureFlags.availableProviders
         loadWidgetConfigurations()
 
         syncService.$state
@@ -161,7 +167,7 @@ final class HomeViewModel: HomeViewModelProtocol {
     // MARK: - Account Expiration
 
     private func checkExpiredAccounts() async {
-        let accounts: [AccountModel] = (try? await storage.fetchAll(AccountModel.self)) ?? []
+        let accounts = featureFlags.visibleAccounts((try? await storage.fetchAll(AccountModel.self)) ?? [])
         if let expired = accounts.first(where: { $0.isExpired }) {
             uiState.expiredAccount = expired
             uiState.showExpiredAlert = true
@@ -257,7 +263,7 @@ final class HomeViewModel: HomeViewModelProtocol {
         guard !uiState.widgets.contains(where: { $0.kind == kind }) else { return }
         analytics.track(.action(.addWidget, on: .customizeWidgets, parameters: [AnalyticsParameterKey.kind: .string(kind.rawValue)]))
         let config = HomeWidgetConfiguration(kind: kind)
-        let widget = HomeWidgetRegistry.make(for: config, storage: storage)
+        let widget = HomeWidgetRegistry.make(for: config, storage: storage, featureFlags: featureFlags)
         uiState.widgets.append(widget)
         saveWidgetConfigurations()
         Task { await widget.load() }
@@ -286,7 +292,7 @@ final class HomeViewModel: HomeViewModelProtocol {
         let configurations: [HomeWidgetConfiguration] = preferences.object(forKey: Self.widgetsStorageKey)
             ?? HomeWidgetRegistry.defaultConfigurations
         uiState.widgets = configurations.map { config in
-            HomeWidgetRegistry.make(for: config, storage: storage)
+            HomeWidgetRegistry.make(for: config, storage: storage, featureFlags: featureFlags)
         }
     }
 

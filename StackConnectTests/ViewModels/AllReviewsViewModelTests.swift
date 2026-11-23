@@ -10,7 +10,7 @@ final class AllReviewsViewModelTests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
         storage = MockPersistentStorable()
-        sut = AllReviewsViewModel(storage: storage)
+        sut = AllReviewsViewModel(storage: storage, featureFlags: .googlePlayOn)
     }
 
     override func tearDown() async throws {
@@ -172,6 +172,27 @@ final class AllReviewsViewModelTests: XCTestCase {
         XCTAssertEqual(sut.uiState.groups.first?.reviews.map(\.review.id), ["com.t/1", "com.t/2"])
         XCTAssertEqual(sut.uiState.groups.first?.target, .googlePlay(GooglePlayAppItem(id: "com.t", packageName: "com.t", title: "Trailhead", isManuallyAdded: false)))
         XCTAssertEqual(sut.uiState.groups.first?.account, play)
+    }
+
+    func testHidesGooglePlayReviewsAndFilterWhileGooglePlayIsHidden() async throws {
+        let hidden = AllReviewsViewModel(storage: storage, featureFlags: .googlePlayOff)
+        let apple = AccountModel(id: "asc", name: "ASC", providerType: .apple)
+        let play = AccountModel(id: "play", name: "Play", providerType: .googlePlay)
+        try await storage.save(apple, id: apple.id)
+        try await storage.save(play, id: play.id)
+        try await storage.save(AppModel(id: "1", name: "Pulse", bundleId: "com.pulse", platform: "IOS", accountId: apple.id), id: "\(apple.id).1")
+        try await storage.save([GooglePlayAppItem(id: "com.t", packageName: "com.t", title: "Trailhead", isManuallyAdded: false)],
+                               id: GooglePlayAppItem.cacheKey(accountId: play.id))
+        try await saveReview("a1", appId: "1", hoursAgo: 3)
+        try await saveReview("com.t/1", appId: "com.t", hoursAgo: 1)
+
+        await hidden.load()
+        hidden.applyFilter(.googlePlay)
+
+        XCTAssertEqual(hidden.uiState.groups.map(\.appName), ["Pulse"])
+        XCTAssertEqual(hidden.uiState.availableFilters, [.all, .appStore, .unreplied])
+        XCTAssertEqual(hidden.uiState.filter, .all, "A hidden filter can't be picked")
+        XCTAssertEqual(sut.uiState.availableFilters, AllReviewsFilter.allCases, "Flag ON offers every filter")
     }
 
     func testSamePackageUnderTwoPlayAccountsIsOneGroup() async throws {

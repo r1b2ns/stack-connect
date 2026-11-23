@@ -1,1 +1,1 @@
-App Store, Play y Firebase
+App Store Connect y Firebase

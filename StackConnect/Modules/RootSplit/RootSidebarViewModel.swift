@@ -31,7 +31,7 @@ struct RootSidebarProviderSection: Identifiable, Equatable {
 
 struct RootSidebarUiState {
     /// One section per store, in sidebar order, accounts sorted by name.
-    var providerSections: [RootSidebarProviderSection] = RootSidebarViewModel.providerOrder.map {
+    var providerSections: [RootSidebarProviderSection] = RootSidebarViewModel.visibleProviderOrder().map {
         RootSidebarProviderSection(provider: $0, accounts: [])
     }
     var queueCounts: [RootReleaseQueue: Int] = [:]
@@ -49,12 +49,19 @@ final class RootSidebarViewModel: RootSidebarViewModelProtocol {
     /// Store order of the sidebar (App Store Connect, Google Play, Firebase).
     nonisolated static let providerOrder: [ProviderType] = [.apple, .googlePlay, .firebase]
 
+    /// `providerOrder` narrowed to the available stores: no Google Play
+    /// section (nor its "Add Account") while `googlePlayAccounts` is OFF.
+    nonisolated static func visibleProviderOrder(featureFlags: FeatureFlags = .shared) -> [ProviderType] {
+        providerOrder.filter(featureFlags.isProviderAvailable)
+    }
+
     @Published private(set) var uiState = RootSidebarUiState()
 
     private let storage: PersistentStorable
     private let queueWidgets: [RootReleaseQueue: any HomeWidget]
     private let queueCounter: (any HomeWidget) -> Int
     private let analytics: AnalyticsTracking
+    private let featureFlags: FeatureFlags
     private var cancellables = Set<AnyCancellable>()
 
     /// - Parameters:
@@ -65,13 +72,15 @@ final class RootSidebarViewModel: RootSidebarViewModelProtocol {
         storage: PersistentStorable? = nil,
         reloadTrigger: AnyPublisher<Void, Never>? = nil,
         queueCounter: ((any HomeWidget) -> Int)? = nil,
-        analytics: AnalyticsTracking = AnalyticsService.shared
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        featureFlags: FeatureFlags = .shared
     ) {
         let storage: PersistentStorable = storage ?? SwiftDataStorable.shared
         self.storage = storage
         self.analytics = analytics
+        self.featureFlags = featureFlags
         self.queueWidgets = Dictionary(uniqueKeysWithValues: RootReleaseQueue.allCases.map { queue in
-            (queue, HomeWidgetRegistry.make(for: HomeWidgetConfiguration(kind: queue.widgetKind), storage: storage))
+            (queue, HomeWidgetRegistry.make(for: HomeWidgetConfiguration(kind: queue.widgetKind), storage: storage, featureFlags: featureFlags))
         })
         self.queueCounter = queueCounter ?? Self.entryCount
 
@@ -95,7 +104,7 @@ final class RootSidebarViewModel: RootSidebarViewModelProtocol {
             accounts = []
             succeeded = false
         }
-        uiState.providerSections = Self.sections(from: accounts)
+        uiState.providerSections = Self.sections(from: accounts, featureFlags: featureFlags)
 
         var counts: [RootReleaseQueue: Int] = [:]
         for (queue, widget) in queueWidgets {
@@ -120,19 +129,22 @@ final class RootSidebarViewModel: RootSidebarViewModelProtocol {
         // Every queue gets a widget in `init`.
         queueWidgets[queue] ?? HomeWidgetRegistry.make(
             for: HomeWidgetConfiguration(kind: queue.widgetKind),
-            storage: storage
+            storage: storage,
+            featureFlags: featureFlags
         )
     }
 
     // MARK: - Helpers
 
-    static func sections(from accounts: [AccountModel]) -> [RootSidebarProviderSection] {
-        let normalized = accounts.map { account -> AccountModel in
+    /// One section per available store (hidden stores have no section and
+    /// their accounts are left out, never deleted).
+    static func sections(from accounts: [AccountModel], featureFlags: FeatureFlags = .shared) -> [RootSidebarProviderSection] {
+        let normalized = featureFlags.visibleAccounts(accounts).map { account -> AccountModel in
             var account = account
             account.fillMissingRules()
             return account
         }
-        return providerOrder.map { provider in
+        return visibleProviderOrder(featureFlags: featureFlags).map { provider in
             RootSidebarProviderSection(
                 provider: provider,
                 accounts: normalized

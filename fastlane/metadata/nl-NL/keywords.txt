@@ -1,1 +1,1 @@
-google play,console,firebase,testflight,ontwikkelaar,reviews,analyse,release,certificaten,team
+appstore,ios,firebase,testflight,ontwikkelaar,reviews,analyse,release,certificaten,team,connect

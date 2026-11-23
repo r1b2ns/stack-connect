@@ -1,4 +1,3 @@
-• Google Play Console — add Google Play accounts and see your Play apps next to your App Store apps: releases on every track, store listings, ratings and reviews with replies, and user management
 • Analytics Reports — view and download your App Store Connect analytics, with reports grouped by category and daily, weekly or monthly charts. Mark favorites, hide the ones you don't use, and manage downloaded files from a dedicated Files screen
 • Submissions — track, discard and resubmit your App Review submissions for each app, with clear handling of Apple's concurrent-submission limit
 • Team Management — edit a member's role, resources and visible apps, and remove members or cancel invitations

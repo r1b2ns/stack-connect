@@ -169,7 +169,7 @@ final class RootSplitAnalyticsTests: XCTestCase {
     // MARK: - Reviews inbox filter
 
     func testInboxFilterChangeIsTrackedWithTheFilterKind() {
-        let sut = AllReviewsViewModel(storage: MockPersistentStorable(), analytics: analytics)
+        let sut = AllReviewsViewModel(storage: MockPersistentStorable(), analytics: analytics, featureFlags: .googlePlayOn)
 
         sut.applyFilter(.googlePlay)
         sut.applyFilter(.unreplied)
@@ -182,7 +182,7 @@ final class RootSplitAnalyticsTests: XCTestCase {
     }
 
     func testPickingTheShownFilterSendsNothing() {
-        let sut = AllReviewsViewModel(storage: MockPersistentStorable(), analytics: analytics)
+        let sut = AllReviewsViewModel(storage: MockPersistentStorable(), analytics: analytics, featureFlags: .googlePlayOn)
 
         sut.applyFilter(.all)
 

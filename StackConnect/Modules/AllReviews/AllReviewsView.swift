@@ -76,7 +76,7 @@ struct AllReviewsView<ViewModel: AllReviewsViewModelProtocol>: View {
                 get: { viewModel.uiState.filter },
                 set: { viewModel.applyFilter($0) }
             )) {
-                ForEach(AllReviewsFilter.allCases) { filter in
+                ForEach(viewModel.uiState.availableFilters) { filter in
                     if filter == .unreplied {
                         Text(verbatim: "\(filter.title) (\(viewModel.uiState.unrepliedCount))").tag(filter)
                     } else {

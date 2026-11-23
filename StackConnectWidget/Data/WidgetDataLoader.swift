@@ -22,10 +22,11 @@ struct WidgetSnapshot: Sendable {
 enum WidgetDataLoader {
 
     static func load() -> WidgetSnapshot {
-        guard let dashboard = WidgetDashboardSnapshotStore.load() else {
+        guard let stored = WidgetDashboardSnapshotStore.load() else {
             Log.print.info("[WidgetExtension] No dashboard snapshot yet")
             return .empty
         }
+        let dashboard = SharedFeatureFlags.isGooglePlayAccountsEnabled() ? stored : withoutGooglePlay(stored)
         let urls = dashboard.inReview.compactMap(\.iconUrl)
             + dashboard.awaitingRelease.compactMap(\.iconUrl)
             + dashboard.recentReviews.compactMap(\.iconUrl)
@@ -34,5 +35,22 @@ enum WidgetDataLoader {
             icons[url] = WidgetIconCache.iconData(forIconURL: url)
         }
         return WidgetSnapshot(dashboard: dashboard, icons: icons)
+    }
+
+    /// Defense in depth while the app's `googlePlayAccounts` flag is OFF: the
+    /// app already leaves Google Play out of the snapshot it writes, but a
+    /// snapshot written by an earlier launch (flag ON) must not show Android
+    /// rows either.
+    static func withoutGooglePlay(_ dashboard: WidgetDashboardSnapshot) -> WidgetDashboardSnapshot {
+        let inReview = dashboard.inReview.filter { $0.platform != .android }
+        let awaiting = dashboard.awaitingRelease.filter { $0.platform != .android }
+        return WidgetDashboardSnapshot(
+            generatedAt: dashboard.generatedAt,
+            inReview: inReview,
+            inReviewCount: dashboard.inReviewCount - (dashboard.inReview.count - inReview.count),
+            awaitingRelease: awaiting,
+            awaitingReleaseCount: dashboard.awaitingReleaseCount - (dashboard.awaitingRelease.count - awaiting.count),
+            recentReviews: dashboard.recentReviews.filter { $0.platform != .android }
+        )
     }
 }

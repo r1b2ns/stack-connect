@@ -1,4 +1,3 @@
-• Google Play Console — lägg till Google Play-konton och se dina Play-appar bredvid dina App Store-appar: releaser i alla spår, butikssidor, betyg och recensioner med svar samt användarhantering
 • Analysrapporter — se och ladda ned din analys från App Store Connect, med rapporter grupperade efter kategori och dagliga, veckovisa eller månatliga diagram. Markera favoriter, dölj dem du inte använder och hantera nedladdade filer på en egen filskärm
 • Inskick — följ, avfärda och skicka in dina inskick till App Review igen för varje app, med tydlig hantering av Apples gräns för samtidiga inskick
 • Teamhantering — redigera en medlems roll, resurser och synliga appar, och ta bort medlemmar eller avbryt inbjudningar

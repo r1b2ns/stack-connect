@@ -24,8 +24,11 @@ enum FakeDataSeeder {
         static let northwindGooglePlay = "fake.play.northwind"
     }
 
-    static func accounts(clock: FakeClock) -> [AccountModel] {
-        [
+    /// - Parameter includesGooglePlay: `false` while `googlePlayAccounts` is
+    ///   OFF: the fake session then has no Google Play account (App Store
+    ///   screenshots without Google Play).
+    static func accounts(clock: FakeClock, includesGooglePlay: Bool = true) -> [AccountModel] {
+        let all = [
             AccountModel(id: AccountID.northwindAppStore, name: "Northwind Labs", providerType: .apple,
                          createdAt: clock.date(daysAgo: 420), role: .admin),
             AccountModel(id: AccountID.personalAppStore, name: "Jordan Avery (Personal)", providerType: .apple,
@@ -36,31 +39,41 @@ enum FakeDataSeeder {
                          createdAt: clock.date(daysAgo: 90),
                          googlePlayDeveloperId: FakeGooglePlayCatalog.northwindDeveloperId)
         ]
+        return includesGooglePlay ? all : all.filter { $0.providerType != .googlePlay }
+    }
+
+    /// The seed marker: the version, plus whether Google Play was seeded, so
+    /// flipping `googlePlayAccounts` between launches re-seeds the fake store.
+    static func seedMarker(includesGooglePlay: Bool) -> String {
+        includesGooglePlay ? seedVersion : "\(seedVersion).noPlay"
     }
 
     // MARK: - SwiftData
 
-    /// Seeds the fake store unless it was already seeded with this version.
-    /// Runs synchronously at launch (before any screen reads the store).
+    /// Seeds the fake store unless it was already seeded with this version
+    /// and the same Google Play choice. Runs synchronously at launch (before
+    /// any screen reads the store).
     @MainActor
-    static func seedIfNeeded(container: ModelContainer, clock: FakeClock) throws {
+    static func seedIfNeeded(container: ModelContainer, clock: FakeClock, includesGooglePlay: Bool) throws {
         let context = ModelContext(container)
         let existing = try context.fetch(FetchDescriptor<PersistedItem>())
-        if existing.contains(where: { $0.typeName == markerTypeName && $0.identifier == seedVersion }) { return }
+        let marker = seedMarker(includesGooglePlay: includesGooglePlay)
+        if existing.contains(where: { $0.typeName == markerTypeName && $0.identifier == marker }) { return }
 
         try context.delete(model: PersistedItem.self)
         let encoder = JSONEncoder()
-        for account in accounts(clock: clock) {
+        let seeded = accounts(clock: clock, includesGooglePlay: includesGooglePlay)
+        for account in seeded {
             context.insert(PersistedItem(typeName: String(describing: AccountModel.self), identifier: account.id,
                                          payload: try encoder.encode(account)))
         }
-        for cache in googlePlayTracksCaches(clock: clock) {
+        for cache in includesGooglePlay ? googlePlayTracksCaches(clock: clock) : [] {
             context.insert(PersistedItem(typeName: String(describing: GooglePlayTracksCache.self), identifier: cache.cacheKey,
                                          payload: try encoder.encode(cache)))
         }
-        context.insert(PersistedItem(typeName: markerTypeName, identifier: seedVersion, payload: Data()))
+        context.insert(PersistedItem(typeName: markerTypeName, identifier: marker, payload: Data()))
         try context.save()
-        Log.print.notice("[FakeData] Seeded \(accounts(clock: clock).count) fake accounts")
+        Log.print.notice("[FakeData] Seeded \(seeded.count) fake accounts (Google Play: \(includesGooglePlay))")
     }
 
     /// Stores `developerId` verbatim (empty clears it) on the fake Play account,

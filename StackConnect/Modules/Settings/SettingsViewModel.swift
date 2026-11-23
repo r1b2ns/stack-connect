@@ -31,13 +31,16 @@ final class SettingsViewModel: SettingsViewModelProtocol {
     private let keychain: KeyStorable
     private let appSettings: AppSettings
     private let analytics: AnalyticsTracking
+    private let featureFlags: FeatureFlags
 
     init(
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
         appSettings: AppSettings = .shared,
-        analytics: AnalyticsTracking = AnalyticsService.shared
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        featureFlags: FeatureFlags = .shared
     ) {
+        self.featureFlags = featureFlags
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
         self.appSettings = appSettings
@@ -72,7 +75,9 @@ final class SettingsViewModel: SettingsViewModelProtocol {
     func deleteAllAccounts() async {
         analytics.track(.buttonTap(.confirmDeleteAllAccounts, on: .settings))
         do {
-            let allAccounts: [AccountModel] = try await storage.fetchAll(AccountModel.self)
+            // Only the accounts the user can see: a hidden store's accounts
+            // (Google Play while `googlePlayAccounts` is OFF) are kept.
+            let allAccounts = featureFlags.visibleAccounts(try await storage.fetchAll(AccountModel.self))
 
             // Each account is deleted independently: one failing must not stop the others.
             var failedCount = 0

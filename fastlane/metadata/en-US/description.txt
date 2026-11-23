@@ -1,7 +1,7 @@
-StackConnect is a free, open-source companion for app developers. Manage your App Store Connect, Google Play Console and Firebase accounts from one native iPhone and iPad app.
+StackConnect is a free, open-source companion for App Store Connect and Firebase. Manage your developer accounts from one native iPhone and iPad app.
 
 HOME
-• Every store at a glance: apps in review, awaiting release and recent reviews
+• Everything at a glance: apps in review, awaiting release and recent reviews
 • Home Screen widgets for In Review, Awaiting Release and Recent Reviews
 • A reminder when the Account Holder needs to accept new agreements
 
@@ -18,13 +18,6 @@ APP STORE CONNECT
 • Certificates, provisioning profiles, identifiers and devices: create, inspect and import
 • Team: invite members, edit roles, resources and visible apps
 
-GOOGLE PLAY CONSOLE
-• Browse your apps and their app information
-• Follow releases on every track
-• View store listings
-• Read and reply to ratings and reviews
-• Invite and remove users and manage their app permissions
-
 FIREBASE
 • Browse projects and apps
 • Manage Remote Config parameters and conditions
@@ -37,7 +30,7 @@ MULTI-ACCOUNT AND TEAMS
 • Offline-first: cached data loads instantly and syncs in the background; an indicator shows when you are offline
 
 PRIVACY
-Credentials are stored in the iOS Keychain, and the app talks directly to the official Apple, Google and Firebase APIs — there are no StackConnect servers. Anonymous usage analytics help improve the app and can be turned off at any time in Settings.
+Credentials are stored in the iOS Keychain, and the app talks directly to the official Apple and Firebase APIs — there are no StackConnect servers. Anonymous usage analytics help improve the app and can be turned off at any time in Settings.
 
 FREE AND OPEN SOURCE
 StackConnect is MIT-licensed and free, with no ads and no subscriptions. If it saves you time, an optional tip helps keep it going.

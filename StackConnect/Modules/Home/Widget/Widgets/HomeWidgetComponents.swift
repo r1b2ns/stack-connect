@@ -4,9 +4,12 @@ import SwiftUI
 
 enum HomeWidgetDataLoader {
 
-    static func loadAccounts(storage: PersistentStorable) async -> [String: AccountModel] {
+    /// The accounts the dashboard may show, by id. Accounts of a store the
+    /// `googlePlayAccounts` flag hides are left out (never deleted), so none of
+    /// their rows reach the Home, All Reviews or the WidgetKit snapshot.
+    static func loadAccounts(storage: PersistentStorable, featureFlags: FeatureFlags = .shared) async -> [String: AccountModel] {
         do {
-            let accounts: [AccountModel] = try await storage.fetchAll(AccountModel.self)
+            let accounts: [AccountModel] = featureFlags.visibleAccounts(try await storage.fetchAll(AccountModel.self))
             var map: [String: AccountModel] = [:]
             for var account in accounts {
                 account.fillMissingRules()
@@ -104,8 +107,11 @@ enum HomeWidgetDataLoader {
         storage: PersistentStorable,
         accounts: [String: AccountModel],
         requiring resource: AccountRuleResource,
-        includesReleaseCaches: Bool
+        includesReleaseCaches: Bool,
+        featureFlags: FeatureFlags = .shared
     ) async -> [GooglePlayDashboardSource] {
+        // Google Play hidden (flag OFF): no Android rows at all.
+        guard featureFlags.isProviderAvailable(.googlePlay) else { return [] }
         let playAccounts = accounts.values
             .filter { $0.providerType == .googlePlay && $0.canView(resource) }
             .sorted { $0.createdAt < $1.createdAt }

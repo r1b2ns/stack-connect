@@ -31,7 +31,7 @@ for device in $DEVICES; do
   for pair in "en:en-US" "pt:pt-BR"; do
     lang="${pair%%:*}"; locale="${pair##*:}"
     mkdir -p "$OUT/$locale"
-    for n in 1 2 3 4 5 6 7 8; do
+    for n in 1 2 3 4 5 6; do
       "$CHROME" --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
         --window-size="$size" --virtual-time-budget=3000 \
         --screenshot="$OUT/$locale/${prefix}_$n.png" \

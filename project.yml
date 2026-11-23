@@ -206,6 +206,9 @@ targets:
         product: FirebaseAnalyticsCore
       - package: Firebase
         product: FirebaseCrashlytics
+      # Remote feature flags (`RemoteFeatureFlagsBootstrap`). App target only.
+      - package: Firebase
+        product: FirebaseRemoteConfig
       - target: StackConnectWidgetExtension
         embed: true
 

@@ -17,6 +17,9 @@ enum DeepLinkDestination: Equatable {
 struct DeepLinkResolver {
 
     let storage: PersistentStorable
+    /// Links to an account of a hidden store (Google Play while
+    /// `googlePlayAccounts` is OFF) resolve to nothing.
+    var featureFlags: FeatureFlags = .shared
 
     func resolve(_ link: DeepLink) async -> DeepLinkDestination? {
         switch link {
@@ -30,7 +33,8 @@ struct DeepLinkResolver {
     }
 
     private func account(_ accountId: String) async -> AccountModel? {
-        guard var account = (try? await storage.fetch(AccountModel.self, id: accountId)) ?? nil else { return nil }
+        guard var account = (try? await storage.fetch(AccountModel.self, id: accountId)) ?? nil,
+              featureFlags.isVisible(account) else { return nil }
         account.fillMissingRules()
         return account
     }

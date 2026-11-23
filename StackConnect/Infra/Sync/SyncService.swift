@@ -78,6 +78,9 @@ final class SyncService: ObservableObject {
     private let firstAppsLoaded: FirstAppsLoadedTracker
     private let analytics: AnalyticsTracking
     private let notificationPermission: NotificationPermissionRequesting
+    /// Accounts of a hidden store (Google Play while `googlePlayAccounts` is
+    /// OFF) are not synced: no request, no notification, no widget row.
+    private let featureFlags: FeatureFlags
     private let clock = ContinuousClock()
     private var rootTask: Task<Void, Never>?
 
@@ -89,7 +92,8 @@ final class SyncService: ObservableObject {
         widgetSnapshotWriter: WidgetSnapshotWriting? = nil,
         firstAppsLoaded: FirstAppsLoadedTracker? = nil,
         analytics: AnalyticsTracking? = nil,
-        notificationPermission: NotificationPermissionRequesting? = nil
+        notificationPermission: NotificationPermissionRequesting? = nil,
+        featureFlags: FeatureFlags = .shared
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
@@ -99,6 +103,7 @@ final class SyncService: ObservableObject {
         self.firstAppsLoaded = firstAppsLoaded ?? .shared
         self.analytics = analytics ?? AnalyticsService.shared
         self.notificationPermission = notificationPermission ?? NotificationPermissionService.shared
+        self.featureFlags = featureFlags
     }
 
     /// One account of a sync run with the connection built for it (`nil` when
@@ -193,7 +198,7 @@ final class SyncService: ObservableObject {
         do {
             // Firebase has nothing to sync in the background.
             let all: [AccountModel] = try await storage.fetchAll(AccountModel.self)
-            accounts = all.filter { $0.providerType == .apple || $0.providerType == .googlePlay }
+            accounts = featureFlags.visibleAccounts(all).filter { $0.providerType == .apple || $0.providerType == .googlePlay }
         } catch {
             state.lastError = error.localizedDescription
             state.isSyncing = false
@@ -307,8 +312,11 @@ final class SyncService: ObservableObject {
             }
             return urls
         }
-        // Google Play apps live in one cached list per account.
-        let playLists: [[GooglePlayAppItem]] = (try? await storage.fetchAll([GooglePlayAppItem].self)) ?? []
+        // Google Play apps live in one cached list per account (none while
+        // Google Play is hidden).
+        let playLists: [[GooglePlayAppItem]] = featureFlags.isProviderAvailable(.googlePlay)
+            ? ((try? await storage.fetchAll([GooglePlayAppItem].self)) ?? [])
+            : []
         iconURLs += playLists.flatMap { $0.compactMap(\.iconUrl) }
         await WidgetIconCache.preload(iconURLs: iconURLs)
     }

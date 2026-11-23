@@ -187,7 +187,8 @@ final class RootSidebarViewModelTests: XCTestCase {
         sut = RootSidebarViewModel(
             storage: storage,
             reloadTrigger: trigger.eraseToAnyPublisher(),
-            queueCounter: { widget in widget.kind == .inReview ? 6 : 2 }
+            queueCounter: { widget in widget.kind == .inReview ? 6 : 2 },
+            featureFlags: .googlePlayOn
         )
     }
 
@@ -217,6 +218,26 @@ final class RootSidebarViewModelTests: XCTestCase {
         XCTAssertEqual(sections[1].accounts.map(\.id), ["4"])
         XCTAssertEqual(sections[2].accounts.map(\.id), ["3"])
         XCTAssertTrue(sut.uiState.hasLoaded)
+    }
+
+    func testHidesTheGooglePlaySectionAndAccountsWhileGooglePlayIsHidden() async throws {
+        let hidden = RootSidebarViewModel(
+            storage: storage,
+            reloadTrigger: trigger.eraseToAnyPublisher(),
+            queueCounter: { _ in 0 },
+            featureFlags: .googlePlayOff
+        )
+        let play = AccountModel(id: "play", name: "play", providerType: .googlePlay)
+        try await storage.save(play, id: play.id)
+        try await storage.save(AccountModel(id: "asc", name: "asc", providerType: .apple), id: "asc")
+
+        XCTAssertEqual(hidden.uiState.providerSections.map(\.provider), [.apple, .firebase], "Before the first load too")
+        await hidden.load()
+
+        XCTAssertEqual(hidden.uiState.providerSections.map(\.provider), [.apple, .firebase])
+        XCTAssertNil(hidden.account(id: "play"))
+        let stored = try await storage.fetch(AccountModel.self, id: "play")
+        XCTAssertNotNil(stored, "A hidden account is never deleted")
     }
 
     func testEmptyStorageKeepsOneEmptySectionPerStore() async {

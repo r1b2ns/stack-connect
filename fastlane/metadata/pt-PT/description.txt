@@ -1,7 +1,7 @@
-O StackConnect é um companheiro gratuito e de código aberto para programadores de aplicações. Faça a gestão das suas contas do App Store Connect, Google Play Console e Firebase numa única aplicação nativa para iPhone e iPad.
+O StackConnect é um companheiro gratuito e de código aberto para o App Store Connect e o Firebase. Faça a gestão das suas contas de programador numa única aplicação nativa para iPhone e iPad.
 
 INÍCIO
-• Todas as lojas num relance: aplicações em revisão, a aguardar lançamento e avaliações recentes
+• Tudo num relance: aplicações em revisão, a aguardar lançamento e avaliações recentes
 • Widgets no Ecrã Principal para Em Revisão, A Aguardar Lançamento e Avaliações Recentes
 • Um lembrete quando o Titular da Conta tem de aceitar novos contratos
 
@@ -18,13 +18,6 @@ APP STORE CONNECT
 • Certificados, perfis de aprovisionamento, identificadores e dispositivos: crie, inspecione e importe
 • Equipa: convide membros, edite funções, recursos e aplicações visíveis
 
-GOOGLE PLAY CONSOLE
-• Explore as suas aplicações e as respetivas informações
-• Acompanhe as versões em todas as faixas
-• Veja as fichas da loja
-• Leia e responda a classificações e avaliações
-• Convide e remova utilizadores e gira as respetivas permissões nas aplicações
-
 FIREBASE
 • Explore projetos e aplicações
 • Gira os parâmetros e as condições do Remote Config
@@ -37,7 +30,7 @@ MULTICONTA E EQUIPAS
 • Offline-first: os dados em cache carregam instantaneamente e sincronizam em segundo plano; um indicador mostra quando está offline
 
 PRIVACIDADE
-As credenciais ficam guardadas na Keychain do iOS e a aplicação comunica diretamente com as APIs oficiais da Apple, da Google e do Firebase — não existem servidores do StackConnect. Analytics de utilização anónimos ajudam a melhorar a aplicação e podem ser desativados a qualquer momento nos Ajustes.
+As credenciais ficam guardadas na Keychain do iOS e a aplicação comunica diretamente com as APIs oficiais da Apple e do Firebase — não existem servidores do StackConnect. Analytics de utilização anónimos ajudam a melhorar a aplicação e podem ser desativados a qualquer momento nos Ajustes.
 
 GRATUITO E DE CÓDIGO ABERTO
 O StackConnect tem licença MIT e é gratuito, sem anúncios nem subscrições. Se lhe poupa tempo, uma gorjeta opcional ajuda a mantê-lo vivo.

@@ -7,15 +7,16 @@ enum HomeWidgetRegistry {
 
     static func make(
         for configuration: HomeWidgetConfiguration,
-        storage: PersistentStorable
+        storage: PersistentStorable,
+        featureFlags: FeatureFlags = .shared
     ) -> any HomeWidget {
         switch configuration.kind {
         case .inReview:
-            return InReviewWidget(configuration: configuration, storage: storage)
+            return InReviewWidget(configuration: configuration, storage: storage, featureFlags: featureFlags)
         case .awaitingRelease:
-            return AwaitingReleaseWidget(configuration: configuration, storage: storage)
+            return AwaitingReleaseWidget(configuration: configuration, storage: storage, featureFlags: featureFlags)
         case .recentReviews:
-            return RecentReviewsWidget(configuration: configuration, storage: storage)
+            return RecentReviewsWidget(configuration: configuration, storage: storage, featureFlags: featureFlags)
         }
     }
 }

@@ -17,7 +17,7 @@ All private keys and credentials (including .p8 key content and Service Account 
 • App Store Connect API (api.appstoreconnect.apple.com)
 • Firebase REST APIs (firebaseremoteconfig.googleapis.com, fcm.googleapis.com, firebase.googleapis.com)
 
-No credentials, usage data, or personal information is ever transmitted to any third-party server or collected by the developer.
+Credentials and account data are never transmitted to any third-party server or collected by the developer. The app sends anonymous usage analytics and crash reports through Firebase (Google Analytics for Firebase and Crashlytics), as declared in the App Privacy section; users can turn analytics off at any time in Settings.
 
 HOW TO ACCESS THE APP
 

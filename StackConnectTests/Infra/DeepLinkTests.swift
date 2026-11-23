@@ -64,7 +64,20 @@ final class DeepLinkResolverTests: XCTestCase {
     }
 
     private func resolve(_ link: DeepLink) async -> DeepLinkDestination? {
-        await DeepLinkResolver(storage: storage).resolve(link)
+        await DeepLinkResolver(storage: storage, featureFlags: .googlePlayOn).resolve(link)
+    }
+
+    func testGooglePlayLinksResolveToNothingWhileGooglePlayIsHidden() async throws {
+        let resolver = DeepLinkResolver(storage: storage, featureFlags: .googlePlayOff)
+        var review = CustomerReviewModel(id: "com.t/r1", rating: 4)
+        review.appId = "com.t"
+        try await storage.save(review, id: CustomerReviewModel.storageId(appId: "com.t", reviewId: review.id))
+
+        let app = await resolver.resolve(.app(accountId: play.id, appId: "com.t"))
+        let reviewDestination = await resolver.resolve(.review(accountId: play.id, appId: "com.t", reviewId: review.id))
+
+        XCTAssertNil(app)
+        XCTAssertNil(reviewDestination)
     }
 
     func testAppLinkOfAGooglePlayAccountOpensThePlayApp() async {

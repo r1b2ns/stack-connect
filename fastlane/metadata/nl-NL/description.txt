@@ -1,7 +1,7 @@
-StackConnect is een gratis, open-source hulpmiddel voor app-ontwikkelaars. Beheer je accounts voor App Store Connect, Google Play Console en Firebase vanuit één native app voor iPhone en iPad.
+StackConnect is een gratis, open-source hulpmiddel voor App Store Connect en Firebase. Beheer je ontwikkelaarsaccounts vanuit één native app voor iPhone en iPad.
 
 HOME
-• Alle stores in één oogopslag: apps in beoordeling, apps die wachten op release en recente reviews
+• Alles in één oogopslag: apps in beoordeling, apps die wachten op release en recente reviews
 • Widgets voor het beginscherm voor In beoordeling, Wacht op release en Recente reviews
 • Een herinnering wanneer de Account Holder nieuwe overeenkomsten moet accepteren
 
@@ -18,13 +18,6 @@ APP STORE CONNECT
 • Certificaten, provisioningprofielen, identifiers en apparaten: maak, bekijk en importeer
 • Team: nodig leden uit, bewerk rollen, resources en zichtbare apps
 
-GOOGLE PLAY CONSOLE
-• Blader door je apps en hun app-informatie
-• Volg releases op elke track
-• Bekijk store-vermeldingen
-• Lees en beantwoord beoordelingen en reviews
-• Nodig gebruikers uit en verwijder ze, en beheer hun app-rechten
-
 FIREBASE
 • Blader door projecten en apps
 • Beheer parameters en voorwaarden van Remote Config
@@ -37,7 +30,7 @@ MEERDERE ACCOUNTS EN TEAMS
 • Offline-first: gegevens in de cache laden direct en synchroniseren op de achtergrond; een indicator laat zien wanneer je offline bent
 
 PRIVACY
-Inloggegevens worden opgeslagen in de iOS-sleutelhanger, en de app communiceert rechtstreeks met de officiële API's van Apple, Google en Firebase — er zijn geen StackConnect-servers. Anonieme gebruiksanalyses helpen de app te verbeteren en kunnen op elk moment in Instellingen worden uitgezet.
+Inloggegevens worden opgeslagen in de iOS-sleutelhanger, en de app communiceert rechtstreeks met de officiële API's van Apple en Firebase — er zijn geen StackConnect-servers. Anonieme gebruiksanalyses helpen de app te verbeteren en kunnen op elk moment in Instellingen worden uitgezet.
 
 GRATIS EN OPEN SOURCE
 StackConnect heeft een MIT-licentie en is gratis, zonder advertenties en zonder abonnementen. Bespaart het je tijd, dan helpt een optionele fooi om het project draaiende te houden.

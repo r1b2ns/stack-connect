@@ -59,7 +59,8 @@ struct HomeDeepLinkHandler {
 
     private func openReimport(accountId: String) async {
         guard let storage,
-              let account: AccountModel = try? await storage.fetch(AccountModel.self, id: accountId) else { return }
+              let account: AccountModel = try? await storage.fetch(AccountModel.self, id: accountId),
+              FeatureFlags.shared.isVisible(account) else { return }
         navigator.show(.accountsList(account.providerType))
         ReimportRouter.shared.request(accountId: accountId, providerType: account.providerType)
     }

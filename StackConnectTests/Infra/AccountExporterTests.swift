@@ -207,7 +207,7 @@ final class AccountExporterTests: XCTestCase {
 
         // The recipient's device: empty keychain and storage.
         let recipientKeychain = MockKeyStorable()
-        let importer = AccountImporter(storage: storage, keychain: recipientKeychain)
+        let importer = AccountImporter(storage: storage, keychain: recipientKeychain, featureFlags: .googlePlayOn)
         let result = await importer.importAccount(from: url, password: password, customName: nil)
 
         let imported = try result.get()
@@ -229,7 +229,7 @@ final class AccountExporterTests: XCTestCase {
     func testGooglePlayRoundTripWithoutScopeAllowsEveryApp() async throws {
         let url = try sut.export(request(makeGooglePlayAccount(), appsBundles: []))
 
-        let importer = AccountImporter(storage: storage, keychain: MockKeyStorable())
+        let importer = AccountImporter(storage: storage, keychain: MockKeyStorable(), featureFlags: .googlePlayOn)
         let imported = try await importer.importAccount(from: url, password: password, customName: nil).get()
 
         XCTAssertNil(imported.appsBundles)
@@ -244,7 +244,7 @@ final class AccountExporterTests: XCTestCase {
         let url = try sut.export(request(source))
 
         XCTAssertEqual(try decrypt(url)["googlePlayDeveloperId"] as? String, "4829103756618820931")
-        let importer = AccountImporter(storage: storage, keychain: MockKeyStorable())
+        let importer = AccountImporter(storage: storage, keychain: MockKeyStorable(), featureFlags: .googlePlayOn)
         let imported = try await importer.importAccount(from: url, password: password, customName: nil).get()
         XCTAssertEqual(imported.googlePlayDeveloperId, "4829103756618820931")
     }

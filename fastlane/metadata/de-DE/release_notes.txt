@@ -1,4 +1,3 @@
-• Google Play Console – füge Google-Play-Konten hinzu und sieh deine Play-Apps neben deinen App-Store-Apps: Releases in allen Tracks, Store-Einträge, Bewertungen und Rezensionen mit Antworten sowie Nutzerverwaltung
 • Analytics-Berichte – sieh und lade deine App-Store-Connect-Analytics, mit nach Kategorie gruppierten Berichten und Tages-, Wochen- oder Monatsdiagrammen. Markiere Favoriten, blende nicht genutzte aus und verwalte heruntergeladene Dateien in einem eigenen Dateien-Bereich
 • Einreichungen – verfolge, verwirf und reiche deine App-Review-Einreichungen pro App erneut ein, mit klarem Umgang mit Apples Limit für gleichzeitige Einreichungen
 • Teamverwaltung – bearbeite Rolle, Ressourcen und sichtbare Apps eines Mitglieds, entferne Mitglieder oder ziehe Einladungen zurück

@@ -17,10 +17,13 @@ final class RecentReviewsWidget: HomeWidget, ObservableObject {
     }
 
     private let storage: PersistentStorable
+    /// Decides whether Google Play rows are shown (`googlePlayAccounts`).
+    private let featureFlags: FeatureFlags
 
-    init(configuration: HomeWidgetConfiguration, storage: PersistentStorable) {
+    init(configuration: HomeWidgetConfiguration, storage: PersistentStorable, featureFlags: FeatureFlags = .shared) {
         self.configuration = configuration
         self.storage = storage
+        self.featureFlags = featureFlags
     }
 
     func load() async {
@@ -30,7 +33,7 @@ final class RecentReviewsWidget: HomeWidget, ObservableObject {
         do {
             // Accounts are loaded first so reviews belonging to apps orphaned by
             // an account that went away never resolve into a row.
-            let accounts = await HomeWidgetDataLoader.loadAccounts(storage: storage)
+            let accounts = await HomeWidgetDataLoader.loadAccounts(storage: storage, featureFlags: featureFlags)
             let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
             // Exclude archived apps so their reviews never appear in the widget.
             let active = HomeWidgetDataLoader.filterKnownAccounts(
@@ -38,7 +41,7 @@ final class RecentReviewsWidget: HomeWidget, ObservableObject {
                 accountsMap: accounts
             )
             let googlePlay = await HomeWidgetDataLoader.loadGooglePlaySources(
-                storage: storage, accounts: accounts, requiring: .review, includesReleaseCaches: false
+                storage: storage, accounts: accounts, requiring: .review, includesReleaseCaches: false, featureFlags: featureFlags
             )
             let allReviews: [CustomerReviewModel] = try await storage.fetchAll(CustomerReviewModel.self)
             reviews = DashboardEntryBuilder.reviews(

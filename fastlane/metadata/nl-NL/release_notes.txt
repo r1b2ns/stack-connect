@@ -1,4 +1,3 @@
-• Google Play Console — voeg Google Play-accounts toe en zie je Play-apps naast je App Store-apps: releases op elke track, store-vermeldingen, beoordelingen en reviews met antwoorden, en gebruikersbeheer
 • Analyserapporten — bekijk en download je App Store Connect-analyses, met rapporten gegroepeerd per categorie en dagelijkse, wekelijkse of maandelijkse grafieken. Markeer favorieten, verberg wat je niet gebruikt en beheer gedownloade bestanden in een apart scherm Bestanden
 • Inzendingen — volg, verwijder en dien je App Review-inzendingen per app opnieuw in, met duidelijke afhandeling van de limiet van Apple voor gelijktijdige inzendingen
 • Teambeheer — bewerk de rol, resources en zichtbare apps van een lid, en verwijder leden of annuleer uitnodigingen

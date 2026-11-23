@@ -1,7 +1,7 @@
-StackConnect 是專為 App 開發者打造的免費開源助手。透過一款原生 iPhone 與 iPad App，即可管理您的 App Store Connect、Google Play Console 和 Firebase 帳號。
+StackConnect 是專為 App Store Connect 與 Firebase 打造的免費開源助手。透過一款原生 iPhone 與 iPad App，即可管理您的開發者帳號。
 
 首頁
-• 一眼掌握所有商店：審查中的 App、等待發佈的 App 與最新評論
+• 一眼掌握重點資訊：審查中的 App、等待發佈的 App 與最新評論
 • 「審查中」、「等待發佈」與「最新評論」主畫面小工具
 • 當帳號持有人需要接受新協議時提醒您
 
@@ -18,13 +18,6 @@ APP STORE CONNECT
 • 憑證、佈建描述檔、識別碼與裝置：建立、檢視與匯入
 • 團隊：邀請成員、編輯角色、資源與可見的 App
 
-GOOGLE PLAY CONSOLE
-• 瀏覽您的 App 及其 App 資訊
-• 追蹤各個發佈軌道的版本
-• 檢視商店資訊
-• 閱讀並回覆評分與評論
-• 邀請與移除使用者，並管理其 App 權限
-
 FIREBASE
 • 瀏覽專案與 App
 • 管理 Remote Config 參數與條件
@@ -37,7 +30,7 @@ FIREBASE
 • 離線優先：快取資料即時載入並在背景同步；離線時會顯示指示器
 
 隱私權
-憑證儲存在 iOS 鑰匙圈中，App 直接與 Apple、Google 和 Firebase 的官方 API 連線，沒有任何 StackConnect 伺服器。匿名的使用情況分析有助於改進 App，並可隨時在「設定」中關閉。
+憑證儲存在 iOS 鑰匙圈中，App 直接與 Apple 和 Firebase 的官方 API 連線，沒有任何 StackConnect 伺服器。匿名的使用情況分析有助於改進 App，並可隨時在「設定」中關閉。
 
 免費且開源
 StackConnect 採用 MIT 授權，完全免費，沒有廣告，也沒有訂閱。如果它幫您節省了時間，歡迎透過自願性的小費支持我們持續開發。

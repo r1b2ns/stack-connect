@@ -11,6 +11,10 @@ enum AnalyticsBootstrap {
 
     static let firebaseConfigResource = "GoogleService-Info"
 
+    /// `true` once `FirebaseApp.configure()` ran (read by
+    /// `RemoteFeatureFlagsBootstrap`, which needs a configured Firebase app).
+    nonisolated(unsafe) private(set) static var didConfigureFirebase = false
+
     /// Configures Firebase when possible and returns the providers to use.
     /// Called once, by `AnalyticsService.shared`.
     @MainActor
@@ -25,6 +29,7 @@ enum AnalyticsBootstrap {
             // I-COR000003 when no app exists yet. This runs once, from
             // `AnalyticsService.shared`'s initialiser.
             FirebaseApp.configure()
+            didConfigureFirebase = true
             providers.append(contentsOf: firebaseProviders())
             Log.print.info("[Analytics] Firebase providers configured (Analytics, Crashlytics)")
         } else {

@@ -51,19 +51,22 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
     private let keychain: KeyStorable
     private let importer: AccountImporter
     private let analytics: AnalyticsTracking
+    private let featureFlags: FeatureFlags
 
     init(
         providerType: ProviderType,
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
-        analytics: AnalyticsTracking = AnalyticsService.shared
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        featureFlags: FeatureFlags = .shared
     ) {
         let storage: PersistentStorable = storage ?? SwiftDataStorable.shared
         self.uiState = AccountsListUiState(providerType: providerType)
         self.storage = storage
         self.keychain = keychain
-        self.importer = AccountImporter(storage: storage, keychain: keychain)
+        self.importer = AccountImporter(storage: storage, keychain: keychain, featureFlags: featureFlags)
         self.analytics = analytics
+        self.featureFlags = featureFlags
     }
 
     func loadAccounts() async {
@@ -71,7 +74,8 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
         do {
             var allAccounts: [AccountModel] = try await storage.fetchAll(AccountModel.self)
             for i in allAccounts.indices { allAccounts[i].fillMissingRules() }
-            uiState.accounts = allAccounts.filter { $0.providerType == uiState.providerType }
+            // A hidden store's list stays empty (its accounts are kept in storage).
+            uiState.accounts = featureFlags.visibleAccounts(allAccounts).filter { $0.providerType == uiState.providerType }
             uiState.groups = buildGroups(from: uiState.accounts)
         } catch {
             Log.print.error("[AccountsList] Failed to load accounts: \(error.localizedDescription)")

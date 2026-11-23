@@ -14,10 +14,13 @@ final class InReviewWidget: HomeWidget, ObservableObject {
     @Published private(set) var isLoading: Bool = false
 
     private let storage: PersistentStorable
+    /// Decides whether Google Play rows are shown (`googlePlayAccounts`).
+    private let featureFlags: FeatureFlags
 
-    init(configuration: HomeWidgetConfiguration, storage: PersistentStorable) {
+    init(configuration: HomeWidgetConfiguration, storage: PersistentStorable, featureFlags: FeatureFlags = .shared) {
         self.configuration = configuration
         self.storage = storage
+        self.featureFlags = featureFlags
     }
 
     func load() async {
@@ -27,14 +30,14 @@ final class InReviewWidget: HomeWidget, ObservableObject {
         do {
             // Accounts are loaded *before* categorizing: apps orphaned by an
             // account that went away must not be expanded, counted, or listed.
-            let accounts = await HomeWidgetDataLoader.loadAccounts(storage: storage)
+            let accounts = await HomeWidgetDataLoader.loadAccounts(storage: storage, featureFlags: featureFlags)
             let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
             let active = HomeWidgetDataLoader.filterKnownAccounts(
                 allApps.filter { !$0.isArchived },
                 accountsMap: accounts
             )
             let googlePlay = await HomeWidgetDataLoader.loadGooglePlaySources(
-                storage: storage, accounts: accounts, requiring: .version, includesReleaseCaches: true
+                storage: storage, accounts: accounts, requiring: .version, includesReleaseCaches: true, featureFlags: featureFlags
             )
             entries = DashboardEntryBuilder.merged(
                 appStore: DashboardEntryBuilder.appStoreInReview(active, accounts: accounts),

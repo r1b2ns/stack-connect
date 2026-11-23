@@ -510,14 +510,35 @@ final class FakeDataBackendsTests: XCTestCase {
         }
 
         let container = try FakeDataBootstrap.makeContainer(directory: directory)
-        try FakeDataSeeder.seedIfNeeded(container: container, clock: clock)
+        try FakeDataSeeder.seedIfNeeded(container: container, clock: clock, includesGooglePlay: true)
         // Seeding twice is a no-op.
-        try FakeDataSeeder.seedIfNeeded(container: container, clock: clock)
+        try FakeDataSeeder.seedIfNeeded(container: container, clock: clock, includesGooglePlay: true)
 
         let items = try ModelContext(container).fetch(FetchDescriptor<PersistedItem>())
         let accounts = items.filter { $0.typeName == String(describing: AccountModel.self) }
         XCTAssertEqual(accounts.count, 4)
         XCTAssertEqual(Set(accounts.map(\.identifier)), Set(FakeDataSeeder.accounts(clock: clock).map(\.id)))
+    }
+
+    /// `googlePlayAccounts` OFF (screenshot sessions): no Google Play account
+    /// nor tracks cache; flipping the flag re-seeds the store.
+    func testFakeStoreSeedsNoGooglePlayWhenTheFlagIsOff() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("FakeDataTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let container = try FakeDataBootstrap.makeContainer(directory: directory)
+
+        try FakeDataSeeder.seedIfNeeded(container: container, clock: clock, includesGooglePlay: false)
+        var items = try ModelContext(container).fetch(FetchDescriptor<PersistedItem>())
+        var accountIds = Set(items.filter { $0.typeName == String(describing: AccountModel.self) }.map(\.identifier))
+        XCTAssertEqual(accountIds.count, 3)
+        XCTAssertFalse(accountIds.contains(FakeDataSeeder.AccountID.northwindGooglePlay))
+        XCTAssertFalse(items.contains { $0.typeName == String(describing: GooglePlayTracksCache.self) })
+
+        try FakeDataSeeder.seedIfNeeded(container: container, clock: clock, includesGooglePlay: true)
+        items = try ModelContext(container).fetch(FetchDescriptor<PersistedItem>())
+        accountIds = Set(items.filter { $0.typeName == String(describing: AccountModel.self) }.map(\.identifier))
+        XCTAssertTrue(accountIds.contains(FakeDataSeeder.AccountID.northwindGooglePlay))
     }
 }
 

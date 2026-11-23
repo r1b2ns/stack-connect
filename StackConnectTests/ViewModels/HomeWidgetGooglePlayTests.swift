@@ -41,7 +41,7 @@ final class HomeWidgetGooglePlayTests: XCTestCase {
     }
 
     func testInReviewListsBothStoresWithTheAppStoreFirst() async {
-        let widget = InReviewWidget(configuration: .init(kind: .inReview), storage: storage)
+        let widget = InReviewWidget(configuration: .init(kind: .inReview), storage: storage, featureFlags: .googlePlayOn)
         await widget.load()
 
         XCTAssertEqual(widget.entries.map(\.name), ["Pulse Timer", "Trailhead"])
@@ -50,7 +50,7 @@ final class HomeWidgetGooglePlayTests: XCTestCase {
     }
 
     func testAwaitingReleaseShowsTheCachedRolloutWithItsFootnote() async {
-        let widget = AwaitingReleaseWidget(configuration: .init(kind: .awaitingRelease), storage: storage)
+        let widget = AwaitingReleaseWidget(configuration: .init(kind: .awaitingRelease), storage: storage, featureFlags: .googlePlayOn)
         await widget.load()
 
         XCTAssertEqual(widget.entries.map(\.statusText), ["Production · Rolling out 20%"])
@@ -65,7 +65,7 @@ final class HomeWidgetGooglePlayTests: XCTestCase {
         try await storage.save(appleReview, id: CustomerReviewModel.storageId(appId: "1", reviewId: appleReview.id))
         try await storage.save(playReview, id: CustomerReviewModel.storageId(appId: "com.trailhead", reviewId: playReview.id))
 
-        let widget = RecentReviewsWidget(configuration: .init(kind: .recentReviews), storage: storage)
+        let widget = RecentReviewsWidget(configuration: .init(kind: .recentReviews), storage: storage, featureFlags: .googlePlayOn)
         await widget.load()
 
         XCTAssertEqual(widget.reviews.map(\.review.id), ["com.trailhead/r1", "a1"])
@@ -73,12 +73,45 @@ final class HomeWidgetGooglePlayTests: XCTestCase {
         XCTAssertTrue(widget.showsGooglePlayFootnote)
     }
 
+    // MARK: - Google Play hidden (googlePlayAccounts OFF)
+
+    func testWidgetsShowNoGooglePlayRowsWhileGooglePlayIsHidden() async throws {
+        var playReview = CustomerReviewModel(id: "com.trailhead/r1", rating: 2, body: "Crashes", createdDate: Date())
+        playReview.appId = "com.trailhead"
+        try await storage.save(playReview, id: CustomerReviewModel.storageId(appId: "com.trailhead", reviewId: playReview.id))
+
+        let inReview = InReviewWidget(configuration: .init(kind: .inReview), storage: storage, featureFlags: .googlePlayOff)
+        let awaiting = AwaitingReleaseWidget(configuration: .init(kind: .awaitingRelease), storage: storage, featureFlags: .googlePlayOff)
+        let reviews = RecentReviewsWidget(configuration: .init(kind: .recentReviews), storage: storage, featureFlags: .googlePlayOff)
+        await inReview.load()
+        await awaiting.load()
+        await reviews.load()
+
+        XCTAssertEqual(inReview.entries.map(\.name), ["Pulse Timer"], "App Store rows stay")
+        XCTAssertFalse(inReview.entries.contains { $0.platform == .android })
+        XCTAssertTrue(awaiting.entries.isEmpty)
+        XCTAssertFalse(awaiting.showsRolloutFootnote)
+        XCTAssertTrue(reviews.reviews.isEmpty)
+        XCTAssertFalse(reviews.showsGooglePlayFootnote)
+        let stored = try await storage.fetch(AccountModel.self, id: play.id)
+        XCTAssertNotNil(stored, "A hidden account is never deleted")
+    }
+
+    func testWidgetKitSnapshotHasNoAndroidRowsWhileGooglePlayIsHidden() async throws {
+        let lists = try await WidgetDashboardSnapshotWriter.loadLists(storage: storage, featureFlags: .googlePlayOff)
+        let snapshot = WidgetDashboardSnapshotWriter.snapshot(from: lists)
+
+        XCTAssertEqual(snapshot.inReview.map(\.name), ["Pulse Timer"])
+        XCTAssertFalse((snapshot.inReview + snapshot.awaitingRelease).contains { $0.platform == .android })
+        XCTAssertFalse(snapshot.recentReviews.contains { $0.platform == .android })
+    }
+
     func testAppleOnlyStoreShowsNoPlayFootnotes() async throws {
         try await storage.delete(AccountModel.self, id: play.id)
 
-        let awaiting = AwaitingReleaseWidget(configuration: .init(kind: .awaitingRelease), storage: storage)
+        let awaiting = AwaitingReleaseWidget(configuration: .init(kind: .awaitingRelease), storage: storage, featureFlags: .googlePlayOn)
         await awaiting.load()
-        let reviews = RecentReviewsWidget(configuration: .init(kind: .recentReviews), storage: storage)
+        let reviews = RecentReviewsWidget(configuration: .init(kind: .recentReviews), storage: storage, featureFlags: .googlePlayOn)
         await reviews.load()
 
         XCTAssertTrue(awaiting.entries.isEmpty)

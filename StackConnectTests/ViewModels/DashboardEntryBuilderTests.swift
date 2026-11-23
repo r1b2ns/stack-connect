@@ -163,8 +163,8 @@ final class DashboardEntryBuilderTests: XCTestCase {
         }
         let accounts = [scoped.id: scoped, noVersion.id: noVersion]
 
-        let status = await HomeWidgetDataLoader.loadGooglePlaySources(storage: storage, accounts: accounts, requiring: .version, includesReleaseCaches: true)
-        let reviews = await HomeWidgetDataLoader.loadGooglePlaySources(storage: storage, accounts: accounts, requiring: .review, includesReleaseCaches: false)
+        let status = await HomeWidgetDataLoader.loadGooglePlaySources(storage: storage, accounts: accounts, requiring: .version, includesReleaseCaches: true, featureFlags: .googlePlayOn)
+        let reviews = await HomeWidgetDataLoader.loadGooglePlaySources(storage: storage, accounts: accounts, requiring: .review, includesReleaseCaches: false, featureFlags: .googlePlayOn)
 
         XCTAssertEqual(status.map(\.app.packageName), ["com.a"])
         XCTAssertEqual(Set(reviews.map { "\($0.account.id)/\($0.app.packageName)" }),

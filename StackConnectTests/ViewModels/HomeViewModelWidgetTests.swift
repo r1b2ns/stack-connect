@@ -16,7 +16,8 @@ final class HomeViewModelWidgetTests: XCTestCase {
             storage: storage,
             keychain: MockKeyStorable(),
             preferences: preferences,
-            syncService: .shared
+            syncService: .shared,
+            featureFlags: .googlePlayOn
         )
     }
 
@@ -32,6 +33,18 @@ final class HomeViewModelWidgetTests: XCTestCase {
     func testOffersEveryProviderIncludingGooglePlay() {
         XCTAssertEqual(sut.uiState.providers, ProviderType.allCases)
         XCTAssertTrue(sut.uiState.providers.contains(.googlePlay))
+    }
+
+    func testHidesTheGooglePlayCardWhileGooglePlayIsHidden() {
+        let viewModel = HomeViewModel(
+            storage: storage,
+            keychain: MockKeyStorable(),
+            preferences: preferences,
+            syncService: .shared,
+            featureFlags: .googlePlayOff
+        )
+
+        XCTAssertEqual(viewModel.uiState.providers, [.apple, .firebase])
     }
 
     func testDefaultsToNoWidgetsOnFreshInstall() {

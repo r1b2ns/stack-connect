@@ -55,6 +55,11 @@ enum AllReviewsFilter: String, CaseIterable, Identifiable {
         }
     }
 
+    /// `allCases` without the filters of hidden stores.
+    static func available(featureFlags: FeatureFlags) -> [AllReviewsFilter] {
+        allCases.filter { $0 != .googlePlay || featureFlags.isProviderAvailable(.googlePlay) }
+    }
+
     func includes(_ row: DashboardReview) -> Bool {
         switch self {
         case .all:        return true
@@ -69,6 +74,8 @@ struct AllReviewsUiState {
     var groups: [AllReviewsAppGroup] = []
     var isLoading = false
     var filter: AllReviewsFilter = .all
+    /// Filters the picker offers ("Google Play" only while `googlePlayAccounts` is ON).
+    var availableFilters: [AllReviewsFilter] = AllReviewsFilter.available(featureFlags: .shared)
 
     var isEmpty: Bool { groups.isEmpty }
 
@@ -102,15 +109,19 @@ final class AllReviewsViewModel: AllReviewsViewModelProtocol {
     private let storage: PersistentStorable
     private let syncService: SyncService
     private let analytics: AnalyticsTracking
+    private let featureFlags: FeatureFlags
 
     init(
         storage: PersistentStorable? = nil,
         syncService: SyncService = .shared,
-        analytics: AnalyticsTracking = AnalyticsService.shared
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        featureFlags: FeatureFlags = .shared
     ) {
         self.storage = storage ?? SwiftDataStorable.shared
         self.syncService = syncService
         self.analytics = analytics
+        self.featureFlags = featureFlags
+        uiState.availableFilters = AllReviewsFilter.available(featureFlags: featureFlags)
     }
 
     /// Loads the reviews already cached on the device. Does not hit the network.
@@ -133,7 +144,7 @@ final class AllReviewsViewModel: AllReviewsViewModelProtocol {
     /// `filter_reviews` action with the filter as `kind`. Picking the filter
     /// already shown sends nothing.
     func applyFilter(_ filter: AllReviewsFilter) {
-        guard filter != uiState.filter else { return }
+        guard filter != uiState.filter, uiState.availableFilters.contains(filter) else { return }
         uiState.filter = filter
         analytics.track(.action(
             .filterReviews,
@@ -153,11 +164,11 @@ final class AllReviewsViewModel: AllReviewsViewModelProtocol {
     @discardableResult
     private func reload() async -> Bool {
         do {
-            let accountsMap = await HomeWidgetDataLoader.loadAccounts(storage: storage)
+            let accountsMap = await HomeWidgetDataLoader.loadAccounts(storage: storage, featureFlags: featureFlags)
             let apps: [AppModel] = try await storage.fetchAll(AppModel.self)
             let active = HomeWidgetDataLoader.filterKnownAccounts(apps.filter { !$0.isArchived }, accountsMap: accountsMap)
             let googlePlay = await HomeWidgetDataLoader.loadGooglePlaySources(
-                storage: storage, accounts: accountsMap, requiring: .review, includesReleaseCaches: false
+                storage: storage, accounts: accountsMap, requiring: .review, includesReleaseCaches: false, featureFlags: featureFlags
             )
             let reviews: [CustomerReviewModel] = try await storage.fetchAll(CustomerReviewModel.self)
             let rows = DashboardEntryBuilder.reviews(

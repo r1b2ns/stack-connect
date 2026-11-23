@@ -1,1 +1,1 @@
-App Store Connect, Google Play Console en Firebase in één gratis open-source-app. Releases, reviews, TestFlight, teams en analyses — rechtstreeks vanaf je iPhone.
+App Store Connect en Firebase in één gratis open-source-app. Releases, reviews, TestFlight, teams en analyses — rechtstreeks vanaf je iPhone.

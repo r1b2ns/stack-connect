@@ -1,1 +1,1 @@
-App Store Connect, Google Play Console und Firebase in einer kostenlosen Open-Source-App. Releases, Bewertungen, TestFlight, Teams und Analytics – direkt vom iPhone.
+App Store Connect und Firebase in einer kostenlosen Open-Source-App. Releases, Bewertungen, TestFlight, Teams und Analytics – direkt vom iPhone.

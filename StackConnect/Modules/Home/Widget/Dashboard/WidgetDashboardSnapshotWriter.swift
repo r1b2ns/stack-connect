@@ -20,16 +20,18 @@ enum WidgetDashboardSnapshotWriter {
 
     /// Loads the three lists exactly like `InReviewWidget`, `AwaitingReleaseWidget`
     /// and `RecentReviewsWidget`.
-    static func loadLists(storage: PersistentStorable) async throws -> DashboardLists {
-        let accounts = await HomeWidgetDataLoader.loadAccounts(storage: storage)
+    /// Google Play rows are left out while `googlePlayAccounts` is OFF, which
+    /// keeps them out of the home-screen widgets too.
+    static func loadLists(storage: PersistentStorable, featureFlags: FeatureFlags = .shared) async throws -> DashboardLists {
+        let accounts = await HomeWidgetDataLoader.loadAccounts(storage: storage, featureFlags: featureFlags)
         let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
         let active = HomeWidgetDataLoader.filterKnownAccounts(allApps.filter { !$0.isArchived }, accountsMap: accounts)
         let phased = await HomeWidgetDataLoader.loadPhasedReleases(for: active, storage: storage)
         let playStatus = await HomeWidgetDataLoader.loadGooglePlaySources(
-            storage: storage, accounts: accounts, requiring: .version, includesReleaseCaches: true
+            storage: storage, accounts: accounts, requiring: .version, includesReleaseCaches: true, featureFlags: featureFlags
         )
         let playReviews = await HomeWidgetDataLoader.loadGooglePlaySources(
-            storage: storage, accounts: accounts, requiring: .review, includesReleaseCaches: false
+            storage: storage, accounts: accounts, requiring: .review, includesReleaseCaches: false, featureFlags: featureFlags
         )
         let reviews: [CustomerReviewModel] = try await storage.fetchAll(CustomerReviewModel.self)
         return DashboardLists(

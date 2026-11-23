@@ -34,7 +34,7 @@ final class WidgetDashboardSnapshotTests: XCTestCase {
     }
 
     private func snapshot() async throws -> WidgetDashboardSnapshot {
-        WidgetDashboardSnapshotWriter.snapshot(from: try await WidgetDashboardSnapshotWriter.loadLists(storage: storage))
+        WidgetDashboardSnapshotWriter.snapshot(from: try await WidgetDashboardSnapshotWriter.loadLists(storage: storage, featureFlags: .googlePlayOn))
     }
 
     // MARK: - Round trip

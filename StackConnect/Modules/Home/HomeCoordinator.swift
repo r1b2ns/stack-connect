@@ -264,7 +264,8 @@ final class HomeCoordinator: MainCoordinatorProtocol {
             return
         }
         Task { @MainActor in
-            guard var resolved = try? await storage?.fetch(AccountModel.self, id: accountId) else {
+            guard var resolved = try? await storage?.fetch(AccountModel.self, id: accountId),
+                  FeatureFlags.shared.isVisible(resolved) else {
                 Log.print.notice("[Home] Dashboard row references unknown account \(accountId, privacy: .public)")
                 return
             }
@@ -283,7 +284,8 @@ final class HomeCoordinator: MainCoordinatorProtocol {
             return
         }
         Task { @MainActor in
-            guard var resolved = try? await storage?.fetch(AccountModel.self, id: item.accountId) else {
+            guard var resolved = try? await storage?.fetch(AccountModel.self, id: item.accountId),
+                  FeatureFlags.shared.isVisible(resolved) else {
                 Log.print.notice("[Home] Dashboard review references unknown account \(item.accountId, privacy: .public)")
                 return
             }

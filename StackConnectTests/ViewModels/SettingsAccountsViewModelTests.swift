@@ -15,7 +15,7 @@ final class SettingsAccountsViewModelTests: XCTestCase {
         storage = MockPersistentStorable()
         keychain = MockKeyStorable()
         analytics = MockAnalyticsTracker()
-        sut = SettingsAccountsViewModel(storage: storage, keychain: keychain, analytics: analytics)
+        sut = SettingsAccountsViewModel(storage: storage, keychain: keychain, analytics: analytics, featureFlags: .googlePlayOn)
     }
 
     override func tearDown() async throws {
@@ -267,6 +267,22 @@ final class SettingsAccountsViewModelTests: XCTestCase {
 
         XCTAssertEqual(apps.map(\.bundleId), ["com.example.one"])
         XCTAssertEqual(apps.map(\.name), ["One"])
+    }
+
+    func testHidesGooglePlayAccountsAndProviderWhileGooglePlayIsHidden() async throws {
+        let hidden = SettingsAccountsViewModel(storage: storage, keychain: keychain, analytics: analytics, featureFlags: .googlePlayOff)
+        let play = AccountModel(id: "play", name: "Play", providerType: .googlePlay)
+        try await storage.save(play, id: play.id)
+        try await storage.save(AccountModel(id: "asc", name: "ASC", providerType: .apple), id: "asc")
+
+        await hidden.loadAccounts()
+
+        XCTAssertTrue(hidden.uiState.googlePlayAccounts.isEmpty)
+        XCTAssertEqual(hidden.uiState.appleAccounts.map(\.id), ["asc"])
+        XCTAssertEqual(hidden.uiState.availableProviders, [.apple, .firebase])
+        XCTAssertEqual(sut.uiState.availableProviders, ProviderType.allCases, "Flag ON offers Google Play")
+        let stored = try await storage.fetch(AccountModel.self, id: "play")
+        XCTAssertNotNil(stored, "A hidden account is never deleted")
     }
 
     func testImportGooglePlayAccountRestoresScope() async throws {

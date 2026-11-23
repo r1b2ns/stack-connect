@@ -32,7 +32,11 @@ enum FakeDataBootstrap {
         }
 
         let container = try makeContainer(directory: directory)
-        try FakeDataSeeder.seedIfNeeded(container: container, clock: clock)
+        // No Google Play account unless `googlePlayAccounts` is ON (launch
+        // argument): this mode is used to capture App Store screenshots. The
+        // flag is deliberately NOT turned on through `sessionDefaults`.
+        let includesGooglePlay = FeatureFlags.shared.isEnabled(.googlePlayAccounts)
+        try FakeDataSeeder.seedIfNeeded(container: container, clock: clock, includesGooglePlay: includesGooglePlay)
         if let developerId = mode.playDeveloperId {
             try FakeDataSeeder.setPlayDeveloperId(developerId, container: container)
         }

@@ -42,7 +42,7 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
                     .presentationDetents([.medium])
             }
             .sheet(isPresented: $coordinator.showProviderPicker) {
-                ProviderPickerSheetContent()
+                ProviderPickerSheetContent(providers: viewModel.uiState.availableProviders)
                     .presentationDetents([.medium])
             }
             .sheet(item: $coordinator.selectedProviderType) { providerType in
@@ -543,13 +543,16 @@ private struct AddOptionsSheetContent: View {
 
 private struct ProviderPickerSheetContent: View {
 
+    /// Available stores only (no Google Play while `googlePlayAccounts` is OFF).
+    let providers: [ProviderType]
+
     @EnvironmentObject private var coordinator: SettingsAccountsCoordinator
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             List {
-                ForEach(ProviderType.allCases, id: \.self) { provider in
+                ForEach(providers, id: \.self) { provider in
                     StackTrackedButton(.providerButton(for: provider), on: .settingsAccountProviderPicker) {
                         coordinator.presentAddAccount(providerType: provider)
                     } label: {

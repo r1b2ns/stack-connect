@@ -128,10 +128,10 @@ const DEV = {
 
 // Release-tracking story. Crop boxes are in source pixels (1320x2868).
 const FRAMES = [
-  { img: '01-home', store: 'both', stage: '1', stageLabel: { en: 'Overview', pt: 'Visão geral' },
-    crop: { x: 60, y: 1720, w: 1200, h: 660 }, cropPt: { x: 60, y: 1700, w: 1200, h: 730 }, cropIpad: { x: 1040, y: 510, w: 990, h: 600 }, ring: null,
-    en: { eyebrow: 'App Store + Google Play', h: 'Every release.<br>Both stores.<br>One app.', s: 'What is in review and what is waiting to ship, on one screen.' },
-    pt: { eyebrow: 'App Store + Google Play', h: 'Todo lançamento.<br>Nas duas lojas.<br>Num só app.', s: 'O que está em revisão e o que falta publicar, numa tela só.' } },
+  { img: '01-home', store: 'apple', stage: '1', stageLabel: { en: 'Overview', pt: 'Visão geral' },
+    crop: { x: 60, y: 1560, w: 1200, h: 980 }, cropIpad: { x: 1040, y: 510, w: 990, h: 540 }, ring: null,
+    en: { eyebrow: 'App Store', h: 'Every release.<br>Every platform.<br>One app.', s: 'What is in review and what is waiting to ship, on one screen.' },
+    pt: { eyebrow: 'App Store', h: 'Todo lançamento.<br>Toda plataforma.<br>Num só app.', s: 'O que está em revisão e o que falta publicar, numa tela só.' } },
   { img: '02-asc-app-list', store: 'apple', stage: '2', stageLabel: { en: 'Status', pt: 'Status' },
     crop: { x: 60, y: 690, w: 1200, h: 1180 }, cropIpad: { x: 24, y: 400, w: 680, h: 700 }, ring: null,
     en: { eyebrow: 'App Store', h: 'Know where every version stands', s: 'Preparing, in review, phased, rejected or live — at a glance.' },
@@ -144,22 +144,14 @@ const FRAMES = [
     crop: { x: 60, y: 1050, w: 1200, h: 760 }, cropPt: { x: 60, y: 1000, w: 1200, h: 880 }, cropIpad: { x: 760, y: 50, w: 1270, h: 650 }, ring: null,
     en: { eyebrow: 'App Store', h: 'Steer phased releases day by day', s: 'Pause, resume or release to everyone in one tap.' },
     pt: { eyebrow: 'App Store', h: 'Conduza o lançamento faseado dia a dia', s: 'Pause, retome ou libere para todos com um toque.' } },
-  { img: '05-play-tracks', store: 'google', stage: '5', stageLabel: { en: 'Tracks', pt: 'Tracks' },
-    crop: { x: 60, y: 330, w: 1200, h: 1160 }, cropIpad: { x: 868, y: 205, w: 1160, h: 450 }, ring: null,
-    en: { eyebrow: 'Google Play', h: 'Every Google Play track in one view', s: 'Production, testing and custom tracks with each release state.' },
-    pt: { eyebrow: 'Google Play', h: 'Todas as tracks do Google Play numa tela', s: 'Produção, testes e tracks personalizadas com o estado de cada release.' } },
-  { img: '06-play-rollout', store: 'google', stage: '6', stageLabel: { en: 'Rollout', pt: 'Rollout' },
-    crop: null, cropIpad: { x: 762, y: 695, w: 1262, h: 600 }, cropIpadPt: { x: 762, y: 695, w: 1262, h: 780 }, ring: null,
-    en: { eyebrow: 'Google Play', h: 'Grow your rollout with confidence', s: 'Raise, halt or complete a staged rollout from your iPhone.' },
-    pt: { eyebrow: 'Google Play', h: 'Aumente o rollout com segurança', s: 'Aumente, interrompa ou conclua o rollout gradual pelo iPhone.' } },
-  { img: '07-asc-pending-release', store: 'apple', stage: '7', stageLabel: { en: 'Release', pt: 'Publicar' },
+  { img: '07-asc-pending-release', store: 'apple', stage: '5', stageLabel: { en: 'Release', pt: 'Publicar' },
     crop: null, ring: null,
     en: { eyebrow: 'App Store', h: 'Release the moment you’re ready', s: 'Approved and waiting for you? Ship it with one tap.' },
     pt: { eyebrow: 'App Store', h: 'Publique quando estiver pronto', s: 'Aprovada e esperando por você? Publique com um toque.' } },
-  { img: '08-review-reply', store: 'both', stage: '8', stageLabel: { en: 'Reviews', pt: 'Avaliações' },
+  { img: '08-review-reply', store: 'apple', stage: '6', stageLabel: { en: 'Reviews', pt: 'Avaliações' },
     crop: null, ring: null,
-    en: { eyebrow: 'App Store + Google Play', h: 'Reply to reviews in seconds', s: 'Read what users say and answer right from your iPhone.' },
-    pt: { eyebrow: 'App Store + Google Play', h: 'Responda avaliações em segundos', s: 'Leia o que os usuários dizem e responda direto do iPhone.' } },
+    en: { eyebrow: 'App Store', h: 'Reply to reviews in seconds', s: 'Read what users say and answer right from your iPhone.' },
+    pt: { eyebrow: 'App Store', h: 'Responda avaliações em segundos', s: 'Leia o que os usuários dizem e responda direto do iPhone.' } },
 ];
 
 const VARIANTS = [

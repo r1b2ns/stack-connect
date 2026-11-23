@@ -33,14 +33,52 @@ enum FeatureFlag: String, CaseIterable {
     /// `-featureFlag.googlePlayReleaseWrites YES`.
     case googlePlayReleaseWrites = "featureFlag.googlePlayReleaseWrites"
 
+    /// Gates every Google Play surface of the app (App Review guideline
+    /// 2.3.10): the Google Play option of the provider pickers, the Google Play
+    /// card / sidebar section / Settings section, Google Play accounts and apps
+    /// in every account list, the Android rows of the Home widgets, All Reviews
+    /// and the WidgetKit snapshot, the "Google Play" reviews filter, Google
+    /// Play deep links, background sync of Google Play accounts, Google Play
+    /// files in account import and the fake data mode's Google Play account.
+    /// When OFF, stored Google Play accounts are hidden, never deleted. The
+    /// single policy is `FeatureFlags.isProviderAvailable(_:)` /
+    /// `visibleAccounts(_:)`.
+    ///
+    /// Remote: resolved from Firebase Remote Config parameter
+    /// `google_play_accounts_enabled` (see `remoteConfigKey`), read ONCE per
+    /// launch — a newly fetched value applies on the next launch, so the UI
+    /// never changes under the user mid-session. A stored value (e.g. the
+    /// launch argument `-featureFlag.googlePlayAccounts YES`) wins over it.
+    /// Default: OFF, including in the DEBUG fake data mode.
+    case googlePlayAccounts = "featureFlag.googlePlayAccounts"
+
     /// The compiled-in default used when no value is stored in `UserDefaults`.
     /// New flags ship OFF by default — the safe, fully-reversible value.
     var defaultValue: Bool {
         switch self {
-        case .useRustCoreDebugLogging, .googlePlayReleaseWrites:
+        case .useRustCoreDebugLogging, .googlePlayReleaseWrites, .googlePlayAccounts:
             return false
         }
     }
+
+    /// The Firebase Remote Config parameter (Bool) that drives this flag, or
+    /// `nil` for a local-only flag.
+    var remoteConfigKey: String? {
+        switch self {
+        case .googlePlayAccounts:
+            return "google_play_accounts_enabled"
+        case .useRustCoreDebugLogging, .googlePlayReleaseWrites:
+            return nil
+        }
+    }
+}
+
+/// Remote values of the flags that have a `remoteConfigKey`. Returns `nil`
+/// when the parameter is absent from the activated config (or the remote
+/// source is unavailable), so the flag falls back to its default. Kept free of
+/// Firebase types so `FeatureFlags` stays testable.
+protocol RemoteFeatureValueProviding: Sendable {
+    func boolValue(forKey key: String) -> Bool?
 }
 
 /// Resolves feature-flag values. Inject a custom `UserDefaults` in tests to
@@ -51,8 +89,14 @@ enum FeatureFlag: String, CaseIterable {
 struct FeatureFlags: @unchecked Sendable {
 
     private let defaults: UserDefaults
+    private let remoteValue: @Sendable (String) -> Bool?
 
     static let shared = FeatureFlags()
+
+    /// The remote values frozen at launch (`RemoteFeatureFlagsBootstrap`), or
+    /// `nil` when Firebase isn't configured (no `GoogleService-Info.plist`,
+    /// unit-test host, fake data mode). Set once at startup, before any screen.
+    nonisolated(unsafe) static var launchRemoteValues: (any RemoteFeatureValueProviding)?
 
     /// Defaults for this launch only, applied between a stored value and the
     /// compiled-in default. Never persisted, so nothing leaks into a later
@@ -60,17 +104,29 @@ struct FeatureFlags: @unchecked Sendable {
     /// data mode turns `googlePlayReleaseWrites` ON this way.
     nonisolated(unsafe) static var sessionDefaults: [FeatureFlag: Bool] = [:]
 
-    init(defaults: UserDefaults = .standard) {
+    /// - Parameter remoteValues: the remote source to use. When omitted, the
+    ///   values frozen at launch (`launchRemoteValues`) are read.
+    init(defaults: UserDefaults = .standard, remoteValues: (any RemoteFeatureValueProviding)? = nil) {
         self.defaults = defaults
+        if let remoteValues {
+            self.remoteValue = { remoteValues.boolValue(forKey: $0) }
+        } else {
+            self.remoteValue = { FeatureFlags.launchRemoteValues?.boolValue(forKey: $0) }
+        }
     }
 
-    /// Returns the current value of `flag`, falling back to its compiled-in
-    /// default when nothing is stored.
+    /// Returns the current value of `flag`. Precedence: a value stored in
+    /// `UserDefaults` (a launch argument such as `-featureFlag.X YES` lands
+    /// here too) > the remote value activated at launch (flags with a
+    /// `remoteConfigKey`) > the session default > the compiled-in default.
     func isEnabled(_ flag: FeatureFlag) -> Bool {
-        if defaults.object(forKey: flag.rawValue) == nil {
-            return Self.sessionDefaults[flag] ?? flag.defaultValue
+        if defaults.object(forKey: flag.rawValue) != nil {
+            return defaults.bool(forKey: flag.rawValue)
         }
-        return defaults.bool(forKey: flag.rawValue)
+        if let key = flag.remoteConfigKey, let remote = remoteValue(key) {
+            return remote
+        }
+        return Self.sessionDefaults[flag] ?? flag.defaultValue
     }
 
     /// Overrides `flag` at runtime (e.g. from a debug menu). Persists to the

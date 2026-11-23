@@ -1,1 +1,1 @@
-App Store Connect、Google Play Console 與 Firebase，盡在一款免費開源 App。版本發佈、評論、TestFlight、團隊與分析數據，用 iPhone 就能輕鬆掌握。
+App Store Connect 與 Firebase，盡在一款免費開源 App。版本發佈、評論、TestFlight、團隊與分析數據，用 iPhone 就能輕鬆掌握。

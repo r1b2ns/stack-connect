@@ -1,7 +1,7 @@
-StackConnect är ett gratis följeslagare med öppen källkod för apputvecklare. Hantera dina konton för App Store Connect, Google Play Console och Firebase i en och samma inbyggda app för iPhone och iPad.
+StackConnect är en gratis följeslagare med öppen källkod för App Store Connect och Firebase. Hantera dina utvecklarkonton i en och samma inbyggda app för iPhone och iPad.
 
 HEM
-• Alla butiker på en blick: appar under granskning, appar som väntar på release och senaste recensioner
+• Allt på en blick: appar under granskning, appar som väntar på release och senaste recensioner
 • Widgetar för hemskärmen för Under granskning, Väntar på release och Senaste recensioner
 • En påminnelse när kontoinnehavaren behöver godkänna nya avtal
 
@@ -18,13 +18,6 @@ APP STORE CONNECT
 • Certifikat, provisioneringsprofiler, identifierare och enheter: skapa, granska och importera
 • Team: bjud in medlemmar, redigera roller, resurser och synliga appar
 
-GOOGLE PLAY CONSOLE
-• Bläddra bland dina appar och deras appinformation
-• Följ releaser i alla spår
-• Visa butikssidor
-• Läs och svara på betyg och recensioner
-• Bjud in och ta bort användare och hantera deras appbehörigheter
-
 FIREBASE
 • Bläddra bland projekt och appar
 • Hantera parametrar och villkor i Remote Config
@@ -37,7 +30,7 @@ FLERA KONTON OCH TEAM
 • Offline först: cachad data laddas direkt och synkas i bakgrunden; en indikator visar när du är offline
 
 INTEGRITET
-Inloggningsuppgifter lagras i iOS-nyckelringen, och appen kommunicerar direkt med Apples, Googles och Firebases officiella API:er — det finns inga StackConnect-servrar. Anonym användningsanalys hjälper oss att förbättra appen och kan stängas av när som helst i Inställningar.
+Inloggningsuppgifter lagras i iOS-nyckelringen, och appen kommunicerar direkt med Apples och Firebases officiella API:er — det finns inga StackConnect-servrar. Anonym användningsanalys hjälper oss att förbättra appen och kan stängas av när som helst i Inställningar.
 
 GRATIS OCH ÖPPEN KÄLLKOD
 StackConnect har MIT-licens och är gratis, utan reklam och utan prenumerationer. Om appen sparar tid för dig hjälper en frivillig dricks oss att hålla den igång.

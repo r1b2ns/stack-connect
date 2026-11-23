@@ -69,10 +69,14 @@ struct AccountImporter {
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
+    /// A file of a hidden store (Google Play while `googlePlayAccounts` is
+    /// OFF) is ignored: nothing is saved and the message doesn't name the store.
+    private let featureFlags: FeatureFlags
 
-    init(storage: PersistentStorable, keychain: KeyStorable) {
+    init(storage: PersistentStorable, keychain: KeyStorable, featureFlags: FeatureFlags = .shared) {
         self.storage = storage
         self.keychain = keychain
+        self.featureFlags = featureFlags
     }
 
     /// - Returns: the saved account, or why nothing was saved.
@@ -114,6 +118,15 @@ struct AccountImporter {
         guard let providerRaw = dict["providerType"] as? String,
               let providerType = ProviderType(rawValue: providerRaw) else {
             return failure(String(localized: "Missing or invalid 'providerType' field."), .invalidFile)
+        }
+        // A store hidden by its feature flag: skip the account, before any
+        // keychain or storage write, without naming the store.
+        guard featureFlags.isProviderAvailable(providerType) else {
+            Log.print.notice("[AccountImporter] Ignored a file of a store that is not available in this build")
+            return failure(
+                String(localized: "This file contains an account type that isn't supported.", comment: "Account import error: the file holds an account of a store this version of the app doesn't offer."),
+                .invalidFile
+            )
         }
         if let expectedProvider = options.expectedProvider, providerType != expectedProvider {
             return failure(

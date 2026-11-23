@@ -38,7 +38,8 @@ final class SyncServiceTests: XCTestCase {
             googlePlayConnectionFactory: playConnection.syncFactory,
             widgetSnapshotWriter: { [weak self] _ in self?.snapshotWrites += 1 },
             firstAppsLoaded: firstAppsLoaded,
-            analytics: analytics
+            analytics: analytics,
+            featureFlags: .googlePlayOn
         )
     }
 
@@ -87,6 +88,37 @@ final class SyncServiceTests: XCTestCase {
     }
 
     // MARK: - Google Play leg (plan S1)
+
+    func testGooglePlayAccountsAreNotSyncedWhileGooglePlayIsHidden() async throws {
+        let hidden = StackConnect.SyncService(
+            storage: mockStorage,
+            keychain: mockKeychain,
+            googlePlayConnectionFactory: playConnection.syncFactory,
+            widgetSnapshotWriter: { _ in },
+            analytics: analytics,
+            featureFlags: .googlePlayOff
+        )
+        let play = AccountModel(name: "Play", providerType: .googlePlay)
+        try await mockStorage.save(play, id: play.id)
+        mockKeychain.setObject(
+            GooglePlayCredentials(serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON()),
+            forKey: "credentials.\(play.id)"
+        )
+        playConnection.fetchAppsHandler = {
+            [StackProtocols.AppInfo(id: "com.play", name: "Play App", bundleId: "com.play", platform: "ANDROID")]
+        }
+
+        await hidden.syncAll().value
+
+        let list: [GooglePlayAppItem]? = try await mockStorage.fetch(
+            [GooglePlayAppItem].self, id: GooglePlayAppItem.cacheKey(accountId: play.id)
+        )
+        XCTAssertNil(list, "No Google Play sync while hidden")
+        XCTAssertNil(hidden.state.providerByAccountId[play.id])
+        XCTAssertEqual(hidden.state.lastRunAccountCount, 0)
+        let stored = try await mockStorage.fetch(AccountModel.self, id: play.id)
+        XCTAssertNotNil(stored, "A hidden account is never deleted")
+    }
 
     func testSyncAllRunsGooglePlayAccounts() async throws {
         let play = AccountModel(name: "Play", providerType: .googlePlay)

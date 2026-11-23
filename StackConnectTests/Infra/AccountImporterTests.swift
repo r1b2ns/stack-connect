@@ -14,7 +14,7 @@ final class AccountImporterTests: XCTestCase {
         try await super.setUp()
         storage = MockPersistentStorable()
         keychain = MockKeyStorable()
-        sut = AccountImporter(storage: storage, keychain: keychain)
+        sut = AccountImporter(storage: storage, keychain: keychain, featureFlags: .googlePlayOn)
     }
 
     override func tearDown() async throws {
@@ -76,6 +76,42 @@ final class AccountImporterTests: XCTestCase {
     private let duplicateError = String(
         localized: "An account with these credentials already exists: \"Existing\"."
     )
+
+    // MARK: - Google Play hidden (googlePlayAccounts OFF)
+
+    func testGooglePlayFileIsIgnoredWhileGooglePlayIsHidden() async throws {
+        sut = AccountImporter(storage: storage, keychain: keychain, featureFlags: .googlePlayOff)
+
+        let result = try await importFile(googlePlayPayload())
+
+        guard case let .failure(error) = result else { return XCTFail("A Google Play file must be ignored") }
+        XCTAssertEqual(error.reason, .invalidFile)
+        XCTAssertFalse(error.message.contains("Google"), "The message must not name the hidden store")
+        let accounts = try await storedAccounts()
+        XCTAssertTrue(accounts.isEmpty, "Nothing is saved")
+        XCTAssertTrue(keychain.storedKeys.isEmpty, "Nothing reaches the keychain")
+    }
+
+    func testGooglePlayFileIsIgnoredEvenInTheGooglePlayListWhileHidden() async throws {
+        sut = AccountImporter(storage: storage, keychain: keychain, featureFlags: .googlePlayOff)
+
+        let result = try await importFile(googlePlayPayload(), options: .init(expectedProvider: .apple))
+
+        guard case let .failure(error) = result else { return XCTFail("A Google Play file must be ignored") }
+        XCTAssertFalse(error.message.contains("Google"), "No wrong-provider message naming Google Play")
+    }
+
+    func testAppleFileStillImportsWhileGooglePlayIsHidden() async throws {
+        sut = AccountImporter(storage: storage, keychain: keychain, featureFlags: .googlePlayOff)
+        let payload: [String: Any] = [
+            "name": "Team", "providerType": "apple",
+            "credentials": ["issuerID": "issuer", "privateKeyID": "KEY", "privateKey": "-----BEGIN PRIVATE KEY-----"]
+        ]
+
+        let imported = try await importFile(payload).get()
+
+        XCTAssertEqual(imported.providerType, .apple)
+    }
 
     // MARK: - Google Play success
 

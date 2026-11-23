@@ -17,7 +17,7 @@ struct WidgetEntry: TimelineEntry {
     let date: Date
     let snapshot: WidgetSnapshot
 
-    static let placeholder = WidgetEntry(date: .now, snapshot: .preview)
+    static var placeholder: WidgetEntry { WidgetEntry(date: .now, snapshot: .gallery) }
 }
 
 // MARK: - Provider
@@ -33,7 +33,7 @@ struct WidgetProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (WidgetEntry) -> Void) {
-        completion(WidgetEntry(date: .now, snapshot: context.isPreview ? .preview : WidgetDataLoader.load()))
+        completion(WidgetEntry(date: .now, snapshot: context.isPreview ? .gallery : WidgetDataLoader.load()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<WidgetEntry>) -> Void) {
@@ -47,6 +47,15 @@ struct WidgetProvider: TimelineProvider {
 // MARK: - Preview
 
 extension WidgetSnapshot {
+    /// The widget gallery's sample: the mixed dashboard while the app's
+    /// `googlePlayAccounts` flag is ON, App Store rows only otherwise.
+    static var gallery: WidgetSnapshot {
+        SharedFeatureFlags.isGooglePlayAccountsEnabled() ? .preview : .appStorePreview
+    }
+
+    /// The gallery sample without Google Play (flag OFF).
+    static let appStorePreview = WidgetSnapshot(dashboard: WidgetDataLoader.withoutGooglePlay(preview.dashboard))
+
     /// Shown in the widget gallery: a mixed App Store / Google Play dashboard.
     static let preview = WidgetSnapshot(dashboard: WidgetDashboardSnapshot(
         generatedAt: .now,

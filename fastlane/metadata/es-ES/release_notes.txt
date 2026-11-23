@@ -1,4 +1,3 @@
-• Google Play Console: añade cuentas de Google Play y consulta tus apps de Play junto a tus apps de la App Store: versiones en todas las pistas, fichas de la tienda, valoraciones y reseñas con respuestas, y gestión de usuarios
 • Informes de analíticas: consulta y descarga tus analíticas de App Store Connect, con informes agrupados por categoría y gráficos diarios, semanales o mensuales. Marca favoritos, oculta los que no uses y gestiona los archivos descargados desde una pantalla de Archivos propia
 • Envíos: sigue, descarta y vuelve a enviar tus envíos a App Review de cada app, con un tratamiento claro del límite de envíos simultáneos de Apple
 • Gestión de equipo: edita el rol, los recursos y las apps visibles de un miembro, y elimina miembros o cancela invitaciones

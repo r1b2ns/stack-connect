@@ -1,1 +1,1 @@
-App Store Connect, Google Play Console et Firebase dans une seule app gratuite et open source. Versions, avis, TestFlight, équipes et analyses — depuis votre iPhone.
+App Store Connect et Firebase dans une seule app gratuite et open source. Versions, avis, TestFlight, équipes et analyses — depuis votre iPhone.

@@ -19,7 +19,10 @@ protocol SettingsAccountsViewModelProtocol: ObservableObject {
 struct SettingsAccountsUiState {
     var appleAccounts: [AccountModel] = []
     var firebaseAccounts: [AccountModel] = []
+    /// Empty while `googlePlayAccounts` is OFF (stored accounts stay hidden).
     var googlePlayAccounts: [AccountModel] = []
+    /// Stores offered by the "Add Account" provider picker.
+    var availableProviders: [ProviderType] = FeatureFlags.shared.availableProviders
     var isLoading = false
     var editingName = ""
     var accountToDelete: AccountModel?
@@ -39,25 +42,31 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
     private let exporter: AccountExporting
     private let importer: AccountImporter
     private let analytics: AnalyticsTracking
+    private let featureFlags: FeatureFlags
 
     init(
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
         exporter: AccountExporting? = nil,
-        analytics: AnalyticsTracking = AnalyticsService.shared
+        analytics: AnalyticsTracking = AnalyticsService.shared,
+        featureFlags: FeatureFlags = .shared
     ) {
         let storage: PersistentStorable = storage ?? SwiftDataStorable.shared
         self.storage = storage
         self.keychain = keychain
         self.exporter = exporter ?? AccountExporter(keychain: keychain)
-        self.importer = AccountImporter(storage: storage, keychain: keychain)
+        self.importer = AccountImporter(storage: storage, keychain: keychain, featureFlags: featureFlags)
         self.analytics = analytics
+        self.featureFlags = featureFlags
+        uiState.availableProviders = featureFlags.availableProviders
     }
 
     func loadAccounts() async {
         uiState.isLoading = true
         do {
-            var allAccounts: [AccountModel] = try await storage.fetchAll(AccountModel.self)
+            // Accounts of a hidden store (Google Play while the flag is OFF)
+            // are left out, never deleted.
+            var allAccounts = featureFlags.visibleAccounts(try await storage.fetchAll(AccountModel.self))
 
             // Fill missing rules for legacy accounts
             for i in allAccounts.indices {
