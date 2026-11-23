@@ -42,6 +42,41 @@ struct HomeSyncBanner: View {
     }
 }
 
+// MARK: - Reconnecting Tip
+
+/// "Reconnecting Apple ID …": shown for as long as an automatic Apple ID
+/// sign-in runs (`uiState.reconnectingAppleIds`), apart from the sync line
+/// so both can show at once and still read differently.
+struct HomeReconnectingTip: View {
+
+    let appleIds: [String]
+
+    var body: some View {
+        if let text = HomeReconnectingCopy.text(for: appleIds) {
+            StackActivityTip(systemImage: "person.badge.key.fill", tint: .blue, text: text)
+        }
+    }
+}
+
+/// The copy of the Home "reconnecting" tip.
+enum HomeReconnectingCopy {
+
+    /// `nil` when no Apple ID reconnects.
+    static func text(for appleIds: [String]) -> String? {
+        switch appleIds.count {
+        case 0:
+            return nil
+        case 1:
+            let appleId = appleIds[0]
+            return String(localized: "Reconnecting Apple ID \(appleId)…",
+                          comment: "Home tip while the app signs in again on its own, with the saved password, to an expired Apple ID. The placeholder is the Apple ID (an e-mail).")
+        default:
+            return String(localized: "Reconnecting \(appleIds.count) Apple IDs…",
+                          comment: "Home tip while the app signs in again on its own, with the saved passwords, to several expired Apple IDs at once (always 2 or more).")
+        }
+    }
+}
+
 // MARK: - Pending Agreements Banners
 
 struct HomeAgreementsBanners<ViewModel: HomeViewModelProtocol>: View {

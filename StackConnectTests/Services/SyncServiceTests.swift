@@ -1,3 +1,4 @@
+import Combine
 import XCTest
 import StackProtocols
 import StackCoreRust
@@ -315,6 +316,76 @@ final class SyncServiceTests: XCTestCase {
 
         let counts = await mockStorage.fetchAllCallCount
         XCTAssertEqual(counts[String(describing: AccountModel.self)], 2)
+    }
+
+    // MARK: - Follow-up sync
+
+    private var accountFetchCount: Int {
+        get async { await mockStorage.fetchAllCallCount[String(describing: AccountModel.self)] ?? 0 }
+    }
+
+    func testFollowUpRunsRightAwayWhenIdle() async throws {
+        let apple = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(apple, id: apple.id)
+
+        // Nothing in flight: the request is the run itself.
+        await sut.requestFollowUpSync().value
+
+        let fetches = await accountFetchCount
+        XCTAssertEqual(fetches, 1)
+    }
+
+    func testFollowUpRunsAgainAfterTheInFlightRun() async throws {
+        let apple = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(apple, id: apple.id)
+        var transitions: [Bool] = []
+        let cancellable = sut.$state.map(\.isSyncing).removeDuplicates().sink { transitions.append($0) }
+        defer { cancellable.cancel() }
+
+        let inFlight = sut.syncAll()
+        let followUp = sut.requestFollowUpSync()
+
+        await inFlight.value
+        await followUp.value
+
+        let fetches = await accountFetchCount
+        XCTAssertEqual(fetches, 2, "not coalesced into the run in flight")
+        XCTAssertEqual(transitions, [false, true, false, true, false], "one run after the other")
+    }
+
+    func testRepeatedFollowUpRequestsShareOneRun() async throws {
+        let apple = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(apple, id: apple.id)
+
+        let inFlight = sut.syncAll()
+        let first = sut.requestFollowUpSync()
+        let second = sut.requestFollowUpSync()
+        let third = sut.requestFollowUpSync(mode: .full, trigger: .foreground, screen: nil)
+
+        await inFlight.value
+        await first.value
+        await second.value
+        await third.value
+
+        let fetches = await accountFetchCount
+        XCTAssertEqual(fetches, 2, "the in-flight run and a single follow-up")
+    }
+
+    func testAFollowUpRequestedDuringTheFollowUpRunGetsItsOwnRun() async throws {
+        let apple = AccountModel(name: "Apple", providerType: .apple)
+        try await mockStorage.save(apple, id: apple.id)
+
+        let inFlight = sut.syncAll()
+        let followUp = sut.requestFollowUpSync()
+        await inFlight.value
+        // The follow-up is now the run in flight (or about to start).
+        while !sut.state.isSyncing, (await accountFetchCount) < 2 { await Task.yield() }
+        let next = sut.requestFollowUpSync()
+        await followUp.value
+        await next.value
+
+        let fetches = await accountFetchCount
+        XCTAssertEqual(fetches, 3)
     }
 
     // MARK: - State transitions

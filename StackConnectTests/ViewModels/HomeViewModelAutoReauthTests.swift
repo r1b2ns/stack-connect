@@ -3,7 +3,8 @@ import StackProtocols
 @testable import StackConnect
 
 /// The Home side of the automatic Apple ID sign-in: no banner while it runs,
-/// "Confirm your Apple account" while its code waits, and the toasts.
+/// "Confirm your Apple account" while its code waits, the "reconnecting"
+/// tip and the "reconnected" toast.
 @MainActor
 final class HomeViewModelAutoReauthTests: XCTestCase {
 
@@ -141,24 +142,152 @@ final class HomeViewModelAutoReauthTests: XCTestCase {
         XCTAssertEqual(sut.uiState.awaitingCodeSignIns, [signInId: .trustedDevices])
     }
 
-    // MARK: - Toasts
+    // MARK: - Reconnecting Tip
 
-    func testToastsWhileReconnectingAndOnceReconnected() async throws {
-        let sut = makeSUT()
-
+    /// What the reauthenticator does when an attempt starts: in flight, then
+    /// the event.
+    private func start(_ appleId: String) {
+        autoReauth.states[appleId] = .reconnecting
         autoReauth.send(.started(appleId: appleId))
-        XCTAssertEqual(sut.uiState.toastMessage?.text, String(localized: "Reconnecting Apple account…"))
-
-        autoReauth.send(.finished(appleId: appleId, outcome: .done))
-        XCTAssertEqual(sut.uiState.toastMessage?.text, String(localized: "Apple account reconnected"))
     }
 
-    func testAFailedAttemptClearsTheToast() {
+    /// What the reauthenticator does when an attempt ends: no longer in
+    /// flight (or waiting for its code), then the event.
+    private func finish(_ appleId: String, _ outcome: AppleSessionAutoReauthOutcome) {
+        autoReauth.states[appleId] = outcome == .needsCode ? .awaitingCode(.trustedDevices) : nil
+        autoReauth.send(.finished(appleId: appleId, outcome: outcome))
+    }
+
+    func testStartedShowsTheReconnectingTipInsteadOfAToast() {
         let sut = makeSUT()
 
-        autoReauth.send(.started(appleId: appleId))
-        autoReauth.send(.finished(appleId: appleId, outcome: .failed))
+        start(appleId)
 
-        XCTAssertNil(sut.uiState.toastMessage)
+        XCTAssertEqual(sut.uiState.reconnectingAppleIds, [appleId])
+        XCTAssertNil(sut.uiState.toastMessage, "the tip stays for the whole attempt; no toast")
+        XCTAssertEqual(
+            HomeReconnectingCopy.text(for: sut.uiState.reconnectingAppleIds),
+            String(localized: "Reconnecting Apple ID \(appleId)…")
+        )
+    }
+
+    func testTheTipNormalizesTheAppleIdAndListsItOnce() {
+        let sut = makeSUT()
+
+        start(appleId)
+        autoReauth.send(.started(appleId: "  DEV@example.com "))
+
+        XCTAssertEqual(sut.uiState.reconnectingAppleIds, [appleId])
+    }
+
+    func testEveryOutcomeRemovesTheTip() {
+        for outcome in [AppleSessionAutoReauthOutcome.done, .needsCode, .invalidCredentials, .failed] {
+            let sut = makeSUT()
+            start(appleId)
+
+            finish(appleId, outcome)
+
+            XCTAssertTrue(sut.uiState.reconnectingAppleIds.isEmpty, "\(outcome)")
+        }
+    }
+
+    func testOnlyASuccessShowsTheReconnectedToast() {
+        for outcome in [AppleSessionAutoReauthOutcome.needsCode, .invalidCredentials, .failed] {
+            let sut = makeSUT()
+            start(appleId)
+
+            finish(appleId, outcome)
+
+            XCTAssertNil(sut.uiState.toastMessage, "\(outcome)")
+        }
+    }
+
+    func testTheReconnectedToastHasItsOwnIcon() {
+        let sut = makeSUT()
+        start(appleId)
+
+        finish(appleId, .done)
+
+        XCTAssertEqual(sut.uiState.toastMessage?.text, String(localized: "Apple account reconnected"))
+        XCTAssertEqual(sut.uiState.toastMessage?.icon, "checkmark.circle.fill", "not the sync arrows")
+    }
+
+    func testSeveralAppleIdsReconnectTogether() {
+        let other = "lead@example.com"
+        let sut = makeSUT()
+
+        start(appleId)
+        start(other)
+
+        XCTAssertEqual(sut.uiState.reconnectingAppleIds, [appleId, other], "in the order they started")
+        XCTAssertEqual(
+            HomeReconnectingCopy.text(for: sut.uiState.reconnectingAppleIds),
+            String(localized: "Reconnecting \(2) Apple IDs…")
+        )
+
+        finish(appleId, .done)
+
+        XCTAssertEqual(sut.uiState.reconnectingAppleIds, [other])
+        XCTAssertEqual(
+            HomeReconnectingCopy.text(for: sut.uiState.reconnectingAppleIds),
+            String(localized: "Reconnecting Apple ID \(other)…")
+        )
+
+        finish(other, .failed)
+
+        XCTAssertTrue(sut.uiState.reconnectingAppleIds.isEmpty)
+        XCTAssertNil(HomeReconnectingCopy.text(for: sut.uiState.reconnectingAppleIds))
+    }
+
+    func testTheTipShowsAnAttemptAlreadyRunningOnLoad() async throws {
+        try await addAppleSessionAccount("Team A", team: 1)
+        appleStatus.markExpired(appleId: appleId)
+        autoReauth.states[appleId] = .reconnecting
+        let sut = makeSUT()
+
+        await sut.loadDashboard()
+
+        XCTAssertEqual(sut.uiState.reconnectingAppleIds, [appleId], "started before the Home subscribed")
+    }
+
+    func testAReloadKeepsTheTipWhileTheAttemptRuns() async throws {
+        try await addAppleSessionAccount("Team A", team: 1)
+        appleStatus.markExpired(appleId: appleId)
+        let sut = makeSUT()
+        start(appleId)
+
+        await sut.loadDashboard()
+        await sut.reloadExpiredSignIns()
+
+        XCTAssertEqual(sut.uiState.reconnectingAppleIds, [appleId])
+    }
+
+    func testAReloadDropsAnAttemptNoLongerRunning() async throws {
+        let sut = makeSUT()
+        start(appleId)
+
+        // The attempt ended without its event reaching the Home.
+        autoReauth.states[appleId] = nil
+        await sut.reloadExpiredSignIns()
+
+        XCTAssertTrue(sut.uiState.reconnectingAppleIds.isEmpty)
+    }
+
+    func testSyncAndReconnectShowTogether() async {
+        let sut = makeSUT()
+        start(appleId)
+
+        sut.uiState.syncState = SyncState(isSyncing: true, accountsInProgress: ["account-1"])
+
+        XCTAssertTrue(sut.uiState.syncState.isSyncing, "the sync line shows")
+        XCTAssertEqual(sut.uiState.reconnectingAppleIds, [appleId], "and the reconnecting tip with it")
+
+        // A real sync runs and finishes: the tip stays until the attempt ends.
+        sut.triggerSync()
+        await waitUntil { sut.uiState.syncState.lastSyncedAt != nil && !sut.uiState.syncState.isSyncing }
+        XCTAssertEqual(sut.uiState.reconnectingAppleIds, [appleId])
+
+        finish(appleId, .done)
+        XCTAssertTrue(sut.uiState.reconnectingAppleIds.isEmpty)
     }
 }

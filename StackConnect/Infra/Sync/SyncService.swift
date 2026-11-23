@@ -51,6 +51,20 @@ enum SyncMode: Sendable {
     case lightweight
 }
 
+// MARK: - Follow-up
+
+/// Asks for a sync that starts only once whatever runs now has finished, so
+/// it sees a change made meanwhile (e.g. an Apple ID session renewed by the
+/// automatic sign-in, which a run already in flight skipped or failed).
+@MainActor
+protocol SyncFollowUpRequesting: AnyObject {
+    /// Runs right away when nothing is in flight; otherwise schedules one
+    /// more run after the current one. Repeated requests while one is
+    /// scheduled share it.
+    @discardableResult
+    func requestFollowUpSync(mode: SyncMode, trigger: SyncTrigger, screen: AnalyticsScreen?) -> Task<Void, Never>
+}
+
 // MARK: - Service
 
 /// Orchestrates background sync of accounts and their apps.
@@ -59,7 +73,7 @@ enum SyncMode: Sendable {
 /// the SwiftDataStorable actor. Coalesces concurrent `syncAll()` calls so
 /// repeated invocations don't pile up.
 @MainActor
-final class SyncService: ObservableObject {
+final class SyncService: ObservableObject, SyncFollowUpRequesting {
 
     typealias AppleConnectionFactory = (AppleCredentials) -> any AppleAccountSyncing
     typealias GooglePlayConnectionFactory = (GooglePlayCredentials) -> any GooglePlaySyncConnecting
@@ -86,6 +100,8 @@ final class SyncService: ObservableObject {
     private let appleSessionStatus: AppleSessionStatusTracking
     private let clock = ContinuousClock()
     private var rootTask: Task<Void, Never>?
+    /// The run scheduled by `requestFollowUpSync` after `rootTask`.
+    private var followUpTask: Task<Void, Never>?
 
     init(
         storage: PersistentStorable? = nil,
@@ -146,6 +162,30 @@ final class SyncService: ObservableObject {
             self?.rootTask = nil
         }
         rootTask = task
+        return task
+    }
+
+    /// Unlike `syncAll`, never joins the run in flight (which started before
+    /// the caller's change): waits for it, then starts a new one.
+    @discardableResult
+    func requestFollowUpSync(mode: SyncMode = .full, trigger: SyncTrigger = .foreground, screen: AnalyticsScreen? = nil) -> Task<Void, Never> {
+        guard let inFlight = rootTask else {
+            return syncAll(mode: mode, trigger: trigger, screen: screen)
+        }
+        if let followUpTask {
+            Log.print.info("[Sync] Follow-up sync already scheduled")
+            return followUpTask
+        }
+        Log.print.info("[Sync] Follow-up sync scheduled after the in-flight sync")
+        let task = Task { [weak self] in
+            await inFlight.value
+            guard let self else { return }
+            // Cleared first: a request made during the follow-up run gets
+            // its own follow-up.
+            self.followUpTask = nil
+            await self.syncAll(mode: mode, trigger: trigger, screen: screen).value
+        }
+        followUpTask = task
         return task
     }
 
