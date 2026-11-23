@@ -459,7 +459,12 @@ final class AppleIdSignInViewModelTests: XCTestCase {
     }
 
     func testPasswordIsSavedOnlyOnceTheSignInFinished() async {
-        let sut = await signedInSUT(teams: [.fixture(1, "Alpha")])
+        flow.startResults = [.success(.done(teams: [.fixture(1, "Alpha")]))]
+        let sut = makeSUT()
+        sut.setSavesPassword(true)
+        sut.uiState.email = appleId
+        sut.uiState.password = "secret"
+        await sut.signIn()
 
         XCTAssertNil(keychain.string(forKey: passwordKey), "not before Apple accepted it and the session was taken")
 
@@ -685,9 +690,75 @@ final class AppleIdSignInViewModelTests: XCTestCase {
 
     // MARK: - Save password on this device
 
-    func testSavePasswordIsOnByDefault() {
-        XCTAssertTrue(makeSUT().uiState.savesPassword)
+    func testSavePasswordIsOffByDefault() {
+        XCTAssertFalse(makeSUT().uiState.savesPassword)
+        XCTAssertFalse(makeSUT(.signInAgain(appleId: appleId)).uiState.savesPassword,
+                       "no password saved for the Apple ID")
+    }
+
+    func testSavePasswordStartsOnWhenSigningInAgainWithASavedPassword() {
+        keychain.set("saved", forKey: passwordKey)
+
         XCTAssertTrue(makeSUT(.signInAgain(appleId: appleId)).uiState.savesPassword)
+    }
+
+    func testFreshSignInWithTheToggleUntouchedDoesNotSaveThePassword() async {
+        let sut = makeSUT()
+        flow.startResults = [.success(.done(teams: [.fixture(1, "Alpha")]))]
+        sut.uiState.email = appleId
+        sut.emailDidChange()
+        sut.uiState.password = "secret"
+        await sut.signIn()
+
+        await sut.save()
+
+        XCTAssertEqual(sut.uiState.step, .finished)
+        XCTAssertNil(keychain.string(forKey: passwordKey))
+        XCTAssertEqual(keychain.data(forKey: "appleSession.\(appleId)"), blob, "the session is still kept")
+    }
+
+    func testFreshSignInAgainWithoutASavedPasswordDoesNotSaveIt() async {
+        flow.startResults = [.success(.done(teams: [.fixture(1, "Alpha")]))]
+        let sut = makeSUT(.signInAgain(appleId: appleId))
+        await sut.signInWithSavedPasswordIfAvailable()
+        XCTAssertFalse(sut.uiState.usesSavedPassword)
+        XCTAssertFalse(sut.uiState.savesPassword)
+
+        sut.uiState.password = "secret"
+        await sut.signIn()
+
+        XCTAssertEqual(sut.uiState.step, .finished)
+        XCTAssertNil(keychain.string(forKey: passwordKey))
+    }
+
+    func testSavePasswordDefaultFollowsTheAppleIdUntilToggled() {
+        keychain.set("saved", forKey: passwordKey)
+        let sut = makeSUT()
+
+        sut.uiState.email = appleId
+        sut.emailDidChange()
+        XCTAssertTrue(sut.uiState.savesPassword, "a password is saved for this Apple ID")
+
+        sut.uiState.email = "other@example.com"
+        sut.emailDidChange()
+        XCTAssertFalse(sut.uiState.savesPassword, "back to off: nothing saved for this one")
+
+        sut.uiState.email = appleId
+        sut.emailDidChange()
+        XCTAssertTrue(sut.uiState.savesPassword)
+        XCTAssertTrue(taps(.savePasswordOn).isEmpty && taps(.savePasswordOff).isEmpty, "defaults aren't taps")
+    }
+
+    func testSavePasswordOnSurvivesSwitchingToAnAppleIdWithoutASavedPassword() {
+        let sut = makeSUT()
+        sut.setSavesPassword(true)
+
+        sut.uiState.email = appleId
+        sut.emailDidChange()
+        sut.uiState.email = "other@example.com"
+        sut.emailDidChange()
+
+        XCTAssertTrue(sut.uiState.savesPassword)
     }
 
     func testSavePasswordStartsOnWhenAPasswordIsAlreadySaved() {
@@ -823,12 +894,13 @@ final class AppleIdSignInViewModelTests: XCTestCase {
         let sut = makeSUT()
 
         sut.setSavesPassword(false)
-        sut.setSavesPassword(false)
         sut.setSavesPassword(true)
+        sut.setSavesPassword(true)
+        sut.setSavesPassword(false)
 
-        XCTAssertEqual(taps(.savePasswordOff).count, 1, "only a change is tracked")
-        XCTAssertEqual(taps(.savePasswordOn).count, 1)
-        XCTAssertTrue(sut.uiState.savesPassword)
+        XCTAssertEqual(taps(.savePasswordOn).count, 1, "only a change is tracked")
+        XCTAssertEqual(taps(.savePasswordOff).count, 1)
+        XCTAssertFalse(sut.uiState.savesPassword)
         for event in taps(.savePasswordOff) + taps(.savePasswordOn) {
             XCTAssertEqual(Set(event.parameters.keys), [AnalyticsParameterKey.buttonName, AnalyticsParameterKey.screenName])
         }

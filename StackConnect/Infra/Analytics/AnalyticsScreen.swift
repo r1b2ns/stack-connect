@@ -25,8 +25,17 @@ enum AnalyticsScreen: String, CaseIterable, Sendable {
     case accountsListImport = "accounts_list_import"
     case accountsListAddOptions = "accounts_list_add_options"
     case addAccount = "add_account"
+    /// Add Account's method chooser: the ways to connect the provider as
+    /// equal cards (flag `accountConnectionGuide`, two or more methods).
+    case addAccountMethod = "add_account_method"
+    /// The paged "How It Works" guide: shown before the first account
+    /// connection, or reopened from Add Account (flag `accountConnectionGuide`).
+    case connectionGuide = "connection_guide"
     /// "Sign in with Apple ID" (Add Account, or signing in again).
     case appleIdSignIn = "apple_id_sign_in"
+    /// "How Your Password Is Used", opened from the trust panel of the
+    /// email and password screen (flag `accountConnectionGuide`).
+    case applePasswordUsage = "apple_password_usage"
     /// The "sign in again" prompt of an expired Apple ID session.
     case appleSessionExpired = "apple_session_expired"
 

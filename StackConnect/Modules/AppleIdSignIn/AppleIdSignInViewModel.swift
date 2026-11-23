@@ -17,14 +17,16 @@ protocol AppleIdSignInViewModelProtocol: ObservableObject {
     /// to type. Runs once per screen.
     func signInWithSavedPasswordIfAvailable() async
     /// The Apple ID field changed (Add Account): offers the password saved for
-    /// that Apple ID, if any.
+    /// that Apple ID, if any. Unless the user chose, "Save password on this
+    /// device" follows it: on when a password is saved, off otherwise.
     func emailDidChange()
     /// "Use a different password": back to the password field, without the
     /// saved password (which stays saved until a sign-in replaces it).
     func useDifferentPassword()
     /// "Save password on this device": whether the typed password is kept in
     /// the Keychain once the sign-in finished. Off also removes a password
-    /// saved earlier for the Apple ID (once the sign-in finished).
+    /// saved earlier for the Apple ID (once the sign-in finished). The user's
+    /// choice wins over the default from then on (see `savesPassword`).
     func setSavesPassword(_ savesPassword: Bool)
     /// Stores the typed code (digits only, up to `codeLength`) and submits it
     /// once complete (screen 2).
@@ -40,6 +42,9 @@ protocol AppleIdSignInViewModelProtocol: ObservableObject {
     func save() async
     /// Tracks the tap. - Returns: appleid.apple.com, for the view to open.
     func openAppleIdWebsite() -> URL?
+    /// "How Your Password Is Used" on the trust panel (flag
+    /// `accountConnectionGuide`): presents the explanation sheet.
+    func showPasswordUsage()
     /// The screen went away: a sign-in left unfinished is reported as cancelled.
     func discard()
 }
@@ -90,11 +95,15 @@ struct AppleIdSignInUiState: Equatable {
     /// A password is saved on this device for `email`, and this sign-in uses
     /// it: the password field is hidden ("Use a different password" shows it).
     var usesSavedPassword = false
-    /// "Save password on this device" (on by default, so it is also on when a
-    /// password is already saved for the Apple ID). Applied only once the
+    /// "Save password on this device". Off by default, so a password is never
+    /// stored unless the user asks for it (App Review). When a password is
+    /// already saved for the Apple ID, the default is on instead, so signing
+    /// in never silently removes it. The default follows the Apple ID until
+    /// the user toggles it; their choice is then kept (never reset when the
+    /// email or the saved-password row changes). Applied only once the
     /// sign-in finished, also when the saved password is used: off then
-    /// removes it. Never reset when the saved-password row comes and goes.
-    var savesPassword = true
+    /// removes it.
+    var savesPassword = false
 
     var code = ""
     var codeLength = AppleIdSignInUiState.defaultCodeLength
@@ -112,6 +121,13 @@ struct AppleIdSignInUiState: Equatable {
     var codeError: String?
     /// Information, e.g. where the code was sent.
     var notice: String?
+
+    /// Flag `accountConnectionGuide`: the password screen shows the trust
+    /// panel (and its "How Your Password Is Used" link) above the fields,
+    /// instead of the single privacy notice under them.
+    var showsTrustPanel = false
+    /// "How Your Password Is Used" is presented.
+    var isShowingPasswordUsage = false
 
     static let defaultCodeLength = 6
 
@@ -195,6 +211,9 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
     /// `flow` is an automatic sign-in's pending challenge (resumed at the
     /// code step, the password not asked).
     private var resumedChallenge = false
+    /// The user toggled "Save password on this device": the default (whether
+    /// the Apple ID has a saved password) no longer applies.
+    private var savesPasswordExplicitlySet = false
 
     init(
         mode: AppleIdSignInMode,
@@ -204,9 +223,12 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
         roleResolver: (any AppleSessionRoleResolving)? = nil,
         analytics: AnalyticsTracking = AnalyticsService.shared,
         pendingChallenges: (any AppleSessionPendingChallengeProviding)? = nil,
+        featureFlags: FeatureFlags = .shared,
         makeSignIn: SignInFactory? = nil
     ) {
-        self.uiState = AppleIdSignInUiState(mode: mode)
+        var state = AppleIdSignInUiState(mode: mode)
+        state.showsTrustPanel = featureFlags.isEnabled(.accountConnectionGuide)
+        self.uiState = state
         self.storage = storage ?? SwiftDataStorable.shared
         self.keychain = keychain
         self.renewal = AppleSessionRenewal(keychain: keychain, sessionStatus: sessionStatus, makeSignIn: makeSignIn)
@@ -214,6 +236,7 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
         self.roleResolver = roleResolver ?? AppleSessionRoleResolver()
         self.analytics = analytics
         self.pendingChallenges = pendingChallenges
+        updateSavesPasswordDefault()
         if case .signInAgain(let appleId) = mode,
            let challenge = pendingChallenges?.pendingChallenge(for: appleId) {
             resume(challenge)
@@ -229,6 +252,9 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
         // Saved again (refreshed) once the sign-in finished, as when the
         // saved password is used by hand.
         pendingPassword = passwordStore.password(for: challenge.appleId)
+        // The toggle isn't shown at the code step: on, as a password is
+        // saved, so it is refreshed rather than removed.
+        updateSavesPasswordDefault()
         resumedChallenge = true
         hasStarted = true
         hasTriedSavedPassword = true
@@ -256,6 +282,8 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
         }
         Log.print.info("[AppleIdSignIn] Signing in again with the saved password")
         uiState.usesSavedPassword = true
+        // The toggle is never shown on this path: keep (refresh) the password.
+        updateSavesPasswordDefault()
         await performSignIn()
     }
 
@@ -265,6 +293,16 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
         uiState.usesSavedPassword = !id.isEmpty
             && !declinedSavedPassword.contains(id)
             && passwordStore.hasPassword(for: id)
+        updateSavesPasswordDefault()
+    }
+
+    /// Unless the user toggled it, "Save password on this device" is on only
+    /// when a password is already saved for the Apple ID (also after "Use a
+    /// different password", so the saved one is replaced, not removed).
+    private func updateSavesPasswordDefault() {
+        guard !savesPasswordExplicitlySet else { return }
+        let id = appleId
+        uiState.savesPassword = !id.isEmpty && passwordStore.hasPassword(for: id)
     }
 
     func useDifferentPassword() {
@@ -280,7 +318,11 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
     }
 
     func setSavesPassword(_ savesPassword: Bool) {
-        guard uiState.savesPassword != savesPassword, uiState.step == .credentials, !uiState.isWorking else { return }
+        guard uiState.step == .credentials, !uiState.isWorking else { return }
+        // Even a value equal to the default is a choice: it stops following
+        // the Apple ID. Only a change is tracked.
+        savesPasswordExplicitlySet = true
+        guard uiState.savesPassword != savesPassword else { return }
         analytics.track(.buttonTap(savesPassword ? .savePasswordOn : .savePasswordOff, on: .appleIdSignIn))
         uiState.savesPassword = savesPassword
     }
@@ -507,6 +549,12 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
     func openAppleIdWebsite() -> URL? {
         analytics.track(.buttonTap(.openAppleIdWebsite, on: .appleIdSignIn))
         return Self.appleIdWebsite
+    }
+
+    func showPasswordUsage() {
+        guard uiState.showsTrustPanel, !uiState.isShowingPasswordUsage else { return }
+        analytics.track(.buttonTap(.howPasswordIsUsed, on: .appleIdSignIn))
+        uiState.isShowingPasswordUsage = true
     }
 
     func discard() {

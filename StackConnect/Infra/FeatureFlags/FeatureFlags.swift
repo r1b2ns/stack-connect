@@ -73,8 +73,27 @@ enum FeatureFlag: String, CaseIterable {
     /// `-featureFlag.appleIdSignIn YES` / `NO`.
     case appleIdSignIn = "featureFlag.appleIdSignIn"
 
+    /// Gates the account connection guide and everything around it: the
+    /// paged "How It Works" guide shown before the first account connection
+    /// (and reopened from Add Account), the method chooser of Add Account
+    /// (the available ways to connect as equal cards, instead of the
+    /// alternative sitting at the bottom of the form), the "How It Works"
+    /// entry of Add Account, and the trust panel and "How Your Password Is
+    /// Used" sheet of the App Store Connect email and password screen. When
+    /// OFF, every Add Account entry point behaves exactly as before the flag.
+    ///
+    /// A kill switch, not a reveal: the feature ships visible (App Review sees
+    /// it), and Firebase Remote Config `account_connection_guide_enabled =
+    /// false` turns it off on the next launch. Never ship it OFF to reveal it
+    /// remotely: that is the hidden-feature pattern of guideline 2.3.1.
+    /// Default: ON in every build. Toggle at launch with
+    /// `-featureFlag.accountConnectionGuide YES` / `NO`.
+    case accountConnectionGuide = "featureFlag.accountConnectionGuide"
+
     /// The compiled-in default used when no value is stored in `UserDefaults`.
-    /// New flags ship OFF by default — the safe, fully-reversible value.
+    /// New flags ship OFF by default — the safe, fully-reversible value —
+    /// except kill switches (`accountConnectionGuide`), which ship ON so the
+    /// feature App Review sees is the one users get.
     var defaultValue: Bool {
         switch self {
         case .useRustCoreDebugLogging, .googlePlayReleaseWrites, .googlePlayAccounts:
@@ -85,6 +104,8 @@ enum FeatureFlag: String, CaseIterable {
             #else
             return false
             #endif
+        case .accountConnectionGuide:
+            return true
         }
     }
 
@@ -94,6 +115,8 @@ enum FeatureFlag: String, CaseIterable {
         switch self {
         case .googlePlayAccounts:
             return "google_play_accounts_enabled"
+        case .accountConnectionGuide:
+            return "account_connection_guide_enabled"
         case .useRustCoreDebugLogging, .googlePlayReleaseWrites, .googleSignIn, .appleIdSignIn:
             return nil
         }

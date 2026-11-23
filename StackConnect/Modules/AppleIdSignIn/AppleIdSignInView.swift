@@ -80,13 +80,22 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
         .onChange(of: state.email) { _, _ in viewModel.emailDidChange() }
         .task { await viewModel.signInWithSavedPasswordIfAvailable() }
         .onDisappear { viewModel.discard() }
+        // Flag `accountConnectionGuide`: opened from the trust panel.
+        .sheet(isPresented: $viewModel.uiState.isShowingPasswordUsage) {
+            ApplePasswordUsageView {
+                viewModel.uiState.isShowingPasswordUsage = false
+            }
+        }
     }
 
     private func buildTitle() -> String {
         switch state.step {
-        case .credentials, .needsAcknowledgement: return String(localized: "Sign in with Apple ID")
-        case .code:                               return String(localized: "Two-Factor Code")
-        case .teams, .finished:                   return String(localized: "Choose Teams")
+        case .credentials, .needsAcknowledgement:
+            // Never "Sign in with Apple…": that reads as Apple's own button.
+            return String(localized: "Sign in to App Store Connect",
+                          comment: "Title of the App Store Connect email and password screen. Must not read as Apple's \"Sign in with Apple\".")
+        case .code:             return String(localized: "Two-Factor Code")
+        case .teams, .finished: return String(localized: "Choose Teams")
         }
     }
 
@@ -94,6 +103,10 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
 
     @ViewBuilder
     private func buildCredentialsContent() -> some View {
+        if state.showsTrustPanel {
+            buildTrustPanelSection()
+        }
+
         Section {
             TextField(String(localized: "Apple ID"), text: $viewModel.uiState.email)
                 .textContentType(.username)
@@ -135,17 +148,22 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
             }
         }
 
-        Section {
-            StackNoticeRow(
-                text: String(localized: "StackConnect sends your password only to Apple. It's saved only if you choose to, in the Keychain on this device only, never synced or exported."),
-                style: .privacy
-            )
+        // The trust panel above the fields says it all (flag ON).
+        if !state.showsTrustPanel {
+            Section {
+                StackNoticeRow(
+                    text: String(localized: "StackConnect sends your password only to Apple. It's saved only if you choose to, in the Keychain on this device only, never synced or exported."),
+                    style: .privacy
+                )
+            }
         }
 
         Section {
+            // A neutral glyph, never the Apple logo: nothing here may look
+            // like Apple's "Sign in with Apple" button.
             StackSignInButton(
                 title: String(localized: "Continue"),
-                systemImage: "apple.logo",
+                systemImage: AccountConnectionMethod.appleIdSignIn.systemImage,
                 isLoading: state.isWorking
             ) {
                 Task { await viewModel.signIn() }
@@ -153,6 +171,20 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
             .disabled(!state.canSignIn)
         } footer: {
             Text("Accounts with a security key as their second factor can't sign in here yet. Use an App Store Connect API key instead.")
+        }
+    }
+
+    /// Flag `accountConnectionGuide`: what happens to the password, before it
+    /// is typed, and the way to the details.
+    private func buildTrustPanelSection() -> some View {
+        Section {
+            StackTrustCard(items: ApplePasswordTrustContent.panelItems, tint: .blue, style: .tinted) {
+                StackTrustCardButton(title: String(localized: "How Your Password Is Used")) {
+                    viewModel.showPasswordUsage()
+                }
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
         }
     }
 

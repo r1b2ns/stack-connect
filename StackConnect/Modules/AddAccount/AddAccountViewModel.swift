@@ -27,6 +27,30 @@ protocol AddAccountViewModelProtocol: ObservableObject {
 
     /// Opens the "Sign in with Apple ID" screens (flag `appleIdSignIn`).
     func openAppleIdSignIn()
+
+    // MARK: Connection guide and method chooser (flag `accountConnectionGuide`)
+
+    /// The guide shown on its own (`root == .connectionGuide`) appeared: it is
+    /// recorded, so it never opens on its own again.
+    func connectionGuideDidAppear()
+    /// "Skip" or "Continue" on the guide shown on its own: on to the method
+    /// chooser, or straight to the form when there is a single method.
+    func finishConnectionGuide()
+    /// "How It Works" (chooser or form): reopens the guide over Add Account.
+    func showConnectionGuide()
+    /// A method card of the chooser: pushes that method's form (or the
+    /// email and password screens).
+    func chooseMethod(_ method: AccountConnectionMethod)
+}
+
+/// The first screen of Add Account.
+enum AddAccountRoot: Equatable {
+    /// The connection guide, before the first account connection (flag ON).
+    case connectionGuide
+    /// The method chooser (flag ON, two or more methods available).
+    case methods
+    /// The form: as before the flag (flag OFF), or the single method's form.
+    case form
 }
 
 // MARK: - UiState
@@ -59,8 +83,30 @@ struct AddAccountUiState {
     /// The Apple ID sign-in screens are pushed.
     var isShowingAppleIdSignIn = false
 
+    /// Flag `accountConnectionGuide`: the connection guide, the method chooser
+    /// and the "How It Works" entry. OFF: Add Account exactly as before.
+    var isConnectionGuideEnabled = false
+    /// The ways to connect `providerType` this build offers, in display order.
+    var availableMethods: [AccountConnectionMethod] = []
+    /// Where Add Account starts (`.form` whenever the flag is OFF).
+    var root: AddAccountRoot = .form
+    /// The method picked on the chooser (its form's title).
+    var chosenMethod: AccountConnectionMethod?
+    /// The form of the method picked on the chooser is pushed.
+    var isShowingMethodForm = false
+    /// The guide reopened from "How It Works" is presented.
+    var isShowingConnectionGuide = false
+
     var isGoogleSignInMode: Bool {
         isGoogleSignInAvailable && credentialMode == .googleSignIn
+    }
+
+    /// The chooser offers the methods (flag ON, more than one method), so
+    /// the forms leave out their own switch to the other method ("Sign in
+    /// with Google instead", "No API Key?", "Use a service account JSON
+    /// instead").
+    var showsMethodChooser: Bool {
+        isConnectionGuideEnabled && availableMethods.count > 1
     }
 
     /// Whether Save can run: a name for the key-file form; something picked
@@ -147,6 +193,7 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
     private let analytics: AnalyticsTracking
     private let googleAuth: any GoogleAuthServicing
     private let googleResources: any GoogleResourceListing
+    private let connectionGuide: any ConnectionGuideStoring
 
     init(
         providerType: ProviderType,
@@ -156,7 +203,8 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
         analytics: AnalyticsTracking = AnalyticsService.shared,
         featureFlags: FeatureFlags = .shared,
         googleAuth: (any GoogleAuthServicing)? = nil,
-        googleResources: (any GoogleResourceListing)? = nil
+        googleResources: (any GoogleResourceListing)? = nil,
+        connectionGuide: any ConnectionGuideStoring = ConnectionGuideStore()
     ) {
         let googleAuth = googleAuth ?? GoogleAuthService.shared
         self.uiState = AddAccountUiState(providerType: providerType)
@@ -166,6 +214,7 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
         self.analytics = analytics
         self.googleAuth = googleAuth
         self.googleResources = googleResources ?? GoogleResourceDirectory(tokens: googleAuth)
+        self.connectionGuide = connectionGuide
 
         let offersGoogle = featureFlags.isEnabled(.googleSignIn)
             && googleAuth.isConfigured
@@ -173,6 +222,27 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
         uiState.isGoogleSignInAvailable = offersGoogle
         uiState.credentialMode = offersGoogle ? .googleSignIn : .keyFile
         uiState.isAppleIdSignInAvailable = providerType == .apple && featureFlags.isEnabled(.appleIdSignIn)
+
+        uiState.availableMethods = AccountConnectionMethod.available(
+            for: providerType,
+            appleIdSignIn: uiState.isAppleIdSignInAvailable,
+            googleSignIn: offersGoogle
+        )
+        uiState.isConnectionGuideEnabled = featureFlags.isEnabled(.accountConnectionGuide)
+        uiState.root = Self.initialRoot(
+            isGuideEnabled: uiState.isConnectionGuideEnabled,
+            hasShownGuide: connectionGuide.hasShownGuide,
+            methodCount: uiState.availableMethods.count
+        )
+    }
+
+    /// Flag OFF: the form, as before. ON: the guide before the first
+    /// connection, then the chooser — or the form when there is nothing to
+    /// choose.
+    static func initialRoot(isGuideEnabled: Bool, hasShownGuide: Bool, methodCount: Int) -> AddAccountRoot {
+        guard isGuideEnabled else { return .form }
+        if !hasShownGuide { return .connectionGuide }
+        return methodCount > 1 ? .methods : .form
     }
 
     func save() async {
@@ -402,6 +472,50 @@ final class AddAccountViewModel: AddAccountViewModelProtocol {
         analytics.track(.buttonTap(.signInWithAppleId, on: .addAccount))
         uiState.validationError = nil
         uiState.isShowingAppleIdSignIn = true
+    }
+
+    // MARK: - Connection guide and method chooser
+
+    func connectionGuideDidAppear() {
+        guard uiState.root == .connectionGuide else { return }
+        connectionGuide.markGuideShown()
+    }
+
+    func finishConnectionGuide() {
+        guard uiState.root == .connectionGuide else { return }
+        // Also recorded here, should the guide never have reported appearing.
+        connectionGuide.markGuideShown()
+        uiState.root = uiState.availableMethods.count > 1 ? .methods : .form
+        Log.print.info("[AddAccount] Connection guide done: \(self.uiState.availableMethods.count, privacy: .public) method(s) for \(self.uiState.providerType.rawValue, privacy: .public)")
+    }
+
+    func showConnectionGuide() {
+        guard uiState.isConnectionGuideEnabled, uiState.root != .connectionGuide,
+              !uiState.isShowingConnectionGuide, !uiState.isBusy else { return }
+        analytics.track(.buttonTap(.howItWorks, on: currentScreen))
+        uiState.isShowingConnectionGuide = true
+    }
+
+    func chooseMethod(_ method: AccountConnectionMethod) {
+        guard uiState.showsMethodChooser, uiState.availableMethods.contains(method), !uiState.isBusy else { return }
+        analytics.track(.buttonTap(.connectionMethodButton(for: method), on: .addAccountMethod))
+        uiState.validationError = nil
+        uiState.chosenMethod = method
+        switch method {
+        case .appleIdSignIn:
+            uiState.isShowingAppleIdSignIn = true
+        case .apiKey, .serviceAccount:
+            uiState.credentialMode = .keyFile
+            uiState.isShowingMethodForm = true
+        case .googleSignIn:
+            uiState.credentialMode = .googleSignIn
+            uiState.isShowingMethodForm = true
+        }
+    }
+
+    /// The tracked screen on top: the chooser, or the form (root or pushed).
+    private var currentScreen: AnalyticsScreen {
+        uiState.root == .methods && !uiState.isShowingMethodForm ? .addAccountMethod : .addAccount
     }
 
     // MARK: Sign in with Google — private

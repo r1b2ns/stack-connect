@@ -297,7 +297,7 @@ struct AccountModel: Codable, Identifiable, Hashable {
     /// provider / origin, which hides them as before).
     var exportUnavailableReason: String? {
         guard authMethod == .appleIdSignIn else { return nil }
-        return String(localized: "Accounts added with Sign in with Apple ID can't be exported: the session is your personal Apple ID login. Share an App Store Connect API key instead.")
+        return String(localized: "Accounts added with email and password can't be exported: the session is your personal Apple ID login. Share an App Store Connect API key instead.")
     }
 
     // MARK: - Apple ID session limits (plan `apple-id-sign-in.md` G3)

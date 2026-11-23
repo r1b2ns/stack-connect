@@ -54,7 +54,7 @@ struct IdentifierDetailUiState {
     /// Why rename and delete are off, or `nil` when they are available.
     var renameOrDeleteUnavailableReason: String? {
         canRenameOrDelete ? nil
-            : String(localized: "Renaming or deleting an identifier needs an App Store Connect API key. Accounts added with Sign in with Apple ID can't do it: use developer.apple.com instead.")
+            : String(localized: "Renaming or deleting an identifier needs an App Store Connect API key. Accounts added with email and password can't do it: use developer.apple.com instead.")
     }
 }
 

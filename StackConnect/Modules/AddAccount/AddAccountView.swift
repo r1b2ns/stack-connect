@@ -47,30 +47,28 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                if viewModel.uiState.isGoogleSignInMode {
-                    buildGoogleSignInContent()
-                } else {
-                    buildKeyFileContent()
+            buildRoot()
+                .onChange(of: viewModel.uiState.isSaved) { _, isSaved in
+                    if isSaved {
+                        onDismiss()
+                    }
                 }
-
-                if let error = viewModel.uiState.validationError {
-                    buildErrorSection(error)
+                .navigationDestination(isPresented: $viewModel.uiState.isShowingMethodForm) {
+                    // Picked on the method chooser (flag `accountConnectionGuide`).
+                    buildForm(isRoot: false)
                 }
-            }
-            .navigationTitle(String(localized: "Add Account"))
-            .trackScreen(.addAccount)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { buildToolbar() }
-            .disabled(viewModel.uiState.isBusy)
-            .onChange(of: viewModel.uiState.isSaved) { _, isSaved in
-                if isSaved {
-                    onDismiss()
+                .navigationDestination(isPresented: $viewModel.uiState.isShowingAppleIdSignIn) {
+                    // The accounts are saved by the sign-in itself: close Add Account.
+                    AppleIdSignInViewFactory.build(mode: .addAccounts, onFinished: onDismiss)
                 }
-            }
-            .navigationDestination(isPresented: $viewModel.uiState.isShowingAppleIdSignIn) {
-                // The accounts are saved by the sign-in itself: close Add Account.
-                AppleIdSignInViewFactory.build(mode: .addAccounts, onFinished: onDismiss)
+        }
+        // "How It Works" (flag `accountConnectionGuide`): the guide again.
+        .sheet(isPresented: $viewModel.uiState.isShowingConnectionGuide) {
+            ConnectionGuideViewFactory.buildReopened(
+                provider: viewModel.uiState.providerType,
+                methods: viewModel.uiState.availableMethods
+            ) {
+                viewModel.uiState.isShowingConnectionGuide = false
             }
         }
         // Cancel, swipe down or Save: a Google login signed in here but
@@ -80,11 +78,129 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
         }
     }
 
+    // MARK: - Root
+
+    /// Flag OFF: always the form, as before the flag.
+    @ViewBuilder
+    private func buildRoot() -> some View {
+        switch viewModel.uiState.root {
+        case .connectionGuide:
+            ConnectionGuideViewFactory.buildFirstConnection(
+                provider: viewModel.uiState.providerType,
+                methods: viewModel.uiState.availableMethods,
+                onContinue: {
+                    withAnimation { viewModel.finishConnectionGuide() }
+                },
+                onCancel: {
+                    dismiss()
+                    onDismiss()
+                }
+            )
+            .onAppear { viewModel.connectionGuideDidAppear() }
+        case .methods:
+            buildMethodChooser()
+        case .form:
+            buildForm(isRoot: true)
+        }
+    }
+
+    /// The form of the current method. As the root it has Cancel; pushed
+    /// from the chooser, the back button returns to the chooser instead.
+    private func buildForm(isRoot: Bool) -> some View {
+        Form {
+            if viewModel.uiState.isConnectionGuideEnabled {
+                buildHowItWorksSection()
+            }
+
+            if viewModel.uiState.isGoogleSignInMode {
+                buildGoogleSignInContent()
+            } else {
+                buildKeyFileContent()
+            }
+
+            if let error = viewModel.uiState.validationError {
+                buildErrorSection(error)
+            }
+        }
+        .navigationTitle(isRoot ? String(localized: "Add Account") : (viewModel.uiState.chosenMethod?.formTitle ?? String(localized: "Add Account")))
+        .trackScreen(.addAccount)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { buildToolbar(showsCancel: isRoot) }
+        .disabled(viewModel.uiState.isBusy)
+    }
+
+    // MARK: - Method chooser (flag `accountConnectionGuide`)
+
+    /// Every method available for the provider as an equal card, none
+    /// promoted over another.
+    private func buildMethodChooser() -> some View {
+        Form {
+            ForEach(Array(viewModel.uiState.availableMethods.enumerated()), id: \.element) { index, method in
+                Section {
+                    Button {
+                        viewModel.chooseMethod(method)
+                    } label: {
+                        StackOptionCard(
+                            systemImage: method.systemImage,
+                            title: method.title,
+                            message: method.summary(for: viewModel.uiState.providerType)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                } header: {
+                    if index == 0 {
+                        Text("How would you like to connect to \(viewModel.uiState.providerType.displayName)?",
+                             comment: "Add Account method chooser, above the cards. The placeholder is the service being connected, e.g. App Store Connect.")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                            .textCase(nil)
+                            .padding(.bottom, 4)
+                    }
+                }
+            }
+
+            buildHowItWorksSection()
+        }
+        .navigationTitle(String(localized: "Add Account"))
+        .trackScreen(.addAccountMethod)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .addAccountMethod) {
+                    dismiss()
+                    onDismiss()
+                }
+            }
+        }
+        .disabled(viewModel.uiState.isBusy)
+    }
+
+    /// The visible way back to the connection guide.
+    private func buildHowItWorksSection() -> some View {
+        Section {
+            Button {
+                viewModel.showConnectionGuide()
+            } label: {
+                StackListRow(
+                    icon: "lock.shield.fill",
+                    iconColor: .blue,
+                    title: String(localized: "How It Works"),
+                    subtitle: String(localized: "How StackConnect handles your credentials",
+                                     comment: "Add Account: subtitle of the entry that opens the connection guide.")
+                )
+            }
+            .foregroundStyle(.primary)
+            .accessibilityLabel(Text("How It Works"))
+            .accessibilityHint(Text("How StackConnect handles your credentials"))
+        }
+    }
+
     // MARK: - Key file (service account JSON / .p8)
 
     @ViewBuilder
     private func buildKeyFileContent() -> some View {
-        if viewModel.uiState.isGoogleSignInAvailable {
+        // With the method chooser, the switch to the other method is a card.
+        if viewModel.uiState.isGoogleSignInAvailable && !viewModel.uiState.showsMethodChooser {
             buildUseGoogleSignInSection()
         }
 
@@ -93,7 +209,7 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
         if viewModel.uiState.providerType == .apple {
             buildAppleCredentialsSection()
             buildAppleTutorialSection()
-            if viewModel.uiState.isAppleIdSignInAvailable {
+            if viewModel.uiState.isAppleIdSignInAvailable && !viewModel.uiState.showsMethodChooser {
                 buildAppleIdSignInSection()
             }
         }
@@ -190,19 +306,23 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
     }
 
     /// "Sign in with Apple ID" (flag `appleIdSignIn`): the alternative to the
-    /// API key, without creating a key in App Store Connect.
+    /// API key, without creating a key in App Store Connect. Shown when the
+    /// method chooser doesn't offer it as a card. Worded and drawn so it never
+    /// reads as Apple's "Sign in with Apple" button (no Apple logo), whatever
+    /// the `accountConnectionGuide` flag says.
     private func buildAppleIdSignInSection() -> some View {
         Section {
             StackSignInButton(
-                title: String(localized: "Sign in with Apple ID"),
-                systemImage: "apple.logo"
+                title: AccountConnectionMethod.appleIdSignIn.title,
+                systemImage: AccountConnectionMethod.appleIdSignIn.systemImage
             ) {
                 viewModel.openAppleIdSignIn()
             }
         } header: {
             Text("No API Key?")
         } footer: {
-            Text("Sign in with your Apple ID and its two-factor code instead, then pick the teams to add. If you choose to, your password is saved only in this device's Keychain. Analytics Reports need an API key.")
+            Text("Use the email and password of your Apple ID, plus its two-factor code, then pick the teams to add. If you choose to, your password is saved only in this device's Keychain. Analytics Reports need an API key.",
+                 comment: "Add Account (App Store Connect): footer under the \"Sign in with email and password\" button.")
         }
     }
 
@@ -428,12 +548,15 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
             }
         }
 
-        Section {
-            Button(String(localized: "Use a service account JSON instead")) {
-                viewModel.setCredentialMode(.keyFile)
+        // With the method chooser, the service account is a card instead.
+        if !viewModel.uiState.showsMethodChooser {
+            Section {
+                Button(String(localized: "Use a service account JSON instead")) {
+                    viewModel.setCredentialMode(.keyFile)
+                }
+            } footer: {
+                Text("For CI, shared team accounts, or if you prefer not to sign in with Google.")
             }
-        } footer: {
-            Text("For CI, shared team accounts, or if you prefer not to sign in with Google.")
         }
     }
 
@@ -527,12 +650,16 @@ struct AddAccountView<ViewModel: AddAccountViewModelProtocol>: View {
 
     // MARK: - Toolbar
 
+    /// - Parameter showsCancel: `false` when the form is pushed from the
+    ///   method chooser (its back button leads back to the chooser).
     @ToolbarContentBuilder
-    private func buildToolbar() -> some ToolbarContent {
-        ToolbarItem(placement: .cancellationAction) {
-            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .addAccount) {
-                dismiss()
-                onDismiss()
+    private func buildToolbar(showsCancel: Bool) -> some ToolbarContent {
+        if showsCancel {
+            ToolbarItem(placement: .cancellationAction) {
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .addAccount) {
+                    dismiss()
+                    onDismiss()
+                }
             }
         }
 

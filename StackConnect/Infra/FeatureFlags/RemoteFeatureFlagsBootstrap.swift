@@ -24,7 +24,8 @@ struct RemoteFeatureValueSnapshot: RemoteFeatureValueProviding, Equatable {
 /// analytics opt-out says and never turns Analytics collection on (that stays
 /// `AnalyticsService`'s job). Without Firebase (no `GoogleService-Info.plist`,
 /// unit-test host, fake data mode) nothing is installed and every remote flag
-/// keeps its compiled-in default (OFF).
+/// keeps its compiled-in default (OFF for `googlePlayAccounts`, ON for the
+/// `accountConnectionGuide` kill switch).
 enum RemoteFeatureFlagsBootstrap {
 
     /// 0 in Debug (iterate on the console freely), 1 hour in Release.
