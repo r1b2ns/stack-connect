@@ -86,8 +86,11 @@ struct HomeUiState {
     /// for the code Apple sent, with where it went: the banner asks for the
     /// code instead of a new sign-in.
     var awaitingCodeSignIns: [String: AppleSessionCodeDestination] = [:]
-    /// The automatic Apple ID sign-in's progress ("Reconnecting…",
-    /// "reconnected").
+    /// The Apple IDs (normalized) an automatic sign-in is renewing right now,
+    /// in the order they started: the "Reconnecting Apple ID …" tip, shown for as long as
+    /// the attempt runs (apart from the sync line).
+    var reconnectingAppleIds: [String] = []
+    /// "Apple account reconnected", once an automatic sign-in succeeded.
     var toastMessage: ToastMessage?
 
     /// The total number of accounts that need a new sign-in.
@@ -314,6 +317,7 @@ final class HomeViewModel: HomeViewModelProtocol {
         // "Reconnecting…"); one waiting for its code asks for it.
         var signIns: [ExpiredSignIn] = []
         var awaitingCode: [String: AppleSessionCodeDestination] = [:]
+        var reconnecting: [String] = []
         for signIn in allSignIns {
             guard case .appleId(let appleId) = signIn.provider, let state = autoReauth?.state(for: appleId) else {
                 signIns.append(signIn)
@@ -321,6 +325,7 @@ final class HomeViewModel: HomeViewModelProtocol {
             }
             switch state {
             case .reconnecting:
+                reconnecting.append(AppleSessionKeychainStore.normalized(appleId))
                 continue
             case .awaitingCode(let destination):
                 awaitingCode[signIn.id] = destination
@@ -329,6 +334,7 @@ final class HomeViewModel: HomeViewModelProtocol {
         }
         uiState.awaitingCodeSignIns = awaitingCode
         uiState.expiredSignIns = signIns
+        syncReconnectingAppleIds(adding: reconnecting)
         let ids = Set(signIns.map(\.id))
         uiState.workingSignInIds.formIntersection(ids)
         uiState.signInAgainFeedback = uiState.signInAgainFeedback.filter { ids.contains($0.key) }
@@ -421,25 +427,43 @@ final class HomeViewModel: HomeViewModelProtocol {
         uiState.appleSignInAgainId = nil
     }
 
-    /// The automatic Apple ID sign-in: a toast while it runs and once it
-    /// succeeded (then the accounts sync again). Apple sending a code shows
-    /// the banner again, even if it was closed: the code waits for the user.
+    /// The Apple IDs of the "reconnecting" tip after a reload: keeps the
+    /// ones the events added, adds the attempts already running when this
+    /// ViewModel subscribed (`adding`), and drops any the reauthenticator no
+    /// longer runs.
+    private func syncReconnectingAppleIds(adding appleIds: [String]) {
+        var ids = uiState.reconnectingAppleIds
+        for appleId in appleIds where !ids.contains(appleId) {
+            ids.append(appleId)
+        }
+        ids.removeAll { autoReauth?.state(for: $0) != .reconnecting }
+        if ids != uiState.reconnectingAppleIds {
+            uiState.reconnectingAppleIds = ids
+        }
+    }
+
+    /// The automatic Apple ID sign-in: the "reconnecting" tip while it runs,
+    /// and a toast once it succeeded (the reauthenticator then syncs the
+    /// accounts). Apple
+    /// sending a code shows the banner again, even if it was closed: the
+    /// code waits for the user.
     private func autoReauthEvent(_ event: AppleSessionAutoReauthEvent) {
         switch event {
-        case .started:
-            uiState.toastMessage = ToastMessage(
-                String(localized: "Reconnecting Apple account…", comment: "Home toast while the app signs in again on its own to an expired Apple ID with the saved password."),
-                icon: "arrow.triangle.2.circlepath"
-            )
+        case .started(let appleId):
+            let id = AppleSessionKeychainStore.normalized(appleId)
+            if !uiState.reconnectingAppleIds.contains(id) {
+                uiState.reconnectingAppleIds.append(id)
+            }
         case .finished(let appleId, let outcome):
-            switch outcome {
-            case .done:
+            let id = AppleSessionKeychainStore.normalized(appleId)
+            uiState.reconnectingAppleIds.removeAll { $0 == id }
+            if outcome == .done {
                 uiState.toastMessage = ToastMessage(
-                    String(localized: "Apple account reconnected", comment: "Home toast once the app signed in again on its own to an expired Apple ID.")
+                    String(localized: "Apple account reconnected", comment: "Home toast once the app signed in again on its own to an expired Apple ID."),
+                    icon: "checkmark.circle.fill"
                 )
-                triggerSync()
-            case .invalidCredentials, .failed, .needsCode:
-                uiState.toastMessage = nil
+                // The accounts sync from `AppleSessionAutoReauthenticator`
+                // (a follow-up run), not from here.
             }
             let revealed = outcome == .needsCode ? ExpiredSignIn.id(of: .appleId(appleId)) : nil
             Task { await reloadExpiredSignIns(revealing: revealed) }

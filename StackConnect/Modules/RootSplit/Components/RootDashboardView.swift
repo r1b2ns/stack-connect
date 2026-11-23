@@ -19,6 +19,7 @@ struct RootDashboardView<ViewModel: HomeViewModelProtocol, SidebarViewModel: Roo
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                HomeReconnectingTip(appleIds: viewModel.uiState.reconnectingAppleIds)
                 HomeSyncBanner(syncState: viewModel.uiState.syncState)
                 HomeSignInAgainBanner(viewModel: viewModel)
                 HomeAgreementsBanners(viewModel: viewModel)

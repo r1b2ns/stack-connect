@@ -29,6 +29,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
     var body: some View {
         NavigationStack(path: $coordinator.path) {
             List {
+                HomeReconnectingTip(appleIds: viewModel.uiState.reconnectingAppleIds)
                 HomeSyncBanner(syncState: viewModel.uiState.syncState)
                 HomeSignInAgainBanner(viewModel: viewModel)
                 HomeAgreementsBanners(viewModel: viewModel)

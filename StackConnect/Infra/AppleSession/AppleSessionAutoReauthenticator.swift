@@ -127,13 +127,15 @@ protocol AppleSessionAutoReauthenticating: AppleSessionAutoReauthStateProviding,
 /// - **Foreground only**: an expiry seen by the background refresh waits for
 ///   the app to become active.
 /// - Only with a saved password; without one nothing changes.
+/// - **A success syncs the accounts** (`SyncFollowUpRequesting`): after
+///   the run in flight, if any, which couldn't use the renewed session.
 ///
 /// The password is read from the Keychain for the call only and never
 /// logged; the challenge lives in memory only.
 @MainActor
 final class AppleSessionAutoReauthenticator: AppleSessionAutoReauthenticating {
 
-    static let shared = AppleSessionAutoReauthenticator()
+    static let shared = AppleSessionAutoReauthenticator(sync: SyncService.shared)
 
     /// `UserDefaults` key of the Apple IDs already attempted for their
     /// current expiry (normalized e-mails, no secret).
@@ -150,6 +152,9 @@ final class AppleSessionAutoReauthenticator: AppleSessionAutoReauthenticating {
     private let center: NotificationCenter
     private let isAppActive: @MainActor () -> Bool
     private let now: () -> Date
+    /// Syncs the accounts once a session is renewed (`nil`: no sync, as in
+    /// unit tests that don't check it).
+    private let sync: (any SyncFollowUpRequesting)?
 
     private let subject = PassthroughSubject<AppleSessionAutoReauthEvent, Never>()
     private var inFlight: [String: Task<AttemptResult, Never>] = [:]
@@ -164,8 +169,10 @@ final class AppleSessionAutoReauthenticator: AppleSessionAutoReauthenticating {
         center: NotificationCenter = .default,
         isAppActive: @escaping @MainActor () -> Bool = { UIApplication.shared.applicationState == .active },
         now: @escaping () -> Date = Date.init,
-        makeSignIn: AppleSessionRenewal.SignInFactory? = nil
+        makeSignIn: AppleSessionRenewal.SignInFactory? = nil,
+        sync: (any SyncFollowUpRequesting)? = nil
     ) {
+        self.sync = sync
         self.renewal = AppleSessionRenewal(keychain: keychain, sessionStatus: sessionStatus, makeSignIn: makeSignIn)
         self.sessionStatus = sessionStatus
         self.defaults = defaults
@@ -260,6 +267,12 @@ final class AppleSessionAutoReauthenticator: AppleSessionAutoReauthenticating {
         inFlight[id] = nil
         track(result)
         subject.send(.finished(appleId: id, outcome: outcome))
+        if outcome == .done {
+            // The renewed Apple ID's accounts sync now, whatever screen is
+            // open. A follow-up, not `syncAll`: the run started with the app
+            // (at the same time as this attempt) can't use the new session.
+            sync?.requestFollowUpSync(mode: .full, trigger: .foreground, screen: nil)
+        }
         if outcome != .done {
             // `.done` already posted it (`markValid`).
             center.postSignInStatusDidChange()

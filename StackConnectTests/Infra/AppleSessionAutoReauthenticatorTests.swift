@@ -22,6 +22,7 @@ final class AppleSessionAutoReauthenticatorTests: XCTestCase {
     private var now = Date(timeIntervalSince1970: 1_000_000)
     private var events: [AppleSessionAutoReauthEvent] = []
     private var cancellables = Set<AnyCancellable>()
+    private var sync: MockSyncFollowUp!
 
     private let appleId = "dev@example.com"
     private let oldBlob = Data("old-session".utf8)
@@ -45,6 +46,7 @@ final class AppleSessionAutoReauthenticatorTests: XCTestCase {
         isActive = true
         events = []
         cancellables = []
+        sync = MockSyncFollowUp()
     }
 
     override func tearDown() async throws {
@@ -72,7 +74,8 @@ final class AppleSessionAutoReauthenticatorTests: XCTestCase {
             makeSignIn: { [unowned self] saved in
                 self.savedSessionsPassed.append(saved)
                 return self.signIn
-            }
+            },
+            sync: sync
         )
         sut.events.sink { [unowned self] in self.events.append($0) }.store(in: &cancellables)
         return sut
@@ -225,6 +228,49 @@ final class AppleSessionAutoReauthenticatorTests: XCTestCase {
         XCTAssertTrue(status.markedValid.isEmpty)
     }
 
+    // MARK: - Sync after a success
+
+    func testDoneSyncsTheAccountsAfterTheRunInFlight() async {
+        expireWithSavedPassword()
+        flow.startResults = [.success(.done(teams: [.fixture(1, "Alpha")]))]
+        let sut = makeSUT()
+
+        await sut.sessionDidExpire(appleId: appleId)
+
+        XCTAssertEqual(sync.requests, [.init(mode: .full, trigger: .foreground, screen: nil)])
+    }
+
+    func testOtherOutcomesDontSync() async {
+        let failures: [Result<AppleSignInStep, Error>] = [
+            .success(needsCode),
+            .failure(StackError.InvalidCredentials(message: "the Apple ID or password is incorrect")),
+            .failure(StackError.Http(status: 429, message: "Too Many Requests")),
+            .success(.needsAcknowledgement)
+        ]
+        for result in failures {
+            setUpFreshAttempt()
+            flow.startResults = [result]
+            let sut = makeSUT()
+
+            let outcome = await sut.sessionDidExpire(appleId: appleId)
+
+            XCTAssertNotEqual(outcome, .done)
+            XCTAssertTrue(sync.requests.isEmpty, "\(String(describing: outcome))")
+        }
+    }
+
+    /// A new expiry with fresh stores, for several attempts in one test.
+    private func setUpFreshAttempt() {
+        defaults.removePersistentDomain(forName: suiteName)
+        keychain = MockKeyStorable()
+        status = MockAppleSessionStatus()
+        flow = MockAppleIdSignIn()
+        flow.finishResult = .success(newBlob)
+        signIn = flow
+        sync = MockSyncFollowUp()
+        expireWithSavedPassword()
+    }
+
     // MARK: - When it runs
 
     func testNoSavedPasswordMeansNoAttempt() async {
@@ -364,5 +410,23 @@ final class AppleSessionAutoReauthenticatorTests: XCTestCase {
         store.markValid(appleId: "b@example.com")
 
         XCTAssertEqual(store.expiredAppleIds(), ["a@example.com"])
+    }
+}
+
+/// Records the follow-up syncs the reauthenticator asks for.
+@MainActor
+private final class MockSyncFollowUp: SyncFollowUpRequesting {
+
+    struct Request: Equatable {
+        let mode: SyncMode
+        let trigger: SyncTrigger
+        let screen: AnalyticsScreen?
+    }
+
+    private(set) var requests: [Request] = []
+
+    func requestFollowUpSync(mode: SyncMode, trigger: SyncTrigger, screen: AnalyticsScreen?) -> Task<Void, Never> {
+        requests.append(Request(mode: mode, trigger: trigger, screen: screen))
+        return Task {}
     }
 }
