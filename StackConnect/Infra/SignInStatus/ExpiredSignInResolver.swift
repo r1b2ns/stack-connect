@@ -69,7 +69,7 @@ protocol ExpiredSignInResolving {
 ///   (`AppleSessionStatusTracking`, set by `AppleAccountConnection`).
 /// - Google login: Google answered `invalid_grant` on a refresh
 ///   (`GoogleLoginStatusTracking`, set by `GoogleAuthService`), the grant is
-///   missing on the device, or its refresh token's own expiry
+///   missing on the device (not merely unreadable while it is locked), or its refresh token's own expiry
 ///   (`refreshTokenExpiresAt`, 7 days while the consent screen is in
 ///   Testing) has passed.
 ///
@@ -127,8 +127,12 @@ struct ExpiredSignInResolver: ExpiredSignInResolving {
         guard account.authMethod == .googleSignIn,
               let loginId = GoogleLoginReferences.loginId(of: account, keychain: keychain) else { return nil }
         let grant = googleLogins.load(loginId: loginId)
+        // A grant that can't be read now (device locked, prewarm, background
+        // task) is not a missing one: only Google's own answer or a definite
+        // "not found" makes the login expired.
+        let isGrantMissing = grant == nil && googleLogins.presence(loginId: loginId) != .unavailable
         let isExpired = googleStatus.isExpired(loginId: loginId)
-            || grant == nil
+            || isGrantMissing
             || (grant?.refreshTokenExpiresAt.map { $0 <= now() } ?? false)
         guard isExpired else { return nil }
         let email = grant?.email.flatMap { $0.isEmpty ? nil : $0 }

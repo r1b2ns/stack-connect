@@ -67,6 +67,36 @@ final class KeychainStorable: KeyStorable {
         return result as? Data
     }
 
+    // MARK: - Presence
+
+    func presence(forKey key: String) -> KeyPresence {
+        let query: [CFString: Any] = [
+            kSecClass:       kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecAttrAccount: key,
+            kSecMatchLimit:  kSecMatchLimitOne
+        ]
+
+        let status = SecItemCopyMatching(query as CFDictionary, nil)
+        return Self.presence(for: status, key: key)
+    }
+
+    /// Maps a `SecItemCopyMatching` result: only `errSecItemNotFound` means the
+    /// item is gone. Anything else (notably `errSecInteractionNotAllowed` while
+    /// the device is locked, at prewarm or in a background task) only means it
+    /// can't be read now.
+    static func presence(for status: OSStatus, key: String) -> KeyPresence {
+        switch status {
+        case errSecSuccess:
+            return .present
+        case errSecItemNotFound:
+            return .missing
+        default:
+            Log.print.warning("[Keychain] Presence check unavailable for key '\(key)': OSStatus \(status)")
+            return .unavailable
+        }
+    }
+
     // MARK: - Write (primitives)
 
     func set(_ value: Any?, forKey key: String) {

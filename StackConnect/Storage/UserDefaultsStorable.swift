@@ -34,6 +34,13 @@ final class UserDefaultsStorable: KeyStorable {
         defaults.data(forKey: key)
     }
 
+    // MARK: - Presence
+
+    /// Any stored type counts (the default reads only `Data`).
+    func presence(forKey key: String) -> KeyPresence {
+        defaults.object(forKey: key) == nil ? .missing : .present
+    }
+
     // MARK: - Write (primitives)
 
     func set(_ value: Any?, forKey key: String) {

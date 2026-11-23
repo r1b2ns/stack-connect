@@ -44,8 +44,18 @@ struct GoogleLogin: Equatable, Hashable, Sendable {
 /// Persists `GoogleLoginGrant`s, one Keychain item per login.
 protocol GoogleLoginStoring {
     func load(loginId: String) -> GoogleLoginGrant?
+    /// Whether the login's grant exists, telling a missing grant apart from a
+    /// store that can't be read now (see `KeyPresence`).
+    func presence(loginId: String) -> KeyPresence
     func save(_ grant: GoogleLoginGrant)
     func remove(loginId: String)
+}
+
+extension GoogleLoginStoring {
+    /// Stores that can't fail to read know a grant is missing when `load` finds none.
+    func presence(loginId: String) -> KeyPresence {
+        load(loginId: loginId) == nil ? .missing : .present
+    }
 }
 
 /// Keychain-backed through the app's `KeyStorable` abstraction.
@@ -61,6 +71,10 @@ struct GoogleLoginKeychainStore: GoogleLoginStoring {
 
     func load(loginId: String) -> GoogleLoginGrant? {
         keychain.object(forKey: Self.key(loginId: loginId))
+    }
+
+    func presence(loginId: String) -> KeyPresence {
+        keychain.presence(forKey: Self.key(loginId: loginId))
     }
 
     func save(_ grant: GoogleLoginGrant) {

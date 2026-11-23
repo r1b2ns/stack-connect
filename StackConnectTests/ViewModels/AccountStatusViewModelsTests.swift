@@ -239,6 +239,74 @@ final class AccountStatusViewModelsTests: XCTestCase {
 
         XCTAssertEqual(widget.accountStatuses[pending.id]?.level, .needsAttention)
     }
+
+    // MARK: - Mixed rows while the Keychain can't be read (device locked)
+
+    private func keychainResolver() -> AccountStatusResolver {
+        AccountStatusResolver(
+            keychain: keychain,
+            signInExpiry: ExpiredSignInResolver(
+                keychain: keychain,
+                appleStatus: MockAppleSessionStatus(),
+                googleStatus: MockGoogleLoginStatus()
+            ),
+            autoReauth: MockAppleSessionAutoReauthenticator()
+        )
+    }
+
+    func testWidgetsShowNoChipForKeyFileAccountsWhileTheKeychainIsLocked() async throws {
+        let apple = try await saveAccount("Key")
+        keychain.setObject(AppleCredentials(issuerID: "issuer", privateKeyID: "kid", privateKey: "key"), forKey: "credentials.\(apple.id)")
+        let play = try await saveAccount("Service account", provider: .googlePlay)
+        keychain.setObject(GooglePlayCredentials(serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON()), forKey: "credentials.\(play.id)")
+        keychain.isUnavailable = true
+        let inReview = InReviewWidget(
+            configuration: .init(kind: .inReview), storage: storage,
+            statusResolver: keychainResolver(), statusChanges: Empty().eraseToAnyPublisher()
+        )
+        let awaiting = AwaitingReleaseWidget(
+            configuration: .init(kind: .awaitingRelease), storage: storage,
+            statusResolver: keychainResolver(), statusChanges: Empty().eraseToAnyPublisher()
+        )
+
+        await inReview.load()
+        await awaiting.load()
+
+        XCTAssertTrue(inReview.accountStatuses.isEmpty)
+        XCTAssertTrue(awaiting.accountStatuses.isEmpty)
+    }
+
+    func testInReviewWidgetResolvesStatusesAgainOnTheSignal() async throws {
+        let account = try await saveAccount("Key")
+        let signal = PassthroughSubject<Void, Never>()
+        let widget = InReviewWidget(
+            configuration: .init(kind: .inReview), storage: storage,
+            statusResolver: keychainResolver(), statusChanges: signal.eraseToAnyPublisher()
+        )
+        await widget.load()
+        XCTAssertEqual(widget.accountStatuses[account.id]?.issues, [.missingCredentials])
+
+        keychain.setObject(AppleCredentials(issuerID: "issuer", privateKeyID: "kid", privateKey: "key"), forKey: "credentials.\(account.id)")
+        signal.send(())
+
+        await waitUntil { widget.accountStatuses.isEmpty }
+    }
+
+    func testAwaitingReleaseWidgetResolvesStatusesAgainOnTheSignal() async throws {
+        let account = try await saveAccount("Key")
+        let signal = PassthroughSubject<Void, Never>()
+        let widget = AwaitingReleaseWidget(
+            configuration: .init(kind: .awaitingRelease), storage: storage,
+            statusResolver: keychainResolver(), statusChanges: signal.eraseToAnyPublisher()
+        )
+        await widget.load()
+        XCTAssertEqual(widget.accountStatuses[account.id]?.issues, [.missingCredentials])
+
+        keychain.setObject(AppleCredentials(issuerID: "issuer", privateKeyID: "kid", privateKey: "key"), forKey: "credentials.\(account.id)")
+        signal.send(())
+
+        await waitUntil { widget.accountStatuses.isEmpty }
+    }
 }
 
 /// `AccountStatusResolving` answering fixed statuses for the given accounts.

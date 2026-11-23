@@ -10,24 +10,40 @@ final class MockKeyStorable: KeyStorable {
         Set(store.keys)
     }
 
+    /// Simulates a Keychain that can't be read now (device locked:
+    /// `errSecInteractionNotAllowed`): every read returns `nil` and
+    /// `presence(forKey:)` answers `.unavailable`, whatever is stored.
+    var isUnavailable = false
+    /// Like `isUnavailable`, for these keys only.
+    var unavailableKeys: Set<String> = []
+
+    private func isReadable(_ key: String) -> Bool {
+        !isUnavailable && !unavailableKeys.contains(key)
+    }
+
     func string(forKey key: String) -> String? {
-        store[key] as? String
+        isReadable(key) ? store[key] as? String : nil
     }
 
     func int(forKey key: String) -> Int? {
-        store[key] as? Int
+        isReadable(key) ? store[key] as? Int : nil
     }
 
     func double(forKey key: String) -> Double? {
-        store[key] as? Double
+        isReadable(key) ? store[key] as? Double : nil
     }
 
     func bool(forKey key: String) -> Bool? {
-        store[key] as? Bool
+        isReadable(key) ? store[key] as? Bool : nil
     }
 
     func data(forKey key: String) -> Data? {
-        store[key] as? Data
+        isReadable(key) ? store[key] as? Data : nil
+    }
+
+    func presence(forKey key: String) -> KeyPresence {
+        guard isReadable(key) else { return .unavailable }
+        return store[key] == nil ? .missing : .present
     }
 
     /// Every key written with a value, in order — lets tests tell a refresh

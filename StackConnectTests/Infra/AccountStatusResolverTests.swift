@@ -1,4 +1,5 @@
 import Combine
+import UIKit
 import XCTest
 @testable import StackConnect
 
@@ -138,6 +139,86 @@ final class AccountStatusResolverTests: XCTestCase {
         XCTAssertEqual(makeSUT().status(for: account)?.issues, [.missingCredentials])
     }
 
+    // MARK: - Keychain that can't be read now (device locked)
+
+    private func serviceAccountAccount(provider: ProviderType = .googlePlay) -> AccountModel {
+        let account = AccountModel(name: "Service account", providerType: provider)
+        if provider == .firebase {
+            keychain.setObject(FirebaseCredentials(serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON()), forKey: "credentials.\(account.id)")
+        } else {
+            keychain.setObject(GooglePlayCredentials(serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON()), forKey: "credentials.\(account.id)")
+        }
+        return account
+    }
+
+    func testUnreadableKeychainShowsNoChipForKeyFileAccounts() {
+        let accounts = [apiKeyAccount(), serviceAccountAccount(), serviceAccountAccount(provider: .firebase)]
+        keychain.isUnavailable = true
+
+        XCTAssertTrue(makeSUT().statuses(for: accounts).isEmpty, "a locked Keychain is not missing credentials")
+    }
+
+    func testUnreadableKeychainShowsNoChipForGoogleSignInAccounts() {
+        let accounts = [googleAccount(), googleAccount(provider: .firebase)]
+        keychain.isUnavailable = true
+
+        XCTAssertTrue(makeSUT().statuses(for: accounts).isEmpty)
+    }
+
+    func testUnreadableGoogleGrantIsNotAnExpiredSignIn() {
+        let account = googleAccount()
+        keychain.unavailableKeys = [GoogleLoginKeychainStore.key(loginId: "user-1")]
+
+        XCTAssertNil(makeSUT().status(for: account))
+        XCTAssertTrue(
+            ExpiredSignInResolver(keychain: keychain, appleStatus: appleStatus, googleStatus: googleStatus)
+                .expiredSignIns(in: [account]).isEmpty
+        )
+    }
+
+    func testUnreadableGoogleGrantStillHonoursGooglesOwnExpiry() {
+        let account = googleAccount()
+        keychain.unavailableKeys = [GoogleLoginKeychainStore.key(loginId: "user-1")]
+        googleStatus.markExpired(loginId: "user-1")
+
+        XCTAssertEqual(makeSUT().status(for: account)?.issues, [.signInExpired])
+    }
+
+    func testUnreadableKeychainStillShowsRecordIssues() {
+        var account = apiKeyAccount(hasPendingAgreements: true)
+        account.origin = .imported
+        account.expirationDate = Date().addingTimeInterval(-60)
+        keychain.isUnavailable = true
+
+        XCTAssertEqual(makeSUT().status(for: account)?.issues, [.accessExpired, .pendingAgreements])
+    }
+
+    func testDefinitelyMissingCredentialsAreStillDisconnected() {
+        let account = AccountModel(name: "No keys", providerType: .apple)
+
+        XCTAssertEqual(keychain.presence(forKey: "credentials.\(account.id)"), .missing)
+        XCTAssertEqual(makeSUT().status(for: account)?.issues, [.missingCredentials])
+    }
+
+    func testUserDefaultsPresenceFollowsTheStoredValue() throws {
+        let suite = "AccountStatusResolverTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = UserDefaultsStorable(defaults: defaults)
+        XCTAssertEqual(store.presence(forKey: "k"), .missing)
+        store.set("v", forKey: "k")
+        XCTAssertEqual(store.presence(forKey: "k"), .present, "a non-Data value is present too")
+        store.removeObject(forKey: "k")
+        XCTAssertEqual(store.presence(forKey: "k"), .missing)
+    }
+
+    func testKeychainPresenceOnlyTreatsNotFoundAsMissing() {
+        XCTAssertEqual(KeychainStorable.presence(for: errSecSuccess, key: "k"), .present)
+        XCTAssertEqual(KeychainStorable.presence(for: errSecItemNotFound, key: "k"), .missing)
+        XCTAssertEqual(KeychainStorable.presence(for: errSecInteractionNotAllowed, key: "k"), .unavailable)
+        XCTAssertEqual(KeychainStorable.presence(for: errSecAuthFailed, key: "k"), .unavailable)
+    }
+
     // MARK: - Needs attention
 
     func testPendingAgreementsNeedAttention() {
@@ -244,6 +325,26 @@ final class AccountStatusResolverTests: XCTestCase {
 
         center.postSignInStatusDidChange()
         sync.send(())
+
+        await fulfillment(of: [received], timeout: 2)
+        cancellable.cancel()
+    }
+
+    func testServiceSignalsWhenTheKeychainMayBeReadableAgain() async {
+        let center = NotificationCenter()
+        let sut = AccountStatusService(
+            storage: MockPersistentStorable(),
+            keychain: keychain,
+            resolver: makeSUT(),
+            notificationCenter: center,
+            syncFinished: Empty<Void, Never>().eraseToAnyPublisher()
+        )
+        let received = expectation(description: "two changes")
+        received.expectedFulfillmentCount = 2
+        let cancellable = sut.changes.sink { received.fulfill() }
+
+        center.post(name: UIApplication.protectedDataDidBecomeAvailableNotification, object: nil)
+        center.post(name: UIApplication.didBecomeActiveNotification, object: nil)
 
         await fulfillment(of: [received], timeout: 2)
         cancellable.cancel()
