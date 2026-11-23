@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 import StackProtocols
 @testable import StackConnect
@@ -213,6 +214,32 @@ final class HomeViewModelSignInAgainTests: XCTestCase {
 
         googleStatus.markExpired(loginId: "user-1")
         center.post(name: .signInStatusDidChange, object: nil)
+
+        await waitUntil { sut.uiState.showSignInAgainBanner }
+    }
+
+    func testLockedKeychainShowsNoBannerAndUnlockingResolvesItAgain() async throws {
+        try await addGoogleAccount("Play")
+        keychain.isUnavailable = true
+        let sut = makeSUT()
+        await sut.loadDashboard()
+        XCTAssertFalse(sut.uiState.showSignInAgainBanner, "an unreadable grant is not an expired sign-in")
+
+        keychain.isUnavailable = false
+        keychain.removeObject(forKey: GoogleLoginKeychainStore.key(loginId: "user-1"))
+        center.post(name: UIApplication.protectedDataDidBecomeAvailableNotification, object: nil)
+
+        await waitUntil { sut.uiState.showSignInAgainBanner }
+    }
+
+    func testBecomingActiveResolvesTheBannerAgain() async throws {
+        try await addGoogleAccount("Play")
+        let sut = makeSUT()
+        await sut.loadDashboard()
+        XCTAssertFalse(sut.uiState.showSignInAgainBanner)
+
+        googleStatus.markExpired(loginId: "user-1")
+        center.post(name: UIApplication.didBecomeActiveNotification, object: nil)
 
         await waitUntil { sut.uiState.showSignInAgainBanner }
     }

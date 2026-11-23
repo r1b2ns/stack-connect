@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import UIKit
 
 // MARK: - Model
 
@@ -94,7 +95,8 @@ extension AccountStatusResolving {
 /// - expired sign-ins (`ExpiredSignInResolving`: Apple ID session, Google login),
 ///   shown as reconnecting while an automatic Apple ID sign-in runs
 ///   (`AppleSessionAutoReauthStateProviding`);
-/// - the Keychain credentials (`credentials.{accountId}`);
+/// - the Keychain credentials (`credentials.{accountId}`), flagged only when
+///   the Keychain says they are gone, never when it just can't be read now;
 /// - the account record (`isExpired`, `isExpiringSoon`, `hasPendingAgreements`).
 ///
 /// Google sensitive scopes not granted yet (Remote Config, Analytics) are not
@@ -142,7 +144,10 @@ struct AccountStatusResolver: AccountStatusResolving {
             } else if account.isExpiringSoon {
                 issues.append(.accessExpiringSoon)
             }
-            if keychain.data(forKey: "credentials.\(account.id)") == nil {
+            // Only a definite "not found" is missing: a Keychain that can't be
+            // read now (device locked, prewarm, background task) must not mark
+            // a working account as disconnected.
+            if keychain.presence(forKey: "credentials.\(account.id)") == .missing {
                 issues.append(.missingCredentials)
             }
             if account.providerType == .apple, account.hasPendingAgreements {
@@ -163,8 +168,9 @@ struct AccountStatusResolver: AccountStatusResolving {
 @MainActor
 protocol AccountStatusProviding: AnyObject {
     /// Emits on the main queue when a status may have changed: a sign-in
-    /// expired or works again (`.signInStatusDidChange`), or a sync finished
-    /// (it may flag or clear pending agreements).
+    /// expired or works again (`.signInStatusDidChange`), a sync finished
+    /// (it may flag or clear pending agreements), or the Keychain may be
+    /// readable again (device unlocked, app became active).
     var changes: AnyPublisher<Void, Never> { get }
     /// Statuses of `accounts`, keyed by account id (see `AccountStatusResolving`).
     func statuses(for accounts: [AccountModel]) -> [String: AccountStatus]
@@ -200,6 +206,7 @@ final class AccountStatusService: AccountStatusProviding {
         self.resolver = resolver ?? AccountStatusResolver(keychain: keychain)
         let signIn = notificationCenter.publisher(for: .signInStatusDidChange).map { _ in () }
         self.changes = signIn
+            .merge(with: Self.keychainMayBeReadable(notificationCenter: notificationCenter))
             .merge(with: syncFinished ?? Self.syncFinished)
             .receive(on: DispatchQueue.main)
             .eraseToAnyPublisher()
@@ -213,6 +220,17 @@ final class AccountStatusService: AccountStatusProviding {
         let storage: PersistentStorable = storageOverride ?? SwiftDataStorable.shared
         guard let account = (try? await storage.fetch(AccountModel.self, id: accountId)) ?? nil else { return nil }
         return resolver.status(for: account)
+    }
+
+    /// Emits when the Keychain may have become readable again: protected data
+    /// became available (the device was unlocked) or the app became active.
+    /// A status resolved while it couldn't be read (launch or prewarm while
+    /// locked, a background task) is then computed again.
+    static func keychainMayBeReadable(notificationCenter: NotificationCenter = .default) -> AnyPublisher<Void, Never> {
+        notificationCenter.publisher(for: UIApplication.protectedDataDidBecomeAvailableNotification)
+            .merge(with: notificationCenter.publisher(for: UIApplication.didBecomeActiveNotification))
+            .map { _ in () }
+            .eraseToAnyPublisher()
     }
 
     private static var syncFinished: AnyPublisher<Void, Never> {

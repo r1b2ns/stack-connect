@@ -20,17 +20,37 @@ final class InReviewWidget: HomeWidget, ObservableObject {
     /// Decides whether Google Play rows are shown (`googlePlayAccounts`).
     private let featureFlags: FeatureFlags
     private let statusResolver: AccountStatusResolving
+    /// The accounts of the last `load()`, to resolve their statuses again
+    /// without reloading the rows.
+    private var loadedAccounts: [AccountModel] = []
+    private var cancellables = Set<AnyCancellable>()
 
+    /// - Parameter statusChanges: emits when the account statuses should be
+    ///   resolved again (default: the Keychain may be readable again, see
+    ///   `AccountStatusService.keychainMayBeReadable`). A status resolved while
+    ///   the device was locked is then corrected without a full reload.
     init(
         configuration: HomeWidgetConfiguration,
         storage: PersistentStorable,
         featureFlags: FeatureFlags = .shared,
-        statusResolver: AccountStatusResolving? = nil
+        statusResolver: AccountStatusResolving? = nil,
+        statusChanges: AnyPublisher<Void, Never>? = nil
     ) {
         self.configuration = configuration
         self.storage = storage
         self.featureFlags = featureFlags
         self.statusResolver = statusResolver ?? AccountStatusResolver(keychain: KeychainStorable.shared)
+
+        (statusChanges ?? AccountStatusService.keychainMayBeReadable())
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in self?.refreshAccountStatuses() }
+            .store(in: &cancellables)
+    }
+
+    /// Resolves the statuses of the loaded accounts again (local data only).
+    func refreshAccountStatuses() {
+        guard !loadedAccounts.isEmpty else { return }
+        accountStatuses = statusResolver.statuses(for: loadedAccounts)
     }
 
     func load() async {
@@ -41,7 +61,8 @@ final class InReviewWidget: HomeWidget, ObservableObject {
             // Accounts are loaded *before* categorizing: apps orphaned by an
             // account that went away must not be expanded, counted, or listed.
             let accounts = await HomeWidgetDataLoader.loadAccounts(storage: storage, featureFlags: featureFlags)
-            accountStatuses = statusResolver.statuses(for: Array(accounts.values))
+            loadedAccounts = Array(accounts.values)
+            accountStatuses = statusResolver.statuses(for: loadedAccounts)
             let allApps: [AppModel] = try await storage.fetchAll(AppModel.self)
             let active = HomeWidgetDataLoader.filterKnownAccounts(
                 allApps.filter { !$0.isArchived },

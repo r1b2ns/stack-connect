@@ -233,6 +233,16 @@ final class HomeViewModel: HomeViewModelProtocol {
             }
             .store(in: &cancellables)
 
+        // The Keychain may be readable again (device unlocked, app active): a
+        // banner resolved while it couldn't be read is computed again. The
+        // widgets refresh their own status chips on the same signal.
+        AccountStatusService.keychainMayBeReadable(notificationCenter: notificationCenter)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                Task { await self?.reloadExpiredSignIns() }
+            }
+            .store(in: &cancellables)
+
         autoReauth?.events
             .sink { [weak self] event in self?.autoReauthEvent(event) }
             .store(in: &cancellables)
