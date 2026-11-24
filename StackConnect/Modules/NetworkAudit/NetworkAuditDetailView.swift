@@ -386,6 +386,12 @@ struct NetworkAuditDetailView<ViewModel: NetworkAuditDetailViewModelProtocol>: V
 
             switch body.content {
             case .text(let text):
+                if body.format == .protobuf {
+                    Label(String(localized: "Protobuf, decoded without schema", comment: "Network audit detail: label of a binary protobuf body shown as a field tree."), systemImage: "curlybraces")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 16)
+                }
                 let isLong = text.split(separator: "\n", omittingEmptySubsequences: false).count > Self.collapsedBodyLines
                 StackCodeBlock(text: text, lineLimit: showsFullBody || !isLong ? nil : Self.collapsedBodyLines)
                 if isLong || body.isTruncated {
@@ -408,7 +414,7 @@ struct NetworkAuditDetailView<ViewModel: NetworkAuditDetailViewModelProtocol>: V
                     .frame(maxWidth: .infinity)
                 }
             case .binary:
-                buildBodyNote(String(localized: "Binary content, not stored.", comment: "Network audit detail: a binary body (image…)."))
+                buildBodyNote(binaryNote(body))
             case .notRecorded:
                 buildBodyNote(String(localized: "Not recorded: Full Bodies was off.", comment: "Network audit detail: the body wasn't recorded because the setting was off."))
             case .unavailable:
@@ -441,9 +447,34 @@ struct NetworkAuditDetailView<ViewModel: NetworkAuditDetailViewModelProtocol>: V
 
     private func bodyMeta(_ body: NetworkAuditBody) -> String {
         let size = NetworkAuditFormatting.bytes(body.byteCount)
-        guard let type = body.contentType?.split(separator: ";").first.map(String.init), !type.isEmpty else { return size }
-        let short = type.split(separator: "/").last.map { $0.uppercased() } ?? type
+        let short = body.contentType?.split(separator: ";").first
+            .flatMap { $0.split(separator: "/").last }
+            .map { $0.uppercased() }
+        if let encoding = body.encoding, let decoded = body.decodedByteCount {
+            // "610 bytes gzip → 1.8 KB JSON"
+            let kind: String
+            switch body.format {
+            case .json: kind = "JSON"
+            case .protobuf: kind = "Protobuf"
+            default: kind = short ?? ""
+            }
+            return "\(size) \(encoding) → \(NetworkAuditFormatting.bytes(decoded)) \(kind)".trimmingCharacters(in: .whitespaces)
+        }
+        if let encoding = body.encoding {
+            return "\(size) · \(encoding)"
+        }
+        guard let short, !short.isEmpty else { return size }
         return "\(size) · \(short)"
+    }
+
+    private func binaryNote(_ body: NetworkAuditBody) -> String {
+        if let decoded = body.decodedByteCount {
+            return String(localized: "Binary content (\(NetworkAuditFormatting.bytes(decoded)) after decompression).", comment: "Network audit detail: a decompressed body that is still binary. Argument: size.")
+        }
+        if let encoding = body.encoding {
+            return String(localized: "Compressed (\(encoding)), not decoded.", comment: "Network audit detail: a body in an encoding the audit doesn't decode (br). Argument: the encoding.")
+        }
+        return String(localized: "Binary content, not stored.", comment: "Network audit detail: a binary body (image…).")
     }
 }
 

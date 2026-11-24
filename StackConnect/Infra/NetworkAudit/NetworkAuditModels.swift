@@ -68,6 +68,23 @@ struct NetworkAuditBody: Codable, Sendable, Hashable {
     let contentType: String?
     /// `true` when the text was cut to `NetworkAuditRecorder.maxBodyBytes`.
     var isTruncated: Bool = false
+    /// The `Content-Encoding` the body was sent with (`gzip`, `deflate`, `br`).
+    /// `byteCount` is then the encoded size.
+    var encoding: String?
+    /// The size after decoding, when the body was decoded.
+    var decodedByteCount: Int64?
+    /// How the stored text was produced.
+    var format: Format?
+
+    enum Format: String, Codable, Sendable, Hashable {
+        case json
+        case text
+        /// Protocol buffers rendered without their schema.
+        case protobuf
+    }
+
+    /// The text shown is the decoded payload, not the bytes on the wire.
+    var isDecoded: Bool { encoding != nil && decodedByteCount != nil }
 
     static let empty = NetworkAuditBody(content: .empty, byteCount: 0, contentType: nil)
 

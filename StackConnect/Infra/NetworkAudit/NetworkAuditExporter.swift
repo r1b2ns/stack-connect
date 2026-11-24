@@ -197,8 +197,11 @@ struct NetworkAuditExporter {
         }
         head += " " + Self.shellQuoted(NetworkAuditSecretMasker.maskFreeText(url))
         var parts = [head]
+        // A decoded body goes out as text: its `Content-Encoding` would lie.
+        let sendsDecodedBody = includeBody && event.requestBody.isDecoded && !(event.requestBody.text ?? "").isEmpty
 
         for header in event.requestHeaders where !Self.skippedCurlHeaders.contains(header.name.lowercased()) {
+            if sendsDecodedBody, header.name.caseInsensitiveCompare("Content-Encoding") == .orderedSame { continue }
             let value: String
             if header.name.caseInsensitiveCompare("Authorization") == .orderedSame, let realAuthorization {
                 value = realAuthorization
@@ -210,7 +213,9 @@ struct NetworkAuditExporter {
         if includeBody, let body = event.requestBody.text, !body.isEmpty {
             parts.append("--data-raw \(Self.shellQuoted(NetworkAuditSecretMasker.maskFreeText(body)))")
         }
-        return parts.joined(separator: " \\\n  ")
+        let command = parts.joined(separator: " \\\n  ")
+        guard sendsDecodedBody, let encoding = event.requestBody.encoding else { return command }
+        return "# The body was sent \(encoding)-compressed; it is shown decompressed and Content-Encoding is left out.\n" + command
     }
 
     /// curl computes these itself.

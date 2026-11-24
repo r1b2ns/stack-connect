@@ -213,13 +213,17 @@ final class NetworkAuditRecorder: NetworkAuditExchangeSink, NetworkAuditLocalRec
         }
 
         let recordsBodies = settings.recordsFullBodies
+        // URLSession bodies may still be compressed (the Firebase SDKs gzip
+        // their requests); the Rust core hands them over decoded.
+        let decodesBodies = exchange.source == .urlSession
         let requestBody = makeBody(
             exchange.requestBody,
             length: exchange.requestBodyLength,
             contentType: Self.headerValue("Content-Type", in: exchange.requestHeaders),
             recordsBodies: recordsBodies,
             state: annotations?.requestBodyState,
-            extraSecretFields: extraSecretFields
+            extraSecretFields: extraSecretFields,
+            contentEncoding: decodesBodies ? Self.headerValue("Content-Encoding", in: exchange.requestHeaders) : nil
         )
         let responseBody = makeBody(
             exchange.responseBody,
@@ -227,7 +231,9 @@ final class NetworkAuditRecorder: NetworkAuditExchangeSink, NetworkAuditLocalRec
             contentType: Self.headerValue("Content-Type", in: exchange.responseHeaders),
             recordsBodies: recordsBodies,
             state: annotations?.responseBodyState,
-            extraSecretFields: extraSecretFields
+            extraSecretFields: extraSecretFields,
+            contentEncoding: decodesBodies ? Self.headerValue("Content-Encoding", in: exchange.responseHeaders) : nil,
+            isResponse: true
         )
         if let annotations {
             credential = Self.resolveCredential(hint: annotations.credential, decoded: credential)
@@ -316,7 +322,9 @@ final class NetworkAuditRecorder: NetworkAuditExchangeSink, NetworkAuditLocalRec
         contentType: String?,
         recordsBodies: Bool,
         state: NetworkAuditAnnotations.BodyState? = nil,
-        extraSecretFields: Set<String> = []
+        extraSecretFields: Set<String> = [],
+        contentEncoding: String? = nil,
+        isResponse: Bool = false
     ) -> NetworkAuditBody {
         let byteCount = max(length, Int64(data?.count ?? 0))
         switch state {
@@ -335,15 +343,63 @@ final class NetworkAuditRecorder: NetworkAuditExchangeSink, NetworkAuditLocalRec
         guard recordsBodies, let data, data.count <= Self.maxMaskableBodyBytes else {
             return NetworkAuditBody(content: .notRecorded, byteCount: byteCount, contentType: contentType)
         }
-        guard let masked = NetworkAuditSecretMasker.maskBody(data, contentType: contentType, extraSecretFields: extraSecretFields) else {
-            return NetworkAuditBody(content: .binary, byteCount: byteCount, contentType: contentType)
+
+        // Undo `Content-Encoding` first, so the real payload is what gets
+        // classified, masked and stored.
+        var payload = data
+        var encodingName: String?
+        var decodedCount: Int64?
+        var cutWhileDecoding = false
+        if let encoding = NetworkAuditBodyDecoder.Encoding(header: contentEncoding) {
+            switch NetworkAuditBodyDecoder.decode(data, encoding: encoding, maxOutputBytes: Self.maxMaskableBodyBytes, allowsRawDeflate: !isResponse) {
+            case let .decoded(decoded, isTruncated):
+                payload = decoded
+                encodingName = encoding.name
+                decodedCount = Int64(decoded.count)
+                cutWhileDecoding = isTruncated
+            case .unsupported(let name):
+                var body = NetworkAuditBody(content: .binary, byteCount: byteCount, contentType: contentType)
+                body.encoding = name
+                return body
+            case .failed:
+                var body = NetworkAuditBody(content: .binary, byteCount: byteCount, contentType: contentType)
+                body.encoding = encoding.name
+                return body
+            case .passthrough:
+                break
+            }
         }
-        let utf8 = Array(masked.utf8)
-        if utf8.count > Self.maxBodyBytes {
-            let cut = String(decoding: utf8.prefix(Self.maxBodyBytes), as: UTF8.self)
-            return NetworkAuditBody(content: .text(cut), byteCount: byteCount, contentType: contentType, isTruncated: true)
+
+        func finish(_ text: String, format: NetworkAuditBody.Format) -> NetworkAuditBody {
+            let utf8 = Array(text.utf8)
+            let isCut = utf8.count > Self.maxBodyBytes
+            var body = NetworkAuditBody(
+                content: .text(isCut ? String(decoding: utf8.prefix(Self.maxBodyBytes), as: UTF8.self) : text),
+                byteCount: byteCount,
+                contentType: contentType,
+                isTruncated: isCut || cutWhileDecoding || state == .truncated
+            )
+            body.encoding = encodingName
+            body.decodedByteCount = decodedCount
+            body.format = format
+            return body
         }
-        return NetworkAuditBody(content: .text(masked), byteCount: byteCount, contentType: contentType, isTruncated: state == .truncated)
+
+        if let masked = NetworkAuditSecretMasker.maskBody(payload, contentType: contentType, extraSecretFields: extraSecretFields) {
+            let isJSON = masked.hasPrefix("{") || masked.hasPrefix("[")
+            return finish(masked, format: isJSON ? .json : .text)
+        }
+        // Binary: a decoded protobuf (Firebase Analytics) becomes a readable
+        // tree, masked like any text (never raw bytes).
+        if encodingName != nil || (contentType?.lowercased().contains("protobuf") ?? false),
+           let fields = NetworkAuditProtobufDecoder.decode(payload) {
+            let tree = NetworkAuditProtobufDecoder.render(fields)
+            return finish(NetworkAuditSecretMasker.maskFreeText(tree), format: .protobuf)
+        }
+        var body = NetworkAuditBody(content: .binary, byteCount: byteCount, contentType: contentType)
+        body.encoding = encodingName
+        body.decodedByteCount = decodedCount
+        return body
     }
 
     private func makeLocalEvent(

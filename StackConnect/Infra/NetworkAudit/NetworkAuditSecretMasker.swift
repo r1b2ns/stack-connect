@@ -238,8 +238,12 @@ enum NetworkAuditSecretMasker {
         return text.range(of: #"^[A-Za-z0-9_.\-%+]+=[^&]*(&[A-Za-z0-9_.\-%+]+=[^&]*)*$"#, options: .regularExpression) != nil
     }
 
+    /// Control characters other than line breaks and tabs: binary (protobuf
+    /// is often valid UTF-8 made of control bytes).
     private static func looksBinary(_ text: String) -> Bool {
-        text.unicodeScalars.contains { $0.value == 0 }
+        text.unicodeScalars.contains { scalar in
+            (scalar.value < 0x20 && scalar != "\n" && scalar != "\r" && scalar != "\t") || scalar.value == 0x7F
+        }
     }
 
     // MARK: - Free text
