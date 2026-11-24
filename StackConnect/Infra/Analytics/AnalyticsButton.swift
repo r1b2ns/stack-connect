@@ -69,6 +69,11 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     case supportProject = "support_project"
     case deleteAllAccounts = "delete_all_accounts"
     case confirmDeleteAllAccounts = "confirm_delete_all_accounts"
+    /// Settings › Privacy › Audit row, and the entry points inside the Audit.
+    case networkAudit = "network_audit"
+    case networkAuditRetention = "network_audit_retention"
+    case networkAuditExport = "network_audit_export"
+    case networkAuditEventExport = "network_audit_event_export"
 
     // MARK: Tip jar
     case purchaseTip = "purchase_tip"

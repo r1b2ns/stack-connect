@@ -90,6 +90,21 @@ enum FeatureFlag: String, CaseIterable {
     /// `-featureFlag.accountConnectionGuide YES` / `NO`.
     case accountConnectionGuide = "featureFlag.accountConnectionGuide"
 
+    /// Gates the on-device network audit (Settings › Privacy › Audit): the
+    /// Settings row and the whole module, and the capture itself
+    /// (`NetworkAuditBootstrap.install`, read once at launch: the URLProtocol
+    /// recorder on `URLSession.shared` and on every session built from the
+    /// default / ephemeral configurations, Firebase SDKs included) and the
+    /// Rust core's audit hook (`NetworkAuditCoreSink`, passed as `auditSink:`
+    /// to every core `connect…` and Apple ID sign-in). When OFF, nothing is
+    /// installed, every core call gets `auditSink: nil` and nothing is
+    /// recorded; an existing log stays on disk untouched (and is purged by
+    /// retention once the flag is ON again). Stays OFF in Release until the
+    /// whole capture is validated on device.
+    /// Default: ON in Debug builds, OFF in Release. Toggle at launch with
+    /// `-featureFlag.networkAudit YES` / `NO`.
+    case networkAudit = "featureFlag.networkAudit"
+
     /// The compiled-in default used when no value is stored in `UserDefaults`.
     /// New flags ship OFF by default — the safe, fully-reversible value —
     /// except kill switches (`accountConnectionGuide`), which ship ON so the
@@ -98,7 +113,7 @@ enum FeatureFlag: String, CaseIterable {
         switch self {
         case .useRustCoreDebugLogging, .googlePlayReleaseWrites, .googlePlayAccounts:
             return false
-        case .googleSignIn, .appleIdSignIn:
+        case .googleSignIn, .appleIdSignIn, .networkAudit:
             #if DEBUG
             return true
             #else
@@ -117,7 +132,7 @@ enum FeatureFlag: String, CaseIterable {
             return "google_play_accounts_enabled"
         case .accountConnectionGuide:
             return "account_connection_guide_enabled"
-        case .useRustCoreDebugLogging, .googlePlayReleaseWrites, .googleSignIn, .appleIdSignIn:
+        case .useRustCoreDebugLogging, .googlePlayReleaseWrites, .googleSignIn, .appleIdSignIn, .networkAudit:
             return nil
         }
     }

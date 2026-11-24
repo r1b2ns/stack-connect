@@ -3636,13 +3636,19 @@ open class AppleIdSignIn: AppleIdSignInProtocol, @unchecked Sendable {
     /**
      * A fresh sign-in against Apple's production hosts. Offline.
      *
+     * When `audit_sink` is `Some`, every HTTP exchange of the sign-in is
+     * handed to it raw (see [`NetworkAuditSink`]): the password never goes on
+     * the wire, but the SRP values, the two-factor code, the session headers
+     * and `Set-Cookie` do appear. Defaults to `None`.
+     *
      * # Errors
      * [`StackError::Network`] when the HTTP client cannot be built.
      */
-public convenience init()throws  {
+public convenience init(auditSink: NetworkAuditSink? = nil)throws  {
     let handle =
         try rustCallWithError(FfiConverterTypeStackError_lift) {
-    uniffi_stack_core_fn_constructor_appleidsignin_new($0
+    uniffi_stack_core_fn_constructor_appleidsignin_new(
+        FfiConverterOptionTypeNetworkAuditSink.lower(auditSink),$0
     )
 }
     self.init(unsafeFromHandle: handle)
@@ -3666,11 +3672,13 @@ public convenience init()throws  {
      * # Errors
      * [`StackError::Decode`] when `blob` is not a session this core wrote;
      * [`StackError::Network`] when the HTTP client cannot be built.
+     * `audit_sink` is as in [`Self::new`].
      */
-public static func withSavedSession(blob: Data)throws  -> AppleIdSignIn  {
+public static func withSavedSession(blob: Data, auditSink: NetworkAuditSink? = nil)throws  -> AppleIdSignIn  {
     return try  FfiConverterTypeAppleIdSignIn_lift(try rustCallWithError(FfiConverterTypeStackError_lift) {
     uniffi_stack_core_fn_constructor_appleidsignin_with_saved_session(
-        FfiConverterData.lower(blob),$0
+        FfiConverterData.lower(blob),
+        FfiConverterOptionTypeNetworkAuditSink.lower(auditSink),$0
     )
 })
 }
@@ -7490,6 +7498,295 @@ public func FfiConverterTypeDevices_lift(_ handle: UInt64) throws -> Devices {
 #endif
 public func FfiConverterTypeDevices_lower(_ value: Devices) -> UInt64 {
     return FfiConverterTypeDevices.lower(value)
+}
+
+
+
+
+
+
+/**
+ * Optional structured network audit, implemented natively and injected
+ * across the FFI boundary as a foreign trait: through the `audit_sink`
+ * argument of [`crate::facade::connect`],
+ * [`crate::facade::connect_with_access_token`],
+ * [`crate::facade::connect_with_apple_session`] and the
+ * [`crate::apple_id::AppleIdSignIn`] constructors. Without one (the
+ * default), nothing is captured.
+ *
+ * The core calls [`Self::record`] once per finished HTTP exchange of that
+ * provider or sign-in: every App Store Connect API, Apple ID web session
+ * (sign-in, olympus, iris, Developer Portal), Google Play and Google OAuth
+ * call, each retry attempt separately, transport failures included. Entries
+ * are **raw**: credentials (bearer tokens, OAuth assertions and the access
+ * tokens in their responses, CSRF tokens, `Set-Cookie`) appear verbatim, so
+ * the host must keep them encrypted at rest and mask them itself. The core
+ * logs none of it.
+ *
+ * Both methods are called synchronously on whichever thread the core is
+ * running: implement them as a cheap, non-blocking hand-off (e.g. append to
+ * a queue a background task drains). A panic in either is caught (the entry
+ * is dropped, the request is unaffected).
+ */
+public protocol NetworkAuditSink: AnyObject, Sendable {
+    
+    /**
+     * Receives one finished exchange.
+     */
+    func record(entry: NetworkAuditEntry) 
+    
+    /**
+     * Whether entries should carry the request and response bodies. Asked
+     * once per exchange; when `false`, bodies are omitted
+     * ([`crate::audit::NetworkAuditBodyState::NotCaptured`]) and only their
+     * sizes are reported.
+     */
+    func captureBodies()  -> Bool
+    
+}
+/**
+ * Optional structured network audit, implemented natively and injected
+ * across the FFI boundary as a foreign trait: through the `audit_sink`
+ * argument of [`crate::facade::connect`],
+ * [`crate::facade::connect_with_access_token`],
+ * [`crate::facade::connect_with_apple_session`] and the
+ * [`crate::apple_id::AppleIdSignIn`] constructors. Without one (the
+ * default), nothing is captured.
+ *
+ * The core calls [`Self::record`] once per finished HTTP exchange of that
+ * provider or sign-in: every App Store Connect API, Apple ID web session
+ * (sign-in, olympus, iris, Developer Portal), Google Play and Google OAuth
+ * call, each retry attempt separately, transport failures included. Entries
+ * are **raw**: credentials (bearer tokens, OAuth assertions and the access
+ * tokens in their responses, CSRF tokens, `Set-Cookie`) appear verbatim, so
+ * the host must keep them encrypted at rest and mask them itself. The core
+ * logs none of it.
+ *
+ * Both methods are called synchronously on whichever thread the core is
+ * running: implement them as a cheap, non-blocking hand-off (e.g. append to
+ * a queue a background task drains). A panic in either is caught (the entry
+ * is dropped, the request is unaffected).
+ */
+open class NetworkAuditSinkImpl: NetworkAuditSink, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_stack_core_fn_clone_networkauditsink(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_stack_core_fn_free_networkauditsink(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Receives one finished exchange.
+     */
+open func record(entry: NetworkAuditEntry)  {try! rustCall() {
+    uniffi_stack_core_fn_method_networkauditsink_record(
+            self.uniffiCloneHandle(),
+        FfiConverterTypeNetworkAuditEntry_lower(entry),$0
+    )
+}
+}
+    
+    /**
+     * Whether entries should carry the request and response bodies. Asked
+     * once per exchange; when `false`, bodies are omitted
+     * ([`crate::audit::NetworkAuditBodyState::NotCaptured`]) and only their
+     * sizes are reported.
+     */
+open func captureBodies() -> Bool  {
+    return try!  FfiConverterBool.lift(try! rustCall() {
+    uniffi_stack_core_fn_method_networkauditsink_capture_bodies(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
+    
+
+    
+}
+
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceNetworkAuditSink {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    //
+    // Store the vtable directly.
+    static let vtable: UniffiVTableCallbackInterfaceNetworkAuditSink = UniffiVTableCallbackInterfaceNetworkAuditSink(
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            do {
+                try FfiConverterTypeNetworkAuditSink.handleMap.remove(handle: uniffiHandle)
+            } catch {
+                print("Uniffi callback interface NetworkAuditSink: handle missing in uniffiFree")
+            }
+        },
+        uniffiClone: { (uniffiHandle: UInt64) -> UInt64 in
+            do {
+                return try FfiConverterTypeNetworkAuditSink.handleMap.clone(handle: uniffiHandle)
+            } catch {
+                fatalError("Uniffi callback interface NetworkAuditSink: handle missing in uniffiClone")
+            }
+        },
+        record: { (
+            uniffiHandle: UInt64,
+            entry: RustBuffer,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterTypeNetworkAuditSink.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.record(
+                     entry: try FfiConverterTypeNetworkAuditEntry_lift(entry)
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        captureBodies: { (
+            uniffiHandle: UInt64,
+            uniffiOutReturn: UnsafeMutablePointer<Int8>,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> Bool in
+                guard let uniffiObj = try? FfiConverterTypeNetworkAuditSink.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.captureBodies(
+                )
+            }
+
+            
+            let writeReturn = { uniffiOutReturn.pointee = FfiConverterBool.lower($0) }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        }
+    )
+
+    // Rust stores this pointer for future callback invocations, so it must live
+    // for the process lifetime (not just for the init function call).
+    static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfaceNetworkAuditSink> = {
+        let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfaceNetworkAuditSink>.allocate(capacity: 1)
+        ptr.initialize(to: vtable)
+        return UnsafePointer(ptr)
+    }()
+}
+
+private func uniffiCallbackInitNetworkAuditSink() {
+    uniffi_stack_core_fn_init_callback_vtable_networkauditsink(UniffiCallbackInterfaceNetworkAuditSink.vtablePtr)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNetworkAuditSink: FfiConverter {
+    fileprivate static let handleMap = UniffiHandleMap<NetworkAuditSink>()
+
+    typealias FfiType = UInt64
+    typealias SwiftType = NetworkAuditSink
+
+    public static func lift(_ handle: UInt64) throws -> NetworkAuditSink {
+        if ((handle & 1) == 0) {
+            // Rust-generated handle, construct a new class that uses the handle to implement the
+            // interface
+            return NetworkAuditSinkImpl(unsafeFromHandle: handle)
+        } else {
+            // Swift-generated handle, get the object from the handle map
+            return try handleMap.remove(handle: handle)
+        }
+    }
+
+    public static func lower(_ value: NetworkAuditSink) -> UInt64 {
+         if let rustImpl = value as? NetworkAuditSinkImpl {
+             // Rust-implemented object.  Clone the handle and return it
+            return rustImpl.uniffiCloneHandle()
+         } else {
+            // Swift object, generate a new vtable handle and return that.
+            return handleMap.insert(obj: value)
+         }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NetworkAuditSink {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: NetworkAuditSink, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNetworkAuditSink_lift(_ handle: UInt64) throws -> NetworkAuditSink {
+    return try FfiConverterTypeNetworkAuditSink.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNetworkAuditSink_lower(_ value: NetworkAuditSink) -> UInt64 {
+    return FfiConverterTypeNetworkAuditSink.lower(value)
 }
 
 
@@ -13773,6 +14070,343 @@ public func FfiConverterTypeLocalizedTextInfo_lower(_ value: LocalizedTextInfo) 
 
 
 /**
+ * One finished HTTP exchange the core performed, as handed to
+ * [`crate::ports::NetworkAuditSink::record`]. Every attempt of a retried
+ * call is its own entry (see `attempt`).
+ *
+ * **Raw and unredacted**: headers, URL and bodies carry live credentials
+ * (bearer tokens, OAuth assertions and access tokens, CSRF tokens,
+ * `Set-Cookie`). The host must store entries encrypted and mask them for
+ * display and export.
+ */
+public struct NetworkAuditEntry: Equatable, Hashable {
+    /**
+     * A random UUID (v4), unique per entry.
+     */
+    public var id: String
+    /**
+     * When the request was handed to the transport, in Unix milliseconds.
+     */
+    public var startedAtMs: Int64
+    /**
+     * From sending the request to the end of reading the response (or the
+     * failure), in milliseconds.
+     */
+    public var durationMs: UInt64
+    /**
+     * `1` for the first attempt; a retry of the same call is `2`, ….
+     */
+    public var attempt: UInt32
+    /**
+     * The core operation that caused the call (`reviews.fetch_customer_reviews`,
+     * `google.oauth.token`, …; see the README's *Network audit* section).
+     * `unknown` only for a call outside every documented operation.
+     */
+    public var operation: String
+    /**
+     * The operation that started `operation`, when it ran inside another one
+     * (e.g. `google.oauth.token` inside `reviews.fetch_customer_reviews`).
+     */
+    public var parentOperation: String?
+    public var provider: NetworkAuditProvider
+    /**
+     * The host's account id when the core knows it (`None` during an Apple
+     * ID sign-in, which happens before an account exists).
+     */
+    public var accountId: String?
+    public var credentialKind: NetworkAuditCredentialKind
+    /**
+     * For a JWT credential (App Store Connect bearer, OAuth assertion): its
+     * `exp`, in Unix **milliseconds**. `None` for an opaque token, a token
+     * without `exp`, or no credential.
+     */
+    public var tokenExpiresAtMs: Int64?
+    /**
+     * `GET`, `POST`, ….
+     */
+    public var method: String
+    /**
+     * The full URL, query included (pre-signed URLs carry their signature
+     * there).
+     */
+    public var url: String
+    /**
+     * `HTTP/1.1`, `HTTP/2.0`, … when a response arrived.
+     */
+    public var httpVersion: String?
+    /**
+     * The headers the core set on the request, in order. Headers the HTTP
+     * stack adds while sending (`Host`, `Content-Length`, the client's
+     * `User-Agent`, the session cookie jar's `Cookie`) are not included.
+     */
+    public var requestHeaders: [NetworkAuditHeader]
+    public var requestBody: String?
+    public var requestBodyState: NetworkAuditBodyState
+    /**
+     * The request body's size in bytes (`0` without a body).
+     */
+    public var requestSizeBytes: UInt64
+    /**
+     * `None` for a transport failure before any response.
+     */
+    public var responseStatus: UInt16?
+    /**
+     * Every response header, in wire order (`Set-Cookie` included).
+     */
+    public var responseHeaders: [NetworkAuditHeader]
+    /**
+     * The response body as text, decompressed where the core decompresses it.
+     */
+    public var responseBody: String?
+    public var responseBodyState: NetworkAuditBodyState
+    /**
+     * The bytes of response body the core read (after decompression where
+     * the core decompresses).
+     */
+    public var responseSizeBytes: UInt64
+    /**
+     * The transport or decoding failure, when the exchange did not complete.
+     */
+    public var error: String?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * A random UUID (v4), unique per entry.
+         */id: String, 
+        /**
+         * When the request was handed to the transport, in Unix milliseconds.
+         */startedAtMs: Int64, 
+        /**
+         * From sending the request to the end of reading the response (or the
+         * failure), in milliseconds.
+         */durationMs: UInt64, 
+        /**
+         * `1` for the first attempt; a retry of the same call is `2`, ….
+         */attempt: UInt32, 
+        /**
+         * The core operation that caused the call (`reviews.fetch_customer_reviews`,
+         * `google.oauth.token`, …; see the README's *Network audit* section).
+         * `unknown` only for a call outside every documented operation.
+         */operation: String, 
+        /**
+         * The operation that started `operation`, when it ran inside another one
+         * (e.g. `google.oauth.token` inside `reviews.fetch_customer_reviews`).
+         */parentOperation: String?, provider: NetworkAuditProvider, 
+        /**
+         * The host's account id when the core knows it (`None` during an Apple
+         * ID sign-in, which happens before an account exists).
+         */accountId: String?, credentialKind: NetworkAuditCredentialKind, 
+        /**
+         * For a JWT credential (App Store Connect bearer, OAuth assertion): its
+         * `exp`, in Unix **milliseconds**. `None` for an opaque token, a token
+         * without `exp`, or no credential.
+         */tokenExpiresAtMs: Int64?, 
+        /**
+         * `GET`, `POST`, ….
+         */method: String, 
+        /**
+         * The full URL, query included (pre-signed URLs carry their signature
+         * there).
+         */url: String, 
+        /**
+         * `HTTP/1.1`, `HTTP/2.0`, … when a response arrived.
+         */httpVersion: String?, 
+        /**
+         * The headers the core set on the request, in order. Headers the HTTP
+         * stack adds while sending (`Host`, `Content-Length`, the client's
+         * `User-Agent`, the session cookie jar's `Cookie`) are not included.
+         */requestHeaders: [NetworkAuditHeader], requestBody: String?, requestBodyState: NetworkAuditBodyState, 
+        /**
+         * The request body's size in bytes (`0` without a body).
+         */requestSizeBytes: UInt64, 
+        /**
+         * `None` for a transport failure before any response.
+         */responseStatus: UInt16?, 
+        /**
+         * Every response header, in wire order (`Set-Cookie` included).
+         */responseHeaders: [NetworkAuditHeader], 
+        /**
+         * The response body as text, decompressed where the core decompresses it.
+         */responseBody: String?, responseBodyState: NetworkAuditBodyState, 
+        /**
+         * The bytes of response body the core read (after decompression where
+         * the core decompresses).
+         */responseSizeBytes: UInt64, 
+        /**
+         * The transport or decoding failure, when the exchange did not complete.
+         */error: String?) {
+        self.id = id
+        self.startedAtMs = startedAtMs
+        self.durationMs = durationMs
+        self.attempt = attempt
+        self.operation = operation
+        self.parentOperation = parentOperation
+        self.provider = provider
+        self.accountId = accountId
+        self.credentialKind = credentialKind
+        self.tokenExpiresAtMs = tokenExpiresAtMs
+        self.method = method
+        self.url = url
+        self.httpVersion = httpVersion
+        self.requestHeaders = requestHeaders
+        self.requestBody = requestBody
+        self.requestBodyState = requestBodyState
+        self.requestSizeBytes = requestSizeBytes
+        self.responseStatus = responseStatus
+        self.responseHeaders = responseHeaders
+        self.responseBody = responseBody
+        self.responseBodyState = responseBodyState
+        self.responseSizeBytes = responseSizeBytes
+        self.error = error
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension NetworkAuditEntry: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNetworkAuditEntry: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NetworkAuditEntry {
+        return
+            try NetworkAuditEntry(
+                id: FfiConverterString.read(from: &buf), 
+                startedAtMs: FfiConverterInt64.read(from: &buf), 
+                durationMs: FfiConverterUInt64.read(from: &buf), 
+                attempt: FfiConverterUInt32.read(from: &buf), 
+                operation: FfiConverterString.read(from: &buf), 
+                parentOperation: FfiConverterOptionString.read(from: &buf), 
+                provider: FfiConverterTypeNetworkAuditProvider.read(from: &buf), 
+                accountId: FfiConverterOptionString.read(from: &buf), 
+                credentialKind: FfiConverterTypeNetworkAuditCredentialKind.read(from: &buf), 
+                tokenExpiresAtMs: FfiConverterOptionInt64.read(from: &buf), 
+                method: FfiConverterString.read(from: &buf), 
+                url: FfiConverterString.read(from: &buf), 
+                httpVersion: FfiConverterOptionString.read(from: &buf), 
+                requestHeaders: FfiConverterSequenceTypeNetworkAuditHeader.read(from: &buf), 
+                requestBody: FfiConverterOptionString.read(from: &buf), 
+                requestBodyState: FfiConverterTypeNetworkAuditBodyState.read(from: &buf), 
+                requestSizeBytes: FfiConverterUInt64.read(from: &buf), 
+                responseStatus: FfiConverterOptionUInt16.read(from: &buf), 
+                responseHeaders: FfiConverterSequenceTypeNetworkAuditHeader.read(from: &buf), 
+                responseBody: FfiConverterOptionString.read(from: &buf), 
+                responseBodyState: FfiConverterTypeNetworkAuditBodyState.read(from: &buf), 
+                responseSizeBytes: FfiConverterUInt64.read(from: &buf), 
+                error: FfiConverterOptionString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NetworkAuditEntry, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterInt64.write(value.startedAtMs, into: &buf)
+        FfiConverterUInt64.write(value.durationMs, into: &buf)
+        FfiConverterUInt32.write(value.attempt, into: &buf)
+        FfiConverterString.write(value.operation, into: &buf)
+        FfiConverterOptionString.write(value.parentOperation, into: &buf)
+        FfiConverterTypeNetworkAuditProvider.write(value.provider, into: &buf)
+        FfiConverterOptionString.write(value.accountId, into: &buf)
+        FfiConverterTypeNetworkAuditCredentialKind.write(value.credentialKind, into: &buf)
+        FfiConverterOptionInt64.write(value.tokenExpiresAtMs, into: &buf)
+        FfiConverterString.write(value.method, into: &buf)
+        FfiConverterString.write(value.url, into: &buf)
+        FfiConverterOptionString.write(value.httpVersion, into: &buf)
+        FfiConverterSequenceTypeNetworkAuditHeader.write(value.requestHeaders, into: &buf)
+        FfiConverterOptionString.write(value.requestBody, into: &buf)
+        FfiConverterTypeNetworkAuditBodyState.write(value.requestBodyState, into: &buf)
+        FfiConverterUInt64.write(value.requestSizeBytes, into: &buf)
+        FfiConverterOptionUInt16.write(value.responseStatus, into: &buf)
+        FfiConverterSequenceTypeNetworkAuditHeader.write(value.responseHeaders, into: &buf)
+        FfiConverterOptionString.write(value.responseBody, into: &buf)
+        FfiConverterTypeNetworkAuditBodyState.write(value.responseBodyState, into: &buf)
+        FfiConverterUInt64.write(value.responseSizeBytes, into: &buf)
+        FfiConverterOptionString.write(value.error, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNetworkAuditEntry_lift(_ buf: RustBuffer) throws -> NetworkAuditEntry {
+    return try FfiConverterTypeNetworkAuditEntry.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNetworkAuditEntry_lower(_ value: NetworkAuditEntry) -> RustBuffer {
+    return FfiConverterTypeNetworkAuditEntry.lower(value)
+}
+
+
+/**
+ * One HTTP header, exactly as sent or received (a value that is not valid
+ * UTF-8 is decoded lossily). Repeated headers (`Set-Cookie`) appear once per
+ * value, in wire order.
+ */
+public struct NetworkAuditHeader: Equatable, Hashable {
+    public var name: String
+    public var value: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(name: String, value: String) {
+        self.name = name
+        self.value = value
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension NetworkAuditHeader: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNetworkAuditHeader: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NetworkAuditHeader {
+        return
+            try NetworkAuditHeader(
+                name: FfiConverterString.read(from: &buf), 
+                value: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NetworkAuditHeader, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.value, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNetworkAuditHeader_lift(_ buf: RustBuffer) throws -> NetworkAuditHeader {
+    return try FfiConverterTypeNetworkAuditHeader.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNetworkAuditHeader_lower(_ value: NetworkAuditHeader) -> RustBuffer {
+    return FfiConverterTypeNetworkAuditHeader.lower(value)
+}
+
+
+/**
  * A release [`ReleaseChange::CreateRelease`] adds to a track.
  *
  * What it replaces on the track depends on `status`, following the Play
@@ -15745,6 +16379,357 @@ public func FfiConverterTypeLogLevel_lower(_ value: LogLevel) -> RustBuffer {
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
+ * What became of a request or response body in an entry.
+ */
+
+public enum NetworkAuditBodyState: Equatable, Hashable {
+    
+    /**
+     * The whole body is in the entry, as text.
+     */
+    case captured
+    /**
+     * There was no body (zero bytes).
+     */
+    case empty
+    /**
+     * Only the first part of the body is in the entry: it was larger than
+     * the capture limit, or the core stopped reading it early.
+     */
+    case truncated
+    /**
+     * The body is not text (an image, a gzip archive): omitted, size kept.
+     */
+    case binary
+    /**
+     * The sink's [`crate::ports::NetworkAuditSink::capture_bodies`] returned
+     * `false`: omitted, size kept.
+     */
+    case notCaptured
+    /**
+     * The body could not be read (a transport failure, a streamed request
+     * body, a response that failed to decode).
+     */
+    case unavailable
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension NetworkAuditBodyState: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNetworkAuditBodyState: FfiConverterRustBuffer {
+    typealias SwiftType = NetworkAuditBodyState
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NetworkAuditBodyState {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .captured
+        
+        case 2: return .empty
+        
+        case 3: return .truncated
+        
+        case 4: return .binary
+        
+        case 5: return .notCaptured
+        
+        case 6: return .unavailable
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: NetworkAuditBodyState, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .captured:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .empty:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .truncated:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .binary:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .notCaptured:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .unavailable:
+            writeInt(&buf, Int32(6))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNetworkAuditBodyState_lift(_ buf: RustBuffer) throws -> NetworkAuditBodyState {
+    return try FfiConverterTypeNetworkAuditBodyState.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNetworkAuditBodyState_lower(_ value: NetworkAuditBodyState) -> RustBuffer {
+    return FfiConverterTypeNetworkAuditBodyState.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Which credential an exchange carried. A hint for the host's masking and
+ * cURL export: the core never removes or alters a credential in the entry.
+ */
+
+public enum NetworkAuditCredentialKind: Equatable, Hashable {
+    
+    /**
+     * An App Store Connect API JWT in `Authorization: Bearer`
+     * (`token_expires_at_ms` is its `exp`).
+     */
+    case ascJwt
+    /**
+     * A Google OAuth access token in `Authorization: Bearer` (a service
+     * account's exchanged token or the host-supplied user token; opaque, so
+     * `token_expires_at_ms` is `None` unless the token is a JWT).
+     */
+    case googleAccessToken
+    /**
+     * The Apple ID web session's cookies (added by the cookie jar below
+     * request building, so they are **not** in `request_headers`) plus its
+     * session / CSRF headers.
+     */
+    case appleSessionCookie
+    /**
+     * A signed JWT-bearer assertion in the form body of an OAuth token
+     * request (`token_expires_at_ms` is the assertion's `exp`).
+     */
+    case oauthAssertion
+    /**
+     * No credential (a pre-signed URL, a public page).
+     */
+    case unauthenticated
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension NetworkAuditCredentialKind: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNetworkAuditCredentialKind: FfiConverterRustBuffer {
+    typealias SwiftType = NetworkAuditCredentialKind
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NetworkAuditCredentialKind {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .ascJwt
+        
+        case 2: return .googleAccessToken
+        
+        case 3: return .appleSessionCookie
+        
+        case 4: return .oauthAssertion
+        
+        case 5: return .unauthenticated
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: NetworkAuditCredentialKind, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .ascJwt:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .googleAccessToken:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .appleSessionCookie:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .oauthAssertion:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .unauthenticated:
+            writeInt(&buf, Int32(5))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNetworkAuditCredentialKind_lift(_ buf: RustBuffer) throws -> NetworkAuditCredentialKind {
+    return try FfiConverterTypeNetworkAuditCredentialKind.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNetworkAuditCredentialKind_lower(_ value: NetworkAuditCredentialKind) -> RustBuffer {
+    return FfiConverterTypeNetworkAuditCredentialKind.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * Which service an exchange talked to.
+ */
+
+public enum NetworkAuditProvider: Equatable, Hashable {
+    
+    /**
+     * The App Store Connect API with an API key (also its pre-signed upload
+     * and download URLs).
+     */
+    case appleApi
+    /**
+     * The Apple ID web session: the sign-in (`idmsa`), olympus, App Store
+     * Connect's web API (`iris`) and the Developer Portal.
+     */
+    case appleWebSession
+    /**
+     * The Google Play APIs (Android Publisher, Play Developer Reporting) and
+     * the public Play Store page.
+     */
+    case googlePlay
+    /**
+     * Google's OAuth 2.0 token endpoint (a service account's token exchange).
+     */
+    case googleOauth
+    /**
+     * Firebase (reserved: the core makes no Firebase calls today).
+     */
+    case firebase
+    /**
+     * Anything else.
+     */
+    case other
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension NetworkAuditProvider: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNetworkAuditProvider: FfiConverterRustBuffer {
+    typealias SwiftType = NetworkAuditProvider
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NetworkAuditProvider {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .appleApi
+        
+        case 2: return .appleWebSession
+        
+        case 3: return .googlePlay
+        
+        case 4: return .googleOauth
+        
+        case 5: return .firebase
+        
+        case 6: return .other
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: NetworkAuditProvider, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .appleApi:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .appleWebSession:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .googlePlay:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .googleOauth:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .firebase:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .other:
+            writeInt(&buf, Int32(6))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNetworkAuditProvider_lift(_ buf: RustBuffer) throws -> NetworkAuditProvider {
+    return try FfiConverterTypeNetworkAuditProvider.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNetworkAuditProvider_lower(_ value: NetworkAuditProvider) -> RustBuffer {
+    return FfiConverterTypeNetworkAuditProvider.lower(value)
+}
+
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
  * The status a new release starts in.
  */
 
@@ -16291,6 +17276,30 @@ public func FfiConverterTypeStackError_lower(_ value: StackError) -> RustBuffer 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionUInt16: FfiConverterRustBuffer {
+    typealias SwiftType = UInt16?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterUInt16.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterUInt16.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionInt32: FfiConverterRustBuffer {
     typealias SwiftType = Int32?
 
@@ -16811,6 +17820,30 @@ fileprivate struct FfiConverterOptionTypeDevices: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeDevices.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeNetworkAuditSink: FfiConverterRustBuffer {
+    typealias SwiftType = NetworkAuditSink?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeNetworkAuditSink.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeNetworkAuditSink.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -17829,6 +18862,31 @@ fileprivate struct FfiConverterSequenceTypeLocalizedTextInfo: FfiConverterRustBu
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeNetworkAuditHeader: FfiConverterRustBuffer {
+    typealias SwiftType = [NetworkAuditHeader]
+
+    public static func write(_ value: [NetworkAuditHeader], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeNetworkAuditHeader.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [NetworkAuditHeader] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [NetworkAuditHeader]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeNetworkAuditHeader.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypePlayGrantInfo: FfiConverterRustBuffer {
     typealias SwiftType = [PlayGrantInfo]
 
@@ -18417,17 +19475,23 @@ public func availableServices() -> [ServiceKind]  {
  * its response (status + pretty-printed JSON). The host passes `None` in
  * release builds and a native logger only when its debug launch flag is set.
  *
+ * When `audit_sink` is `Some`, every HTTP exchange of the provider and of
+ * the capability handles it returns is handed to it as a structured, raw
+ * [`crate::audit::NetworkAuditEntry`] (see [`NetworkAuditSink`]), tagged
+ * with `account_id`. Independent of `debug_logger`. Defaults to `None`.
+ *
  * # Errors
  * [`StackError::InvalidCredentials`] if a required secret is missing, or, for
  * Google Play, if a field is blank or the private key is not a usable RSA key.
  */
-public func connect(kind: ServiceKind, accountId: String, store: CredentialStore, debugLogger: DebugLogger?)throws  -> Provider  {
+public func connect(kind: ServiceKind, accountId: String, store: CredentialStore, debugLogger: DebugLogger?, auditSink: NetworkAuditSink? = nil)throws  -> Provider  {
     return try  FfiConverterTypeProvider_lift(try rustCallWithError(FfiConverterTypeStackError_lift) {
     uniffi_stack_core_fn_func_connect(
         FfiConverterTypeServiceKind_lower(kind),
         FfiConverterString.lower(accountId),
         FfiConverterTypeCredentialStore_lower(store),
-        FfiConverterOptionTypeDebugLogger.lower(debugLogger),$0
+        FfiConverterOptionTypeDebugLogger.lower(debugLogger),
+        FfiConverterOptionTypeNetworkAuditSink.lower(auditSink),$0
     )
 })
 }
@@ -18451,19 +19515,21 @@ public func connect(kind: ServiceKind, accountId: String, store: CredentialStore
  *
  * Synchronous and offline, like [`connect`]. When `debug_logger` is `Some`,
  * requests are traced like [`connect`]'s, except that the `Authorization`
- * header is redacted.
+ * header is redacted. `audit_sink` is as in [`connect`]; its entries carry
+ * the host's token verbatim (the sink is the host's own).
  *
  * # Errors
  * [`StackError::Unsupported`] for a service without this auth path (App
  * Store Connect); [`StackError::InvalidCredentials`] for a blank `account_id`.
  */
-public func connectWithAccessToken(kind: ServiceKind, accountId: String, tokenProvider: AccessTokenProvider, debugLogger: DebugLogger?)throws  -> Provider  {
+public func connectWithAccessToken(kind: ServiceKind, accountId: String, tokenProvider: AccessTokenProvider, debugLogger: DebugLogger?, auditSink: NetworkAuditSink? = nil)throws  -> Provider  {
     return try  FfiConverterTypeProvider_lift(try rustCallWithError(FfiConverterTypeStackError_lift) {
     uniffi_stack_core_fn_func_connect_with_access_token(
         FfiConverterTypeServiceKind_lower(kind),
         FfiConverterString.lower(accountId),
         FfiConverterTypeAccessTokenProvider_lower(tokenProvider),
-        FfiConverterOptionTypeDebugLogger.lower(debugLogger),$0
+        FfiConverterOptionTypeDebugLogger.lower(debugLogger),
+        FfiConverterOptionTypeNetworkAuditSink.lower(auditSink),$0
     )
 })
 }
@@ -18498,20 +19564,23 @@ public func connectWithAccessToken(kind: ServiceKind, accountId: String, tokenPr
  *
  * Synchronous and offline, like [`connect`]. When `debug_logger` is `Some`,
  * requests are traced like [`connect`]'s, with the session's cookies, CSRF
- * tokens and sign-in headers redacted.
+ * tokens and sign-in headers redacted. `audit_sink` is as in [`connect`]
+ * (provider `AppleWebSession`; the jar's cookies are not in the entries'
+ * request headers, the CSRF and session headers and every `Set-Cookie` are).
  *
  * # Errors
  * [`StackError::InvalidCredentials`] for a blank `account_id` or when the
  * store has no session for it; [`StackError::Decode`] for a blob the core
  * cannot read.
  */
-public func connectWithAppleSession(accountId: String, teamId: UInt64, sessionStore: SessionStore, debugLogger: DebugLogger?)throws  -> Provider  {
+public func connectWithAppleSession(accountId: String, teamId: UInt64, sessionStore: SessionStore, debugLogger: DebugLogger?, auditSink: NetworkAuditSink? = nil)throws  -> Provider  {
     return try  FfiConverterTypeProvider_lift(try rustCallWithError(FfiConverterTypeStackError_lift) {
     uniffi_stack_core_fn_func_connect_with_apple_session(
         FfiConverterString.lower(accountId),
         FfiConverterUInt64.lower(teamId),
         FfiConverterTypeSessionStore_lower(sessionStore),
-        FfiConverterOptionTypeDebugLogger.lower(debugLogger),$0
+        FfiConverterOptionTypeDebugLogger.lower(debugLogger),
+        FfiConverterOptionTypeNetworkAuditSink.lower(auditSink),$0
     )
 })
 }
@@ -18577,13 +19646,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_func_available_services() != 22553) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_stack_core_checksum_func_connect() != 64857) {
+    if (uniffi_stack_core_checksum_func_connect() != 987) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_stack_core_checksum_func_connect_with_access_token() != 64274) {
+    if (uniffi_stack_core_checksum_func_connect_with_access_token() != 28685) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_stack_core_checksum_func_connect_with_apple_session() != 37659) {
+    if (uniffi_stack_core_checksum_func_connect_with_apple_session() != 40926) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_func_credential_schema() != 9978) {
@@ -18638,6 +19707,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_debuglogger_log() != 63302) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_networkauditsink_record() != 558) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_stack_core_checksum_method_networkauditsink_capture_bodies() != 16916) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_stack_core_checksum_method_sessionstore_load() != 32491) {
@@ -19066,10 +20141,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_stack_core_checksum_method_syncservice_sync_apps() != 30671) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_stack_core_checksum_constructor_appleidsignin_new() != 46512) {
+    if (uniffi_stack_core_checksum_constructor_appleidsignin_new() != 55551) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_stack_core_checksum_constructor_appleidsignin_with_saved_session() != 1901) {
+    if (uniffi_stack_core_checksum_constructor_appleidsignin_with_saved_session() != 18255) {
         return InitializationResult.apiChecksumMismatch
     }
 
@@ -19078,6 +20153,7 @@ private let initializationResult: InitializationResult = {
     uniffiCallbackInitCoreLogger()
     uniffiCallbackInitCredentialStore()
     uniffiCallbackInitDebugLogger()
+    uniffiCallbackInitNetworkAuditSink()
     uniffiCallbackInitSessionStore()
     return InitializationResult.ok
 }()

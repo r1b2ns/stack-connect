@@ -229,7 +229,12 @@ final class ScreenshotPreviewViewModel: ObservableObject {
                 defer { downloadedCount += 1 }
                 guard let urlStr = item.shot.imageUrl, let url = URL(string: urlStr) else { continue }
 
-                let (data, _) = try await URLSession.shared.data(from: url)
+                let request = NetworkAuditRequestTag.tagged(
+                    URLRequest(url: url),
+                    origin: String(localized: "Screenshots · download all", comment: "Network audit origin: downloading every screenshot of a version."),
+                    purpose: String(localized: "Download the screenshots to share them", comment: "Network audit purpose: screenshot download.")
+                )
+                let (data, _) = try await URLSession.shared.data(for: request)
 
                 let subdir = workDir.appendingPathComponent(sanitize(item.set.displayName), isDirectory: true)
                 try? fileManager.createDirectory(at: subdir, withIntermediateDirectories: true)

@@ -2227,6 +2227,8 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
             return rustProvider
         }
         let debugLogger: DebugLogger? = featureFlags.isEnabled(.useRustCoreDebugLogging) ? RustCoreDebugLogger() : nil
+        // Network audit (flag `networkAudit`): `nil` while OFF.
+        let auditSink = NetworkAuditCoreSinkFactory.make(featureFlags: featureFlags)
         do {
             let provider: StackCoreRust.Provider
             switch credentials.source {
@@ -2235,14 +2237,16 @@ final class AppleAccountConnection: AccountConnectionProtocol, @unchecked Sendab
                     kind: .appStoreConnect,
                     accountId: credentials.issuerID,
                     store: rustCredentialStore,
-                    debugLogger: debugLogger
+                    debugLogger: debugLogger,
+                    auditSink: auditSink
                 )
             case .webSession(let session):
                 provider = try coreProviders.connectWithAppleSession(
                     accountId: session.appleId,
                     teamId: session.teamId,
                     sessionStore: sessionStore,
-                    debugLogger: debugLogger
+                    debugLogger: debugLogger,
+                    auditSink: auditSink
                 )
             }
             rustProvider = provider

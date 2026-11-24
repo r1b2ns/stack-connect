@@ -52,6 +52,12 @@ enum AnalyticsScreen: String, CaseIterable, Sendable {
     case appsPermissionPicker = "apps_permission_picker"
     case license = "license"
     case tipJar = "tip_jar"
+    /// Settings › Privacy › Audit and its screens (flag `networkAudit`).
+    case networkAudit = "network_audit"
+    case networkAuditDetail = "network_audit_detail"
+    case networkAuditRetention = "network_audit_retention"
+    case networkAuditExport = "network_audit_export"
+    case networkAuditEventExport = "network_audit_event_export"
 
     // MARK: Apps
     case appList = "app_list"

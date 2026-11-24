@@ -17,6 +17,16 @@ struct StackConnectApp: App {
     private let tipJarTransactionObserver: TipJarTransactionObserver?
 
     init() {
+        // The on-device network audit (flag `networkAudit`) goes in first,
+        // before Firebase or any screen builds a URLSession, so every session
+        // made from the default / ephemeral configurations is recorded.
+        #if DEBUG
+        let isFakeDataMode = FakeDataMode.current.isEnabled
+        #else
+        let isFakeDataMode = false
+        #endif
+        NetworkAuditBootstrap.install(isUnitTestHost: Self.isUnitTestHost, isFakeDataMode: isFakeDataMode)
+
         // The core's diagnostic log sink goes in before anything can `connect`
         // (fake data mode included: the fakes just never produce core lines).
         CoreLoggerInstaller.shared.install()

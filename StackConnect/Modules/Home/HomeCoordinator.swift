@@ -4,6 +4,10 @@ enum HomeRoute: Hashable {
     case settingsAccounts
     case license
     case tipJar
+    /// Settings › Privacy › Audit (flag `networkAudit`).
+    case networkAudit
+    case networkAuditEvent(NetworkAuditEventSummary)
+    case networkAuditRetention
     case accountSettings(AccountModel)
     case accountManagement(AccountModel)
     case certificatesList(AccountModel)
@@ -117,6 +121,19 @@ final class HomeCoordinator: MainCoordinatorProtocol {
 
     func navigateToTipJar() {
         push(HomeRoute.tipJar)
+    }
+
+    func navigateToNetworkAudit() {
+        push(HomeRoute.networkAudit)
+    }
+
+    func navigateToNetworkAudit(_ route: NetworkAuditRoute) {
+        switch route {
+        case .event(let summary):
+            push(HomeRoute.networkAuditEvent(summary))
+        case .retention:
+            push(HomeRoute.networkAuditRetention)
+        }
     }
 
     func navigateToAccountSettings(_ account: AccountModel) {

@@ -25,7 +25,11 @@ struct URLSessionGoogleHTTPClient: GoogleHTTPClient {
     }
 
     func send(_ request: URLRequest) async throws -> GoogleHTTPResponse {
-        let (data, response) = try await session.data(for: request)
+        let tagged = NetworkAuditRequestTag.tagged(
+            request,
+            origin: String(localized: "Sign in with Google", comment: "Network audit origin: the Google sign-in flow and its token refreshes.")
+        )
+        let (data, response) = try await session.data(for: tagged)
         guard let http = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }

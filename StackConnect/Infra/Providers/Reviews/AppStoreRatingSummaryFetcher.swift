@@ -75,7 +75,14 @@ struct ITunesRatingSummaryFetcher: AppStoreRatingSummaryFetching {
     ///   - loadData: GET for one lookup URL; `URLSession.shared` by default.
     init(
         storefronts: [String] = Self.appStoreStorefronts,
-        loadData: @escaping DataLoader = { try await URLSession.shared.data(from: $0).0 }
+        loadData: @escaping DataLoader = { url in
+            let request = NetworkAuditRequestTag.tagged(
+                URLRequest(url: url),
+                origin: String(localized: "Ratings summary", comment: "Network audit origin: the App Store ratings summary of an app."),
+                purpose: String(localized: "Read the public rating of an app in each storefront", comment: "Network audit purpose: iTunes lookup per storefront.")
+            )
+            return try await URLSession.shared.data(for: request).0
+        }
     ) {
         self.storefronts = storefronts
         self.loadData = loadData

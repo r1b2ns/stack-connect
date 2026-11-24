@@ -17,6 +17,12 @@ struct HomeRouteView: View {
             LicenseViewFactory.build()
         case .tipJar:
             TipJarViewFactory.build()
+        case .networkAudit:
+            NetworkAuditViewFactory.build()
+        case .networkAuditEvent(let summary):
+            NetworkAuditDetailViewFactory.build(summary: summary)
+        case .networkAuditRetention:
+            NetworkAuditRetentionViewFactory.build()
         case .accountSettings(let account):
             AccountSettingsViewFactory.build(account: account)
         case .accountManagement(let account):

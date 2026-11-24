@@ -180,6 +180,9 @@ targets:
         # the reversed client ID through ASWebAuthenticationSession, so no URL
         # type is declared.
         GoogleOAuthClientID: "$(GOOGLE_OAUTH_CLIENT_ID)"
+        # Network audit (Settings › Privacy › Audit): Face ID before a recorded
+        # token is revealed or put in a cURL export.
+        NSFaceIDUsageDescription: "StackConnect uses Face ID before showing or exporting a token recorded in the network audit."
 
     configFiles:
       Debug: Configs/Debug.xcconfig

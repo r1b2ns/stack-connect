@@ -18,6 +18,8 @@ struct SettingsUiState {
     var buildNumber: String = ""
     var preReviewChecklistEnabled: Bool = true
     var analyticsEnabled: Bool = true
+    /// Settings › Privacy › Audit (flag `networkAudit`).
+    var showsNetworkAudit: Bool = false
 }
 
 // MARK: - Implementation
@@ -51,6 +53,7 @@ final class SettingsViewModel: SettingsViewModelProtocol {
         uiState.buildNumber = info?["CFBundleVersion"] as? String ?? "1"
         uiState.preReviewChecklistEnabled = appSettings.isEnabled(.preReviewChecklistEnabled)
         uiState.analyticsEnabled = analytics.isEnabled
+        uiState.showsNetworkAudit = featureFlags.isEnabled(.networkAudit)
     }
 
     func setPreReviewChecklistEnabled(_ enabled: Bool) {

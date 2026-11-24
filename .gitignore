@@ -51,3 +51,7 @@ GoogleService-Info.plist
 # Local throwaway spikes (credentials and API outputs stay out of git)
 spikes/
 docs/
+
+# Market research notes and reports (local only)
+/research_notes/
+/reports/

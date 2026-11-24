@@ -554,6 +554,8 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
                 return rustProvider
             }
             let debugLogger: DebugLogger? = featureFlags.isEnabled(.useRustCoreDebugLogging) ? RustCoreDebugLogger() : nil
+            // Network audit (flag `networkAudit`): `nil` while OFF.
+            let auditSink = NetworkAuditCoreSinkFactory.make(featureFlags: featureFlags)
             do {
                 let provider: StackCoreRust.Provider
                 if let signInTokenProvider {
@@ -561,7 +563,8 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
                         kind: .googlePlay,
                         accountId: signInTokenProvider.loginId,
                         tokenProvider: signInTokenProvider,
-                        debugLogger: debugLogger
+                        debugLogger: debugLogger,
+                        auditSink: auditSink
                     )
                     Log.print.info("[GooglePlay] Connected a Google sign-in account (Rust core)")
                 } else {
@@ -570,7 +573,8 @@ final class GooglePlayAccountConnection: AccountConnectionProtocol,
                         kind: .googlePlay,
                         accountId: serviceAccount.clientEmail,
                         store: GooglePlayCredentialStore(serviceAccount: serviceAccount),
-                        debugLogger: debugLogger
+                        debugLogger: debugLogger,
+                        auditSink: auditSink
                     )
                 }
                 rustProvider = provider
