@@ -40,7 +40,9 @@ struct NetworkAuditEventExportView<ViewModel: NetworkAuditEventExportViewModelPr
                 buildFormatSection()
                 if viewModel.uiState.showsTokenToggle {
                     buildCredentialSection()
-                    buildCredentialRulesSection()
+                    if !viewModel.uiState.isAppTelemetry {
+                        buildCredentialRulesSection()
+                    }
                 }
                 buildSecretNoteSection()
                 buildBodySection()
@@ -181,8 +183,13 @@ struct NetworkAuditEventExportView<ViewModel: NetworkAuditEventExportViewModelPr
 
     private func buildSecretNoteSection() -> some View {
         Section {
-            StackWarningCard(text: viewModel.uiState.secretNote)
-                .networkAuditClearRow(top: 0, bottom: 0)
+            if viewModel.uiState.isAppTelemetry {
+                StackWarningCard(systemImage: "lock.shield.fill", title: NetworkAuditAppSecretCopy.title, text: viewModel.uiState.secretNote)
+                    .networkAuditClearRow(top: 0, bottom: 0)
+            } else {
+                StackWarningCard(text: viewModel.uiState.secretNote)
+                    .networkAuditClearRow(top: 0, bottom: 0)
+            }
         }
         .listSectionSpacing(16)
     }
@@ -256,6 +263,9 @@ struct NetworkAuditEventExportView<ViewModel: NetworkAuditEventExportViewModelPr
     }
 
     private var credentialSubtitle: String {
+        if viewModel.uiState.isAppTelemetry {
+            return NetworkAuditAppSecretCopy.tokenSubtitle
+        }
         switch viewModel.uiState.event?.credential?.kind {
         case .appStoreConnectJWT:
             return String(localized: "App Store Connect JWT · asks for Face ID", comment: "Network audit export: the token is an App Store Connect JWT.")
@@ -275,7 +285,7 @@ struct NetworkAuditEventExportView<ViewModel: NetworkAuditEventExportViewModelPr
             return (String(localized: "Token expired at \(at.formatted(date: .omitted, time: .shortened)). It can't be included: the command would return 401.", comment: "Network audit export: the token expired. Argument: time."), false)
         case .unknownValidity:
             return (String(localized: "The token's expiry isn't known, so it can't be included.", comment: "Network audit export: the token's validity is unknown."), false)
-        case .alwaysMasked, .notApplicable:
+        case .alwaysMasked, .notApplicable, .appTelemetry:
             return nil
         }
     }

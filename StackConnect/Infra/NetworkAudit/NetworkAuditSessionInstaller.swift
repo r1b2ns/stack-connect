@@ -31,8 +31,18 @@ enum NetworkAuditBootstrap {
         NetworkAuditRecorder.shared = recorder
         NetworkAuditSessionInstaller.install(sink: recorder)
 
-        // Retention: at launch and every time the app comes back.
-        Task.detached(priority: .utility) { await recorder.purgeExpired() }
+        // Retention: at launch and every time the app comes back. Once, what
+        // older versions kept of StackConnect's own values (telemetry secrets,
+        // bundle ID, Firebase project) is dropped from disk.
+        let scrubKey = "networkAudit.didScrubAppValues.v2"
+        let needsScrub = !UserDefaults.standard.bool(forKey: scrubKey)
+        Task.detached(priority: .utility) {
+            await recorder.purgeExpired()
+            if needsScrub {
+                await recorder.scrubAppTelemetrySecrets()
+                UserDefaults.standard.set(true, forKey: scrubKey)
+            }
+        }
         NotificationCenter.default.addObserver(
             forName: UIApplication.willEnterForegroundNotification,
             object: nil,

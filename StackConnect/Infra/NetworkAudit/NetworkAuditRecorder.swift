@@ -55,6 +55,8 @@ final class NetworkAuditRecorder: NetworkAuditExchangeSink, NetworkAuditLocalRec
     let tokenExpiries: NetworkAuditTokenExpiryRegistry
     /// Turns the Rust core's account ids into the names the user knows.
     let accounts: NetworkAuditAccountResolving?
+    /// StackConnect's own identifiers, hidden before storage.
+    let appIdentity: NetworkAuditAppIdentity
     private let now: @Sendable () -> Date
 
     init(
@@ -63,8 +65,10 @@ final class NetworkAuditRecorder: NetworkAuditExchangeSink, NetworkAuditLocalRec
         vault: NetworkAuditSecretSealing,
         tokenExpiries: NetworkAuditTokenExpiryRegistry = NetworkAuditTokenExpiryRegistry(),
         accounts: NetworkAuditAccountResolving? = nil,
+        appIdentity: NetworkAuditAppIdentity = .current,
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
+        self.appIdentity = appIdentity
         self.store = store
         self.settings = settings
         self.vault = vault
@@ -230,12 +234,19 @@ final class NetworkAuditRecorder: NetworkAuditExchangeSink, NetworkAuditLocalRec
         }
 
         let connection = [exchange.tlsVersion, exchange.httpVersion].compactMap { $0 }.joined(separator: " · ")
+        let category = annotations?.category ?? catalog.category
+        // StackConnect's own telemetry: its keys and tokens belong to the
+        // app's Firebase project. Masked for good, never sealed.
+        let isAppTelemetry = category == .telemetry
+        // A revealable original never carries StackConnect's own identifiers.
+        let isUserTraffic = NetworkAuditAppIdentity.isUserAccountTraffic(category)
+        secrets = secrets.mapValues { appIdentity.mask($0, isUserAccountTraffic: isUserTraffic).text }
 
-        return NetworkAuditEvent(
+        let event = NetworkAuditEvent(
             id: UUID(),
             kind: .http,
             direction: .outbound,
-            category: annotations?.category ?? catalog.category,
+            category: category,
             date: exchange.startedAt,
             duration: exchange.duration,
             method: exchange.method.uppercased(),
@@ -258,12 +269,22 @@ final class NetworkAuditRecorder: NetworkAuditExchangeSink, NetworkAuditLocalRec
             requestBody: requestBody,
             responseBody: responseBody,
             credential: credential,
-            sealedSecrets: vault.seal(secrets),
+            sealedSecrets: isAppTelemetry ? nil : vault.seal(secrets),
             source: exchange.source == .rustCore ? .rustCore : .urlSession,
             operation: annotations?.operation,
             parentOrigin: annotations?.parentOrigin,
             attempt: annotations?.attempt
         )
+        let telemetrySafe = isAppTelemetry ? (event.appTelemetrySanitized() ?? event) : event
+        return telemetrySafe.appIdentitySanitized(appIdentity) ?? telemetrySafe
+    }
+
+    /// Drops what older versions kept of app telemetry secrets (sealed
+    /// originals, token prefixes in previews) from the events on disk.
+    /// Returns how many events were rewritten.
+    @discardableResult
+    func scrubAppTelemetrySecrets() async -> Int {
+        await store.rewrite { [appIdentity] in $0.storageSanitized(identity: appIdentity) }
     }
 
     /// The core's credential hint wins over the app's own decoding of the

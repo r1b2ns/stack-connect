@@ -34,6 +34,8 @@ struct NetworkAuditEventExportUiState {
     /// an `Authorization` header, and enabled while the token is includable.
     var showsTokenToggle: Bool { isCurl && tokenInclusion != .notApplicable }
     var canToggleToken: Bool { tokenInclusion.canInclude || includesRealToken }
+    /// StackConnect's own telemetry: its secrets never leave masked.
+    var isAppTelemetry: Bool { event?.isAppTelemetry ?? false }
 }
 
 // MARK: - Implementation
@@ -54,7 +56,7 @@ final class NetworkAuditEventExportViewModel: NetworkAuditEventExportViewModelPr
     }
 
     func load() async {
-        uiState.event = await dependencies.store.event(for: summary)
+        uiState.event = await dependencies.store.event(for: summary)?.sanitizedForDisplay(identity: dependencies.appIdentity)
         refresh()
     }
 
@@ -170,6 +172,9 @@ final class NetworkAuditEventExportViewModel: NetworkAuditEventExportViewModelPr
     }
 
     private func secretNote(for event: NetworkAuditEvent) -> String {
+        if event.isAppTelemetry {
+            return NetworkAuditAppSecretCopy.exportNote
+        }
         if uiState.includesRealToken {
             return String(localized: "This command carries a valid token: anyone with the text acts with your API key's permissions until it expires. Don't paste it in public issues, chats or support tickets.", comment: "Network audit: warning when a cURL carries a real token.")
         }

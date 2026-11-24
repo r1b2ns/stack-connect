@@ -95,6 +95,24 @@ extension NetworkAuditTag {
         self.init(title: category.title, fill: category.fill, foreground: category.foreground)
     }
 
+    /// A value that carried StackConnect's own identifiers (hidden as `[APP]`).
+    static var appData: NetworkAuditTag {
+        NetworkAuditTag(
+            title: NetworkAuditAppSecretCopy.dataBadge,
+            fill: NetworkAuditPalette.purpleFill,
+            foreground: NetworkAuditPalette.purpleText
+        )
+    }
+
+    /// A secret of StackConnect's own telemetry: never revealable.
+    static var appSecret: NetworkAuditTag {
+        NetworkAuditTag(
+            title: NetworkAuditAppSecretCopy.badge,
+            fill: NetworkAuditPalette.purpleFill,
+            foreground: NetworkAuditPalette.purpleText
+        )
+    }
+
     static var secret: NetworkAuditTag {
         NetworkAuditTag(
             title: String(localized: "SECRET", comment: "Network audit detail: badge of a secret header."),

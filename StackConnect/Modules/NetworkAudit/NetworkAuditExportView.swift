@@ -207,7 +207,8 @@ struct NetworkAuditMaskedSecretsSection: View {
             String(localized: "Google access_token, refresh_token and id_token", comment: "Network audit export: masked secret."),
             String(localized: "client_secret and private_key of service accounts", comment: "Network audit export: masked secret."),
             String(localized: "Content of imported .p8 keys", comment: "Network audit export: masked secret."),
-            String(localized: "API keys in URL parameters (key=…)", comment: "Network audit export: masked secret.")
+            String(localized: "API keys in URL parameters (key=…)", comment: "Network audit export: masked secret."),
+            NetworkAuditAppSecretCopy.maskedListItem
         ]
     }
 }

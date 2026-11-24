@@ -87,6 +87,13 @@ struct NetworkAuditDetailView<ViewModel: NetworkAuditDetailViewModelProtocol>: V
                     buildInfoSections(isWide: isWide)
                     if event.kind == .http {
                         buildTabs()
+                        if event.hidesAppValues {
+                            StackWarningCard(
+                                systemImage: "lock.shield.fill",
+                                title: NetworkAuditAppSecretCopy.title,
+                                text: NetworkAuditAppSecretCopy.message
+                            )
+                        }
                         if isWide {
                             HStack(alignment: .top, spacing: 20) {
                                 buildHeadersSection()
@@ -293,7 +300,7 @@ struct NetworkAuditDetailView<ViewModel: NetworkAuditDetailViewModelProtocol>: V
 
     private var headersFooter: String? {
         var lines: [String] = []
-        if viewModel.uiState.hasSecretHeaders {
+        if viewModel.uiState.canRevealSecrets {
             lines.append(String(localized: "Tokens are stored encrypted and only appear after Face ID. Copying while hidden copies the masked version, and exports always mask them. Only cURL can carry a short-lived token, with Face ID and while it is still valid.", comment: "Network audit detail: footer about secret headers."))
         }
         if viewModel.uiState.isCoreEvent, viewModel.uiState.tab == .request {
@@ -303,14 +310,21 @@ struct NetworkAuditDetailView<ViewModel: NetworkAuditDetailViewModelProtocol>: V
     }
 
     private func buildHeaderRow(_ header: NetworkAuditHeaderRow) -> some View {
-        HStack(alignment: header.isSecret ? .top : .center, spacing: 4) {
+        let showsReveal = header.isSecret && viewModel.uiState.canRevealSecrets
+        return HStack(alignment: showsReveal ? .top : .center, spacing: 4) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(header.name)
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(.secondary)
                     if header.isSecret {
-                        NetworkAuditTag.secret
+                        if viewModel.uiState.isAppTelemetry {
+                            NetworkAuditTag.appSecret
+                        } else {
+                            NetworkAuditTag.secret
+                        }
+                    } else if header.isAppData {
+                        NetworkAuditTag.appData
                     }
                 }
                 Text(header.displayValue)
@@ -318,7 +332,7 @@ struct NetworkAuditDetailView<ViewModel: NetworkAuditDetailViewModelProtocol>: V
                     .lineSpacing(3)
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
-                if header.isSecret {
+                if header.isSecret, viewModel.uiState.canRevealSecrets {
                     Button {
                         Task { await viewModel.toggleSecrets() }
                     } label: {
@@ -344,8 +358,8 @@ struct NetworkAuditDetailView<ViewModel: NetworkAuditDetailViewModelProtocol>: V
         }
         .padding(.leading, 16)
         .padding(.trailing, 4)
-        .padding(.vertical, header.isSecret ? 4 : 8)
-        .padding(.top, header.isSecret ? 4 : 0)
+        .padding(.vertical, showsReveal ? 4 : 8)
+        .padding(.top, showsReveal ? 4 : 0)
     }
 
     // MARK: - Body

@@ -131,7 +131,7 @@ final class NetworkAuditViewModel: NetworkAuditViewModelProtocol {
         let retention = dependencies.settings.retention
         let now = dependencies.now()
         summaries = await dependencies.store.summaries(since: retention.cutoff(from: now, calendar: calendar))
-            .map { $0.withCurrentCategory() }
+            .map { [dependencies] in $0.sanitizedForDisplay(identity: dependencies.appIdentity) }
         uiState.retentionDays = retention.days
         uiState.totalCount = summaries.count
         uiState.today = makeTodaySummary(now: now)

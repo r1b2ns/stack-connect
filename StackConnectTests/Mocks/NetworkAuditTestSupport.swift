@@ -43,6 +43,16 @@ actor MockNetworkAuditStore: NetworkAuditStoring {
         events.removeAll()
     }
 
+    func rewrite(_ transform: @escaping @Sendable (NetworkAuditEvent) -> NetworkAuditEvent?) -> Int {
+        var count = 0
+        events = events.map { event in
+            guard let updated = transform(event) else { return event }
+            count += 1
+            return updated
+        }
+        return count
+    }
+
     func stats() -> NetworkAuditStorageStats {
         NetworkAuditStorageStats(eventCount: events.count, byteCount: Int64(events.count * 100), oldestDate: events.map(\.date).min())
     }

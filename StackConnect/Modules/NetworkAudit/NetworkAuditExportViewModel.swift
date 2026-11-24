@@ -142,7 +142,7 @@ final class NetworkAuditExportViewModel: NetworkAuditExportViewModelProtocol {
         uiState.isExporting = true
         defer { uiState.isExporting = false }
         let summaries = summaries(for: uiState.scope)
-        let events = await dependencies.store.events(for: summaries)
+        let events = await dependencies.store.events(for: summaries).map { [dependencies] in $0.sanitizedForDisplay(identity: dependencies.appIdentity) }
         let text = dependencies.exporter.batch(events, format: uiState.format, includeBodies: includeBodies)
         let name = "StackConnect-Audit-\(Self.fileStamp(dependencies.now())).\(uiState.format.fileExtension)"
         guard let url = NetworkAuditShareFile.write(text, name: name) else {
@@ -184,7 +184,7 @@ final class NetworkAuditExportViewModel: NetworkAuditExportViewModelProtocol {
         for summary in head {
             if let cached = previewEvents[summary] {
                 events.append(cached)
-            } else if let event = await dependencies.store.event(for: summary) {
+            } else if let event = await dependencies.store.event(for: summary)?.sanitizedForDisplay(identity: dependencies.appIdentity) {
                 previewEvents[summary] = event
                 events.append(event)
             }

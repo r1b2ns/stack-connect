@@ -43,6 +43,8 @@ struct NetworkAuditHeader: Codable, Sendable, Hashable {
     var isSecret: Bool = false
     /// UI hint for a masked secret, e.g. `Bearer eyJhbG••••••••`.
     var maskedPreview: String?
+    /// The value carried StackConnect's own identifiers, hidden as `[APP]`.
+    var isAppData: Bool?
 }
 
 /// A request or response body as stored (already masked).
@@ -61,7 +63,7 @@ struct NetworkAuditBody: Codable, Sendable, Hashable {
         case empty
     }
 
-    let content: Content
+    var content: Content
     let byteCount: Int64
     let contentType: String?
     /// `true` when the text was cut to `NetworkAuditRecorder.maxBodyBytes`.
@@ -121,11 +123,11 @@ struct NetworkAuditEvent: Codable, Sendable, Hashable, Identifiable {
     /// `GET`, `POST`… for HTTP; `IMPORT` / `EXPORT` for local events.
     let method: String
     /// Masked full URL (secret query parameters masked). `nil` for local events.
-    let url: String?
+    var url: String?
     /// Host for HTTP; a short label for local events ("iOS Files").
-    let host: String
+    var host: String
     /// Path + masked query for HTTP; a short description for local events.
-    let path: String
+    var path: String
     var statusCode: Int?
     /// Human status for local events ("Read", "Copied", "Face ID").
     var statusText: String?
@@ -154,6 +156,9 @@ struct NetworkAuditEvent: Codable, Sendable, Hashable, Identifiable {
     var parentOrigin: String? = nil
     /// `1` for a first attempt; `2`+ for a retry (Rust core).
     var attempt: Int? = nil
+    /// StackConnect's own identifiers were hidden as `[APP]` (bundle ID,
+    /// Firebase project, OAuth client).
+    var hidesAppData: Bool? = nil
 
     /// HTTP 2xx/3xx, or a local event that didn't fail.
     var isSuccess: Bool {
@@ -234,5 +239,45 @@ extension NetworkAuditEvent {
         var copy = self
         copy.category = current
         return copy
+    }
+}
+
+// MARK: - App telemetry (StackConnect's own Firebase project)
+
+extension NetworkAuditHeader {
+    /// The UI preview without any characters of the secret: `FIS_v2 ••••••••`.
+    func withoutSecretPrefix() -> NetworkAuditHeader {
+        guard isSecret, let preview = maskedPreview else { return self }
+        var copy = self
+        if let (scheme, _) = NetworkAuditSecretMasker.splitScheme(value) {
+            copy.maskedPreview = "\(scheme) \(NetworkAuditSecretMasker.previewDots)"
+        } else if !preview.contains("=") {
+            copy.maskedPreview = NetworkAuditSecretMasker.previewDots
+        }
+        return copy
+    }
+}
+
+extension NetworkAuditEvent {
+    /// Traffic of StackConnect's own SDKs (Firebase Analytics, Crashlytics,
+    /// Remote Config, Installations): its keys and tokens identify the app's
+    /// Firebase project, not the user's accounts. Never revealed, copied in
+    /// clear or exported.
+    var isAppTelemetry: Bool {
+        kind == .http && category == .telemetry
+    }
+
+    /// For app telemetry: no sealed originals, no includable credential and
+    /// no secret characters in the previews. `nil` when nothing changes —
+    /// lets the store rewrite only the events that held something.
+    func appTelemetrySanitized() -> NetworkAuditEvent? {
+        let current = withCurrentCategory()
+        guard current.isAppTelemetry else { return nil }
+        var copy = current
+        copy.sealedSecrets = nil
+        copy.credential = nil
+        copy.requestHeaders = copy.requestHeaders.map { $0.withoutSecretPrefix() }
+        copy.responseHeaders = copy.responseHeaders.map { $0.withoutSecretPrefix() }
+        return copy == self ? nil : copy
     }
 }

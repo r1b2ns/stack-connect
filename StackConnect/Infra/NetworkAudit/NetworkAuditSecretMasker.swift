@@ -30,7 +30,7 @@ enum NetworkAuditSecretMasker {
         "x-apple-id-session-id", "x-goog-firebase-installations-auth"
     ]
 
-    private static let secretHeaderFragments = ["token", "secret", "session", "auth", "api-key", "apikey", "password"]
+    private static let secretHeaderFragments = ["token", "secret", "session", "auth", "api-key", "apikey", "password", "appcheck", "app-check"]
 
     static func isSecretHeader(_ name: String) -> Bool {
         let lower = name.lowercased()
@@ -76,7 +76,8 @@ enum NetworkAuditSecretMasker {
         let parts = value.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
         guard parts.count == 2 else { return nil }
         let scheme = String(parts[0])
-        let known = ["bearer", "basic", "digest", "token", "key"]
+        // `FIS_v2`: the Firebase Installations auth token of the SDKs.
+        let known = ["bearer", "basic", "digest", "token", "key", "fis_v2"]
         guard known.contains(scheme.lowercased()) else { return nil }
         return (scheme, String(parts[1]))
     }
@@ -324,6 +325,9 @@ enum NetworkAuditTokenInclusion: Equatable, Sendable {
     case unknownValidity(NetworkAuditCredentialInfo.Kind)
     case expired(NetworkAuditCredentialInfo.Kind, at: Date)
     case available(NetworkAuditCredentialInfo.Kind, until: Date)
+    /// StackConnect's own telemetry (Firebase SDKs): its keys and tokens
+    /// belong to the app's Firebase project and are never included.
+    case appTelemetry
 
     var canInclude: Bool {
         if case .available = self { return true }
@@ -331,6 +335,9 @@ enum NetworkAuditTokenInclusion: Equatable, Sendable {
     }
 
     static func evaluate(_ event: NetworkAuditEvent, now: Date) -> NetworkAuditTokenInclusion {
+        if event.isAppTelemetry {
+            return event.requestHeaders.contains(where: \.isSecret) ? .appTelemetry : .notApplicable
+        }
         guard event.requestHeaders.contains(where: { $0.name.caseInsensitiveCompare("Authorization") == .orderedSame }) else {
             return .notApplicable
         }

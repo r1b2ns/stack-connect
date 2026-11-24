@@ -46,6 +46,8 @@ struct NetworkAuditHeaderRow: Identifiable, Equatable {
     let displayValue: String
     let isSecret: Bool
     let isRevealed: Bool
+    /// Carried StackConnect's own identifiers (hidden as `[APP]`).
+    var isAppData = false
 }
 
 struct NetworkAuditDetailUiState {
@@ -62,6 +64,13 @@ struct NetworkAuditDetailUiState {
     var hasSecretHeaders: Bool { headers.contains(where: \.isSecret) }
     /// Recorded by the Rust core, whose HTTP stack adds headers it can't see.
     var isCoreEvent: Bool { event?.source == .rustCore }
+    /// StackConnect's own telemetry: secrets are app secrets, never revealable.
+    var isAppTelemetry: Bool { event?.isAppTelemetry ?? false }
+    /// Something owned by StackConnect was hidden: shows the explanation card.
+    var hidesAppValues: Bool { event?.hidesAppValues ?? false }
+    /// A secret header can be revealed with Face ID (user-owned credentials
+    /// with sealed originals).
+    var canRevealSecrets: Bool { hasSecretHeaders && !isAppTelemetry && event?.sealedSecrets != nil }
 }
 
 // MARK: - Implementation
@@ -81,7 +90,9 @@ final class NetworkAuditDetailViewModel: NetworkAuditDetailViewModelProtocol {
     }
 
     func load() async {
-        uiState.event = await dependencies.store.event(for: summary)?.withCurrentCategory()
+        // App telemetry events never expose a sealed original, even one stored
+        // by an older version (`appTelemetrySanitized`).
+        uiState.event = await dependencies.store.event(for: summary)?.sanitizedForDisplay(identity: dependencies.appIdentity)
         uiState.isLoading = false
         rebuild()
     }
@@ -98,7 +109,7 @@ final class NetworkAuditDetailViewModel: NetworkAuditDetailViewModelProtocol {
             rebuild()
             return
         }
-        guard let sealed = uiState.event?.sealedSecrets else { return }
+        guard uiState.canRevealSecrets, let sealed = uiState.event?.sealedSecrets else { return }
         let reason = String(localized: "Reveal the token recorded in the network audit.", comment: "Face ID reason: revealing a recorded token in the network audit.")
         guard await dependencies.authenticator.authenticate(reason: reason) else { return }
         guard let secrets = dependencies.vault.open(sealed) else {
@@ -174,7 +185,8 @@ final class NetworkAuditDetailViewModel: NetworkAuditDetailViewModelProtocol {
                 name: header.name,
                 displayValue: real ?? header.maskedPreview ?? header.value,
                 isSecret: header.isSecret,
-                isRevealed: real != nil
+                isRevealed: real != nil,
+                isAppData: header.isAppData == true
             )
         }
         uiState.body = isRequest ? event.requestBody : event.responseBody

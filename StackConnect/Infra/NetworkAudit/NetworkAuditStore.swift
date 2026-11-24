@@ -15,6 +15,10 @@ protocol NetworkAuditStoring: Sendable {
     func purge(before cutoff: Date) async -> Int
     func deleteAll() async
     func stats() async -> NetworkAuditStorageStats
+    /// Rewrites every stored event `transform` changes (non-`nil` result).
+    /// Returns how many were rewritten.
+    @discardableResult
+    func rewrite(_ transform: @escaping @Sendable (NetworkAuditEvent) -> NetworkAuditEvent?) async -> Int
 }
 
 extension NetworkAuditStoring {
@@ -161,6 +165,33 @@ actor FileNetworkAuditStore: NetworkAuditStoring {
             Log.print.info("[NetworkAudit] Purged \(removed) events")
         }
         return removed
+    }
+
+    @discardableResult
+    func rewrite(_ transform: @escaping @Sendable (NetworkAuditEvent) -> NetworkAuditEvent?) -> Int {
+        var rewritten = 0
+        for day in dayDirectories() {
+            var summaries = readIndex(in: day.url)
+            var dayChanged = false
+            for (index, summary) in summaries.enumerated() {
+                let file = day.url.appendingPathComponent("\(summary.id.uuidString).json")
+                guard let data = try? Data(contentsOf: file),
+                      let event = try? decoder.decode(NetworkAuditEvent.self, from: data),
+                      let updated = transform(event),
+                      let encoded = try? encoder.encode(updated) else { continue }
+                try? encoded.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+                summaries[index] = updated.summary
+                dayChanged = true
+                rewritten += 1
+            }
+            if dayChanged {
+                rewriteIndex(summaries, in: day.url)
+            }
+        }
+        if rewritten > 0 {
+            Log.print.info("[NetworkAudit] Rewrote \(rewritten) stored events")
+        }
+        return rewritten
     }
 
     func deleteAll() {
