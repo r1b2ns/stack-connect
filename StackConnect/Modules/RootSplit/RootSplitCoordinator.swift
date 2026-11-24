@@ -179,6 +179,7 @@ final class RootSplitCoordinator: ObservableObject {
         guard item != selection else { return }
         selection = item
         resetDetail()
+        restoreColumnsIfNeeded()
         analytics.track(.navigate(to: item, from: origin))
     }
 
@@ -187,6 +188,30 @@ final class RootSplitCoordinator: ObservableObject {
     func showInDetail(_ route: HomeRoute) {
         detailRoute = route
         detailCoordinator.path = NavigationPath()
+        if Self.usesFullWidth(route) {
+            // A screen with its own list + detail (the network audit) takes the
+            // whole width: the sidebar and the middle column collapse; the
+            // system's sidebar button brings them back.
+            columnVisibility = .detailOnly
+            collapsedForFullWidth = true
+        } else {
+            restoreColumnsIfNeeded()
+        }
+    }
+
+    /// Detail roots laid out as two columns of their own.
+    static func usesFullWidth(_ route: HomeRoute) -> Bool {
+        if case .networkAudit = route { return true }
+        return false
+    }
+
+    /// `true` while the columns are collapsed by `showInDetail`.
+    private(set) var collapsedForFullWidth = false
+
+    private func restoreColumnsIfNeeded() {
+        guard collapsedForFullWidth else { return }
+        collapsedForFullWidth = false
+        columnVisibility = .automatic
     }
 
     /// The Find command (⌘F): focus the search field of the screen on display.
@@ -204,6 +229,7 @@ final class RootSplitCoordinator: ObservableObject {
         accountsRevision += 1
         selection = .dashboard
         resetDetail()
+        restoreColumnsIfNeeded()
     }
 
     private func resetDetail() {

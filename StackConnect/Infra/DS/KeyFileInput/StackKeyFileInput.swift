@@ -93,6 +93,11 @@ struct StackKeyFileInput: View {
         }
         do {
             text = try String(contentsOf: url, encoding: .utf8)
+            // Network audit: the event of a file read in, never its content.
+            NetworkAuditRecorder.shared?.recordFileImport(
+                fileName: url.lastPathComponent,
+                byteCount: Int64(text.utf8.count)
+            )
         } catch {
             Log.print.error("[StackKeyFileInput] Failed to read imported file: \(error.localizedDescription)")
         }

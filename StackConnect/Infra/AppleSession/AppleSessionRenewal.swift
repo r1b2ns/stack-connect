@@ -30,12 +30,14 @@ struct AppleSessionRenewal {
         self.makeSignIn = makeSignIn ?? Self.coreSignIn
     }
 
-    /// The core's real sign-in.
+    /// The core's real sign-in, audited while the `networkAudit` flag is ON
+    /// (its SRP values and the two-factor code are masked for good).
     static func coreSignIn(_ savedSession: Data?) throws -> any AppleIdSignInProtocol {
+        let auditSink = NetworkAuditCoreSinkFactory.make()
         if let savedSession {
-            return try AppleIdSignIn.withSavedSession(blob: savedSession)
+            return try AppleIdSignIn.withSavedSession(blob: savedSession, auditSink: auditSink)
         }
-        return try AppleIdSignIn()
+        return try AppleIdSignIn(auditSink: auditSink)
     }
 
     /// A new core sign-in, over `appleId`'s saved session when one is given

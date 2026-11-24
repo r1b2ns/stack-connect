@@ -83,6 +83,2349 @@
         }
       }
     },
+    "%@ (masked)" : {
+      "comment" : "Network audit toast: a secret header was copied masked. Argument: header name.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (mascarado)"
+          }
+        }
+      }
+    },
+    "%@ export" : {
+      "comment" : "Network audit: an export of audit events. Argument: the format (JSON, HAR, CSV, cURL, Text).",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportação %@"
+          }
+        }
+      }
+    },
+    "%@ of response, already masked" : {
+      "comment" : "Network audit export: include body subtitle. Argument: response size.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ de resposta, já mascarada"
+          }
+        }
+      }
+    },
+    "%@ with token" : {
+      "comment" : "Network audit: an export that carried a real token. Argument: the format (cURL).",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ com token"
+          }
+        }
+      }
+    },
+    "%@ · %lld events" : {
+      "comment" : "Network audit export: detail of the Current Filter scope. Arguments: filter name, count.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %lld eventos"
+          }
+        }
+      }
+    },
+    "%@ → key form" : {
+      "comment" : "Network audit: a key file read into the Add Account form. Argument: the masked file name.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ → formulário da chave"
+          }
+        }
+      }
+    },
+    "%lld (retry)" : {
+      "comment" : "Network audit detail: a retried request. Argument: the attempt number.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld (nova tentativa)"
+          }
+        }
+      }
+    },
+    "%lld days" : {
+      "comment" : "Network audit: a retention option.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld dias"
+          }
+        }
+      }
+    },
+    "%lld events" : {
+      "comment" : "Network audit: count of a day's events.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld eventos"
+          }
+        }
+      }
+    },
+    "%lld events in this filter" : {
+      "comment" : "Network audit: count of the events the filter shows.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld eventos neste filtro"
+          }
+        }
+      }
+    },
+    "%lld events · %@" : {
+      "comment" : "Network audit: subject of a batch export event. Arguments: event count, scope.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld eventos · %@"
+          }
+        }
+      }
+    },
+    "%lld req." : {
+      "comment" : "Network audit: request count of a destination.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld req."
+          }
+        }
+      }
+    },
+    "%lld secrets will be masked. Only cURL can carry the real token." : {
+      "comment" : "Network audit: note about masked secrets. Argument: count of secret headers.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld segredos serão mascarados. Só o cURL pode levar o token real."
+          }
+        }
+      }
+    },
+    "(%@ on the wire)" : {
+      "comment" : "Network audit detail: compressed size actually transferred. Argument: byte count.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(%@ na rede)"
+          }
+        }
+      }
+    },
+    "A .json file with every field of each event." : {
+      "comment" : "Network audit export: JSON hint.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um arquivo .json com todos os campos de cada evento."
+          }
+        }
+      }
+    },
+    "A Google service." : {
+      "comment" : "Network audit: purpose of an unknown Google host.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um serviço do Google."
+          }
+        }
+      }
+    },
+    "A command to repeat the request in Terminal." : {
+      "comment" : "Network audit export: cURL hint.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comando para repetir a requisição no Terminal."
+          }
+        }
+      }
+    },
+    "A destination outside the services above." : {
+      "comment" : "Network audit: purpose of an unknown host.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um destino fora dos serviços acima."
+          }
+        }
+      }
+    },
+    "A readable summary, good for pasting in a support ticket or email." : {
+      "comment" : "Network audit export: text hint.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resumo legível, bom para colar em um chamado ou e-mail."
+          }
+        }
+      }
+    },
+    "API keys in URL parameters (key=…)" : {
+      "comment" : "Network audit export: masked secret.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chaves de API em parâmetros de URL (key=…)"
+          }
+        }
+      }
+    },
+    "Accessibility" : {
+      "comment" : "Network audit area: a core handle.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acessibilidade"
+          }
+        }
+      }
+    },
+    "Account Used" : {
+      "comment" : "Network audit detail: the account whose credentials were used.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conta usada"
+          }
+        }
+      }
+    },
+    "Account · check credentials" : {
+      "comment" : "Network audit origin: the core's provider.validate.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conta · verificar credenciais"
+          }
+        }
+      }
+    },
+    "Account · load apps" : {
+      "comment" : "Network audit origin: the core's provider.fetch_apps.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conta · carregar apps"
+          }
+        }
+      }
+    },
+    "Already masked" : {
+      "comment" : "Network audit export: include body subtitle (single event).",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Já mascarado"
+          }
+        }
+      }
+    },
+    "Always" : {
+      "comment" : "Network audit: an item that is always recorded.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sempre"
+          }
+        }
+      }
+    },
+    "Always Masked, cURL Included" : {
+      "comment" : "Network audit export: title of the rule for long-lived secrets.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sempre mascarado, inclusive no cURL"
+          }
+        }
+      }
+    },
+    "An Apple service." : {
+      "comment" : "Network audit: purpose of an unknown apple.com host.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um serviço da Apple."
+          }
+        }
+      }
+    },
+    "App Icons" : {
+      "comment" : "Network audit area: a core handle.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ícones dos apps"
+          }
+        }
+      }
+    },
+    "App Store Connect API: apps, versions, builds, TestFlight, users and reviews." : {
+      "comment" : "Network audit: purpose of api.appstoreconnect.apple.com.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Store Connect API: apps, versões, builds, TestFlight, usuários e avaliações."
+          }
+        }
+      }
+    },
+    "App Store Connect JWT · asks for Face ID" : {
+      "comment" : "Network audit export: the token is an App Store Connect JWT.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JWT do App Store Connect · pede Face ID"
+          }
+        }
+      }
+    },
+    "App Store Versions" : {
+      "comment" : "Network audit area: a core handle.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versões da App Store"
+          }
+        }
+      }
+    },
+    "App icons and images served by Google." : {
+      "comment" : "Network audit: purpose of Google image hosts.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ícones e imagens de apps servidos pelo Google."
+          }
+        }
+      }
+    },
+    "App icons and screenshots served by Apple." : {
+      "comment" : "Network audit: purpose of the mzstatic.com image hosts.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ícones e capturas de tela de apps servidos pela Apple."
+          }
+        }
+      }
+    },
+    "Apple ID session cookies, refresh_token, OAuth assertions and private keys. They last long or give access to the whole account." : {
+      "comment" : "Network audit export: which secrets never leave unmasked.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cookies da sessão do Apple ID, refresh_token, assertions OAuth e chaves privadas. Eles duram muito ou dão acesso à conta inteira."
+          }
+        }
+      }
+    },
+    "Apple ID session for features the public API doesn't cover." : {
+      "comment" : "Network audit: purpose of the Apple ID web session hosts.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sessão do Apple ID para recursos que a API pública não cobre."
+          }
+        }
+      }
+    },
+    "Apple ID session · Developer Portal team" : {
+      "comment" : "Network audit origin: the core's apple_session.portal_team.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sessão do Apple ID · equipe do Developer Portal"
+          }
+        }
+      }
+    },
+    "Apple ID session · switch team" : {
+      "comment" : "Network audit origin: the core's apple_session.select_team.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sessão do Apple ID · trocar de equipe"
+          }
+        }
+      }
+    },
+    "Apple ID sign-in" : {
+      "comment" : "Network audit origin: the core's apple_id.start.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Login com Apple ID"
+          }
+        }
+      }
+    },
+    "Apple ID sign-in · text the code" : {
+      "comment" : "Network audit origin: the core's apple_id.request_sms.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Login com Apple ID · enviar código por SMS"
+          }
+        }
+      }
+    },
+    "Apple ID sign-in · verify the code" : {
+      "comment" : "Network audit origin: the core's apple_id.submit_code.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Login com Apple ID · verificar o código"
+          }
+        }
+      }
+    },
+    "Ask Apple to text the two-factor code." : {
+      "comment" : "Network audit purpose: the core's SMS code request.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pedir à Apple que envie o código de dois fatores por SMS."
+          }
+        }
+      }
+    },
+    "Attempt" : {
+      "comment" : "Network audit detail: the attempt number of a retried request.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tentativa"
+          }
+        }
+      }
+    },
+    "Audit" : {
+      "comment" : "Settings › Privacy: row that opens the network audit.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auditoria"
+          }
+        }
+      }
+    },
+    "Authorization and Bearer tokens (Apple JWT)" : {
+      "comment" : "Network audit export: masked secret.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Authorization e tokens Bearer (JWT da Apple)"
+          }
+        }
+      }
+    },
+    "Binary content, not stored." : {
+      "comment" : "Network audit detail: a binary body (image…).",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conteúdo binário, não guardado."
+          }
+        }
+      }
+    },
+    "Body · %@" : {
+      "comment" : "Network audit detail: body section. Argument: size and type.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Corpo · %@"
+          }
+        }
+      }
+    },
+    "Can Leave Unmasked" : {
+      "comment" : "Network audit export: title of the rule for short-lived tokens.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pode sair sem máscara"
+          }
+        }
+      }
+    },
+    "Check that the account's credentials work." : {
+      "comment" : "Network audit purpose: the core's provider.validate.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verificar se as credenciais da conta funcionam."
+          }
+        }
+      }
+    },
+    "Choose an event to see what was sent and received." : {
+      "comment" : "Network audit: placeholder message of the detail column.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha um evento para ver o que foi enviado e recebido."
+          }
+        }
+      }
+    },
+    "Connection" : {
+      "comment" : "Network audit detail: TLS and HTTP versions.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conexão"
+          }
+        }
+      }
+    },
+    "Content of imported .p8 keys" : {
+      "comment" : "Network audit export: masked secret.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conteúdo de chaves .p8 importadas"
+          }
+        }
+      }
+    },
+    "Content sent and received, already masked" : {
+      "comment" : "Network audit export: include bodies subtitle.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conteúdo enviado e recebido, já mascarado"
+          }
+        }
+      }
+    },
+    "Cookies and Set-Cookie of the Apple ID session" : {
+      "comment" : "Network audit export: masked secret.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cookies e Set-Cookie da sessão Apple ID"
+          }
+        }
+      }
+    },
+    "Copied" : {
+      "comment" : "Network audit: status of an export copied to the clipboard.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado"
+          }
+        }
+      }
+    },
+    "Copied (masked)" : {
+      "comment" : "Network audit toast: a masked export was copied.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado (mascarado)"
+          }
+        }
+      }
+    },
+    "Copied with token · clears in 2 min" : {
+      "comment" : "Network audit toast: a cURL with a real token was copied.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado com token · some em 2 min"
+          }
+        }
+      }
+    },
+    "Copied: %@" : {
+      "comment" : "Network audit toast: something was copied. Argument: what was copied.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado: %@"
+          }
+        }
+      }
+    },
+    "Copied: Preview (masked)" : {
+      "comment" : "Network audit toast: the export preview was copied.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado: Prévia (mascarada)"
+          }
+        }
+      }
+    },
+    "Copy All" : {
+      "comment" : "Network audit detail: copies every header, secrets masked.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar todos"
+          }
+        }
+      }
+    },
+    "Copy Full URL" : {
+      "comment" : "Network audit detail: copies the masked URL.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar URL completa"
+          }
+        }
+      }
+    },
+    "Copy URL" : {
+      "comment" : "Network audit detail (iPad): copies the masked URL.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar URL"
+          }
+        }
+      }
+    },
+    "Copy host" : {
+      "comment" : "Accessibility: copies the host of an audit event.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar host"
+          }
+        }
+      }
+    },
+    "Copy path" : {
+      "comment" : "Accessibility: copies the path of an audit event.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar caminho"
+          }
+        }
+      }
+    },
+    "Core Operation" : {
+      "comment" : "Network audit detail: the raw name of the Rust core operation.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Operação do núcleo"
+          }
+        }
+      }
+    },
+    "Crashlytics: settings and crash reports of the app." : {
+      "comment" : "Network audit: purpose of the Crashlytics hosts.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crashlytics: configurações e relatórios de falha do app."
+          }
+        }
+      }
+    },
+    "Credential" : {
+      "comment" : "Network audit export: credential section header.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Credencial"
+          }
+        }
+      }
+    },
+    "Current Filter" : {
+      "comment" : "Network audit export scope: the events of the list's filter.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filtro atual"
+          }
+        }
+      }
+    },
+    "Date and Time" : {
+      "comment" : "Network audit detail: when the request was made.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Data e hora"
+          }
+        }
+      }
+    },
+    "Delete Entire Log Now" : {
+      "comment" : "Network audit: deletes every stored event.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apagar todo o registro agora"
+          }
+        }
+      }
+    },
+    "Delete Entire Log?" : {
+      "comment" : "Network audit: Delete All confirmation title.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apagar todo o registro?"
+          }
+        }
+      }
+    },
+    "Destinations" : {
+      "comment" : "Network audit: segment listing every host the app contacted.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Destinos"
+          }
+        }
+      }
+    },
+    "Direction" : {
+      "comment" : "Network audit detail: Request / Response picker label.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direção"
+          }
+        }
+      }
+    },
+    "Download the screenshots to share them" : {
+      "comment" : "Network audit purpose: screenshot download.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baixar as capturas de tela para compartilhá-las"
+          }
+        }
+      }
+    },
+    "Duration" : {
+      "comment" : "Network audit detail: how long the request took.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duração"
+          }
+        }
+      }
+    },
+    "Encrypted by iOS, and tokens are encrypted again with a key kept in this device's Keychain." : {
+      "comment" : "Network audit: how the log is encrypted.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Criptografado pelo iOS, e os tokens são criptografados de novo com uma chave guardada nas Chaves deste aparelho."
+          }
+        }
+      }
+    },
+    "Entire Log" : {
+      "comment" : "Network audit export scope: every stored event.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todo o registro"
+          }
+        }
+      }
+    },
+    "Errors" : {
+      "comment" : "Network audit filter chip: failed requests.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erros"
+          }
+        }
+      }
+    },
+    "Event Not Found" : {
+      "comment" : "Network audit detail: the event was deleted (retention or Delete All).",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Evento não encontrado"
+          }
+        }
+      }
+    },
+    "Events" : {
+      "comment" : "Network audit: segment listing every event.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eventos"
+          }
+        }
+      }
+    },
+    "Events are deleted permanently. New ones keep being recorded." : {
+      "comment" : "Network audit: Delete All confirmation message.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apaga os eventos de forma permanente. Os novos continuam sendo registrados."
+          }
+        }
+      }
+    },
+    "Events older than the chosen period are deleted automatically, every day and whenever the app opens." : {
+      "comment" : "Network audit: retention section footer.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eventos mais antigos que o período escolhido são apagados automaticamente, todo dia e sempre que o app abre."
+          }
+        }
+      }
+    },
+    "Every destination the app contacted shows up here, telemetry and remote configuration included. Nothing is left out." : {
+      "comment" : "Network audit: Destinations footer.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todo destino que o app contatou aparece aqui, inclusive os de telemetria e configuração remota. Nada é omitido."
+          }
+        }
+      }
+    },
+    "Every export is recorded in the Audit, with its format and whether it carried a token." : {
+      "comment" : "Network audit export: every export is audited.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toda exportação fica registrada na Auditoria, com o formato e se levou token."
+          }
+        }
+      }
+    },
+    "Exchange the service account key for a short-lived access token." : {
+      "comment" : "Network audit purpose: the core's Google OAuth token exchange.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trocar a chave da conta de serviço por um access token de curta duração."
+          }
+        }
+      }
+    },
+    "Excluded from iCloud backups and never synced between devices." : {
+      "comment" : "Network audit: the log is not backed up.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fora do backup do iCloud e sem sincronização entre aparelhos."
+          }
+        }
+      }
+    },
+    "Export %lld events" : {
+      "comment" : "Network audit export: main button. Argument: event count.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar %lld eventos"
+          }
+        }
+      }
+    },
+    "Export Event" : {
+      "comment" : "Network audit: single-event export sheet title.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar evento"
+          }
+        }
+      }
+    },
+    "Export Records" : {
+      "comment" : "Network audit: batch export sheet title.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar registros"
+          }
+        }
+      }
+    },
+    "Export This Event" : {
+      "comment" : "Network audit detail: opens the single-event export sheet.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar este evento"
+          }
+        }
+      }
+    },
+    "Face ID" : {
+      "comment" : "Network audit: status of an export confirmed with Face ID.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Face ID"
+          }
+        }
+      }
+    },
+    "Face ID confirmed" : {
+      "comment" : "Network audit toast: Face ID was confirmed to include the token.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Face ID confirmado"
+          }
+        }
+      }
+    },
+    "Firebase Management: projects and apps of your accounts." : {
+      "comment" : "Network audit: purpose of firebase.googleapis.com.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Firebase Management: projetos e apps das suas contas."
+          }
+        }
+      }
+    },
+    "Firebase SDK diagnostics: delivery of analytics and crash data." : {
+      "comment" : "Network audit: purpose of the Firebase logging hosts.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnóstico do SDK do Firebase: entrega dos dados de analytics e de falhas."
+          }
+        }
+      }
+    },
+    "Firebase installation ID used by analytics and remote configuration." : {
+      "comment" : "Network audit: purpose of firebaseinstallations.googleapis.com.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID de instalação do Firebase usado pelo analytics e pela configuração remota."
+          }
+        }
+      }
+    },
+    "Format" : {
+      "comment" : "Network audit export: format picker.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Formato"
+          }
+        }
+      }
+    },
+    "Full Bodies" : {
+      "comment" : "Network audit: setting that records request and response bodies.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Corpos completos"
+          }
+        }
+      }
+    },
+    "Full URL" : {
+      "comment" : "Network audit toast: the full (masked) URL was copied.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "URL completa"
+          }
+        }
+      }
+    },
+    "Google Play Developer API: apps, tracks, listings and reviews." : {
+      "comment" : "Network audit: purpose of androidpublisher.googleapis.com.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google Play Developer API: apps, faixas, listagens e avaliações."
+          }
+        }
+      }
+    },
+    "Google Play Releases" : {
+      "comment" : "Network audit area: a core handle.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versões do Google Play"
+          }
+        }
+      }
+    },
+    "Google Play Users" : {
+      "comment" : "Network audit area: a core handle.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usuários do Google Play"
+          }
+        }
+      }
+    },
+    "Google access token · asks for Face ID" : {
+      "comment" : "Network audit export: the token is a Google access token.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Access token do Google · pede Face ID"
+          }
+        }
+      }
+    },
+    "Google access_token, refresh_token and id_token" : {
+      "comment" : "Network audit export: masked secret.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "access_token, refresh_token e id_token do Google"
+          }
+        }
+      }
+    },
+    "Google sign-in and service account token renewal." : {
+      "comment" : "Network audit: purpose of the Google OAuth hosts.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Login com o Google e renovação do token da conta de serviço."
+          }
+        }
+      }
+    },
+    "Google · service account token" : {
+      "comment" : "Network audit origin: the core's google.oauth.token.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Google · token da conta de serviço"
+          }
+        }
+      }
+    },
+    "HTTP Archive format: opens in Safari, Chrome, Charles and Proxyman." : {
+      "comment" : "Network audit export: HAR hint.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Formato HTTP Archive: abre no Safari, Chrome, Charles e Proxyman."
+          }
+        }
+      }
+    },
+    "HTTP Archive with one entry: opens in Safari, Chrome, Charles and Proxyman." : {
+      "comment" : "Network audit export: single-event HAR hint.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HTTP Archive com uma entrada: abre no Safari, Chrome, Charles e Proxyman."
+          }
+        }
+      }
+    },
+    "Headers" : {
+      "comment" : "Network audit detail: headers section.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cabeçalhos"
+          }
+        }
+      }
+    },
+    "Headers (secrets masked)" : {
+      "comment" : "Network audit toast: every header was copied, secrets masked.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cabeçalhos (segredos mascarados)"
+          }
+        }
+      }
+    },
+    "Headers added by the network stack while sending (Host, Content-Length, User-Agent and the Apple ID session cookies) aren't listed." : {
+      "comment" : "Network audit detail: known limit of the Rust core's request headers.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cabeçalhos adicionados pela camada de rede no envio (Host, Content-Length, User-Agent e os cookies da sessão do Apple ID) não aparecem."
+          }
+        }
+      }
+    },
+    "Hide Token" : {
+      "comment" : "Network audit detail: hides the revealed secret headers.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar token"
+          }
+        }
+      }
+    },
+    "Host" : {
+      "comment" : "Network audit detail: the host.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host"
+          }
+        }
+      }
+    },
+    "Imported Files" : {
+      "comment" : "Network audit: always recorded item.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arquivos importados"
+          }
+        }
+      }
+    },
+    "Include Bodies" : {
+      "comment" : "Network audit export: include bodies toggle.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incluir corpos"
+          }
+        }
+      }
+    },
+    "Include Body" : {
+      "comment" : "Network audit export: include body toggle.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incluir corpo"
+          }
+        }
+      }
+    },
+    "Include Real Token" : {
+      "comment" : "Network audit export: switch that puts the real token in the cURL.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incluir token real"
+          }
+        }
+      }
+    },
+    "Include the real token in the cURL command." : {
+      "comment" : "Face ID reason: exporting a recorded token in a cURL command.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incluir o token real no comando cURL."
+          }
+        }
+      }
+    },
+    "It may have been deleted by the retention period." : {
+      "comment" : "Network audit detail: why an event can be missing.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ele pode ter sido apagado pelo período de retenção."
+          }
+        }
+      }
+    },
+    "Keep Records For" : {
+      "comment" : "Network audit: retention section header.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manter registros por"
+          }
+        }
+      }
+    },
+    "Kept for %lld days. Older events are deleted automatically." : {
+      "comment" : "Network audit banner message. Argument: retention in days.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retenção de %lld dias. Eventos mais antigos são apagados automaticamente."
+          }
+        }
+      }
+    },
+    "Last %lld days · %lld events" : {
+      "comment" : "Network audit export: detail of the Entire Log scope. Arguments: retention days, count.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Últimos %lld dias · %lld eventos"
+          }
+        }
+      }
+    },
+    "Load the account's app list." : {
+      "comment" : "Network audit purpose: the core's app list fetch / sync.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carregar a lista de apps da conta."
+          }
+        }
+      }
+    },
+    "Log deleted" : {
+      "comment" : "Network audit toast: the whole log was deleted.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Registro apagado"
+          }
+        }
+      }
+    },
+    "NEW" : {
+      "comment" : "Badge of a new feature.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NOVO"
+          }
+        }
+      }
+    },
+    "Network Requests" : {
+      "comment" : "Network audit: always recorded item.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requisições de rede"
+          }
+        }
+      }
+    },
+    "No Event Selected" : {
+      "comment" : "Network audit: placeholder of the detail column.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum evento selecionado"
+          }
+        }
+      }
+    },
+    "No body." : {
+      "comment" : "Network audit detail: the request or response had no body.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem corpo."
+          }
+        }
+      }
+    },
+    "No destinations yet." : {
+      "comment" : "Network audit: empty Destinations list.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum destino ainda."
+          }
+        }
+      }
+    },
+    "No events for this filter." : {
+      "comment" : "Network audit: empty list.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum evento para este filtro."
+          }
+        }
+      }
+    },
+    "No headers." : {
+      "comment" : "Network audit detail: the request or response had no headers.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem cabeçalhos."
+          }
+        }
+      }
+    },
+    "No secret headers in this event. Secrets in the URL and bodies are masked." : {
+      "comment" : "Network audit: note when the event has no secret header.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este evento não tem cabeçalhos secretos. Segredos na URL e nos corpos são mascarados."
+          }
+        }
+      }
+    },
+    "Not available: the request failed or the body was streamed." : {
+      "comment" : "Network audit detail: the core could not read the body.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indisponível: a requisição falhou ou o corpo foi enviado em fluxo."
+          }
+        }
+      }
+    },
+    "Not recorded: Full Bodies was off." : {
+      "comment" : "Network audit detail: the body wasn't recorded because the setting was off.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não gravado: Corpos completos estava desligado."
+          }
+        }
+      }
+    },
+    "Not reported by the caller" : {
+      "comment" : "Network audit detail: the call site didn't say which screen made the request.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não informado por quem fez a chamada"
+          }
+        }
+      }
+    },
+    "Nothing left this device." : {
+      "comment" : "Network audit: purpose of a local (import / export) event.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada saiu deste aparelho."
+          }
+        }
+      }
+    },
+    "On Device" : {
+      "comment" : "Network audit filter chip: events that never left the device.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No aparelho"
+          }
+        }
+      }
+    },
+    "One line per event, for spreadsheets. Bodies and headers are left out." : {
+      "comment" : "Network audit export: CSV hint.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma linha por evento, para planilhas. Corpos e cabeçalhos ficam de fora."
+          }
+        }
+      }
+    },
+    "Only on this device. Never sent to StackConnect or anyone else." : {
+      "comment" : "Network audit: where the log is stored.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Só neste aparelho. Nunca é enviado ao StackConnect nem a terceiros."
+          }
+        }
+      }
+    },
+    "Only screens visited and buttons tapped are collected. Account names, keys, bundle IDs and your app data are never sent. Check it in the Audit." : {
+      "comment" : "Settings › Privacy footer when the network audit is available.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Somente telas visitadas e botões tocados são coletados. Nomes de contas, chaves, bundle IDs e dados dos seus apps nunca são enviados. Confira na Auditoria."
+          }
+        }
+      }
+    },
+    "Only the first 256 KB of this body were kept." : {
+      "comment" : "Network audit detail: the stored body was cut.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Só os primeiros 256 KB deste corpo foram guardados."
+          }
+        }
+      }
+    },
+    "Origin: %@" : {
+      "comment" : "Network audit text export: the screen or flow that made the request.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Origem: %@"
+          }
+        }
+      }
+    },
+    "Path" : {
+      "comment" : "Network audit detail: the path and query.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caminho"
+          }
+        }
+      }
+    },
+    "Period" : {
+      "comment" : "Network audit export: scope section header.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Período"
+          }
+        }
+      }
+    },
+    "Preview" : {
+      "comment" : "Network audit export: preview section header.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prévia"
+          }
+        }
+      }
+    },
+    "Public App Store lookup: ratings summary of your apps." : {
+      "comment" : "Network audit: purpose of itunes.apple.com.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Consulta pública da App Store: resumo das avaliações dos seus apps."
+          }
+        }
+      }
+    },
+    "Purpose" : {
+      "comment" : "Network audit detail: why the request was made.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finalidade"
+          }
+        }
+      }
+    },
+    "Purpose: %@" : {
+      "comment" : "Network audit text export: why the request was made.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finalidade: %@"
+          }
+        }
+      }
+    },
+    "Ratings summary" : {
+      "comment" : "Network audit origin: the App Store ratings summary of an app.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resumo das avaliações"
+          }
+        }
+      }
+    },
+    "Read" : {
+      "comment" : "Network audit: status of a file import event.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lido"
+          }
+        }
+      }
+    },
+    "Read the public rating of an app in each storefront" : {
+      "comment" : "Network audit purpose: iTunes lookup per storefront.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ler a avaliação pública de um app em cada loja"
+          }
+        }
+      }
+    },
+    "Received" : {
+      "comment" : "Network audit tile: bytes received today.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recebido"
+          }
+        }
+      }
+    },
+    "Recording can't be paused: the audit only counts if it shows everything. Without bodies, each event keeps method, address, headers, status and size." : {
+      "comment" : "Network audit: recording section footer.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A gravação não pode ser pausada: a auditoria só vale se mostrar tudo. Sem os corpos, cada evento guarda método, endereço, cabeçalhos, status e tamanho."
+          }
+        }
+      }
+    },
+    "Records the content sent and received, besides the headers" : {
+      "comment" : "Network audit: subtitle of the Full Bodies setting.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grava o conteúdo enviado e recebido, além dos cabeçalhos"
+          }
+        }
+      }
+    },
+    "Reduce and Delete" : {
+      "comment" : "Network audit: confirms a shorter retention and purges.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reduzir e apagar"
+          }
+        }
+      }
+    },
+    "Reducing to %lld days deletes %lld events recorded before %@ now. This can't be undone." : {
+      "comment" : "Network audit: confirmation of a shorter retention. Arguments: days, event count, cutoff date.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reduzir para %lld dias apaga agora %lld eventos anteriores a %@. Isso não pode ser desfeito."
+          }
+        }
+      }
+    },
+    "Remote Config of your Firebase projects." : {
+      "comment" : "Network audit: purpose of firebaseremoteconfig.googleapis.com for the user's projects.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remote Config dos seus projetos Firebase."
+          }
+        }
+      }
+    },
+    "Remote configuration: turns app features on and off." : {
+      "comment" : "Network audit: purpose of the app's own Remote Config fetch.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configuração remota: liga e desliga recursos do app."
+          }
+        }
+      }
+    },
+    "Removed From the Log" : {
+      "comment" : "Network audit detail: when retention deletes this event.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expira do registro"
+          }
+        }
+      }
+    },
+    "Request (Sent)" : {
+      "comment" : "Network audit detail: tab with what was sent.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requisição (enviado)"
+          }
+        }
+      }
+    },
+    "Request:" : {
+      "comment" : "Network audit text export: heading of the request body.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requisição:"
+          }
+        }
+      }
+    },
+    "Requests Today" : {
+      "comment" : "Network audit tile: requests made today.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requisições hoje"
+          }
+        }
+      }
+    },
+    "Response (Received)" : {
+      "comment" : "Network audit detail: tab with what was received.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resposta (recebido)"
+          }
+        }
+      }
+    },
+    "Response:" : {
+      "comment" : "Network audit text export: heading of the response body.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resposta:"
+          }
+        }
+      }
+    },
+    "Retention" : {
+      "comment" : "Network audit: retention screen title (short).",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retenção"
+          }
+        }
+      }
+    },
+    "Retention and Storage" : {
+      "comment" : "Network audit: opens the retention settings.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retenção e armazenamento"
+          }
+        }
+      }
+    },
+    "Reveal the token recorded in the network audit." : {
+      "comment" : "Face ID reason: revealing a recorded token in the network audit.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revelar o token gravado na auditoria de rede."
+          }
+        }
+      }
+    },
+    "Reveal with Face ID" : {
+      "comment" : "Network audit detail: reveals the secret headers after Face ID.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revelar com Face ID"
+          }
+        }
+      }
+    },
+    "SECRET" : {
+      "comment" : "Network audit detail: badge of a secret header.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SEGREDO"
+          }
+        }
+      }
+    },
+    "Screenshots · download all" : {
+      "comment" : "Network audit origin: downloading every screenshot of a version.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturas de tela · baixar todas"
+          }
+        }
+      }
+    },
+    "Search host or path" : {
+      "comment" : "Network audit: search field prompt.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar host ou caminho"
+          }
+        }
+      }
+    },
+    "Secrets Always Leave Masked" : {
+      "comment" : "Network audit export: masked secrets section header.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Segredos saem sempre mascarados"
+          }
+        }
+      }
+    },
+    "See everything the app sends and receives" : {
+      "comment" : "Settings › Privacy: subtitle of the Audit row.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Veja tudo o que o app envia e recebe"
+          }
+        }
+      }
+    },
+    "Send the two-factor code to finish signing in." : {
+      "comment" : "Network audit purpose: the core's two-factor code submission.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviar o código de dois fatores para concluir o login."
+          }
+        }
+      }
+    },
+    "Sent" : {
+      "comment" : "Network audit tile: bytes sent today.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviado"
+          }
+        }
+      }
+    },
+    "Sent · Received" : {
+      "comment" : "Network audit tile (iPad): bytes sent and received today.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviado · recebido"
+          }
+        }
+      }
+    },
+    "Sent: %@ · Received: %@" : {
+      "comment" : "Network audit text export: byte counts.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviado: %@ · Recebido: %@"
+          }
+        }
+      }
+    },
+    "Shared" : {
+      "comment" : "Network audit: status of an export handed to the share sheet.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compartilhado"
+          }
+        }
+      }
+    },
+    "Short-lived tokens: the App Store Connect JWT (20 min) and the Google access token (1 h)." : {
+      "comment" : "Network audit export: which tokens a cURL may carry.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tokens de curta duração: JWT do App Store Connect (20 min) e access token do Google (1 h)."
+          }
+        }
+      }
+    },
+    "Show Less" : {
+      "comment" : "Network audit detail: collapses a long body.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar menos"
+          }
+        }
+      }
+    },
+    "Sign in with the Apple ID (secure password proof, the password itself is never sent)." : {
+      "comment" : "Network audit purpose: the core's Apple ID sign-in start (SRP).",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrar com o Apple ID (prova segura da senha; a senha em si nunca é enviada)."
+          }
+        }
+      }
+    },
+    "Space Used" : {
+      "comment" : "Network audit: disk space used by the log.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Espaço usado"
+          }
+        }
+      }
+    },
+    "StackConnect analytics: screens visited and buttons tapped. Turn it off in Settings › Privacy." : {
+      "comment" : "Network audit: purpose of the analytics hosts.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analytics do StackConnect: telas visitadas e botões tocados. Desligue em Ajustes › Privacidade."
+          }
+        }
+      }
+    },
+    "Started By" : {
+      "comment" : "Network audit detail: the core operation this request ran inside.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciado por"
+          }
+        }
+      }
+    },
+    "Status: %@" : {
+      "comment" : "Network audit text export: the status line. Argument: e.g. \"200 OK · 412 ms\".",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status: %@"
+          }
+        }
+      }
+    },
+    "Stays on this device" : {
+      "comment" : "Network audit banner title.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fica só neste aparelho"
+          }
+        }
+      }
+    },
+    "Switch the Apple ID session to the account's team." : {
+      "comment" : "Network audit purpose: the core's Apple ID session team selection.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trocar a sessão do Apple ID para a equipe da conta."
+          }
+        }
+      }
+    },
+    "Sync · apps" : {
+      "comment" : "Network audit origin: the core's sync.sync_apps.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sincronização · apps"
+          }
+        }
+      }
+    },
+    "Telemetry" : {
+      "comment" : "Network audit filter chip: analytics, crash reports and remote configuration.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telemetria"
+          }
+        }
+      }
+    },
+    "Telemetry and Crashes" : {
+      "comment" : "Network audit: always recorded item.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Telemetria e falhas"
+          }
+        }
+      }
+    },
+    "Text" : {
+      "comment" : "Network audit: the plain text export format.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texto"
+          }
+        }
+      }
+    },
+    "The copy stays on this device, never reaches your Mac or iPad, and is cleared from the clipboard in 2 minutes." : {
+      "comment" : "Network audit export: clipboard note when a token is included.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A cópia fica só neste aparelho, sem ir para o Mac ou o iPad, e é apagada da área de transferência em 2 minutos."
+          }
+        }
+      }
+    },
+    "The export couldn't be prepared." : {
+      "comment" : "Network audit toast: writing the export file failed.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível preparar a exportação."
+          }
+        }
+      }
+    },
+    "The file only leaves the app when you choose where it goes. No copy is kept here, and the export is recorded in the Audit." : {
+      "comment" : "Network audit export: footer.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O arquivo só sai do app quando você escolhe o destino. Nenhuma cópia fica guardada aqui, e a exportação fica registrada na Auditoria."
+          }
+        }
+      }
+    },
+    "The token can't be decrypted on this device." : {
+      "comment" : "Network audit toast: the sealed secrets could not be opened.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O token não pode ser descriptografado neste aparelho."
+          }
+        }
+      }
+    },
+    "The token is masked. The command returns 401 until you put a valid token in." : {
+      "comment" : "Network audit: note for a masked cURL.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O token vai mascarado. O comando retorna 401 até você colocar um token válido."
+          }
+        }
+      }
+    },
+    "The token's expiry isn't known, so it can't be included." : {
+      "comment" : "Network audit export: the token's validity is unknown.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A validade do token não é conhecida, então ele não pode ser incluído."
+          }
+        }
+      }
+    },
+    "The whole event in .json: request, response and metadata." : {
+      "comment" : "Network audit export: single-event JSON hint.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Evento completo em .json: requisição, resposta e metadados."
+          }
+        }
+      }
+    },
+    "This can't be turned off, even for what you revealed with Face ID:" : {
+      "comment" : "Network audit export: masked secrets lead-in.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não dá para desligar. Isso vale mesmo para o que você revelou com Face ID:"
+          }
+        }
+      }
+    },
+    "This command carries a valid token: anyone with the text acts with your API key's permissions until it expires. Don't paste it in public issues, chats or support tickets." : {
+      "comment" : "Network audit: warning when a cURL carries a real token.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este comando leva um token válido: quem tiver o texto age com as permissões da sua chave de API até ele expirar. Não cole em issues públicas, chats ou chamados."
+          }
+        }
+      }
+    },
+    "This credential can't leave unmasked" : {
+      "comment" : "Network audit export: the token is long-lived or unknown.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta credencial não pode sair sem máscara"
+          }
+        }
+      }
+    },
+    "Token expired at %@. It can't be included: the command would return 401." : {
+      "comment" : "Network audit export: the token expired. Argument: time.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token expirado às %@. Não pode ser incluído: o comando retornaria 401."
+          }
+        }
+      }
+    },
+    "Token valid for %lld more min (expires at %@)." : {
+      "comment" : "Network audit export: remaining validity. Arguments: minutes, time.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token válido por mais %lld min (expira às %@)."
+          }
+        }
+      }
+    },
+    "Tokens are stored encrypted and only appear after Face ID. Copying while hidden copies the masked version, and exports always mask them. Only cURL can carry a short-lived token, with Face ID and while it is still valid." : {
+      "comment" : "Network audit detail: footer about secret headers.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Os tokens ficam gravados criptografados e só aparecem depois do Face ID. Copiar com eles ocultos copia a versão mascarada, e a exportação sempre os mascara. Só o cURL pode levar um token de curta duração, com Face ID e enquanto ele não expirar."
+          }
+        }
+      }
+    },
+    "Unlisted core call" : {
+      "comment" : "Network audit origin: a core exchange outside every documented operation.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chamada do núcleo não listada"
+          }
+        }
+      }
+    },
+    "View Full Body" : {
+      "comment" : "Network audit detail: expands a long body.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver corpo completo"
+          }
+        }
+      }
+    },
+    "What Is Recorded" : {
+      "comment" : "Network audit: recording section header.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O que é registrado"
+          }
+        }
+      }
+    },
+    "When: %@" : {
+      "comment" : "Network audit text export: the date line.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quando: %@"
+          }
+        }
+      }
+    },
+    "Where It Is Stored" : {
+      "comment" : "Network audit: storage location section header.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Onde fica"
+          }
+        }
+      }
+    },
+    "Where the app connects · %lld days" : {
+      "comment" : "Network audit: Destinations header. Argument: retention in days.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para onde o app se conecta · %lld dias"
+          }
+        }
+      }
+    },
+    "Why This Happened" : {
+      "comment" : "Network audit detail: section with origin, account and purpose.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Por que isso aconteceu"
+          }
+        }
+      }
+    },
+    "Yesterday" : {
+      "comment" : "Network audit: heading of yesterday's events.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ontem"
+          }
+        }
+      }
+    },
+    "client_secret and private_key of service accounts" : {
+      "comment" : "Network audit export: masked secret.",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "client_secret e private_key das contas de serviço"
+          }
+        }
+      }
+    },
+    "iOS Files" : {
+      "comment" : "Network audit: label of a file import event (the iOS Files app).",
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arquivos do iOS"
+          }
+        }
+      }
+    },
     " " : {
       "comment" : "A non-breaking space.",
       "isCommentAutoGenerated" : true

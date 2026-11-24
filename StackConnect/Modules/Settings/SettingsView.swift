@@ -137,11 +137,49 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            if viewModel.uiState.showsNetworkAudit {
+                buildNetworkAuditRow()
+            }
         } header: {
             Text(String(localized: "Privacy"))
         } footer: {
-            Text(String(localized: "Only screens visited and buttons tapped are collected. Account names, keys, bundle IDs and your app data are never sent."))
+            if viewModel.uiState.showsNetworkAudit {
+                Text(String(localized: "Only screens visited and buttons tapped are collected. Account names, keys, bundle IDs and your app data are never sent. Check it in the Audit.", comment: "Settings › Privacy footer when the network audit is available."))
+            } else {
+                Text(String(localized: "Only screens visited and buttons tapped are collected. Account names, keys, bundle IDs and your app data are never sent."))
+            }
         }
+    }
+
+    private func buildNetworkAuditRow() -> some View {
+        StackTrackedButton(.networkAudit, on: .settings) {
+            homeCoordinator.navigateToNetworkAudit()
+        } label: {
+            HStack {
+                Image(systemName: "checklist.checked")
+                    .foregroundStyle(.green)
+                    .frame(width: 28)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(String(localized: "Audit", comment: "Settings › Privacy: row that opens the network audit."))
+                            .foregroundStyle(.primary)
+                        StackCapsuleBadge(title: String(localized: "NEW", comment: "Badge of a new feature."), color: .blue)
+                    }
+                    Text(String(localized: "See everything the app sends and receives", comment: "Settings › Privacy: subtitle of the Audit row."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .foregroundStyle(.primary)
     }
 
     private func buildAboutSection() -> some View {
