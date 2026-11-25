@@ -109,7 +109,7 @@ packages:
     exactVersion: 13.1.1
 
 # Files shown in the project navigator without belonging to any target.
-# TipJar.storekit is the local StoreKit configuration used by the Development
+# TipJar.storekit is the local StoreKit configuration used by the StackConnect
 # and Fake Data schemes; it must never be bundled into the app.
 fileGroups:
   - Configs/TipJar.storekit
@@ -339,7 +339,9 @@ targets:
       - package: StackCore
 
 schemes:
-  StackConnect Development:
+  # The one app scheme: Run and Test use Debug, Profile and Archive use
+  # Release (App Store / TestFlight builds come from here).
+  StackConnect:
     build:
       targets:
         StackConnect: all
@@ -355,6 +357,12 @@ schemes:
     test:
       config: Debug
       targets: [StackConnectTests]
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
 
   # Runs the app on invented demo accounts (DEBUG-only fake data mode, see
   # docs/FAKE_DATA.md): no network, no Keychain, no App Group store. Toggle the
@@ -371,14 +379,6 @@ schemes:
         "-StackFakeData YES": true
         "-StackFakeDataReset YES": false
         "-TipJarCardForce YES": false
-
-  StackConnect Production:
-    build:
-      targets:
-        StackConnect: all
-    run:
-      config: Release
-      executable: StackConnect
 
   StackConnectTests:
     build:

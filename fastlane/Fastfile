@@ -33,8 +33,7 @@ require_relative "creative_assets"
 # ─── Project constants ────────────────────────────────────────────────────────
 
 PROJECT              = "StackConnect.xcodeproj"
-SCHEME_DEV           = "StackConnect Development"
-SCHEME_PROD          = "StackConnect Production"
+SCHEME               = "StackConnect"
 BUNDLE_ID            = ENV["BUNDLE_ID"]
 BUNDLE_ID_DEV        = ENV["BUNDLE_ID_DEV"]
 BUNDLE_ID_WIDGET     = ENV["BUNDLE_ID_WIDGET"]
@@ -70,7 +69,7 @@ platform :ios do
   lane :test do
     run_tests(
       project:             PROJECT,
-      scheme:              SCHEME_DEV,
+      scheme:              SCHEME,
       device:              "iPhone 16 Pro",
       clean:               true,
       result_bundle:       true,
@@ -92,7 +91,7 @@ platform :ios do
 
     build_app(
       project:          PROJECT,
-      scheme:           SCHEME_DEV,
+      scheme:           SCHEME,
       configuration:    "Debug",
       output_directory: OUTPUT_DIR,
       output_name:      "StackConnect-Dev.ipa",
@@ -124,7 +123,7 @@ platform :ios do
 
     build_app(
       project:          PROJECT,
-      scheme:           SCHEME_PROD,
+      scheme:           SCHEME,
       configuration:    "Release",
       output_directory: OUTPUT_DIR,
       output_name:      "StackConnect.ipa",
@@ -215,7 +214,7 @@ platform :ios do
 
     build_app(
       project:          PROJECT,
-      scheme:           SCHEME_PROD,
+      scheme:           SCHEME,
       configuration:    "Release",
       output_directory: OUTPUT_DIR,
       output_name:      "StackConnect.ipa",

@@ -34,7 +34,7 @@ Built with SwiftUI for iOS 17+.
 
 3. Open `StackConnect.xcodeproj` in Xcode.
 
-4. Select the **StackConnect Development** scheme and run on a simulator or device.
+4. Select the **StackConnect** scheme and run on a simulator or device.
 
 > Re-run `xcodegen generate --spec project.yml` whenever source files, Swift package dependencies, or build settings change.
 
