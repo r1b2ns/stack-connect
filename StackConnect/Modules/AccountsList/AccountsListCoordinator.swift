@@ -1,28 +1,39 @@
 import SwiftUI
 
-final class AccountsListCoordinator: MainCoordinatorProtocol {
-    @Published var path = NavigationPath()
-    @Published var showAddOptions = false
-    @Published var showAddAccount = false
-    @Published var showImport = false
+/// Presentations of the unified accounts list. Navigation to an account's
+/// screens goes through the enclosing `HomeCoordinator`.
+@MainActor
+final class AccountsListCoordinator: ObservableObject {
 
-    let providerType: ProviderType
+    /// The wizard on screen (full screen), if any.
+    @Published var wizardEntry: AccountWizardEntry?
+    /// The expired imported account whose alert is shown.
+    @Published var expiredAccount: AccountModel?
 
-    init(providerType: ProviderType) {
-        self.providerType = providerType
+    /// Opened once when the list appears (the split view's "Add Account").
+    private var pendingEntry: AccountWizardEntry?
+
+    init(initialEntry: AccountWizardEntry? = nil) {
+        self.pendingEntry = initialEntry
     }
 
-    func presentAddOptions() {
-        showAddOptions = true
+    func presentWizard(_ entry: AccountWizardEntry) {
+        expiredAccount = nil
+        wizardEntry = entry
     }
 
-    func presentAddAccount() {
-        showAddOptions = false
-        showAddAccount = true
+    func dismissWizard() {
+        wizardEntry = nil
     }
 
-    func presentImport() {
-        showAddOptions = false
-        showImport = true
+    func presentExpiredAlert(for account: AccountModel) {
+        expiredAccount = account
+    }
+
+    /// Presents the initial entry, the first time only.
+    func presentInitialEntryIfNeeded() {
+        guard let entry = pendingEntry else { return }
+        pendingEntry = nil
+        presentWizard(entry)
     }
 }

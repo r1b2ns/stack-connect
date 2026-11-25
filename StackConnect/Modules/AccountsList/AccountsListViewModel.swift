@@ -8,95 +8,53 @@ import StackProtocols
 protocol AccountsListViewModelProtocol: ObservableObject {
     var uiState: AccountsListUiState { get set }
     func loadAccounts() async
-    func deleteAccount(at offsets: IndexSet) async
     func deleteAccount(_ account: AccountModel) async
-    func beginReimport(accountId: String)
-    func importAccount(from url: URL, password: String, customName: String?) async -> String?
-}
-
-// MARK: - Account Group
-
-/// Groups accounts of the same team. Apple accounts are grouped by their
-/// keychain-backed `issuerID`; non-Apple providers form a single "all" group.
-struct AccountGroup: Identifiable, Hashable {
-    let id: String          // issuerID for apple, or "all" for others, "unknown" when unreadable
-    let issuerID: String?   // nil for non-apple / unknown
-    let accounts: [AccountModel]
-}
-
-// MARK: - Section
-
-/// One `List` section of the accounts list. Accounts are split by how they
-/// are connected (`AccountConnectionKind`), key-based accounts first (Apple:
-/// "API Key" / "Apple ID"; Firebase and Google Play: "Service Account Key" /
-/// "Google Account"). Within an Apple connection, team groups (`AccountGroup`)
-/// become their own sections when `AccountsListUiState.showsTeamGroups` is on.
-struct AccountsListSection: Identifiable, Hashable {
-    let id: String
-    /// Connection header to show, or `nil` for the following team sections of
-    /// a connection (only its first one shows it).
-    let connection: AccountConnection?
-    /// Team header (masked issuer ID), or `nil` when the section has none.
-    let issuerID: String?
-    let accounts: [AccountModel]
+    func clearSearch()
+    /// The wizard entry that reconnects the account `accountId` (re-import
+    /// deep link), or `nil` when it is gone, hidden or can't be reconnected.
+    func reconnectEntry(forAccountId accountId: String) async -> AccountWizardEntry?
 }
 
 // MARK: - UiState
 
-struct AccountsListUiState {
-    var accounts: [AccountModel] = []
-    var groups: [AccountGroup] = []
-    /// What the list renders, built from `groups` (see `AccountsListSection`).
-    var sections: [AccountsListSection] = []
-    var isLoading = false
-    var providerType: ProviderType
-    /// When set, the next import replaces this account in place, preserving its offline app data.
-    var replacingAccountId: String?
-    /// Problems of the listed accounts (`AccountStatusResolving`), keyed by
-    /// account id; accounts without one are absent.
-    var accountStatuses: [String: AccountStatus] = [:]
-
-    /// Team grouping is only meaningful when at least one team (issuerID) holds
-    /// more than one account. Otherwise the list is shown flat, without headers.
-    var showsTeamGroups: Bool {
-        groups.contains { $0.issuerID != nil && $0.accounts.count > 1 }
-    }
-}
+/// The unified list's state (shared with Settings › Accounts).
+typealias AccountsListUiState = AccountsListingState
 
 // MARK: - Implementation
 
+/// The unified accounts list (plan `unified-accounts.md` §2, Option A): one
+/// grouped list for every store, with search.
 @MainActor
 final class AccountsListViewModel: AccountsListViewModelProtocol {
 
-    @Published var uiState: AccountsListUiState
+    @Published var uiState = AccountsListUiState()
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
-    private let importer: AccountImporter
     private let analytics: AnalyticsTracking
     private let featureFlags: FeatureFlags
     private let statusProvider: AccountStatusProviding
     private var cancellables = Set<AnyCancellable>()
 
     init(
-        providerType: ProviderType,
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
         analytics: AnalyticsTracking = AnalyticsService.shared,
         featureFlags: FeatureFlags = .shared,
-        statusProvider: AccountStatusProviding? = nil
+        statusProvider: AccountStatusProviding? = nil,
+        notificationCenter: NotificationCenter = .default
     ) {
         let storage: PersistentStorable = storage ?? SwiftDataStorable.shared
-        self.uiState = AccountsListUiState(providerType: providerType)
         self.storage = storage
         self.keychain = keychain
-        self.importer = AccountImporter(storage: storage, keychain: keychain, featureFlags: featureFlags)
         self.analytics = analytics
         self.featureFlags = featureFlags
         self.statusProvider = statusProvider ?? AccountStatusService(storage: storage, keychain: keychain)
 
-        // A sign-in expired or works again, or a sync flagged/cleared agreements.
+        // A sign-in expired or works again, or a sync flagged/cleared
+        // agreements; or the wizard added, imported or reconnected accounts.
         self.statusProvider.changes
+            .merge(with: notificationCenter.publisher(for: .accountsDidChange).map { _ in () }.receive(on: DispatchQueue.main))
             .sink { [weak self] in
                 Task { await self?.loadAccounts() }
             }
@@ -105,110 +63,25 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
 
     func loadAccounts() async {
         uiState.isLoading = true
+        defer {
+            uiState.isLoading = false
+            uiState.hasLoaded = true
+        }
         do {
-            var allAccounts: [AccountModel] = try await storage.fetchAll(AccountModel.self)
-            for i in allAccounts.indices { allAccounts[i].fillMissingRules() }
-            // A hidden store's list stays empty (its accounts are kept in storage).
-            uiState.accounts = featureFlags.visibleAccounts(allAccounts).filter { $0.providerType == uiState.providerType }
-            uiState.accountStatuses = statusProvider.statuses(for: uiState.accounts)
-            rebuildSections()
+            uiState.apply(try await AccountsListingSnapshot.load(storage: storage, featureFlags: featureFlags, statusProvider: statusProvider))
         } catch {
             Log.print.error("[AccountsList] Failed to load accounts: \(error.localizedDescription)")
         }
-        uiState.isLoading = false
     }
 
-    /// Rebuilds `groups` and `sections` from `uiState.accounts`, one connection
-    /// kind at a time (key file, then sign-in), skipping empty kinds. Apple
-    /// accounts are grouped by team separately for each kind, so a team group
-    /// never mixes API key and Apple ID accounts.
-    private func rebuildSections() {
-        let provider = uiState.providerType
-        let groupsByKind: [(AccountConnectionKind, [AccountGroup])] = AccountConnectionKind.allCases.compactMap { kind in
-            let accounts = uiState.accounts.filter { $0.connectionKind == kind }
-            return accounts.isEmpty ? nil : (kind, buildGroups(from: accounts))
-        }
-        uiState.groups = groupsByKind.flatMap(\.1)
-
-        let showsTeamGroups = uiState.showsTeamGroups
-        uiState.sections = groupsByKind.flatMap { kind, groups -> [AccountsListSection] in
-            let connection = AccountConnection(provider: provider, kind: kind)
-            guard showsTeamGroups else {
-                return [AccountsListSection(
-                    id: kind.rawValue,
-                    connection: connection,
-                    issuerID: nil,
-                    accounts: groups.flatMap(\.accounts)
-                )]
-            }
-            return groups.enumerated().map { index, group in
-                AccountsListSection(
-                    id: "\(kind.rawValue).\(group.id)",
-                    connection: index == 0 ? connection : nil,
-                    issuerID: group.issuerID,
-                    accounts: group.accounts
-                )
-            }
-        }
+    func clearSearch() {
+        uiState.query = ""
     }
 
-    /// Groups the filtered accounts by team. Apple accounts are grouped by the
-    /// `issuerID` stored in their keychain credentials; accounts whose credentials
-    /// can't be read fall into an "unknown" group. Non-Apple providers form a
-    /// single "all" group. Groups are sorted deterministically and accounts
-    /// within each group are sorted by name.
-    private func buildGroups(from accounts: [AccountModel]) -> [AccountGroup] {
-        guard uiState.providerType == .apple else {
-            let sorted = accounts.sorted { $0.name < $1.name }
-            return sorted.isEmpty ? [] : [AccountGroup(id: "all", issuerID: nil, accounts: sorted)]
-        }
-
-        var byIssuer: [String: [AccountModel]] = [:]
-        var sessionKeys = Set<String>()
-        for account in accounts {
-            let creds: AppleCredentials? = keychain.object(forKey: "credentials.\(account.id)")
-            let key: String
-            if let session = creds?.webSession {
-                // "Sign in with Apple ID": no issuer ID; one group per team, no header.
-                key = "appleSession.\(session.teamId)"
-                sessionKeys.insert(key)
-            } else {
-                key = creds?.issuerID ?? "unknown"
-            }
-            byIssuer[key, default: []].append(account)
-        }
-
-        return byIssuer
-            .sorted { $0.key < $1.key }
-            .map { key, accounts in
-                AccountGroup(
-                    id: key,
-                    issuerID: key == "unknown" || sessionKeys.contains(key) ? nil : key,
-                    accounts: accounts.sorted { $0.name < $1.name }
-                )
-            }
-    }
-
-    func deleteAccount(at offsets: IndexSet) async {
-        analytics.track(.buttonTap(.delete, on: .accountsList))
-        for index in offsets {
-            await cascadeDelete(uiState.accounts[index])
-        }
-        uiState.accounts.remove(atOffsets: offsets)
-        rebuildSections()
-    }
-
-    /// Deletes a single account (and its related data) then reloads. Used by the
-    /// grouped list where index-based deletion is not available.
+    /// Removes the account with its apps, versions, reply templates and
+    /// Keychain credentials (`AccountCascadeDeleter`), then reloads.
     func deleteAccount(_ account: AccountModel) async {
         analytics.track(.buttonTap(.delete, on: .accountsList))
-        await cascadeDelete(account)
-        await loadAccounts()
-    }
-
-    /// Removes an account along with its apps, versions, reply templates and
-    /// keychain credentials (see `AccountCascadeDeleter`).
-    private func cascadeDelete(_ account: AccountModel) async {
         let parameters = [AnalyticsParameterKey.kind: AnalyticsValue.string(account.providerType.rawValue)]
         do {
             try await AccountCascadeDeleter.delete(account, storage: storage, keychain: keychain)
@@ -218,46 +91,13 @@ final class AccountsListViewModel: AccountsListViewModelProtocol {
             Log.print.error("[AccountsList] Failed to delete account: \(error.localizedDescription)")
             analytics.track(.action(.deleteAccount, on: .accountsList, result: .failure, parameters: parameters))
         }
+        await loadAccounts()
     }
 
-    // MARK: - Re-import
-
-    func beginReimport(accountId: String) {
-        uiState.replacingAccountId = accountId
-    }
-
-    // MARK: - Import
-
-    /// Only accepts files of this list's provider. A pending re-import replaces
-    /// that account in place (see `AccountImporter.Options`).
-    func importAccount(from url: URL, password: String, customName: String?) async -> String? {
-        analytics.track(.buttonTap(.confirmImport, on: .accountsListImport))
-        let isReimport = uiState.replacingAccountId != nil
-        let error = await performImport(from: url, password: password, customName: customName)
-        analytics.track(.action(
-            isReimport ? .reimportAccount : .importAccount,
-            on: .accountsListImport,
-            result: error == nil ? .success : .failure,
-            parameters: error.map { AnalyticsErrorCategory(importReason: $0.reason).parameters } ?? [:]
-        ))
-        return error?.message
-    }
-
-    private func performImport(from url: URL, password: String, customName: String?) async -> AccountImportError? {
-        let options = AccountImporter.Options(
-            expectedProvider: uiState.providerType,
-            replacingAccountId: uiState.replacingAccountId
-        )
-
-        switch await importer.importAccount(from: url, password: password, customName: customName, options: options) {
-        case .success(let account):
-            let wasReimport = uiState.replacingAccountId != nil
-            uiState.replacingAccountId = nil
-            Log.print.info("[AccountsList] \(wasReimport ? "Re-imported" : "Imported") account: \(account.name)")
-            await loadAccounts()
-            return nil
-        case .failure(let error):
-            return error
-        }
+    func reconnectEntry(forAccountId accountId: String) async -> AccountWizardEntry? {
+        guard let account: AccountModel = try? await storage.fetch(AccountModel.self, id: accountId),
+              featureFlags.isVisible(account),
+              AccountWizardConfig.canReconnect(account) else { return nil }
+        return .reconnect(account)
     }
 }

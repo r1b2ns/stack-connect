@@ -52,7 +52,7 @@ final class AccountStatusViewModelsTests: XCTestCase {
         let broken = try await saveAccount("Broken")
         let pending = try await saveAccount("Pending")
         provider.statusesById = [broken.id: .of(.signInExpired), pending.id: .of(.pendingAgreements)]
-        let sut = AccountsListViewModel(providerType: .apple, storage: storage, keychain: keychain, analytics: analytics, statusProvider: provider)
+        let sut = AccountsListViewModel(storage: storage, keychain: keychain, analytics: analytics, statusProvider: provider)
 
         await sut.loadAccounts()
 
@@ -63,7 +63,7 @@ final class AccountStatusViewModelsTests: XCTestCase {
 
     func testAccountsListReloadsStatusesOnChange() async throws {
         let account = try await saveAccount("Team")
-        let sut = AccountsListViewModel(providerType: .apple, storage: storage, keychain: keychain, analytics: analytics, statusProvider: provider)
+        let sut = AccountsListViewModel(storage: storage, keychain: keychain, analytics: analytics, statusProvider: provider)
         await sut.loadAccounts()
         XCTAssertTrue(sut.uiState.accountStatuses.isEmpty)
 
@@ -90,12 +90,12 @@ final class AccountStatusViewModelsTests: XCTestCase {
 
         await sut.loadAccounts()
 
-        XCTAssertEqual(sut.uiState.accountStatuses[apple.id]?.level, .needsAttention)
-        XCTAssertEqual(sut.uiState.accountStatuses[play.id]?.level, .disconnected)
+        XCTAssertEqual(sut.uiState.listing.accountStatuses[apple.id]?.level, .needsAttention)
+        XCTAssertEqual(sut.uiState.listing.accountStatuses[play.id]?.level, .disconnected)
 
         provider.statusesById = [:]
         provider.sendChange()
-        await waitUntil { sut.uiState.accountStatuses.isEmpty }
+        await waitUntil { sut.uiState.listing.accountStatuses.isEmpty }
     }
 
     // MARK: - Sidebar

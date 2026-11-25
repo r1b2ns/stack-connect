@@ -113,7 +113,8 @@ struct RootSplitView<HomeVM: HomeViewModelProtocol, SidebarVM: RootSidebarViewMo
                 ProgressView()
             }
         case .addAccount(let provider):
-            AccountsListViewFactory.build(providerType: provider)
+            // The unified list, with the wizard opened on that store.
+            AccountsListViewFactory.build(initialEntry: .kind(.provider(provider)))
         case .settings:
             SettingsViewFactory.build()
         }

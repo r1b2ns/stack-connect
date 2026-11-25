@@ -135,6 +135,10 @@ enum AnalyticsButton: String, CaseIterable, Sendable {
     /// Password Is Used").
     case privacyPolicy = "privacy_policy"
     case createNew = "create_new"
+    /// The account wizard's done screen: back to the accounts list.
+    case viewInList = "view_in_list"
+    /// The account wizard's done screen: start again at the account type.
+    case addAnotherAccount = "add_another_account"
     case editName = "edit_name"
     case certificates = "certificates"
     case identifiers = "identifiers"

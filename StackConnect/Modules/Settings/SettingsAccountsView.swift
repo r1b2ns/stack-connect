@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 // MARK: - Factory
 
@@ -24,131 +23,47 @@ private struct SettingsAccountsEntry: View {
 
 // MARK: - View
 
+/// Settings › Accounts (plan `unified-accounts.md` §4): search, "Add account"
+/// and "Import .scexport file", a per-store "Add", rows that open the account
+/// detail, and "Delete all accounts" at the bottom.
 struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var coordinator: SettingsAccountsCoordinator
-    @Environment(\.dismiss) private var dismiss
-    @State private var importError: String = ""
-    @State private var showImportError = false
+    @EnvironmentObject private var homeCoordinator: HomeCoordinator
+
+    private var listing: AccountsListingState { viewModel.uiState.listing }
 
     var body: some View {
         buildContent()
             .navigationTitle(String(localized: "Accounts"))
             .trackScreen(.settingsAccounts)
+            .searchable(
+                text: $viewModel.uiState.listing.query,
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: String(localized: "Search accounts", comment: "Accounts lists: placeholder of the search field.")
+            )
+            .trackSearch(query: listing.query, resultCount: listing.visibleCount, on: .settingsAccounts)
             .toolbar { buildToolbar() }
-            .sheet(isPresented: $coordinator.showAddOptions) {
-                AddOptionsSheetContent()
-                    .presentationDetents([.medium])
-            }
-            .sheet(isPresented: $coordinator.showProviderPicker) {
-                ProviderPickerSheetContent(providers: viewModel.uiState.availableProviders)
-                    .presentationDetents([.medium])
-            }
-            .sheet(item: $coordinator.selectedProviderType) { providerType in
-                AddAccountViewFactory.build(providerType: providerType) {
-                    coordinator.dismissAddAccount()
-                    Task { await viewModel.loadAccounts() }
-                }
-            }
-            .sheet(isPresented: $coordinator.showImport) {
-                buildImportSheet()
-                    .presentationDetents([.medium])
-            }
-            .sheet(item: $coordinator.editingAccount) { account in
-                EditAccountSheetContent(
-                    account: account,
-                    editingName: $viewModel.uiState.editingName,
-                    onSave: {
-                        Task {
-                            await viewModel.updateAccountName(
-                                accountId: account.id,
-                                newName: viewModel.uiState.editingName
-                            )
-                            coordinator.dismissEditAccount()
-                        }
-                    },
-                    onExportRequested: {
-                        coordinator.dismissEditAccount()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            coordinator.presentExportAccount(account)
-                        }
-                    }
-                )
-                .presentationDetents([.medium])
-            }
             .task { await viewModel.loadAccounts() }
-            .alert(
-                String(localized: "Delete Account"),
-                isPresented: $viewModel.uiState.showDeleteConfirmation,
-                presenting: viewModel.uiState.accountToDelete
-            ) { account in
-                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .settingsAccounts, role: .cancel) {
-                    viewModel.uiState.accountToDelete = nil
+            .fullScreenCover(item: $coordinator.wizardEntry) { entry in
+                AccountWizardViewFactory.build(entry: entry) {
+                    coordinator.dismissWizard()
                 }
-                Button(String(localized: "Delete"), role: .destructive) {
-                    Task { await viewModel.deleteAccount(account) }
-                    viewModel.uiState.accountToDelete = nil
-                }
-            } message: { account in
-                Text("Are you sure you want to delete \"\(account.name)\"? This action cannot be undone.")
             }
             .alert(
-                String(localized: "Import Error"),
-                isPresented: $showImportError
+                String(localized: "Delete All Accounts"),
+                isPresented: $viewModel.uiState.showDeleteAllConfirmation
             ) {
-                StackTrackedButton(String(localized: "OK"), button: .ok, on: .settingsAccounts, role: .cancel) {}
-            } message: {
-                Text(importError)
-            }
-            .sheet(item: $viewModel.uiState.shareItem) { item in
-                ShareSheetView(activityItems: [item.url])
-            }
-            .sheet(item: $coordinator.exportingAccount) { account in
-                ExportAccountView(
-                    account: account,
-                    loadApps: { await viewModel.appsForExport(account: account) },
-                    onExport: { name, rules, password, expirationDate, appsBundles in
-                        let url = viewModel.exportAccountWithRules(account: account, exportName: name, rules: rules, password: password, expirationDate: expirationDate, appsBundles: appsBundles)
-                        coordinator.dismissExportAccount()
-                        if let url {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                                viewModel.uiState.shareItem = ShareableFileURL(url: url)
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                                coordinator.presentExportFeedback(ExportFeedback(
-                                    type: .success,
-                                    image: "checkmark.seal.fill",
-                                    title: String(localized: "Export Successful"),
-                                    message: String(localized: "The account \"\(name)\" was exported successfully. Share the encrypted file with your team.")
-                                ))
-                            }
-                        } else {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                                coordinator.presentExportFeedback(ExportFeedback(
-                                    type: .error,
-                                    image: "xmark.seal.fill",
-                                    title: String(localized: "Export Failed"),
-                                    message: String(localized: "Unable to export the account \"\(name)\". Please check your credentials and try again.")
-                                ))
-                            }
-                        }
-                        return url
-                    },
-                    onDismiss: {
-                        coordinator.dismissExportAccount()
+                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .settingsAccounts, role: .cancel) {}
+                Button(String(localized: "Delete All"), role: .destructive) {
+                    Task {
+                        await viewModel.deleteAllAccounts()
+                        homeCoordinator.popToRoot()
                     }
-                )
-            }
-            .sheet(item: $coordinator.exportFeedback) { feedback in
-                FeedbackScreen(
-                    type: feedback.type,
-                    image: feedback.image,
-                    title: feedback.title,
-                    message: feedback.message,
-                    onDismiss: { coordinator.dismissExportFeedback() }
-                )
-                .presentationDetents([.medium])
+                }
+            } message: {
+                Text(String(localized: "This will permanently delete all accounts, apps, versions, and credentials from the app. This action cannot be undone."))
             }
     }
 
@@ -156,17 +71,12 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
 
     @ViewBuilder
     private func buildContent() -> some View {
-        if viewModel.uiState.isLoading && allAccountsEmpty {
+        if !listing.hasLoaded && listing.accounts.isEmpty {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if allAccountsEmpty {
-            ContentUnavailableView {
-                Label(
-                    String(localized: "No Accounts"),
-                    systemImage: "person.crop.circle.badge.plus"
-                )
-            } description: {
-                Text("Tap + to add your first account.")
+        } else if listing.showsNoResults {
+            AccountsNoResultsView(query: listing.query) {
+                viewModel.clearSearch()
             }
         } else {
             buildList()
@@ -175,107 +85,76 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
 
     private func buildList() -> some View {
         List {
-            ForEach(viewModel.uiState.sections) { section in
-                buildProviderSection(
-                    title: section.connection.provider.displayName,
-                    subtitle: section.connection.title,
-                    icon: section.connection.provider.iconName,
-                    color: section.connection.provider.color,
-                    accounts: section.accounts
+            if !listing.isSearching {
+                buildAddSection()
+            }
+
+            StackAccountGroupsSections(
+                groups: listing.visibleGroups,
+                onAdd: { provider in
+                    coordinator.presentWizard(.kind(.provider(provider)))
+                }
+            ) { account in
+                buildRow(account)
+            }
+
+            if listing.accounts.isEmpty {
+                Section {
+                    Text("No accounts yet. Add one, or import a file exported from another device.",
+                         comment: "Settings › Accounts: shown under the add buttons when there are no accounts.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if !listing.accounts.isEmpty && !listing.isSearching {
+                buildDeleteAllSection()
+            }
+        }
+    }
+
+    private func buildAddSection() -> some View {
+        Section {
+            StackTrackedButton(.addAccount, on: .settingsAccounts) {
+                coordinator.presentWizard(.chooseKind)
+            } label: {
+                StackListRow(icon: "plus", iconColor: .blue, title: String(localized: "Add Account"))
+            }
+            .foregroundStyle(.primary)
+
+            StackTrackedButton(.importAccount, on: .settingsAccounts) {
+                coordinator.presentWizard(.kind(.importFile))
+            } label: {
+                StackListRow(
+                    icon: "square.and.arrow.down",
+                    iconColor: .gray,
+                    title: String(localized: "Import .scexport File", comment: "Settings › Accounts: opens the account wizard on the import of a .scexport file.")
                 )
             }
+            .foregroundStyle(.primary)
         }
     }
 
-    private func buildProviderSection(
-        title: String,
-        subtitle: String? = nil,
-        icon: String,
-        color: Color,
-        accounts: [AccountModel]
-    ) -> some View {
+    private func buildRow(_ account: AccountModel) -> some View {
+        StackTrackedButton(.account, on: .settingsAccounts) {
+            homeCoordinator.navigateToAccountDetail(account)
+        } label: {
+            StackAccountRow(account: account, status: listing.accountStatuses[account.id])
+        }
+        .foregroundStyle(.primary)
+    }
+
+    private func buildDeleteAllSection() -> some View {
         Section {
-            ForEach(accounts, id: \.id) { account in
-                StackTrackedButton(.account, on: .settingsAccounts) {
-                    viewModel.uiState.editingName = account.name
-                    coordinator.presentEditAccount(account)
-                } label: {
-                    HStack {
-                        Text(account.name)
-                            .font(.body)
-                            .foregroundStyle(.primary)
-
-                        if let role = account.displayedRole {
-                            StackCapsuleBadge(title: role.displayName, color: .blue)
-                        }
-
-                        if account.origin == .imported {
-                            StackCapsuleBadge(title: String(localized: "imported"), color: .yellow)
-                        }
-
-                        if let status = viewModel.uiState.accountStatuses[account.id] {
-                            StackAccountStatusBadge(status: status)
-                        }
-
-                        Spacer()
-
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                .foregroundStyle(.primary)
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    StackTrackedButton(.delete, on: .settingsAccounts, role: .destructive) {
-                        viewModel.uiState.accountToDelete = account
-                        viewModel.uiState.showDeleteConfirmation = true
-                    } label: {
-                        Label(String(localized: "Delete"), systemImage: "trash")
-                    }
-
-                    if account.isExportable {
-                        StackTrackedButton(.export, on: .settingsAccounts) {
-                            coordinator.presentExportAccount(account)
-                        } label: {
-                            Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
-                        }
-                        .tint(.blue)
-                    }
-                }
+            StackTrackedButton(.deleteAllAccounts, on: .settingsAccounts, role: .destructive) {
+                viewModel.uiState.showDeleteAllConfirmation = true
+            } label: {
+                Label(String(localized: "Delete All Accounts"), systemImage: "trash.fill")
             }
-        } header: {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .foregroundStyle(color)
-                Text(title)
-                if let subtitle {
-                    // Connection kind of the section ("API Key", "Google Account", ...).
-                    Text(verbatim: "·")
-                    Text(subtitle)
-                }
-            }
+        } footer: {
+            Text("Removes every account, its apps and its credentials from this device.",
+                 comment: "Settings › Accounts: footer of Delete All Accounts.")
         }
-    }
-
-    // MARK: - Import Sheet
-
-    private func buildImportSheet() -> some View {
-        ImportAccountSheet(
-            onImport: { url, password, customName in
-                Task {
-                    let error = await viewModel.importAccount(from: url, password: password, customName: customName)
-                    if let error {
-                        importError = error
-                        showImportError = true
-                    } else {
-                        coordinator.showImport = false
-                    }
-                }
-            },
-            onCancel: {
-                coordinator.showImport = false
-            }
-        )
     }
 
     // MARK: - Toolbar
@@ -284,352 +163,17 @@ struct SettingsAccountsView<ViewModel: SettingsAccountsViewModelProtocol>: View 
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
             StackTrackedButton(.add, on: .settingsAccounts) {
-                coordinator.presentAddOptions()
+                coordinator.presentWizard(.chooseKind)
             } label: {
                 Image(systemName: "plus")
             }
+            .accessibilityLabel(String(localized: "Add Account"))
         }
-    }
-
-    // MARK: - Helpers
-
-    private var allAccountsEmpty: Bool {
-        viewModel.uiState.appleAccounts.isEmpty &&
-        viewModel.uiState.firebaseAccounts.isEmpty &&
-        viewModel.uiState.googlePlayAccounts.isEmpty
     }
 }
 
-// MARK: - ProviderType + Identifiable (for sheet item)
+// MARK: - ProviderType + Identifiable
 
 extension ProviderType: Identifiable {
     var id: String { rawValue }
-}
-
-// MARK: - Share Sheet
-
-private struct ShareSheetView: UIViewControllerRepresentable {
-    let activityItems: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        let controller = UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-        controller.completionWithItemsHandler = { _, _, _, _ in
-            for case let url as URL in activityItems where url.isFileURL {
-                try? FileManager.default.removeItem(at: url)
-            }
-        }
-        return controller
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
-
-// MARK: - Import Account Sheet
-
-private struct ImportAccountSheet: View {
-
-    let onImport: (URL, String, String?) -> Void
-    let onCancel: () -> Void
-
-    @Environment(\.dismiss) private var dismiss
-    @State private var showFilePicker = false
-    @State private var showPasswordAlert = false
-    @State private var showNameAlert = false
-    @State private var showDecryptError = false
-    @State private var decryptErrorMessage = ""
-    @State private var password = ""
-    @State private var customName = ""
-    @State private var selectedURL: URL?
-    @State private var decryptedJSON: String?
-    @State private var showTutorial = false
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                Spacer()
-
-                Image(systemName: "doc.badge.arrow.up.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.gray)
-
-                Text(String(localized: "Import an encrypted .scexport file containing your account credentials."))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-
-                StackTrackedButton(.howToImport, on: .importAccount) {
-                    showTutorial = true
-                } label: {
-                    Label(String(localized: "How to import?"), systemImage: "questionmark.circle")
-                        .font(.subheadline)
-                }
-                .buttonStyle(.bordered)
-
-                StackTrackedButton(.importFile, on: .importAccount) {
-                    showFilePicker = true
-                } label: {
-                    Label(String(localized: "Import File"), systemImage: "square.and.arrow.down")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .padding(.horizontal, 32)
-
-                Spacer()
-            }
-            .sheet(isPresented: $showTutorial) {
-                ImportTutorialView()
-            }
-            .navigationTitle(String(localized: "Import"))
-            .trackScreen(.importAccount)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .importAccount) {
-                        dismiss()
-                        onCancel()
-                    }
-                }
-            }
-            .fileImporter(
-                isPresented: $showFilePicker,
-                allowedContentTypes: [.data],
-                allowsMultipleSelection: false
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    if let url = urls.first {
-                        selectedURL = url
-                        password = ""
-                        showPasswordAlert = true
-                    }
-                case .failure(let error):
-                    Log.print.error("[Import] File picker error: \(error.localizedDescription)")
-                }
-            }
-            // Step 1: Password
-            .alert(
-                String(localized: "Enter Password"),
-                isPresented: $showPasswordAlert
-            ) {
-                SecureField(String(localized: "Password"), text: $password)
-                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .importAccount, role: .cancel) {
-                    selectedURL = nil
-                    password = ""
-                }
-                StackTrackedButton(String(localized: "Decrypt"), button: .decrypt, on: .importAccount) {
-                    tryDecrypt()
-                }
-            } message: {
-                Text(String(localized: "Enter the password used to encrypt this file."))
-            }
-            // Step 2: Decrypt error
-            .alert(
-                String(localized: "Decryption Failed"),
-                isPresented: $showDecryptError
-            ) {
-                StackTrackedButton(String(localized: "Try Again"), button: .tryAgain, on: .importAccount) {
-                    password = ""
-                    showPasswordAlert = true
-                }
-                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .importAccount, role: .cancel) {
-                    selectedURL = nil
-                    password = ""
-                }
-            } message: {
-                Text(decryptErrorMessage)
-            }
-            // Step 3: Name customization
-            .alert(
-                String(localized: "Import Account"),
-                isPresented: $showNameAlert
-            ) {
-                TextField(String(localized: "Account Name"), text: $customName)
-                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .importAccount, role: .cancel) {
-                    selectedURL = nil
-                    password = ""
-                }
-                Button(String(localized: "Import")) {
-                    if let url = selectedURL {
-                        onImport(url, password, customName)
-                    }
-                    selectedURL = nil
-                    password = ""
-                }
-            } message: {
-                Text(String(localized: "Choose a name for this account."))
-            }
-        }
-    }
-
-    private func tryDecrypt() {
-        guard let url = selectedURL else { return }
-
-        let accessing = url.startAccessingSecurityScopedResource()
-        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-
-        guard let data = try? Data(contentsOf: url) else {
-            decryptErrorMessage = String(localized: "Failed to read file.")
-            showDecryptError = true
-            return
-        }
-
-        do {
-            let json = try AccountCrypto.decrypt(data: data, password: password)
-            decryptedJSON = json
-
-            // Extract name for pre-fill
-            if let jsonData = json.data(using: .utf8),
-               let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
-               let name = dict["name"] as? String {
-                customName = name
-            } else {
-                customName = ""
-            }
-
-            showNameAlert = true
-        } catch {
-            decryptErrorMessage = error.userFacingMessage
-            showDecryptError = true
-        }
-    }
-}
-
-// MARK: - Add Options Sheet
-
-private struct AddOptionsSheetContent: View {
-
-    @EnvironmentObject private var coordinator: SettingsAccountsCoordinator
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            List {
-                StackTrackedButton(.createNew, on: .settingsAccountAddOptions) {
-                    coordinator.presentProviderPicker()
-                } label: {
-                    Label(String(localized: "Create New"), systemImage: "plus.circle.fill")
-                }
-
-                StackTrackedButton(.importAccount, on: .settingsAccountAddOptions) {
-                    coordinator.presentImport()
-                } label: {
-                    Label(String(localized: "Import"), systemImage: "square.and.arrow.down.fill")
-                }
-            }
-            .navigationTitle(String(localized: "Add Account"))
-            .trackScreen(.settingsAccountAddOptions)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .settingsAccountAddOptions) {
-                        dismiss()
-                        coordinator.showAddOptions = false
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Provider Picker Sheet
-
-private struct ProviderPickerSheetContent: View {
-
-    /// Available stores only (no Google Play while `googlePlayAccounts` is OFF).
-    let providers: [ProviderType]
-
-    @EnvironmentObject private var coordinator: SettingsAccountsCoordinator
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            List {
-                ForEach(providers, id: \.self) { provider in
-                    StackTrackedButton(.providerButton(for: provider), on: .settingsAccountProviderPicker) {
-                        coordinator.presentAddAccount(providerType: provider)
-                    } label: {
-                        Label {
-                            Text(provider.displayName)
-                        } icon: {
-                            Image(systemName: provider.iconName)
-                                .foregroundStyle(provider.color)
-                        }
-                    }
-                }
-            }
-            .navigationTitle(String(localized: "Select Provider"))
-            .trackScreen(.settingsAccountProviderPicker)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .settingsAccountProviderPicker) {
-                        dismiss()
-                        coordinator.showProviderPicker = false
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Edit Account Sheet
-
-private struct EditAccountSheetContent: View {
-
-    let account: AccountModel
-    @Binding var editingName: String
-    let onSave: () -> Void
-    let onExportRequested: () -> Void
-
-    @EnvironmentObject private var coordinator: SettingsAccountsCoordinator
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField(String(localized: "Account Name"), text: $editingName)
-                        .textContentType(.name)
-                } header: {
-                    Text("Name")
-                }
-
-                if account.isExportable {
-                    Section {
-                        StackTrackedButton(.export, on: .settingsAccountEdit) {
-                            onExportRequested()
-                        } label: {
-                            Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
-                        }
-                    }
-                } else if let reason = account.exportUnavailableReason {
-                    Section {
-                        Label(String(localized: "Export"), systemImage: "square.and.arrow.up")
-                            .foregroundStyle(.secondary)
-                    } footer: {
-                        Text(reason)
-                    }
-                }
-            }
-            .navigationTitle(account.name)
-            .trackScreen(.settingsAccountEdit)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .settingsAccountEdit) {
-                        dismiss()
-                        coordinator.dismissEditAccount()
-                    }
-                }
-
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "Save")) {
-                        onSave()
-                    }
-                    .disabled(editingName.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-        }
-    }
 }

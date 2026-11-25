@@ -600,7 +600,7 @@ final class SyncService: ObservableObject, SyncFollowUpRequesting {
     /// Deletes cached `AppModel` rows (and their versions/reviews) that the
     /// account's per-app export scope no longer allows. No-op for unrestricted
     /// accounts (`allowsApp` returns true for every bundleId). Mirrors the
-    /// cascade idiom in `SettingsAccountsViewModel.deleteAccount`.
+    /// cascade idiom in `SettingsAccountDetailViewModel.deleteAccount`.
     private nonisolated static func purgeExcludedApps(
         account: AccountModel,
         cachedApps: [AppModel],

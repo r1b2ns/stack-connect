@@ -22,14 +22,11 @@ enum AnalyticsScreen: String, CaseIterable, Sendable {
     // MARK: Accounts
     case accountManagement = "account_management"
     case accountsList = "accounts_list"
-    case accountsListImport = "accounts_list_import"
-    case accountsListAddOptions = "accounts_list_add_options"
+    /// The connection engine of the account wizard (`AddAccountViewModel`):
+    /// its save and Google sign-in events.
     case addAccount = "add_account"
-    /// Add Account's method chooser: the ways to connect the provider as
-    /// equal cards (flag `accountConnectionGuide`, two or more methods).
-    case addAccountMethod = "add_account_method"
     /// The paged "How It Works" guide: shown before the first account
-    /// connection, or reopened from Add Account (flag `accountConnectionGuide`).
+    /// connection, or reopened from the account wizard (flag `accountConnectionGuide`).
     case connectionGuide = "connection_guide"
     /// "Sign in with Apple ID" (Add Account, or signing in again).
     case appleIdSignIn = "apple_id_sign_in"
@@ -38,16 +35,22 @@ enum AnalyticsScreen: String, CaseIterable, Sendable {
     case applePasswordUsage = "apple_password_usage"
     /// The "sign in again" prompt of an expired Apple ID session.
     case appleSessionExpired = "apple_session_expired"
+    /// The account wizard (plan `unified-accounts.md`), one screen per step.
+    case accountWizardType = "account_wizard_type"
+    case accountWizardMethod = "account_wizard_method"
+    case accountWizardCredentials = "account_wizard_credentials"
+    case accountWizardCode = "account_wizard_code"
+    case accountWizardItems = "account_wizard_items"
+    case accountWizardReview = "account_wizard_review"
+    case accountWizardDone = "account_wizard_done"
 
     // MARK: Settings
     case settings = "settings"
     case settingsAccounts = "settings_accounts"
-    case settingsAccountAddOptions = "settings_account_add_options"
-    case settingsAccountProviderPicker = "settings_account_provider_picker"
-    case settingsAccountEdit = "settings_account_edit"
+    /// Settings › Accounts › an account: status, info, export and delete.
+    case accountDetail = "account_detail"
     case accountSettings = "account_settings"
     case exportAccount = "export_account"
-    case importAccount = "import_account"
     case permissionPicker = "permission_picker"
     case appsPermissionPicker = "apps_permission_picker"
     case license = "license"

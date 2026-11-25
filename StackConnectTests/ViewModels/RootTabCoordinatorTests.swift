@@ -35,7 +35,7 @@ final class RootTabCoordinatorTests: XCTestCase {
     }
 
     func testTabsKeepTheirOwnStacks() {
-        sut.accountsCoordinator.navigateToAccountsList(.apple)
+        sut.accountsCoordinator.navigateToAccountsList()
         sut.select(.settings)
         sut.settingsCoordinator.navigateToSettingsAccounts()
         sut.settingsCoordinator.navigateToLicense()
@@ -61,7 +61,7 @@ final class RootTabCoordinatorTests: XCTestCase {
     // MARK: - Pop to root
 
     func testPopToRootFromSettingsUnwindsBothStacks() {
-        sut.accountsCoordinator.navigateToAccountsList(.apple)
+        sut.accountsCoordinator.navigateToAccountsList()
         sut.accountsCoordinator.navigateToAppList(account)
         sut.select(.settings)
         sut.settingsCoordinator.navigateToSettingsAccounts()
@@ -109,7 +109,7 @@ final class RootTabCoordinatorTests: XCTestCase {
     }
 
     func testDeepLinkHomeSwitchesToAccountsRoot() {
-        sut.accountsCoordinator.navigateToAccountsList(.firebase)
+        sut.accountsCoordinator.navigateToAccountsList()
         sut.select(.settings)
 
         sut.showHome()

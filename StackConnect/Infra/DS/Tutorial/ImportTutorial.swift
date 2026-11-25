@@ -2,8 +2,8 @@ import Foundation
 
 /// Single source of truth for the ".scexport" import tutorial.
 ///
-/// Both account-import sheets (`AccountsListView` and `SettingsAccountsView`)
-/// reuse these blocks so the step texts are never duplicated. The content is
+/// The account wizard's import ("How to import?" on its Credentials step)
+/// reuses these blocks so the step texts are never duplicated. The content is
 /// split into a source-device block and a target-device block, which lets
 /// ``TutorialGuideView`` render a per-block share button while still exposing a
 /// single combined end-to-end message via ``fullShareText``.

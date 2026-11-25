@@ -2,6 +2,8 @@ import SwiftUI
 
 enum HomeRoute: Hashable {
     case settingsAccounts
+    /// Settings › Accounts › an account (status, info, export, delete).
+    case accountDetail(AccountModel)
     case license
     case tipJar
     /// Settings › Privacy › Audit (flag `networkAudit`).
@@ -21,7 +23,8 @@ enum HomeRoute: Hashable {
     case devicesList(AccountModel)
     case deviceDetail(device: DeviceModel, account: AccountModel)
     case importDevices(AccountModel)
-    case accountsList(ProviderType)
+    /// The unified accounts list (every store, grouped, searchable).
+    case accountsList
     case appList(AccountModel)
     case firebaseProjectList(AccountModel)
     case firebaseProjectDetail(project: FirebaseProjectModel, account: AccountModel)
@@ -188,8 +191,12 @@ final class HomeCoordinator: MainCoordinatorProtocol {
         push(HomeRoute.importDevices(account))
     }
 
-    func navigateToAccountsList(_ providerType: ProviderType) {
-        push(HomeRoute.accountsList(providerType))
+    func navigateToAccountsList() {
+        push(HomeRoute.accountsList)
+    }
+
+    func navigateToAccountDetail(_ account: AccountModel) {
+        push(HomeRoute.accountDetail(account))
     }
 
     func navigateToAppList(_ account: AccountModel) {

@@ -61,7 +61,7 @@ final class RootSplitCoordinatorTests: XCTestCase {
         sut.select(.settings, origin: .sidebar)
         sut.contentCoordinator.navigateToSettingsAccounts()
 
-        sut.detailCoordinator.navigateToAccountsList(.apple)
+        sut.detailCoordinator.navigateToAccountsList()
 
         XCTAssertEqual(sut.detailRoute, .settingsAccounts)
         XCTAssertEqual(sut.detailCoordinator.path.count, 1)
