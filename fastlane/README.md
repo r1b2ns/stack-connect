@@ -26,17 +26,6 @@ Run unit tests on the simulator.
     Usage:
       bundle exec fastlane test
 
-### ios beta_dev
-
-```sh
-[bundle exec] fastlane ios beta_dev
-```
-
-Build and upload a new Development beta to TestFlight.
-
-    Usage:
-      bundle exec fastlane beta_dev
-
 ### ios beta
 
 ```sh
@@ -47,17 +36,6 @@ Build and upload a new beta to TestFlight.
 
     Usage:
       bundle exec fastlane beta
-
-### ios beta_all
-
-```sh
-[bundle exec] fastlane ios beta_all
-```
-
-Build and upload both Dev and Production betas to TestFlight in a single run.
-
-    Usage:
-      bundle exec fastlane beta_all
 
 ### ios screenshots
 

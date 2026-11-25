@@ -20,4 +20,4 @@ storage_mode("git")
 
 type("appstore")
 
-app_identifier([ENV["BUNDLE_ID"], ENV["BUNDLE_ID_DEV"], ENV["BUNDLE_ID_WIDGET"]])
+app_identifier([ENV["BUNDLE_ID"], ENV["BUNDLE_ID_WIDGET"]])

@@ -2,9 +2,7 @@
 #
 # Usage (from repo root):
 #   bundle exec fastlane test
-#   bundle exec fastlane beta_dev
 #   bundle exec fastlane beta
-#   bundle exec fastlane beta_all      # uploads both dev and prod betas in one run
 #   bundle exec fastlane screenshots
 #   bundle exec fastlane metadata
 #   bundle exec fastlane creative_assets_catalog
@@ -35,7 +33,6 @@ require_relative "creative_assets"
 PROJECT              = "StackConnect.xcodeproj"
 SCHEME               = "StackConnect"
 BUNDLE_ID            = ENV["BUNDLE_ID"]
-BUNDLE_ID_DEV        = ENV["BUNDLE_ID_DEV"]
 BUNDLE_ID_WIDGET     = ENV["BUNDLE_ID_WIDGET"]
 OUTPUT_DIR           = "build"
 
@@ -78,38 +75,6 @@ platform :ios do
     )
   end
 
-  # ── beta_dev ────────────────────────────────────────────────────────────────
-
-  desc "Build and upload a new Development beta to TestFlight.\n\n    Usage:\n      bundle exec fastlane beta_dev"
-  lane :beta_dev do
-    increment_build_number(
-      xcodeproj:    PROJECT,
-      build_number: Time.now.to_i.to_s
-    )
-
-    match(type: "appstore", app_identifier: [BUNDLE_ID_DEV, BUNDLE_ID_WIDGET], readonly: false)
-
-    build_app(
-      project:          PROJECT,
-      scheme:           SCHEME,
-      configuration:    "Debug",
-      output_directory: OUTPUT_DIR,
-      output_name:      "StackConnect-Dev.ipa",
-      export_method:    "app-store",
-      xcargs:           "CODE_SIGN_STYLE=Manual",
-      export_options: {
-        signingStyle:         "manual",
-        provisioningProfiles: lane_context[SharedValues::MATCH_PROVISIONING_PROFILE_MAPPING]
-      },
-      clean:            true
-    )
-
-    upload_to_testflight(
-      app_identifier:                    BUNDLE_ID_DEV,
-      skip_waiting_for_build_processing: true
-    )
-  end
-
   # ── beta ───────────────────────────────────────────────────────────────────
 
   desc "Build and upload a new beta to TestFlight.\n\n    Usage:\n      bundle exec fastlane beta"
@@ -140,14 +105,6 @@ platform :ios do
       app_identifier:                    BUNDLE_ID,
       skip_waiting_for_build_processing: true
     )
-  end
-
-  # ── beta_all ────────────────────────────────────────────────────────────────
-
-  desc "Build and upload both Dev and Production betas to TestFlight in a single run.\n\n    Usage:\n      bundle exec fastlane beta_all"
-  lane :beta_all do
-    beta_dev
-    beta
   end
 
   # ── screenshots ─────────────────────────────────────────────────────────────
