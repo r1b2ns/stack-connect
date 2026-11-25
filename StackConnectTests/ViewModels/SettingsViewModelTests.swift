@@ -108,133 +108,54 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertFalse(settings.isEnabled(.analyticsEnabled))
     }
 
-    // MARK: - Delete all accounts
+    // MARK: - Accounts summary
 
-    /// Seeds an account with its credentials, one app, one version and one reply template.
-    private func seedAccount(
-        _ account: AccountModel,
-        storage: MockPersistentStorable,
-        keychain: MockKeyStorable
-    ) async throws {
-        try await storage.save(account, id: account.id)
-        keychain.set("secret", forKey: "credentials.\(account.id)")
-        let app = AppModel(id: "app-\(account.id)", name: "App", bundleId: "com.test.app", accountId: account.id)
-        try await storage.save(app, id: "\(account.id).\(app.id)")
-        let version = AppStoreVersionModel(id: "version-\(account.id)", appId: app.id)
-        try await storage.save(version, id: "version.\(version.id)")
-        let template = ReplyTemplateModel(id: "template-\(account.id)", accountId: account.id, title: "T", body: "B")
-        try await storage.save(template, id: template.id)
+    func testAccountsSummaryCountsTheVisibleAccountsByStoreAndThoseNeedingAttention() async throws {
+        let storage = MockPersistentStorable()
+        let statuses = MockAccountStatusProvider()
+        let accounts = [
+            AccountModel(name: "Key", providerType: .apple),
+            AccountModel(name: "Session", providerType: .apple, authMethod: .appleIdSignIn),
+            AccountModel(name: "Fire", providerType: .firebase),
+            AccountModel(name: "Play", providerType: .googlePlay)
+        ]
+        for account in accounts { try await storage.save(account, id: account.id) }
+        statuses.statusesById = [accounts[1].id: .of(.signInExpired), accounts[3].id: .of(.pendingAgreements)]
+        let sut = SettingsViewModel(storage: storage, keychain: MockKeyStorable(), analytics: MockAnalyticsTracker(),
+                                    featureFlags: .googlePlayOff, statusProvider: statuses, notificationCenter: NotificationCenter())
+
+        await sut.loadAccountsSummary()
+
+        let summary = sut.uiState.accountsSummary
+        XCTAssertEqual(summary.total, 3, "Hidden Google Play accounts aren't counted")
+        XCTAssertEqual(summary.needsAttention, 1)
+        XCTAssertEqual(summary.providers, [.init(provider: .apple, count: 2), .init(provider: .firebase, count: 1)])
     }
 
-    func testDeleteAllAccountsRemovesEveryAccountWithItsDataAndTemplates() async throws {
-        let storage = MockPersistentStorable()
-        let keychain = MockKeyStorable()
-        let (sut, _, defaults, suite) = makeSUT(storage: storage, keychain: keychain)
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let first = AccountModel(name: "First", providerType: .apple)
-        let second = AccountModel(name: "Second", providerType: .firebase)
-        try await seedAccount(first, storage: storage, keychain: keychain)
-        try await seedAccount(second, storage: storage, keychain: keychain)
+    func testAccountsSummaryIsEmptyWithoutAccounts() async {
+        let sut = SettingsViewModel(storage: MockPersistentStorable(), keychain: MockKeyStorable(), analytics: MockAnalyticsTracker(),
+                                    featureFlags: .googlePlayOn, statusProvider: MockAccountStatusProvider(), notificationCenter: NotificationCenter())
 
-        await sut.deleteAllAccounts()
+        await sut.loadAccountsSummary()
 
-        let accounts = try await storage.fetchAll(AccountModel.self)
-        let apps = try await storage.fetchAll(AppModel.self)
-        let versions = try await storage.fetchAll(AppStoreVersionModel.self)
-        let templates = try await storage.fetchAll(ReplyTemplateModel.self)
-        XCTAssertTrue(accounts.isEmpty)
-        XCTAssertTrue(apps.isEmpty)
-        XCTAssertTrue(versions.isEmpty)
-        XCTAssertTrue(templates.isEmpty)
-        XCTAssertNil(keychain.string(forKey: "credentials.\(first.id)"))
-        XCTAssertNil(keychain.string(forKey: "credentials.\(second.id)"))
+        XCTAssertEqual(sut.uiState.accountsSummary, .empty)
     }
 
-    func testDeleteAllAccountsKeepsHiddenGooglePlayAccounts() async throws {
+    func testAccountsSummaryReloadsWhenAccountsChange() async throws {
         let storage = MockPersistentStorable()
-        let keychain = MockKeyStorable()
-        let sut = SettingsViewModel(storage: storage, keychain: keychain, analytics: MockAnalyticsTracker(), featureFlags: .googlePlayOff)
-        let apple = AccountModel(name: "Apple", providerType: .apple)
-        let play = AccountModel(name: "Play", providerType: .googlePlay)
-        try await seedAccount(apple, storage: storage, keychain: keychain)
-        try await storage.save(play, id: play.id)
+        let center = NotificationCenter()
+        let sut = SettingsViewModel(storage: storage, keychain: MockKeyStorable(), analytics: MockAnalyticsTracker(),
+                                    featureFlags: .googlePlayOn, statusProvider: MockAccountStatusProvider(), notificationCenter: center)
+        await sut.loadAccountsSummary()
+        try await storage.save(AccountModel(name: "New", providerType: .apple), id: "new")
 
-        await sut.deleteAllAccounts()
+        AccountsChange.post(center: center)
+        try await Task.sleep(for: .milliseconds(150))
 
-        let accounts = try await storage.fetchAll(AccountModel.self)
-        XCTAssertEqual(accounts.map(\.id), [play.id], "Only the accounts the user can see are deleted")
-    }
-
-    func testDeleteAllAccountsKeepsGoingWhenOneAccountFails() async throws {
-        let storage = MockPersistentStorable()
-        let keychain = MockKeyStorable()
-        let (sut, _, defaults, suite) = makeSUT(storage: storage, keychain: keychain)
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let failing = AccountModel(name: "Failing", providerType: .apple)
-        let healthy = AccountModel(name: "Healthy", providerType: .apple)
-        try await seedAccount(failing, storage: storage, keychain: keychain)
-        try await seedAccount(healthy, storage: storage, keychain: keychain)
-        await storage.failDelete(AccountModel.self, id: failing.id)
-
-        await sut.deleteAllAccounts()
-
-        // The healthy account is fully removed regardless of iteration order.
-        let accounts = try await storage.fetchAll(AccountModel.self)
-        let templates = try await storage.fetchAll(ReplyTemplateModel.self)
-        XCTAssertEqual(accounts.map(\.id), [failing.id])
-        XCTAssertFalse(templates.contains { $0.accountId == healthy.id })
-        XCTAssertNil(keychain.string(forKey: "credentials.\(healthy.id)"))
-        // The failing account keeps its credentials so it stays usable.
-        XCTAssertEqual(keychain.string(forKey: "credentials.\(failing.id)"), "secret")
+        XCTAssertEqual(sut.uiState.accountsSummary.total, 1)
     }
 
     // MARK: - Analytics events
-
-    func testDeleteAllAccountsTracksConfirmTapAndSuccess() async throws {
-        let storage = MockPersistentStorable()
-        let keychain = MockKeyStorable()
-        let tracker = MockAnalyticsTracker()
-        let (sut, _, defaults, suite) = makeSUT(storage: storage, keychain: keychain, analytics: tracker)
-        defer { defaults.removePersistentDomain(forName: suite) }
-        try await seedAccount(AccountModel(name: "First", providerType: .apple), storage: storage, keychain: keychain)
-
-        await sut.deleteAllAccounts()
-
-        XCTAssertEqual(tracker.taps(of: .confirmDeleteAllAccounts), [.buttonTap(.confirmDeleteAllAccounts, on: .settings)])
-        XCTAssertEqual(tracker.actions(of: .deleteAllAccounts), [
-            .action(.deleteAllAccounts, on: .settings, result: .success, parameters: [
-                AnalyticsParameterKey.count: .int(1),
-                AnalyticsParameterKey.failedCount: .int(0)
-            ])
-        ])
-    }
-
-    func testDeleteAllAccountsTracksFailureWhenFetchFails() async {
-        let storage = MockPersistentStorable()
-        await storage.failFetchAll(AccountModel.self)
-        let tracker = MockAnalyticsTracker()
-        let (sut, _, defaults, suite) = makeSUT(storage: storage, analytics: tracker)
-        defer { defaults.removePersistentDomain(forName: suite) }
-
-        await sut.deleteAllAccounts()
-
-        XCTAssertEqual(tracker.results(of: .deleteAllAccounts), [.failure])
-    }
-
-    func testDeleteAllAccountsTracksFailureWhenAnAccountFails() async throws {
-        let storage = MockPersistentStorable()
-        let keychain = MockKeyStorable()
-        let tracker = MockAnalyticsTracker()
-        let (sut, _, defaults, suite) = makeSUT(storage: storage, keychain: keychain, analytics: tracker)
-        defer { defaults.removePersistentDomain(forName: suite) }
-        let failing = AccountModel(name: "Failing", providerType: .apple)
-        try await seedAccount(failing, storage: storage, keychain: keychain)
-        await storage.failDelete(AccountModel.self, id: failing.id)
-
-        await sut.deleteAllAccounts()
-
-        XCTAssertEqual(tracker.results(of: .deleteAllAccounts), [.failure])
-    }
 
     func testTogglingPreReviewChecklistTracksTheNewValue() {
         let tracker = MockAnalyticsTracker()

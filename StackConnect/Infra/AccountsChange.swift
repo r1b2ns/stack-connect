@@ -8,8 +8,9 @@ extension Notification.Name {
 
 /// The single "the set of accounts changed" signal.
 ///
-/// Posted by the three places that add or remove an `AccountModel` —
-/// `AddAccountViewModel` (create), `AccountImporter` (import / re-import) and
+/// Posted by the places that add or remove an `AccountModel` —
+/// `AddAccountViewModel` and `AppleIdSignInViewModel` (create, through the
+/// account wizard), `AccountImporter` (import / re-import) and
 /// `AccountCascadeDeleter` (every delete path, "Delete all accounts" included) —
 /// so derived state such as the analytics user properties
 /// (`AnalyticsUserPropertiesUpdater`) never has to be wired into each screen.

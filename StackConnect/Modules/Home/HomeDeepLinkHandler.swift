@@ -61,7 +61,8 @@ struct HomeDeepLinkHandler {
         guard let storage,
               let account: AccountModel = try? await storage.fetch(AccountModel.self, id: accountId),
               FeatureFlags.shared.isVisible(account) else { return }
-        navigator.show(.accountsList(account.providerType))
+        // The accounts list opens the wizard on the re-import (`.reconnect`).
+        navigator.show(.accountsList)
         ReimportRouter.shared.request(accountId: accountId, providerType: account.providerType)
     }
 

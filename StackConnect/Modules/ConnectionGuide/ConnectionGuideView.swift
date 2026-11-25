@@ -8,9 +8,10 @@ import SwiftUI
 @MainActor
 struct ConnectionGuideViewFactory {
 
-    /// The guide as Add Account's first screen, before the first account
-    /// connection: "Cancel" closes Add Account, "Skip" (any page) and
-    /// "Continue" (last page) go on to connect. Inside Add Account's stack.
+    /// The guide shown on its own before the first account connection, over
+    /// the account wizard's Credentials step: "Cancel" closes the wizard,
+    /// "Skip" (any page) and "Continue" (last page) go on to connect. Inside
+    /// the caller's navigation stack.
     static func buildFirstConnection(
         provider: ProviderType,
         methods: [AccountConnectionMethod],
@@ -25,8 +26,8 @@ struct ConnectionGuideViewFactory {
         )
     }
 
-    /// The guide reopened from Add Account's "How It Works", as a sheet with
-    /// its own navigation stack: "Done" closes it.
+    /// The guide reopened from the account wizard's "How It Works", as a
+    /// sheet with its own navigation stack: "Done" closes it.
     static func buildReopened(
         provider: ProviderType,
         methods: [AccountConnectionMethod],

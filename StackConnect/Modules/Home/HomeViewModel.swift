@@ -47,9 +47,11 @@ protocol HomeViewModelProtocol: ObservableObject {
 // MARK: - UiState
 
 struct HomeUiState {
-    /// The store cards, narrowed to the available stores (Google Play only
-    /// while `googlePlayAccounts` is ON). Set by the ViewModel.
+    /// The available stores (Google Play only while `googlePlayAccounts` is
+    /// ON). Set by the ViewModel.
     var providers: [ProviderType] = FeatureFlags.shared.availableProviders
+    /// The Accounts card (Summary style), which opens the unified accounts list.
+    var accountsSummary: AccountsSummary = .empty
     var widgets: [any HomeWidget] = []
     var isLoading = false
     var syncState = SyncState()
@@ -144,6 +146,7 @@ final class HomeViewModel: HomeViewModelProtocol {
     private let googleAuth: (any GoogleAuthServicing)?
     private let notificationCenter: NotificationCenter
     private let autoReauth: (any AppleSessionAutoReauthenticating)?
+    private let statusResolver: AccountStatusResolving
     private var cancellables = Set<AnyCancellable>()
 
     /// Preferences key of the dashboard layout (also seeded by the DEBUG fake data mode).
@@ -175,14 +178,17 @@ final class HomeViewModel: HomeViewModelProtocol {
         signInExpiry: ExpiredSignInResolving? = nil,
         googleAuth: (any GoogleAuthServicing)? = nil,
         notificationCenter: NotificationCenter = .default,
-        autoReauth: (any AppleSessionAutoReauthenticating)? = nil
+        autoReauth: (any AppleSessionAutoReauthenticating)? = nil,
+        statusResolver: AccountStatusResolving? = nil
     ) {
         self.autoReauth = autoReauth
         self.storage = storage ?? SwiftDataStorable.shared
         self.featureFlags = featureFlags
         self.analytics = analytics
         self.tipCard = tipCard
-        self.signInExpiry = signInExpiry ?? ExpiredSignInResolver(keychain: keychain)
+        let signInExpiry = signInExpiry ?? ExpiredSignInResolver(keychain: keychain)
+        self.signInExpiry = signInExpiry
+        self.statusResolver = statusResolver ?? AccountStatusResolver(keychain: keychain, signInExpiry: signInExpiry, autoReauth: autoReauth)
         self.googleAuth = googleAuth
         self.notificationCenter = notificationCenter
         self.keychain = keychain
@@ -249,6 +255,14 @@ final class HomeViewModel: HomeViewModelProtocol {
         autoReauth?.events
             .sink { [weak self] event in self?.autoReauthEvent(event) }
             .store(in: &cancellables)
+
+        // The wizard or Settings added, imported or deleted accounts.
+        notificationCenter.publisher(for: .accountsDidChange)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                Task { await self?.reloadAccountsSummary() }
+            }
+            .store(in: &cancellables)
     }
 
     func triggerSync() {
@@ -283,6 +297,8 @@ final class HomeViewModel: HomeViewModelProtocol {
             uiState.showExpiringSoonAlert = true
         }
 
+        updateAccountsSummary(with: accounts)
+
         // Reuse the same fetch — no extra round-trip — to surface pending-agreements banners.
         uiState.pendingAgreementsAccounts = accounts.filter {
             $0.providerType == .apple
@@ -290,6 +306,21 @@ final class HomeViewModel: HomeViewModelProtocol {
                 && !dismissedAgreementAccountIds.contains($0.id)
         }
         applyExpiredSignIns(signInExpiry.expiredSignIns(in: accounts))
+    }
+
+    // MARK: - Accounts summary
+
+    private func reloadAccountsSummary() async {
+        let accounts = featureFlags.visibleAccounts((try? await storage.fetchAll(AccountModel.self)) ?? [])
+        updateAccountsSummary(with: accounts)
+    }
+
+    private func updateAccountsSummary(with accounts: [AccountModel]) {
+        uiState.accountsSummary = AccountsSummary(
+            accounts: accounts,
+            statuses: statusResolver.statuses(for: accounts),
+            providers: featureFlags.availableProviders
+        )
     }
 
     // MARK: - Sign In Again

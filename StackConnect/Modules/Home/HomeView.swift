@@ -18,13 +18,7 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var coordinator: HomeCoordinator
-    @Environment(\.analytics) private var analytics
     @State private var isCustomizingWidgets = false
-
-    private let columns = [
-        GridItem(.flexible(), spacing: 16),
-        GridItem(.flexible(), spacing: 16)
-    ]
 
     var body: some View {
         NavigationStack(path: $coordinator.path) {
@@ -96,20 +90,17 @@ struct HomeView<ViewModel: HomeViewModelProtocol>: View {
 
     // MARK: - Accounts Section
 
+    /// The Accounts card (Summary style): opens the unified accounts list,
+    /// every store grouped and searchable.
     private func buildAccountsSection() -> some View {
         Section {
-            LazyVGrid(columns: columns, spacing: 16) {
-                ForEach(viewModel.uiState.providers, id: \.self) { provider in
-                    ProviderCardView(provider: provider)
-                        .onTapGesture {
-                            analytics.track(.buttonTap(.providerButton(for: provider), on: .home))
-                            coordinator.navigateToAccountsList(provider)
-                        }
-                }
+            StackTrackedButton(.accounts, on: .home) {
+                coordinator.navigateToAccountsList()
+            } label: {
+                StackAccountsSummaryView(summary: viewModel.uiState.accountsSummary)
             }
-            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+            .foregroundStyle(.primary)
         }
-        .listRowBackground(Color.clear)
     }
 }
 

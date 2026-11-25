@@ -8,49 +8,25 @@ import StackProtocols
 protocol SettingsAccountsViewModelProtocol: ObservableObject {
     var uiState: SettingsAccountsUiState { get set }
     func loadAccounts() async
-    func updateAccountName(accountId: String, newName: String) async
-    func deleteAccount(_ account: AccountModel) async
-    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL?
-    func appsForExport(account: AccountModel) async -> [ExportableApp]
-    func importAccount(from url: URL, password: String, customName: String?) async -> String?
-}
-
-// MARK: - Section
-
-/// The accounts of one provider and connection kind ("App Store Connect ·
-/// API Key", "Firebase · Google Account", ...), in the list's name order.
-/// Only non-empty kinds get one.
-struct SettingsAccountsSection: Identifiable, Hashable {
-    let connection: AccountConnection
-    let accounts: [AccountModel]
-
-    var id: String { "\(connection.provider.rawValue).\(connection.kind.rawValue)" }
+    func clearSearch()
+    /// "Delete all accounts" confirmed: every visible account, with its data.
+    func deleteAllAccounts() async
 }
 
 // MARK: - UiState
 
 struct SettingsAccountsUiState {
-    var appleAccounts: [AccountModel] = []
-    var firebaseAccounts: [AccountModel] = []
-    /// Empty while `googlePlayAccounts` is OFF (stored accounts stay hidden).
-    var googlePlayAccounts: [AccountModel] = []
-    /// Stores offered by the "Add Account" provider picker.
-    var availableProviders: [ProviderType] = FeatureFlags.shared.availableProviders
-    /// What the list renders: App Store Connect, then Firebase, then Google
-    /// Play accounts, each split by connection kind (key file first).
-    var sections: [SettingsAccountsSection] = []
-    var isLoading = false
-    var editingName = ""
-    var accountToDelete: AccountModel?
-    var showDeleteConfirmation = false
-    var shareItem: ShareableFileURL?
-    /// Problems of the listed accounts (`AccountStatusResolving`), keyed by
-    /// account id; accounts without one are absent.
-    var accountStatuses: [String: AccountStatus] = [:]
+    /// The groups (App Store Connect, Google Play only while
+    /// `googlePlayAccounts` is ON, Firebase), the search and the statuses.
+    var listing = AccountsListingState()
+    var showDeleteAllConfirmation = false
 }
 
 // MARK: - Implementation
 
+/// Settings › Accounts (plan `unified-accounts.md` §4): search, add or import
+/// an account, a per-store "Add", rows that open the account, and "Delete all
+/// accounts" at the bottom.
 @MainActor
 final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
 
@@ -58,8 +34,6 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
 
     private let storage: PersistentStorable
     private let keychain: KeyStorable
-    private let exporter: AccountExporting
-    private let importer: AccountImporter
     private let analytics: AnalyticsTracking
     private let featureFlags: FeatureFlags
     private let statusProvider: AccountStatusProviding
@@ -68,23 +42,22 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
     init(
         storage: PersistentStorable? = nil,
         keychain: KeyStorable = KeychainStorable.shared,
-        exporter: AccountExporting? = nil,
         analytics: AnalyticsTracking = AnalyticsService.shared,
         featureFlags: FeatureFlags = .shared,
-        statusProvider: AccountStatusProviding? = nil
+        statusProvider: AccountStatusProviding? = nil,
+        notificationCenter: NotificationCenter = .default
     ) {
         let storage: PersistentStorable = storage ?? SwiftDataStorable.shared
         self.storage = storage
         self.keychain = keychain
-        self.exporter = exporter ?? AccountExporter(keychain: keychain)
-        self.importer = AccountImporter(storage: storage, keychain: keychain, featureFlags: featureFlags)
         self.analytics = analytics
         self.featureFlags = featureFlags
         self.statusProvider = statusProvider ?? AccountStatusService(storage: storage, keychain: keychain)
-        uiState.availableProviders = featureFlags.availableProviders
 
-        // A sign-in expired or works again, or a sync flagged/cleared agreements.
+        // A sign-in expired or works again, a sync flagged/cleared agreements,
+        // or the wizard / the detail added or removed accounts.
         self.statusProvider.changes
+            .merge(with: notificationCenter.publisher(for: .accountsDidChange).map { _ in () }.receive(on: DispatchQueue.main))
             .sink { [weak self] in
                 Task { await self?.loadAccounts() }
             }
@@ -92,145 +65,54 @@ final class SettingsAccountsViewModel: SettingsAccountsViewModelProtocol {
     }
 
     func loadAccounts() async {
-        uiState.isLoading = true
+        uiState.listing.isLoading = true
+        defer {
+            uiState.listing.isLoading = false
+            uiState.listing.hasLoaded = true
+        }
         do {
-            // Accounts of a hidden store (Google Play while the flag is OFF)
-            // are left out, never deleted.
-            var allAccounts = featureFlags.visibleAccounts(try await storage.fetchAll(AccountModel.self))
-
-            // Fill missing rules for legacy accounts
-            for i in allAccounts.indices {
-                allAccounts[i].fillMissingRules()
-            }
-
-            uiState.appleAccounts = allAccounts
-                .filter { $0.providerType == .apple }
-                .sorted { $0.name < $1.name }
-            uiState.firebaseAccounts = allAccounts
-                .filter { $0.providerType == .firebase }
-                .sorted { $0.name < $1.name }
-            uiState.googlePlayAccounts = allAccounts
-                .filter { $0.providerType == .googlePlay }
-                .sorted { $0.name < $1.name }
-            uiState.sections = Self.sections(from: uiState.appleAccounts)
-                + Self.sections(from: uiState.firebaseAccounts)
-                + Self.sections(from: uiState.googlePlayAccounts)
-            uiState.accountStatuses = statusProvider.statuses(for: allAccounts)
+            uiState.listing.apply(try await AccountsListingSnapshot.load(storage: storage, featureFlags: featureFlags, statusProvider: statusProvider))
         } catch {
             Log.print.error("[SettingsAccounts] Failed to load accounts: \(error.localizedDescription)")
         }
-        uiState.isLoading = false
     }
 
-    /// Splits the (already sorted) accounts of one provider by connection
-    /// kind, keeping their order inside each section and skipping empty kinds.
-    private static func sections(from accounts: [AccountModel]) -> [SettingsAccountsSection] {
-        guard let provider = accounts.first?.providerType else { return [] }
-        return AccountConnectionKind.allCases.compactMap { kind in
-            let matching = accounts.filter { $0.connectionKind == kind }
-            return matching.isEmpty
-                ? nil
-                : SettingsAccountsSection(connection: AccountConnection(provider: provider, kind: kind), accounts: matching)
-        }
+    func clearSearch() {
+        uiState.listing.query = ""
     }
 
-    func updateAccountName(accountId: String, newName: String) async {
-        analytics.track(.buttonTap(.save, on: .settingsAccountEdit))
-        let trimmed = newName.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-
-        // Find the account in any list
-        let allAccounts = uiState.appleAccounts + uiState.firebaseAccounts + uiState.googlePlayAccounts
-        guard let existing = allAccounts.first(where: { $0.id == accountId }) else {
-            analytics.track(.action(.saveAccount, on: .settingsAccountEdit, result: .failure))
-            return
-        }
-
-        // `updating` keeps every other field — notably the per-app scope.
-        let updated = existing.updating(name: trimmed)
-
+    func deleteAllAccounts() async {
+        analytics.track(.buttonTap(.confirmDeleteAllAccounts, on: .settingsAccounts))
         do {
-            try await storage.save(updated, id: updated.id)
-            Log.print.info("[SettingsAccounts] Updated account name: \(trimmed)")
-            analytics.track(.action(.saveAccount, on: .settingsAccountEdit, result: .success))
-            await loadAccounts()
-        } catch {
-            Log.print.error("[SettingsAccounts] Failed to update account: \(error.localizedDescription)")
-            analytics.track(.action(.saveAccount, on: .settingsAccountEdit, result: .failure))
-        }
-    }
+            // Only the accounts the user can see: a hidden store's accounts
+            // (Google Play while `googlePlayAccounts` is OFF) are kept.
+            let allAccounts = featureFlags.visibleAccounts(try await storage.fetchAll(AccountModel.self))
 
-    func deleteAccount(_ account: AccountModel) async {
-        analytics.track(.buttonTap(.confirmDelete, on: .settingsAccounts))
-        let parameters = [AnalyticsParameterKey.kind: AnalyticsValue.string(account.providerType.rawValue)]
-        do {
-            try await AccountCascadeDeleter.delete(account, storage: storage, keychain: keychain)
-            Log.print.info("[SettingsAccounts] Deleted account and related data: \(account.name)")
-            analytics.track(.action(.deleteAccount, on: .settingsAccounts, result: .success, parameters: parameters))
-            await loadAccounts()
-        } catch {
-            Log.print.error("[SettingsAccounts] Failed to delete account: \(error.localizedDescription)")
-            analytics.track(.action(.deleteAccount, on: .settingsAccounts, result: .failure, parameters: parameters))
-        }
-    }
+            // Each account is deleted independently: one failing must not stop the others.
+            var failedCount = 0
+            for account in allAccounts {
+                do {
+                    try await AccountCascadeDeleter.delete(account, storage: storage, keychain: keychain)
+                } catch {
+                    failedCount += 1
+                    Log.print.error("[SettingsAccounts] Failed to delete account \(account.name): \(error.localizedDescription)")
+                }
+            }
 
-    func exportAccountWithRules(account: AccountModel, exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL? {
-        let url = makeExportFile(account: account, exportName: exportName, rules: rules, password: password, expirationDate: expirationDate, appsBundles: appsBundles)
-        analytics.track(.action(
-            .exportAccount,
-            on: .exportAccount,
-            result: url == nil ? .failure : .success,
-            parameters: AnalyticsParameterKey.exportParameters(expirationDate: expirationDate, appsBundles: appsBundles)
-        ))
-        return url
-    }
-
-    private func makeExportFile(account: AccountModel, exportName: String, rules: AccountRules, password: String, expirationDate: Date?, appsBundles: [String]?) -> URL? {
-        do {
-            return try exporter.export(AccountExportRequest(
-                account: account,
-                exportName: exportName,
-                rules: rules,
-                password: password,
-                expirationDate: expirationDate,
-                appsBundles: appsBundles
+            Log.print.info("[SettingsAccounts] Deleted all accounts and related data (\(allAccounts.count) accounts)")
+            analytics.track(.action(
+                .deleteAllAccounts,
+                on: .settingsAccounts,
+                result: failedCount == 0 ? .success : .failure,
+                parameters: [
+                    AnalyticsParameterKey.count: .int(allAccounts.count),
+                    AnalyticsParameterKey.failedCount: .int(failedCount)
+                ]
             ))
         } catch {
-            Log.print.error("[SettingsAccounts] Export failed: \(String(describing: error))")
-            return nil
+            Log.print.error("[SettingsAccounts] Failed to delete all accounts: \(error.localizedDescription)")
+            analytics.track(.action(.deleteAllAccounts, on: .settingsAccounts, result: .failure))
         }
-    }
-
-    /// Apps of the given account, sorted by name, for the export scope picker.
-    func appsForExport(account: AccountModel) async -> [ExportableApp] {
-        await ExportableAppsLoader.apps(for: account, storage: storage)
-    }
-
-    // MARK: - Import
-
-    /// Accepts a `.scexport` file of any provider (see `AccountImporter`).
-    /// - Returns: the user-facing error, or `nil` on success. The failure event
-    ///   carries the error's `error_category`, never its message.
-    func importAccount(from url: URL, password: String, customName: String?) async -> String? {
-        analytics.track(.buttonTap(.confirmImport, on: .importAccount))
-        let error = await performImport(from: url, password: password, customName: customName)
-        analytics.track(.action(
-            .importAccount,
-            on: .importAccount,
-            result: error == nil ? .success : .failure,
-            parameters: error.map { AnalyticsErrorCategory(importReason: $0.reason).parameters } ?? [:]
-        ))
-        return error?.message
-    }
-
-    private func performImport(from url: URL, password: String, customName: String?) async -> AccountImportError? {
-        switch await importer.importAccount(from: url, password: password, customName: customName) {
-        case .success(let account):
-            Log.print.info("[SettingsAccounts] Imported account: \(account.name) (\(account.providerType.displayName))")
-            await loadAccounts()
-            return nil // success
-        case .failure(let error):
-            return error
-        }
+        await loadAccounts()
     }
 }

@@ -3,7 +3,7 @@ import StackProtocols
 @testable import StackConnect
 
 /// What an account added with "Sign in with Apple ID" can't do (plan G3, D7)
-/// and the `appleIdSignIn` flag in Add Account (D6).
+/// and the `appleIdSignIn` flag in the account wizard (D6).
 @MainActor
 final class AppleSessionGatingTests: XCTestCase {
 
@@ -76,44 +76,32 @@ final class AppleSessionGatingTests: XCTestCase {
         XCTAssertNil(sut.uiState.renameOrDeleteUnavailableReason)
     }
 
-    // MARK: - Flag in Add Account
+    // MARK: - Flag in the account wizard
 
-    private func makeAddAccount(_ provider: ProviderType, flag: Bool?, analytics: MockAnalyticsTracker = MockAnalyticsTracker()) -> (AddAccountViewModel, () -> Void) {
+    private func makeConfig(flag: Bool?) -> (AccountWizardConfig, () -> Void) {
         let suite = "AppleSessionGatingTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite) ?? .standard
         if let flag { defaults.set(flag, forKey: FeatureFlag.appleIdSignIn.rawValue) }
-        let sut = AddAccountViewModel(
-            providerType: provider,
-            storage: MockPersistentStorable(),
-            keychain: MockKeyStorable(),
-            analytics: analytics,
-            featureFlags: FeatureFlags(defaults: defaults),
-            googleAuth: MockGoogleAuthService()
-        )
-        return (sut, { defaults.removePersistentDomain(forName: suite) })
+        defaults.set(true, forKey: FeatureFlag.googlePlayAccounts.rawValue)
+        let config = AccountWizardConfig.make(entry: .chooseKind, featureFlags: FeatureFlags(defaults: defaults), isGoogleSignInConfigured: true)
+        return (config, { defaults.removePersistentDomain(forName: suite) })
     }
 
     func testFlagOnOffersAppleIdSignInForAppStoreConnectOnly() {
-        let analytics = MockAnalyticsTracker()
-        let (apple, cleanApple) = makeAddAccount(.apple, flag: true, analytics: analytics)
-        defer { cleanApple() }
-        let (play, cleanPlay) = makeAddAccount(.googlePlay, flag: true)
-        defer { cleanPlay() }
+        let (config, clean) = makeConfig(flag: true)
+        defer { clean() }
 
-        XCTAssertTrue(apple.uiState.isAppleIdSignInAvailable)
-        XCTAssertFalse(play.uiState.isAppleIdSignInAvailable)
-        apple.openAppleIdSignIn()
-        XCTAssertTrue(apple.uiState.isShowingAppleIdSignIn)
-        XCTAssertEqual(analytics.trackedEvents.last, .buttonTap(.signInWithAppleId, on: .addAccount))
+        XCTAssertEqual(config.kindConfig(for: .provider(.apple))?.methods, [.apiKey, .appleIdSignIn])
+        XCTAssertFalse(config.kindConfig(for: .provider(.googlePlay))?.methods.contains(.appleIdSignIn) ?? true)
+        XCTAssertFalse(config.kindConfig(for: .provider(.firebase))?.methods.contains(.appleIdSignIn) ?? true)
     }
 
     func testFlagOffKeepsOnlyTheApiKeyForm() {
-        let (sut, clean) = makeAddAccount(.apple, flag: false)
+        let (config, clean) = makeConfig(flag: false)
         defer { clean() }
 
-        XCTAssertFalse(sut.uiState.isAppleIdSignInAvailable)
-        sut.openAppleIdSignIn()
-        XCTAssertFalse(sut.uiState.isShowingAppleIdSignIn)
+        XCTAssertEqual(config.kindConfig(for: .provider(.apple))?.methods, [.apiKey])
+        XCTAssertEqual(config.kindConfig(for: .provider(.apple))?.showsMethodStep, false)
     }
 
     func testFlagDefaultsOnInDebugBuilds() {

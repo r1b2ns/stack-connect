@@ -2,583 +2,193 @@ import XCTest
 import StackProtocols
 @testable import StackConnect
 
+/// The unified accounts list (plan `unified-accounts.md` §2, Option A): one
+/// group per store, the search, the statuses, delete and the re-import entry.
 @MainActor
 final class AccountsListViewModelTests: XCTestCase {
 
-    private var sut: AccountsListViewModel!
-    private var mockStorage: MockPersistentStorable!
-    private var mockKeychain: MockKeyStorable!
+    private var storage: MockPersistentStorable!
+    private var keychain: MockKeyStorable!
     private var analytics: MockAnalyticsTracker!
+    private var statuses: MockAccountStatusProvider!
 
     override func setUp() async throws {
         try await super.setUp()
-        mockStorage = MockPersistentStorable()
-        mockKeychain = MockKeyStorable()
+        storage = MockPersistentStorable()
+        keychain = MockKeyStorable()
         analytics = MockAnalyticsTracker()
-        sut = AccountsListViewModel(
-            providerType: .apple,
-            storage: mockStorage,
-            keychain: mockKeychain,
-            analytics: analytics
-        )
+        statuses = MockAccountStatusProvider()
     }
 
     override func tearDown() async throws {
-        sut = nil
+        storage = nil
+        keychain = nil
         analytics = nil
-        mockStorage = nil
-        mockKeychain = nil
+        statuses = nil
         try await super.tearDown()
     }
 
-    // MARK: - Load
-
-    func testLoadAccountsFiltersbyProviderType() async throws {
-        let apple = AccountModel(name: "Apple Account", providerType: .apple)
-        let firebase = AccountModel(name: "Firebase Account", providerType: .firebase)
-        try await mockStorage.save(apple, id: apple.id)
-        try await mockStorage.save(firebase, id: firebase.id)
-
-        await sut.loadAccounts()
-
-        XCTAssertEqual(sut.uiState.accounts.count, 1)
-        XCTAssertEqual(sut.uiState.accounts.first?.name, "Apple Account")
+    private func makeSUT(featureFlags: FeatureFlags = .googlePlayOn) -> AccountsListViewModel {
+        AccountsListViewModel(
+            storage: storage,
+            keychain: keychain,
+            analytics: analytics,
+            featureFlags: featureFlags,
+            statusProvider: statuses,
+            notificationCenter: NotificationCenter()
+        )
     }
 
-    func testLoadAccountsEmptyState() async {
+    private func save(_ accounts: AccountModel...) async throws {
+        for account in accounts { try await storage.save(account, id: account.id) }
+    }
+
+    // MARK: - Grouping
+
+    func testGroupsEveryStoreInListOrderWithAccountsByName() async throws {
+        try await save(
+            AccountModel(name: "Zeta", providerType: .firebase),
+            AccountModel(name: "beta", providerType: .apple),
+            AccountModel(name: "Play", providerType: .googlePlay),
+            AccountModel(name: "Alpha", providerType: .apple)
+        )
+        let sut = makeSUT()
+
         await sut.loadAccounts()
-        XCTAssertTrue(sut.uiState.accounts.isEmpty)
+
+        XCTAssertEqual(sut.uiState.groups.map(\.provider), [.apple, .googlePlay, .firebase])
+        XCTAssertEqual(sut.uiState.groups.first?.accounts.map(\.name), ["Alpha", "beta"])
+        XCTAssertEqual(sut.uiState.accounts.map(\.name), ["Alpha", "beta", "Play", "Zeta"])
+        XCTAssertTrue(sut.uiState.hasLoaded)
         XCTAssertFalse(sut.uiState.isLoading)
+    }
+
+    func testStoresWithoutAccountsHaveNoGroup() async throws {
+        try await save(AccountModel(name: "Fire", providerType: .firebase))
+        let sut = makeSUT()
+
+        await sut.loadAccounts()
+
+        XCTAssertEqual(sut.uiState.groups.map(\.provider), [.firebase])
+    }
+
+    func testGooglePlayIsHiddenWhileItsFlagIsOffAndNothingIsDeleted() async throws {
+        try await save(AccountModel(id: "play", name: "Play", providerType: .googlePlay), AccountModel(name: "ASC", providerType: .apple))
+        let sut = makeSUT(featureFlags: .googlePlayOff)
+
+        await sut.loadAccounts()
+
+        XCTAssertEqual(sut.uiState.groups.map(\.provider), [.apple])
+        let stored = try await storage.fetch(AccountModel.self, id: "play")
+        XCTAssertNotNil(stored)
+    }
+
+    func testEmptyStateWithoutAccounts() async {
+        let sut = makeSUT()
+
+        await sut.loadAccounts()
+
+        XCTAssertTrue(sut.uiState.accounts.isEmpty)
+        XCTAssertTrue(sut.uiState.visibleGroups.isEmpty)
+        XCTAssertFalse(sut.uiState.showsNoResults, "No accounts is the empty state, not an empty search")
+    }
+
+    func testPublishesTheStatusesOfItsAccounts() async throws {
+        let account = AccountModel(name: "Personal", providerType: .apple, authMethod: .appleIdSignIn)
+        try await save(account)
+        statuses.statusesById = [account.id: .of(.signInExpired)]
+        let sut = makeSUT()
+
+        await sut.loadAccounts()
+
+        XCTAssertEqual(sut.uiState.accountStatuses[account.id]?.level, .disconnected)
+    }
+
+    // MARK: - Search
+
+    private func loadedForSearch() async throws -> AccountsListViewModel {
+        try await save(
+            AccountModel(name: "Acme Apps", providerType: .apple),
+            AccountModel(name: "Personal", providerType: .apple, authMethod: .appleIdSignIn),
+            AccountModel(name: "Client North", providerType: .googlePlay, authMethod: .googleSignIn),
+            AccountModel(name: "acme-prod", providerType: .firebase)
+        )
+        let sut = makeSUT()
+        await sut.loadAccounts()
+        return sut
+    }
+
+    func testSearchMatchesTheAccountName() async throws {
+        let sut = try await loadedForSearch()
+
+        sut.uiState.query = "acme"
+
+        XCTAssertEqual(sut.uiState.visibleGroups.map(\.provider), [.apple, .firebase])
+        XCTAssertEqual(sut.uiState.visibleGroups.flatMap(\.accounts).map(\.name), ["Acme Apps", "acme-prod"])
+        XCTAssertEqual(sut.uiState.visibleCount, 2)
+    }
+
+    func testSearchMatchesTheStore() async throws {
+        let sut = try await loadedForSearch()
+
+        sut.uiState.query = "google play"
+
+        XCTAssertEqual(sut.uiState.visibleGroups.flatMap(\.accounts).map(\.name), ["Client North"])
+    }
+
+    func testSearchMatchesHowTheAccountIsConnected() async throws {
+        let sut = try await loadedForSearch()
+
+        sut.uiState.query = AccountConnection(provider: .apple, kind: .signIn).title
+
+        XCTAssertEqual(sut.uiState.visibleGroups.flatMap(\.accounts).map(\.name), ["Personal"])
+    }
+
+    func testSearchWithoutMatchesShowsTheNoResultsStateUntilCleared() async throws {
+        let sut = try await loadedForSearch()
+
+        sut.uiState.query = "nothing like this"
+        XCTAssertTrue(sut.uiState.showsNoResults)
+        XCTAssertTrue(sut.uiState.visibleGroups.isEmpty)
+
+        sut.clearSearch()
+
+        XCTAssertFalse(sut.uiState.showsNoResults)
+        XCTAssertEqual(sut.uiState.visibleCount, 4)
+    }
+
+    func testABlankQueryKeepsEverything() async throws {
+        let sut = try await loadedForSearch()
+
+        sut.uiState.query = "   "
+
+        XCTAssertFalse(sut.uiState.isSearching)
+        XCTAssertEqual(sut.uiState.visibleCount, 4)
     }
 
     // MARK: - Delete
 
-    func testDeleteAccountRemovesFromStorageAndKeychain() async throws {
-        let account = AccountModel(name: "ToDelete", providerType: .apple)
-        try await mockStorage.save(account, id: account.id)
-        mockKeychain.set("secret", forKey: "credentials.\(account.id)")
-
-        await sut.loadAccounts()
-        XCTAssertEqual(sut.uiState.accounts.count, 1)
-
-        await sut.deleteAccount(at: IndexSet(integer: 0))
-
-        XCTAssertTrue(sut.uiState.accounts.isEmpty)
-        XCTAssertNil(mockKeychain.string(forKey: "credentials.\(account.id)"))
-    }
-
-    // MARK: - Delete cascades to reply templates
-
-    private func seedTemplate(id: String, accountId: String) async throws {
-        let template = ReplyTemplateModel(id: id, accountId: accountId, title: "Title", body: "Body")
-        try await mockStorage.save(template, id: template.id)
-    }
-
-    private func storedTemplates() async throws -> [ReplyTemplateModel] {
-        try await mockStorage.fetchAll(ReplyTemplateModel.self)
-    }
-
-    func testDeleteAccountRemovesItsReplyTemplatesAndKeepsOthers() async throws {
-        let deleted = AccountModel(name: "Deleted", providerType: .apple)
+    func testDeleteAccountRemovesItsDataAndReloads() async throws {
+        let deleted = AccountModel(name: "Old", providerType: .apple)
         let kept = AccountModel(name: "Kept", providerType: .apple)
-        try await mockStorage.save(deleted, id: deleted.id)
-        try await mockStorage.save(kept, id: kept.id)
-        try await seedTemplate(id: "deleted-1", accountId: deleted.id)
-        try await seedTemplate(id: "deleted-2", accountId: deleted.id)
-        try await seedTemplate(id: "kept-1", accountId: kept.id)
+        try await save(deleted, kept)
+        keychain.set("secret", forKey: "credentials.\(deleted.id)")
+        try await storage.save(ReplyTemplateModel(id: "t", accountId: deleted.id, title: "T", body: "B"), id: "t")
+        let sut = makeSUT()
         await sut.loadAccounts()
 
         await sut.deleteAccount(deleted)
 
-        let remaining = try await storedTemplates()
-        XCTAssertEqual(remaining.map(\.id), ["kept-1"])
-        XCTAssertEqual(remaining.first?.accountId, kept.id)
         XCTAssertEqual(sut.uiState.accounts.map(\.id), [kept.id])
+        XCTAssertNil(keychain.string(forKey: "credentials.\(deleted.id)"))
+        let templates = try await storage.fetchAll(ReplyTemplateModel.self)
+        XCTAssertTrue(templates.isEmpty)
     }
-
-    func testDeleteAccountAtOffsetsRemovesItsReplyTemplates() async throws {
-        let account = AccountModel(name: "Swiped", providerType: .apple)
-        try await mockStorage.save(account, id: account.id)
-        try await seedTemplate(id: "t1", accountId: account.id)
-        await sut.loadAccounts()
-
-        await sut.deleteAccount(at: IndexSet(integer: 0))
-
-        let remaining = try await storedTemplates()
-        XCTAssertTrue(remaining.isEmpty)
-        XCTAssertTrue(sut.uiState.accounts.isEmpty)
-    }
-
-    // MARK: - Grouping by team / issuerID (issue #66)
-
-    private func storeAppleCredentials(issuerID: String, for accountId: String) {
-        mockKeychain.setObject(
-            AppleCredentials(issuerID: issuerID, privateKeyID: "kid", privateKey: "key"),
-            forKey: "credentials.\(accountId)"
-        )
-    }
-
-    func testGroupsSameIssuerIDIntoOneGroup() async throws {
-        let a = AccountModel(name: "Team A — Admin", providerType: .apple)
-        let b = AccountModel(name: "Team A — Developer", providerType: .apple)
-        try await mockStorage.save(a, id: a.id)
-        try await mockStorage.save(b, id: b.id)
-        storeAppleCredentials(issuerID: "issuer-shared", for: a.id)
-        storeAppleCredentials(issuerID: "issuer-shared", for: b.id)
-
-        await sut.loadAccounts()
-
-        XCTAssertEqual(sut.uiState.groups.count, 1)
-        let group = try XCTUnwrap(sut.uiState.groups.first)
-        XCTAssertEqual(group.issuerID, "issuer-shared")
-        XCTAssertEqual(group.accounts.count, 2)
-        // Sorted by name within the group
-        XCTAssertEqual(group.accounts.map(\.name), ["Team A — Admin", "Team A — Developer"])
-    }
-
-    func testGroupsDifferentIssuerIDsIntoSeparateGroups() async throws {
-        let a = AccountModel(name: "Team A", providerType: .apple)
-        let b = AccountModel(name: "Team B", providerType: .apple)
-        try await mockStorage.save(a, id: a.id)
-        try await mockStorage.save(b, id: b.id)
-        storeAppleCredentials(issuerID: "issuer-aaa", for: a.id)
-        storeAppleCredentials(issuerID: "issuer-bbb", for: b.id)
-
-        await sut.loadAccounts()
-
-        XCTAssertEqual(sut.uiState.groups.count, 2)
-        let issuerIDs = sut.uiState.groups.compactMap(\.issuerID).sorted()
-        XCTAssertEqual(issuerIDs, ["issuer-aaa", "issuer-bbb"])
-        XCTAssertTrue(sut.uiState.groups.allSatisfy { $0.accounts.count == 1 })
-    }
-
-    func testAppleAccountWithoutReadableCredentialsFallsIntoUnknownGroup() async throws {
-        let a = AccountModel(name: "Orphan", providerType: .apple)
-        try await mockStorage.save(a, id: a.id)
-        // No credentials stored in keychain → issuerID unreadable.
-
-        await sut.loadAccounts()
-
-        XCTAssertEqual(sut.uiState.groups.count, 1)
-        let group = try XCTUnwrap(sut.uiState.groups.first)
-        XCTAssertNil(group.issuerID)
-        XCTAssertEqual(group.id, "unknown")
-        XCTAssertEqual(group.accounts.first?.name, "Orphan")
-    }
-
-    func testShowsTeamGroupsWhenATeamHasMoreThanOneAccount() async throws {
-        let a = AccountModel(name: "Team A — Admin", providerType: .apple)
-        let b = AccountModel(name: "Team A — Developer", providerType: .apple)
-        try await mockStorage.save(a, id: a.id)
-        try await mockStorage.save(b, id: b.id)
-        storeAppleCredentials(issuerID: "issuer-shared", for: a.id)
-        storeAppleCredentials(issuerID: "issuer-shared", for: b.id)
-
-        await sut.loadAccounts()
-
-        XCTAssertTrue(sut.uiState.showsTeamGroups)
-    }
-
-    func testHidesTeamGroupsWhenEveryTeamHasASingleAccount() async throws {
-        let a = AccountModel(name: "Team A", providerType: .apple)
-        let b = AccountModel(name: "Team B", providerType: .apple)
-        try await mockStorage.save(a, id: a.id)
-        try await mockStorage.save(b, id: b.id)
-        storeAppleCredentials(issuerID: "issuer-aaa", for: a.id)
-        storeAppleCredentials(issuerID: "issuer-bbb", for: b.id)
-
-        await sut.loadAccounts()
-
-        // Two distinct teams, one account each → no team headers.
-        XCTAssertFalse(sut.uiState.showsTeamGroups)
-    }
-
-    func testDeleteAccountSingleRemovesFromStorageAndKeychainAndRebuildsGroups() async throws {
-        let a = AccountModel(name: "Team A", providerType: .apple)
-        let b = AccountModel(name: "Team B", providerType: .apple)
-        try await mockStorage.save(a, id: a.id)
-        try await mockStorage.save(b, id: b.id)
-        storeAppleCredentials(issuerID: "issuer-aaa", for: a.id)
-        storeAppleCredentials(issuerID: "issuer-bbb", for: b.id)
-
-        await sut.loadAccounts()
-        XCTAssertEqual(sut.uiState.groups.count, 2)
-
-        await sut.deleteAccount(a)
-
-        XCTAssertEqual(sut.uiState.accounts.count, 1)
-        XCTAssertEqual(sut.uiState.accounts.first?.name, "Team B")
-        XCTAssertNil(mockKeychain.data(forKey: "credentials.\(a.id)"))
-        XCTAssertEqual(sut.uiState.groups.count, 1)
-        XCTAssertEqual(sut.uiState.groups.first?.issuerID, "issuer-bbb")
-    }
-
-    // MARK: - Sections by connection kind (API Key / Apple ID)
-
-    private func storeAppleIdSession(teamId: UInt64, for accountId: String) {
-        mockKeychain.setObject(
-            AppleCredentials(webSession: AppleWebSessionReference(appleId: "dev@example.com", teamId: teamId, teamName: "Team \(teamId)")),
-            forKey: "credentials.\(accountId)"
-        )
-    }
-
-    @discardableResult
-    private func seedAPIKeyAccount(_ name: String, issuerID: String) async throws -> AccountModel {
-        let account = AccountModel(name: name, providerType: .apple)
-        try await mockStorage.save(account, id: account.id)
-        storeAppleCredentials(issuerID: issuerID, for: account.id)
-        return account
-    }
-
-    @discardableResult
-    private func seedAppleIdAccount(_ name: String, teamId: UInt64) async throws -> AccountModel {
-        let account = AccountModel(name: name, providerType: .apple, authMethod: .appleIdSignIn)
-        try await mockStorage.save(account, id: account.id)
-        storeAppleIdSession(teamId: teamId, for: account.id)
-        return account
-    }
-
-    func testSplitsAppleAccountsIntoAPIKeyThenAppleIDSections() async throws {
-        try await seedAppleIdAccount("Session B", teamId: 2)
-        try await seedAPIKeyAccount("Key Z", issuerID: "issuer-zzz")
-        try await seedAppleIdAccount("Session A", teamId: 1)
-        try await seedAPIKeyAccount("Key A", issuerID: "issuer-aaa")
-
-        await sut.loadAccounts()
-
-        XCTAssertFalse(sut.uiState.showsTeamGroups)
-        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.keyFile, .signIn])
-        XCTAssertEqual(sut.uiState.sections.map { $0.accounts.map(\.name) }, [["Key A", "Key Z"], ["Session A", "Session B"]])
-        XCTAssertTrue(sut.uiState.sections.allSatisfy { $0.issuerID == nil })
-    }
-
-    func testShowsOnlyTheAPIKeySectionWithItsHeaderWhenThereAreNoAppleIDAccounts() async throws {
-        try await seedAPIKeyAccount("Key A", issuerID: "issuer-aaa")
-        try await seedAPIKeyAccount("Key B", issuerID: "issuer-bbb")
-
-        await sut.loadAccounts()
-
-        XCTAssertEqual(sut.uiState.sections.count, 1)
-        XCTAssertEqual(sut.uiState.sections.first?.connection?.kind, .keyFile)
-        XCTAssertEqual(sut.uiState.sections.first?.accounts.map(\.name), ["Key A", "Key B"])
-    }
-
-    func testShowsOnlyTheAppleIDSectionWithItsHeaderWhenThereAreNoAPIKeyAccounts() async throws {
-        try await seedAppleIdAccount("Session", teamId: 1)
-
-        await sut.loadAccounts()
-
-        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.signIn])
-        XCTAssertEqual(sut.uiState.sections.first?.accounts.map(\.name), ["Session"])
-    }
-
-    func testAPIKeyAccountWithUnreadableCredentialsStaysInTheAPIKeySection() async throws {
-        let orphan = AccountModel(name: "Orphan", providerType: .apple)
-        try await mockStorage.save(orphan, id: orphan.id)
-        try await seedAppleIdAccount("Session", teamId: 1)
-
-        await sut.loadAccounts()
-
-        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.keyFile, .signIn])
-        XCTAssertEqual(sut.uiState.sections.first?.accounts.map(\.name), ["Orphan"])
-    }
-
-    func testTeamGroupsAreSplitInsideTheirConnectionSection() async throws {
-        try await seedAPIKeyAccount("A — Admin", issuerID: "issuer-aaa")
-        try await seedAPIKeyAccount("A — Developer", issuerID: "issuer-aaa")
-        try await seedAPIKeyAccount("B", issuerID: "issuer-bbb")
-        try await seedAppleIdAccount("Session", teamId: 1)
-
-        await sut.loadAccounts()
-
-        XCTAssertTrue(sut.uiState.showsTeamGroups)
-        let sections = sut.uiState.sections
-        XCTAssertEqual(sections.map(\.connection?.kind), [.keyFile, nil, .signIn], "Only the first team section of a connection shows its header")
-        XCTAssertEqual(sections.map(\.issuerID), ["issuer-aaa", "issuer-bbb", nil])
-        XCTAssertEqual(sections.map { $0.accounts.map(\.name) }, [["A — Admin", "A — Developer"], ["B"], ["Session"]])
-        XCTAssertEqual(Set(sections.map(\.id)).count, sections.count, "Section ids are unique")
-    }
-
-    func testDeletingTheLastAppleIDAccountRemovesItsSection() async throws {
-        try await seedAPIKeyAccount("Key", issuerID: "issuer-aaa")
-        let session = try await seedAppleIdAccount("Session", teamId: 1)
-        await sut.loadAccounts()
-        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.keyFile, .signIn])
-
-        await sut.deleteAccount(session)
-
-        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.keyFile])
-    }
-
-    func testAppleSectionsUseTheAppleProviderConnections() async throws {
-        try await seedAPIKeyAccount("Key", issuerID: "issuer-aaa")
-        try await seedAppleIdAccount("Session", teamId: 1)
-
-        await sut.loadAccounts()
-
-        XCTAssertEqual(
-            sut.uiState.sections.map(\.connection),
-            [AccountConnection(provider: .apple, kind: .keyFile), AccountConnection(provider: .apple, kind: .signIn)]
-        )
-    }
-
-    // MARK: Google sections (Service Account Key / Google Account)
-
-    private func seedGoogleAccounts(_ provider: ProviderType) async throws {
-        let accounts = [
-            AccountModel(name: "Signed In B", providerType: provider, authMethod: .googleSignIn),
-            AccountModel(name: "Key Z", providerType: provider),
-            AccountModel(name: "Signed In A", providerType: provider, authMethod: .googleSignIn),
-            AccountModel(name: "Key A", providerType: provider, authMethod: .keyFile),
-        ]
-        for account in accounts {
-            try await mockStorage.save(account, id: account.id)
-        }
-    }
-
-    func testSplitsGooglePlayAccountsIntoKeyFileThenSignInSections() async throws {
-        let sut = makeGooglePlaySUT()
-        try await seedGoogleAccounts(.googlePlay)
-
-        await sut.loadAccounts()
-
-        XCTAssertEqual(
-            sut.uiState.sections.map(\.connection),
-            [AccountConnection(provider: .googlePlay, kind: .keyFile), AccountConnection(provider: .googlePlay, kind: .signIn)]
-        )
-        XCTAssertEqual(sut.uiState.sections.map { $0.accounts.map(\.name) }, [["Key A", "Key Z"], ["Signed In A", "Signed In B"]])
-        XCTAssertTrue(sut.uiState.sections.allSatisfy { $0.issuerID == nil })
-        XCTAssertEqual(Set(sut.uiState.sections.map(\.id)).count, 2, "Section ids are unique")
-    }
-
-    func testSplitsFirebaseAccountsIntoKeyFileThenSignInSections() async throws {
-        let sut = AccountsListViewModel(providerType: .firebase, storage: mockStorage, keychain: mockKeychain)
-        try await seedGoogleAccounts(.firebase)
-
-        await sut.loadAccounts()
-
-        XCTAssertEqual(
-            sut.uiState.sections.map(\.connection),
-            [AccountConnection(provider: .firebase, kind: .keyFile), AccountConnection(provider: .firebase, kind: .signIn)]
-        )
-        XCTAssertEqual(sut.uiState.sections.map { $0.accounts.map(\.name) }, [["Key A", "Key Z"], ["Signed In A", "Signed In B"]])
-    }
-
-    func testShowsOnlyTheGoogleSignInSectionWithItsHeaderWhenThereAreNoKeyFileAccounts() async throws {
-        let sut = makeGooglePlaySUT()
-        let account = AccountModel(name: "Signed In", providerType: .googlePlay, authMethod: .googleSignIn)
-        try await mockStorage.save(account, id: account.id)
-
-        await sut.loadAccounts()
-
-        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.signIn])
-        XCTAssertEqual(sut.uiState.sections.first?.accounts.map(\.name), ["Signed In"])
-    }
-
-    func testShowsOnlyTheServiceAccountKeySectionWithItsHeaderWhenThereAreNoSignInAccounts() async throws {
-        let sut = AccountsListViewModel(providerType: .firebase, storage: mockStorage, keychain: mockKeychain)
-        let account = AccountModel(name: "Key", providerType: .firebase)
-        try await mockStorage.save(account, id: account.id)
-
-        await sut.loadAccounts()
-
-        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.keyFile])
-    }
-
-    func testDeletingTheLastGoogleSignInAccountRemovesItsSection() async throws {
-        let sut = makeGooglePlaySUT()
-        let key = AccountModel(name: "Key", providerType: .googlePlay)
-        let signedIn = AccountModel(name: "Signed In", providerType: .googlePlay, authMethod: .googleSignIn)
-        try await mockStorage.save(key, id: key.id)
-        try await mockStorage.save(signedIn, id: signedIn.id)
-        await sut.loadAccounts()
-        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.keyFile, .signIn])
-
-        await sut.deleteAccount(signedIn)
-
-        XCTAssertEqual(sut.uiState.sections.map(\.connection?.kind), [.keyFile])
-    }
-
-    // MARK: Connection titles
-
-    func testConnectionTitlesAndIconsPerProvider() {
-        // Built with `String(localized:)` like production, so this holds in any simulator locale.
-        XCTAssertEqual(AccountConnection(provider: .apple, kind: .keyFile).title, String(localized: "API Key"))
-        XCTAssertEqual(AccountConnection(provider: .apple, kind: .signIn).title, String(localized: "Apple ID"))
-        for provider in [ProviderType.firebase, .googlePlay] {
-            XCTAssertEqual(AccountConnection(provider: provider, kind: .keyFile).title, String(localized: "Service Account Key"))
-            XCTAssertEqual(AccountConnection(provider: provider, kind: .signIn).title, String(localized: "Google Account"))
-        }
-        for provider in ProviderType.allCases {
-            XCTAssertEqual(AccountConnection(provider: provider, kind: .keyFile).iconName, "key.fill")
-            XCTAssertEqual(AccountConnection(provider: provider, kind: .signIn).iconName, "person.crop.circle")
-        }
-    }
-
-    func testConnectionKindFollowsTheAuthMethod() {
-        XCTAssertEqual(AccountModel(name: "a", providerType: .apple).connectionKind, .keyFile)
-        XCTAssertEqual(AccountModel(name: "a", providerType: .apple, authMethod: .appleIdSignIn).connectionKind, .signIn)
-        XCTAssertEqual(AccountModel(name: "f", providerType: .firebase).connectionKind, .keyFile)
-        XCTAssertEqual(AccountModel(name: "f", providerType: .firebase, authMethod: .googleSignIn).connectionKind, .signIn)
-        XCTAssertEqual(AccountModel(name: "g", providerType: .googlePlay, authMethod: .googleSignIn).connection,
-                       AccountConnection(provider: .googlePlay, kind: .signIn))
-    }
-
-    // MARK: - Google Play import (Phase 2)
-
-    private let password = "aVeryStrongPass123"
-
-    private func makeGooglePlaySUT() -> AccountsListViewModel {
-        AccountsListViewModel(providerType: .googlePlay, storage: mockStorage, keychain: mockKeychain, featureFlags: .googlePlayOn)
-    }
-
-    private func makeImportFile(_ payload: [String: Any]) throws -> URL {
-        let jsonData = try JSONSerialization.data(withJSONObject: payload)
-        let encrypted = try AccountCrypto.encrypt(json: String(decoding: jsonData, as: UTF8.self), password: password)
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("import-\(UUID().uuidString).scexport")
-        try encrypted.write(to: url)
-        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
-        return url
-    }
-
-    private func googlePlayPayload(serviceAccountJSON: String = GooglePlayTestFixtures.serviceAccountJSON()) -> [String: Any] {
-        [
-            "name": "Shared Play",
-            "providerType": "googlePlay",
-            "createdAt": ISO8601DateFormatter().string(from: .now),
-            "rules": ["apps": ["view"]],
-            "role": "admin",
-            "credentials": ["serviceAccountJSON": serviceAccountJSON],
-            "appsBundles": ["com.example.one"]
-        ]
-    }
-
-    func testGooglePlayListIsEmptyWhileGooglePlayIsHidden() async throws {
-        let hidden = AccountsListViewModel(providerType: .googlePlay, storage: mockStorage, keychain: mockKeychain, featureFlags: .googlePlayOff)
-        try await mockStorage.save(AccountModel(id: "play", name: "Play", providerType: .googlePlay), id: "play")
-
-        await hidden.loadAccounts()
-
-        XCTAssertTrue(hidden.uiState.accounts.isEmpty)
-        XCTAssertTrue(hidden.uiState.groups.isEmpty)
-    }
-
-    func testImportGooglePlayAccountRestoresCredentialsAndScope() async throws {
-        let json = GooglePlayTestFixtures.serviceAccountJSON()
-        let sut = makeGooglePlaySUT()
-        let url = try makeImportFile(googlePlayPayload(serviceAccountJSON: json))
-
-        let error = await sut.importAccount(from: url, password: password, customName: nil)
-
-        XCTAssertNil(error)
-        let imported = try XCTUnwrap(sut.uiState.accounts.first)
-        XCTAssertEqual(imported.providerType, .googlePlay)
-        XCTAssertEqual(imported.origin, .imported)
-        XCTAssertEqual(imported.role, .unspecified, "Google Play accounts keep the default role")
-        XCTAssertEqual(imported.appsBundles, ["com.example.one"])
-        let stored: GooglePlayCredentials? = mockKeychain.object(forKey: "credentials.\(imported.id)")
-        XCTAssertEqual(stored?.serviceAccountJSON, json)
-    }
-
-    func testImportGooglePlayDuplicateByClientEmailIsRejected() async throws {
-        let existing = AccountModel(name: "Existing", providerType: .googlePlay)
-        try await mockStorage.save(existing, id: existing.id)
-        let storedJSON = #"{"type":"service_account","client_email":"STACK-CONNECT@my-project.iam.gserviceaccount.com","private_key_id":"old","private_key":"-----BEGIN PRIVATE KEY-----\nA\n-----END PRIVATE KEY-----\n"}"#
-        mockKeychain.setObject(GooglePlayCredentials(serviceAccountJSON: storedJSON), forKey: "credentials.\(existing.id)")
-        let sut = makeGooglePlaySUT()
-        let url = try makeImportFile(googlePlayPayload(
-            serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON(privateKeyId: "new")
-        ))
-
-        let error = await sut.importAccount(from: url, password: password, customName: "Another name")
-
-        // Interpolated like production so the lookup hits the localized "%@" key.
-        let existingName = existing.name
-        XCTAssertEqual(error, String(localized: "An account with these credentials already exists: \"\(existingName)\"."))
-        let saved = try await mockStorage.fetchAll(AccountModel.self)
-        XCTAssertEqual(saved.map(\.id), [existing.id])
-    }
-
-    func testImportGooglePlayWithMalformedKeyIsRejectedAndSavesNothing() async throws {
-        let sut = makeGooglePlaySUT()
-        let url = try makeImportFile(googlePlayPayload(serviceAccountJSON: #"{"type": "service_account""#))
-
-        let error = await sut.importAccount(from: url, password: password, customName: nil)
-
-        XCTAssertEqual(
-            error,
-            String(localized: "The Google Play service account key in this file is invalid. Ask the sender to export the account again.")
-        )
-        let saved = try await mockStorage.fetchAll(AccountModel.self)
-        XCTAssertTrue(saved.isEmpty)
-        XCTAssertTrue(mockKeychain.storedKeys.isEmpty)
-    }
-
-    func testGooglePlayListRejectsAppleFiles() async throws {
-        let sut = makeGooglePlaySUT()
-        let url = try makeImportFile([
-            "name": "Team",
-            "providerType": "apple",
-            "createdAt": ISO8601DateFormatter().string(from: .now),
-            "credentials": ["issuerID": "i", "privateKeyID": "k", "privateKey": "p"]
-        ])
-
-        let error = await sut.importAccount(from: url, password: password, customName: nil)
-
-        XCTAssertEqual(
-            error,
-            String(localized: "This file contains a \(ProviderType.apple.displayName) account, but this is the \(ProviderType.googlePlay.displayName) section.")
-        )
-        XCTAssertTrue(mockKeychain.storedKeys.isEmpty)
-    }
-
-    func testReimportGooglePlayReplacesTheExpiredAccountInPlace() async throws {
-        let expired = AccountModel(
-            name: "Expired",
-            providerType: .googlePlay,
-            origin: .imported,
-            expirationDate: Date(timeIntervalSinceNow: -60)
-        )
-        try await mockStorage.save(expired, id: expired.id)
-        mockKeychain.setObject(
-            GooglePlayCredentials(serviceAccountJSON: GooglePlayTestFixtures.serviceAccountJSON()),
-            forKey: "credentials.\(expired.id)"
-        )
-        let sut = makeGooglePlaySUT()
-        sut.beginReimport(accountId: expired.id)
-        let url = try makeImportFile(googlePlayPayload())
-
-        let error = await sut.importAccount(from: url, password: password, customName: nil)
-
-        XCTAssertNil(error, "Re-importing the same service account is not a duplicate")
-        XCTAssertNil(sut.uiState.replacingAccountId)
-        XCTAssertEqual(sut.uiState.accounts.map(\.id), [expired.id])
-        XCTAssertNil(sut.uiState.accounts.first?.expirationDate)
-    }
-
-    // MARK: - Apple import now honors the per-app scope
-
-    func testImportAppleAccountParsesAppsBundles() async throws {
-        let url = try makeImportFile([
-            "name": "Team",
-            "providerType": "apple",
-            "createdAt": ISO8601DateFormatter().string(from: .now),
-            "credentials": ["issuerID": "i", "privateKeyID": "k", "privateKey": "p"],
-            "appsBundles": ["com.a"]
-        ])
-
-        let error = await sut.importAccount(from: url, password: password, customName: nil)
-
-        XCTAssertNil(error)
-        XCTAssertEqual(sut.uiState.accounts.first?.appsBundles, ["com.a"])
-    }
-
-    // MARK: - Analytics events
 
     func testDeleteAccountTracksTapAndSuccess() async throws {
         let account = AccountModel(name: "ToDelete", providerType: .apple)
-        try await mockStorage.save(account, id: account.id)
+        try await save(account)
+        let sut = makeSUT()
 
         await sut.deleteAccount(account)
 
@@ -592,52 +202,36 @@ final class AccountsListViewModelTests: XCTestCase {
 
     func testDeleteAccountTracksFailure() async throws {
         let account = AccountModel(name: "ToDelete", providerType: .apple)
-        try await mockStorage.save(account, id: account.id)
-        await mockStorage.failDelete(AccountModel.self, id: account.id)
+        try await save(account)
+        await storage.failDelete(AccountModel.self, id: account.id)
+        let sut = makeSUT()
 
         await sut.deleteAccount(account)
 
         XCTAssertEqual(analytics.results(of: .deleteAccount), [.failure])
     }
 
-    func testImportTracksFailureForUnreadableFile() async {
-        let missing = FileManager.default.temporaryDirectory.appendingPathComponent("missing-\(UUID().uuidString).scexport")
+    // MARK: - Re-import deep link
 
-        let error = await sut.importAccount(from: missing, password: "pw", customName: nil)
+    func testReimportOpensTheWizardOnTheExpiredAccount() async throws {
+        let expired = AccountModel(name: "Shared", providerType: .apple, origin: .imported, expirationDate: .distantPast)
+        try await save(expired)
+        let sut = makeSUT()
 
-        XCTAssertNotNil(error)
-        XCTAssertEqual(analytics.taps(of: .confirmImport), [.buttonTap(.confirmImport, on: .accountsListImport)])
-        XCTAssertEqual(analytics.results(of: .importAccount), [.failure])
-        XCTAssertEqual(
-            analytics.actions(of: .importAccount).first?.parameters[AnalyticsParameterKey.errorCategory],
-            .string("invalid_file")
-        )
+        let entry = await sut.reconnectEntry(forAccountId: expired.id)
+
+        XCTAssertEqual(entry, .reconnect(expired))
     }
 
-    func testReimportTracksReimportAction() async {
-        sut.beginReimport(accountId: "expired")
-        let missing = FileManager.default.temporaryDirectory.appendingPathComponent("missing-\(UUID().uuidString).scexport")
+    func testReimportOfAHiddenOrMissingAccountDoesNothing() async throws {
+        let play = AccountModel(name: "Play", providerType: .googlePlay, origin: .imported, expirationDate: .distantPast)
+        try await save(play)
+        let sut = makeSUT(featureFlags: .googlePlayOff)
 
-        _ = await sut.importAccount(from: missing, password: "pw", customName: nil)
+        let hidden = await sut.reconnectEntry(forAccountId: play.id)
+        let missing = await sut.reconnectEntry(forAccountId: "missing")
 
-        XCTAssertEqual(analytics.results(of: .reimportAccount), [.failure])
-        XCTAssertTrue(analytics.actions(of: .importAccount).isEmpty)
-    }
-
-    func testImportTracksSuccess() async throws {
-        let password = "aVeryStrongPass123"
-        let payload: [String: Any] = [
-            "name": "Imported",
-            "providerType": "apple",
-            "credentials": ["issuerID": "issuer", "privateKeyID": "kid", "privateKey": "pk"]
-        ]
-        let json = try XCTUnwrap(String(data: try JSONSerialization.data(withJSONObject: payload), encoding: .utf8))
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("import-\(UUID().uuidString).scexport")
-        try AccountCrypto.encrypt(json: json, password: password).write(to: url)
-
-        let error = await sut.importAccount(from: url, password: password, customName: nil)
-
-        XCTAssertNil(error)
-        XCTAssertEqual(analytics.results(of: .importAccount), [.success])
+        XCTAssertNil(hidden)
+        XCTAssertNil(missing)
     }
 }

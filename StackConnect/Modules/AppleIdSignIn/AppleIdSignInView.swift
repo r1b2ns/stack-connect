@@ -37,35 +37,18 @@ private struct AppleIdSignInEntry: View {
 // MARK: - View
 
 /// Three screens in one place, switched by `uiState.step`: the Apple ID and
-/// password, the two-factor code, and (Add Account) the teams to add.
+/// password, the two-factor code, and (Add Account) the teams to add. The
+/// content itself is `AppleIdSignInSections`, shared with the account wizard.
 struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
     let onFinished: () -> Void
 
-    @Environment(\.openURL) private var openURL
-    @FocusState private var focusedField: Field?
-
-    private enum Field { case email, password }
-
     private var state: AppleIdSignInUiState { viewModel.uiState }
 
     var body: some View {
         Form {
-            switch state.step {
-            case .credentials:
-                buildCredentialsContent()
-            case .code:
-                buildCodeContent()
-            case .teams, .finished:
-                buildTeamsContent()
-            case .needsAcknowledgement:
-                buildAcknowledgementContent()
-            }
-
-            if let error = state.errorMessage {
-                buildErrorSection(error)
-            }
+            AppleIdSignInSections(viewModel: viewModel, showsActionButtons: true)
         }
         .navigationTitle(buildTitle())
         .navigationBarTitleDisplayMode(.inline)
@@ -96,6 +79,68 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
                           comment: "Title of the App Store Connect email and password screen. Must not read as Apple's \"Sign in with Apple\".")
         case .code:             return String(localized: "Two-Factor Code")
         case .teams, .finished: return String(localized: "Choose Teams")
+        }
+    }
+
+    @ToolbarContentBuilder
+    private func buildToolbar() -> some ToolbarContent {
+        if state.step == .code {
+            ToolbarItem(placement: .cancellationAction) {
+                Button(String(localized: "Back")) { viewModel.startOver() }
+                    .disabled(state.isWorking)
+            }
+        }
+        if state.step == .teams {
+            ToolbarItem(placement: .confirmationAction) {
+                if state.isWorking {
+                    ProgressView()
+                } else {
+                    Button(String(localized: "Save")) {
+                        Task { await viewModel.save() }
+                    }
+                    .disabled(!state.canSave)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Sections
+
+/// The content of the Apple ID sign-in for `uiState.step`, as `Form`
+/// sections: the Apple ID and password (with the trust panel and "Save
+/// password on this device", off by default), the two-factor code with "Send
+/// SMS instead", the teams to add, or the acknowledgement Apple asks for.
+/// Used by `AppleIdSignInView` and by the account wizard's Credentials, Code
+/// and Items steps.
+struct AppleIdSignInSections<ViewModel: AppleIdSignInViewModelProtocol>: View {
+
+    @ObservedObject var viewModel: ViewModel
+    /// `false` in the account wizard: its own bottom button continues
+    /// ("Continue", "Verify"), so the inline buttons are left out.
+    var showsActionButtons = true
+
+    @Environment(\.openURL) private var openURL
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case email, password }
+
+    private var state: AppleIdSignInUiState { viewModel.uiState }
+
+    var body: some View {
+        switch state.step {
+        case .credentials:
+            buildCredentialsContent()
+        case .code:
+            buildCodeContent()
+        case .teams, .finished:
+            buildTeamsContent()
+        case .needsAcknowledgement:
+            buildAcknowledgementContent()
+        }
+
+        if let error = state.errorMessage {
+            buildErrorSection(error)
         }
     }
 
@@ -158,6 +203,14 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
             }
         }
 
+        if showsActionButtons {
+            buildContinueSection()
+        } else {
+            buildSecurityKeyNoteSection()
+        }
+    }
+
+    private func buildContinueSection() -> some View {
         Section {
             // A neutral glyph, never the Apple logo: nothing here may look
             // like Apple's "Sign in with Apple" button.
@@ -169,6 +222,13 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
                 Task { await viewModel.signIn() }
             }
             .disabled(!state.canSignIn)
+        } footer: {
+            Text("Accounts with a security key as their second factor can't sign in here yet. Use an App Store Connect API key instead.")
+        }
+    }
+
+    private func buildSecurityKeyNoteSection() -> some View {
+        Section {
         } footer: {
             Text("Accounts with a security key as their second factor can't sign in here yet. Use an App Store Connect API key instead.")
         }
@@ -268,7 +328,7 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
                     Text("Checking with Apple…")
                         .foregroundStyle(.secondary)
                 }
-            } else {
+            } else if showsActionButtons {
                 StackSignInButton(title: String(localized: "Verify"), systemImage: "checkmark.shield") {
                     Task { await viewModel.submitCode() }
                 }
@@ -378,28 +438,6 @@ struct AppleIdSignInView<ViewModel: AppleIdSignInViewModelProtocol>: View {
                 .foregroundStyle(.red)
                 .font(.subheadline)
                 .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    @ToolbarContentBuilder
-    private func buildToolbar() -> some ToolbarContent {
-        if state.step == .code {
-            ToolbarItem(placement: .cancellationAction) {
-                Button(String(localized: "Back")) { viewModel.startOver() }
-                    .disabled(state.isWorking)
-            }
-        }
-        if state.step == .teams {
-            ToolbarItem(placement: .confirmationAction) {
-                if state.isWorking {
-                    ProgressView()
-                } else {
-                    Button(String(localized: "Save")) {
-                        Task { await viewModel.save() }
-                    }
-                    .disabled(!state.canSave)
-                }
-            }
         }
     }
 }

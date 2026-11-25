@@ -1,27 +1,24 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 // MARK: - Factory
 
 @MainActor
 struct AccountsListViewFactory {
-    static func build(providerType: ProviderType) -> some View {
-        AccountsListEntry(providerType: providerType)
+    /// The unified accounts list (Home › Accounts; the split view's "Add
+    /// Account" item, which opens the wizard right away with `initialEntry`).
+    static func build(initialEntry: AccountWizardEntry? = nil) -> some View {
+        AccountsListEntry(initialEntry: initialEntry)
     }
 }
 
 // MARK: - Entry
 
 private struct AccountsListEntry: View {
-    let providerType: ProviderType
-
     @StateObject private var coordinator: AccountsListCoordinator
-    @StateObject private var viewModel: AccountsListViewModel
+    @StateObject private var viewModel = AccountsListViewModel()
 
-    init(providerType: ProviderType) {
-        self.providerType = providerType
-        _coordinator = StateObject(wrappedValue: AccountsListCoordinator(providerType: providerType))
-        _viewModel = StateObject(wrappedValue: AccountsListViewModel(providerType: providerType))
+    init(initialEntry: AccountWizardEntry?) {
+        _coordinator = StateObject(wrappedValue: AccountsListCoordinator(initialEntry: initialEntry))
     }
 
     var body: some View {
@@ -32,75 +29,75 @@ private struct AccountsListEntry: View {
 
 // MARK: - View
 
+/// Option A of plan `unified-accounts.md`: a grouped list in the iOS Settings
+/// style, one section per store, searchable under the large title.
 struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
 
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var coordinator: AccountsListCoordinator
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
-    @State private var importError = ""
-    @State private var showImportError = false
-    @State private var expiredAccessAccount: AccountModel?
-    @State private var showExpiredAccessAlert = false
-
     var body: some View {
         buildContent()
-            .navigationTitle(viewModel.uiState.providerType.displayName)
+            .navigationTitle(String(localized: "Accounts"))
+            .navigationBarTitleDisplayMode(.large)
             .trackScreen(.accountsList)
+            .searchable(
+                text: $viewModel.uiState.query,
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: String(localized: "Search accounts", comment: "Accounts lists: placeholder of the search field.")
+            )
+            .trackSearch(query: viewModel.uiState.query, resultCount: viewModel.uiState.visibleCount, on: .accountsList)
             .toolbar { buildToolbar() }
+            .task {
+                await viewModel.loadAccounts()
+                coordinator.presentInitialEntryIfNeeded()
+            }
+            // The re-import deep link (expired imported account).
             .onReceive(ReimportRouter.shared.$pending.compactMap { $0 }) { request in
-                guard request.providerType == viewModel.uiState.providerType else { return }
-                viewModel.beginReimport(accountId: request.accountId)
-                coordinator.showImport = true
                 ReimportRouter.shared.pending = nil
-            }
-            .sheet(isPresented: $coordinator.showAddOptions) {
-                buildAddOptionsSheet()
-                    .presentationDetents([.medium])
-            }
-            .sheet(isPresented: $coordinator.showAddAccount) {
-                AddAccountViewFactory.build(providerType: viewModel.uiState.providerType) {
-                    coordinator.showAddAccount = false
-                    Task { await viewModel.loadAccounts() }
+                Task {
+                    if let entry = await viewModel.reconnectEntry(forAccountId: request.accountId) {
+                        coordinator.presentWizard(entry)
+                    }
                 }
-                .stackFormSheet()
             }
-            .sheet(isPresented: $coordinator.showImport) {
-                buildImportSheet()
-                    .presentationDetents([.medium])
-            }
-            .alert(
-                String(localized: "Import Error"),
-                isPresented: $showImportError
-            ) {
-                StackTrackedButton(String(localized: "OK"), button: .ok, on: .accountsList, role: .cancel) {}
-            } message: {
-                Text(importError)
+            .fullScreenCover(item: $coordinator.wizardEntry) { entry in
+                AccountWizardViewFactory.build(entry: entry) {
+                    coordinator.dismissWizard()
+                }
             }
             .alert(
                 String(localized: "Account Expired"),
-                isPresented: $showExpiredAccessAlert,
-                presenting: expiredAccessAccount
+                isPresented: Binding(
+                    get: { coordinator.expiredAccount != nil },
+                    set: { if !$0 { coordinator.expiredAccount = nil } }
+                ),
+                presenting: coordinator.expiredAccount
             ) { account in
                 StackTrackedButton(String(localized: "Re-import File"), button: .reimport, on: .accountsList) {
-                    DeepLinkRouter.shared.open(DeepLink.reimport(accountId: account.id).url)
+                    coordinator.presentWizard(.reconnect(account))
                 }
                 StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .accountsList, role: .cancel) {}
             } message: { account in
                 Text("The account \"\(account.name)\" has expired. Re-import its file to keep using it.")
             }
-            .task { await viewModel.loadAccounts() }
     }
 
     // MARK: - Content
 
     @ViewBuilder
     private func buildContent() -> some View {
-        if viewModel.uiState.isLoading && viewModel.uiState.accounts.isEmpty {
+        let state = viewModel.uiState
+        if !state.hasLoaded && state.accounts.isEmpty {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if viewModel.uiState.accounts.isEmpty {
+        } else if state.accounts.isEmpty {
             buildEmptyState()
+        } else if state.showsNoResults {
+            AccountsNoResultsView(query: state.query) {
+                viewModel.clearSearch()
+            }
         } else {
             buildList()
         }
@@ -108,163 +105,52 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
 
     private func buildEmptyState() -> some View {
         ContentUnavailableView {
-            Label(
-                String(localized: "No Accounts"),
-                systemImage: "person.crop.circle.badge.plus"
-            )
+            Label(String(localized: "No Accounts"), systemImage: "person.crop.circle.badge.plus")
         } description: {
             Text("Tap + to add your first account.")
+        } actions: {
+            StackTrackedButton(String(localized: "Add Account"), button: .addAccount, on: .accountsList) {
+                coordinator.presentWizard(.chooseKind)
+            }
+            .buttonStyle(.borderedProminent)
         }
     }
 
     private func buildList() -> some View {
         List {
-            ForEach(viewModel.uiState.sections) { section in
-                Section {
-                    ForEach(section.accounts) { account in
-                        buildSwipeableRow(account)
-                    }
-                } header: {
-                    buildSectionHeader(section)
-                }
+            StackAccountGroupsSections(groups: viewModel.uiState.visibleGroups) { account in
+                buildRow(account)
             }
         }
+        .listStyle(.insetGrouped)
     }
 
-    private func buildSwipeableRow(_ account: AccountModel) -> some View {
-        buildAccountRow(account)
-            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                Button(role: .destructive) {
-                    Task { await viewModel.deleteAccount(account) }
-                } label: {
-                    Label(String(localized: "Delete"), systemImage: "trash")
-                }
-            }
-    }
-
-    /// Connection header ("API Key" / "Apple ID", "Service Account Key" /
-    /// "Google Account") and/or team header.
-    @ViewBuilder
-    private func buildSectionHeader(_ section: AccountsListSection) -> some View {
-        if section.connection != nil || section.issuerID != nil {
-            VStack(alignment: .leading, spacing: 6) {
-                if let connection = section.connection {
-                    Label(connection.title, systemImage: connection.iconName)
-                }
-                if let issuerID = section.issuerID {
-                    // Mask the issuerID: show only a short suffix to avoid leaking the full id.
-                    Label(
-                        String(localized: "Team ••••\(String(issuerID.suffix(6)))"),
-                        systemImage: "person.2"
-                    )
-                }
-            }
-        }
-    }
-
-    private func buildAccountRow(_ account: AccountModel) -> some View {
+    private func buildRow(_ account: AccountModel) -> some View {
         StackTrackedButton(.account, on: .accountsList) {
-            guard !account.isExpired else {
-                expiredAccessAccount = account
-                showExpiredAccessAlert = true
-                return
-            }
-            switch account.providerType {
-            case .apple:
-                homeCoordinator.navigateToAppList(account)
-            case .firebase:
-                homeCoordinator.navigateToFirebaseProjectList(account)
-            case .googlePlay:
-                homeCoordinator.navigateToGooglePlayAppList(account)
-            }
+            open(account)
         } label: {
-            HStack {
-                Image(systemName: account.providerType.iconName)
-                    .foregroundStyle(account.providerType.color)
-                    .frame(width: 32)
-
-                Text(account.name)
-                    .font(.body)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.primary)
-
-                if let role = account.displayedRole {
-                    StackCapsuleBadge(title: role.displayName, color: .blue)
-                }
-
-                if account.origin == .imported {
-                    StackCapsuleBadge(title: String(localized: "imported"), color: .yellow)
-                }
-
-                // Replaces the former "expired" chip: an expired file is one
-                // of the "Disconnected" causes (`AccountStatusIssue.accessExpired`).
-                if let status = viewModel.uiState.accountStatuses[account.id] {
-                    StackAccountStatusBadge(status: status)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
+            StackAccountRow(account: account, status: viewModel.uiState.accountStatuses[account.id])
         }
         .foregroundStyle(.primary)
-    }
-
-    // MARK: - Add Options Sheet
-
-    private func buildAddOptionsSheet() -> some View {
-        NavigationStack {
-            List {
-                StackTrackedButton(.createNew, on: .accountsListAddOptions) {
-                    coordinator.presentAddAccount()
-                } label: {
-                    Label(String(localized: "Create New"), systemImage: "plus.circle.fill")
-                }
-
-                if viewModel.uiState.providerType.supportsImport {
-                    StackTrackedButton(.importAccount, on: .accountsListAddOptions) {
-                        viewModel.uiState.replacingAccountId = nil
-                        coordinator.presentImport()
-                    } label: {
-                        Label(String(localized: "Import"), systemImage: "square.and.arrow.down.fill")
-                    }
-                }
-            }
-            .navigationTitle(String(localized: "Add Account"))
-            .trackScreen(.accountsListAddOptions)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .accountsListAddOptions) {
-                        coordinator.showAddOptions = false
-                    }
-                }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+                Task { await viewModel.deleteAccount(account) }
+            } label: {
+                Label(String(localized: "Delete"), systemImage: "trash")
             }
         }
     }
 
-    // MARK: - Import Sheet
-
-    private func buildImportSheet() -> some View {
-        AccountsListImportSheet(
-            onImport: { url, password, customName in
-                Task {
-                    let error = await viewModel.importAccount(from: url, password: password, customName: customName)
-                    if let error {
-                        importError = error
-                        showImportError = true
-                    } else {
-                        coordinator.showImport = false
-                    }
-                }
-            },
-            onCancel: {
-                viewModel.uiState.replacingAccountId = nil
-                coordinator.showImport = false
-            }
-        )
+    private func open(_ account: AccountModel) {
+        guard !account.isExpired else {
+            coordinator.presentExpiredAlert(for: account)
+            return
+        }
+        switch account.providerType {
+        case .apple:      homeCoordinator.navigateToAppList(account)
+        case .firebase:   homeCoordinator.navigateToFirebaseProjectList(account)
+        case .googlePlay: homeCoordinator.navigateToGooglePlayAppList(account)
+        }
     }
 
     // MARK: - Toolbar
@@ -273,173 +159,37 @@ struct AccountsListView<ViewModel: AccountsListViewModelProtocol>: View {
     private func buildToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
             StackTrackedButton(.add, on: .accountsList) {
-                coordinator.presentAddOptions()
+                coordinator.presentWizard(.chooseKind)
             } label: {
                 Image(systemName: "plus")
             }
+            .accessibilityLabel(String(localized: "Add Account"))
         }
     }
 }
 
-// MARK: - Import Sheet
+// MARK: - No results
 
-private struct AccountsListImportSheet: View {
-
-    let onImport: (URL, String, String?) -> Void
-    let onCancel: () -> Void
-
-    @Environment(\.dismiss) private var dismiss
-    @State private var showFilePicker = false
-    @State private var showPasswordAlert = false
-    @State private var showNameAlert = false
-    @State private var showDecryptError = false
-    @State private var decryptErrorMessage = ""
-    @State private var password = ""
-    @State private var customName = ""
-    @State private var selectedURL: URL?
-    @State private var showTutorial = false
+/// The empty search result of the accounts lists, with a way out.
+struct AccountsNoResultsView: View {
+    let query: String
+    let onClear: () -> Void
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                Spacer()
-
-                Image(systemName: "doc.badge.arrow.up.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.gray)
-
-                Text(String(localized: "Import an encrypted .scexport file containing your account credentials."))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-
-                StackTrackedButton(.howToImport, on: .accountsListImport) {
-                    showTutorial = true
-                } label: {
-                    Label(String(localized: "How to import?"), systemImage: "questionmark.circle")
-                        .font(.subheadline)
-                }
-                .buttonStyle(.bordered)
-
-                StackTrackedButton(.importFile, on: .accountsListImport) {
-                    showFilePicker = true
-                } label: {
-                    Label(String(localized: "Import File"), systemImage: "square.and.arrow.down")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .padding(.horizontal, 32)
-
-                Spacer()
+        ContentUnavailableView {
+            Label {
+                Text("No accounts for “\(query.trimmingCharacters(in: .whitespacesAndNewlines))”",
+                     comment: "Accounts lists: the search found nothing. The placeholder is the search text.")
+            } icon: {
+                Image(systemName: "magnifyingglass")
             }
-            .sheet(isPresented: $showTutorial) {
-                ImportTutorialView()
+        } description: {
+            Text("Search by account name, store or how it's connected.",
+                 comment: "Accounts lists: hint under an empty search result.")
+        } actions: {
+            Button(String(localized: "Clear Search", comment: "Accounts lists: clears the search field.")) {
+                onClear()
             }
-            .navigationTitle(String(localized: "Import"))
-            .trackScreen(.accountsListImport)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .accountsListImport) {
-                        onCancel()
-                        dismiss()
-                    }
-                }
-            }
-            .fileImporter(
-                isPresented: $showFilePicker,
-                allowedContentTypes: [.data],
-                allowsMultipleSelection: false
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    if let url = urls.first {
-                        selectedURL = url
-                        password = ""
-                        showPasswordAlert = true
-                    }
-                case .failure(let error):
-                    Log.print.error("[Import] File picker error: \(error.localizedDescription)")
-                }
-            }
-            .alert(
-                String(localized: "Enter Password"),
-                isPresented: $showPasswordAlert
-            ) {
-                SecureField(String(localized: "Password"), text: $password)
-                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .accountsListImport, role: .cancel) {
-                    selectedURL = nil
-                    password = ""
-                }
-                StackTrackedButton(String(localized: "Decrypt"), button: .decrypt, on: .accountsListImport) {
-                    tryDecrypt()
-                }
-            } message: {
-                Text(String(localized: "Enter the password used to encrypt this file."))
-            }
-            .alert(
-                String(localized: "Decryption Failed"),
-                isPresented: $showDecryptError
-            ) {
-                StackTrackedButton(String(localized: "Try Again"), button: .tryAgain, on: .accountsListImport) {
-                    password = ""
-                    showPasswordAlert = true
-                }
-                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .accountsListImport, role: .cancel) {
-                    selectedURL = nil
-                    password = ""
-                }
-            } message: {
-                Text(decryptErrorMessage)
-            }
-            .alert(
-                String(localized: "Import Account"),
-                isPresented: $showNameAlert
-            ) {
-                TextField(String(localized: "Account Name"), text: $customName)
-                StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .accountsListImport, role: .cancel) {
-                    selectedURL = nil
-                    password = ""
-                }
-                Button(String(localized: "Import")) {
-                    if let url = selectedURL {
-                        onImport(url, password, customName)
-                    }
-                    selectedURL = nil
-                    password = ""
-                }
-            } message: {
-                Text(String(localized: "Choose a name for this account."))
-            }
-        }
-    }
-
-    private func tryDecrypt() {
-        guard let url = selectedURL else { return }
-
-        let accessing = url.startAccessingSecurityScopedResource()
-        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-
-        guard let data = try? Data(contentsOf: url) else {
-            decryptErrorMessage = String(localized: "Failed to read file.")
-            showDecryptError = true
-            return
-        }
-
-        do {
-            let json = try AccountCrypto.decrypt(data: data, password: password)
-            if let jsonData = json.data(using: .utf8),
-               let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
-               let name = dict["name"] as? String {
-                customName = name
-            } else {
-                customName = ""
-            }
-            showNameAlert = true
-        } catch {
-            decryptErrorMessage = error.userFacingMessage
-            showDecryptError = true
         }
     }
 }

@@ -47,56 +47,30 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
     @ObservedObject var viewModel: ViewModel
     @EnvironmentObject private var homeCoordinator: HomeCoordinator
 
-    @State private var showDeleteAllConfirmation = false
-
     var body: some View {
         List {
             buildGeneralSection()
             buildAppStoreConnectSection()
             buildPrivacySection()
             buildAboutSection()
-            buildDangerSection()
             buildFooterSection()
         }
         .navigationTitle(String(localized: "Settings"))
         .trackScreen(.settings)
-        .alert(
-            String(localized: "Delete All Accounts"),
-            isPresented: $showDeleteAllConfirmation
-        ) {
-            StackTrackedButton(String(localized: "Cancel"), button: .cancel, on: .settings, role: .cancel) {}
-            Button(String(localized: "Delete All"), role: .destructive) {
-                Task {
-                    await viewModel.deleteAllAccounts()
-                    homeCoordinator.popToRoot()
-                }
-            }
-        } message: {
-            Text(String(localized: "This will permanently delete all accounts, apps, versions, and credentials from the app. This action cannot be undone."))
-        }
+        // `.task` runs again when coming back from Settings › Accounts.
+        .task { await viewModel.loadAccountsSummary() }
     }
 
     // MARK: - Sections
 
+    /// The Accounts row in the Summary style: the total, how many need
+    /// attention (orange) and one chip per store.
     private func buildGeneralSection() -> some View {
         Section {
             StackTrackedButton(.accounts, on: .settings) {
                 homeCoordinator.navigateToSettingsAccounts()
             } label: {
-                HStack {
-                    Image(systemName: "person.2.fill")
-                        .foregroundStyle(.blue)
-                        .frame(width: 28)
-
-                    Text(String(localized: "Accounts"))
-                        .foregroundStyle(.primary)
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
+                StackAccountsSummaryView(summary: viewModel.uiState.accountsSummary)
             }
             .foregroundStyle(.primary)
         }
@@ -241,21 +215,6 @@ struct SettingsView<ViewModel: SettingsViewModelProtocol>: View {
                 }
             }
             .foregroundStyle(.primary)
-        }
-    }
-
-    private func buildDangerSection() -> some View {
-        Section {
-            StackTrackedButton(.deleteAllAccounts, on: .settings, role: .destructive) {
-                showDeleteAllConfirmation = true
-            } label: {
-                HStack {
-                    Image(systemName: "trash.fill")
-                        .frame(width: 28)
-
-                    Text(String(localized: "Delete All Accounts"))
-                }
-            }
         }
     }
 

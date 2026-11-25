@@ -13,6 +13,8 @@ struct HomeRouteView: View {
         switch route {
         case .settingsAccounts:
             SettingsAccountsViewFactory.build()
+        case .accountDetail(let account):
+            SettingsAccountDetailViewFactory.build(account: account)
         case .license:
             LicenseViewFactory.build()
         case .tipJar:
@@ -49,8 +51,8 @@ struct HomeRouteView: View {
             DeviceDetailViewFactory.build(account: account, device: device)
         case .importDevices(let account):
             ImportDevicesViewFactory.build(account: account)
-        case .accountsList(let providerType):
-            AccountsListViewFactory.build(providerType: providerType)
+        case .accountsList:
+            AccountsListViewFactory.build()
         case .appList(let account):
             AppListViewFactory.build(account: account)
         case .firebaseProjectList(let account):
