@@ -1,12 +1,24 @@
 {
-  "version": "2.4.0",
+  "version": "2.5.0",
   "title": "Neuigkeiten",
   "highlights": [
     {
-      "icon": "text.bubble",
-      "color": "green",
-      "title": "Antwortvorlagen",
-      "description": "Sichern Sie häufig verwendete Antworten und setzen Sie sie beim Beantworten von Rezensionen mit einem Tippen ein."
+      "icon": "person.crop.rectangle.stack",
+      "color": "blue",
+      "title": "Alle Konten an einem Ort",
+      "description": "Alle Konten in einer Liste, nach Anbieter gruppiert und durchsuchbar. Ein Konto hinzuzufügen geht jetzt in wenigen einfachen Schritten."
+    },
+    {
+      "icon": "checkmark.shield",
+      "color": "teal",
+      "title": "Netzwerkprotokoll",
+      "description": "Sieh dir jede Anfrage an, die die App sendet und empfängt – direkt in den Einstellungen – und exportiere sie zur Prüfung."
+    },
+    {
+      "icon": "lock.shield",
+      "color": "indigo",
+      "title": "Deine Zugangsdaten, erklärt",
+      "description": "Bevor du ein Konto verbindest, erfährst du, wie StackConnect deine Zugangsdaten speichert und schützt."
     },
     {
       "icon": "ladybug.fill",

@@ -1,17 +1,29 @@
 {
-  "version": "2.4.0",
+  "version": "2.5.0",
   "title": "Novedades",
   "highlights": [
     {
-      "icon": "text.bubble",
-      "color": "green",
-      "title": "Plantillas de Respuesta",
-      "description": "Guarda las respuestas que más usas y reutilízalas con un toque al responder reseñas."
+      "icon": "person.crop.rectangle.stack",
+      "color": "blue",
+      "title": "Todas tus cuentas en un solo lugar",
+      "description": "Todas las cuentas en una sola lista, agrupadas por proveedor y con búsqueda. Añadir una cuenta ahora lleva unos pocos pasos sencillos."
+    },
+    {
+      "icon": "checkmark.shield",
+      "color": "teal",
+      "title": "Auditoría de red",
+      "description": "Consulta cada solicitud que la app envía y recibe, directamente en Ajustes, y expórtala para revisarla."
+    },
+    {
+      "icon": "lock.shield",
+      "color": "indigo",
+      "title": "Tus credenciales, explicadas",
+      "description": "Antes de conectar una cuenta, descubre cómo StackConnect guarda y protege tus credenciales."
     },
     {
       "icon": "ladybug.fill",
       "color": "red",
-      "title": "Corrección de Errores",
+      "title": "Corrección de errores",
       "description": "Se han corregido varios errores para mejorar la estabilidad y el rendimiento."
     }
   ]

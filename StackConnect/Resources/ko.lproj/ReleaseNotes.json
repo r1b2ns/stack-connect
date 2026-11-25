@@ -1,18 +1,30 @@
 {
-  "version": "2.4.0",
+  "version": "2.5.0",
   "title": "새로운 기능",
   "highlights": [
     {
-      "icon": "text.bubble",
-      "color": "green",
-      "title": "답글 템플릿",
-      "description": "자주 사용하는 답글을 저장하고 리뷰에 답변할 때 한 번의 탭으로 재사용하세요."
+      "icon": "person.crop.rectangle.stack",
+      "color": "blue",
+      "title": "모든 계정을 한곳에서",
+      "description": "모든 계정을 제공업체별로 묶은 하나의 목록에서 검색할 수 있습니다. 계정 추가도 이제 몇 단계면 끝납니다."
+    },
+    {
+      "icon": "checkmark.shield",
+      "color": "teal",
+      "title": "네트워크 감사",
+      "description": "앱이 주고받는 모든 요청을 설정에서 바로 확인하고 내보내 검토할 수 있습니다."
+    },
+    {
+      "icon": "lock.shield",
+      "color": "indigo",
+      "title": "자격 증명 처리 방식 안내",
+      "description": "계정을 연결하기 전에 StackConnect가 자격 증명을 어떻게 저장하고 보호하는지 확인하세요."
     },
     {
       "icon": "ladybug.fill",
       "color": "red",
       "title": "버그 수정",
-      "description": "안정성과 성능을 개선하기 위해 여러 버그를 수정했습니다."
+      "description": "안정성과 성능 향상을 위해 여러 버그를 수정했습니다."
     }
   ]
 }

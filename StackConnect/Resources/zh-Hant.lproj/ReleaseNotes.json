@@ -1,18 +1,30 @@
 {
-  "version": "2.4.0",
+  "version": "2.5.0",
   "title": "新功能",
   "highlights": [
     {
-      "icon": "text.bubble",
-      "color": "green",
-      "title": "回覆範本",
-      "description": "儲存最常使用的回覆，在回應評論時輕點一下即可重複使用。"
+      "icon": "person.crop.rectangle.stack",
+      "color": "blue",
+      "title": "所有帳號集中一處",
+      "description": "所有帳號集中在同一個列表，依服務供應商分組並可搜尋。新增帳號現在只需幾個簡單步驟。"
+    },
+    {
+      "icon": "checkmark.shield",
+      "color": "teal",
+      "title": "網路稽核",
+      "description": "直接在「設定」中查看 App 傳送與接收的每一個請求，並匯出以供檢查。"
+    },
+    {
+      "icon": "lock.shield",
+      "color": "indigo",
+      "title": "憑證處理方式說明",
+      "description": "連結帳號前，先了解 StackConnect 如何儲存並保護你的憑證。"
     },
     {
       "icon": "ladybug.fill",
       "color": "red",
       "title": "錯誤修正",
-      "description": "修正多項錯誤，以提升穩定性與效能。"
+      "description": "修正了多個錯誤，以提升穩定性與效能。"
     }
   ]
 }

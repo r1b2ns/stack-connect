@@ -1,18 +1,30 @@
 {
-  "version": "2.4.0",
+  "version": "2.5.0",
   "title": "Nieuw",
   "highlights": [
     {
-      "icon": "text.bubble",
-      "color": "green",
-      "title": "Antwoordsjablonen",
-      "description": "Bewaar de antwoorden die je het vaakst gebruikt en hergebruik ze met één tik bij het beantwoorden van recensies."
+      "icon": "person.crop.rectangle.stack",
+      "color": "blue",
+      "title": "Al je accounts op één plek",
+      "description": "Alle accounts in één lijst, gegroepeerd per aanbieder en doorzoekbaar. Een account toevoegen gaat nu in een paar eenvoudige stappen."
+    },
+    {
+      "icon": "checkmark.shield",
+      "color": "teal",
+      "title": "Netwerkaudit",
+      "description": "Bekijk elk verzoek dat de app verstuurt en ontvangt, direct in Instellingen, en exporteer het om te controleren."
+    },
+    {
+      "icon": "lock.shield",
+      "color": "indigo",
+      "title": "Je inloggegevens, uitgelegd",
+      "description": "Zie voordat je een account koppelt hoe StackConnect je inloggegevens bewaart en beschermt."
     },
     {
       "icon": "ladybug.fill",
       "color": "red",
       "title": "Bugfixes",
-      "description": "Diverse bugs zijn opgelost om de stabiliteit en prestaties te verbeteren."
+      "description": "Verschillende bugs zijn opgelost voor betere stabiliteit en prestaties."
     }
   ]
 }

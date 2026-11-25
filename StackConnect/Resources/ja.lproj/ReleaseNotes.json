@@ -1,18 +1,30 @@
 {
-  "version": "2.4.0",
+  "version": "2.5.0",
   "title": "新機能",
   "highlights": [
     {
-      "icon": "text.bubble",
-      "color": "green",
-      "title": "返信テンプレート",
-      "description": "よく使う返信を保存して、レビューへの返信時にタップするだけで再利用できます。"
+      "icon": "person.crop.rectangle.stack",
+      "color": "blue",
+      "title": "すべてのアカウントを1か所に",
+      "description": "すべてのアカウントをプロバイダごとにまとめた1つのリストで表示し、検索もできます。アカウントの追加も簡単な数ステップで完了します。"
+    },
+    {
+      "icon": "checkmark.shield",
+      "color": "teal",
+      "title": "ネットワーク監査",
+      "description": "アプリが送受信するすべてのリクエストを「設定」で確認し、書き出してチェックできます。"
+    },
+    {
+      "icon": "lock.shield",
+      "color": "indigo",
+      "title": "認証情報の扱いを説明",
+      "description": "アカウントを接続する前に、StackConnect が認証情報をどのように保存し保護するかを確認できます。"
     },
     {
       "icon": "ladybug.fill",
       "color": "red",
       "title": "バグ修正",
-      "description": "安定性とパフォーマンスを向上させるため、いくつかのバグを修正しました。"
+      "description": "安定性とパフォーマンスを向上させるため、複数のバグを修正しました。"
     }
   ]
 }

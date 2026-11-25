@@ -1,18 +1,30 @@
 {
-  "version": "2.4.0",
+  "version": "2.5.0",
   "title": "Nyheter",
   "highlights": [
     {
-      "icon": "text.bubble",
-      "color": "green",
-      "title": "Svarsmallar",
-      "description": "Spara svaren du använder mest och återanvänd dem med en tryckning när du svarar på recensioner."
+      "icon": "person.crop.rectangle.stack",
+      "color": "blue",
+      "title": "Alla konton på ett ställe",
+      "description": "Alla konton i en lista, grupperade efter leverantör och sökbara. Att lägga till ett konto går nu i några enkla steg."
+    },
+    {
+      "icon": "checkmark.shield",
+      "color": "teal",
+      "title": "Nätverksgranskning",
+      "description": "Se varje förfrågan som appen skickar och tar emot, direkt i Inställningar, och exportera den för granskning."
+    },
+    {
+      "icon": "lock.shield",
+      "color": "indigo",
+      "title": "Dina inloggningsuppgifter, förklarade",
+      "description": "Innan du ansluter ett konto kan du se hur StackConnect lagrar och skyddar dina inloggningsuppgifter."
     },
     {
       "icon": "ladybug.fill",
       "color": "red",
       "title": "Buggfixar",
-      "description": "Flera buggar har åtgärdats för att förbättra stabilitet och prestanda."
+      "description": "Flera buggar har åtgärdats för bättre stabilitet och prestanda."
     }
   ]
 }

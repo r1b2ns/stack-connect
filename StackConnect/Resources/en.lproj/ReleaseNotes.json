@@ -1,12 +1,24 @@
 {
-  "version": "2.4.0",
+  "version": "2.5.0",
   "title": "What's New",
   "highlights": [
     {
-      "icon": "text.bubble",
-      "color": "green",
-      "title": "Reply Templates",
-      "description": "Save the replies you use most and reuse them with a tap when answering reviews."
+      "icon": "person.crop.rectangle.stack",
+      "color": "blue",
+      "title": "All Accounts in One Place",
+      "description": "Every account in one list, grouped by provider and searchable. Adding an account now takes a few simple steps."
+    },
+    {
+      "icon": "checkmark.shield",
+      "color": "teal",
+      "title": "Network Audit",
+      "description": "See every request the app sends and receives, right in Settings, and export it to review."
+    },
+    {
+      "icon": "lock.shield",
+      "color": "indigo",
+      "title": "Your Credentials, Explained",
+      "description": "Before you connect an account, see how StackConnect stores and protects your credentials."
     },
     {
       "icon": "ladybug.fill",
