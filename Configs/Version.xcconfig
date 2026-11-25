@@ -2,4 +2,4 @@
 // Release.xcconfig) and the widget extension (project.yml), so the two can
 // never drift apart: App Store Connect requires an extension's
 // CFBundleShortVersionString to match its containing app's.
-MARKETING_VERSION = 2.4.0
+MARKETING_VERSION = 2.5.0
