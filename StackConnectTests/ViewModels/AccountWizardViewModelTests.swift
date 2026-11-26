@@ -506,6 +506,37 @@ final class AccountWizardViewModelTests: XCTestCase {
         XCTAssertEqual(syncRequests, 1)
     }
 
+    func testReconnectingAnAppleIdAccountWithoutAReferenceAsksForTheAppleIdAndRestoresIt() async throws {
+        let account = AccountModel(name: "Acme", providerType: .apple, authMethod: .appleIdSignIn)
+        try await storage.save(account, id: account.id)
+        appleFlow.startResults = [.success(.needsCode(methods: [.trustedDevice], phones: [], codeLength: 6, delivery: .trustedDevices))]
+        appleFlow.submitResults = [.success(.done(teams: [.fixture(7, "Other"), .fixture(1, "Acme")]))]
+
+        let sut = makeSUT(.reconnect(account), signIn: false)
+
+        XCTAssertEqual(sut.uiState.steps, [.credentials, .code], "still a reconnect: no team step, nothing added")
+        XCTAssertEqual(appleModes, [.reconnectAccount(accountId: account.id, accountName: "Acme")])
+        XCTAssertEqual(sut.appleSignIn?.uiState.isEmailEditable, true, "never a read-only empty Apple ID")
+
+        sut.appleSignIn?.uiState.email = "dev@example.com"
+        sut.appleSignIn?.uiState.password = "secret"
+        await sut.primaryAction()
+        XCTAssertEqual(sut.uiState.step, .code)
+        await sut.appleSignIn?.updateCode("123456")
+
+        XCTAssertEqual(sut.uiState.result, AccountWizardResult(provider: .apple, names: ["Acme"], isReconnect: true))
+        let reference = AppleSessionReferences.reference(of: account, keychain: keychain)
+        XCTAssertEqual(reference, AppleWebSessionReference(appleId: "dev@example.com", teamId: 1, teamName: "Acme"),
+                       "the next reconnect resolves")
+        let saved = try await storage.fetchAll(AccountModel.self)
+        XCTAssertEqual(saved.map(\.id), [account.id], "no duplicate account")
+
+        // The next reconnect signs in again with the same Apple ID.
+        appleModes = []
+        _ = makeSUT(.reconnect(account), signIn: false)
+        XCTAssertEqual(appleModes, [.signInAgain(appleId: "dev@example.com")])
+    }
+
     // MARK: - Done
 
     func testAddAnotherAccountStartsAgainAtTheType() async throws {

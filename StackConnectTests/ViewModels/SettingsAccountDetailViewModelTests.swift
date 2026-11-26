@@ -89,8 +89,16 @@ final class SettingsAccountDetailViewModelTests: XCTestCase {
         XCTAssertEqual(makeSUT(account).uiState.reconnectMethod, .googleSignIn)
     }
 
-    func testASignInWhoseSessionIsGoneCantBeReconnectedHere() {
+    func testAnAppleIdAccountWhoseReferenceIsGoneOffersSignInAgain() {
+        // The wizard asks for the Apple ID and restores the reference.
         let account = AccountModel(name: "Personal", providerType: .apple, authMethod: .appleIdSignIn)
+        statuses.statusesById = [account.id: .of(.missingCredentials)]
+
+        XCTAssertEqual(makeSUT(account).uiState.reconnectMethod, .appleIdSignIn)
+    }
+
+    func testAGoogleSignInWhoseLoginIsGoneCantBeReconnectedHere() {
+        let account = AccountModel(name: "Client", providerType: .googlePlay, authMethod: .googleSignIn)
         statuses.statusesById = [account.id: .of(.signInExpired, .missingCredentials)]
 
         XCTAssertNil(makeSUT(account).uiState.reconnectMethod)

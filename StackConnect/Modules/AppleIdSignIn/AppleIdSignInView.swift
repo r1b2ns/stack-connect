@@ -7,7 +7,7 @@ import StackCoreRust
 struct AppleIdSignInViewFactory {
     /// The "Sign in with Apple ID" screens, inside the caller's navigation
     /// stack. `onFinished` runs once the accounts were added (`.addAccounts`)
-    /// or the session was replaced (`.signInAgain`).
+    /// or the session was replaced (`.signInAgain`, `.reconnectAccount`).
     static func build(mode: AppleIdSignInMode, onFinished: @escaping () -> Void) -> some View {
         AppleIdSignInEntry(mode: mode, onFinished: onFinished)
     }
@@ -176,7 +176,7 @@ struct AppleIdSignInSections<ViewModel: AppleIdSignInViewModelProtocol>: View {
         } header: {
             Text("Apple ID")
         } footer: {
-            if case .signInAgain = state.mode {
+            if state.mode.renewsSession {
                 Text("Sign in again with the same Apple ID. Its App Store Connect accounts start working again.")
             } else {
                 Text("Use the Apple ID you sign in to App Store Connect with. You can add any of its teams next.")

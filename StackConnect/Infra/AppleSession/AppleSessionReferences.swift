@@ -23,6 +23,26 @@ enum AppleSessionReferences {
         return accounts.filter { reference(of: $0, keychain: keychain)?.appleId == id }
     }
 
+    /// The Apple ID an Apple ID account without a reference (`accountId`)
+    /// most likely used, only when it is unambiguous: the single Apple ID
+    /// that the other Apple ID accounts of `accounts` use or that has an
+    /// expired session. `nil` when there is none or there are several.
+    /// A suggestion only (the account itself no longer says): the sign-in
+    /// keeps the field editable.
+    static func suggestedAppleId(
+        forAccountWithoutReference accountId: String,
+        in accounts: [AccountModel],
+        keychain: KeyStorable,
+        status: AppleSessionStatusTracking
+    ) -> String? {
+        var candidates = Set(accounts.lazy
+            .filter { $0.id != accountId }
+            .compactMap { reference(of: $0, keychain: keychain)?.appleId })
+        candidates.formUnion(status.expiredAppleIds())
+        candidates.remove("")
+        return candidates.count == 1 ? candidates.first : nil
+    }
+
     /// Removes `appleId`'s session, its saved password and its expiry mark
     /// when no account of `remaining` uses it any more.
     static func releaseSessionIfUnused(

@@ -58,6 +58,16 @@ enum AppleIdSignInMode: Equatable {
     /// The session of `appleId` expired: sign in again with the same Apple ID
     /// and replace its session for every team account (plan D5).
     case signInAgain(appleId: String)
+    /// Reconnects the account `accountId` (named `accountName`) whose session
+    /// reference (`credentials.{accountId}`) is gone, so its Apple ID is
+    /// unknown: the Apple ID is typed (prefilled when only one is in use on
+    /// the device). Signing in renews that Apple ID's session, like
+    /// `.signInAgain`, and gives the account its reference back, matched to
+    /// one of the Apple ID's teams. No account is added.
+    case reconnectAccount(accountId: String, accountName: String)
+
+    /// Signing in renews an existing session instead of adding accounts.
+    var renewsSession: Bool { self != .addAccounts }
 }
 
 // MARK: - UiState
@@ -142,7 +152,10 @@ struct AppleIdSignInUiState: Equatable {
 
     /// The Apple ID is fixed when signing in again: the session must stay the
     /// one of the accounts that use it.
-    var isEmailEditable: Bool { mode == .addAccounts }
+    var isEmailEditable: Bool {
+        if case .signInAgain = mode { return false }
+        return true
+    }
 
     var canSignIn: Bool {
         step == .credentials && !isWorking
@@ -283,6 +296,12 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
     func signInWithSavedPasswordIfAvailable() async {
         guard !hasTriedSavedPassword else { return }
         hasTriedSavedPassword = true
+        if case .reconnectAccount(let accountId, _) = uiState.mode {
+            // The Apple ID is a suggestion here, never certain: prefilled
+            // and editable, its saved password offered (`emailDidChange`)
+            // but not sent before the user taps Sign In.
+            await suggestAppleId(forAccountId: accountId)
+        }
         guard case .signInAgain = uiState.mode, uiState.step == .credentials, !uiState.isWorking,
               passwordStore.hasPassword(for: appleId) else {
             emailDidChange()
@@ -293,6 +312,22 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
         // The toggle is never shown on this path: keep (refresh) the password.
         updateSavesPasswordDefault()
         await performSignIn()
+    }
+
+    /// Prefills the Apple ID of a reconnected account without a reference,
+    /// when exactly one Apple ID is in use on the device.
+    private func suggestAppleId(forAccountId accountId: String) async {
+        guard uiState.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let accounts = (try? await storage.fetchAll(AccountModel.self)) ?? []
+        guard uiState.email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let suggestion = AppleSessionReferences.suggestedAppleId(
+                forAccountWithoutReference: accountId,
+                in: accounts,
+                keychain: keychain,
+                status: renewal.sessionStatus
+              ) else { return }
+        Log.print.info("[AppleIdSignIn] Prefilled the only Apple ID in use for the account to reconnect")
+        uiState.email = suggestion
     }
 
     func emailDidChange() {
@@ -416,7 +451,7 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
     /// - Returns: whether an automatic attempt was joined (its outcome is
     ///   applied; the caller stops).
     private func joinAutomaticSignIn() async -> Bool {
-        guard case .signInAgain = uiState.mode, let autoReauth, autoReauth.isAttemptInFlight(for: appleId) else { return false }
+        guard uiState.mode.renewsSession, let autoReauth, autoReauth.isAttemptInFlight(for: appleId) else { return false }
         let id = appleId
         Log.print.info("[AppleIdSignIn] The automatic sign-in is running: waiting for it instead of signing in again")
         uiState.isWorking = true
@@ -459,7 +494,7 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
     /// Keeps the automatic sign-in away while this one runs (signing in
     /// again only). Released by `endFlow` and `discard`.
     private func holdManualSignIn() {
-        guard case .signInAgain = uiState.mode, let autoReauth else { return }
+        guard uiState.mode.renewsSession, let autoReauth, !appleId.isEmpty else { return }
         let id = appleId
         guard heldAppleId != id else { return }
         releaseManualSignIn()
@@ -714,9 +749,56 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
             resumedChallenge = false
             Log.print.info("[AppleIdSignIn] Signed in again: the Apple ID session was replaced")
             conclude()
+        case let .reconnectAccount(accountId, accountName):
+            guard await storeSession() else { return }
+            autoReauth?.discardPendingChallenge(for: appleId)
+            resumedChallenge = false
+            Log.print.info("[AppleIdSignIn] Signed in again: the Apple ID session was replaced")
+            guard await restoreReference(ofAccountId: accountId, named: accountName, teams: teams) else {
+                // The session is renewed (the Apple ID's other accounts work
+                // again) but this account can't be told apart.
+                uiState.step = .credentials
+                uiState.errorMessage = String(localized: "Signed in, but this account's team wasn't found among the Apple ID's teams. Remove the account and add it again.",
+                                              comment: "Apple ID sign-in, reconnecting an account whose sign-in data is gone: the Apple ID worked, but none (or several) of its teams matches the account.")
+                return
+            }
+            conclude()
         case .addAccounts:
             await showTeams(teams)
         }
+    }
+
+    /// Writes the session reference (`credentials.{accountId}`) of a
+    /// reconnected account that lost it, on the team `matchingTeam` picks.
+    /// - Returns: whether a team matched.
+    private func restoreReference(ofAccountId accountId: String, named accountName: String, teams: [AppleTeam]) async -> Bool {
+        let all = (try? await storage.fetchAll(AccountModel.self)) ?? []
+        let others = AppleSessionReferences.accounts(using: appleId, in: all, keychain: keychain).filter { $0.id != accountId }
+        let taken = Set(others.compactMap { AppleSessionReferences.reference(of: $0, keychain: keychain)?.teamId })
+        guard let team = Self.matchingTeam(forAccountNamed: accountName, in: teams, takenTeamIds: taken) else {
+            Log.print.error("[AppleIdSignIn] No single team of the Apple ID matches the reconnected account")
+            return false
+        }
+        let reference = AppleWebSessionReference(appleId: appleId, teamId: team.providerId, teamName: team.name)
+        keychain.setObject(AppleCredentials(webSession: reference), forKey: "credentials.\(accountId)")
+        Log.print.info("[AppleIdSignIn] Restored the session reference of the reconnected account")
+        AccountsChange.post()
+        return true
+    }
+
+    /// The team of an account whose reference is gone, only when there is
+    /// no doubt: the one team named like the account (preferring teams no
+    /// other account of the Apple ID uses), else the one team no other
+    /// account uses, else `nil`.
+    static func matchingTeam(forAccountNamed accountName: String, in teams: [AppleTeam], takenTeamIds: Set<UInt64>) -> AppleTeam? {
+        let name = accountName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let named = teams.filter { $0.name.trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare(name) == .orderedSame }
+        let free = teams.filter { !takenTeamIds.contains($0.providerId) }
+        let namedFree = named.filter { !takenTeamIds.contains($0.providerId) }
+        if namedFree.count == 1 { return namedFree[0] }
+        if named.count == 1 { return named[0] }
+        if named.isEmpty, free.count == 1 { return free[0] }
+        return nil
     }
 
     private func showTeams(_ teams: [AppleTeam]) async {
@@ -779,7 +861,7 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
     /// Signing in again reuses the Apple ID's saved session (its trust
     /// cookie can spare the code); Add Account starts fresh.
     private var savedSessionAppleId: String? {
-        guard case .signInAgain = uiState.mode else { return nil }
+        guard uiState.mode.renewsSession else { return nil }
         return appleId
     }
 
@@ -787,7 +869,7 @@ final class AppleIdSignInViewModel: AppleIdSignInViewModelProtocol {
 
     private var modeParameters: [String: AnalyticsValue] {
         let reauth: Bool
-        if case .signInAgain = uiState.mode { reauth = true } else { reauth = false }
+        reauth = uiState.mode.renewsSession
         return [AnalyticsParameterKey.trigger: .string(reauth ? "sign_in_again" : "add_account")]
     }
 

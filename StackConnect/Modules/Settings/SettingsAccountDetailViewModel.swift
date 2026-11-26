@@ -106,14 +106,19 @@ final class SettingsAccountDetailViewModel: SettingsAccountDetailViewModelProtoc
     }
 
     /// The way to fix a disconnected account from here, or `nil`: a sign-in
-    /// that expired (and whose session or login is still on the device), or
-    /// a shared file that expired.
+    /// that expired (and whose session or login is still on the device), an
+    /// Apple ID account whose session reference is gone, or a shared file
+    /// that expired.
     static func reconnectMethod(for account: AccountModel, status: AccountStatus?, keychain: KeyStorable) -> AccountWizardMethod? {
         guard let status, let method = AccountWizardConfig.reconnectMethod(for: account) else { return nil }
         switch method {
         case .appleIdSignIn:
-            guard status.issues.contains(.signInExpired),
-                  AppleSessionReferences.reference(of: account, keychain: keychain) != nil else { return nil }
+            // Expired with its reference, or its reference gone (the wizard
+            // then asks for the Apple ID and restores it).
+            let hasReference = AppleSessionReferences.reference(of: account, keychain: keychain) != nil
+            let isExpired = status.issues.contains(.signInExpired) && hasReference
+            let lostReference = status.issues.contains(.missingCredentials) && !hasReference
+            guard isExpired || lostReference else { return nil }
         case .googleSignIn:
             guard status.issues.contains(.signInExpired),
                   GoogleLoginReferences.loginId(of: account, keychain: keychain) != nil else { return nil }

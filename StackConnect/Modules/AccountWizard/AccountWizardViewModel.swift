@@ -481,12 +481,14 @@ final class AccountWizardViewModel: AccountWizardViewModelProtocol {
         appleSignIn?.discard()
         let mode: AppleIdSignInMode
         if let account = uiState.reconnectAccount {
-            let appleId = AppleSessionReferences.reference(of: account, keychain: keychain)?.appleId ?? ""
-            if appleId.isEmpty {
-                // No session reference: the saved password can't be looked up.
-                Log.print.error("[AccountWizard] The reconnected account has no Apple ID session reference")
+            if let appleId = AppleSessionReferences.reference(of: account, keychain: keychain)?.appleId, !appleId.isEmpty {
+                mode = .signInAgain(appleId: appleId)
+            } else {
+                // Its session reference is gone: the Apple ID is typed
+                // (prefilled when unambiguous) and the reference restored.
+                Log.print.notice("[AccountWizard] The reconnected account has no Apple ID session reference: asking for the Apple ID")
+                mode = .reconnectAccount(accountId: account.id, accountName: account.name)
             }
-            mode = .signInAgain(appleId: appleId)
         } else {
             mode = .addAccounts
         }
