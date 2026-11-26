@@ -1,11 +1,6 @@
-• Relatórios de Analytics — veja e baixe seus analytics do App Store Connect, com relatórios agrupados por categoria e gráficos diários, semanais ou mensais. Marque favoritos, oculte os que você não usa e gerencie os arquivos baixados em uma tela dedicada de Arquivos
-• Envios — acompanhe, descarte e reenvie seus envios ao App Review de cada app, com tratamento claro do limite de envios simultâneos da Apple
-• Gerenciamento de Equipe — edite a função, os recursos e os apps visíveis de um membro, e remova membros ou cancele convites
-• Modelos de Resposta — salve suas respostas frequentes às avaliações e reutilize com um toque
-• Lembrete de contratos — um banner no Início permite pedir ao Titular da Conta que aceite os contratos pendentes
-• Ícones por Plataforma — apps multiplataforma agora mostram o ícone real de cada plataforma nos detalhes do app e nos widgets
-• Modo Offline — um indicador mostra quando você está offline; os dados em cache continuam visíveis e as ações que precisam de conexão ficam bloqueadas
-• Exportação Restrita — limite a exportação de uma conta a apps específicos, com um seletor de apps com busca
-• Analytics de uso — anônimos e opcionais; desative quando quiser em Ajustes
-• Cofrinho de Gorjetas — o StackConnect continua gratuito e de código aberto; deixe uma gorjeta opcional se ele ajudar você
+• Auditoria de Rede — veja cada requisição que o StackConnect envia e recebe, direto em Ajustes › Privacidade. Abra qualquer requisição para inspecioná-la e exporte o registro para revisar por conta própria. O registro nunca sai do seu dispositivo, a menos que você o exporte
+• Todas as Contas num Só Lugar — uma nova lista de contas agrupada por loja e com busca, com um indicador de status quando uma conta precisa da sua atenção
+• Configuração Passo a Passo — adicionar uma conta agora leva poucos passos simples, e um guia rápido explica como suas credenciais são guardadas e protegidas antes de conectar
+• Início Renovado — um resumo das contas no topo e, no iPhone, uma barra de abas para alternar entre Apps e Ajustes
+• Erros Mais Claros — as mensagens agora mostram o que o App Store Connect realmente respondeu
 • Correções de bugs e melhorias de estabilidade

@@ -409,13 +409,36 @@ final class NetworkAuditViewModelTests: XCTestCase {
         XCTAssertTrue(on.uiState.showsNetworkAudit)
     }
 
-    func testNetworkAuditFlagDefaults() {
-        #if DEBUG
+    /// Ships in 2.5.0: ON regardless of build configuration (no `#if DEBUG`
+    /// branch), and local only.
+    func testNetworkAuditFlagDefaultsOnInEveryBuild() {
         XCTAssertTrue(FeatureFlag.networkAudit.defaultValue)
-        #else
-        XCTAssertFalse(FeatureFlag.networkAudit.defaultValue)
-        #endif
         XCTAssertNil(FeatureFlag.networkAudit.remoteConfigKey)
+
+        let suite = "NetworkAuditFlagDefault.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let flags = FeatureFlags(defaults: defaults, remoteValues: StubRemoteFeatureValues())
+        XCTAssertTrue(flags.isEnabled(.networkAudit), "Nothing stored: the compiled-in default applies")
+
+        defaults.set(false, forKey: FeatureFlag.networkAudit.rawValue)
+        XCTAssertFalse(flags.isEnabled(.networkAudit), "A stored NO (launch argument) still turns it off")
+    }
+
+    /// The capture stays hermetic in tests now that the flag is ON by default:
+    /// the unit-test host and fake data mode guards win over the flag.
+    func testBootstrapInstallsNothingInUnitTestHostOrFakeDataModeEvenWithTheFlagOn() {
+        let suite = "NetworkAuditBootstrap.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let flags = FeatureFlags(defaults: defaults, remoteValues: StubRemoteFeatureValues())
+        XCTAssertTrue(flags.isEnabled(.networkAudit))
+
+        NetworkAuditBootstrap.install(featureFlags: flags, isUnitTestHost: true, isFakeDataMode: false)
+        XCTAssertNil(NetworkAuditRecorder.shared)
+
+        NetworkAuditBootstrap.install(featureFlags: flags, isUnitTestHost: false, isFakeDataMode: true)
+        XCTAssertNil(NetworkAuditRecorder.shared)
     }
 
     // MARK: - iPad split view

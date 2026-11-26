@@ -1,11 +1,6 @@
-• Report Analytics — consulta e scarica gli analytics di App Store Connect, con report raggruppati per categoria e grafici giornalieri, settimanali o mensili. Segna i preferiti, nascondi quelli che non usi e gestisci i file scaricati da una schermata File dedicata
-• Invii — monitora, scarta e invia di nuovo i tuoi invii ad App Review per ogni app, con una gestione chiara del limite di invii simultanei di Apple
-• Gestione del team — modifica ruolo, risorse e app visibili di un membro, e rimuovi membri o annulla inviti
-• Modelli di risposta — salva le risposte più comuni alle recensioni e riutilizzale con un tocco
-• Promemoria accordi — un banner nella Home ti permette di chiedere al titolare dell'account di accettare gli accordi in sospeso
-• Icone per piattaforma — le app multipiattaforma ora mostrano l'icona reale di ogni piattaforma nel dettaglio dell'app e nei widget
-• Modalità offline — un indicatore mostra quando sei offline; i dati in cache restano consultabili e le azioni che richiedono una connessione sono bloccate
-• Esportazione limitata — limita l'esportazione di un account ad app specifiche, con un selettore di app con ricerca
-• Analytics di utilizzo — anonimi e facoltativi; disattivali quando vuoi in Impostazioni
-• Barattolo delle mance — StackConnect resta gratuita e open source; lascia una mancia facoltativa se ti è utile
+• Audit di rete — visualizza ogni richiesta che StackConnect invia e riceve, direttamente in Impostazioni › Privacy. Apri una richiesta per esaminarla ed esporta il registro per controllarlo tu stesso. Il registro non lascia mai il tuo dispositivo, a meno che tu non lo esporti
+• Tutti gli account in un unico posto — un nuovo elenco di account raggruppati per store e con ricerca, con un indicatore di stato quando un account richiede la tua attenzione
+• Configurazione passo passo — aggiungere un account ora richiede pochi semplici passaggi, e una breve guida spiega come vengono salvate e protette le tue credenziali prima di connetterti
+• Home rinnovata — un riepilogo degli account in alto e, su iPhone, una barra dei pannelli per passare tra App e Impostazioni
+• Errori più chiari — i messaggi ora mostrano cosa ha risposto davvero App Store Connect
 • Correzioni di bug e miglioramenti della stabilità

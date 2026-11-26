@@ -1,11 +1,6 @@
-• Analytics-Berichte – sieh und lade deine App-Store-Connect-Analytics, mit nach Kategorie gruppierten Berichten und Tages-, Wochen- oder Monatsdiagrammen. Markiere Favoriten, blende nicht genutzte aus und verwalte heruntergeladene Dateien in einem eigenen Dateien-Bereich
-• Einreichungen – verfolge, verwirf und reiche deine App-Review-Einreichungen pro App erneut ein, mit klarem Umgang mit Apples Limit für gleichzeitige Einreichungen
-• Teamverwaltung – bearbeite Rolle, Ressourcen und sichtbare Apps eines Mitglieds, entferne Mitglieder oder ziehe Einladungen zurück
-• Antwortvorlagen – speichere deine häufigen Antworten auf Bewertungen und verwende sie mit einem Tippen wieder
-• Vereinbarungs-Erinnerung – über ein Banner im Start-Bereich kannst du den Account Holder bitten, ausstehende Vereinbarungen zu akzeptieren
-• Plattformspezifische Symbole – Apps für mehrere Plattformen zeigen in der App-Detailansicht und in Widgets jetzt das echte Symbol jeder Plattform
-• Offline-Modus – eine Anzeige zeigt, wenn du offline bist; zwischengespeicherte Daten bleiben sichtbar, und Aktionen, die eine Verbindung brauchen, sind gesperrt
-• Eingeschränkter Export – begrenze den Export eines Kontos auf bestimmte Apps, mit durchsuchbarer App-Auswahl
-• Nutzungsanalysen – anonym und optional; jederzeit in den Einstellungen deaktivierbar
-• Trinkgeld – StackConnect bleibt kostenlos und Open Source; hinterlasse ein freiwilliges Trinkgeld, wenn es dir hilft
+• Netzwerkprotokoll — sieh dir jede Anfrage an, die StackConnect sendet und empfängt, direkt unter Einstellungen › Datenschutz. Öffne eine Anfrage, um sie zu prüfen, und exportiere das Protokoll, um es selbst durchzusehen. Das Protokoll verlässt dein Gerät nur, wenn du es exportierst
+• Alle Accounts an einem Ort — eine neue, durchsuchbare Accountliste, nach Store gruppiert, mit einem Statushinweis, wenn ein Account deine Aufmerksamkeit braucht
+• Einrichtung Schritt für Schritt — einen Account hinzuzufügen dauert jetzt nur wenige einfache Schritte, und eine kurze Anleitung erklärt vor dem Verbinden, wie deine Zugangsdaten gespeichert und geschützt werden
+• Überarbeiteter Startbildschirm — eine Accountübersicht oben und auf dem iPhone eine Tableiste zum Wechseln zwischen Apps und Einstellungen
+• Klarere Fehlermeldungen — Meldungen zeigen jetzt, was App Store Connect tatsächlich geantwortet hat
 • Fehlerbehebungen und Stabilitätsverbesserungen

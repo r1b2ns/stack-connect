@@ -1,11 +1,6 @@
-• Analysrapporter — se och ladda ned din analys från App Store Connect, med rapporter grupperade efter kategori och dagliga, veckovisa eller månatliga diagram. Markera favoriter, dölj dem du inte använder och hantera nedladdade filer på en egen filskärm
-• Inskick — följ, avfärda och skicka in dina inskick till App Review igen för varje app, med tydlig hantering av Apples gräns för samtidiga inskick
-• Teamhantering — redigera en medlems roll, resurser och synliga appar, och ta bort medlemmar eller avbryt inbjudningar
-• Svarsmallar — spara dina vanligaste svar på recensioner och återanvänd dem med ett tryck
-• Avtalspåminnelse — en banner på Hem låter dig be kontoinnehavaren godkänna väntande avtal
-• Ikoner per plattform — appar för flera plattformar visar nu varje plattforms riktiga ikon i appdetaljerna och i widgetar
-• Offlineläge — en indikator visar när du är offline; cachad data kan fortfarande visas och åtgärder som kräver anslutning är blockerade
-• Begränsad export — begränsa en kontoexport till specifika appar, med en sökbar appväljare
-• Användningsanalys — anonym och valfri; stäng av den när som helst i Inställningar
-• Dricksburken — StackConnect förblir gratis och med öppen källkod; lämna en frivillig dricks om appen hjälper dig
+• Nätverksgranskning — se varje förfrågan som StackConnect skickar och tar emot, direkt i Inställningar › Integritet. Öppna en förfrågan för att granska den och exportera loggen för att gå igenom den själv. Loggen lämnar aldrig din enhet om du inte exporterar den
+• Alla konton på ett ställe — en ny kontolista grupperad per butik och sökbar, med en statusetikett när ett konto behöver din uppmärksamhet
+• Steg-för-steg-konfiguration — att lägga till ett konto tar nu bara några enkla steg, och en kort guide förklarar hur dina inloggningsuppgifter lagras och skyddas innan du ansluter
+• Förnyad startskärm — en kontoöversikt högst upp och på iPhone ett flikfält för att växla mellan Appar och Inställningar
+• Tydligare fel — meddelanden visar nu vad App Store Connect faktiskt svarade
 • Buggfixar och stabilitetsförbättringar

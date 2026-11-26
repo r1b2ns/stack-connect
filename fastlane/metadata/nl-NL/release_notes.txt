@@ -1,11 +1,6 @@
-• Analyserapporten — bekijk en download je App Store Connect-analyses, met rapporten gegroepeerd per categorie en dagelijkse, wekelijkse of maandelijkse grafieken. Markeer favorieten, verberg wat je niet gebruikt en beheer gedownloade bestanden in een apart scherm Bestanden
-• Inzendingen — volg, verwijder en dien je App Review-inzendingen per app opnieuw in, met duidelijke afhandeling van de limiet van Apple voor gelijktijdige inzendingen
-• Teambeheer — bewerk de rol, resources en zichtbare apps van een lid, en verwijder leden of annuleer uitnodigingen
-• Antwoordsjablonen — bewaar je vaakgebruikte antwoorden op reviews en gebruik ze met één tik opnieuw
-• Herinnering voor overeenkomsten — met een banner op Home vraag je de Account Holder om openstaande overeenkomsten te accepteren
-• Pictogrammen per platform — apps voor meerdere platforms tonen nu het echte pictogram van elk platform in de appdetails en widgets
-• Offlinemodus — een indicator laat zien wanneer je offline bent; gegevens in de cache blijven zichtbaar en acties die een verbinding nodig hebben zijn geblokkeerd
-• Beperkte export — beperk de export van een account tot specifieke apps, met een doorzoekbare appkiezer
-• Gebruiksanalyses — anoniem en optioneel; zet ze op elk moment uit in Instellingen
-• Fooienpot — StackConnect blijft gratis en open source; laat een optionele fooi achter als het je helpt
-• Bugfixes en stabiliteitsverbeteringen
+• Netwerkaudit — bekijk elk verzoek dat StackConnect verstuurt en ontvangt, direct in Instellingen › Privacy. Open een verzoek om het te bekijken en exporteer het logboek om het zelf na te lopen. Het logboek verlaat je apparaat nooit, tenzij je het exporteert
+• Alle accounts op één plek — een nieuwe accountlijst, gegroepeerd per store en doorzoekbaar, met een statuslabel wanneer een account je aandacht nodig heeft
+• Stap voor stap instellen — een account toevoegen kost nu maar een paar eenvoudige stappen, en een korte gids legt uit hoe je inloggegevens worden bewaard en beschermd voordat je verbindt
+• Vernieuwd beginscherm — een accountoverzicht bovenaan en op de iPhone een tabbalk om te wisselen tussen Apps en Instellingen
+• Duidelijkere foutmeldingen — meldingen tonen nu wat App Store Connect echt heeft geantwoord
+• Bugfixes en verbeterde stabiliteit

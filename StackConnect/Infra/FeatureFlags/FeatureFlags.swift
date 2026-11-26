@@ -107,27 +107,31 @@ enum FeatureFlag: String, CaseIterable {
     /// to every core `connect…` and Apple ID sign-in). When OFF, nothing is
     /// installed, every core call gets `auditSink: nil` and nothing is
     /// recorded; an existing log stays on disk untouched (and is purged by
-    /// retention once the flag is ON again). Stays OFF in Release until the
-    /// whole capture is validated on device.
-    /// Default: ON in Debug builds, OFF in Release. Toggle at launch with
+    /// retention once the flag is ON again). Ships in 2.5.0, so it defaults ON
+    /// in every build (Debug and Release). Still local only (no Remote Config):
+    /// the launch argument `-featureFlag.networkAudit NO` turns it off. Whatever
+    /// the flag says, nothing is recorded in a unit-test host or in the DEBUG
+    /// fake data mode (guards of `NetworkAuditBootstrap.install`).
+    /// Default: ON in every build. Toggle at launch with
     /// `-featureFlag.networkAudit YES` / `NO`.
     case networkAudit = "featureFlag.networkAudit"
 
     /// The compiled-in default used when no value is stored in `UserDefaults`.
     /// New flags ship OFF by default — the safe, fully-reversible value —
     /// except kill switches (`accountConnectionGuide`), which ship ON so the
-    /// feature App Review sees is the one users get.
+    /// feature App Review sees is the one users get, and shipped local
+    /// features (`networkAudit`), ON in every build.
     var defaultValue: Bool {
         switch self {
         case .useRustCoreDebugLogging, .googlePlayReleaseWrites, .googlePlayAccounts:
             return false
-        case .googleSignIn, .appleIdSignIn, .networkAudit:
+        case .googleSignIn, .appleIdSignIn:
             #if DEBUG
             return true
             #else
             return false
             #endif
-        case .accountConnectionGuide:
+        case .accountConnectionGuide, .networkAudit:
             return true
         }
     }

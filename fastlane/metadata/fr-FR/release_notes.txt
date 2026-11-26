@@ -1,11 +1,6 @@
-• Rapports d'analyses — consultez et téléchargez vos analyses App Store Connect, avec des rapports regroupés par catégorie et des graphiques quotidiens, hebdomadaires ou mensuels. Ajoutez des favoris, masquez ceux que vous n'utilisez pas et gérez les fichiers téléchargés depuis un écran Fichiers dédié
-• Soumissions — suivez, abandonnez et soumettez à nouveau vos soumissions à l'App Review pour chaque app, avec une gestion claire de la limite de soumissions simultanées d'Apple
-• Gestion de l'équipe — modifiez le rôle, les ressources et les apps visibles d'un membre, retirez des membres ou annulez des invitations
-• Modèles de réponse — enregistrez vos réponses habituelles aux avis et réutilisez-les en un geste
-• Rappel des accords — une bannière sur l'Accueil vous permet de demander au titulaire du compte d'accepter les accords en attente
-• Icônes par plateforme — les apps multiplateformes affichent désormais l'icône réelle de chaque plateforme dans le détail de l'app et les widgets
-• Mode hors ligne — un indicateur signale quand vous êtes hors ligne ; les données en cache restent consultables et les actions nécessitant une connexion sont bloquées
-• Export ciblé — limitez l'export d'un compte à des apps précises, avec un sélecteur d'apps avec recherche
-• Statistiques d'usage — anonymes et facultatives ; désactivez-les à tout moment dans les réglages
-• Pourboire — StackConnect reste gratuit et open source ; laissez un pourboire facultatif si l'app vous est utile
+• Audit réseau — consultez chaque requête envoyée et reçue par StackConnect, directement dans Réglages › Confidentialité. Ouvrez une requête pour l’inspecter et exportez le journal pour le vérifier vous-même. Le journal ne quitte jamais votre appareil, sauf si vous l’exportez
+• Tous vos comptes au même endroit — une nouvelle liste de comptes regroupés par store, avec recherche et un indicateur d’état lorsqu’un compte demande votre attention
+• Configuration pas à pas — ajouter un compte ne prend plus que quelques étapes simples, et un court guide explique comment vos identifiants sont stockés et protégés avant la connexion
+• Accueil repensé — un résumé des comptes en haut et, sur iPhone, une barre d’onglets pour passer d’Apps à Réglages
+• Erreurs plus claires — les messages indiquent désormais ce qu’App Store Connect a réellement répondu
 • Corrections de bugs et améliorations de la stabilité

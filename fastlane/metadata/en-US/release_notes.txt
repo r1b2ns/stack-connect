@@ -1,11 +1,6 @@
-• Analytics Reports — view and download your App Store Connect analytics, with reports grouped by category and daily, weekly or monthly charts. Mark favorites, hide the ones you don't use, and manage downloaded files from a dedicated Files screen
-• Submissions — track, discard and resubmit your App Review submissions for each app, with clear handling of Apple's concurrent-submission limit
-• Team Management — edit a member's role, resources and visible apps, and remove members or cancel invitations
-• Reply Templates — save your common review replies and reuse them in one tap
-• Agreements reminder — a Home banner lets you ask the Account Holder to accept pending agreements
-• Per-Platform Icons — multi-platform apps now show each platform's real icon in the app detail and widgets
-• Offline Mode — an indicator shows when you're offline; cached data stays viewable and actions that need a connection are blocked
-• Scoped Export — limit an account export to specific apps, with a searchable app picker
-• Usage analytics — anonymous and optional; turn them off any time in Settings
-• Tip Jar — StackConnect stays free and open source; leave an optional tip if it helps you
+• Network Audit — see every request StackConnect sends and receives, right in Settings › Privacy. Open any request to inspect it and export the log to review it yourself. The log never leaves your device unless you export it
+• All Accounts in One Place — a new accounts list grouped by store and searchable, with a status chip when an account needs your attention
+• Step-by-Step Setup — adding an account now takes a few simple steps, and a short guide explains how your credentials are stored and protected before you connect
+• Refreshed Home — an accounts summary at the top and, on iPhone, a tab bar to switch between Apps and Settings
+• Clearer Errors — messages now show what App Store Connect actually said
 • Bug fixes and stability improvements

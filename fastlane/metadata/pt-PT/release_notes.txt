@@ -1,11 +1,6 @@
-• Relatórios de Analytics — veja e transfira os seus analytics do App Store Connect, com relatórios agrupados por categoria e gráficos diários, semanais ou mensais. Marque favoritos, oculte os que não utiliza e faça a gestão dos ficheiros transferidos num ecrã dedicado de Ficheiros
-• Submissões — acompanhe, descarte e volte a submeter as suas submissões para o App Review de cada aplicação, com tratamento claro do limite de submissões em simultâneo da Apple
-• Gestão de Equipa — edite a função, os recursos e as aplicações visíveis de um membro, e remova membros ou cancele convites
-• Modelos de Resposta — guarde as suas respostas habituais às avaliações e reutilize-as com um toque
-• Lembrete de contratos — um banner no Início permite pedir ao Titular da Conta que aceite os contratos pendentes
-• Ícones por Plataforma — as aplicações multiplataforma passam a mostrar o ícone real de cada plataforma nos detalhes da aplicação e nos widgets
-• Modo Offline — um indicador mostra quando está offline; os dados em cache continuam visíveis e as ações que precisam de ligação ficam bloqueadas
-• Exportação Restrita — limite a exportação de uma conta a aplicações específicas, com um seletor de aplicações com pesquisa
-• Analytics de utilização — anónimos e opcionais; desative-os quando quiser nos Ajustes
-• Mealheiro de Gorjetas — o StackConnect continua gratuito e de código aberto; deixe uma gorjeta opcional se lhe for útil
+• Auditoria de Rede — veja cada pedido que o StackConnect envia e recebe, diretamente em Definições › Privacidade. Abra qualquer pedido para o inspecionar e exporte o registo para o rever por si. O registo nunca sai do seu dispositivo, a menos que o exporte
+• Todas as Contas num Só Lugar — uma nova lista de contas agrupada por loja e com pesquisa, com um indicador de estado quando uma conta precisa da sua atenção
+• Configuração Passo a Passo — adicionar uma conta leva agora poucos passos simples, e um guia rápido explica como as suas credenciais são guardadas e protegidas antes de ligar
+• Início Renovado — um resumo das contas no topo e, no iPhone, uma barra de separadores para alternar entre Apps e Definições
+• Erros Mais Claros — as mensagens mostram agora o que o App Store Connect realmente respondeu
 • Correções de erros e melhorias de estabilidade
