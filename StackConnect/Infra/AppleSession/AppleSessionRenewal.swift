@@ -77,9 +77,68 @@ struct AppleSessionRenewal {
     }
 
     /// `start`'s `InvalidCredentials` is a wrong Apple ID or password (the
-    /// core maps a wrong code to it only from `submitCode`).
+    /// core maps a wrong code to it only from `submitCode`). The only failure
+    /// that may remove the saved password.
     static func isWrongPassword(_ error: Error) -> Bool {
-        if case StackError.InvalidCredentials? = error as? StackError { return true }
-        return false
+        failureKind(of: error) == .wrongPassword
     }
+
+    /// A failure that says nothing about the password (see `FailureKind`):
+    /// keep the saved one and retry with it.
+    static func isTransient(_ error: Error) -> Bool {
+        failureKind(of: error) == .transient
+    }
+
+    /// What a failed sign-in call means for the saved password. Shared by
+    /// the manual sign-in and the automatic one, so both agree.
+    enum FailureKind: Equatable {
+        /// Apple refused the Apple ID or password (`InvalidCredentials`,
+        /// HTTP 401 at `signin/init` or `signin/complete` in the core).
+        case wrongPassword
+        /// Apple or the network could not answer now: HTTP 429 (rate
+        /// limited), any HTTP 5xx (`AppleUnavailable`), a network failure,
+        /// a timeout or no connection. The password is kept and the error
+        /// only shown; a retry uses it again.
+        case transient
+        /// Anything else (acknowledgement, decode, storage...): the password
+        /// is kept too, but a retry is unlikely to help on its own.
+        case other
+    }
+
+    static func failureKind(of error: Error) -> FailureKind {
+        if let stackError = error as? StackError {
+            switch stackError {
+            case .InvalidCredentials:
+                return .wrongPassword
+            case .Http(let status, _):
+                return isTransientHttpStatus(status) ? .transient : .other
+            case .Network:
+                return .transient
+            default:
+                return .other
+            }
+        }
+        if OfflineError.isConnectivityFailure(error) || isConnectivityURLError(error) {
+            return .transient
+        }
+        return .other
+    }
+
+    /// 429 (rate limited) and every 5xx (Apple's service unavailable).
+    static func isTransientHttpStatus(_ status: UInt16) -> Bool {
+        status == 429 || (500..<600).contains(status)
+    }
+
+    /// A Foundation network failure (offline, timeout, lost connection),
+    /// should one ever reach the sign-in instead of the core's `.Network`.
+    static func isConnectivityURLError(_ error: Error) -> Bool {
+        guard let urlError = error as? URLError else { return false }
+        return connectivityURLErrorCodes.contains(urlError.code)
+    }
+
+    private static let connectivityURLErrorCodes: Set<URLError.Code> = [
+        .notConnectedToInternet, .networkConnectionLost, .timedOut,
+        .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed,
+        .internationalRoamingOff, .dataNotAllowed, .callIsActive
+    ]
 }

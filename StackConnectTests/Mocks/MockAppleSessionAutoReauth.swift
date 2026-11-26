@@ -69,6 +69,38 @@ final class MockAppleSessionAutoReauthenticator: AppleSessionAutoReauthenticatin
     }
 
     func appDidBecomeActive() async {}
+
+    // MARK: Manual sign-in
+
+    /// The attempt "in flight" per Apple ID: `inFlightOutcome` waits for it.
+    var inFlight: [String: Task<AppleSessionAutoReauthOutcome, Never>] = [:]
+    var failures: [String: Error] = [:]
+    private(set) var manualSignIns: [String: Int] = [:]
+    private(set) var manualSignInLog: [String] = []
+    private(set) var joined: [String] = []
+
+    func isAttemptInFlight(for appleId: String) -> Bool { inFlight[appleId] != nil }
+
+    func inFlightOutcome(for appleId: String) async -> AppleSessionAutoReauthOutcome? {
+        guard let task = inFlight[appleId] else { return nil }
+        joined.append(appleId)
+        let outcome = await task.value
+        inFlight[appleId] = nil
+        return outcome
+    }
+
+    func lastFailure(for appleId: String) -> Error? { failures[appleId] }
+
+    func beginManualSignIn(for appleId: String) {
+        manualSignIns[appleId, default: 0] += 1
+        manualSignInLog.append("begin:\(appleId)")
+    }
+
+    func endManualSignIn(for appleId: String) {
+        let count = manualSignIns[appleId] ?? 0
+        manualSignIns[appleId] = count > 1 ? count - 1 : nil
+        manualSignInLog.append("end:\(appleId)")
+    }
 }
 
 extension AppleSessionPendingChallenge {

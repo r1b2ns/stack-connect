@@ -602,6 +602,47 @@ final class AppleIdSignInViewModelTests: XCTestCase {
         XCTAssertEqual(sut.uiState.errorMessage, String(localized: "Couldn't reach Apple. Check your connection and try again."))
     }
 
+    /// 429, every 5xx and network failures: only the error shows; the saved
+    /// password stays saved and in use, so the retry doesn't ask for it.
+    func testTransientFailuresWithTheSavedPasswordKeepItInUse() async {
+        let unavailable = String(localized: "Apple's sign-in service isn't responding. Try again later.")
+        let offline = String(localized: "Couldn't reach Apple. Check your connection and try again.")
+        let cases: [(String, Error, String)] = [
+            ("429", StackError.Http(status: 429, message: "Too Many Requests"),
+             String(localized: "Apple is limiting sign-in attempts. Wait a few minutes and try again.")),
+            ("500", StackError.Http(status: 500, message: "Internal Server Error"), unavailable),
+            ("502", StackError.Http(status: 502, message: "Bad Gateway"), unavailable),
+            ("503", StackError.Http(status: 503, message: "Apple's sign-in service is unavailable (HTTP 503); try again later"), unavailable),
+            ("network", StackError.Network(message: "offline"), offline),
+            ("offline", OfflineError.noConnection, offline),
+            ("timeout", URLError(.timedOut), offline)
+        ]
+        for (name, error, message) in cases {
+            keychain = MockKeyStorable()
+            keychain.set("saved", forKey: passwordKey)
+            flow = MockAppleIdSignIn()
+            flow.startResults = [.failure(error), .success(needsCode())]
+            let sut = makeSUT(.signInAgain(appleId: appleId))
+
+            await sut.signInWithSavedPasswordIfAvailable()
+
+            XCTAssertEqual(keychain.string(forKey: passwordKey), "saved", "\(name): only a refused password is removed")
+            XCTAssertEqual(sut.uiState.step, .credentials, name)
+            XCTAssertTrue(sut.uiState.usesSavedPassword, "\(name): never back to the password field")
+            XCTAssertTrue(sut.uiState.canSignIn, "\(name): the retry needs no typing")
+            XCTAssertEqual(sut.uiState.errorMessage, message, name)
+
+            // The screen appearing again (wizard step change) keeps it too.
+            sut.emailDidChange()
+            XCTAssertTrue(sut.uiState.usesSavedPassword, name)
+
+            await sut.signIn()
+
+            XCTAssertEqual(flow.starts.map(\.password), ["saved", "saved"], "\(name): the retry uses the saved password")
+            XCTAssertEqual(sut.uiState.step, .code, name)
+        }
+    }
+
     func testWrongCodeWithTheSavedPasswordKeepsIt() async {
         keychain.set("saved", forKey: passwordKey)
         flow.startResults = [.success(needsCode())]

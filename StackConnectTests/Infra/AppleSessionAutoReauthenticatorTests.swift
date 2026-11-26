@@ -5,7 +5,8 @@ import StackCoreRust
 @testable import StackConnect
 
 /// The automatic sign-in of an expired Apple ID session with the saved
-/// password: every outcome, once per expiry, coalescing, and foreground only.
+/// password: every outcome, the retry rule (no code spam), coalescing, and
+/// foreground only.
 @MainActor
 final class AppleSessionAutoReauthenticatorTests: XCTestCase {
 
@@ -145,9 +146,9 @@ final class AppleSessionAutoReauthenticatorTests: XCTestCase {
         XCTAssertEqual(autoReauthEvents.first?.parameters[AnalyticsParameterKey.outcome], .string("needs_code"))
     }
 
-    func testPendingChallengeExpiresAfterItsLifetime() async {
+    func testPendingChallengeExpiresAfterItsLifetimeAndANewAttemptIsDue() async {
         expireWithSavedPassword()
-        flow.startResults = [.success(needsCode)]
+        flow.startResults = [.success(needsCode), .success(needsCode)]
         let sut = makeSUT()
         await sut.sessionDidExpire(appleId: appleId)
 
@@ -155,7 +156,10 @@ final class AppleSessionAutoReauthenticatorTests: XCTestCase {
 
         XCTAssertNil(sut.pendingChallenge(for: appleId))
         XCTAssertNil(sut.state(for: appleId))
-        XCTAssertFalse(sut.handlesExpiry(of: appleId), "the manual sign-in takes over")
+        XCTAssertTrue(sut.handlesExpiry(of: appleId), "a new attempt is due: no prompt asking for the password")
+        await sut.appDidBecomeActive()
+        XCTAssertEqual(flow.starts.count, 2, "a new code once the old one expired")
+        XCTAssertNotNil(sut.pendingChallenge(for: appleId))
     }
 
     func testDiscardingThePendingChallengeForgetsIt() async {
@@ -199,6 +203,97 @@ final class AppleSessionAutoReauthenticatorTests: XCTestCase {
         XCTAssertFalse(sut.handlesExpiry(of: appleId), "the manual sign-in takes over")
         XCTAssertEqual(autoReauthEvents.first?.parameters[AnalyticsParameterKey.result], .string(AnalyticsResult.failure.rawValue))
         XCTAssertEqual(autoReauthEvents.first?.parameters[AnalyticsParameterKey.outcome], .string("failed"))
+    }
+
+    // MARK: - Transient failures (429, 5xx, network): kept and retried
+
+    private var transientFailures: [(String, Error)] {
+        [
+            ("429", StackError.Http(status: 429, message: "Too Many Requests")),
+            ("500", StackError.Http(status: 500, message: "Internal Server Error")),
+            ("502", StackError.Http(status: 502, message: "Bad Gateway")),
+            ("503", StackError.Http(status: 503, message: "Apple's sign-in service is unavailable (HTTP 503); try again later")),
+            ("network", StackError.Network(message: "offline")),
+            ("offline", OfflineError.noConnection),
+            ("timeout", URLError(.timedOut))
+        ]
+    }
+
+    func testTransientFailuresKeepThePasswordAndRetryOnTheNextForeground() async {
+        for (name, error) in transientFailures {
+            setUpFreshAttempt()
+            flow.startResults = [.failure(error), .success(.done(teams: []))]
+            let sut = makeSUT()
+
+            let outcome = await sut.sessionDidExpire(appleId: appleId)
+
+            XCTAssertEqual(outcome, .failed, name)
+            XCTAssertEqual(keychain.string(forKey: passwordKey), "saved", "\(name): never treated as a wrong password")
+            XCTAssertTrue(outcome?.fallsBackToManualSignIn == true, name)
+
+            await sut.appDidBecomeActive()
+
+            XCTAssertEqual(flow.starts.count, 2, "\(name): the next foreground retries")
+            XCTAssertEqual(status.markedValid, [appleId], name)
+        }
+    }
+
+    func testTransientFailuresAreClassifiedAsTransientNotWrongPassword() {
+        for (name, error) in transientFailures {
+            XCTAssertEqual(AppleSessionRenewal.failureKind(of: error), .transient, name)
+            XCTAssertFalse(AppleSessionRenewal.isWrongPassword(error), name)
+        }
+        XCTAssertEqual(AppleSessionRenewal.failureKind(of: StackError.InvalidCredentials(message: "wrong")), .wrongPassword)
+        XCTAssertEqual(AppleSessionRenewal.failureKind(of: StackError.Http(status: 401, message: "Unauthorized")), .other,
+                       "a raw HTTP 401 is not the core's wrong password")
+        XCTAssertEqual(AppleSessionRenewal.failureKind(of: StackError.Http(status: 404, message: "Not Found")), .other)
+        XCTAssertEqual(AppleSessionRenewal.failureKind(of: StackError.Auth(message: "locked")), .other)
+        XCTAssertEqual(AppleSessionRenewal.failureKind(of: StackError.Http(status: 600, message: "?")), .other)
+    }
+
+    func testAFailedAttemptIsRetriedOnAnExpiryOnlyAfterTheInterval() async {
+        expireWithSavedPassword()
+        flow.startResults = [.failure(StackError.Http(status: 503, message: "unavailable")), .success(.done(teams: []))]
+        let sut = makeSUT()
+        await sut.sessionDidExpire(appleId: appleId)
+
+        let tooSoon = await sut.sessionDidExpire(appleId: appleId)
+        XCTAssertNil(tooSoon, "an expiry is posted for every refused call: no retry on each one")
+        XCTAssertFalse(sut.handlesExpiry(of: appleId), "the prompt (which uses the saved password) shows meanwhile")
+
+        now = now.addingTimeInterval(AppleSessionAutoReauthenticator.failureRetryInterval)
+        XCTAssertTrue(sut.handlesExpiry(of: appleId))
+        let retried = await sut.sessionDidExpire(appleId: appleId)
+
+        XCTAssertEqual(retried, .done)
+        XCTAssertEqual(flow.starts.count, 2)
+        XCTAssertEqual(flow.starts.map(\.password), ["saved", "saved"])
+    }
+
+    func testAFailedAttemptIsRetriedAfterARelaunch() async {
+        expireWithSavedPassword()
+        flow.startResults = [.failure(StackError.Network(message: "offline")), .success(.done(teams: []))]
+        await makeSUT().sessionDidExpire(appleId: appleId)
+
+        let relaunched = makeSUT()
+        await relaunched.appDidBecomeActive()
+
+        XCTAssertEqual(flow.starts.count, 2, "a blip at launch never blocks the next launch")
+        XCTAssertEqual(status.markedValid, [appleId])
+    }
+
+    func testNoRetryAfterTheSavedPasswordWasRefused() async {
+        expireWithSavedPassword()
+        flow.startResults = [.failure(StackError.InvalidCredentials(message: "the Apple ID or password is incorrect"))]
+        let sut = makeSUT()
+        await sut.sessionDidExpire(appleId: appleId)
+
+        now = now.addingTimeInterval(AppleSessionAutoReauthenticator.challengeLifetime + 1)
+        await sut.appDidBecomeActive()
+        let again = await sut.sessionDidExpire(appleId: appleId)
+
+        XCTAssertNil(again)
+        XCTAssertEqual(flow.starts.count, 1, "no password left to try")
     }
 
     func testAcknowledgementFailsAndKeepsThePassword() async {
@@ -297,30 +392,64 @@ final class AppleSessionAutoReauthenticatorTests: XCTestCase {
         XCTAssertTrue(flow.starts.isEmpty)
     }
 
-    func testOneAttemptPerExpiry() async {
+    func testNoNewCodeWhileTheChallengeIsAlive() async {
         expireWithSavedPassword()
-        flow.startResults = [.failure(StackError.Network(message: "offline")), .success(.done(teams: []))]
+        flow.startResults = [.success(needsCode), .success(needsCode)]
         let sut = makeSUT()
-
         await sut.sessionDidExpire(appleId: appleId)
+
+        now = now.addingTimeInterval(AppleSessionAutoReauthenticator.challengeLifetime - 1)
         let second = await sut.sessionDidExpire(appleId: appleId)
         await sut.appDidBecomeActive()
 
-        XCTAssertNil(second, "no retry loop")
+        XCTAssertNil(second, "no second code while the first one works")
         XCTAssertEqual(flow.starts.count, 1)
+        XCTAssertTrue(sut.handlesExpiry(of: appleId))
     }
 
-    func testTheAttemptMarkSurvivesARelaunch() async {
+    func testARelaunchThatLostTheChallengeSignsInAgain() async {
         expireWithSavedPassword()
         flow.startResults = [.success(needsCode), .success(needsCode)]
         await makeSUT().sessionDidExpire(appleId: appleId)
 
         let relaunched = makeSUT()
-        let outcome = await relaunched.sessionDidExpire(appleId: appleId)
-
-        XCTAssertNil(outcome, "no second code after a relaunch")
-        XCTAssertEqual(flow.starts.count, 1)
         XCTAssertNil(relaunched.pendingChallenge(for: appleId), "the challenge lived in memory only")
+        XCTAssertTrue(relaunched.handlesExpiry(of: appleId), "no prompt asking for the password")
+        await relaunched.appDidBecomeActive()
+
+        XCTAssertEqual(flow.starts.count, 2, "the lost challenge's code can't be used: a new attempt")
+        XCTAssertNotNil(relaunched.pendingChallenge(for: appleId))
+    }
+
+    func testALeftChallengeIsNotReplacedBeforeItsLifetime() async {
+        expireWithSavedPassword()
+        flow.startResults = [.success(needsCode), .success(needsCode)]
+        let sut = makeSUT()
+        await sut.sessionDidExpire(appleId: appleId)
+
+        // The user went back from the code screen.
+        sut.discardPendingChallenge(for: appleId)
+        let tooSoon = await sut.sessionDidExpire(appleId: appleId)
+        XCTAssertNil(tooSoon, "no new code right after the user left one")
+        XCTAssertFalse(sut.handlesExpiry(of: appleId), "the manual sign-in (saved password) takes over")
+
+        now = now.addingTimeInterval(AppleSessionAutoReauthenticator.challengeLifetime)
+        let later = await sut.sessionDidExpire(appleId: appleId)
+        XCTAssertEqual(later, .needsCode)
+        XCTAssertEqual(flow.starts.count, 2)
+    }
+
+    func testTheLegacyAttemptMarksAreDroppedSoAStuckAppleIdIsAttempted() async {
+        defaults.set([appleId], forKey: AppleSessionAutoReauthenticator.legacyAttemptedDefaultsKey)
+        expireWithSavedPassword()
+        flow.startResults = [.success(.done(teams: []))]
+        let sut = makeSUT()
+
+        XCTAssertNil(defaults.object(forKey: AppleSessionAutoReauthenticator.legacyAttemptedDefaultsKey))
+        XCTAssertTrue(sut.handlesExpiry(of: appleId))
+        let outcome = await sut.sessionDidExpire(appleId: appleId)
+
+        XCTAssertEqual(outcome, .done)
     }
 
     func testANewExpiryAfterTheSessionWorkedAgainIsAttempted() async {
@@ -334,7 +463,7 @@ final class AppleSessionAutoReauthenticatorTests: XCTestCase {
         status.markValid(appleId: appleId)
         center.post(name: .signInStatusDidChange, object: nil)
         await waitUntil {
-            (self.defaults.stringArray(forKey: AppleSessionAutoReauthenticator.attemptedDefaultsKey) ?? []).isEmpty
+            self.defaults.data(forKey: AppleSessionAutoReauthenticator.attemptsDefaultsKey) == nil
         }
         status.markExpired(appleId: appleId)
         let outcome = await sut.sessionDidExpire(appleId: appleId)
@@ -366,6 +495,85 @@ final class AppleSessionAutoReauthenticatorTests: XCTestCase {
         let arrivals = await gated.gate.arrivals
         XCTAssertEqual(arrivals, 1)
         XCTAssertEqual(events.filter { if case .started = $0 { return true } else { return false } }.count, 1)
+    }
+
+    // MARK: - Next to a manual sign-in
+
+    func testNoAutomaticAttemptWhileAManualSignInIsOpen() async {
+        expireWithSavedPassword()
+        flow.startResults = [.success(.done(teams: []))]
+        let sut = makeSUT()
+        sut.beginManualSignIn(for: "  DEV@example.com ")
+
+        let outcome = await sut.sessionDidExpire(appleId: appleId)
+        await sut.appDidBecomeActive()
+
+        XCTAssertNil(outcome)
+        XCTAssertTrue(flow.starts.isEmpty, "never a second sign-in (and code) next to the manual one")
+        XCTAssertTrue(sut.handlesExpiry(of: appleId), "no prompt over the open sign-in")
+
+        sut.endManualSignIn(for: appleId)
+        let later = await sut.sessionDidExpire(appleId: appleId)
+
+        XCTAssertEqual(later, .done, "due again once the manual sign-in ended")
+        XCTAssertEqual(flow.starts.count, 1)
+    }
+
+    func testManualSignInsAreCounted() async {
+        expireWithSavedPassword()
+        flow.startResults = [.success(.done(teams: []))]
+        let sut = makeSUT()
+        sut.beginManualSignIn(for: appleId)
+        sut.beginManualSignIn(for: appleId)
+
+        sut.endManualSignIn(for: appleId)
+        let stillOpen = await sut.sessionDidExpire(appleId: appleId)
+        sut.endManualSignIn(for: appleId)
+        sut.endManualSignIn(for: appleId)
+        let closed = await sut.sessionDidExpire(appleId: appleId)
+
+        XCTAssertNil(stillOpen, "one screen is still open")
+        XCTAssertEqual(closed, .done, "an extra end never goes negative")
+    }
+
+    func testInFlightOutcomeJoinsTheRunningAttempt() async {
+        expireWithSavedPassword()
+        flow.startResults = [.success(.done(teams: []))]
+        let gated = GatedAppleIdSignIn(inner: flow)
+        signIn = gated
+        let sut = makeSUT()
+        let none = await sut.inFlightOutcome(for: appleId)
+        XCTAssertNil(none, "nil right away when nothing runs")
+        XCTAssertFalse(sut.isAttemptInFlight(for: appleId))
+
+        let attempt = Task { await sut.sessionDidExpire(appleId: appleId) }
+        await gated.gate.waitForArrivals(1)
+        XCTAssertTrue(sut.isAttemptInFlight(for: "Dev@Example.com"))
+        let joined = Task { await sut.inFlightOutcome(for: appleId) }
+        await gated.gate.open()
+
+        let joinedOutcome = await joined.value
+        let attemptOutcome = await attempt.value
+        XCTAssertEqual(joinedOutcome, .done)
+        XCTAssertEqual(attemptOutcome, .done)
+        XCTAssertEqual(flow.starts.count, 1)
+        XCTAssertFalse(sut.isAttemptInFlight(for: appleId))
+    }
+
+    func testLastFailureKeepsTheErrorOfTheFailedAttempt() async {
+        expireWithSavedPassword()
+        flow.startResults = [.failure(StackError.Http(status: 503, message: "unavailable")), .success(.done(teams: []))]
+        let sut = makeSUT()
+
+        await sut.sessionDidExpire(appleId: appleId)
+
+        guard case StackError.Http(let status, _)? = sut.lastFailure(for: appleId) as? StackError else {
+            return XCTFail("the 503 is kept for the manual screen")
+        }
+        XCTAssertEqual(status, 503)
+
+        await sut.appDidBecomeActive()
+        XCTAssertNil(sut.lastFailure(for: appleId), "cleared by the next attempt")
     }
 
     func testNotTriggeredInTheBackground() async {

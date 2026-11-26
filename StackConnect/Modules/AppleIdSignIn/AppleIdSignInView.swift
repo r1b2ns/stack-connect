@@ -25,7 +25,7 @@ private struct AppleIdSignInEntry: View {
         // Signing in again resumes the code step an automatic sign-in left.
         _viewModel = StateObject(wrappedValue: AppleIdSignInViewModel(
             mode: mode,
-            pendingChallenges: AppleSessionAutoReauthenticator.shared
+            autoReauth: AppleSessionAutoReauthenticator.shared
         ))
     }
 

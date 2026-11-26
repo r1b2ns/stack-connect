@@ -58,7 +58,7 @@ final class AppleIdSignInResumeChallengeTests: XCTestCase {
             sessionStatus: status,
             roleResolver: MockAppleSessionRoleResolver(),
             analytics: analytics,
-            pendingChallenges: autoReauth,
+            autoReauth: autoReauth,
             makeSignIn: { [unowned self] _ in
                 self.signInsMade += 1
                 return self.freshFlow
@@ -206,6 +206,24 @@ final class AppleIdSignInResumeChallengeTests: XCTestCase {
         XCTAssertNotNil(sut.uiState.errorMessage)
         XCTAssertTrue(autoReauth.discarded.isEmpty)
         XCTAssertEqual(signInsMade, 0)
+    }
+
+    func testRateLimitedOrUnavailableSubmitKeepsTheResumedChallenge() async {
+        for status in [UInt16(429), 500, 502, 503] {
+            leavePendingChallenge()
+            pendingFlow.submitResults = [.failure(StackError.Http(status: status, message: "HTTP \(status)"))]
+            signInsMade = 0
+            let sut = makeSUT()
+
+            await sut.updateCode("123456")
+
+            XCTAssertEqual(sut.uiState.step, .code, "\(status)")
+            XCTAssertTrue(sut.uiState.usesSavedPassword, "\(status)")
+            XCTAssertNotNil(sut.uiState.errorMessage, "\(status)")
+            XCTAssertTrue(autoReauth.discarded.isEmpty, "\(status): not a stale challenge")
+            XCTAssertEqual(signInsMade, 0, "\(status)")
+            XCTAssertEqual(keychain.string(forKey: passwordKey), "saved")
+        }
     }
 
     func testUseDifferentPasswordDropsTheChallenge() {

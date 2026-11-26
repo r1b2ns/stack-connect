@@ -42,8 +42,9 @@ enum AppleSessionAutoReauthOutcome: String, Equatable, Sendable {
     case needsCode = "needs_code"
     /// Apple refused the saved password: it was removed.
     case invalidCredentials = "invalid_credentials"
-    /// Anything else (network, rate limit, acknowledgement, storage): the
-    /// saved password is kept and the manual sign-in takes over.
+    /// Anything else (network, rate limit, HTTP 5xx, acknowledgement,
+    /// storage): the saved password is kept, the manual sign-in takes over
+    /// (it uses the saved password too) and the next trigger retries.
     case failed = "failed"
 
     /// The manual "sign in again" (prompt, banner) takes over.
@@ -90,10 +91,31 @@ protocol AppleSessionPendingChallengeProviding: AnyObject {
     func discardPendingChallenge(for appleId: String)
 }
 
-/// Signs in again with the saved password when an Apple ID session expires,
-/// once per expiry, in the foreground only.
+/// The manual sign-in's side of the automatic one, so the two never run at
+/// once for an Apple ID (each run can make Apple send a code): the manual
+/// sign-in waits for an automatic attempt in flight instead of starting its
+/// own, and no automatic attempt starts while a manual sign-in is open.
 @MainActor
-protocol AppleSessionAutoReauthenticating: AppleSessionAutoReauthStateProviding, AppleSessionPendingChallengeProviding {
+protocol AppleSessionManualSignInCoordinating: AppleSessionPendingChallengeProviding {
+    /// An automatic attempt is running for `appleId`.
+    func isAttemptInFlight(for appleId: String) -> Bool
+    /// Waits for the automatic attempt running for `appleId`.
+    /// - Returns: its outcome, or `nil` right away when none runs.
+    func inFlightOutcome(for appleId: String) async -> AppleSessionAutoReauthOutcome?
+    /// Why `appleId`'s last automatic attempt failed (in memory only), for
+    /// the manual screen's message; `nil` when it didn't fail on an error.
+    func lastFailure(for appleId: String) -> Error?
+    /// A manual sign-in started for `appleId`: no automatic attempt starts
+    /// for it until the matching `endManualSignIn(for:)`.
+    func beginManualSignIn(for appleId: String)
+    /// The manual sign-in of `appleId` ended (finished, failed or closed).
+    func endManualSignIn(for appleId: String)
+}
+
+/// Signs in again with the saved password when an Apple ID session expires,
+/// in the foreground only, without sending Apple codes in a loop.
+@MainActor
+protocol AppleSessionAutoReauthenticating: AppleSessionAutoReauthStateProviding, AppleSessionManualSignInCoordinating {
     /// Emits on the main actor when an attempt starts and ends.
     var events: AnyPublisher<AppleSessionAutoReauthEvent, Never> { get }
     /// Whether the automatic sign-in takes care of `appleId`'s expiry (it
@@ -119,11 +141,22 @@ protocol AppleSessionAutoReauthenticating: AppleSessionAutoReauthStateProviding,
 /// password and asks no code; when it does ask, the code is already sent, so
 /// the challenge is kept for the user to finish from the Home banner.
 ///
-/// Rules:
-/// - **Once per expiry and Apple ID**, shared by all its team accounts:
-///   concurrent triggers join the running attempt, and an Apple ID already
-///   attempted is not tried again until its session works again (the mark
-///   is persisted, so a relaunch does not send another code).
+/// Rules, per Apple ID (shared by all its team accounts), from the last
+/// attempt's record (`AttemptRecord`, persisted with its time):
+/// - Concurrent triggers **join** the running attempt.
+/// - After `.failed` (network, 429, 5xx...): the next foreground retries;
+///   another expiry retries once `failureRetryInterval` passed (an expiry
+///   is posted for every refused call, so it can't retry on each one).
+/// - After `.needsCode`: **no new attempt while its challenge is alive**
+///   (no second code); a new one once the challenge is gone (a relaunch
+///   lost it) or older than `challengeLifetime`. A challenge the user left
+///   (back from the code screen) is not replaced before that lifetime: the
+///   manual sign-in, which uses the saved password too, takes over.
+/// - After `.invalidCredentials` the password is deleted: nothing retries.
+/// - A session that works again forgets its record.
+/// - **Never next to a manual sign-in** of the same Apple ID
+///   (`AppleSessionManualSignInCoordinating`): the manual one joins a
+///   running attempt, and no attempt starts while a manual one is open.
 /// - **Foreground only**: an expiry seen by the background refresh waits for
 ///   the app to become active.
 /// - Only with a saved password; without one nothing changes.
@@ -137,11 +170,28 @@ final class AppleSessionAutoReauthenticator: AppleSessionAutoReauthenticating {
 
     static let shared = AppleSessionAutoReauthenticator(sync: SyncService.shared)
 
-    /// `UserDefaults` key of the Apple IDs already attempted for their
-    /// current expiry (normalized e-mails, no secret).
-    static let attemptedDefaultsKey = "appleSession.autoReauthAttemptedAppleIds"
+    /// `UserDefaults` key of the last attempt of each expired Apple ID
+    /// (`[normalized e-mail: AttemptRecord]` as JSON, no secret).
+    static let attemptsDefaultsKey = "appleSession.autoReauthAttempts"
+    /// The former "already attempted" marks (a string array), which stopped
+    /// every retry after one attempt. Removed on launch.
+    static let legacyAttemptedDefaultsKey = "appleSession.autoReauthAttemptedAppleIds"
     /// How long a pending challenge is offered (Apple's codes expire).
     static let challengeLifetime: TimeInterval = 10 * 60
+    /// After a failed attempt, how long an expiry (not the foreground) waits
+    /// before trying again.
+    static let failureRetryInterval: TimeInterval = 60
+
+    /// The last automatic attempt of an Apple ID whose session is still
+    /// expired.
+    struct AttemptRecord: Codable, Equatable {
+        enum Outcome: String, Codable { case failed, needsCode }
+        let outcome: Outcome
+        let at: Date
+    }
+
+    /// What asks for an attempt.
+    enum Trigger { case expiry, foreground }
 
     var events: AnyPublisher<AppleSessionAutoReauthEvent, Never> { subject.eraseToAnyPublisher() }
 
@@ -159,6 +209,12 @@ final class AppleSessionAutoReauthenticator: AppleSessionAutoReauthenticating {
     private let subject = PassthroughSubject<AppleSessionAutoReauthEvent, Never>()
     private var inFlight: [String: Task<AttemptResult, Never>] = [:]
     private var challenges: [String: AppleSessionPendingChallenge] = [:]
+    /// Apple IDs whose challenge the user left this launch (not lost).
+    private var discardedChallenges = Set<String>()
+    /// Open manual sign-ins per Apple ID (`beginManualSignIn`).
+    private var manualSignIns: [String: Int] = [:]
+    /// The error of each Apple ID's last failed attempt, in memory only.
+    private var lastErrors: [String: Error] = [:]
     private var observers: [NSObjectProtocol] = []
 
     init(
@@ -180,11 +236,16 @@ final class AppleSessionAutoReauthenticator: AppleSessionAutoReauthenticating {
         self.center = center
         self.isAppActive = isAppActive
         self.now = now
+        if defaults.object(forKey: Self.legacyAttemptedDefaultsKey) != nil {
+            // The old marks blocked any retry: dropped, so a stuck Apple ID is
+            // attempted again.
+            defaults.removeObject(forKey: Self.legacyAttemptedDefaultsKey)
+        }
     }
 
     /// Starts listening: an expiry (`.appleSessionDidExpire`), the app
     /// becoming active, and a session that works again (which clears its
-    /// attempt mark and challenge). Called once, by the app (never in a
+    /// attempt record and challenge). Called once, by the app (never in a
     /// unit-test host).
     func start() {
         guard observers.isEmpty else { return }
@@ -231,31 +292,54 @@ final class AppleSessionAutoReauthenticator: AppleSessionAutoReauthenticating {
     func discardPendingChallenge(for appleId: String) {
         let id = AppleSessionKeychainStore.normalized(appleId)
         guard challenges.removeValue(forKey: id) != nil else { return }
+        discardedChallenges.insert(id)
         center.postSignInStatusDidChange()
     }
 
     func handlesExpiry(of appleId: String) -> Bool {
         let id = AppleSessionKeychainStore.normalized(appleId)
-        if inFlight[id] != nil || pendingChallenge(for: id) != nil { return true }
-        return !attempted().contains(id) && renewal.passwordStore.hasPassword(for: id)
+        // An open manual sign-in handles it too: no prompt over it.
+        if inFlight[id] != nil || pendingChallenge(for: id) != nil || isManualSignInOpen(id) { return true }
+        return isDue(id, trigger: .expiry) && renewal.passwordStore.hasPassword(for: id)
+    }
+
+    /// Whether the record of `id` allows a new attempt on `trigger` (see
+    /// the type's rules). The caller checked that nothing runs.
+    private func isDue(_ id: String, trigger: Trigger) -> Bool {
+        if pendingChallenge(for: id) != nil { return false }
+        guard let record = records()[id] else { return true }
+        let age = now().timeIntervalSince(record.at)
+        switch record.outcome {
+        case .failed:
+            return trigger == .foreground || age >= Self.failureRetryInterval
+        case .needsCode:
+            return age >= Self.challengeLifetime || !discardedChallenges.contains(id)
+        }
     }
 
     // MARK: - Triggers
 
     @discardableResult
     func sessionDidExpire(appleId: String) async -> AppleSessionAutoReauthOutcome? {
+        await attemptIfDue(appleId: appleId, trigger: .expiry)
+    }
+
+    private func attemptIfDue(appleId: String, trigger: Trigger) async -> AppleSessionAutoReauthOutcome? {
         let id = AppleSessionKeychainStore.normalized(appleId)
         if let running = inFlight[id] {
             return await running.value.outcome
         }
-        guard sessionStatus.isExpired(appleId: id), !attempted().contains(id), challenges[id] == nil else { return nil }
+        guard sessionStatus.isExpired(appleId: id), isDue(id, trigger: trigger) else { return nil }
+        guard !isManualSignInOpen(id) else {
+            Log.print.info("[AppleSessionAutoReauth] A manual sign-in is open for the Apple ID: no automatic sign-in")
+            return nil
+        }
         guard isAppActive() else {
             Log.print.info("[AppleSessionAutoReauth] The app isn't active: the automatic sign-in waits for the foreground")
             return nil
         }
         guard let password = renewal.passwordStore.password(for: id) else { return nil }
 
-        markAttempted(id)
         Log.print.info("[AppleSessionAutoReauth] Signing in again with the saved password")
         let task = Task { await self.attempt(appleId: id, password: password) }
         inFlight[id] = task
@@ -265,6 +349,7 @@ final class AppleSessionAutoReauthenticator: AppleSessionAutoReauthenticating {
         let result = await task.value
         let outcome = result.outcome
         inFlight[id] = nil
+        record(outcome, for: id)
         track(result)
         subject.send(.finished(appleId: id, outcome: outcome))
         if outcome == .done {
@@ -285,9 +370,38 @@ final class AppleSessionAutoReauthenticator: AppleSessionAutoReauthenticating {
         let ids = sessionStatus.expiredAppleIds()
         await withTaskGroup(of: Void.self) { group in
             for id in ids {
-                group.addTask { await self.sessionDidExpire(appleId: id) }
+                group.addTask { _ = await self.attemptIfDue(appleId: id, trigger: .foreground) }
             }
         }
+    }
+
+    // MARK: - Manual sign-in
+
+    func isAttemptInFlight(for appleId: String) -> Bool {
+        inFlight[AppleSessionKeychainStore.normalized(appleId)] != nil
+    }
+
+    func inFlightOutcome(for appleId: String) async -> AppleSessionAutoReauthOutcome? {
+        guard let running = inFlight[AppleSessionKeychainStore.normalized(appleId)] else { return nil }
+        return await running.value.outcome
+    }
+
+    func lastFailure(for appleId: String) -> Error? {
+        lastErrors[AppleSessionKeychainStore.normalized(appleId)]
+    }
+
+    func beginManualSignIn(for appleId: String) {
+        manualSignIns[AppleSessionKeychainStore.normalized(appleId), default: 0] += 1
+    }
+
+    func endManualSignIn(for appleId: String) {
+        let id = AppleSessionKeychainStore.normalized(appleId)
+        guard let count = manualSignIns[id] else { return }
+        manualSignIns[id] = count > 1 ? count - 1 : nil
+    }
+
+    private func isManualSignInOpen(_ id: String) -> Bool {
+        manualSignIns[id] != nil
     }
 
     // MARK: - Attempt
@@ -299,6 +413,7 @@ final class AppleSessionAutoReauthenticator: AppleSessionAutoReauthenticating {
     }
 
     private func attempt(appleId: String, password: String) async -> AttemptResult {
+        lastErrors[appleId] = nil
         do {
             let flow = try renewal.makeFlow(reusingSessionOf: appleId)
             let step = try await flow.start(email: appleId, password: password)
@@ -324,41 +439,69 @@ final class AppleSessionAutoReauthenticator: AppleSessionAutoReauthenticating {
                 return AttemptResult(outcome: .failed, failure: .forbidden)
             }
         } catch {
-            if AppleSessionRenewal.isWrongPassword(error) {
+            lastErrors[appleId] = error
+            switch AppleSessionRenewal.failureKind(of: error) {
+            case .wrongPassword:
+                // The only failure that removes the saved password.
                 Log.print.notice("[AppleSessionAutoReauth] Apple refused the saved password: removed it from the Keychain")
                 renewal.passwordStore.deletePassword(for: appleId)
                 return AttemptResult(outcome: .invalidCredentials, failure: .invalidCredentials)
+            case .transient:
+                Log.print.notice("[AppleSessionAutoReauth] Apple or the network couldn't answer (\(error.localizedDescription, privacy: .public)): kept the saved password, retrying on the next trigger")
+            case .other:
+                Log.print.error("[AppleSessionAutoReauth] The automatic sign-in failed: \(error.localizedDescription, privacy: .public)")
             }
-            Log.print.error("[AppleSessionAutoReauth] The automatic sign-in failed: \(error.localizedDescription, privacy: .public)")
             return AttemptResult(outcome: .failed, failure: AnalyticsErrorCategory(connectionError: error))
         }
     }
 
-    // MARK: - Attempt marks
+    // MARK: - Attempt records
 
-    private func attempted() -> Set<String> {
-        Set(defaults.stringArray(forKey: Self.attemptedDefaultsKey) ?? [])
+    /// The records, `[:]` when none or unreadable (then every Apple ID is due).
+    private func records() -> [String: AttemptRecord] {
+        guard let data = defaults.data(forKey: Self.attemptsDefaultsKey),
+              let records = try? JSONDecoder().decode([String: AttemptRecord].self, from: data) else { return [:] }
+        return records
     }
 
-    private func markAttempted(_ appleId: String) {
-        var ids = attempted()
-        ids.insert(appleId)
-        defaults.set(ids.sorted(), forKey: Self.attemptedDefaultsKey)
+    private func saveRecords(_ records: [String: AttemptRecord]) {
+        if records.isEmpty {
+            defaults.removeObject(forKey: Self.attemptsDefaultsKey)
+        } else if let data = try? JSONEncoder().encode(records) {
+            defaults.set(data, forKey: Self.attemptsDefaultsKey)
+        }
+    }
+
+    /// Keeps what the next trigger needs: `.failed` and `.needsCode` are
+    /// recorded; a renewed session or a removed password needs nothing.
+    private func record(_ outcome: AppleSessionAutoReauthOutcome, for id: String) {
+        var all = records()
+        switch outcome {
+        case .failed:
+            all[id] = AttemptRecord(outcome: .failed, at: now())
+        case .needsCode:
+            all[id] = AttemptRecord(outcome: .needsCode, at: now())
+            discardedChallenges.remove(id)
+        case .done, .invalidCredentials:
+            all[id] = nil
+        }
+        saveRecords(all)
     }
 
     /// A session that works again (signed in by hand, a successful call, or
-    /// its last account deleted) can be attempted on its next expiry, and its
+    /// its last account deleted) starts afresh on its next expiry, and its
     /// challenge is obsolete.
     private func forgetRecoveredSessions() {
         let expired = sessionStatus.expiredAppleIds()
-        let marks = attempted()
-        let kept = marks.intersection(expired)
-        if kept != marks {
-            defaults.set(kept.sorted(), forKey: Self.attemptedDefaultsKey)
+        let all = records()
+        let kept = all.filter { expired.contains($0.key) }
+        if kept.count != all.count {
+            saveRecords(kept)
         }
         for id in challenges.keys where !expired.contains(id) {
             challenges[id] = nil
         }
+        discardedChallenges.formIntersection(expired)
     }
 
     // MARK: - Analytics
