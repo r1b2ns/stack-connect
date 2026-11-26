@@ -25,7 +25,8 @@ struct RemoteFeatureValueSnapshot: RemoteFeatureValueProviding, Equatable {
 /// `AnalyticsService`'s job). Without Firebase (no `GoogleService-Info.plist`,
 /// unit-test host, fake data mode) nothing is installed and every remote flag
 /// keeps its compiled-in default (OFF for `googlePlayAccounts`, ON for the
-/// `accountConnectionGuide` kill switch).
+/// `accountConnectionGuide` kill switch, ON in Debug / OFF in Release for
+/// `appleIdSignIn`).
 enum RemoteFeatureFlagsBootstrap {
 
     /// 0 in Debug (iterate on the console freely), 1 hour in Release.

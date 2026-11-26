@@ -67,10 +67,18 @@ enum FeatureFlag: String, CaseIterable {
     /// and its three screens (Apple ID and password, two-factor code, team
     /// picker). When OFF, Add Account shows only the API key form, as before.
     /// Accounts already added with an Apple ID keep working whatever the flag
-    /// says (the remote kill switch for them is Phase 4).
-    /// Default: ON in Debug builds, OFF in Release until the review strategy
-    /// is settled (plan Q4). Toggle at launch with
-    /// `-featureFlag.appleIdSignIn YES` / `NO`.
+    /// says.
+    ///
+    /// Remote: a reveal, resolved from Firebase Remote Config parameter
+    /// `apple_id_sign_in_enabled` (see `remoteConfigKey`), read ONCE per
+    /// launch — a newly fetched value applies on the next launch, so Add
+    /// Account never changes under the user mid-session. In Release the option
+    /// stays hidden until Remote Config sends `true`; `false` hides it again
+    /// (Debug included). A stored value (e.g. the launch argument
+    /// `-featureFlag.appleIdSignIn YES` / `NO`) wins over it. Without Firebase
+    /// (no `GoogleService-Info.plist`, unit-test host, fake data mode) the
+    /// compiled-in default applies.
+    /// Default: ON in Debug builds, OFF in Release.
     case appleIdSignIn = "featureFlag.appleIdSignIn"
 
     /// Gates the account connection guide and everything around it: the
@@ -132,7 +140,9 @@ enum FeatureFlag: String, CaseIterable {
             return "google_play_accounts_enabled"
         case .accountConnectionGuide:
             return "account_connection_guide_enabled"
-        case .useRustCoreDebugLogging, .googlePlayReleaseWrites, .googleSignIn, .appleIdSignIn, .networkAudit:
+        case .appleIdSignIn:
+            return "apple_id_sign_in_enabled"
+        case .useRustCoreDebugLogging, .googlePlayReleaseWrites, .googleSignIn, .networkAudit:
             return nil
         }
     }
