@@ -113,14 +113,31 @@ final class GooglePlayAppListReleaseStatusTests: XCTestCase {
         ])
         try await storage.save(tracks, id: tracks.cacheKey)
         connection.fetchAppsHandler = { [app("com.a")] }
+        let standard = GooglePlayAppListViewModel.standardTracks
+        let progress = SummaryRequestProgress()
+        connection.fetchReleaseSummariesHandler = { _, track in
+            if standard.contains(track) {
+                await progress.standardAnswered()
+            } else {
+                await progress.customStarted()
+            }
+            return []
+        }
         let sut = makeSUT()
+        let limit = GooglePlayAppListViewModel.maxConcurrentSummaryFetches
 
         await sut.load()
 
-        // The first requests run concurrently, so they may start in any order.
+        // Requests run `limit` at a time, so the order in which they reach the
+        // fetcher is not deterministic: the custom track is queued after the
+        // standard ones, but may start before the last standard request it was
+        // queued behind. What the queue guarantees is that it only starts once
+        // every other slot was freed by a standard request that answered.
         let asked = connection.releaseSummaryRequests.map(\.track)
-        XCTAssertEqual(asked.sorted(), (GooglePlayAppListViewModel.standardTracks + ["city-partners"]).sorted())
-        XCTAssertEqual(asked.last, "city-partners", "Custom tracks are asked after the standard ones")
+        XCTAssertEqual(asked.sorted(), (standard + ["city-partners"]).sorted())
+        let answeredBeforeCustom = await progress.standardAnsweredWhenCustomStarted
+        XCTAssertGreaterThanOrEqual(try XCTUnwrap(answeredBeforeCustom), standard.count - (limit - 1),
+                                    "Custom tracks are queued after the standard ones")
     }
 
     func testSummaryFetchesAreBoundedInFlight() async {
@@ -221,6 +238,21 @@ final class GooglePlayAppListReleaseStatusTests: XCTestCase {
         XCTAssertEqual(sut.uiState.filteredApps.map(\.title), ["Trailhead"])
         sut.uiState.searchQuery = "  "
         XCTAssertEqual(sut.uiState.filteredApps.count, 2)
+    }
+}
+
+/// Counts the standard-track requests that answered before the custom one
+/// started, from inside a `@Sendable` fetch handler.
+private actor SummaryRequestProgress {
+    private var standardAnsweredCount = 0
+    private(set) var standardAnsweredWhenCustomStarted: Int?
+
+    func standardAnswered() {
+        standardAnsweredCount += 1
+    }
+
+    func customStarted() {
+        standardAnsweredWhenCustomStarted = standardAnsweredCount
     }
 }
 
