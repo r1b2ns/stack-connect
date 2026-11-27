@@ -1,16 +1,8 @@
-# StackConnect
-
-<p align="center">
-  <img src=".github/assets/social-preview.png" alt="StackConnect: open-source App Store Connect and Firebase app for iPhone and iPad" />
-</p>
+<h1 align="center">StackConnect</h1>
 
 <p align="center">
   A free, open-source iPhone and iPad app for <b>App Store Connect</b> and <b>Firebase</b>.<br />
   Your keys stay in the Keychain, there is no server in between, and you can inspect every request the app makes.
-</p>
-
-<p align="center">
-  <a href="https://apps.apple.com/app/id6761390987"><img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="44" /></a>
 </p>
 
 <p align="center">
@@ -22,13 +14,16 @@
 </p>
 
 <p align="center">
-  <img src=".github/assets/demo.gif" width="300" alt="StackConnect demo: from the Home dashboard to an app, its version and the What's New editor" />
+  <a href="https://apps.apple.com/app/id6761390987"><img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="44" /></a>
 </p>
 
-| | | |
-|:-:|:-:|:-:|
-| <img src="fastlane/screenshots/en-US/iPhone_6.5_1.png" width="240" alt="Home: what is in review and waiting to ship" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_2.png" width="240" alt="App list with the status of every version" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_3.png" width="240" alt="Version in review, with metadata and a Cancel Review button" /> |
-| <img src="fastlane/screenshots/en-US/iPhone_6.5_4.png" width="240" alt="Phased release controls" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_5.png" width="240" alt="Release or reject a version pending developer release" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_6.png" width="240" alt="Replying to a customer review" /> |
+<p align="center">
+  <img src=".github/assets/social-preview.png" alt="StackConnect: open-source App Store Connect and Firebase app for iPhone and iPad" />
+</p>
+
+<p align="center">
+  <img src=".github/assets/demo.gif" width="300" alt="StackConnect demo: from the Home dashboard to an app, its version and the What's New editor" />
+</p>
 
 ## Why StackConnect
 
