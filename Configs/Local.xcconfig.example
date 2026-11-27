@@ -1,0 +1,77 @@
+// Local.xcconfig.example
+//
+// Per-developer overrides for Debug builds, so you can build and run
+// StackConnect with your own Apple developer team (or with none) without
+// editing any tracked file.
+//
+//   cp Configs/Local.xcconfig.example Configs/Local.xcconfig
+//   # edit Configs/Local.xcconfig, then:
+//   xcodegen generate --spec project.yml
+//
+// Configs/Local.xcconfig is git-ignored and included at the end of
+// Configs/Debug.xcconfig only (`#include? "Local.xcconfig"`), so its values
+// win over the defaults there. Release builds (archives, TestFlight, App Store)
+// never read it. Without it, Debug uses the maintainer's team and fastlane
+// match profiles, which only build on the maintainer's machine.
+//
+// Pick ONE of the two setups below: A for a device (needs a team), B for the
+// simulator with no team at all. Delete or comment out the other one.
+
+// ---------------------------------------------------------------------------
+// A. Device (or simulator) with your own team, Xcode automatic signing.
+//
+// Bundle ids and App Groups belong to a team, so use your own reverse-DNS
+// prefix. Xcode registers the ids, the App Group and a development profile
+// for you (Xcode > Settings > Accounts must be signed in to that team).
+// A free personal team may not get the App Groups capability; if signing
+// fails for that reason, use setup B on the simulator.
+// ---------------------------------------------------------------------------
+
+// Your Team ID (developer.apple.com > Membership details, 10 characters).
+DEVELOPMENT_TEAM = ABCDE12345
+CODE_SIGN_STYLE = Automatic
+CODE_SIGN_IDENTITY = Apple Development
+
+// Automatic signing picks the profiles: leave both specifiers empty.
+PROVISIONING_PROFILE_SPECIFIER =
+WIDGET_PROVISIONING_PROFILE_SPECIFIER =
+
+// The widget extension's id is always $(PRODUCT_BUNDLE_IDENTIFIER).widget.
+PRODUCT_BUNDLE_IDENTIFIER = com.example.stackconnect
+PRODUCT_BUNDLE_IDENTIFIER_TESTS = com.example.stackconnect.tests
+
+// Shared by the app and the widget (entitlements + AppGroupIdentifier key).
+// Must start with "group.".
+APP_GROUP_IDENTIFIER = group.com.example.stackconnect
+
+// Optional: the home-screen name of your Debug build.
+// APP_DISPLAY_NAME = StackConnect LOCAL
+
+// ---------------------------------------------------------------------------
+// B. Simulator only, no team and no certificate (this is what CI uses).
+//
+// Ad-hoc signs ("Sign to Run Locally"), which still embeds the entitlements, so
+// the App Group container works on the simulator. Do NOT use
+// CODE_SIGNING_ALLOWED = NO instead: without signing the App Group entitlement
+// is dropped and the SwiftData store (and the tests) crash. Cannot install on a
+// device.
+// ---------------------------------------------------------------------------
+
+// DEVELOPMENT_TEAM =
+// CODE_SIGN_STYLE = Manual
+// CODE_SIGN_IDENTITY = -
+// PROVISIONING_PROFILE_SPECIFIER =
+// WIDGET_PROVISIONING_PROFILE_SPECIFIER =
+// PRODUCT_BUNDLE_IDENTIFIER = com.example.stackconnect
+// PRODUCT_BUNDLE_IDENTIFIER_TESTS = com.example.stackconnect.tests
+// APP_GROUP_IDENTIFIER = group.com.example.stackconnect
+
+// ---------------------------------------------------------------------------
+// Known limits with a bundle id other than zeroSixteen.stackconnect:
+// - Sign in with Google: GOOGLE_OAUTH_CLIENT_ID is an iOS OAuth client bound to
+//   the maintainer's bundle id, so Google sign-in fails. Create your own iOS
+//   OAuth client for your bundle id and set GOOGLE_OAUTH_CLIENT_ID here if you
+//   need it.
+// - Firebase stays off unless you add your own GoogleService-Info.plist.
+// - To run without any real account, use the "StackConnect Fake Data" scheme.
+// ---------------------------------------------------------------------------

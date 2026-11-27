@@ -10,6 +10,16 @@ CODE_SIGN_STYLE = Manual
 CODE_SIGN_IDENTITY = Apple Distribution
 PROVISIONING_PROFILE_SPECIFIER = match AppStore zeroSixteen.stackconnect
 
+// The widget extension's profile (project.yml). Its bundle id is always
+// $(PRODUCT_BUNDLE_IDENTIFIER).widget and it signs with the team, style and
+// identity above.
+WIDGET_PROVISIONING_PROFILE_SPECIFIER = match AppStore zeroSixteen.stackconnect.widget
+
+// App Group shared by the app and the widget (SwiftData store, widget snapshot,
+// shared flags). Expanded into both .entitlements files and exposed to the code
+// as the Info.plist key AppGroupIdentifier, read by StackCore's AppGroup.
+APP_GROUP_IDENTIFIER = group.zeroSixteen.stackconnect
+
 // Sign in with Google (plan google-sign-in.md G1, G8): the iOS OAuth client ID
 // (public; iOS clients have no secret). Exposed to the app as the Info.plist
 // key GoogleOAuthClientID (project.yml) and read by GoogleOAuthConfiguration.
