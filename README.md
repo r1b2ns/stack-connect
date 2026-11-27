@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="https://apps.apple.com/app/id6761390987"><img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="44" /></a>
+  <a href="https://apps.apple.com/app/apple-store/id6761390987?pt=128637380&ct=github-readme&mt=8"><img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="44" /></a>
 </p>
 
 <p align="center">
