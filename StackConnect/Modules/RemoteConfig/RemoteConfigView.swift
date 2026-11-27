@@ -142,7 +142,7 @@ struct RemoteConfigView<ViewModel: RemoteConfigViewModelProtocol>: View {
 
                         Text(viewModel.uiState.conditions.isEmpty
                              ? String(localized: "No conditions")
-                             : "\(viewModel.uiState.conditions.count) condition\(viewModel.uiState.conditions.count == 1 ? "" : "s")")
+                             : String(localized: "\(viewModel.uiState.conditions.count) conditions"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -215,7 +215,7 @@ struct RemoteConfigView<ViewModel: RemoteConfigViewModelProtocol>: View {
                         Text("·")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
-                        Text("\(item.conditionNames.count) condition\(item.conditionNames.count == 1 ? "" : "s")")
+                        Text("\(item.conditionNames.count) conditions")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
