@@ -1,4 +1,4 @@
-StackConnect 是專為 App Store Connect 與 Firebase 打造的免費開源助手。透過一款原生 iPhone 與 iPad App，即可管理您的開發者帳號。
+StackConnect 是專為 App Store Connect 與 Firebase 打造的免費開源助手。連結您的 App Store Connect 帳號與 Firebase，透過一款原生 iPhone 與 iPad App，即可管理您的開發者帳號。
 
 首頁
 • 一眼掌握重點資訊：審查中的 App、等待發佈的 App 與最新評論

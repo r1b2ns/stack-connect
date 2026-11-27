@@ -1,1 +1,1 @@
-connect,appstore,ios,firebase,testflight,desarrollador,reseñas,analíticas,versiones,certificados
+testflight,firebase,beta,testers,metadatos,certificados,remote config,push,analíticas,desarrollador

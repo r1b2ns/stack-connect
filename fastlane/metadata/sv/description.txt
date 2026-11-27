@@ -1,4 +1,4 @@
-StackConnect är en gratis följeslagare med öppen källkod för App Store Connect och Firebase. Hantera dina utvecklarkonton i en och samma inbyggda app för iPhone och iPad.
+StackConnect är en gratis följeslagare med öppen källkod för App Store Connect och Firebase. Anslut ditt App Store Connect-konto och Firebase och hantera dina utvecklarkonton i en och samma inbyggda app för iPhone och iPad.
 
 HEM
 • Allt på en blick: appar under granskning, appar som väntar på release och senaste recensioner

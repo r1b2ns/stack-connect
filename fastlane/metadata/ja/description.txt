@@ -1,4 +1,4 @@
-StackConnectは、App Store ConnectとFirebaseのための無料のオープンソースコンパニオンです。デベロッパーアカウントを、ネイティブのiPhone/iPadアプリひとつで管理できます。
+StackConnectは、App Store ConnectとFirebaseのための無料のオープンソースコンパニオンです。App Store ConnectアカウントとFirebaseを接続すれば、デベロッパーアカウントをネイティブのiPhone/iPadアプリひとつで管理できます。
 
 ホーム
 • 必要な情報をひと目で確認：審査中のアプリ、リリース待ちのアプリ、最新のレビュー

@@ -1,1 +1,1 @@
-appstore,ios,firebase,testflight,développeur,avis,analyses,version,certificats,équipe,connect
+testflight,firebase,bêta,testeurs,métadonnées,certificats,remote config,push,analytics,développeur

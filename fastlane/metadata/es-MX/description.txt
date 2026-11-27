@@ -1,4 +1,4 @@
-StackConnect es un compañero gratuito y de código abierto para App Store Connect y Firebase. Administra tus cuentas de desarrollador desde una sola app nativa para iPhone y iPad.
+StackConnect es un compañero gratuito y de código abierto para App Store Connect y Firebase. Conecta tu cuenta de App Store Connect y Firebase, y administra tus cuentas de desarrollador desde una sola app nativa para iPhone y iPad.
 
 INICIO
 • Todo de un vistazo: apps en revisión, en espera de publicación y reseñas recientes

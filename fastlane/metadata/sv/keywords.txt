@@ -1,1 +1,1 @@
-appstore,ios,firebase,testflight,utvecklare,recensioner,analys,release,certifikat,team,connect
+testflight,firebase,beta,metadata,certifikat,remote config,push,analys,utvecklare,recensioner,xcode

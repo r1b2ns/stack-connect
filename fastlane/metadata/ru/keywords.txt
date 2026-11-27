@@ -1,1 +1,1 @@
-appstore,ios,firebase,testflight,разработчик,отзывы,аналитика,релиз
+testflight,firebase,asc,бета,тестеры,метаданные,сертификаты,remote config,push,аналитика,разработчик
