@@ -1,1 +1,1 @@
-App Store Connect 與 Firebase，盡在一款免費開源 App。版本發佈、評論、TestFlight、團隊與分析數據，用 iPhone 就能輕鬆掌握。
+新功能：Network Audit 顯示 StackConnect 送出的每個請求，機密資訊皆已遮蔽。在 iPhone 與 iPad 上使用 App Store Connect 與 Firebase，免費且開放原始碼。

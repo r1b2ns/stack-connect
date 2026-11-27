@@ -1,1 +1,1 @@
-App Store Connect e Firebase in un'unica app gratuita e open source. Release, recensioni, TestFlight, team e analytics — direttamente dal tuo iPhone.
+Novità: Network Audit mostra ogni richiesta inviata da StackConnect, con i segreti nascosti. App Store Connect e Firebase su iPhone e iPad, gratis e open source.

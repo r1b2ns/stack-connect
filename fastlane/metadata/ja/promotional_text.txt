@@ -1,1 +1,1 @@
-App Store ConnectとFirebaseを、無料のオープンソースアプリひとつで。リリース、レビュー、TestFlight、チーム、分析までiPhoneからすぐに確認できます。
+新機能：Network AuditでStackConnectが送るすべてのリクエストを確認（秘密情報は伏せ字）。App Store ConnectとFirebaseをiPhoneとiPadで。無料のオープンソース。
