@@ -174,6 +174,7 @@ struct IdentifierDetailView<ViewModel: IdentifierDetailViewModelProtocol>: View 
                                     .foregroundStyle(.red)
                             }
                             .buttonStyle(.borderless)
+                            .accessibilityLabel(String(localized: "Disable \(cap.displayName)"))
                         }
                     }
                 }

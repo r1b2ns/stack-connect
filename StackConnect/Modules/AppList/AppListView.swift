@@ -102,6 +102,7 @@ private struct AppListEntry: View {
                     } label: {
                         Image(systemName: "gearshape")
                     }
+                    .accessibilityLabel(String(localized: "Manage Account"))
                 case .usersAndAccess:
                     if account.canAdd(.users) {
                         StackTrackedButton(.inviteUser, on: .userAccess) {
@@ -109,6 +110,7 @@ private struct AppListEntry: View {
                         } label: {
                             Image(systemName: "plus")
                         }
+                        .accessibilityLabel(String(localized: "Invite User"))
                     }
                 }
             }
@@ -302,6 +304,7 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
             }
             .buttonStyle(.borderless)
             .help(String(localized: "Archive"))
+            .accessibilityLabel(String(localized: "Archive"))
         }
     }
 
@@ -317,6 +320,7 @@ struct AppListView<ViewModel: AppListViewModelProtocol>: View {
         }
         .buttonStyle(.borderless)
         .help(app.isFavorite ? String(localized: "Unfavorite") : String(localized: "Favorite"))
+        .accessibilityLabel(app.isFavorite ? String(localized: "Unfavorite") : String(localized: "Favorite"))
     }
 
     private func buildStatusBadge(state: AppStoreState, version: String?) -> some View {

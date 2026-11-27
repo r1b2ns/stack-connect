@@ -347,6 +347,7 @@ struct TestFlightView<ViewModel: TestFlightViewModelProtocol>: View {
                 } label: {
                     Image(systemName: "plus")
                 }
+                .accessibilityLabel(String(localized: "New Beta Group"))
             }
         }
     }

@@ -67,6 +67,7 @@ struct FirebaseProjectDetailView<ViewModel: FirebaseProjectDetailViewModelProtoc
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(String(localized: "Copy \(String(localized: "Project ID"))"))
             }
 
             if let location = viewModel.uiState.project.locationId {

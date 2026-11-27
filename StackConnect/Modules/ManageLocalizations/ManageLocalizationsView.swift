@@ -167,6 +167,7 @@ struct ManageLocalizationsView<ViewModel: ManageLocalizationsViewModelProtocol>:
             } label: {
                 Image(systemName: "plus")
             }
+            .accessibilityLabel(String(localized: "Add Localization"))
         }
     }
 

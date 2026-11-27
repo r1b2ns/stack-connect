@@ -321,6 +321,7 @@ struct MessagingView<ViewModel: MessagingViewModelProtocol>: View {
                 } label: {
                     Image(systemName: "plus")
                 }
+                .accessibilityLabel(String(localized: "New Campaign"))
             }
         }
     }
@@ -582,6 +583,7 @@ struct NewCampaignSheet: View {
                     Image(systemName: "plus.circle.fill")
                         .foregroundStyle(.blue)
                 }
+                .accessibilityLabel(String(localized: "Add Custom Data"))
                 .disabled(newDataKey.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         } header: {

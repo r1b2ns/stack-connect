@@ -653,6 +653,7 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                 } label: {
                     Image(systemName: "plus")
                 }
+                .accessibilityLabel(String(localized: "Create Platform"))
             }
         }
         ToolbarItemGroup(placement: .bottomBar) {
@@ -662,6 +663,9 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                 Image(systemName: viewModel.uiState.app.isFavorite ? "star.fill" : "star")
                     .foregroundStyle(viewModel.uiState.app.isFavorite ? .yellow : .secondary)
             }
+            .accessibilityLabel(viewModel.uiState.app.isFavorite
+                ? String(localized: "Unfavorite")
+                : String(localized: "Favorite"))
             Spacer()
             Button {
                 Task { await viewModel.toggleArchive() }
@@ -669,6 +673,9 @@ struct AppDetailView<ViewModel: AppDetailViewModelProtocol>: View {
                 Image(systemName: viewModel.uiState.app.isArchived ? "archivebox.fill" : "archivebox")
                     .foregroundStyle(viewModel.uiState.app.isArchived ? .orange : .secondary)
             }
+            .accessibilityLabel(viewModel.uiState.app.isArchived
+                ? String(localized: "Unarchive")
+                : String(localized: "Archive"))
         }
     }
 }

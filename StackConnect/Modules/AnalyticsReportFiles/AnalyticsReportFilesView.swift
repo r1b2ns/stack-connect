@@ -141,6 +141,10 @@ struct AnalyticsReportFilesView<ViewModel: AnalyticsReportFilesViewModelProtocol
             guard viewModel.uiState.isSelecting else { return }
             viewModel.toggle(id: item.id)
         }
+        // The row is only tappable while selecting, so it is a button (and
+        // reports its selection) only in that mode.
+        .accessibilityAddTraits(viewModel.uiState.isSelecting ? .isButton : [])
+        .accessibilityAddTraits(viewModel.uiState.isSelecting && isSelected ? .isSelected : [])
     }
 
     // MARK: - Bottom bar (selection mode)

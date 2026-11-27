@@ -228,6 +228,7 @@ struct FirebaseAppListView<ViewModel: FirebaseAppListViewModelProtocol>: View {
             } label: {
                 Image(systemName: "plus")
             }
+            .accessibilityLabel(String(localized: "New App"))
         }
     }
 }

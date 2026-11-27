@@ -289,6 +289,7 @@ struct RemoteConfigView<ViewModel: RemoteConfigViewModelProtocol>: View {
             } label: {
                 Image(systemName: "plus")
             }
+            .accessibilityLabel(String(localized: "New Parameter"))
         }
 
         ToolbarItem(placement: .secondaryAction) {
@@ -351,6 +352,7 @@ struct RemoteConfigConditionsView: View {
                 } label: {
                     Image(systemName: "plus")
                 }
+                .accessibilityLabel(String(localized: "New Condition"))
             }
             ToolbarItem(placement: .topBarLeading) {
                 EditButton()
@@ -409,6 +411,7 @@ struct RemoteConfigConditionsView: View {
             editingConditionIndex = index
             showAddCondition = true
         }
+        .accessibilityAddTraits(.isButton)
         .contextMenu {
             StackTrackedButton(.edit, on: .remoteConfigConditions) {
                 editingConditionIndex = index

@@ -65,6 +65,7 @@ struct FeedbackScreen: View {
                     .font(.title2)
                     .foregroundStyle(.secondary)
             }
+            .accessibilityLabel(String(localized: "Close"))
         }
     }
 

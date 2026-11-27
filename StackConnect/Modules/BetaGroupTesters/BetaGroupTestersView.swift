@@ -230,6 +230,7 @@ struct BetaGroupTestersView<ViewModel: BetaGroupTestersViewModelProtocol>: View 
             } label: {
                 Image(systemName: "plus")
             }
+            .accessibilityLabel(String(localized: "Add Tester"))
         }
     }
 

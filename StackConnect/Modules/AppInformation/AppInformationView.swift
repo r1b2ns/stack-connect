@@ -285,6 +285,7 @@ struct AppInformationView<ViewModel: AppInformationViewModelProtocol>: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "Copy \(label)"))
         }
         .font(.subheadline)
     }

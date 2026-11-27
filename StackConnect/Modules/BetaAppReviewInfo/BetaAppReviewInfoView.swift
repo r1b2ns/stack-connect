@@ -220,6 +220,7 @@ struct BetaAppReviewInfoView<ViewModel: BetaAppReviewInfoViewModelProtocol>: Vie
         }
         .buttonStyle(.plain)
         .disabled(value.isEmpty)
+        .accessibilityLabel(String(localized: "Copy \(String(localized: "User Name"))"))
     }
 
     private func passwordVisibilityButton() -> some View {
@@ -230,6 +231,9 @@ struct BetaAppReviewInfoView<ViewModel: BetaAppReviewInfoViewModelProtocol>: Vie
                 .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(isPasswordVisible
+            ? String(localized: "Hide password")
+            : String(localized: "Show password"))
     }
 
     // MARK: - Toolbar

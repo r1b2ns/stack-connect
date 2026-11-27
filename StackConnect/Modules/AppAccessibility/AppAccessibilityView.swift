@@ -229,6 +229,7 @@ struct AppAccessibilityView<ViewModel: AppAccessibilityViewModelProtocol>: View 
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel(String(localized: "Add Device"))
                 }
             }
         }

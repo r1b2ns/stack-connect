@@ -119,6 +119,7 @@ struct AppReviewInfoView<ViewModel: AppReviewInfoViewModelProtocol>: View {
         }
         .buttonStyle(.plain)
         .disabled(value.isEmpty)
+        .accessibilityLabel(String(localized: "Copy \(String(localized: "Demo Account Name"))"))
     }
 
     private func passwordVisibilityButton() -> some View {
@@ -129,6 +130,9 @@ struct AppReviewInfoView<ViewModel: AppReviewInfoViewModelProtocol>: View {
                 .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(isPasswordVisible
+            ? String(localized: "Hide password")
+            : String(localized: "Show password"))
     }
 
     // MARK: - Contact Information
