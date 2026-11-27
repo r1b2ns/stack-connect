@@ -93,6 +93,8 @@ Pick the **StackConnect Fake Data** scheme. It runs the app on invented, realist
 
 Analytics and crash reporting are enabled only when `StackConnect/Resources/GoogleService-Info.plist` exists. The file is git-ignored and never committed. Without it, the app builds and runs normally and events only go to the unified log (visible in Console in DEBUG builds). To use your own Firebase project, drop your `GoogleService-Info.plist` into `StackConnect/Resources/` and generate the project again.
 
+DEBUG builds never send analytics or crash reports to Firebase, even with the plist: Firebase is configured only for Remote Config. To check events in Firebase DebugView, launch a DEBUG build with `-StackAnalyticsSendToFirebase YES -FIRDebugEnabled`.
+
 ## Architecture
 
 - **SwiftUI, MVVM + Coordinator.** Each module has a Factory, an Entry that owns the state objects, a View generic over its ViewModel protocol, and a Coordinator with a route enum. See [CONTRIBUTING.md](CONTRIBUTING.md) for the template.

@@ -36,17 +36,31 @@ typealias AnalyticsReporting = AnalyticsTracking & NonFatalErrorRecording
 /// state that can drift from what the Settings screen shows.
 ///
 /// No user or device identifier is generated or attached.
+///
+/// Launch-time screen views: a `screen_view` tracked while the app is not
+/// active yet (a root view's `onAppear` runs during scene connection, before
+/// Firebase started the session, and GA4 then records it with screen name
+/// "(not set)") is held in a `PendingScreenViewQueue` and sent, in order, once
+/// `appActivity` reports the app active. Any later `screen_view` waits behind
+/// held ones so the order is kept. Other events are never delayed. The gate is
+/// checked again when the held events are sent, and opting out drops them.
 @MainActor
 final class AnalyticsService: AnalyticsTracking, AnalyticsUserPropertySetting, NonFatalErrorRecording {
 
     /// Built once, on first access, with the providers available in this build
     /// (Firebase only when `GoogleService-Info.plist` is bundled). `AppDelegate`
     /// touches it at launch, before anything is tracked.
-    static let shared = AnalyticsService(providers: AnalyticsBootstrap.makeDefaultProviders())
+    static let shared = AnalyticsService(
+        providers: AnalyticsBootstrap.makeDefaultProviders(),
+        appActivity: UIApplicationActivityMonitor()
+    )
 
     private let providers: [any AnalyticsProvider]
     private let settings: AppSettings
     private let standardParameters: [String: AnalyticsValue]
+    /// `nil`: the app is treated as always active (no screen view is held).
+    private let appActivity: (any AppActivityMonitoring)?
+    private var pendingScreenViews = PendingScreenViewQueue()
 
     /// The latest value of every user property set this session, sent or not.
     /// In memory only: it lets opt-in restore the segmentation.
@@ -60,11 +74,16 @@ final class AnalyticsService: AnalyticsTracking, AnalyticsUserPropertySetting, N
         providers: [any AnalyticsProvider] = [LogAnalyticsProvider()],
         settings: AppSettings = .shared,
         bundle: Bundle = .main,
-        processInfo: ProcessInfo = .processInfo
+        processInfo: ProcessInfo = .processInfo,
+        appActivity: (any AppActivityMonitoring)? = nil
     ) {
         self.providers = providers
         self.settings = settings
         self.standardParameters = Self.makeStandardParameters(bundle: bundle, processInfo: processInfo)
+        self.appActivity = appActivity
+        appActivity?.observeDidBecomeActive { [weak self] in
+            self?.dispatchPendingScreenViews()
+        }
     }
 
     var isEnabled: Bool {
@@ -73,7 +92,28 @@ final class AnalyticsService: AnalyticsTracking, AnalyticsUserPropertySetting, N
 
     func track(_ event: AnalyticsEvent) {
         guard isEnabled else { return } // The single gate.
+        if shouldHold(event) {
+            pendingScreenViews.enqueue(event)
+            Log.print.info("[Analytics] App not active yet: holding \(event.name) until it is")
+            return
+        }
         dispatch(event)
+    }
+
+    /// The held screen views, in order. Exposed for tests.
+    var heldScreenViews: [AnalyticsEvent] { pendingScreenViews.events }
+
+    /// Sends the screen views held while the app was not active, behind the
+    /// opt-out gate (an opted-out user's held events are dropped). Called when
+    /// `appActivity` reports the app became active.
+    func dispatchPendingScreenViews() {
+        guard !pendingScreenViews.isEmpty else { return }
+        let held = pendingScreenViews.drain()
+        guard isEnabled else { return } // The single gate, again.
+        Log.print.info("[Analytics] App active: sending \(held.count) held screen view(s)")
+        for event in held {
+            dispatch(event)
+        }
     }
 
     /// Sets user properties on every provider, but only while enabled (same
@@ -130,6 +170,8 @@ final class AnalyticsService: AnalyticsTracking, AnalyticsUserPropertySetting, N
             dispatch(.analyticsEnabled)
             Log.print.info("[Analytics] Sending enabled by the user")
         } else {
+            // Held screen views of an opted-out user are never sent.
+            pendingScreenViews.removeAll()
             // Order matters: the last event goes out while still enabled.
             dispatch(.analyticsDisabled)
             settings.setEnabled(false, for: .analyticsEnabled)
@@ -148,6 +190,13 @@ final class AnalyticsService: AnalyticsTracking, AnalyticsUserPropertySetting, N
     }
 
     // MARK: - Private
+
+    /// A `screen_view` is held while the app is not active, and also while
+    /// earlier ones are still held (so they keep their order).
+    private func shouldHold(_ event: AnalyticsEvent) -> Bool {
+        guard event.name == AnalyticsEventName.screenView, let appActivity else { return false }
+        return !appActivity.isActive || !pendingScreenViews.isEmpty
+    }
 
     /// Sends without checking the gate. Only `track` and `setEnabled` call it.
     private func dispatch(_ event: AnalyticsEvent) {

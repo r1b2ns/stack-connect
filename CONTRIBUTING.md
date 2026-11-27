@@ -24,6 +24,7 @@ open StackConnect.xcodeproj
 - **The `.xcodeproj` is generated.** Never edit it by hand. Change `project.yml` and run `xcodegen generate --spec project.yml` again after adding or removing files, packages or build settings.
 - **The Rust core is downloaded automatically.** `Packages/StackCoreRust` points SwiftPM at a prebuilt binary from the [stack-connect-core releases](https://github.com/r1b2ns/stack-connect-core/releases), so you don't need Rust.
 - **Firebase is optional.** Without `StackConnect/Resources/GoogleService-Info.plist` (git-ignored) the app runs normally and analytics only go to the unified log.
+- **DEBUG builds never send analytics or crash reports to Firebase.** Even with the plist bundled, Firebase is only configured for Remote Config and events go to the unified log only. To check events in Firebase DebugView, launch a DEBUG build with `-StackAnalyticsSendToFirebase YES -FIRDebugEnabled` (or set `STACK_ANALYTICS_SEND_TO_FIREBASE=1`). The opt-in is ignored in Release builds, unit tests and fake data mode.
 
 ### Running without a developer account: fake data mode
 
