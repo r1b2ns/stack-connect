@@ -1,0 +1,120 @@
+# Builds the app and runs the unit tests on every pull request and on every
+# push to master, from a fresh clone with no Apple developer team, no
+# certificates and no secrets. It dogfoods the contributor path: the same
+# no-team Configs/Local.xcconfig as setup B in Configs/Local.xcconfig.example.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+# One run per PR (or branch): a new push cancels the superseded run.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Pinned to a version listed in the runner image README
+  # (actions/runner-images, images/macos/macos-26-arm64-Readme.md), together
+  # with a simulator installed for that Xcode's iOS runtime.
+  XCODE_APP: /Applications/Xcode_26.4.1.app
+  DESTINATION: platform=iOS Simulator,name=iPhone 17 Pro Max,OS=26.4.1
+
+jobs:
+  build-and-test:
+    name: Build and test (iOS Simulator)
+    runs-on: macos-26
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select --switch "$XCODE_APP"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen
+          xcodegen --version
+
+      # No team, ad-hoc ("Sign to Run Locally") signing and a non-maintainer
+      # bundle id and App Group. Signing stays ON: CODE_SIGNING_ALLOWED=NO
+      # drops the App Group entitlement and the SwiftData tests crash.
+      - name: Write the no-team Configs/Local.xcconfig
+        run: |
+          cat > Configs/Local.xcconfig <<'XCCONFIG'
+          DEVELOPMENT_TEAM =
+          CODE_SIGN_STYLE = Manual
+          CODE_SIGN_IDENTITY = -
+          PROVISIONING_PROFILE_SPECIFIER =
+          WIDGET_PROVISIONING_PROFILE_SPECIFIER =
+          PRODUCT_BUNDLE_IDENTIFIER = com.example.stackconnect
+          PRODUCT_BUNDLE_IDENTIFIER_TESTS = com.example.stackconnect.tests
+          APP_GROUP_IDENTIFIER = group.com.example.stackconnect
+          XCCONFIG
+          cat Configs/Local.xcconfig
+
+      - name: Generate the Xcode project
+        run: xcodegen generate --spec project.yml
+
+      # Firebase and the ~65 MB Rust core xcframework are the bulk of the
+      # download. There is no committed Package.resolved (the project is
+      # generated), so the key follows the files that declare the packages.
+      - name: Cache Swift packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/SourcePackages
+          key: spm-${{ runner.os }}-xcode-26.4.1-${{ hashFiles('project.yml', 'Packages/*/Package.swift') }}
+          restore-keys: |
+            spm-${{ runner.os }}-xcode-26.4.1-
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project StackConnect.xcodeproj \
+            -scheme StackConnect \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages"
+
+      - name: Build for testing
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project StackConnect.xcodeproj \
+            -scheme StackConnect \
+            -configuration Debug \
+            -destination "$DESTINATION" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            | xcbeautify --renderer github-actions
+
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
+            -project StackConnect.xcodeproj \
+            -scheme StackConnect \
+            -configuration Debug \
+            -destination "$DESTINATION" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages" \
+            -resultBundlePath "$RUNNER_TEMP/StackConnectTests.xcresult" \
+            | xcbeautify --renderer github-actions
+
+      - name: Upload the test results
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: StackConnectTests-xcresult
+          path: ${{ runner.temp }}/StackConnectTests.xcresult
+          if-no-files-found: ignore
+          retention-days: 7
