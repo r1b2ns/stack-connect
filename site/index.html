@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StackConnect: App Store Connect and Firebase on iPhone and iPad</title>
+  <meta name="description" content="A free, open-source iPhone and iPad app for App Store Connect and Firebase. Releases, reviews, TestFlight, certificates, teams and analytics from your phone.">
+  <meta name="apple-itunes-app" content="app-id=6761390987, app-argument=stackconnect://home">
+  <link rel="icon" href="assets/icon.png">
+  <link rel="apple-touch-icon" href="assets/icon.png">
+  <meta property="og:title" content="StackConnect">
+  <meta property="og:description" content="App Store Connect and Firebase in one free, open-source app for iPhone and iPad.">
+  <meta property="og:image" content="https://r1b2ns.github.io/stack-connect/assets/og.png">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <style>
+    :root {
+      --bg: #f5f5f7; --surface: #ffffff; --text: #1d1d1f; --muted: #5f5f66;
+      --line: #e3e3e8; --accent: #0a6cff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0b0c14; --surface: #161826; --text: #f5f5f7; --muted: #a4a6b4; --line: #272a3b; --accent: #4c9bff; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font: 17px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
+    a { color: var(--accent); }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+    header { padding: 72px 0 40px; text-align: center; }
+    header img.icon { width: 112px; height: 112px; border-radius: 25px; box-shadow: 0 12px 32px rgba(0,0,0,.18); }
+    h1 { font-size: clamp(34px, 6vw, 56px); line-height: 1.08; letter-spacing: -0.02em; margin: 24px 0 12px; }
+    .lead { font-size: clamp(18px, 2.4vw, 22px); color: var(--muted); max-width: 640px; margin: 0 auto 28px; }
+    .cta { display: flex; gap: 28px; align-items: center; justify-content: center; flex-wrap: wrap; }
+    .cta .qr { display: flex; gap: 12px; align-items: center; color: var(--muted); font-size: 14px; text-align: left; }
+    .cta .qr img { width: 96px; height: 96px; border-radius: 10px; background: #fff; padding: 6px; }
+    .shots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 48px 0 8px; }
+    .shots img { width: 100%; border-radius: 22px; border: 1px solid var(--line); display: block; }
+    section { padding: 48px 0; border-top: 1px solid var(--line); }
+    h2 { font-size: 30px; letter-spacing: -0.01em; margin: 0 0 24px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; }
+    .card h3 { margin: 0 0 8px; font-size: 18px; }
+    .card p, .card ul { margin: 0; color: var(--muted); font-size: 15px; }
+    .card ul { padding-left: 18px; }
+    footer { padding: 40px 0 56px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); }
+    footer nav { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 12px; font-size: 15px; }
+    @media (max-width: 820px) {
+      .grid { grid-template-columns: 1fr; }
+      .shots { grid-template-columns: repeat(2, 1fr); }
+      .cta .qr { display: none; }
+      header { padding-top: 48px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="wrap">
+    <img class="icon" src="assets/icon.png" alt="StackConnect app icon" width="112" height="112">
+    <h1>App Store Connect and Firebase.<br>One app.</h1>
+    <p class="lead">A free, open-source iPhone and iPad app. Ship releases, reply to reviews, manage TestFlight, certificates and your team, right from your phone.</p>
+    <div class="cta">
+      <a href="https://apps.apple.com/app/apple-store/id6761390987?pt=128637380&amp;ct=website&amp;mt=8">
+        <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="54">
+      </a>
+      <div class="qr">
+        <img src="assets/qr.png" alt="QR code to StackConnect on the App Store" width="96" height="96">
+        <span>Scan with your<br>iPhone camera</span>
+      </div>
+    </div>
+    <div class="shots">
+      <img src="assets/screen-1.jpg" alt="StackConnect on iPhone, screen 1" loading="lazy">
+      <img src="assets/screen-2.jpg" alt="StackConnect on iPhone, screen 2" loading="lazy">
+      <img src="assets/screen-3.jpg" alt="StackConnect on iPhone, screen 3" loading="lazy">
+      <img src="assets/screen-4.jpg" alt="StackConnect on iPhone, screen 4" loading="lazy">
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section>
+      <h2>Everything you open the website for</h2>
+      <div class="grid">
+        <div class="card"><h3>Releases</h3><p>Edit metadata and localizations, create a version, run a pre-submission checklist, submit for review and release, on iOS, macOS, tvOS and visionOS.</p></div>
+        <div class="card"><h3>Reviews</h3><p>Read customer reviews from every storefront and reply from your phone, with reusable reply templates.</p></div>
+        <div class="card"><h3>TestFlight</h3><p>Beta groups, testers, builds and beta review information.</p></div>
+        <div class="card"><h3>Certificates and team</h3><p>Certificates, provisioning profiles, identifiers and devices. Invite members and edit roles and visible apps.</p></div>
+        <div class="card"><h3>Analytics</h3><p>A dashboard plus daily, weekly and monthly report charts, and Home Screen widgets for what is in review.</p></div>
+        <div class="card"><h3>Firebase</h3><p>Projects and apps, Remote Config parameters and conditions, and Cloud Messaging with audience targeting.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Built to be verified</h2>
+      <div class="grid">
+        <div class="card"><h3>No server in between</h3><p>The app talks directly to Apple's and Google's official APIs. There is no StackConnect backend.</p></div>
+        <div class="card"><h3>Network Audit</h3><p>Settings › Privacy › Network Audit lists every request the app sends and receives, with secrets masked. Export the log and check it yourself.</p></div>
+        <div class="card"><h3>Open source, MIT</h3><p>Read the code, build it yourself or send a fix on <a href="https://github.com/r1b2ns/stack-connect">GitHub</a>. Credentials stay in the iOS Keychain.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    <nav>
+      <a href="https://github.com/r1b2ns/stack-connect">GitHub</a>
+      <a href="https://github.com/r1b2ns/stack-connect/blob/master/PRIVACY.md">Privacy policy</a>
+      <a href="https://github.com/r1b2ns/stack-connect/issues">Support</a>
+    </nav>
+    StackConnect is an independent project and is not affiliated with, endorsed by or sponsored by Apple Inc. or Google LLC. App Store Connect and TestFlight are trademarks of Apple Inc. Firebase is a trademark of Google LLC.
+  </footer>
+</body>
+</html>
