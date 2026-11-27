@@ -1,0 +1,58 @@
+name: Bug report
+description: Something in StackConnect doesn't work as expected.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please don't include API keys, `.p8` files, service account JSON or other secrets. If the bug is a security issue, report it privately instead (see SECURITY.md).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect to happen, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Tap …
+        3. See …
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Area
+      options:
+        - App Store Connect
+        - Firebase
+        - Accounts and sign-in
+        - Home and widgets
+        - Settings and privacy
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: StackConnect version
+      description: Shown at the bottom of Settings, or the commit if you built it from source.
+      placeholder: 2.5.0 (App Store) or 5aecc42 (source)
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and OS version
+      placeholder: iPhone 16 Pro, iOS 26.1
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Screenshots, error messages or logs
+      description: The error text from the app helps a lot. A Network Audit export can help too, but review it first and remove anything you don't want to share.

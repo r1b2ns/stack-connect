@@ -1,63 +1,128 @@
 # StackConnect
 
-A native iOS app to manage your **App Store Connect**, **Firebase**, and **Google Play** developer accounts from a single place. From a unified interface you can browse apps, edit version metadata, manage TestFlight groups, reply to customer reviews, view analytics, manage Firebase Remote Config and FCM campaigns, and securely export/import accounts to share with your team.
+<p align="center">
+  <img src=".github/assets/social-preview.png" alt="StackConnect: open-source App Store Connect and Firebase app for iPhone and iPad" />
+</p>
 
-Built with SwiftUI for iOS 17+.
+<p align="center">
+  A free, open-source iPhone and iPad app for <b>App Store Connect</b> and <b>Firebase</b>.<br />
+  Your keys stay in the Keychain, there is no server in between, and you can inspect every request the app makes.
+</p>
 
-## Download
+<p align="center">
+  <a href="https://apps.apple.com/app/id6761390987"><img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="44" /></a>
+</p>
 
-<a href="https://apps.apple.com/br/app/stackconnect/id6761390987">
-  <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="50" />
-</a>
+<p align="center">
+  <a href="https://github.com/r1b2ns/stack-connect/actions/workflows/ci.yml"><img src="https://github.com/r1b2ns/stack-connect/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/r1b2ns/stack-connect/releases/latest"><img src="https://img.shields.io/github/v/release/r1b2ns/stack-connect" alt="Latest release" /></a>
+  <img src="https://img.shields.io/badge/iOS%20%7C%20iPadOS-17%2B-blue" alt="iOS and iPadOS 17+" />
+  <img src="https://img.shields.io/badge/SwiftUI-orange" alt="SwiftUI" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license" /></a>
+</p>
 
-[Download StackConnect on the App Store](https://apps.apple.com/br/app/stackconnect/id6761390987)
+<p align="center">
+  <img src=".github/assets/demo.gif" width="300" alt="StackConnect demo: from the Home dashboard to an app, its version and the What's New editor" />
+</p>
 
-## Running the app
+| | | |
+|:-:|:-:|:-:|
+| <img src="fastlane/screenshots/en-US/iPhone_6.5_1.png" width="240" alt="Home: what is in review and waiting to ship" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_2.png" width="240" alt="App list with the status of every version" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_3.png" width="240" alt="Version in review, with metadata and a Cancel Review button" /> |
+| <img src="fastlane/screenshots/en-US/iPhone_6.5_4.png" width="240" alt="Phased release controls" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_5.png" width="240" alt="Release or reject a version pending developer release" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_6.png" width="240" alt="Replying to a customer review" /> |
 
-### Requirements
-- Xcode 16.3+
-- iOS 17.0+
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+## Why StackConnect
 
-The Rust core (`StackCoreRust`) is a prebuilt binary that Xcode/SwiftPM downloads automatically from the [stack-connect-core releases](https://github.com/r1b2ns/stack-connect-core/releases) on first package resolution (~65 MB), so no Rust toolchain is needed.
+The official App Store Connect app is a good monitor, but most of the work still sends you to the website: editing metadata, creating a version and submitting it, certificates and profiles, team roles. StackConnect does that work from your phone, and adds Firebase on the same screen.
 
-### Steps
+Because it holds keys that can ship your builds, it is built to be verifiable:
+
+- **No StackConnect server.** The app talks directly to Apple's App Store Connect API and Google's Firebase APIs.
+- **Credentials stay in the iOS Keychain.** Sharing an account with a teammate uses an encrypted file (AES-256-GCM), scoped to the apps you choose.
+- **Network Audit.** *Settings › Privacy › Network Audit* lists every request the app sends and receives, with secrets masked. Open any request to inspect it, or export the log to review it yourself.
+- **Open source, MIT-licensed.** Read the code, build it yourself, or send a fix.
+
+## Features
+
+**Home**
+- Apps in review, awaiting release and recent reviews at a glance
+- Home Screen widgets for In Review, Awaiting Release and Recent Reviews
+- A reminder when the Account Holder needs to accept new agreements
+
+**App Store Connect**
+- Browse apps with search, sort, favorites and archived apps
+- Edit version metadata, manage localizations and preview screenshots
+- Versions on iOS, macOS, tvOS and visionOS, including phased release
+- Submit for review with a pre-submission checklist; cancel, release or resubmit
+- App Information, category, age rating, privacy and accessibility declarations
+- Read and reply to customer reviews, with reusable reply templates
+- Analytics dashboard and analytics reports with daily, weekly and monthly charts
+- TestFlight: beta groups, testers, builds and beta review information
+- Certificates, provisioning profiles, identifiers and devices
+- Team: invite members, edit roles, resources and visible apps
+
+**Firebase**
+- Browse projects and apps
+- Remote Config parameters and conditions
+- Cloud Messaging notifications with audience targeting
+
+**Accounts and teams**
+- Several accounts per provider, with granular permissions per account and per app
+- Encrypted account export and import to share access with your team
+- Offline-first: cached data loads instantly and syncs in the background
+
+## Build from source
+
+**Requirements:** Xcode 16.3 or later, iOS 17 or later, and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).
 
 1. Clone the repository:
    ```bash
    git clone https://github.com/r1b2ns/stack-connect.git
    cd stack-connect
    ```
-
 2. Generate the Xcode project (the `.xcodeproj` is not checked in):
    ```bash
    xcodegen generate --spec project.yml
    ```
+3. Open `StackConnect.xcodeproj`, pick the **StackConnect** scheme and run it on a simulator.
+4. To run on your own device, copy `Configs/Local.xcconfig.example` to `Configs/Local.xcconfig` (git-ignored), set your team, bundle identifier and App Group as explained in the file, and generate the project again.
 
-3. Open `StackConnect.xcodeproj` in Xcode.
+Re-run `xcodegen generate --spec project.yml` whenever files, packages or build settings change.
 
-4. Select the **StackConnect** scheme and run on a simulator or device.
+The Rust core (`StackCoreRust`) is a prebuilt binary that Xcode/SwiftPM downloads automatically from the [stack-connect-core releases](https://github.com/r1b2ns/stack-connect-core/releases) on first package resolution (~65 MB), so no Rust toolchain is needed.
 
-> Re-run `xcodegen generate --spec project.yml` whenever source files, Swift package dependencies, or build settings change.
+### Try it without an account
 
-## Analytics
+Pick the **StackConnect Fake Data** scheme. It runs the app on invented, realistic demo accounts with no network, no Keychain and no API keys, which is the quickest way to explore the app or work on a screen.
 
-StackConnect sends anonymous usage analytics (screens viewed, buttons tapped, action outcomes) through Google Analytics for Firebase, and crash reports through Firebase Crashlytics. No account names, keys, bundle IDs, app data, advertising identifiers (IDFA) or IDFV are collected, and the app does not use App Tracking Transparency.
+### Firebase (optional)
 
-- **What is sent.** Fixed, coarse values only: screen and button names, action outcomes, error *categories* (e.g. `network`, `server` — never an error message), whether an error was shown full screen or inline, sync trigger and a bucketed duration, where the app was opened from (notification, widget, URL) and the route kind, on iPad and Mac the kind of sidebar section opened and whether it came from the sidebar, a menu command or a dashboard tile (never an account name or ID), the Reviews inbox filter, bucketed search result counts (never the search text), and a few segment properties (`account_count` bucket, which stores are set up, `notifications_enabled`, and `ui_layout`: `compact` or `regular`).
-- **Crash reports.** Crashlytics collects crash stack traces and device/OS details. A few handled errors (service failures and unclassified errors) are also recorded as non-fatals with only their error domain, code and category; messages, URLs and response bodies are stripped. Release builds upload dSYMs to Crashlytics so crashes are symbolicated; the upload script is skipped when `GoogleService-Info.plist` is absent or for simulator builds.
+Analytics and crash reporting are enabled only when `StackConnect/Resources/GoogleService-Info.plist` exists. The file is git-ignored and never committed. Without it, the app builds and runs normally and events only go to the unified log (visible in Console in DEBUG builds). To use your own Firebase project, drop your `GoogleService-Info.plist` into `StackConnect/Resources/` and generate the project again.
 
-- **Optional config.** Firebase is enabled only when `StackConnect/Resources/GoogleService-Info.plist` exists. The file is git-ignored and is never committed. Without it, the app builds and runs normally and events only go to the unified log (visible in Console in DEBUG).
-- **Using your own Firebase project.** Drop your `GoogleService-Info.plist` into `StackConnect/Resources/` and re-run `xcodegen generate --spec project.yml` (XcodeGen bundles the file only if it is there when the project is generated).
-- **Opt-out.** Analytics is on by default and can be turned off in **Settings → Privacy → Share usage analytics**; the same setting covers crash reports. Firebase collection starts disabled at every launch (`FIREBASE_ANALYTICS_COLLECTION_ENABLED = NO`, `FirebaseCrashlyticsCollectionEnabled = NO`) and is turned on only when that setting is on, so an opted-out user sends nothing, not even `first_open` or a crash report. Turning it off stops collection; the final `analytics_disabled` event is kept so it can still be uploaded.
+## Architecture
 
-## Screenshots
+- **SwiftUI, MVVM + Coordinator.** Each module has a Factory, an Entry that owns the state objects, a View generic over its ViewModel protocol, and a Coordinator with a route enum. See [CONTRIBUTING.md](CONTRIBUTING.md) for the template.
+- **Local Swift packages** under `Packages/` for shared protocols, storage, crypto and the API providers.
+- **Offline-first storage:** app data in SwiftData, secrets in the Keychain, small preferences in UserDefaults.
+- **Rust core** ([stack-connect-core](https://github.com/r1b2ns/stack-connect-core)) for networking and authentication, bridged to Swift with UniFFI.
+- **XcodeGen** generates the project from `project.yml`.
 
-| | | | |
-|:-:|:-:|:-:|:-:|
-| <img src="fastlane/screenshots/en-US/iPhone_6.5_1.png" width="200" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_2.png" width="200" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_3.png" width="200" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_4.png" width="200" /> |
-| <img src="fastlane/screenshots/en-US/iPhone_6.5_5.png" width="200" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_6.png" width="200" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_7.png" width="200" /> | <img src="fastlane/screenshots/en-US/iPhone_6.5_8.png" width="200" /> |
+## Privacy
+
+StackConnect sends anonymous usage analytics (screens and buttons used, action outcomes, error categories) through Google Analytics for Firebase, and crash reports through Firebase Crashlytics. It never collects account names, keys, bundle IDs, app data or advertising identifiers, and it does not track you across apps. Both can be turned off in *Settings › Privacy › Share usage analytics*; when that setting is off, Firebase collection stays disabled from launch. You can verify all of this in Network Audit. Details are in [PRIVACY.md](PRIVACY.md).
+
+## Roadmap
+
+- **Google Play Console**: in development, not part of the App Store build yet.
+- Ideas and planned work live in [issues](https://github.com/r1b2ns/stack-connect/issues) and [Discussions](https://github.com/r1b2ns/stack-connect/discussions).
+
+## Contributing
+
+Contributions are welcome, from fixing a typo in a translation to adding a new provider. Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the issues labeled [good first issue](https://github.com/r1b2ns/stack-connect/labels/good%20first%20issue). Please follow the [Code of Conduct](CODE_OF_CONDUCT.md), and report security issues privately as described in [SECURITY.md](SECURITY.md).
+
+If StackConnect saves you time, you can support it with an optional tip inside the app.
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+StackConnect is released under the MIT License. See [LICENSE](LICENSE).
+
+StackConnect is an independent project and is not affiliated with, endorsed by or sponsored by Apple Inc. or Google LLC. App Store Connect, TestFlight, iOS, iPadOS, macOS, tvOS and visionOS are trademarks of Apple Inc. Firebase and Google Play are trademarks of Google LLC.

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/r1b2ns/stack-connect/discussions
+    about: Ask how something works or discuss an idea before it becomes an issue.
+  - name: Report a security vulnerability
+    url: https://github.com/r1b2ns/stack-connect/security/advisories/new
+    about: Please report security issues privately, not in a public issue.
