@@ -104,12 +104,16 @@ struct AccountWizardView<ViewModel: AccountWizardViewModelProtocol>: View {
                 Log.print.error("[AccountWizard] File picker error: \(error.localizedDescription)")
             }
         }
-        // A new step is a new screen (tracked on appear).
-        .id(state.step)
+        // A new step is a new screen. The appear-driven modifiers must sit
+        // *inside* `.id(state.step)`: the id recreates this subtree on every
+        // step change, so their `onAppear` runs once per step shown (going
+        // back counts again). Applied outside the id, they would belong to a
+        // view whose identity never changes and fire for the first step only.
         .trackScreen(state.step.analyticsScreen)
         .onAppear {
             if state.step == .credentials { viewModel.credentialsStepDidAppear() }
         }
+        .id(state.step)
         .animation(.default, value: state.step)
     }
 

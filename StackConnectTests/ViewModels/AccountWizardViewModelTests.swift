@@ -374,6 +374,22 @@ final class AccountWizardViewModelTests: XCTestCase {
         XCTAssertEqual(sut.appleSignIn?.uiState.step, .credentials)
     }
 
+    // MARK: - Analytics screens
+
+    /// Each step is its own `screen_view` (the view re-tracks on every step
+    /// change), so the mapping must be one-to-one and never collide with the
+    /// done screen, which `AccountWizardDoneView` tracks by itself.
+    func testEveryStepHasItsOwnAnalyticsScreen() {
+        let screens = AccountWizardStep.allCases.map(\.analyticsScreen)
+
+        XCTAssertEqual(screens, [
+            .accountWizardType, .accountWizardMethod, .accountWizardCredentials,
+            .accountWizardCode, .accountWizardItems, .accountWizardReview
+        ])
+        XCTAssertEqual(Set(screens).count, AccountWizardStep.allCases.count)
+        XCTAssertFalse(screens.contains(.accountWizardDone))
+    }
+
     // MARK: - Connection guide (flag `accountConnectionGuide`)
 
     func testTheGuideOpensOnItsOwnBeforeTheFirstConnectionOnly() {
