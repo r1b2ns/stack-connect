@@ -27,7 +27,7 @@ struct DeepLinkResolver {
             return await resolveApp(accountId: accountId, appId: appId)
         case let .review(accountId, appId, reviewId):
             return await resolveReview(accountId: accountId, appId: appId, reviewId: reviewId)
-        case .home, .reviews, .reimport:
+        case .home, .reviews, .networkAudit, .reimport:
             return nil
         }
     }

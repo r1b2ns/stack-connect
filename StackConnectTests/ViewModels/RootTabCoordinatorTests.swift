@@ -132,6 +132,40 @@ final class RootTabCoordinatorTests: XCTestCase {
         XCTAssertTrue(sut.accountsCoordinator.path.isEmpty)
     }
 
+    func testDeepLinkNetworkAuditOpensOnTopOfSettings() {
+        sut.settingsCoordinator.navigateToSettingsAccounts()
+        sut.settingsCoordinator.navigateToLicense()
+        sut.accountsCoordinator.navigateToAccountsList()
+
+        sut.showNetworkAudit()
+
+        XCTAssertEqual(sut.selection, .settings, "The audit lives in Settings")
+        XCTAssertEqual(sut.settingsCoordinator.path.count, 1, "Settings › Audit, so Back returns to Settings")
+        XCTAssertEqual(sut.accountsCoordinator.path.count, 1, "The Apps stack is left alone")
+    }
+
+    func testDeepLinkHandlerOpensNetworkAuditInSettings() throws {
+        let handler = HomeDeepLinkHandler(navigator: sut, storage: nil, featureFlags: .testing(networkAudit: true))
+
+        handler.handle(try XCTUnwrap(URL(string: "stackconnect://network-audit")))
+
+        XCTAssertEqual(sut.selection, .settings)
+        XCTAssertEqual(sut.settingsCoordinator.path.count, 1)
+        XCTAssertTrue(sut.accountsCoordinator.path.isEmpty)
+    }
+
+    func testDeepLinkNetworkAuditFallsBackToHomeWhileTheFlagIsOff() throws {
+        let handler = HomeDeepLinkHandler(navigator: sut, storage: nil, featureFlags: .testing(networkAudit: false))
+        sut.accountsCoordinator.navigateToAccountsList()
+        sut.select(.settings)
+
+        handler.handle(try XCTUnwrap(URL(string: "stackconnect://network-audit")))
+
+        XCTAssertEqual(sut.selection, .accounts)
+        XCTAssertTrue(sut.accountsCoordinator.path.isEmpty)
+        XCTAssertTrue(sut.settingsCoordinator.path.isEmpty, "No audit screen while it is unavailable")
+    }
+
     // MARK: - Analytics
 
     func testTabSelectionSendsOneNavigateActionWithTabBarOrigin() {
@@ -153,6 +187,7 @@ final class RootTabCoordinatorTests: XCTestCase {
         sut.select(.accounts)
         sut.show(.license)
         sut.showAllReviews()
+        sut.showNetworkAudit()
         sut.showHome()
         sut.settingsCoordinator.popToRoot()
 

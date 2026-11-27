@@ -16,6 +16,15 @@ extension FeatureFlags {
     /// Google Play visible: what the tests written before the flag assume.
     static var googlePlayOn: FeatureFlags { testing(googlePlayAccounts: true) }
     static var googlePlayOff: FeatureFlags { testing(googlePlayAccounts: false) }
+
+    /// Flags on a fresh, private suite with `networkAudit` set as asked.
+    static func testing(networkAudit: Bool) -> FeatureFlags {
+        let suite = "FeatureFlagsTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite) ?? .standard
+        defaults.removePersistentDomain(forName: suite)
+        defaults.set(networkAudit, forKey: FeatureFlag.networkAudit.rawValue)
+        return FeatureFlags(defaults: defaults, remoteValues: StubRemoteFeatureValues())
+    }
 }
 
 /// Remote Config stand-in: the given values, nothing else.

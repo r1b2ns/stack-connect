@@ -7,8 +7,10 @@ final class DeepLinkTests: XCTestCase {
         let cases: [DeepLink] = [
             .home,
             .reviews,
+            .networkAudit,
             .app(accountId: "acc-1", appId: "123456"),
-            .review(accountId: "acc-1", appId: "123456", reviewId: "rev-789")
+            .review(accountId: "acc-1", appId: "123456", reviewId: "rev-789"),
+            .reimport(accountId: "acc-1")
         ]
         for link in cases {
             let parsed = DeepLink(url: link.url)
@@ -19,6 +21,7 @@ final class DeepLinkTests: XCTestCase {
     func testParsesKnownURLs() {
         XCTAssertEqual(DeepLink(url: URL(string: "stackconnect://home")!), .home)
         XCTAssertEqual(DeepLink(url: URL(string: "stackconnect://reviews")!), .reviews)
+        XCTAssertEqual(DeepLink(url: URL(string: "stackconnect://network-audit")!), .networkAudit)
         XCTAssertEqual(
             DeepLink(url: URL(string: "stackconnect://app/acc-1/123456")!),
             .app(accountId: "acc-1", appId: "123456")
@@ -34,6 +37,16 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertNil(DeepLink(url: URL(string: "stackconnect://app/only-account")!))
         XCTAssertNil(DeepLink(url: URL(string: "stackconnect://review/acc/app")!))
         XCTAssertNil(DeepLink(url: URL(string: "stackconnect://unknown")!))
+    }
+
+    /// The App Store In-App Event link: the exact URL is part of the event's
+    /// metadata, so it must never change.
+    func testNetworkAuditURLIsStable() {
+        XCTAssertEqual(DeepLink.networkAudit.url.absoluteString, "stackconnect://network-audit")
+        XCTAssertEqual(DeepLink(url: URL(string: "stackconnect://network-audit?source=widget")!), .networkAudit,
+                       "Query items don't change the route")
+        XCTAssertNil(DeepLink(url: URL(string: "stackconnect://networkaudit")!))
+        XCTAssertNil(DeepLink(url: URL(string: "stackconnect://network_audit")!))
     }
 
     /// Google Play review ids are opaque composites with a slash and app ids

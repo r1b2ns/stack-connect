@@ -101,6 +101,7 @@ enum DeepLinkSource: String, CaseIterable, Sendable {
 enum AnalyticsDeepLinkDestination: String, CaseIterable, Sendable {
     case home = "home"
     case reviews = "reviews"
+    case networkAudit = "network_audit"
     case app = "app"
     case review = "review"
     case reimport = "reimport"
@@ -113,11 +114,12 @@ enum AnalyticsDeepLinkDestination: String, CaseIterable, Sendable {
             return
         }
         switch link {
-        case .home:     self = .home
-        case .reviews:  self = .reviews
-        case .app:      self = .app
-        case .review:   self = .review
-        case .reimport: self = .reimport
+        case .home:         self = .home
+        case .reviews:      self = .reviews
+        case .networkAudit: self = .networkAudit
+        case .app:          self = .app
+        case .review:       self = .review
+        case .reimport:     self = .reimport
         }
     }
 }

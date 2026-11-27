@@ -122,6 +122,30 @@ final class RootSplitCoordinatorTests: XCTestCase {
         XCTAssertEqual(sut.selection, .recentReviews)
     }
 
+    func testDeepLinkNetworkAuditSelectsSettingsAndOpensTheAuditFullWidth() {
+        sut.show(.appList(account))
+
+        sut.showNetworkAudit()
+
+        XCTAssertEqual(sut.selection, .settings, "The audit lives in Settings")
+        XCTAssertEqual(sut.detailRoute, .networkAudit)
+        XCTAssertTrue(sut.detailCoordinator.path.isEmpty, "The audit is the detail root, not pushed")
+        XCTAssertEqual(sut.columnVisibility, .detailOnly, "Full width, as from the Settings row")
+    }
+
+    func testDeepLinkHandlerOpensNetworkAuditOrFallsBackToTheDashboard() throws {
+        let url = try XCTUnwrap(URL(string: "stackconnect://network-audit"))
+
+        HomeDeepLinkHandler(navigator: sut, storage: nil, featureFlags: .testing(networkAudit: true)).handle(url)
+        XCTAssertEqual(sut.selection, .settings)
+        XCTAssertEqual(sut.detailRoute, .networkAudit)
+
+        HomeDeepLinkHandler(navigator: sut, storage: nil, featureFlags: .testing(networkAudit: false)).handle(url)
+        XCTAssertEqual(sut.selection, .dashboard)
+        XCTAssertNil(sut.detailRoute)
+        XCTAssertEqual(sut.columnVisibility, .automatic, "Leaving the full-width audit brings the columns back")
+    }
+
     func testDeepLinkHomeResetsToDashboard() {
         sut.show(.license)
         sut.showHome()

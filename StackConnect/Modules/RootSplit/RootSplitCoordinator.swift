@@ -241,14 +241,25 @@ final class RootSplitCoordinator: ObservableObject {
 // MARK: - Deep Links
 
 extension RootSplitCoordinator: HomeRootNavigating {
+    // `restoreColumnsIfNeeded()`: a link opened while the audit holds the
+    // whole width brings the sidebar back.
     func showHome() {
         selection = .dashboard
         resetDetail()
+        restoreColumnsIfNeeded()
     }
 
     func showAllReviews() {
         selection = .recentReviews
         resetDetail()
+        restoreColumnsIfNeeded()
+    }
+
+    /// Selects Settings and opens the audit as the detail root, as the
+    /// Settings row does (full width; the sidebar button brings Settings back).
+    func showNetworkAudit() {
+        selection = .settings
+        showInDetail(.networkAudit)
     }
 
     /// Opens on top of the dashboard, so Back returns to it (as on iPhone,

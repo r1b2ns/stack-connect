@@ -209,6 +209,8 @@ final class AnalyticsCoverageTests: XCTestCase {
     func testDeepLinkDestinationIsTheRouteKindOnly() throws {
         XCTAssertEqual(AnalyticsDeepLinkDestination(url: DeepLink.home.url), .home)
         XCTAssertEqual(AnalyticsDeepLinkDestination(url: DeepLink.reviews.url), .reviews)
+        XCTAssertEqual(AnalyticsDeepLinkDestination(url: DeepLink.networkAudit.url), .networkAudit)
+        XCTAssertEqual(AnalyticsDeepLinkDestination.networkAudit.rawValue, "network_audit")
         XCTAssertEqual(AnalyticsDeepLinkDestination(url: DeepLink.app(accountId: "a", appId: "b").url), .app)
         XCTAssertEqual(AnalyticsDeepLinkDestination(url: DeepLink.review(accountId: "a", appId: "b", reviewId: "c").url), .review)
         XCTAssertEqual(AnalyticsDeepLinkDestination(url: DeepLink.reimport(accountId: "a").url), .reimport)
@@ -230,6 +232,23 @@ final class AnalyticsCoverageTests: XCTestCase {
             ])
         ], "In-app links are not tracked; ids never are")
         XCTAssertEqual(router.pending, DeepLink.reimport(accountId: "acc").url, "Routing is unchanged")
+    }
+
+    /// An App Store In-App Event open is a plain URL open.
+    func testRouterTracksANetworkAuditOpenFromAURL() throws {
+        let analytics = MockAnalyticsTracker()
+        let router = DeepLinkRouter(analytics: analytics)
+        let url = try XCTUnwrap(URL(string: "stackconnect://network-audit"))
+
+        router.open(url, source: DeepLinkSource(openedURL: url))
+
+        XCTAssertEqual(analytics.trackedEvents, [
+            AnalyticsEvent(name: "app_opened_from", parameters: [
+                "source": .string("url"),
+                "destination": .string("network_audit")
+            ])
+        ])
+        XCTAssertEqual(router.pending, url)
     }
 
     // MARK: - Notification permission

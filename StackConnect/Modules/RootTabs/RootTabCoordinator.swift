@@ -91,7 +91,8 @@ final class RootTabCoordinator: ObservableObject {
 // MARK: - Deep Links
 
 /// Every deep link opens in the Apps tab, on top of the Home, as before
-/// the tab bar existed.
+/// the tab bar existed — except the network audit, which lives in Settings
+/// and opens on the Settings stack (Back returns to Settings).
 extension RootTabCoordinator: HomeRootNavigating {
     func showHome() {
         selection = .accounts
@@ -101,6 +102,11 @@ extension RootTabCoordinator: HomeRootNavigating {
     func showAllReviews() {
         selection = .accounts
         accountsCoordinator.showAllReviews()
+    }
+
+    func showNetworkAudit() {
+        selection = .settings
+        settingsCoordinator.showNetworkAudit()
     }
 
     func show(_ route: HomeRoute) {

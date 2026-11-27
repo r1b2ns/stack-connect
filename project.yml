@@ -143,6 +143,14 @@ targets:
         CFBundleVersion: "1"
         ITSAppUsesNonExemptEncryption: false
         LSRequiresIPhoneOS: true
+        # The `stackconnect` deep link scheme (DeepLink.swift). Widget taps reach
+        # the app without it, but any other open (App Store In-App Event,
+        # Shortcuts, Safari, `simctl openurl`) needs the scheme registered.
+        CFBundleURLTypes:
+          - CFBundleURLName: "$(PRODUCT_BUNDLE_IDENTIFIER)"
+            CFBundleTypeRole: Viewer
+            CFBundleURLSchemes:
+              - stackconnect
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
           UISceneConfigurations: {}

@@ -12,6 +12,9 @@ protocol HomeRootNavigating: AnyObject {
     func showHome()
     /// The cross-app reviews list.
     func showAllReviews()
+    /// Settings › Privacy › Audit (the network audit list), on top of
+    /// Settings so Back returns to it, as when reached from Settings.
+    func showNetworkAudit()
     /// Resets the navigation and opens `route` on top of the root screen.
     func show(_ route: HomeRoute)
 }
@@ -24,6 +27,11 @@ extension HomeCoordinator: HomeRootNavigating {
     func showAllReviews() {
         path = NavigationPath()
         navigateToAllReviews()
+    }
+
+    func showNetworkAudit() {
+        path = NavigationPath()
+        navigateToNetworkAudit()
     }
 
     func show(_ route: HomeRoute) {
@@ -42,6 +50,8 @@ struct HomeDeepLinkHandler {
 
     let navigator: HomeRootNavigating
     var storage: PersistentStorable? = SwiftDataStorable.shared
+    /// `networkAudit` gates the audit screen; while OFF its link opens Home.
+    var featureFlags: FeatureFlags = .shared
 
     func handle(_ url: URL) {
         guard let link = DeepLink(url: url) else { return }
@@ -50,6 +60,12 @@ struct HomeDeepLinkHandler {
             navigator.showHome()
         case .reviews:
             navigator.showAllReviews()
+        case .networkAudit:
+            if featureFlags.isEnabled(.networkAudit) {
+                navigator.showNetworkAudit()
+            } else {
+                navigator.showHome()
+            }
         case .app, .review:
             Task { await open(link) }
         case let .reimport(accountId):
