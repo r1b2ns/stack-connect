@@ -3,16 +3,67 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>StackConnect: App Store Connect and Firebase on iPhone and iPad</title>
-  <meta name="description" content="A free, open-source iPhone and iPad app for App Store Connect and Firebase. Releases, reviews, TestFlight, certificates, teams and analytics from your phone.">
+  <title>StackConnect: App Store Connect app for iPhone and iPad</title>
+  <meta name="description" content="Free, open-source App Store Connect app for iPhone and iPad. Submit releases, reply to reviews, manage TestFlight, certificates, teams, analytics and Firebase.">
+  <link rel="canonical" href="https://r1b2ns.github.io/stack-connect/">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="theme-color" content="#0a6cff">
   <meta name="apple-itunes-app" content="app-id=6761390987, app-argument=stackconnect://home">
   <link rel="icon" href="assets/icon.png">
   <link rel="apple-touch-icon" href="assets/icon.png">
-  <meta property="og:title" content="StackConnect">
+  <meta property="og:site_name" content="StackConnect">
+  <meta property="og:title" content="StackConnect: App Store Connect app for iPhone and iPad">
   <meta property="og:description" content="App Store Connect and Firebase in one free, open-source app for iPhone and iPad.">
+  <meta property="og:url" content="https://r1b2ns.github.io/stack-connect/">
   <meta property="og:image" content="https://r1b2ns.github.io/stack-connect/assets/og.png">
+  <meta property="og:image:alt" content="StackConnect: open-source App Store Connect and Firebase app for iPhone and iPad">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "MobileApplication",
+        "@id": "https://r1b2ns.github.io/stack-connect/#app",
+        "name": "StackConnect",
+        "description": "Free, open-source iPhone and iPad app for App Store Connect and Firebase: releases, App Review submissions, customer reviews, TestFlight, certificates, provisioning profiles, team roles, analytics and Remote Config.",
+        "url": "https://r1b2ns.github.io/stack-connect/",
+        "image": "https://r1b2ns.github.io/stack-connect/assets/icon.png",
+        "screenshot": "https://r1b2ns.github.io/stack-connect/assets/screen-1.jpg",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "iOS 17, iPadOS 17",
+        "installUrl": "https://apps.apple.com/app/id6761390987",
+        "downloadUrl": "https://apps.apple.com/app/id6761390987",
+        "isAccessibleForFree": true,
+        "license": "https://opensource.org/licenses/MIT",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "sameAs": ["https://github.com/r1b2ns/stack-connect", "https://apps.apple.com/app/id6761390987"]
+      },
+      {
+        "@type": "SoftwareSourceCode",
+        "name": "StackConnect source code",
+        "codeRepository": "https://github.com/r1b2ns/stack-connect",
+        "programmingLanguage": "Swift",
+        "license": "https://opensource.org/licenses/MIT",
+        "targetProduct": { "@id": "https://r1b2ns.github.io/stack-connect/#app" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Is there an App Store Connect app that can submit apps for review from an iPhone?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. StackConnect lets you edit version metadata, run a pre-submission checklist, submit for App Review, and cancel, release or resubmit a version from your iPhone or iPad." } },
+          { "@type": "Question", "name": "Is StackConnect free?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. StackConnect is free on the App Store and open source under the MIT license." } },
+          { "@type": "Question", "name": "Does StackConnect send my data to its own server?",
+            "acceptedAnswer": { "@type": "Answer", "text": "No. The app talks directly to Apple's and Google's official APIs. Credentials stay in the iOS Keychain, and Network Audit shows every request the app makes." } },
+          { "@type": "Question", "name": "Does StackConnect work with Firebase?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes. You can browse Firebase projects and apps, edit Remote Config parameters and conditions, and send Cloud Messaging notifications." } }
+        ]
+      }
+    ]
+  }
+  </script>
   <style>
     :root {
       --bg: #f5f5f7; --surface: #ffffff; --text: #1d1d1f; --muted: #5f5f66;
@@ -34,7 +85,7 @@
     .cta .qr { display: flex; gap: 12px; align-items: center; color: var(--muted); font-size: 14px; text-align: left; }
     .cta .qr img { width: 96px; height: 96px; border-radius: 10px; background: #fff; padding: 6px; }
     .shots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 48px 0 8px; }
-    .shots img { width: 100%; border-radius: 22px; border: 1px solid var(--line); display: block; }
+    .shots img { width: 100%; height: auto; border-radius: 22px; border: 1px solid var(--line); display: block; }
     section { padding: 48px 0; border-top: 1px solid var(--line); }
     h2 { font-size: 30px; letter-spacing: -0.01em; margin: 0 0 24px; }
     .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
@@ -67,16 +118,16 @@
       </div>
     </div>
     <div class="shots">
-      <img src="assets/screen-1.jpg" alt="StackConnect on iPhone, screen 1" loading="lazy">
-      <img src="assets/screen-2.jpg" alt="StackConnect on iPhone, screen 2" loading="lazy">
-      <img src="assets/screen-3.jpg" alt="StackConnect on iPhone, screen 3" loading="lazy">
-      <img src="assets/screen-4.jpg" alt="StackConnect on iPhone, screen 4" loading="lazy">
+      <img src="assets/screen-1.jpg" alt="StackConnect Home on iPhone: apps in review and awaiting release" width="506" height="1100">
+      <img src="assets/screen-2.jpg" alt="App Store Connect version status on iPhone" width="506" height="1100" loading="lazy">
+      <img src="assets/screen-3.jpg" alt="StackConnect app details on iPhone" width="506" height="1100" loading="lazy">
+      <img src="assets/screen-4.jpg" alt="StackConnect accounts on iPhone" width="506" height="1100" loading="lazy">
     </div>
   </header>
 
   <main class="wrap">
     <section>
-      <h2>Everything you open the website for</h2>
+      <h2>An App Store Connect app that does the work, not just the monitoring</h2>
       <div class="grid">
         <div class="card"><h3>Releases</h3><p>Edit metadata and localizations, create a version, run a pre-submission checklist, submit for review and release, on iOS, macOS, tvOS and visionOS.</p></div>
         <div class="card"><h3>Reviews</h3><p>Read customer reviews from every storefront and reply from your phone, with reusable reply templates.</p></div>
@@ -93,6 +144,16 @@
         <div class="card"><h3>No server in between</h3><p>The app talks directly to Apple's and Google's official APIs. There is no StackConnect backend.</p></div>
         <div class="card"><h3>Network Audit</h3><p>Settings › Privacy › Network Audit lists every request the app sends and receives, with secrets masked. Export the log and check it yourself.</p></div>
         <div class="card"><h3>Open source, MIT</h3><p>Read the code, build it yourself or send a fix on <a href="https://github.com/r1b2ns/stack-connect">GitHub</a>. Credentials stay in the iOS Keychain.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Questions</h2>
+      <div class="grid">
+        <div class="card"><h3>Can I submit an app for App Review from my iPhone?</h3><p>Yes. Edit version metadata, run a pre-submission checklist, submit for App Review, and cancel, release or resubmit a version from your iPhone or iPad.</p></div>
+        <div class="card"><h3>Is StackConnect free?</h3><p>Yes. It is free on the App Store and open source under the MIT license.</p></div>
+        <div class="card"><h3>Does it send my data to its own server?</h3><p>No. The app talks directly to Apple's and Google's official APIs. Credentials stay in the iOS Keychain, and Network Audit shows every request the app makes.</p></div>
+        <div class="card"><h3>Does it work with Firebase?</h3><p>Yes. Browse Firebase projects and apps, edit Remote Config parameters and conditions, and send Cloud Messaging notifications.</p></div>
       </div>
     </section>
   </main>
