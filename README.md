@@ -19,6 +19,8 @@ Built with SwiftUI for iOS 17+.
 - iOS 17.0+
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 
+The Rust core (`StackCoreRust`) is a prebuilt binary that Xcode/SwiftPM downloads automatically from the [stack-connect-core releases](https://github.com/r1b2ns/stack-connect-core/releases) on first package resolution (~65 MB), so no Rust toolchain is needed.
+
 ### Steps
 
 1. Clone the repository:
