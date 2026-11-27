@@ -211,6 +211,9 @@ final class AnalyticsCoverageTests: XCTestCase {
         XCTAssertEqual(AnalyticsDeepLinkDestination(url: DeepLink.reviews.url), .reviews)
         XCTAssertEqual(AnalyticsDeepLinkDestination(url: DeepLink.networkAudit.url), .networkAudit)
         XCTAssertEqual(AnalyticsDeepLinkDestination.networkAudit.rawValue, "network_audit")
+        XCTAssertEqual(AnalyticsDeepLinkDestination(url: DeepLink.testFlight.url), .testFlight)
+        XCTAssertEqual(AnalyticsDeepLinkDestination(url: DeepLink.remoteConfig.url), .remoteConfig)
+        XCTAssertEqual(AnalyticsDeepLinkDestination(url: DeepLink.certificates.url), .certificates)
         XCTAssertEqual(AnalyticsDeepLinkDestination(url: DeepLink.app(accountId: "a", appId: "b").url), .app)
         XCTAssertEqual(AnalyticsDeepLinkDestination(url: DeepLink.review(accountId: "a", appId: "b", reviewId: "c").url), .review)
         XCTAssertEqual(AnalyticsDeepLinkDestination(url: DeepLink.reimport(accountId: "a").url), .reimport)
@@ -249,6 +252,22 @@ final class AnalyticsCoverageTests: XCTestCase {
             ])
         ])
         XCTAssertEqual(router.pending, url)
+    }
+
+    /// An App Shortcut opens through the router, tracked with its own source.
+    func testShortcutOpensTrackTheShortcutSource() {
+        let analytics = MockAnalyticsTracker()
+        let router = DeepLinkRouter(analytics: analytics)
+
+        ShortcutDeepLinkOpener.open(.testFlight, router: router)
+
+        XCTAssertEqual(analytics.trackedEvents, [
+            AnalyticsEvent(name: "app_opened_from", parameters: [
+                "source": .string("shortcut"),
+                "destination": .string("testflight")
+            ])
+        ])
+        XCTAssertEqual(router.pending, DeepLink.testFlight.url)
     }
 
     // MARK: - Notification permission

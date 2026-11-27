@@ -132,6 +132,75 @@ final class RootTabCoordinatorTests: XCTestCase {
         XCTAssertTrue(sut.accountsCoordinator.path.isEmpty)
     }
 
+    func testDeepLinkAccountSectionOpensItsListOnTopOfHomeThenTheRoutes() {
+        let app = AppModel(id: "1", name: "Pulse", bundleId: "com.pulse", accountId: account.id)
+        sut.select(.settings)
+        sut.accountsCoordinator.navigateToLicense()
+        sut.settingsCoordinator.navigateToSettingsAccounts()
+
+        sut.showAccount(account, section: .apps, routes: [
+            .appDetail(app: app, account: account),
+            .testFlight(appId: app.id, account: account)
+        ])
+
+        XCTAssertEqual(sut.selection, .accounts)
+        XCTAssertEqual(sut.accountsCoordinator.path.count, 3, "App List › App Detail › TestFlight")
+        XCTAssertEqual(sut.settingsCoordinator.path.count, 1, "The Settings stack is left alone")
+    }
+
+    func testCompactRoutesOfTheAccountSections() {
+        let firebase = AccountModel(id: "fb", name: "Firebase", providerType: .firebase)
+        XCTAssertEqual(RootAccountSection.apps.compactRoute(for: account), .appList(account))
+        XCTAssertEqual(RootAccountSection.apps.compactRoute(for: firebase), .firebaseProjectList(firebase))
+        XCTAssertEqual(RootAccountSection.certificates.compactRoute(for: account), .certificatesList(account))
+        XCTAssertNil(RootAccountSection.users.compactRoute(for: account), "Users has no screen of its own on iPhone")
+    }
+
+    func testDeepLinkLandingsOpenInTheAppsTab() {
+        let handler = HomeDeepLinkHandler(navigator: sut, storage: nil)
+
+        sut.select(.settings)
+        handler.show(.accountChooser)
+        XCTAssertEqual(sut.selection, .accounts)
+        XCTAssertEqual(sut.accountsCoordinator.path.count, 1, "The accounts list")
+
+        handler.show(.accountSection(account, .certificates))
+        XCTAssertEqual(sut.accountsCoordinator.path.count, 1, "The certificates list, on top of Home")
+
+        let project = FirebaseProjectModel(id: "p", displayName: "p", projectId: "p")
+        let firebase = AccountModel(id: "fb", name: "Firebase", providerType: .firebase)
+        handler.show(.remoteConfig(project, account: firebase))
+        XCTAssertEqual(sut.accountsCoordinator.path.count, 2, "Projects › Remote Config")
+
+        handler.show(.home)
+        XCTAssertTrue(sut.accountsCoordinator.path.isEmpty)
+    }
+
+    func testDeepLinkEntryPointWithoutAccountsOpensTheHome() async throws {
+        let storage = MockPersistentStorable()
+        let handler = HomeDeepLinkHandler(navigator: sut, storage: storage, featureFlags: .googlePlayOff)
+        sut.accountsCoordinator.navigateToLicense()
+        sut.select(.settings)
+
+        await handler.openLanding(for: .certificates)
+
+        XCTAssertEqual(sut.selection, .accounts)
+        XCTAssertTrue(sut.accountsCoordinator.path.isEmpty)
+    }
+
+    func testDeepLinkTestFlightWithOneAppOpensItsTestFlight() async throws {
+        let storage = MockPersistentStorable()
+        try await storage.save(account, id: account.id)
+        let app = AppModel(id: "1", name: "Pulse", bundleId: "com.pulse", accountId: account.id)
+        try await storage.save(app, id: "\(account.id).\(app.id)")
+        let handler = HomeDeepLinkHandler(navigator: sut, storage: storage, featureFlags: .googlePlayOff)
+
+        await handler.openLanding(for: .testFlight)
+
+        XCTAssertEqual(sut.selection, .accounts)
+        XCTAssertEqual(sut.accountsCoordinator.path.count, 3)
+    }
+
     func testDeepLinkNetworkAuditOpensOnTopOfSettings() {
         sut.settingsCoordinator.navigateToSettingsAccounts()
         sut.settingsCoordinator.navigateToLicense()

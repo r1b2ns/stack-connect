@@ -1,13 +1,21 @@
 import Foundation
 
-/// In-app deep links used by widgets, local notifications and App Store
-/// In-App Events. Scheme: `stackconnect`.
+/// In-app deep links used by widgets, local notifications, App Store
+/// In-App Events and custom product pages, App Shortcuts and Spotlight.
+/// Scheme: `stackconnect`.
 ///
 /// - `home`         → `stackconnect://home`
 /// - `reviews`      → `stackconnect://reviews`
 /// - `networkAudit` → `stackconnect://network-audit` (Settings › Privacy ›
 ///   Audit; the App Store In-App Event link. Falls back to Home while the
 ///   `networkAudit` flag is OFF)
+/// - `testFlight`   → `stackconnect://testflight`
+/// - `remoteConfig` → `stackconnect://remote-config`
+/// - `certificates` → `stackconnect://certificates`
+///
+///   The last three are entry points with no account or app (App Store
+///   links, App Shortcuts): `DeepLinkResolver.landing(for:)` picks where they
+///   land from what the user has.
 /// - `app`          → `stackconnect://app/{accountId}/{appId}`
 /// - `review`       → `stackconnect://review/{accountId}/{appId}/{reviewId}`
 /// - `reimport`     → `stackconnect://reimport/{accountId}`
@@ -15,6 +23,9 @@ enum DeepLink: Equatable {
     case home
     case reviews
     case networkAudit
+    case testFlight
+    case remoteConfig
+    case certificates
     case app(accountId: String, appId: String)
     case review(accountId: String, appId: String, reviewId: String)
     case reimport(accountId: String)
@@ -31,6 +42,12 @@ enum DeepLink: Equatable {
             components.host = "reviews"
         case .networkAudit:
             components.host = "network-audit"
+        case .testFlight:
+            components.host = "testflight"
+        case .remoteConfig:
+            components.host = "remote-config"
+        case .certificates:
+            components.host = "certificates"
         case let .app(accountId, appId):
             components.host = "app"
             components.path = "/" + [accountId, appId].map(Self.encode).joined(separator: "/")
@@ -56,6 +73,12 @@ enum DeepLink: Equatable {
             self = .reviews
         case "network-audit":
             self = .networkAudit
+        case "testflight":
+            self = .testFlight
+        case "remote-config":
+            self = .remoteConfig
+        case "certificates":
+            self = .certificates
         case "app" where segments.count >= 2:
             self = .app(accountId: segments[0], appId: segments[1])
         case "review" where segments.count >= 3:

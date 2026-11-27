@@ -146,6 +146,36 @@ final class RootSplitCoordinatorTests: XCTestCase {
         XCTAssertEqual(sut.columnVisibility, .automatic, "Leaving the full-width audit brings the columns back")
     }
 
+    func testDeepLinkAccountSectionSelectsItInTheSidebar() {
+        sut.showNetworkAudit()
+
+        sut.showAccount(account, section: .certificates, routes: [])
+
+        XCTAssertEqual(sut.selection, .account(id: account.id, section: .certificates))
+        XCTAssertNil(sut.detailRoute, "The list fills the middle column; nothing picked yet")
+        XCTAssertTrue(sut.detailCoordinator.path.isEmpty)
+        XCTAssertEqual(sut.columnVisibility, .automatic, "Leaving the full-width audit brings the columns back")
+    }
+
+    func testDeepLinkTestFlightOpensTheAppAsDetailRootAndPushesTestFlight() {
+        let app = AppModel(id: "1", name: "Pulse", bundleId: "com.pulse", accountId: account.id)
+
+        HomeDeepLinkHandler(navigator: sut, storage: nil).show(.testFlight(app, account: account))
+
+        XCTAssertEqual(sut.selection, .account(id: account.id, section: .apps))
+        XCTAssertEqual(sut.detailRoute, .appDetail(app: app, account: account), "As a row picked in the app list")
+        XCTAssertEqual(sut.detailCoordinator.path.count, 1, "TestFlight, over the App Detail")
+    }
+
+    func testDeepLinkAccountChooserOpensTheAccountsListOverTheDashboard() {
+        sut.select(.settings, origin: .sidebar)
+
+        HomeDeepLinkHandler(navigator: sut, storage: nil).show(.accountChooser)
+
+        XCTAssertEqual(sut.selection, .dashboard)
+        XCTAssertEqual(sut.detailCoordinator.path.count, 1)
+    }
+
     func testDeepLinkHomeResetsToDashboard() {
         sut.show(.license)
         sut.showHome()

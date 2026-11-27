@@ -1,3 +1,4 @@
+import CoreSpotlight
 import SwiftUI
 
 // MARK: - Navigator
@@ -17,6 +18,9 @@ protocol HomeRootNavigating: AnyObject {
     func showNetworkAudit()
     /// Resets the navigation and opens `route` on top of the root screen.
     func show(_ route: HomeRoute)
+    /// Resets the navigation and opens `section` of `account` (its list
+    /// screen), then `routes` on top of it, as if the user had tapped there.
+    func showAccount(_ account: AccountModel, section: RootAccountSection, routes: [HomeRoute])
 }
 
 extension HomeCoordinator: HomeRootNavigating {
@@ -37,6 +41,37 @@ extension HomeCoordinator: HomeRootNavigating {
     func show(_ route: HomeRoute) {
         path = NavigationPath()
         push(route)
+    }
+
+    /// The section's list on top of the Home, then `routes`.
+    func showAccount(_ account: AccountModel, section: RootAccountSection, routes: [HomeRoute]) {
+        path = NavigationPath()
+        if let root = section.compactRoute(for: account) {
+            push(root)
+        }
+        routes.forEach(push)
+    }
+}
+
+extension RootAccountSection {
+    /// The screen that lists this section on iPhone (the split view's
+    /// middle column builds the same screens in `RootAccountContentView`).
+    /// `nil` for Users, which has no screen of its own outside the split view.
+    func compactRoute(for account: AccountModel) -> HomeRoute? {
+        switch self {
+        case .apps:
+            switch account.providerType {
+            case .apple:      return .appList(account)
+            case .googlePlay: return .googlePlayAppList(account)
+            case .firebase:   return .firebaseProjectList(account)
+            }
+        case .users:        return nil
+        case .devices:      return .devicesList(account)
+        case .certificates: return .certificatesList(account)
+        case .identifiers:  return .identifiersList(account)
+        case .profiles:     return .profilesList(account)
+        case .manage:       return .accountManagement(account)
+        }
     }
 }
 
@@ -66,10 +101,46 @@ struct HomeDeepLinkHandler {
             } else {
                 navigator.showHome()
             }
+        case .testFlight, .remoteConfig, .certificates:
+            Task { await openLanding(for: link) }
         case .app, .review:
             Task { await open(link) }
         case let .reimport(accountId):
             Task { await openReimport(accountId: accountId) }
+        }
+    }
+
+    /// Resolves an entry-point link (`testflight`, `remote-config`,
+    /// `certificates`) and opens its landing. Without storage, the Home.
+    func openLanding(for link: DeepLink) async {
+        guard let storage,
+              let landing = await DeepLinkResolver(storage: storage, featureFlags: featureFlags).landing(for: link)
+        else {
+            navigator.showHome()
+            return
+        }
+        show(landing)
+    }
+
+    /// Opens `landing` in the root on screen.
+    func show(_ landing: DeepLinkLanding) {
+        switch landing {
+        case .home:
+            navigator.showHome()
+        case .accountChooser:
+            navigator.show(.accountsList)
+        case let .accountSection(account, section):
+            navigator.showAccount(account, section: section, routes: [])
+        case let .testFlight(app, account):
+            // As reached by hand: App List › App Detail › TestFlight.
+            navigator.showAccount(account, section: .apps, routes: [
+                .appDetail(app: app, account: account),
+                .testFlight(appId: app.id, account: account)
+            ])
+        case let .remoteConfig(project, account):
+            navigator.showAccount(account, section: .apps, routes: [
+                .remoteConfig(project: project, account: account)
+            ])
         }
     }
 
@@ -116,6 +187,12 @@ private struct HomeDeepLinksModifier: ViewModifier {
             // sets `pending`, handled once by the `onReceive` below.
             .onOpenURL { url in
                 DeepLinkRouter.shared.open(url, source: DeepLinkSource(openedURL: url))
+            }
+            // An app indexed in Spotlight (`AppSpotlightIndexer`): its item
+            // identifier is the app's deep link.
+            .onContinueUserActivity(CSSearchableItemActionType) { activity in
+                guard let url = AppSpotlightIndexer.deepLinkURL(from: activity.userInfo) else { return }
+                DeepLinkRouter.shared.open(url, source: .spotlight)
             }
             .onReceive(DeepLinkRouter.shared.$pending.compactMap { $0 }) { url in
                 handler.handle(url)

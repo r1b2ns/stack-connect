@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import SwiftData
 import TipKit
@@ -84,6 +85,11 @@ struct StackConnectApp: App {
             // ID whose session expired (foreground only, once per expiry).
             AppleSessionAutoReauthenticator.shared.start()
             FirstAppsLoadedTracker.shared.seedForExistingInstall(storage: SwiftDataStorable.shared)
+            // The user's apps in Spotlight, rebuilt after every sync and
+            // account change. Never the demo apps of the fake data mode.
+            if !isFakeDataMode {
+                AppSpotlightIndexer.shared.start(syncState: SyncService.shared.$state.eraseToAnyPublisher())
+            }
         }
 
         try? Tips.configure([

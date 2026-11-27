@@ -113,4 +113,9 @@ extension RootTabCoordinator: HomeRootNavigating {
         selection = .accounts
         accountsCoordinator.show(route)
     }
+
+    func showAccount(_ account: AccountModel, section: RootAccountSection, routes: [HomeRoute]) {
+        selection = .accounts
+        accountsCoordinator.showAccount(account, section: section, routes: routes)
+    }
 }

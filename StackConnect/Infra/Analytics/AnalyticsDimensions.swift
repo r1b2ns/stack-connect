@@ -80,8 +80,12 @@ enum SyncTrigger: String, CaseIterable, Sendable {
 enum DeepLinkSource: String, CaseIterable, Sendable {
     case notification = "notification"
     case widget = "widget"
-    /// Any other `stackconnect://` URL (Spotlight, Shortcuts, another app).
+    /// Any other `stackconnect://` URL (an App Store link, Safari, another app).
     case url = "url"
+    /// An App Shortcut / App Intent (Siri, Spotlight, the Shortcuts app).
+    case shortcut = "shortcut"
+    /// An app indexed in Spotlight (`AppSpotlightIndexer`).
+    case spotlight = "spotlight"
 
     /// Query item the widget adds to every URL it opens, so the app can tell a
     /// widget tap from any other URL. Ignored by `DeepLink(url:)`.
@@ -102,6 +106,9 @@ enum AnalyticsDeepLinkDestination: String, CaseIterable, Sendable {
     case home = "home"
     case reviews = "reviews"
     case networkAudit = "network_audit"
+    case testFlight = "testflight"
+    case remoteConfig = "remote_config"
+    case certificates = "certificates"
     case app = "app"
     case review = "review"
     case reimport = "reimport"
@@ -117,6 +124,9 @@ enum AnalyticsDeepLinkDestination: String, CaseIterable, Sendable {
         case .home:         self = .home
         case .reviews:      self = .reviews
         case .networkAudit: self = .networkAudit
+        case .testFlight:   self = .testFlight
+        case .remoteConfig: self = .remoteConfig
+        case .certificates: self = .certificates
         case .app:          self = .app
         case .review:       self = .review
         case .reimport:     self = .reimport

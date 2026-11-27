@@ -268,4 +268,16 @@ extension RootSplitCoordinator: HomeRootNavigating {
         showHome()
         detailCoordinator.push(route)
     }
+
+    /// Selects the account's section in the sidebar (its list fills the
+    /// middle column); the first route becomes the detail root, as a row
+    /// picked in that list, and the others are pushed on the detail stack.
+    func showAccount(_ account: AccountModel, section: RootAccountSection, routes: [HomeRoute]) {
+        selection = .account(id: account.id, section: section)
+        resetDetail()
+        restoreColumnsIfNeeded()
+        guard let first = routes.first else { return }
+        showInDetail(first)
+        routes.dropFirst().forEach(detailCoordinator.push)
+    }
 }
