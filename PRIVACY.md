@@ -1,6 +1,6 @@
 # StackConnect Privacy Policy
 
-_Last updated: November 23, 2026_
+_Last updated: November 27, 2026_
 
 StackConnect is an open-source iOS app for managing App Store Connect, Firebase and Google Play accounts from your iPhone or iPad. This policy explains what data the app handles, where it goes, and the choices you have.
 
@@ -16,6 +16,7 @@ StackConnect is an open-source iOS app for managing App Store Connect, Firebase 
 | Account names, apps, versions, builds, reviews, testers, users and other data loaded from the services you connect | On-device database (SwiftData), in the app's App Group container | No |
 | Widget data (app names, icons, recent reviews) | The same App Group container, shared only with the StackConnect widget | No |
 | Settings and preferences | On-device storage (UserDefaults) | No |
+| Spotlight index of your apps (app name and bundle ID), so searching an app name in Spotlight opens it in StackConnect | The system Spotlight index on this device; rebuilt after each sync and cleared for an account when you delete it | No |
 
 Credentials and sessions written while the device is locked are kept in the app's memory and saved to the Keychain as soon as the device is unlocked; they are never written anywhere else.
 
@@ -54,7 +55,7 @@ To learn which features are used and where the app fails, StackConnect sends **a
   - how long a sync took (for example `5_15s`);
   - how many search results were found (for example `2_5`);
   - the kind of release track;
-  - whether the app was opened from a notification, a widget or a link, and the kind of screen it opened.
+  - whether the app was opened from a notification, a widget, a link, a Shortcut or Siri, or a Spotlight result, and the kind of screen it opened (never which app or account).
   - on iPad and Mac, the kind of sidebar section opened (for example `recent_reviews` or `account_apps`, never which account) and whether it was opened from the sidebar, a menu command or a dashboard tile.
 - **Segment properties:**
   - the number of connected accounts, in buckets (`0`, `1`, `2`, `3+`);
