@@ -3,4 +3,6 @@
 • Configurazione passo passo — aggiungere un account ora richiede pochi semplici passaggi, e una breve guida spiega come vengono salvate e protette le tue credenziali prima di connetterti
 • Home rinnovata — un riepilogo degli account in alto e, su iPhone, una barra dei pannelli per passare tra App e Impostazioni
 • Errori più chiari — i messaggi ora mostrano cosa ha risposto davvero App Store Connect
+• Comandi Rapidi, Siri e Spotlight — apri Recensioni, TestFlight, Remote Config o l’Audit di rete con Siri o un comando rapido, e trova le tue app per nome in Spotlight
+• Accessibilità migliorata — ogni pulsante con icona ora ha un’etichetta per VoiceOver e Controllo vocale
 • Correzioni di bug e miglioramenti della stabilità

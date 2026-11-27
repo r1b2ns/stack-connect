@@ -3,4 +3,6 @@
 • Einrichtung Schritt für Schritt — einen Account hinzuzufügen dauert jetzt nur wenige einfache Schritte, und eine kurze Anleitung erklärt vor dem Verbinden, wie deine Zugangsdaten gespeichert und geschützt werden
 • Überarbeiteter Startbildschirm — eine Accountübersicht oben und auf dem iPhone eine Tableiste zum Wechseln zwischen Apps und Einstellungen
 • Klarere Fehlermeldungen — Meldungen zeigen jetzt, was App Store Connect tatsächlich geantwortet hat
+• Kurzbefehle, Siri und Spotlight — öffne Bewertungen, TestFlight, Remote Config oder das Netzwerk-Audit mit Siri oder einem Kurzbefehl und finde deine Apps per Name in Spotlight
+• Bessere Bedienungshilfen — alle Symboltasten haben jetzt Beschriftungen für VoiceOver und Sprachsteuerung
 • Fehlerbehebungen und Stabilitätsverbesserungen

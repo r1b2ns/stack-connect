@@ -3,4 +3,6 @@
 • Steg-för-steg-konfiguration — att lägga till ett konto tar nu bara några enkla steg, och en kort guide förklarar hur dina inloggningsuppgifter lagras och skyddas innan du ansluter
 • Förnyad startskärm — en kontoöversikt högst upp och på iPhone ett flikfält för att växla mellan Appar och Inställningar
 • Tydligare fel — meddelanden visar nu vad App Store Connect faktiskt svarade
+• Genvägar, Siri och Spotlight — öppna Recensioner, TestFlight, Remote Config eller Nätverksgranskning med Siri eller en genväg, och hitta dina appar efter namn i Spotlight
+• Bättre tillgänglighet — alla symbolknappar har nu etiketter för VoiceOver och Röststyrning
 • Buggfixar och stabilitetsförbättringar

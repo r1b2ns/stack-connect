@@ -3,4 +3,6 @@
 • Step-by-Step Setup — adding an account now takes a few simple steps, and a short guide explains how your credentials are stored and protected before you connect
 • Refreshed Home — an accounts summary at the top and, on iPhone, a tab bar to switch between Apps and Settings
 • Clearer Errors — messages now show what App Store Connect actually said
+• Shortcuts, Siri and Spotlight — open Reviews, TestFlight, Remote Config or Network Audit with Siri or a Shortcut, and find your apps by name in Spotlight
+• Better Accessibility — every icon button now has a VoiceOver and Voice Control label
 • Bug fixes and stability improvements

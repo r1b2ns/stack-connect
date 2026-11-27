@@ -3,4 +3,6 @@
 • Configuración Paso a Paso — añadir una cuenta ahora lleva unos pocos pasos sencillos, y una guía breve explica cómo se guardan y protegen tus credenciales antes de conectar
 • Inicio Renovado — un resumen de las cuentas arriba y, en el iPhone, una barra de pestañas para cambiar entre Apps y Ajustes
 • Errores Más Claros — los mensajes muestran ahora lo que App Store Connect respondió realmente
+• Atajos, Siri y Spotlight — abre Valoraciones, TestFlight, Remote Config o la Auditoría de Red con Siri o un Atajo, y encuentra tus apps por su nombre en Spotlight
+• Más Accesibilidad — todos los botones con icono tienen ahora etiqueta para VoiceOver y Control por Voz
 • Corrección de errores y mejoras de estabilidad

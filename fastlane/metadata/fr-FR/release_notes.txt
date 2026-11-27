@@ -3,4 +3,6 @@
 • Configuration pas à pas — ajouter un compte ne prend plus que quelques étapes simples, et un court guide explique comment vos identifiants sont stockés et protégés avant la connexion
 • Accueil repensé — un résumé des comptes en haut et, sur iPhone, une barre d’onglets pour passer d’Apps à Réglages
 • Erreurs plus claires — les messages indiquent désormais ce qu’App Store Connect a réellement répondu
+• Raccourcis, Siri et Spotlight — ouvrez Avis, TestFlight, Remote Config ou l’Audit réseau avec Siri ou un raccourci, et trouvez vos apps par leur nom dans Spotlight
+• Meilleure accessibilité — chaque bouton à icône a désormais une étiquette pour VoiceOver et Contrôle vocal
 • Corrections de bugs et améliorations de la stabilité

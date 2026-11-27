@@ -3,4 +3,6 @@
 • 逐步設定 — 現在只要幾個簡單步驟就能新增帳號，連線前還有簡短指南說明你的憑證如何儲存與保護
 • 全新首頁 — 頂部顯示帳號摘要，iPhone 上還有標籤列可在 App 與設定間切換
 • 更清楚的錯誤訊息 — 訊息會顯示 App Store Connect 實際回應的內容
+• 捷徑、Siri 與 Spotlight — 透過 Siri 或捷徑開啟評論、TestFlight、Remote Config 或網路稽核，並在 Spotlight 以名稱搜尋你的 App
+• 更完善的輔助使用 — 所有圖示按鈕現在都有 VoiceOver 與語音控制標籤
 • 錯誤修正與穩定性改進

@@ -3,4 +3,6 @@
 • Stap voor stap instellen — een account toevoegen kost nu maar een paar eenvoudige stappen, en een korte gids legt uit hoe je inloggegevens worden bewaard en beschermd voordat je verbindt
 • Vernieuwd beginscherm — een accountoverzicht bovenaan en op de iPhone een tabbalk om te wisselen tussen Apps en Instellingen
 • Duidelijkere foutmeldingen — meldingen tonen nu wat App Store Connect echt heeft geantwoord
+• Opdrachten, Siri en Spotlight — open Beoordelingen, TestFlight, Remote Config of de Netwerkaudit met Siri of een opdracht, en vind je apps op naam in Spotlight
+• Betere toegankelijkheid — elke knop met een symbool heeft nu een label voor VoiceOver en Stembediening
 • Bugfixes en verbeterde stabiliteit
